@@ -1,6 +1,9 @@
+import os
+import sys
 from collections import defaultdict
 from functools import wraps
 from typing import (
+    TYPE_CHECKING,
     Callable,
     Dict,
     Generator,
@@ -9,6 +12,7 @@ from typing import (
     Mapping,
     Optional,
     Set,
+    Tuple,
     Union,
 )
 
@@ -16,6 +20,7 @@ from scmrepo.git import Git
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
+from dvc.rwlock import rwlock
 
 from .refs import (
     EXEC_APPLY,
@@ -28,18 +33,34 @@ from .refs import (
     ExpRefInfo,
 )
 
+if TYPE_CHECKING:
+    from dvc.repo import Repo
 
-def scm_locked(f):
-    # Lock the experiments workspace so that we don't try to perform two
-    # different sequences of git operations at once
-    @wraps(f)
-    def wrapper(exp, *args, **kwargs):
-        from dvc.scm import map_scm_exception
 
-        with map_scm_exception(), exp.scm_lock:
-            return f(exp, *args, **kwargs)
+EXEC_TMP_DIR = "exps"
+EXEC_PID_DIR = "run"
 
-    return wrapper
+
+def get_exp_rwlock(
+    repo: "Repo",
+    reads: Optional[List[str]] = None,
+    writes: Optional[List[str]] = None,
+):
+    reads = reads or []
+    writes = writes or []
+
+    cmd = " ".join(sys.argv)
+    path = os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
+    repo.fs.makedirs(path, exist_ok=True)
+
+    return rwlock(
+        path,
+        repo.fs,
+        cmd,
+        reads,
+        writes,
+        repo.config["core"].get("hardlink_lock", False),
+    )
 
 
 def unlocked_repo(f):
@@ -79,13 +100,13 @@ def exp_refs_by_rev(scm: "Git", rev: str) -> Generator[ExpRefInfo, None, None]:
 
 
 def exp_refs_by_baseline(
-    scm: "Git", revs: Set[str], url: Optional[str] = None
+    scm: "Git", revs: Optional[Set[str]] = None, url: Optional[str] = None
 ) -> Mapping[str, List[ExpRefInfo]]:
     """Iterate over all experiment refs with the specified baseline."""
     all_exp_refs = exp_refs(scm, url)
     result = defaultdict(list)
     for ref in all_exp_refs:
-        if ref.baseline_sha in revs:
+        if revs is None or ref.baseline_sha in revs:
             result[ref.baseline_sha].append(ref)
     return result
 
@@ -108,8 +129,7 @@ def iter_remote_refs(
 def push_refspec(
     scm: "Git",
     url: str,
-    src: Optional[str],
-    dest: str,
+    push_list=List[Tuple[Optional[str], str]],
     force: bool = False,
     on_diverged: Optional[Callable[[str, str], bool]] = None,
     **kwargs,
@@ -119,20 +139,21 @@ def push_refspec(
 
     from ...scm import GitAuthError, SCMError
 
-    if not src:
-        refspecs = [f":{dest}"]
-    elif src.endswith("/"):
-        refspecs = []
-        dest = dest.rstrip("/") + "/"
-        for ref in scm.iter_refs(base=src):
-            refname = ref.split("/")[-1]
-            refspecs.append(f"{ref}:{dest}{refname}")
-    else:
-        if dest.endswith("/"):
-            refname = src.split("/")[-1]
-            refspecs = [f"{src}:{dest}/{refname}"]
+    refspecs = []
+    for src, dest in push_list:
+        if not src:
+            refspecs.append(f":{dest}")
+        elif src.endswith("/"):
+            dest = dest.rstrip("/") + "/"
+            for ref in scm.iter_refs(base=src):
+                refname = ref.split("/")[-1]
+                refspecs.append(f"{ref}:{dest}{refname}")
         else:
-            refspecs = [f"{src}:{dest}"]
+            if dest.endswith("/"):
+                refname = src.split("/")[-1]
+                refspecs.append(f"{src}:{dest}/{refname}")
+            else:
+                refspecs.append(f"{src}:{dest}")
 
     try:
         results = scm.push_refspecs(

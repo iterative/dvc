@@ -492,7 +492,7 @@ def test_ls_granular(erepo_dir):
     assert entries == [
         {"isout": True, "isdir": False, "isexec": False, "path": "1"},
         {"isout": True, "isdir": False, "isexec": False, "path": "2"},
-        {"isout": False, "isdir": True, "isexec": False, "path": "subdir"},
+        {"isout": True, "isdir": True, "isexec": False, "path": "subdir"},
     ]
 
 

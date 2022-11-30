@@ -14,11 +14,12 @@ from typing import (
     List,
     Optional,
     Set,
+    Union,
 )
 
 import dpath.options
 import dpath.util
-from funcy import cached_property, first, project
+from funcy import cached_property, distinct, first, project
 
 from dvc.exceptions import DvcException
 from dvc.utils import error_handler, errored_revisions, onerror_store
@@ -263,7 +264,7 @@ class Plots:
 
 
 def _is_plot(out: "Output") -> bool:
-    return bool(out.plot) or bool(out.live)
+    return bool(out.plot)
 
 
 def _resolve_data_sources(plots_data: Dict):
@@ -311,16 +312,18 @@ def _get_data_targets(definitions: Dict):
 
 
 def infer_data_sources(plot_id, config=None):
-    def _deduplicate(lst: List):
-        return list({elem: None for elem in lst}.keys())
-
     y = config.get("y", None)
+
     if isinstance(y, dict):
         sources = list(y.keys())
     else:
         sources = [plot_id]
 
-    return _deduplicate(source for source in sources)
+    x = config.get("x", None)
+    if isinstance(x, dict):
+        sources.append(first(x.keys()))
+
+    return distinct(source for source in sources)
 
 
 def _matches(targets, config_file, plot_id):
@@ -442,12 +445,22 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
         if isinstance(dvcfile, PipelineFile):
             dvcfile_path = _relpath(repo.dvcfs, dvcfile.path)
             dvcfile_defs = dvcfile.load().get("plots", {})
+            dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
+            if isinstance(dvcfile_defs, list):
+                for elem in dvcfile_defs:
+                    if isinstance(elem, str):
+                        dvcfile_defs_dict[elem] = None
+                    else:
+                        k, v = list(elem.items())[0]
+                        dvcfile_defs_dict[k] = v
+            else:
+                dvcfile_defs_dict = dvcfile_defs
             resolved = _resolve_definitions(
                 repo.dvcfs,
                 targets,
                 props,
                 dvcfile_path,
-                dvcfile_defs,
+                dvcfile_defs_dict,
                 onerror=onerror,
             )
             dpath.util.merge(
@@ -540,7 +553,7 @@ def parse(fs, path, props=None, **kwargs):
         return _load_sv(path=path, fs=fs, delimiter="\t", header=header)
     if extension in LOADERS or extension in (".yml", ".yaml"):
         return LOADERS[extension](path=path, fs=fs)
-    if extension in (".jpeg", ".jpg", ".gif", ".png"):
+    if extension in (".jpeg", ".jpg", ".gif", ".png", ".svg"):
         with fs.open(path, "rb") as fd:
             return fd.read()
     raise PlotMetricTypeError(path)
@@ -549,7 +562,7 @@ def parse(fs, path, props=None, **kwargs):
 def _plot_props(out: "Output") -> Dict:
     from dvc.schema import PLOT_PROPS
 
-    if not (out.plot or out.live):
+    if not (out.plot):
         raise NotAPlotError(out)
     if isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported.")

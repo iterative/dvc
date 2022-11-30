@@ -1,10 +1,9 @@
-from contextlib import contextmanager
+from functools import partial
 from textwrap import dedent
 
 import pytest
 
 from dvc.repo.experiments.queue.celery import LocalCeleryQueue
-from tests.func.test_repro_multistage import COPY_SCRIPT
 
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
@@ -44,8 +43,7 @@ CHECKPOINT_SCRIPT = CHECKPOINT_SCRIPT_FORMAT.format(
 
 
 @pytest.fixture
-def exp_stage(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def exp_stage(tmp_dir, scm, dvc, copy_script):
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -93,8 +91,7 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
 
 
 @pytest.fixture
-def failed_exp_stage(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def failed_exp_stage(tmp_dir, scm, dvc, copy_script):
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.stage.add(
         cmd="python -c 'import sys; sys.exit(1)'",
@@ -117,15 +114,13 @@ def failed_exp_stage(tmp_dir, scm, dvc):
     return stage
 
 
-@contextmanager
 def _thread_worker(app, **kwargs):
     # Based on pytest-celery's celery_worker fixture but using thread pool
     # instead of solo pool so that broadcast/control API is available
     from celery.contrib.testing import worker
 
     app.loader.import_task_module("celery.contrib.testing.tasks")
-    with worker.start_worker(app, pool="threads", **kwargs) as test_worker:
-        yield test_worker
+    return worker.start_worker(app, pool="threads", **kwargs)
 
 
 @pytest.fixture
@@ -134,12 +129,26 @@ def test_queue(tmp_dir, dvc, scm, mocker) -> LocalCeleryQueue:
 
     Test queue worker runs for the duration of the test in separate thread(s).
     """
-    celery_queue = dvc.experiments.celery_queue
-    mocker.patch.object(celery_queue, "spawn_worker")
-    with _thread_worker(
-        celery_queue.celery,
+    import celery
+
+    queue = dvc.experiments.celery_queue
+    mocker.patch.object(queue, "spawn_worker")
+
+    f = partial(
+        _thread_worker,
+        queue.celery,
         concurrency=1,
-        ping_task_timeout=30,
-    ) as worker:
-        mocker.patch.object(celery_queue, "worker", return_value=worker)
-        yield celery_queue
+        ping_task_timeout=20,
+    )
+    exc = None
+    for _ in range(3):
+        try:
+            with f() as worker:
+                mocker.patch.object(queue, "worker", return_value=worker)
+                yield queue
+                return
+        except celery.exceptions.TimeoutError as e:
+            exc = e
+            continue
+    assert exc
+    raise exc

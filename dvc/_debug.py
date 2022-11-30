@@ -1,16 +1,14 @@
 from contextlib import ExitStack, contextmanager
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 if TYPE_CHECKING:
     from argparse import Namespace
+    from types import FrameType
 
 
 @contextmanager
-def viztracer_profile(
-    path: Union[Callable[[], str], str],
-    max_stack_depth: int = -1,
-):
+def viztracer_profile(path: Union[Callable[[], str], str], depth: int = -1):
     try:
         import viztracer  # pylint: disable=import-error
     except ImportError:
@@ -18,7 +16,7 @@ def viztracer_profile(
         yield
         return
 
-    tracer = viztracer.VizTracer(max_stack_depth=max_stack_depth)
+    tracer = viztracer.VizTracer(max_stack_depth=depth)
 
     tracer.start()
     yield
@@ -29,7 +27,9 @@ def viztracer_profile(
 
 @contextmanager
 def yappi_profile(
-    path: Union[Callable[[], str], str] = None, wall_clock: bool = True
+    path: Union[Callable[[], str], str] = None,
+    wall_clock: Optional[bool] = True,
+    separate_threads: Optional[bool] = False,
 ):
     try:
         import yappi  # pylint: disable=import-error
@@ -44,14 +44,26 @@ def yappi_profile(
     yield
     yappi.stop()
 
-    # pylint:disable=no-member
-    if path:
-        stats = yappi.get_func_stats()
-        fpath = path() if callable(path) else path
-        stats.save(fpath, "callgrind")
+    threads = yappi.get_thread_stats()
+    stats = {}
+    if separate_threads:
+        for thread in threads:
+            ctx_id = thread.id
+            stats[ctx_id] = yappi.get_func_stats(ctx_id=ctx_id)
     else:
-        yappi.get_func_stats().print_all()
-        yappi.get_thread_stats().print_all()
+        stats[None] = yappi.get_func_stats()
+
+    fpath = path() if callable(path) else path
+    for ctx_id, st in stats.items():
+        if fpath:
+            out = f"{fpath}-{ctx_id}" if ctx_id is not None else fpath
+            st.save(out, type="callgrind")
+        else:
+            if ctx_id is not None:
+                print(f"\nThread {ctx_id}")
+            st.print_all()  # pylint:disable=no-member
+            if ctx_id is None:
+                threads.print_all()  # pylint:disable=no-member
 
     yappi.clear_stats()
 
@@ -109,6 +121,38 @@ def debug():
         raise  # prevent from jumping ahead
 
 
+def _sigshow(_, frame: Optional["FrameType"]) -> None:
+    from shutil import get_terminal_size
+    from traceback import format_stack
+
+    from dvc.ui import ui
+
+    lines = "\u2015" * get_terminal_size().columns
+    ui.error_write(lines, "\n", *format_stack(frame), lines, sep="")
+
+
+@contextmanager
+def show_stack():
+    r"""Show stack trace on SIGQUIT (Ctrl-\) or SIGINFO (Ctrl-T on macOS)."""
+    import signal
+
+    signal.signal(signal.SIGQUIT, _sigshow)
+    try:
+        signal.signal(signal.SIGINFO, _sigshow)  # only available on macOS
+    except AttributeError:
+        pass
+    yield
+
+
+def _get_path_func(tool: str, ext: str):
+    fmt = f"{tool}.dvc-{{now:%Y%m%d}}_{{now:%H%M%S}}.{ext}"
+
+    def func(now: Optional["datetime"] = None) -> str:
+        return fmt.format(now=now or datetime.now())
+
+    return func
+
+
 @contextmanager
 def debugtools(args: "Namespace" = None, **kwargs):
     kw = vars(args) if args else {}
@@ -121,19 +165,21 @@ def debugtools(args: "Namespace" = None, **kwargs):
             stack.enter_context(profile(kw.get("cprofile_dump")))
         if kw.get("instrument") or kw.get("instrument_open"):
             stack.enter_context(instrument(kw.get("instrument_open", False)))
+        if kw.get("show_stack", False):
+            stack.enter_context(show_stack())
         if kw.get("yappi"):
-            output = "callgrind.dvc-{0:%Y%m%d}_{0:%H%M%S}.out"
+            path_func = _get_path_func("callgrind", "out")
             stack.enter_context(
-                yappi_profile(path=lambda: output.format(datetime.now()))
-            )
-        if kw.get("viztracer") or kw.get("viztracer_depth"):
-            output = "viztracer.dvc-{0:%Y%m%d}_{0:%H%M%S}.json"
-            stack.enter_context(
-                viztracer_profile(
-                    path=lambda: output.format(datetime.now()),
-                    max_stack_depth=kw.get("viztracer_depth") or -1,
+                yappi_profile(
+                    path=path_func,
+                    separate_threads=kw.get("yappi_separate_threads"),
                 )
             )
+        if kw.get("viztracer") or kw.get("viztracer_depth"):
+            path_func = _get_path_func("viztracer", "json")
+            depth = kw.get("viztracer_depth") or -1
+            prof = viztracer_profile(path=path_func, depth=depth)
+            stack.enter_context(prof)
         yield
 
 
@@ -145,6 +191,12 @@ def add_debugging_flags(parser):
     )
     parser.add_argument(
         "--yappi", action="store_true", default=False, help=SUPPRESS
+    )
+    parser.add_argument(
+        "--yappi-separate-threads",
+        action="store_true",
+        default=False,
+        help=SUPPRESS,
     )
     parser.add_argument(
         "--viztracer", action="store_true", default=False, help=SUPPRESS
@@ -159,4 +211,11 @@ def add_debugging_flags(parser):
     )
     parser.add_argument(
         "--instrument-open", action="store_true", default=False, help=SUPPRESS
+    )
+    parser.add_argument(
+        "--show-stack",
+        "--ss",
+        action="store_true",
+        default=False,
+        help=SUPPRESS,
     )

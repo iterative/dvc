@@ -26,10 +26,12 @@ from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer as otransfer
+from dvc_data.index import DataIndexEntry
 from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
+from .fs.callbacks import DEFAULT_CALLBACK
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -37,6 +39,8 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.obj import HashFile
     from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
+
+    from .fs.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 
@@ -83,10 +87,10 @@ def loadd_from(stage, d_list):
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
         checkpoint = d.pop(Output.PARAM_CHECKPOINT, False)
-        live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
+        push = d.pop(Output.PARAM_PUSH, True)
         ret.append(
             _get(
                 stage,
@@ -97,10 +101,10 @@ def loadd_from(stage, d_list):
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
-                live=live,
                 remote=remote,
                 **annot,
                 files=files,
+                push=push,
             )
         )
     return ret
@@ -114,8 +118,8 @@ def loads_from(
     plot=False,
     persist=False,
     checkpoint=False,
-    live=False,
     remote=None,
+    push=True,
 ):
     return [
         _get(
@@ -127,8 +131,8 @@ def loads_from(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
-            live=live,
             remote=remote,
+            push=push,
         )
         for s in s_list
     ]
@@ -162,29 +166,21 @@ def load_from_pipeline(stage, data, typ="outs"):
         stage.PARAM_OUTS,
         stage.PARAM_METRICS,
         stage.PARAM_PLOTS,
-        stage.PARAM_LIVE,
     ):
         raise ValueError(f"'{typ}' key is not allowed for pipeline files.")
 
     metric = typ == stage.PARAM_METRICS
     plot = typ == stage.PARAM_PLOTS
-    live = typ == stage.PARAM_LIVE
-    if live:
-        # `live` is single object
-        data = [data]
 
     d = _merge_data(data)
 
     for path, flags in d.items():
-        plt_d, live_d = {}, {}
+        plt_d = {}
         if plot:
             from dvc.schema import PLOT_PROPS
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
-        if live:
-            from dvc.schema import LIVE_PROPS
 
-            live_d, flags = _split_dict(flags, keys=LIVE_PROPS.keys())
         extra = project(
             flags,
             [
@@ -192,6 +188,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
+                Output.PARAM_PUSH,
                 *ANNOTATION_FIELDS,
             ],
         )
@@ -202,7 +199,6 @@ def load_from_pipeline(stage, data, typ="outs"):
             info={},
             plot=plt_d or plot,
             metric=metric,
-            live=live_d or live,
             **extra,
         )
 
@@ -259,10 +255,8 @@ class Output:
     PARAM_PLOT_TITLE = "title"
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
-    PARAM_LIVE = "live"
-    PARAM_LIVE_SUMMARY = "summary"
-    PARAM_LIVE_HTML = "html"
     PARAM_REMOTE = "remote"
+    PARAM_PUSH = "push"
 
     METRIC_SCHEMA = Any(
         None,
@@ -288,7 +282,6 @@ class Output:
         plot=False,
         persist=False,
         checkpoint=False,
-        live=False,
         desc=None,
         type=None,  # pylint: disable=redefined-builtin
         labels=None,
@@ -297,6 +290,7 @@ class Output:
         repo=None,
         fs_config=None,
         files: List[Dict[str, Any]] = None,
+        push: bool = True,
     ):
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
@@ -351,7 +345,7 @@ class Output:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
-        self.live = live
+        self.can_push = push
 
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj: Optional["HashFile"] = None
@@ -373,8 +367,12 @@ class Output:
             name=self.hash_name,
             value=getattr(self.meta, self.hash_name, None),
         )
-        if self.hash_info and self.hash_info.isdir:
+        if self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
+            if not self.hash_info and self.hash_name != "md5":
+                md5 = getattr(self.meta, "md5", None)
+                if md5:
+                    self.hash_info = HashInfo("md5", md5)
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
@@ -511,6 +509,36 @@ class Output:
             key = self.fs.path.parts(no_drive)[1:]
         return workspace, key
 
+    def get_entry(self) -> "DataIndexEntry":
+        from dvc.config import NoRemoteError
+
+        try:
+            remote = self.repo.cloud.get_remote_odb(self.remote)
+        except NoRemoteError:
+            remote = None
+
+        if self.files and not self.obj:
+            self.obj = self.get_obj()
+
+        entry = DataIndexEntry(
+            meta=self.meta,
+            obj=self.obj,
+            hash_info=self.hash_info,
+            odb=self.odb,
+            cache=self.odb,
+            remote=remote,
+        )
+        if self.stage.is_import and not self.stage.is_repo_import:
+            dep = self.stage.deps[0]
+            entry.fs = dep.fs
+            entry.path = dep.fs_path
+            entry.meta = dep.meta
+            if not entry.obj:
+                if not dep.obj and dep.files:
+                    dep.obj = dep.get_obj()
+                entry.obj = dep.obj
+        return entry
+
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
 
@@ -530,7 +558,7 @@ class Output:
 
     def changed_meta(self) -> bool:
         if self.fs.version_aware and self.meta.version_id:
-            return self.meta.version_id == self.get_meta().version_id
+            return self.meta.version_id != self.get_meta().version_id
         return False
 
     def workspace_status(self):
@@ -610,8 +638,16 @@ class Output:
         if self.metric:
             self.verify_metric()
 
-        if not self.use_cache:
-            _, self.meta, obj = build(
+        if self.use_cache:
+            _, self.meta, self.obj = build(
+                self.odb,
+                self.fs_path,
+                self.fs,
+                self.hash_name,
+                ignore=self.dvcignore,
+            )
+        else:
+            _, self.meta, self.obj = build(
                 self.repo.odb.local,
                 self.fs_path,
                 self.fs,
@@ -619,23 +655,11 @@ class Output:
                 ignore=self.dvcignore,
                 dry_run=True,
             )
-            self.hash_info = obj.hash_info
-            self.files = None
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
                 )
-            return
 
-        assert not self.IS_DEPENDENCY
-
-        _, self.meta, self.obj = build(
-            self.odb,
-            self.fs_path,
-            self.fs,
-            self.hash_name,
-            ignore=self.dvcignore,
-        )
         self.hash_info = self.obj.hash_info
         self.files = None
 
@@ -733,40 +757,40 @@ class Output:
 
         ret[self.PARAM_PATH] = path
 
-        if self.IS_DEPENDENCY:
-            return ret
+        if not self.IS_DEPENDENCY:
+            ret.update(self.annot.to_dict())
+            if not self.use_cache:
+                ret[self.PARAM_CACHE] = self.use_cache
 
-        ret.update(self.annot.to_dict())
-        if not self.use_cache:
-            ret[self.PARAM_CACHE] = self.use_cache
+            if isinstance(self.metric, dict):
+                if (
+                    self.PARAM_METRIC_XPATH in self.metric
+                    and not self.metric[self.PARAM_METRIC_XPATH]
+                ):
+                    del self.metric[self.PARAM_METRIC_XPATH]
 
-        if isinstance(self.metric, dict):
-            if (
-                self.PARAM_METRIC_XPATH in self.metric
-                and not self.metric[self.PARAM_METRIC_XPATH]
-            ):
-                del self.metric[self.PARAM_METRIC_XPATH]
+            if self.metric:
+                ret[self.PARAM_METRIC] = self.metric
 
-        if self.metric:
-            ret[self.PARAM_METRIC] = self.metric
+            if self.plot:
+                ret[self.PARAM_PLOT] = self.plot
 
-        if self.plot:
-            ret[self.PARAM_PLOT] = self.plot
+            if self.persist:
+                ret[self.PARAM_PERSIST] = self.persist
 
-        if self.persist:
-            ret[self.PARAM_PERSIST] = self.persist
+            if self.checkpoint:
+                ret[self.PARAM_CHECKPOINT] = self.checkpoint
 
-        if self.checkpoint:
-            ret[self.PARAM_CHECKPOINT] = self.checkpoint
+            if self.remote:
+                ret[self.PARAM_REMOTE] = self.remote
 
-        if self.live:
-            ret[self.PARAM_LIVE] = self.live
+            if not self.can_push:
+                ret[self.PARAM_PUSH] = self.can_push
 
-        if self.remote:
-            ret[self.PARAM_REMOTE] = self.remote
-
-        if self.hash_info.isdir and (
-            kwargs.get("with_files") or self.files is not None
+        if (
+            (not self.IS_DEPENDENCY or self.stage.is_import)
+            and self.hash_info.isdir
+            and (kwargs.get("with_files") or self.files is not None)
         ):
             if self.obj:
                 obj = self.obj
@@ -827,7 +851,7 @@ class Output:
     def checkout(
         self,
         force=False,
-        progress_callback=None,
+        progress_callback: "Callback" = DEFAULT_CALLBACK,
         relink=False,
         filter_info=None,
         allow_missing=False,
@@ -835,9 +859,9 @@ class Output:
         **kwargs,
     ):
         if not self.use_cache:
-            if progress_callback:
-                progress_callback(
-                    self.fs_path, self.get_files_number(filter_info)
+            if progress_callback != DEFAULT_CALLBACK:
+                progress_callback.relative_update(
+                    self.get_files_number(filter_info)
                 )
             return None
 
@@ -1019,8 +1043,14 @@ class Output:
         if not self.use_cache:
             return {}
 
+        push: bool = kwargs.pop("push", False)
         if self.stage.is_repo_import:
+            if push:
+                return {}
             return self.get_used_external(**kwargs)
+
+        if push and not self.can_push:
+            return {}
 
         if not self.hash_info:
             msg = (
@@ -1161,11 +1191,39 @@ class Output:
 
     @property
     def is_metric(self) -> bool:
-        return bool(self.metric) or bool(self.live)
+        return bool(self.metric)
 
     @property
     def is_plot(self) -> bool:
-        return bool(self.plot) or bool(self.live)
+        return bool(self.plot)
+
+    def restore_fields(self, other: "Output"):
+        """Restore attributes that need to be preserved when serialized."""
+        self.annot = other.annot
+        self.remote = other.remote
+        self.can_push = other.can_push
+
+    def merge_version_meta(self, other: "Output"):
+        """Merge version meta for files which are unchanged from other."""
+        if not self.hash_info:
+            return
+        if self.hash_info.isdir:
+            return self._merge_dir_version_meta(other)
+        if self.hash_info != other.hash_info:
+            return
+        self.meta = other.meta
+
+    def _merge_dir_version_meta(self, other: "Output"):
+        from dvc_data.hashfile.tree import update_meta
+
+        if not self.obj or not other.hash_info.isdir:
+            return
+        other_obj = other.obj if other.obj is not None else other.get_obj()
+        assert isinstance(self.obj, Tree) and isinstance(other_obj, Tree)
+        updated = update_meta(self.obj, other_obj)
+        assert updated.hash_info == self.obj.hash_info
+        self.obj = updated
+        self.files = updated.as_list(with_meta=True)
 
 
 META_SCHEMA = {
@@ -1196,5 +1254,6 @@ SCHEMA = {
     Output.PARAM_CACHE: bool,
     Output.PARAM_METRIC: Output.METRIC_SCHEMA,
     Output.PARAM_REMOTE: str,
+    Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }

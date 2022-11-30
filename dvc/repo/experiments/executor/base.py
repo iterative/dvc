@@ -12,6 +12,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    List,
     NamedTuple,
     Optional,
     Tuple,
@@ -19,6 +20,8 @@ from typing import (
     TypeVar,
     Union,
 )
+
+from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
@@ -32,17 +35,7 @@ from ..exceptions import (
     ExperimentExistsError,
     UnchangedExperimentError,
 )
-from ..refs import (
-    EXEC_BASELINE,
-    EXEC_BRANCH,
-    EXEC_CHECKPOINT,
-    EXEC_HEAD,
-    EXEC_MERGE,
-    EXEC_NAMESPACE,
-    EXPS_NAMESPACE,
-    EXPS_STASH,
-    ExpRefInfo,
-)
+from ..refs import EXEC_BASELINE, EXEC_BRANCH, EXEC_CHECKPOINT, ExpRefInfo
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -54,10 +47,6 @@ if TYPE_CHECKING:
     from dvc.stage import PipelineStage
 
 logger = logging.getLogger(__name__)
-
-
-EXEC_TMP_DIR = "exps"
-EXEC_PID_DIR = "run"
 
 
 class ExecutorResult(NamedTuple):
@@ -170,6 +159,7 @@ class BaseExecutor(ABC):
     @abstractmethod
     def init_git(
         self,
+        repo: "Repo",
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
@@ -317,6 +307,7 @@ class BaseExecutor(ABC):
     def fetch_exps(
         self,
         dest_scm: "Git",
+        refs: List[str],
         force: bool = False,
         on_diverged: Callable[[str, bool], None] = None,
         **kwargs,
@@ -325,26 +316,19 @@ class BaseExecutor(ABC):
 
         Args:
             dest_scm: Destination Git instance.
+            refs: reference names to be fetched from the remotes.
             force: If True, diverged refs will be overwritten
             on_diverged: Callback in the form on_diverged(ref, is_checkpoint)
                 to be called when an experiment ref has diverged.
 
         Extra kwargs will be passed into the remote git client.
         """
-        from ..utils import iter_remote_refs
 
-        refs = []
-        has_checkpoint = False
-        for ref in iter_remote_refs(
-            dest_scm,
-            self.git_url,
-            base=EXPS_NAMESPACE,
-            **kwargs,
-        ):
-            if ref == EXEC_CHECKPOINT:
-                has_checkpoint = True
-            elif not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
-                refs.append(ref)
+        if EXEC_CHECKPOINT in refs:
+            refs.remove(EXEC_CHECKPOINT)
+            has_checkpoint = True
+        else:
+            has_checkpoint = False
 
         def on_diverged_ref(orig_ref: str, new_rev: str):
             if force:
@@ -361,21 +345,25 @@ class BaseExecutor(ABC):
             return False
 
         # fetch experiments
-        dest_scm.fetch_refspecs(
-            self.git_url,
-            [f"{ref}:{ref}" for ref in refs],
-            on_diverged=on_diverged_ref,
-            force=force,
-            **kwargs,
-        )
-        # update last run checkpoint (if it exists)
-        if has_checkpoint:
+        try:
             dest_scm.fetch_refspecs(
                 self.git_url,
-                [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
-                force=True,
+                [f"{ref}:{ref}" for ref in refs],
+                on_diverged=on_diverged_ref,
+                force=force,
                 **kwargs,
             )
+            # update last run checkpoint (if it exists)
+            if has_checkpoint:
+                dest_scm.fetch_refspecs(
+                    self.git_url,
+                    [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
+                    force=True,
+                    **kwargs,
+                )
+        except SCMError:
+            pass
+
         return refs
 
     @classmethod
@@ -596,29 +584,22 @@ class BaseExecutor(ABC):
             logger.debug("Running repro in '%s'", os.getcwd())
             yield dvc
             info.status = TaskStatus.SUCCESS
-            if infofile is not None:
-                info.dump_json(infofile)
-
         except CheckpointKilledError:
             info.status = TaskStatus.FAILED
-            if infofile is not None:
-                info.dump_json(infofile)
             raise
         except DvcException:
             if log_errors:
                 logger.exception("")
             info.status = TaskStatus.FAILED
-            if infofile is not None:
-                info.dump_json(infofile)
             raise
         except Exception:
             if log_errors:
                 logger.exception("unexpected error")
             info.status = TaskStatus.FAILED
-            if infofile is not None:
-                info.dump_json(infofile)
             raise
         finally:
+            if infofile is not None:
+                info.dump_json(infofile)
             dvc.close()
             os.chdir(old_cwd)
 
@@ -756,21 +737,12 @@ class BaseExecutor(ABC):
             dvc_logger.setLevel(level)
 
     @contextmanager
-    def set_exec_refs(
-        self, scm: "Git", stash_rev: str, entry: "ExpStashEntry"
-    ):
+    def set_temp_refs(self, scm: "Git", temp_dict: Dict[str, str]):
         try:
-            # Executor will be initialized with an empty git repo that
-            # we populate by pushing:
-            #   EXEC_HEAD - the base commit for this experiment
-            #   EXEC_MERGE - the unmerged changes (from our stash)
-            #       to be reproduced
-            #   EXEC_BASELINE - the baseline commit for this experiment
-            scm.set_ref(EXEC_HEAD, entry.head_rev)
-            scm.set_ref(EXEC_MERGE, stash_rev)
-            scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+            for ref, rev in temp_dict.items():
+                scm.set_ref(ref, rev)
             yield
         finally:
-            for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+            for ref in temp_dict:
                 if scm.get_ref(ref):
                     scm.remove_ref(ref)

@@ -7,8 +7,11 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    NamedTuple,
     Optional,
     Set,
+    Tuple,
+    Union,
 )
 
 from funcy import cached_property, nullcontext
@@ -150,25 +153,35 @@ class Index:
 
     def targets_view(
         self,
-        targets: "TargetType",
-        filter_fn: Optional[Callable[["Stage"], bool]] = None,
+        targets: Optional["TargetType"],
+        stage_filter: Optional[Callable[["Stage"], bool]] = None,
+        outs_filter: Optional[Callable[["Output"], bool]] = None,
         **kwargs: Any,
     ) -> "IndexView":
         """Return read-only view of index for the specified targets.
 
         Args:
             targets: Targets to collect
-            filter_fn: Optional stage filter to be applied after collecting
+            stage_filter: Optional stage filter to be applied after collecting
+                targets.
+            outs_filter: Optional output filter to be applied after collecting
                 targets.
 
         Additional kwargs will be passed into the stage collector.
+
+        Note:
+            If both stage_filter and outs_filter are provided, stage_filter
+            will be applied first, and the resulting view will only contain
+            outputs from stages that matched stage_filter. Outputs from stages
+            that did not match will be excluded from the view (whether or not
+            the output would have matched outs_filter).
         """
         stage_infos = [
             stage_info
             for stage_info in self._collect_targets(targets, **kwargs)
-            if not filter_fn or filter_fn(stage_info.stage)
+            if not stage_filter or stage_filter(stage_info.stage)
         ]
-        return IndexView(self, stage_infos)
+        return IndexView(self, stage_infos, outs_filter=outs_filter)
 
     @property
     def outs(self) -> Iterator["Output"]:
@@ -228,8 +241,7 @@ class Index:
     def data(self) -> "Dict[str, DataIndex]":
         from collections import defaultdict
 
-        from dvc.config import NoRemoteError
-        from dvc_data.index import DataIndex, DataIndexEntry
+        from dvc_data.index import DataIndex
 
         by_workspace: dict = defaultdict(DataIndex)
 
@@ -241,25 +253,11 @@ class Index:
                 continue
 
             workspace, key = out.index_key
-
-            try:
-                remote = self.repo.cloud.get_remote_odb(out.remote)
-            except NoRemoteError:
-                remote = None
-
             data_index = by_workspace[workspace]
 
-            if out.files:
-                out.obj = out.get_obj()
-
-            data_index[key] = DataIndexEntry(
-                meta=out.meta,
-                obj=out.obj,
-                hash_info=out.hash_info,
-                odb=out.odb,
-                cache=out.odb,
-                remote=remote,
-            )
+            entry = out.get_entry()
+            entry.key = key
+            data_index.add(entry)
 
         return dict(by_workspace)
 
@@ -271,6 +269,7 @@ class Index:
         force: bool = False,
         recursive: bool = False,
         jobs: int = None,
+        push: bool = False,
     ) -> "ObjectContainer":
         from collections import defaultdict
 
@@ -284,17 +283,10 @@ class Index:
                 force=force,
                 jobs=jobs,
                 filter_info=filter_info,
+                push=push,
             ).items():
                 used[odb].update(objs)
         return used
-
-    def partial_imports(
-        self,
-        targets: "TargetType" = None,
-        recursive: bool = False,
-    ) -> List["Stage"]:
-        pairs = self._collect_targets(targets, recursive=recursive)
-        return [stage for stage, _ in pairs if stage.is_partial_import]
 
     # Following methods help us treat the collection as a set-like structure
     # and provides faux-immutability.
@@ -361,14 +353,26 @@ class Index:
         return dict_md5(self.dumpd())
 
 
+class _DataPrefixes(NamedTuple):
+    explicit: Set["DataIndexKey"]
+    recursive: Set["DataIndexKey"]
+
+
 class IndexView:
     """Read-only view of Index.data using filtered stages."""
 
     def __init__(  # pylint: disable=redefined-outer-name
-        self, index: Index, stage_infos: Iterable["StageInfo"]
+        self,
+        index: Index,
+        stage_infos: Iterable["StageInfo"],
+        outs_filter: Optional[Callable[["Output"], bool]],
     ):
         self._index = index
-        self._stages: Dict["Stage", Optional[str]] = dict(stage_infos)
+        self._stage_infos = stage_infos
+        # NOTE: stage_infos might have the same stage multiple times but with
+        # different filter_info
+        self._stages = list({stage for stage, _ in stage_infos})
+        self._outs_filter = outs_filter
 
     def __len__(self) -> int:
         return len(self._stages)
@@ -389,7 +393,7 @@ class IndexView:
 
     @property
     def stages(self):
-        return list(self._stages)
+        return self._stages
 
     @property
     def deps(self) -> Iterator["Dependency"]:
@@ -397,37 +401,60 @@ class IndexView:
             yield from stage.deps
 
     @property
+    def _filtered_outs(self) -> Iterator[Tuple["Output", Optional[str]]]:
+        for stage, filter_info in self._stage_infos:
+            for out in stage.filter_outs(filter_info):
+                if not self._outs_filter or self._outs_filter(out):
+                    yield out, filter_info
+
+    @property
     def outs(self) -> Iterator["Output"]:
-        for stage, filter_info in self._stages.items():
-            yield from stage.filter_outs(filter_info)
+        yield from {out for (out, _) in self._filtered_outs}
 
     @cached_property
-    def _data_prefixes(self) -> Dict[str, Set["DataIndexKey"]]:
+    def _data_prefixes(self) -> Dict[str, "_DataPrefixes"]:
         from collections import defaultdict
 
-        prefixes: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
-        for out in self.outs:
+        prefixes: Dict[str, "_DataPrefixes"] = defaultdict(
+            lambda: _DataPrefixes(set(), set())
+        )
+        for out, filter_info in self._filtered_outs:
             workspace, key = out.index_key
-            prefixes[workspace].add(key)
-            prefixes[workspace].update(key[:i] for i in range(len(key), 0, -1))
+            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
+                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            if out.meta.isdir:
+                prefixes[workspace].recursive.add(key)
+            prefixes[workspace].explicit.update(
+                key[:i] for i in range(len(key), 0, -1)
+            )
         return prefixes
 
     @cached_property
-    def data(self) -> "Dict[str, DataIndexView]":
+    def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
         from functools import partial
 
-        from dvc_data.index import view
+        from dvc_data.index import DataIndex, view
 
         def key_filter(workspace: str, key: "DataIndexKey"):
             try:
-                return key in self._data_prefixes[workspace]
+                prefixes = self._data_prefixes[workspace]
+                return key in prefixes.explicit or any(
+                    key[: len(prefix)] == prefix
+                    for prefix in prefixes.recursive
+                )
             except KeyError:
                 return False
 
-        return {
-            workspace: view(index, partial(key_filter, workspace))
-            for workspace, index in self._index.data.items()
-        }
+        data: Dict[str, Union["DataIndex", "DataIndexView"]] = {}
+        for workspace, data_index in self._index.data.items():
+            if self._stages:
+                data_index.load()
+                data[workspace] = view(
+                    data_index, partial(key_filter, workspace)
+                )
+            else:
+                data[workspace] = DataIndex()
+        return data
 
 
 if __name__ == "__main__":

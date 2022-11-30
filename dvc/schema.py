@@ -51,6 +51,7 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
         Output.PARAM_PERSIST: bool,
         Output.PARAM_CHECKPOINT: bool,
         Output.PARAM_REMOTE: str,
+        Output.PARAM_PUSH: bool,
     }
 }
 
@@ -66,13 +67,6 @@ PLOT_PROPS = {
 }
 PLOT_PROPS_SCHEMA = {**OUT_PSTAGE_DETAILED_SCHEMA[str], **PLOT_PROPS}
 PLOT_PSTAGE_SCHEMA = {str: Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
-
-LIVE_PROPS = {
-    Output.PARAM_LIVE_SUMMARY: bool,
-    Output.PARAM_LIVE_HTML: bool,
-}
-LIVE_PROPS_SCHEMA = {**PLOT_PROPS_SCHEMA, **LIVE_PROPS}
-LIVE_PSTAGE_SCHEMA = {str: LIVE_PROPS_SCHEMA}
 
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 
@@ -93,7 +87,6 @@ STAGE_DEFINITION = {
         Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
     ],
     Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
-    Optional(StageParams.PARAM_LIVE): Any(str, LIVE_PSTAGE_SCHEMA),
 }
 
 
@@ -111,14 +104,14 @@ def either_or(primary, fallback, fallback_includes=None):
 
 
 PLOT_DEFINITION = {
-    Output.PARAM_PLOT_X: str,
+    Output.PARAM_PLOT_X: Any(str, {str: str}),
     Output.PARAM_PLOT_Y: Any(str, [str], {str: Any(str, [str])}),
     Output.PARAM_PLOT_X_LABEL: str,
     Output.PARAM_PLOT_Y_LABEL: str,
     Output.PARAM_PLOT_TITLE: str,
     Output.PARAM_PLOT_TEMPLATE: str,
 }
-PLOTS_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
+SINGLE_PLOT_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
@@ -127,9 +120,9 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
     str: either_or(STAGE_DEFINITION, FOREACH_IN, [FOREACH_KWD, DO_KWD])
 }
 MULTI_STAGE_SCHEMA = {
+    PLOTS: Any(SINGLE_PLOT_SCHEMA, [Any(str, SINGLE_PLOT_SCHEMA)]),
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
     VARS_KWD: VARS_SCHEMA,
-    PLOTS: PLOTS_SCHEMA,
 }
 
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)

@@ -3,6 +3,7 @@ import logging
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -16,18 +17,13 @@ class CmdExperimentsList(CmdBase):
             num=self.args.num,
             git_remote=self.args.git_remote,
         )
+
         for baseline in exps:
-            tag = self.repo.scm.describe(baseline)
-            if not tag:
-                branch = self.repo.scm.describe(baseline, base="refs/heads")
-                if branch:
-                    tag = branch.split("/")[-1]
-            name = tag if tag else baseline[:7]
             if not name_only:
-                print(f"{name}:")
+                ui.write(f"{baseline}:")
             for exp_name in exps[baseline]:
                 indent = "" if name_only else "\t"
-                print(f"{indent}{exp_name}")
+                ui.write(f"{indent}{exp_name}")
 
         return 0
 

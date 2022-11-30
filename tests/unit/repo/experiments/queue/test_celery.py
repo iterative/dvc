@@ -2,11 +2,12 @@ import time
 
 import pytest
 from celery import shared_task
-from flaky.flaky_decorator import flaky
+from celery.result import AsyncResult
 
 from dvc.exceptions import DvcException
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 from dvc.repo.experiments.queue.base import QueueDoneResult
+from dvc.repo.experiments.queue.exceptions import CannotKillTasksError
 
 
 def test_shutdown_no_tasks(test_queue, mocker):
@@ -51,16 +52,14 @@ def test_shutdown_with_kill(test_queue, mocker):
     shutdown_spy.assert_called_once()
 
 
-# pytest-celery worker thread may finish the task before we check for PENDING
-@flaky(max_runs=3, min_passes=1)
 def test_post_run_after_kill(test_queue):
 
     from celery import chain
 
     sig_bar = test_queue.proc.run_signature(
-        ["python3", "-c", "import time; time.sleep(5)"], name="bar"
+        ["python3", "-c", "import time; time.sleep(10)"], name="bar"
     )
-    result_bar = sig_bar.freeze()
+    sig_bar.freeze()
     sig_foo = _foo.s()
     result_foo = sig_foo.freeze()
     run_chain = chain(sig_bar, sig_foo)
@@ -69,25 +68,28 @@ def test_post_run_after_kill(test_queue):
     timeout = time.time() + 10
 
     while True:
-        if result_bar.status == "STARTED" or result_bar.ready():
+        try:
+            test_queue.proc.kill("bar")
+            assert result_foo.status == "PENDING"
             break
+        except ProcessLookupError:
+            time.sleep(0.1)
         if time.time() > timeout:
-            raise AssertionError()
-
-    assert result_foo.status == "PENDING"
-    test_queue.proc.kill("bar")
+            raise TimeoutError()
 
     assert result_foo.get(timeout=10) == "foo"
 
 
 def test_celery_queue_kill(test_queue, mocker):
 
-    mock_entry = mocker.Mock(stash_rev=_foo.name)
+    mock_entry_foo = mocker.Mock(stash_rev="foo")
+    mock_entry_bar = mocker.Mock(stash_rev="bar")
+    mock_entry_foobar = mocker.Mock(stash_rev="foobar")
 
     mocker.patch.object(
         test_queue,
         "iter_active",
-        return_value={mock_entry},
+        return_value={mock_entry_foo, mock_entry_bar, mock_entry_foobar},
     )
     mocker.patch.object(
         test_queue,
@@ -100,12 +102,54 @@ def test_celery_queue_kill(test_queue, mocker):
     mocker.patch.object(
         test_queue,
         "match_queue_entry_by_name",
-        return_value={"bar": mock_entry},
+        return_value={
+            "bar": mock_entry_bar,
+            "foo": mock_entry_foo,
+            "foobar": mock_entry_foobar,
+        },
+    )
+    mocker.patch.object(
+        test_queue,
+        "_get_running_task_ids",
+        return_value={"foo", "foobar"},
+    )
+    mocker.patch.object(
+        test_queue,
+        "_iter_processed",
+        return_value=[
+            (mocker.Mock(headers={"id": "foo"}), mock_entry_foo),
+            (mocker.Mock(headers={"id": "bar"}), mock_entry_bar),
+            (mocker.Mock(headers={"id": "foobar"}), mock_entry_foobar),
+        ],
+    )
+    mocker.patch.object(
+        AsyncResult,
+        "ready",
+        return_value=False,
+    )
+    mark_mocker = mocker.patch.object(
+        test_queue.celery.backend,
+        "mark_as_failure",
     )
 
-    spy = mocker.patch.object(test_queue.proc, "kill")
-    test_queue.kill("bar")
-    assert spy.called_once_with(mock_entry.stash_rev)
+    def kill_function(rev):
+        if rev == "foo":
+            return True
+        raise ProcessLookupError
+
+    kill_mock = mocker.patch.object(
+        test_queue.proc,
+        "kill",
+        side_effect=mocker.MagicMock(side_effect=kill_function),
+    )
+    with pytest.raises(
+        CannotKillTasksError, match="Task 'foobar' is initializing,"
+    ):
+        test_queue.kill(["bar", "foo", "foobar"])
+    assert kill_mock.called_once_with(mock_entry_foo.stash_rev)
+    assert kill_mock.called_once_with(mock_entry_bar.stash_rev)
+    assert kill_mock.called_once_with(mock_entry_foobar.stash_rev)
+    mark_mocker.assert_called_once_with("bar", None)
 
 
 @pytest.mark.parametrize("status", ["FAILURE", "SUCCESS"])

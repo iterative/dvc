@@ -151,7 +151,6 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
     tmp_dir.scm_gen("new", "new", commit="new")
-    baseline_c = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
@@ -165,13 +164,13 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     git_downstream.tmp_dir.scm.fetch_refspecs(remote, ["master:master"])
     exp_list = downstream_exp.ls(rev=baseline_a, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {ref_info_a.name, ref_info_b.name}
+        baseline_a[:7]: {ref_info_a.name, ref_info_b.name}
     }
 
     exp_list = downstream_exp.ls(all_commits=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {ref_info_a.name, ref_info_b.name},
-        baseline_c: {ref_info_c.name},
+        baseline_a[:7]: {ref_info_a.name, ref_info_b.name},
+        "master": {ref_info_c.name},
     }
 
 

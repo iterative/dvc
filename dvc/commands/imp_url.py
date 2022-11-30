@@ -25,6 +25,7 @@ class CmdImportUrl(CmdBase):
                 labels=self.args.labels,
                 meta=self.args.meta,
                 jobs=self.args.jobs,
+                version_aware=self.args.version_aware,
             )
         except DvcException:
             logger.exception(
@@ -107,6 +108,15 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    import_parser.add_argument(
+        "--version-aware",
+        action="store_true",
+        default=False,
+        help=(
+            "Import using cloud versioning. Implied if the URL contains a "
+            "version ID."
+        ),
     )
     _add_annotating_args(import_parser)
     import_parser.set_defaults(func=CmdImportUrl)

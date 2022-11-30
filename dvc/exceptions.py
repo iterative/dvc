@@ -132,10 +132,17 @@ class NotDvcRepoError(DvcException):
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
-        msg = "Pipeline has a cycle involving: {}.".format(
-            ", ".join(s.addressing for s in stages)
+        stage_part = "stage" if len(stages) == 1 else "stages"
+        msg = (
+            "Same item(s) are defined as both a dependency and an output "
+            "in {stage_part}: {stage}."
         )
-        super().__init__(msg)
+        super().__init__(
+            msg.format(
+                stage_part=stage_part,
+                stage=", ".join(s.addressing for s in stages),
+            )
+        )
 
 
 class ConfirmRemoveError(DvcException):

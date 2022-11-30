@@ -2,9 +2,9 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional
 
-from funcy import cached_property, first
+from funcy import cached_property, chain, first
 
 from dvc.exceptions import DvcException
 from dvc.ui import ui
@@ -16,7 +16,7 @@ from .exceptions import (
     InvalidExpRefError,
     MultipleBranchError,
 )
-from .executor.base import BaseExecutor, ExecutorInfo, TaskStatus
+from .executor.base import BaseExecutor
 from .queue.base import BaseStashQueue, QueueEntry
 from .queue.celery import LocalCeleryQueue
 from .queue.tempdir import TempDirQueue
@@ -25,7 +25,6 @@ from .refs import (
     CELERY_FAILED_STASH,
     CELERY_STASH,
     EXEC_APPLY,
-    EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
@@ -33,7 +32,7 @@ from .refs import (
     ExpRefInfo,
 )
 from .stash import ExpStashEntry
-from .utils import exp_refs_by_rev, scm_locked, unlocked_repo
+from .utils import exp_refs_by_rev, unlocked_repo
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +50,12 @@ class Experiments:
     )
 
     def __init__(self, repo):
-        from dvc.lock import make_lock
         from dvc.scm import NoSCMError
 
         if repo.config["core"].get("no_scm", False):
             raise NoSCMError
 
         self.repo = repo
-        self.scm_lock = make_lock(
-            os.path.join(self.repo.tmp_dir, "exp_scm_lock"),
-            tmp_dir=self.repo.tmp_dir,
-            hardlink_lock=repo.config["core"].get("hardlink_lock", False),
-        )
 
     @property
     def scm(self):
@@ -172,7 +165,18 @@ class Experiments:
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}
         if entries is None:
-            entries = list(self.celery_queue.iter_queued())
+            entries = list(
+                chain(
+                    self.celery_queue.iter_active(),
+                    self.celery_queue.iter_queued(),
+                )
+            )
+
+        logger.debug(
+            "reproduce all these entries '%s'",
+            entries,
+        )
+
         if not entries:
             return results
 
@@ -190,7 +194,10 @@ class Experiments:
                     time.sleep(1)
                 self.celery_queue.follow(entry)
                 # wait for task collection to complete
-                result = self.celery_queue.get_result(entry)
+                try:
+                    result = self.celery_queue.get_result(entry)
+                except FileNotFoundError:
+                    result = None
                 if result is None or result.exp_hash is None:
                     name = entry.name or entry.stash_rev[:7]
                     failed.append(name)
@@ -211,8 +218,9 @@ class Experiments:
 
     def _log_reproduced(self, revs: Iterable[str], tmp_dir: bool = False):
         names = []
+        rev_names = self.get_exact_name(revs)
         for rev in revs:
-            name = self.get_exact_name(rev)
+            name = rev_names[rev]
             names.append(name if name else rev[:7])
         ui.write("\nRan experiment(s): {}".format(", ".join(names)))
         if tmp_dir:
@@ -239,7 +247,6 @@ class Experiments:
         if self.scm.get_ref(str(exp_ref)):
             raise ExperimentExistsError(exp_ref.name)
 
-    @scm_locked
     def new(
         self,
         queue: BaseStashQueue,
@@ -265,7 +272,6 @@ class Experiments:
         except ExperimentExistsError as err:
             if not (kwargs.get("force", False) or kwargs.get("reset", False)):
                 raise err
-
         return queue.put(*args, **kwargs)
 
     def _resume_checkpoint(
@@ -411,90 +417,41 @@ class Experiments:
             raise MultipleBranchError(rev, ref_infos)
         return str(ref_infos[0])
 
-    def get_exact_name(self, rev: str):
+    def get_exact_name(self, revs: Iterable[str]) -> Dict[str, Optional[str]]:
         """Returns preferred name for the specified revision.
 
         Prefers tags, branches (heads), experiments in that orer.
         """
+        result: Dict[str, Optional[str]] = {}
         exclude = f"{EXEC_NAMESPACE}/*"
-        ref = self.scm.describe(rev, base=EXPS_NAMESPACE, exclude=exclude)
-        if ref:
-            try:
-                name = ExpRefInfo.from_ref(ref).name
-                if name:
-                    return name
-            except InvalidExpRefError:
-                pass
-        if rev in self.stash_revs:
-            return self.stash_revs[rev].name
-        if rev in self.celery_queue.failed_stash.stash_revs:
-            return self.celery_queue.failed_stash.stash_revs[rev].name
-        return None
-
-    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Any]:
-        """Return info for running experiments."""
-        result = {}
-        infofile = self.workspace_queue.get_infofile_path("workspace")
-        result.update(
-            self._fetch_running_exp("workspace", infofile, fetch_refs)
+        ref_dict = self.scm.describe(
+            revs, base=EXPS_NAMESPACE, exclude=exclude
         )
-        for queue in (self.tempdir_queue, self.celery_queue):
-            for entry in queue.iter_active():
-                infofile = queue.get_infofile_path(entry.stash_rev)
-                result.update(
-                    self._fetch_running_exp(
-                        entry.stash_rev, infofile, fetch_refs
-                    )
-                )
+        for rev in revs:
+            name: Optional[str] = None
+            ref = ref_dict[rev]
+            if ref:
+                try:
+                    name = ExpRefInfo.from_ref(ref).name
+                except InvalidExpRefError:
+                    pass
+            if not name:
+                if rev in self.stash_revs:
+                    name = self.stash_revs[rev].name
+                elif rev in self.celery_queue.failed_stash.stash_revs:
+                    name = self.celery_queue.failed_stash.stash_revs[rev].name
+            result[rev] = name
         return result
 
-    def _fetch_running_exp(
-        self, rev: str, infofile: str, fetch_refs: bool
-    ) -> Dict[str, Any]:
-        from dvc.scm import InvalidRemoteSCMRepo
-        from dvc.utils.serialize import load_json
-
-        from .executor.local import TempDirExecutor
-
-        result: Dict[str, Any] = {}
-        try:
-            info = ExecutorInfo.from_dict(load_json(infofile))
-        except OSError:
-            return result
-        if info.result is None:
-            if rev == "workspace":
-                # If we are appending to a checkpoint branch in a workspace
-                # run, show the latest checkpoint as running.
-                if info.status > TaskStatus.RUNNING:
-                    return result
-                last_rev = self.scm.get_ref(EXEC_BRANCH)
-                if last_rev:
-                    result[last_rev] = info.asdict()
-                else:
-                    result[rev] = info.asdict()
-            else:
-                result[rev] = info.asdict()
-                if info.git_url and fetch_refs:
-
-                    def on_diverged(_ref: str, _checkpoint: bool):
-                        return False
-
-                    executor = TempDirExecutor.from_info(info)
-                    try:
-                        for ref in executor.fetch_exps(
-                            self.scm,
-                            on_diverged=on_diverged,
-                        ):
-                            logger.debug(
-                                "Updated running experiment '%s'.", ref
-                            )
-                            last_rev = self.scm.get_ref(ref)
-                            result[rev]["last"] = last_rev
-                            if last_rev:
-                                result[last_rev] = info.asdict()
-                    except InvalidRemoteSCMRepo:
-                        # ignore stale info files
-                        del result[rev]
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+        """Return info for running experiments."""
+        result = {}
+        for queue in (
+            self.workspace_queue,
+            self.tempdir_queue,
+            self.celery_queue,
+        ):
+            result.update(queue.get_running_exps(fetch_refs))
         return result
 
     def apply(self, *args, **kwargs):
@@ -521,6 +478,11 @@ class Experiments:
         from dvc.repo.experiments.run import run
 
         return run(self.repo, *args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        from dvc.repo.experiments.save import save
+
+        return save(self.repo, *args, **kwargs)
 
     def gc(self, *args, **kwargs):
         from dvc.repo.experiments.gc import gc

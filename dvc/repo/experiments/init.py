@@ -248,11 +248,6 @@ def init(
         except MissingParamsFile:
             pass
 
-    models = context.get("models")
-    live_path = context.pop("live", None)
-    live_metrics = f"{live_path}.json" if live_path else None
-    live_plots = os.path.join(live_path, "scalars") if live_path else None
-
     if type == "checkpoint":
         outs_key = "checkpoints"
         metrics_key = "metrics_persist_no_cache"
@@ -262,6 +257,13 @@ def init(
         metrics_key = "metrics_no_cache"
         plots_key = "plots_no_cache"
 
+    models = [context.get("models")]
+    metrics = [context.get("metrics")]
+    plots = [context.get("plots")]
+    if live_path := context.pop("live", None):
+        metrics.append(os.path.join(live_path, "metrics.json"))
+        plots.append(os.path.join(live_path, "plots"))
+
     stage = repo.stage.create(
         name=name,
         cmd=context["cmd"],
@@ -269,9 +271,9 @@ def init(
         params=[{params: None}] if params else None,
         force=force,
         **{
-            outs_key: compact([models]),
-            metrics_key: compact([context.get("metrics"), live_metrics]),
-            plots_key: compact([context.get("plots"), live_plots]),
+            outs_key: compact(models),
+            metrics_key: compact(metrics),
+            plots_key: compact(plots),
         },
     )
 

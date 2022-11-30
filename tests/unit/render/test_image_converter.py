@@ -3,10 +3,9 @@ from dvc.render.converter.image import ImageConverter
 
 
 def test_image_converter_no_out():
-    data = b"content"
-    converter = ImageConverter()
-
-    datapoints, _ = converter.convert(data, "r", "image.png")
+    data = {"image.png": b"content"}
+    converter = ImageConverter("image.png", data)
+    datapoints, _ = converter.flat_datapoints("r")
 
     assert datapoints[0] == {
         REVISION_FIELD: "r",
@@ -16,10 +15,10 @@ def test_image_converter_no_out():
 
 
 def test_image_converter_with_out(tmp_dir):
-    data = b"content"
-    converter = ImageConverter({"out": tmp_dir / "foo"})
+    data = {"image.png": b"content"}
+    converter = ImageConverter("image.png", data, {"out": tmp_dir / "foo"})
 
-    datapoints, _ = converter.convert(data, "r", "image.png")
+    datapoints, _ = converter.flat_datapoints("r")
 
     assert datapoints[0] == {
         REVISION_FIELD: "r",
@@ -32,10 +31,10 @@ def test_image_converter_with_out(tmp_dir):
 
 def test_image_converter_with_slash_in_revision(tmp_dir):
     """Regression test for #7934"""
-    data = b"content"
-    converter = ImageConverter({"out": tmp_dir / "foo"})
+    data = {"image.png": b"content"}
+    converter = ImageConverter("image.png", data, {"out": tmp_dir / "foo"})
 
-    datapoints, _ = converter.convert(data, "feature/r", "image.png")
+    datapoints, _ = converter.flat_datapoints("feature/r")
 
     assert datapoints[0] == {
         REVISION_FIELD: "feature/r",

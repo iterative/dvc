@@ -1,55 +1,12 @@
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import FileTransferError, UploadError
+from dvc.exceptions import UploadError
 
 from ..utils import glob_targets
 from . import locked
 
 if TYPE_CHECKING:
     from dvc_objects.db.base import ObjectDB
-
-
-def _push_worktree(repo, remote):
-    from dvc_data.hashfile.tree import tree_from_index
-    from dvc_data.index import checkout
-
-    index = repo.index.data["repo"]
-    checkout(index, remote.path, remote.fs)
-
-    for stage in repo.index.stages:
-        for out in stage.outs:
-            if not out.use_cache:
-                continue
-
-            if not out.is_in_repo:
-                continue
-
-            workspace, key = out.index_key
-            index = repo.index.data[workspace]
-            entry = index[key]
-            if out.isdir():
-                old_tree = out.get_obj()
-                entry.hash_info = old_tree.hash_info
-                entry.meta = out.meta
-                for subkey, entry in index.iteritems(key):
-                    if entry.meta.isdir:
-                        continue
-                    fs_path = repo.fs.path.join(repo.root_dir, *subkey)
-                    _, hash_info = old_tree.get(
-                        repo.fs.path.relparts(fs_path, out.fs_path)
-                    )
-                    entry.hash_info = hash_info
-                tree_meta, new_tree = tree_from_index(index, key)
-                new_tree.digest()
-                out.obj = new_tree
-                out.hash_info = new_tree.hash_info
-                out.meta = tree_meta
-            else:
-                out.hash_info = entry.hash_info
-                out.meta = entry.meta
-        stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
-
-    return len(index)
 
 
 @locked
@@ -69,9 +26,11 @@ def push(
     odb: Optional["ObjectDB"] = None,
     include_imports=False,
 ):
+    from dvc.repo.worktree import push_worktree
+
     _remote = self.cloud.get_remote(name=remote)
-    if _remote.worktree:
-        return _push_worktree(self, _remote)
+    if _remote.worktree or _remote.fs.version_aware:
+        return push_worktree(self, _remote)
 
     used_run_cache = (
         self.stage_cache.push(remote, odb=odb) if run_cache else []
@@ -94,6 +53,7 @@ def push(
         recursive=recursive,
         used_run_cache=used_run_cache,
         revs=revs,
+        push=True,
     )
 
     pushed = len(used_run_cache)
@@ -103,18 +63,18 @@ def push(
             if not include_imports and dest_odb and dest_odb.read_only:
                 continue
             all_ids.update(obj_ids)
-        try:
-            pushed += self.cloud.push(all_ids, jobs, remote=remote, odb=odb)
-        except FileTransferError as exc:
-            raise UploadError(exc.amount)
+        result = self.cloud.push(all_ids, jobs, remote=remote, odb=odb)
+        if result.failed:
+            raise UploadError(len(result.failed))
+        pushed += len(result.transferred)
     else:
         for dest_odb, obj_ids in used.items():
             if dest_odb and dest_odb.read_only:
                 continue
-            try:
-                pushed += self.cloud.push(
-                    obj_ids, jobs, remote=remote, odb=odb or dest_odb
-                )
-            except FileTransferError as exc:
-                raise UploadError(exc.amount)
+            result = self.cloud.push(
+                obj_ids, jobs, remote=remote, odb=odb or dest_odb
+            )
+            if result.failed:
+                raise UploadError(len(result.failed))
+            pushed += len(result.transferred)
     return pushed

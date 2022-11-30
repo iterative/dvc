@@ -1,6 +1,5 @@
 import filecmp
 import os
-from unittest.mock import patch
 
 import pytest
 from funcy import first
@@ -49,7 +48,7 @@ def test_import_git_file(tmp_dir, scm, dvc, git_dir, src_is_dvc):
     }
 
 
-def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
+def test_import_cached_file(mocker, erepo_dir, tmp_dir, dvc, scm, monkeypatch):
     src = "some_file"
     dst = "some_file_imported"
 
@@ -60,10 +59,10 @@ def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
     (tmp_dir / dst).unlink()
 
     remote_exception = NoRemoteError("dvc import")
-    with patch.object(
+    mocker.patch.object(
         dvc.cloud, "get_remote_odb", side_effect=remote_exception
-    ):
-        tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
+    )
+    tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).is_file()
     assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
@@ -305,7 +304,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     remove("dir_imported")
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     dvc.pull(["dir_imported.dvc"])
 
@@ -321,7 +320,7 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
 
     remove("dir_imported123")
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
@@ -357,7 +356,9 @@ def test_push_wildcard_from_bare_git_repo(
             dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
-def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
+def test_download_error_pulling_imported_stage(
+    mocker, tmp_dir, dvc, erepo_dir
+):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
@@ -368,9 +369,8 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove("foo_imported")
     remove(dst_cache)
 
-    with patch(
-        "dvc_objects.fs.generic.transfer", side_effect=Exception
-    ), pytest.raises(DownloadError):
+    mocker.patch("dvc_objects.fs.generic.transfer", side_effect=Exception)
+    with pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
 
@@ -546,9 +546,8 @@ def test_pull_imported_stage_from_subrepos(
     dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     # clean everything
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
     remove("out")
-    makedirs(dvc.odb.local.path)
 
     stats = dvc.pull(["out.dvc"])
 
@@ -633,7 +632,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
     remove("dir_imported")
 
     # pulled objects should come from the original upstream repo's remote,

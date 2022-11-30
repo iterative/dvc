@@ -1,6 +1,5 @@
 import json
 import platform
-from unittest import mock
 
 import pytest
 from voluptuous import Any, Schema
@@ -57,8 +56,9 @@ def test_runtime_info(tmp_global_dir):
     assert schema(analytics._runtime_info())
 
 
-@mock.patch("requests.post")
-def test_send(mock_post, tmp_path):
+def test_send(mocker, tmp_path):
+    mock_post = mocker.patch("requests.post")
+
     import requests
 
     url = "https://analytics.dvc.org"

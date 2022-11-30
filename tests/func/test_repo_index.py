@@ -220,8 +220,8 @@ def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
     # we get "workspace" as well from the brancher by default
     assert len(revs) + 1 == len(ids)
     possible_ids = {
-        True: "2ba7c7c5b395d4211348d6274b869fc7",
-        False: "8406970ad2fcafaa84d9310330a67576",
+        True: "dd9cf3a3dc2caac5835e64f258ac2d7b",
+        False: "b446f3cdc35539884dcc474d90ac6286",
     }
     assert set(ids) == {possible_ids[os.name == "posix"]}
 
@@ -303,3 +303,85 @@ def test_getitem(tmp_dir, dvc, run_copy):
 
     with pytest.raises(KeyError):
         _ = index["no-valid-stage-name"]
+
+
+def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.dvc_gen(
+        {"dir": {"subdir": {"in-subdir": "in-subdir"}, "in-dir": "in-dir"}},
+        commit="init",
+    )
+    index = Index(dvc)
+
+    # view should include the specific target, parent dirs, and children
+    # view should exclude any siblings of the target
+    view = index.targets_view("dir/subdir")
+    data_index = view.data["repo"]
+    assert ("dir",) in data_index
+    assert (
+        "dir",
+        "subdir",
+    ) in data_index
+    assert ("dir", "subdir", "in-subdir") in data_index
+    assert (
+        "dir",
+        "in-dir",
+    ) not in data_index
+
+
+def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
+    index = Index(dvc)
+
+    view = index.targets_view(None)
+    assert set(view.stages) == {stage1, stage2}
+    assert {out.fs_path for out in view.outs} == {
+        out.fs_path for out in (stage1.outs + stage2.outs)
+    }
+
+    view = index.targets_view(
+        None, stage_filter=lambda s: getattr(s, "name", "").startswith("copy")
+    )
+    assert set(view.stages) == {stage2}
+    assert {out.fs_path for out in view.outs} == {
+        out.fs_path for out in stage2.outs
+    }
+
+
+def test_view_outs_filter(tmp_dir, scm, dvc, run_copy):
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
+    index = Index(dvc)
+
+    view = index.targets_view(None, outs_filter=lambda o: o.def_path == "foo")
+    assert set(view.stages) == {stage1, stage2}
+    assert {out.fs_path for out in view.outs} == {
+        out.fs_path for out in stage1.outs
+    }
+
+
+def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
+    index = Index(dvc)
+
+    view = index.targets_view(
+        None,
+        stage_filter=lambda s: getattr(s, "name", "").startswith("copy"),
+        outs_filter=lambda o: o.def_path == "foo",
+    )
+    assert set(view.stages) == {stage2}
+    assert set(view.outs) == set()
+
+    view = index.targets_view(
+        None,
+        stage_filter=lambda s: getattr(s, "name", "").startswith("copy"),
+        outs_filter=lambda o: o.def_path == "bar",
+    )
+    assert set(view.stages) == {stage2}
+    assert {out.fs_path for out in view.outs} == {
+        out.fs_path for out in stage2.outs
+    }

@@ -13,9 +13,9 @@ from dvc.stage.run import run_stage
         (["mycmd1 arg1", "mycmd2 arg2"], ["> mycmd1 arg1", "> mycmd2 arg2"]),
     ],
 )
-def test_run_stage_dry(caplog, cmd, expected):
+def test_run_stage_dry(caplog, dvc, cmd, expected):
     with caplog.at_level(level=logging.INFO, logger="dvc"):
-        stage = Stage(None, "stage.dvc", cmd=cmd)
+        stage = Stage(dvc, "stage.dvc", cmd=cmd)
         run_stage(stage, dry=True)
 
     expected.insert(0, "Running stage 'stage.dvc':")

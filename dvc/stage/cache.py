@@ -9,7 +9,6 @@ from funcy import cached_property, first
 from dvc import fs
 from dvc.exceptions import DvcException
 from dvc.utils import dict_sha256, relpath
-from dvc_data.hashfile.transfer import _log_exceptions
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
@@ -181,7 +180,7 @@ class StageCache:
         dump_yaml(tmp, cache)
         self.repo.odb.local.move(tmp, path)
 
-    def restore(self, stage, run_cache=True, pull=False):
+    def restore(self, stage, run_cache=True, pull=False, dry=False):
         from .serialize import to_single_stage_lockfile
 
         if not _can_hash(stage):
@@ -196,14 +195,15 @@ class StageCache:
         else:
             if not run_cache:  # backward compatibility
                 raise RunCacheNotFoundError(stage)
-            stage.save_deps()
+            if not dry:
+                stage.save_deps()
             cache = self._load(stage)
             if not cache:
                 raise RunCacheNotFoundError(stage)
 
         cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
-        if pull:
+        if pull and not dry:
             for objs in cached_stage.get_used_objs().values():
                 self.repo.cloud.pull(objs)
 
@@ -214,7 +214,8 @@ class StageCache:
             "Stage '%s' is cached - skipping run, checking out outputs",
             stage.addressing,
         )
-        cached_stage.checkout()
+        if not dry:
+            cached_stage.checkout()
 
     def transfer(self, from_odb, to_odb):
         from dvc.fs import HTTPFileSystem, LocalFileSystem
@@ -222,7 +223,7 @@ class StageCache:
 
         from_fs = from_odb.fs
         to_fs = to_odb.fs
-        func = _log_exceptions(fs.generic.copy)
+        func = fs.generic.log_exceptions(fs.generic.copy)
         runs = from_fs.path.join(from_odb.path, "runs")
 
         http_odb = next(

@@ -345,11 +345,13 @@ def test_init_interactive_live(
             "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
-                "metrics": [{"dvclive.json": {"cache": False}}],
+                "metrics": [
+                    {os.path.join("dvclive", "metrics.json"): {"cache": False}}
+                ],
                 "outs": ["models"],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {os.path.join("dvclive", "scalars"): {"cache": False}}
+                    {os.path.join("dvclive", "plots"): {"cache": False}}
                 ],
             }
         }
@@ -434,12 +436,12 @@ def test_init_with_type_default_and_live_provided(
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "metrics": [
-                    {"live.json": {"cache": False}},
+                    {os.path.join("live", "metrics.json"): {"cache": False}},
                 ],
                 "outs": ["models"],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {os.path.join("live", "scalars"): {"cache": False}},
+                    {os.path.join("live", "plots"): {"cache": False}},
                 ],
             }
         }
@@ -477,13 +479,13 @@ def test_init_with_live_and_metrics_plots_provided(
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "metrics": [
-                    {"live.json": {"cache": False}},
+                    {os.path.join("live", "metrics.json"): {"cache": False}},
                     {"metrics.json": {"cache": False}},
                 ],
                 "outs": ["models"],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {os.path.join("live", "scalars"): {"cache": False}},
+                    {os.path.join("live", "plots"): {"cache": False}},
                     {"plots": {"cache": False}},
                 ],
             }

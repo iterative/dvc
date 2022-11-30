@@ -16,7 +16,7 @@ def test_(tmp_dir, dvc, scm, capsys):
     assert re.search(rf"DVC version: {DVC_VERSION_REGEX}", out)
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", out)
     for subproject in SUBPROJECTS:
-        assert re.search(rf"{subproject} = {DVC_VERSION_REGEX}", out)
+        assert re.search(rf"{subproject} = .*", out)
 
     assert find_supported_remotes(out)
     assert re.search(r"Cache types: .*", out)

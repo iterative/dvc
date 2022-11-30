@@ -2,7 +2,7 @@ import os
 import pathlib
 from typing import TYPE_CHECKING, Union
 
-from funcy import concat, first, lsplit, rpartial, without
+from funcy import concat, first, lsplit, rpartial
 
 from dvc.annotations import ANNOTATION_FIELDS
 from dvc.exceptions import InvalidArgumentError
@@ -66,8 +66,6 @@ def fill_stage_outputs(stage, **kwargs):
 
     stage.outs = []
 
-    stage.outs += _load_live_output(stage, **kwargs)
-
     for key in keys:
         stage.outs += loads_from(
             stage,
@@ -78,34 +76,6 @@ def fill_stage_outputs(stage, **kwargs):
             plot="plots" in key,
             checkpoint="checkpoints" in key,
         )
-
-
-def _load_live_output(
-    stage,
-    live=None,
-    live_no_cache=None,
-    live_summary=False,
-    live_html=False,
-    **kwargs,
-):
-    from dvc.output import Output, loads_from
-
-    outs = []
-    if live or live_no_cache:
-        assert bool(live) != bool(live_no_cache)
-
-        path = live or live_no_cache
-        outs += loads_from(
-            stage,
-            [path],
-            use_cache=not bool(live_no_cache),
-            live={
-                Output.PARAM_LIVE_SUMMARY: live_summary,
-                Output.PARAM_LIVE_HTML: live_html,
-            },
-        )
-
-    return outs
 
 
 def fill_stage_dependencies(
@@ -274,7 +244,6 @@ def prepare_file_path(kwargs):
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
             kwargs.get("checkpoints", []),
-            without([kwargs.get("live", None)], None),
         )
     )
 
@@ -332,15 +301,4 @@ def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
     if single_stage:
         kwargs.pop("name", None)
 
-    if kwargs.get("live") and kwargs.get("live_no_cache"):
-        raise InvalidArgumentError(
-            "cannot specify both `--live` and `--live-no-cache`"
-        )
-
-    kwargs.update(
-        {
-            "live_summary": not kwargs.pop("live_no_summary", False),
-            "live_html": not kwargs.pop("live_no_html", False),
-        }
-    )
     return kwargs

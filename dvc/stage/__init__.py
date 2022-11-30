@@ -113,10 +113,11 @@ def restore_fields(stage):
     stage.meta = old.meta
     stage.desc = old.desc
 
-    old_fields = {out.def_path: (out.annot, out.remote) for out in old.outs}
+    old_outs = {out.def_path: out for out in old.outs}
     for out in stage.outs:
-        if out_fields := old_fields.get(out.def_path, None):
-            out.annot, out.remote = out_fields
+        old_out = old_outs.get(out.def_path, None)
+        if old_out is not None:
+            out.restore_fields(old_out)
 
 
 class Stage(params.StageParams):
@@ -258,6 +259,10 @@ class Stage(params.StageParams):
         return isinstance(self.deps[0], RepoDependency)
 
     @property
+    def is_versioned_import(self):
+        return self.is_import and self.deps[0].fs.version_aware
+
+    @property
     def is_checkpoint(self):
         """
         A stage containing checkpoint outs is always considered as changed
@@ -276,22 +281,7 @@ class Stage(params.StageParams):
 
     def _read_env(self, out, checkpoint_func=None) -> Env:
         env: Env = {}
-        if out.live:
-            from dvc.env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
-            from dvc.output import Output
-            from dvc.schema import LIVE_PROPS
-
-            env[DVCLIVE_PATH] = relpath(out.fs_path, self.wdir)
-            if isinstance(out.live, dict):
-                config = project(out.live, LIVE_PROPS)
-
-                env[DVCLIVE_SUMMARY] = str(
-                    int(config.get(Output.PARAM_LIVE_SUMMARY, True))
-                )
-                env[DVCLIVE_HTML] = str(
-                    int(config.get(Output.PARAM_LIVE_HTML, True))
-                )
-        elif out.checkpoint and checkpoint_func:
+        if out.checkpoint and checkpoint_func:
             from dvc.env import DVC_CHECKPOINT
 
             env.update({DVC_CHECKPOINT: "1"})
@@ -375,7 +365,7 @@ class Stage(params.StageParams):
     def remove_outs(self, ignore_remove=False, force=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            if (out.persist or out.checkpoint or out.live) and not force:
+            if (out.persist or out.checkpoint) and not force:
                 out.unprotect()
                 continue
 
@@ -473,10 +463,12 @@ class Stage(params.StageParams):
         logger.debug("Computed %s md5: '%s'", self, m)
         return m
 
-    def save(self, allow_missing=False):
+    def save(self, allow_missing: bool = False, merge_versioned: bool = False):
         self.save_deps(allow_missing=allow_missing)
 
-        self.save_outs(allow_missing=allow_missing)
+        self.save_outs(
+            allow_missing=allow_missing, merge_versioned=merge_versioned
+        )
         self.md5 = self.compute_md5()
 
         self.repo.stage_cache.save(self)
@@ -491,8 +483,29 @@ class Stage(params.StageParams):
                 if not allow_missing:
                     raise
 
-    def save_outs(self, allow_missing=False):
+    def save_outs(
+        self, allow_missing: bool = False, merge_versioned: bool = False
+    ):
         from dvc.output import OutputDoesNotExistError
+
+        from .exceptions import StageFileDoesNotExistError, StageNotFound
+
+        if merge_versioned:
+            try:
+                old = self.reload()
+                old_outs = {out.def_path: out for out in old.outs}
+                merge_versioned = any(
+                    (
+                        out.files is not None
+                        or (
+                            out.meta is not None
+                            and out.meta.version_id is not None
+                        )
+                    )
+                    for out in old_outs.values()
+                )
+            except (StageFileDoesNotExistError, StageNotFound):
+                merge_versioned = False
 
         for out in self.outs:
             try:
@@ -500,6 +513,10 @@ class Stage(params.StageParams):
             except OutputDoesNotExistError:
                 if not (allow_missing or out.checkpoint):
                     raise
+            if merge_versioned:
+                old_out = old_outs.get(out.def_path)
+                if old_out is not None:
+                    out.merge_version_meta(old_out)
 
     def ignore_outs(self):
         for out in self.outs:
@@ -620,7 +637,9 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps", "outs"])
     def status(self, check_updates=False, filter_info=None):
         ret = []
-        show_import = self.is_repo_import and check_updates
+        show_import = (
+            self.is_repo_import or self.is_versioned_import
+        ) and check_updates
 
         if not self.frozen or show_import:
             self._status_deps(ret)

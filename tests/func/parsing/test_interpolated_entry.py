@@ -6,6 +6,7 @@ import pytest
 from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
 from dvc.parsing.context import recurse_not_a_node
+from dvc.parsing.interpolate import escape_str
 
 from . import (
     CONTEXT_DATA,
@@ -272,14 +273,17 @@ def test_cmd_dict(tmp_dir, dvc, bool_config, list_config):
         if list_config:
             conf["parsing"]["list"] = list_config
 
+    string = "spaced string"
+    mixed_quote_string = "quote\"'d"
     data = {
         "dict": {
             "foo": "foo",
             "bar": 2,
-            "string": "spaced string",
+            "string": string,
+            "mixed_quote_string": mixed_quote_string,
             "bool": True,
             "bool-false": False,
-            "list": [1, 2, "foo"],
+            "list": [1, 2, "foo", mixed_quote_string],
             "nested": {"foo": "foo"},
         }
     }
@@ -296,9 +300,10 @@ def test_cmd_dict(tmp_dir, dvc, bool_config, list_config):
         bool_resolved = " --bool --no-bool-false"
 
     if list_config is None or list_config == "nargs":
-        list_resolved = " --list 1 2 'foo'"
+        list_resolved = f" --list 1 2 foo {escape_str(mixed_quote_string)}"
     else:
-        list_resolved = " --list 1 --list 2 --list 'foo'"
+        list_resolved = " --list 1 --list 2 --list foo"
+        list_resolved += f" --list {escape_str(mixed_quote_string)}"
 
     assert_stage_equal(
         resolver.resolve(),
@@ -306,11 +311,12 @@ def test_cmd_dict(tmp_dir, dvc, bool_config, list_config):
             "stages": {
                 "stage1": {
                     "cmd": "python script.py"
-                    " --foo 'foo' --bar 2"
-                    " --string 'spaced string'"
+                    " --foo foo --bar 2"
+                    f" --string {escape_str(string)}"
+                    f" --mixed_quote_string {escape_str(mixed_quote_string)}"
                     f"{bool_resolved}"
                     f"{list_resolved}"
-                    " --nested.foo 'foo'"
+                    " --nested.foo foo"
                 }
             }
         },

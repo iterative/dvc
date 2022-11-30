@@ -15,7 +15,7 @@ from typing import (
 )
 
 from celery.result import AsyncResult
-from funcy import cached_property
+from funcy import cached_property, first
 from kombu.message import Message
 
 from dvc.daemon import daemonize
@@ -23,14 +23,13 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import (
-    EXEC_TMP_DIR,
-    ExecutorInfo,
-    ExecutorResult,
-    TaskStatus,
-)
+from ..executor.base import ExecutorInfo, ExecutorResult
+from ..refs import CELERY_STASH
+from ..utils import EXEC_TMP_DIR, get_exp_rwlock
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
+from .exceptions import CannotKillTasksError
 from .tasks import run_exp
+from .utils import fetch_running_exp_from_temp_dir
 
 if TYPE_CHECKING:
     from dvc_task.app import FSApp
@@ -167,7 +166,8 @@ class LocalCeleryQueue(BaseStashQueue):
 
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
-        entry = self._stash_exp(*args, **kwargs)
+        with get_exp_rwlock(self.repo, writes=["workspace", CELERY_STASH]):
+            entry = self._stash_exp(*args, **kwargs)
         self.celery.signature(run_exp.s(entry.asdict())).delay()
         return entry
 
@@ -186,6 +186,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
+            logger.debug("Found queued task %s", entry_dict["stash_rev"])
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_processed(self) -> Generator[_MessageEntry, None, None]:
@@ -202,6 +203,7 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if not result.ready():
+                logger.debug("Found active task %s", entry.stash_rev)
                 yield _TaskEntry(result, entry)
 
     def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
@@ -210,6 +212,7 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if result.ready():
+                logger.debug("Found done task %s", entry.stash_rev)
                 yield _TaskEntry(result, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:
@@ -242,67 +245,115 @@ class LocalCeleryQueue(BaseStashQueue):
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 
-    def get_result(
+    def _load_info(self, rev: str) -> ExecutorInfo:
+        infofile = self.get_infofile_path(rev)
+        return ExecutorInfo.load_json(infofile)
+
+    def _get_done_result(
         self, entry: QueueEntry, timeout: Optional[float] = None
-    ) -> Optional[ExecutorResult]:
+    ) -> Optional["ExecutorResult"]:
         from celery.exceptions import TimeoutError as _CeleryTimeout
 
-        def _load_info(rev: str) -> ExecutorInfo:
-            infofile = self.get_infofile_path(rev)
-            return ExecutorInfo.load_json(infofile)
-
-        def _load_collected(rev: str) -> Optional[ExecutorResult]:
-            executor_info = _load_info(rev)
-            if executor_info.status > TaskStatus.SUCCESS:
+        for msg, processed_entry in self._iter_processed():
+            if entry.stash_rev == processed_entry.stash_rev:
+                task_id = msg.headers["id"]
+                result: AsyncResult = AsyncResult(task_id)
+                if not result.ready():
+                    logger.debug(
+                        "Waiting for exp task '%s' to complete", result.id
+                    )
+                    try:
+                        result.get(timeout=timeout)
+                    except _CeleryTimeout as exc:
+                        raise DvcException(
+                            "Timed out waiting for exp to finish."
+                        ) from exc
+                executor_info = self._load_info(entry.stash_rev)
                 return executor_info.result
-            raise FileNotFoundError
+        raise FileNotFoundError
+
+    def get_result(
+        self, entry: QueueEntry, timeout: Optional[float] = None
+    ) -> Optional["ExecutorResult"]:
 
         try:
-            return _load_collected(entry.stash_rev)
+            return self._get_done_result(entry, timeout)
         except FileNotFoundError:
-            # Infofile will not be created until execution begins
             pass
 
         for queue_entry in self.iter_queued():
             if entry.stash_rev == queue_entry.stash_rev:
                 raise DvcException("Experiment has not been started.")
-        for result, active_entry in self._iter_active_tasks():
-            if entry.stash_rev == active_entry.stash_rev:
-                logger.debug(
-                    "Waiting for exp task '%s' to complete", result.id
-                )
-                try:
-                    result.get(timeout=timeout)
-                except _CeleryTimeout as exc:
-                    raise DvcException(
-                        "Timed out waiting for exp to finish."
-                    ) from exc
-                executor_info = _load_info(entry.stash_rev)
-                return executor_info.result
 
         # NOTE: It's possible for an exp to complete while iterating through
         # other queued and active tasks, in which case the exp will get moved
         # out of the active task list, and needs to be loaded here.
-        return _load_collected(entry.stash_rev)
+        return self._get_done_result(entry, timeout)
+
+    def _get_running_task_ids(self) -> Set[str]:
+        running_task_ids: Set[str] = set()
+        active_workers = self.worker_status()
+        for _, tasks in active_workers.items():
+            task = first(tasks)
+            if task:
+                running_task_ids.add(task["id"])
+        return running_task_ids
+
+    def _try_to_kill_tasks(
+        self, to_kill: Dict[QueueEntry, str]
+    ) -> Dict[QueueEntry, str]:
+        fail_to_kill_entries: Dict[QueueEntry, str] = {}
+        for queue_entry, rev in to_kill.items():
+            try:
+                self.proc.kill(queue_entry.stash_rev)
+                logger.debug(f"Task {rev} had been killed.")
+            except ProcessLookupError:
+                fail_to_kill_entries[queue_entry] = rev
+        return fail_to_kill_entries
+
+    def _mark_inactive_tasks_failure(self, remained_entries):
+        remained_revs: List[str] = []
+        running_ids = self._get_running_task_ids()
+        logger.debug(f"Current running tasks ids: {running_ids}.")
+        for msg, entry in self._iter_processed():
+            if entry not in remained_entries:
+                continue
+            task_id = msg.headers["id"]
+            if task_id in running_ids:
+                remained_revs.append(remained_entries[entry])
+            else:
+                result: AsyncResult = AsyncResult(task_id)
+                if not result.ready():
+                    logger.debug(
+                        f"Task id {task_id} rev {remained_entries[entry]} "
+                        "marked as failure."
+                    )
+                    self.celery.backend.mark_as_failure(task_id, None)
+
+        if remained_revs:
+            raise CannotKillTasksError(remained_revs)
 
     def kill(self, revs: Collection[str]) -> None:
-        to_kill: Set[QueueEntry] = set()
         name_dict: Dict[
             str, Optional[QueueEntry]
         ] = self.match_queue_entry_by_name(set(revs), self.iter_active())
 
-        missing_rev: List[str] = []
+        to_kill: Dict[QueueEntry, str] = {}
+        missing_revs: List[str] = []
         for rev, queue_entry in name_dict.items():
             if queue_entry is None:
-                missing_rev.append(rev)
+                missing_revs.append(rev)
             else:
-                to_kill.add(queue_entry)
+                to_kill[queue_entry] = rev
+        if missing_revs:
+            raise UnresolvedQueueExpNamesError(missing_revs)
 
-        if missing_rev:
-            raise UnresolvedQueueExpNamesError(missing_rev)
+        fail_to_kill_entries: Dict[QueueEntry, str] = self._try_to_kill_tasks(
+            to_kill
+        )
 
-        for queue_entry in to_kill:
-            self.proc.kill(queue_entry.stash_rev)
+        if fail_to_kill_entries:
+            self._mark_inactive_tasks_failure(fail_to_kill_entries)
 
     def shutdown(self, kill: bool = False):
         self.celery.control.shutdown()
@@ -358,10 +409,11 @@ class LocalCeleryQueue(BaseStashQueue):
         ) as fobj:
             ui.write(fobj.read())
 
-    def worker_status(self) -> Dict:
+    def worker_status(self) -> Dict[str, List[Dict]]:
         """Return the current active celery worker"""
         status = self.celery.control.inspect().active() or {}
         logger.debug(f"Worker status: {status}")
+
         return status
 
     def clear(self, *args, **kwargs):
@@ -373,3 +425,18 @@ class LocalCeleryQueue(BaseStashQueue):
         from .remove import celery_remove
 
         return celery_remove(self, *args, **kwargs)
+
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+        """Get the execution info of the currently running experiments
+
+        Args:
+            fetch_ref (bool): fetch completed checkpoints or not.
+        """
+        result: Dict[str, Dict] = {}
+        for entry in self.iter_active():
+            result.update(
+                fetch_running_exp_from_temp_dir(
+                    self, entry.stash_rev, fetch_refs
+                )
+            )
+        return result

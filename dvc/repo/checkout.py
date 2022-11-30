@@ -7,7 +7,6 @@ from dvc.exceptions import (
     CheckoutErrorSuggestGit,
     NoOutputOrStageError,
 )
-from dvc.progress import Tqdm
 from dvc.utils import relpath
 
 from . import locked
@@ -80,6 +79,7 @@ def checkout(
     allow_missing=False,
     **kwargs,
 ):
+    from dvc.fs.callbacks import Callback
 
     stats = {"added": [], "deleted": [], "modified": [], "failed": []}
     if not targets:
@@ -91,13 +91,16 @@ def checkout(
 
     pairs = _collect_pairs(self, targets, with_deps, recursive)
     total = get_all_files_numbers(pairs)
-    with Tqdm(
-        total=total, unit="file", desc="Checkout", disable=total == 0
-    ) as pbar:
+    with Callback.as_tqdm_callback(
+        unit="file",
+        desc="Checkout",
+        disable=total == 0,
+    ) as cb:
+        cb.set_size(total)
         for stage, filter_info in pairs:
             result = stage.checkout(
                 force=force,
-                progress_callback=pbar.update_msg,
+                progress_callback=cb,
                 relink=relink,
                 filter_info=filter_info,
                 allow_missing=allow_missing,

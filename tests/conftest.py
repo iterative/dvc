@@ -1,3 +1,4 @@
+import gc
 import json
 import os
 import sys
@@ -9,7 +10,7 @@ from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
 
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
 from .remotes import *  # noqa, pylint: disable=wildcard-import
-from .utils.scriptify import scriptify
+from .scripts import *  # noqa, pylint: disable=wildcard-import
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -172,9 +173,6 @@ def custom_template(tmp_dir, dvc):
     return template
 
 
-scriptify_fixture = pytest.fixture(lambda: scriptify, name="scriptify")
-
-
 @pytest.fixture(autouse=True)
 def mocked_webbrowser_open(mocker):
     mocker.patch("webbrowser.open")
@@ -218,7 +216,7 @@ defaultBranch=master
 
 
 @pytest.fixture
-def run_copy_metrics(tmp_dir, run_copy):
+def run_copy_metrics(tmp_dir, copy_script):
     def run(
         file1,
         file2,
@@ -262,3 +260,19 @@ def mock_hydra_conf(mocker):
     # NOTE: using sentinel here so that any imports from `hydra.conf`
     # return a mock.
     sys.modules["hydra.conf"] = mocker.sentinel
+
+
+@pytest.fixture(autouse=True)
+def gc_collect_on_dvc_close_on_win_311(mocker):
+    if sys.version_info < (3, 11) and os.name != "nt":
+        return
+
+    from dvc.repo import Repo
+
+    close = Repo.close
+
+    def wrapped(repo):
+        close(repo)
+        gc.collect()
+
+    mocker.patch("dvc.repo.Repo.close", wrapped)

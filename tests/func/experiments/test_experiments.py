@@ -2,18 +2,20 @@ import itertools
 import logging
 import os
 import stat
+from textwrap import dedent
 
 import pytest
 from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import ReproductionError
+from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils.serialize import PythonFileCorruptedError
-from tests.func.test_repro_multistage import COPY_SCRIPT
+from tests.scripts import COPY_SCRIPT
 
 
 @pytest.mark.parametrize("name", [None, "foo"])
@@ -38,13 +40,11 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
         assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
     exp_name = name if name else ref_info.name
-    assert dvc.experiments.get_exact_name(exp) == exp_name
+    assert dvc.experiments.get_exact_name([exp])[exp] == exp_name
     assert resolve_rev(scm, exp_name) == exp
 
 
 def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
-    from dvc.repo.experiments.exceptions import ExperimentExistsError
-
     dvc.experiments.run(
         exp_stage.addressing,
         name="foo",
@@ -209,8 +209,7 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{1}}") == init_rev
 
 
-def test_update_py_params(tmp_dir, scm, dvc, test_queue):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_update_py_params(tmp_dir, scm, dvc, test_queue, copy_script):
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
         cmd="python copy.py params.py metrics.py",
@@ -371,8 +370,7 @@ def test_no_scm(tmp_dir):
             getattr(dvc.experiments, cmd)()
 
 
-def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_untracked(tmp_dir, scm, dvc, caplog, workspace, copy_script):
     tmp_dir.scm_gen("params.yaml", "foo: 1", commit="track params")
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -430,22 +428,28 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
     tmp_dir.scm_gen("new", "new", commit="new")
-    baseline_c = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
 
-    assert dvc.experiments.ls() == {baseline_c: [ref_info_c.name]}
+    assert dvc.experiments.ls() == {"master": [ref_info_c.name]}
 
     exp_list = dvc.experiments.ls(rev=ref_info_a.baseline_sha)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {ref_info_a.name, ref_info_b.name}
+        baseline_a[:7]: {ref_info_a.name, ref_info_b.name}
     }
 
     exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {ref_info_a.name, ref_info_b.name},
-        baseline_c: {ref_info_c.name},
+        baseline_a[:7]: {ref_info_a.name, ref_info_b.name},
+        "master": {ref_info_c.name},
+    }
+
+    scm.checkout("branch", True)
+    exp_list = dvc.experiments.ls(all_commits=True)
+    assert {key: set(val) for key, val in exp_list.items()} == {
+        baseline_a[:7]: {ref_info_a.name, ref_info_b.name},
+        "branch": {ref_info_c.name},
     }
 
 
@@ -481,7 +485,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     with fs.open("dir/metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
-    assert dvc.experiments.get_exact_name(exp) == ref_info.name
+    assert dvc.experiments.get_exact_name([exp])[exp] == ref_info.name
     assert resolve_rev(scm, ref_info.name) == exp
 
 
@@ -525,7 +529,7 @@ def test_subrepo(tmp_dir, scm, workspace):
     with fs.open("dir/repo/metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
-    assert subrepo.dvc.experiments.get_exact_name(exp) == ref_info.name
+    assert subrepo.dvc.experiments.get_exact_name([exp])[exp] == ref_info.name
     assert resolve_rev(scm, ref_info.name) == exp
 
 
@@ -538,7 +542,7 @@ def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
     repro_spy = mocker.spy(dvc.experiments, "reproduce_celery")
     results = dvc.experiments.run(run_all=True)
     assert len(results) == 2
-    repro_spy.assert_called_once_with(entries=mocker.ANY, jobs=1)
+    repro_spy.assert_called_once_with(jobs=1)
 
     expected = {"foo: 2", "foo: 3"}
     metrics = set()
@@ -600,9 +604,10 @@ def test_fix_exp_head(tmp_dir, scm, tail):
     "params, target",
     itertools.product(("foo: 1", "foo: 2"), (True, False)),
 )
-def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
+def test_modified_data_dep(
+    tmp_dir, scm, dvc, workspace, params, target, copy_script
+):
     tmp_dir.dvc_gen("data", "data")
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     exp_stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -677,3 +682,29 @@ def test_experiments_workspace_not_log_exception(caplog, dvc, scm):
             dvc.experiments.run()
 
     assert not caplog.text
+
+
+def test_run_env(tmp_dir, dvc, scm):
+    dump_run_env = dedent(
+        """\
+        import os
+        from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
+        with open("DVC_EXP_BASELINE_REV", "w") as f:
+            f.write(os.environ.get(DVC_EXP_BASELINE_REV, ""))
+        with open("DVC_EXP_NAME", "w") as f:
+            f.write(os.environ.get(DVC_EXP_NAME, ""))
+        """
+    )
+    (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
+    baseline = scm.get_rev()
+    dvc.stage.add(
+        cmd="python dump_run_env.py",
+        name="run_env",
+    )
+    dvc.experiments.run()
+    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
+    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == ""
+
+    dvc.experiments.run(name="foo")
+    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
+    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == "foo"

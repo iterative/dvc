@@ -50,11 +50,11 @@ def test_wait(tmp_dir, mocker):
 
     proc._proc.wait = mocker.Mock(return_value=None)
     proc._proc.returncode = 0
-    assert 0 == proc.wait()
+    assert proc.wait() == 0
     proc._proc.wait.assert_called_once()
 
     # once subprocess return code is set, future ManagedProcess.wait() calls
     # should not block
     proc._proc.wait.reset_mock()
-    assert 0 == proc.wait()
+    assert proc.wait() == 0
     proc._proc.wait.assert_not_called()

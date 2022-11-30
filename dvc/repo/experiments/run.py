@@ -28,14 +28,24 @@ def run(
     Returns a dict mapping new experiment SHAs to the results
     of `repro` for that experiment.
     """
-    from dvc.utils.hydra import to_hydra_overrides
-
     if run_all:
-        entries = list(repo.experiments.celery_queue.iter_queued())
-        return repo.experiments.reproduce_celery(entries, jobs=jobs)
+        return repo.experiments.reproduce_celery(jobs=jobs)
 
+    hydra_sweep = None
     if params:
+        from dvc.utils.hydra import to_hydra_overrides
+
         path_overrides = to_path_overrides(params)
+        hydra_sweep = any(
+            x.is_sweep_override()
+            for param_file in path_overrides
+            for x in to_hydra_overrides(path_overrides[param_file])
+        )
+
+        if hydra_sweep and not queue:
+            raise InvalidArgumentError(
+                "Sweep overrides can't be used without `--queue`"
+            )
     else:
         path_overrides = {}
 
@@ -45,23 +55,16 @@ def run(
         # Force `_update_params` even if `--set-param` was not used
         path_overrides[hydra_output_file] = []
 
-    hydra_sweep = any(
-        x.is_sweep_override()
-        for param_file in path_overrides
-        for x in to_hydra_overrides(path_overrides[param_file])
-    )
-
-    if hydra_sweep and not queue:
-        raise InvalidArgumentError(
-            "Sweep overrides can't be used without `--queue`"
-        )
-
     if not queue:
         return repo.experiments.reproduce_one(
             targets=targets, params=path_overrides, tmp_dir=tmp_dir, **kwargs
         )
 
     if hydra_sweep:
+        if kwargs.get("name"):
+            raise InvalidArgumentError(
+                "Sweep overrides can't be used alongside `--name`"
+            )
         from dvc.utils.hydra import get_hydra_sweeps
 
         sweeps = get_hydra_sweeps(path_overrides)

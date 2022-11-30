@@ -1,6 +1,5 @@
 # pylint: disable=unidiomatic-typecheck
 import json
-from unittest.mock import create_autospec
 
 import pytest
 
@@ -83,7 +82,7 @@ def _test_func(x, y, *args, j=3, k=5, **kwargs):
 def test_pre_validate_decorator_required_args(mocker):
     mock = mocker.MagicMock()
 
-    func_mock = create_autospec(_test_func)
+    func_mock = mocker.create_autospec(_test_func)
     func = validate(mock)(func_mock)
 
     func("x", "y")
@@ -102,7 +101,7 @@ def test_pre_validate_decorator_required_args(mocker):
 
 def test_pre_validate_decorator_kwargs_args(mocker):
     mock = mocker.MagicMock()
-    func_mock = create_autospec(_test_func)
+    func_mock = mocker.create_autospec(_test_func)
     func = validate(mock)(func_mock)
 
     func("x", "y", "part", "of", "args", j=1, k=10, m=100, n=1000)
@@ -120,7 +119,7 @@ def test_pre_validate_decorator_kwargs_args(mocker):
     assert args.kwargs == {"m": 100, "n": 1000}
 
 
-def test_pre_validate_update_args():
+def test_pre_validate_update_args(mocker):
     def test_validator(args):
         args.w += 50
         del args.x
@@ -129,7 +128,7 @@ def test_pre_validate_update_args():
     def test_func(w=1, x=5, y=10, z=15):
         pass
 
-    mock = create_autospec(test_func)
+    mock = mocker.create_autospec(test_func)
     func = validate(test_validator)(mock)
 
     func(100, 100)

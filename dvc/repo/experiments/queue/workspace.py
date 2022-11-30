@@ -1,15 +1,28 @@
+import json
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, Collection, Dict, Generator, Optional
+from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
 
+import psutil
 from funcy import first
+from voluptuous import Invalid
 
 from dvc.exceptions import DvcException
+from dvc.lock import make_lock
+from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
+from dvc.utils import relpath
+from dvc.utils.fs import remove
 
 from ..exceptions import ExpQueueEmptyError
-from ..executor.base import BaseExecutor, ExecutorResult
+from ..executor.base import (
+    BaseExecutor,
+    ExecutorInfo,
+    ExecutorResult,
+    TaskStatus,
+)
 from ..executor.local import WorkspaceExecutor
-from ..refs import EXEC_BRANCH
+from ..refs import EXEC_BRANCH, WORKSPACE_STASH
+from ..utils import get_exp_rwlock
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 
 if TYPE_CHECKING:
@@ -22,7 +35,8 @@ class WorkspaceQueue(BaseStashQueue):
     _EXEC_NAME: Optional[str] = "workspace"
 
     def put(self, *args, **kwargs) -> QueueEntry:
-        return self._stash_exp(*args, **kwargs)
+        with get_exp_rwlock(self.repo, writes=["workspace", WORKSPACE_STASH]):
+            return self._stash_exp(*args, **kwargs)
 
     def get(self) -> QueueGetResult:
         revs = self.stash.stash_revs
@@ -150,3 +164,89 @@ class WorkspaceQueue(BaseStashQueue):
         follow: bool = False,
     ):
         raise NotImplementedError
+
+    def check_rwlock(
+        self,
+        hardlink: bool = False,
+        autocorrect: bool = False,
+    ) -> bool:
+        """Check and autocorrect the RWLock status for file paths.
+
+        Args:
+            hardlink (bool): use hardlink lock to guard rwlock file when on
+                            edit.
+            autocorrect (bool): autocorrect corrupted rwlock file.
+
+        Return:
+            (bool): if the pid alive.
+        """
+        path = self.repo.fs.path.join(self.repo.tmp_dir, RWLOCK_FILE)
+
+        rwlock_guard = make_lock(
+            self.repo.fs.path.join(self.repo.tmp_dir, RWLOCK_LOCK),
+            tmp_dir=self.repo.tmp_dir,
+            hardlink_lock=hardlink,
+        )
+        with rwlock_guard:
+            try:
+                with self.repo.fs.open(path, encoding="utf-8") as fobj:
+                    lock: Dict[str, List[Dict]] = SCHEMA(json.load(fobj))
+                file_path = first(lock["read"])
+                if not file_path:
+                    return False
+                lock_info = first(lock["read"][file_path])
+                pid = int(lock_info["pid"])
+                if psutil.pid_exists(pid):
+                    return True
+                cmd = lock_info["cmd"]
+                logger.warning(
+                    "Process '%s' with (Pid %s), in RWLock-file '%s'"
+                    " had been killed.",
+                    cmd,
+                    pid,
+                    relpath(path),
+                )
+            except FileNotFoundError:
+                return False
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Unable to read RWLock-file '%s'. JSON structure is"
+                    " corrupted",
+                    relpath(path),
+                )
+            except Invalid:
+                logger.warning("RWLock-file '%s' format error.", relpath(path))
+            if autocorrect:
+                logger.warning(
+                    "Delete corrupted RWLock-file '%s'", relpath(path)
+                )
+                remove(path)
+            return False
+
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+        from dvc.utils.serialize import load_json
+
+        assert self._EXEC_NAME
+        result: Dict[str, Dict] = {}
+
+        if not self.check_rwlock(autocorrect=True):
+            return result
+
+        infofile = self.get_infofile_path(self._EXEC_NAME)
+
+        try:
+            info = ExecutorInfo.from_dict(load_json(infofile))
+        except OSError:
+            return result
+
+        if info.status < TaskStatus.FAILED:
+            # If we are appending to a checkpoint branch in a workspace
+            # run, show the latest checkpoint as running.
+            if info.status == TaskStatus.SUCCESS:
+                return result
+            last_rev = self.scm.get_ref(EXEC_BRANCH)
+            if last_rev:
+                result[last_rev] = info.asdict()
+            else:
+                result[self._EXEC_NAME] = info.asdict()
+        return result

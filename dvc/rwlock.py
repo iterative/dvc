@@ -1,14 +1,19 @@
 import json
+import logging
 import os
 from collections import defaultdict
 from contextlib import contextmanager
 
+import psutil
 from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
 from .fs import localfs
 from .lock import make_lock
 from .utils import relpath
+
+logger = logging.getLogger(__name__)
+
 
 INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}
 
@@ -18,6 +23,9 @@ SCHEMA = Schema(
         Optional("read", default={}): {str: [INFO_SCHEMA]},
     }
 )
+
+RWLOCK_FILE = "rwlock"
+RWLOCK_LOCK = "rwlock.lock"
 
 
 class RWLockFileCorruptedError(DvcException):
@@ -35,10 +43,10 @@ class RWLockFileFormatError(DvcException):
 
 @contextmanager
 def _edit_rwlock(lock_dir, fs, hardlink):
-    path = fs.path.join(lock_dir, "rwlock")
+    path = fs.path.join(lock_dir, RWLOCK_FILE)
 
     rwlock_guard = make_lock(
-        fs.path.join(lock_dir, "rwlock.lock"),
+        fs.path.join(lock_dir, RWLOCK_LOCK),
         tmp_dir=lock_dir,
         hardlink_lock=hardlink,
     )
@@ -65,34 +73,66 @@ def _infos_to_str(infos):
     )
 
 
-def _check_blockers(lock, info, *, mode, waiters):
+def _check_blockers(tmp_dir, lock, info, *, mode, waiters):
     from .lock import LockError
 
-    for waiter_path in waiters:
-        blockers = [
-            blocker
-            for path, infos in lock[mode].items()
-            if localfs.path.overlaps(waiter_path, path)
-            for blocker in (infos if isinstance(infos, list) else [infos])
-            if blocker != info
-        ]
+    non_existing_pid = set()
 
-        if not blockers:
+    blockers = []
+    to_release = defaultdict(list)
+    for path, infos in lock[mode].items():
+        for waiter_path in waiters:
+            if localfs.path.overlaps(waiter_path, path):
+                break
+        else:
             continue
 
+        infos = infos if isinstance(infos, list) else [infos]
+        for blocker in infos:
+            if blocker == info:
+                continue
+
+            pid = int(blocker["pid"])
+
+            if pid in non_existing_pid:
+                pass
+            elif psutil.pid_exists(pid):
+                blockers.append(blocker)
+                continue
+            else:
+                non_existing_pid.add(pid)
+                cmd = blocker["cmd"]
+                logger.warning(
+                    "Process '%s' with (Pid %s), in RWLock-file '%s'"
+                    " had been killed. Auto remove it from the lock file.",
+                    cmd,
+                    pid,
+                    relpath(path),
+                )
+            to_release[json.dumps(blocker, sort_keys=True)].append(path)
+
+    if to_release:
+        for info_json, path_list in to_release.items():
+            info = json.loads(info_json)
+            if mode == "read":
+                _release_read(lock, info, path_list)
+            elif mode == "write":
+                _release_write(lock, info, path_list)
+
+    if blockers:
         raise LockError(
-            "'{path}' is busy, it is being blocked by:\n"
-            "{blockers}\n"
+            f"'{waiter_path}' is busy, it is being blocked by:\n"
+            f"{_infos_to_str(blockers)}\n"
             "\n"
             "If there are no processes with such PIDs, you can manually "
-            "remove '.dvc/tmp/rwlock' and try again.".format(
-                path=waiter_path, blockers=_infos_to_str(blockers)
-            )
+            f"remove '{tmp_dir}/rwlock' and try again."
         )
 
 
 def _acquire_read(lock, info, paths):
     changes = []
+
+    lock["read"] = lock.get("read", defaultdict(list))
 
     for path in paths:
         readers = lock["read"][path]
@@ -107,6 +147,8 @@ def _acquire_read(lock, info, paths):
 
 def _acquire_write(lock, info, paths):
     changes = []
+
+    lock["write"] = lock.get("write", defaultdict(dict))
 
     for path in paths:
         if lock["write"][path] == info:
@@ -164,8 +206,10 @@ def rwlock(tmp_dir, fs, cmd, read, write, hardlink):
 
     with _edit_rwlock(tmp_dir, fs, hardlink) as lock:
 
-        _check_blockers(lock, info, mode="write", waiters=read + write)
-        _check_blockers(lock, info, mode="read", waiters=write)
+        _check_blockers(
+            tmp_dir, lock, info, mode="write", waiters=read + write
+        )
+        _check_blockers(tmp_dir, lock, info, mode="read", waiters=write)
 
         rchanges = _acquire_read(lock, info, read)
         wchanges = _acquire_write(lock, info, write)
