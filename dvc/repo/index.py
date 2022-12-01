@@ -68,14 +68,50 @@ class Index:
         if stages is not None:
             self.stages: List["Stage"] = stages
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
+        self._metrics: Dict[str, List[str]] = {}
+        self._plots: Dict[str, Any] = {}
+        self._params: Dict[str, List[str]] = {}
 
     @cached_property
     def stages(self) -> List["Stage"]:  # pylint: disable=method-hidden
         # note that ideally we should be keeping this in a set as it is unique,
         # hashable and has no concept of orderliness on its own. But we depend
         # on this to be somewhat ordered for status/metrics/plots, etc.
+        return self._collect()
+
+    @cached_property
+    def _top_metrics(self):
+        self._collect()
+        return self._metrics
+
+    @cached_property
+    def _top_plots(self):
+        self._collect()
+        return self._plots
+
+    @cached_property
+    def _top_params(self):
+        self._collect()
+        return self._params
+
+    def _collect(self):
+        if "stages" in self.__dict__:
+            return self.stages
+
         onerror = self.repo.stage_collection_error_handler
-        return self.stage_collector.collect_repo(onerror=onerror)
+
+        # pylint: disable=protected-access
+        (
+            stages,
+            metrics,
+            plots,
+            params,
+        ) = self.stage_collector._collect_all_from_repo(onerror=onerror)
+        self.stages = stages
+        self._metrics = metrics
+        self._plots = plots
+        self._params = params
+        return stages
 
     def __repr__(self) -> str:
         from dvc.fs import LocalFileSystem
