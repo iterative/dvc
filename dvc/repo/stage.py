@@ -502,3 +502,104 @@ class StageLoad:
 
     def collect_repo(self, onerror: Callable[[str, Exception], None] = None):
         return list(self._collect_repo(onerror))
+
+    def _load_file(self, path):
+        from dvc.dvcfile import Dvcfile
+        from dvc.stage.loader import SingleStageLoader, StageLoader
+
+        path = self._get_filepath(path)
+        dvcfile = Dvcfile(self.repo, path)
+        # `dvcfile.stages` is not cached
+        stages = dvcfile.stages  # type: ignore
+
+        if isinstance(stages, SingleStageLoader):
+            stages_ = [stages[None]]
+        else:
+            assert isinstance(stages, StageLoader)
+            keys = self._get_keys(stages)
+            stages_ = [stages[key] for key in keys]
+
+        return (
+            stages_,
+            stages.metrics_data,
+            stages.plots_data,
+            stages.params_data,
+        )
+
+    def _collect_all_from_repo(
+        self, onerror: Callable[[str, Exception], None] = None
+    ):
+        """Collects all of the stages present in the DVC repo.
+
+        Args:
+            onerror (optional): callable that will be called with two args:
+                the filepath whose collection failed and the exc instance.
+                It can report the error to continue with the collection
+                (and, skip failed ones), or raise the exception to abort
+                the collection.
+        """
+        from dvc.dvcfile import is_valid_filename
+        from dvc.fs import LocalFileSystem
+
+        scm = self.repo.scm
+        sep = self.fs.sep
+        outs: Set[str] = set()
+
+        is_local_fs = isinstance(self.fs, LocalFileSystem)
+
+        def is_ignored(path):
+            # apply only for the local fs
+            return is_local_fs and scm.is_ignored(path)
+
+        def is_dvcfile_and_not_ignored(root, file):
+            return is_valid_filename(file) and not is_ignored(
+                f"{root}{sep}{file}"
+            )
+
+        def is_out_or_ignored(root, directory):
+            dir_path = f"{root}{sep}{directory}"
+            # trailing slash needed to check if a directory is gitignored
+            return dir_path in outs or is_ignored(f"{dir_path}{sep}")
+
+        walk_iter = self.repo.dvcignore.walk(self.fs, self.repo.root_dir)
+        if logger.isEnabledFor(logging.TRACE):  # type: ignore[attr-defined]
+            walk_iter = log_walk(walk_iter)
+
+        stages = []
+        metrics = {}
+        plots = {}
+        params = {}
+
+        for root, dirs, files in walk_iter:
+            dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
+            for file in filter(dvcfile_filter, files):
+                file_path = self.fs.path.join(root, file)
+                try:
+                    (
+                        new_stages,
+                        new_metrics,
+                        new_plots,
+                        new_params,
+                    ) = self._load_file(file_path)
+                except DvcException as exc:
+                    if onerror:
+                        onerror(relpath(file_path), exc)
+                        continue
+                    raise
+
+                stages.extend(new_stages)
+                if new_metrics:
+                    metrics[file_path] = new_metrics
+                if new_plots:
+                    plots[file_path] = new_plots
+                if new_params:
+                    params[file_path] = new_params
+
+                outs.update(
+                    out.fspath
+                    for stage in new_stages
+                    for out in stage.outs
+                    if out.protocol == "local"
+                )
+            dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
+        return stages, metrics, plots, params
