@@ -41,7 +41,9 @@ def _collect_top_level_params(repo):
         wdir = repo.dvcfs.path.relpath(
             repo.dvcfs.path.parent(dvcfile), repo.root_dir
         )
-        yield from (repo.dvcfs.path.join(wdir, file) for file in params)
+        for file in params:
+            path = repo.dvcfs.path.join(wdir, file)
+            yield repo.dvcfs.path.normpath(path)
 
 
 def _collect_configs(
