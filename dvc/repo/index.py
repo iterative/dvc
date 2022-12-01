@@ -166,7 +166,7 @@ class Index:
             )
         )
 
-    def _collect_targets(
+    def collect_targets(
         self, targets: Optional["TargetType"], **kwargs: Any
     ) -> List["StageInfo"]:
         from itertools import chain
@@ -214,7 +214,7 @@ class Index:
         """
         stage_infos = [
             stage_info
-            for stage_info in self._collect_targets(targets, **kwargs)
+            for stage_info in self.collect_targets(targets, **kwargs)
             if not stage_filter or stage_filter(stage_info.stage)
         ]
         return IndexView(self, stage_infos, outs_filter=outs_filter)
@@ -310,7 +310,7 @@ class Index:
         from collections import defaultdict
 
         used: "ObjectContainer" = defaultdict(set)
-        pairs = self._collect_targets(
+        pairs = self.collect_targets(
             targets, recursive=recursive, with_deps=with_deps
         )
         for stage, filter_info in pairs:
