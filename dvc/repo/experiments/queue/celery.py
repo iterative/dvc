@@ -298,12 +298,15 @@ class LocalCeleryQueue(BaseStashQueue):
         return running_task_ids
 
     def _try_to_kill_tasks(
-        self, to_kill: Dict[QueueEntry, str]
+        self, to_kill: Dict[QueueEntry, str], force: bool
     ) -> Dict[QueueEntry, str]:
         fail_to_kill_entries: Dict[QueueEntry, str] = {}
         for queue_entry, rev in to_kill.items():
             try:
-                self.proc.kill(queue_entry.stash_rev)
+                if force:
+                    self.proc.kill(queue_entry.stash_rev)
+                else:
+                    self.proc.interrupt(queue_entry.stash_rev)
                 logger.debug(f"Task {rev} had been killed.")
             except ProcessLookupError:
                 fail_to_kill_entries[queue_entry] = rev
@@ -331,20 +334,19 @@ class LocalCeleryQueue(BaseStashQueue):
         if remained_revs:
             raise CannotKillTasksError(remained_revs)
 
-    def _kill_entries(self, entries: Dict[QueueEntry, str]):
+    def _kill_entries(self, entries: Dict[QueueEntry, str], force: bool):
         logger.debug(
             "Found active tasks: '%s' to kill",
             list(entries.values()),
         )
         inactive_entries: Dict[QueueEntry, str] = self._try_to_kill_tasks(
-            entries
+            entries, force
         )
 
         if inactive_entries:
             self._mark_inactive_tasks_failure(inactive_entries)
 
-    def kill(self, revs: Collection[str]) -> None:
-
+    def kill(self, revs: Collection[str], force: bool = False) -> None:
         name_dict: Dict[
             str, Optional[QueueEntry]
         ] = self.match_queue_entry_by_name(set(revs), self.iter_active())
@@ -360,7 +362,7 @@ class LocalCeleryQueue(BaseStashQueue):
             raise UnresolvedQueueExpNamesError(missing_revs)
 
         if to_kill:
-            self._kill_entries(to_kill)
+            self._kill_entries(to_kill, force)
 
     def shutdown(self, kill: bool = False):
         self.celery.control.shutdown()
@@ -369,7 +371,7 @@ class LocalCeleryQueue(BaseStashQueue):
             for entry in self.iter_active():
                 to_kill[entry] = entry.name or entry.stash_rev
             if to_kill:
-                self._kill_entries(to_kill)
+                self._kill_entries(to_kill, True)
 
     def follow(
         self,
