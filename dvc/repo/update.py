@@ -64,6 +64,18 @@ def update(
         remote_obj = self.cloud.get_remote(name=remote)
         if not remote_obj.worktree:
             raise StageUpdateError(other_stage_infos[0].stage.relpath)
+        if rev:
+            raise InvalidArgumentError(
+                "--rev can't be used with worktree update"
+            )
+        if no_download:
+            raise InvalidArgumentError(
+                "--no-download can't be used with worktree update"
+            )
+        if to_remote:
+            raise InvalidArgumentError(
+                "--to-remote can't be used with worktree update"
+            )
         update_worktree_stages(
             self,
             other_stage_infos,
