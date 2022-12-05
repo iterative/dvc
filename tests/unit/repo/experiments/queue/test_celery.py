@@ -46,7 +46,7 @@ def test_shutdown_with_kill(test_queue, mocker):
 
     shutdown_spy.assert_called_once()
     kill_spy.assert_called_once_with(
-        {mock_entry_foo: "foo", mock_entry_bar: "bar"}
+        {mock_entry_foo: "foo", mock_entry_bar: "bar"}, True
     )
 
 
@@ -78,7 +78,8 @@ def test_post_run_after_kill(test_queue):
     assert result_foo.get(timeout=10) == "foo"
 
 
-def test_celery_queue_kill(test_queue, mocker):
+@pytest.mark.parametrize("force", [True, False])
+def test_celery_queue_kill(test_queue, mocker, force):
 
     mock_entry_foo = mocker.Mock(stash_rev="foo")
     mock_entry_bar = mocker.Mock(stash_rev="bar")
@@ -137,13 +138,13 @@ def test_celery_queue_kill(test_queue, mocker):
 
     kill_mock = mocker.patch.object(
         test_queue.proc,
-        "kill",
+        "kill" if force else "interrupt",
         side_effect=mocker.MagicMock(side_effect=kill_function),
     )
     with pytest.raises(
         CannotKillTasksError, match="Task 'foobar' is initializing,"
     ):
-        test_queue.kill(["bar", "foo", "foobar"])
+        test_queue.kill(["bar", "foo", "foobar"], force=force)
     assert kill_mock.called_once_with(mock_entry_foo.stash_rev)
     assert kill_mock.called_once_with(mock_entry_bar.stash_rev)
     assert kill_mock.called_once_with(mock_entry_foobar.stash_rev)

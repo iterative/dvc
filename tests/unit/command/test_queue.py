@@ -92,6 +92,7 @@ def test_experiments_kill(dvc, scm, mocker):
         [
             "queue",
             "kill",
+            "--force",
             "exp1",
             "exp2",
         ]
@@ -105,7 +106,7 @@ def test_experiments_kill(dvc, scm, mocker):
     )
 
     assert cmd.run() == 0
-    m.assert_called_once_with(revs=["exp1", "exp2"])
+    m.assert_called_once_with(revs=["exp1", "exp2"], force=True)
 
 
 def test_experiments_start(dvc, scm, mocker):
