@@ -97,6 +97,10 @@ class DataCloud:
         command: str = "<command>",
     ) -> "HashFileDB":
         remote = self.get_remote(name=name, command=command)
+        if remote.fs.version_aware or remote.worktree:
+            raise RemoteConfigError(
+                f"'{command}' is unsupported for cloud versioned remotes"
+            )
         return remote.odb
 
     def _log_missing(self, status: "CompareStatusResult"):
