@@ -101,7 +101,7 @@ tests = [
     "beautifulsoup4==4.11.1",
     "pywin32>=225; sys_platform == 'win32'",  # optional dependency
     # pylint requirements
-    "pylint==2.15.7",
+    "pylint==2.15.8",
     # we use this to suppress pytest-related false positives in our tests.
     "pylint-pytest==1.1.2",
     # we use this to suppress some messages in tests, eg: foo/bar naming,
