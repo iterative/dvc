@@ -40,7 +40,7 @@ class DvcIgnorePatterns(DvcIgnore):
         ]
 
         self.ignore_spec = [
-            (ignore, re.compile("|".join(item[0] for item in group)))
+            (ignore, [re.compile(item[0]) for item in group])
             for ignore, group in groupby(
                 self.regex_pattern_list, lambda x: x[1]
             )
@@ -107,8 +107,8 @@ class DvcIgnorePatterns(DvcIgnore):
 
         result = False
 
-        for ignore, pattern in self.ignore_spec[::-1]:
-            if matches(pattern, path, is_dir):
+        for ignore, patterns in self.ignore_spec[::-1]:
+            if any(matches(pattern, path, is_dir) for pattern in patterns):
                 result = ignore
                 break
         return result
