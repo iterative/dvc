@@ -53,8 +53,8 @@ def fetch(
 
     with suppress(NoRemoteError):
         _remote = self.cloud.get_remote(name=remote)
-        if _remote.worktree:
-            return fetch_worktree(self, _remote)
+        if _remote.worktree or _remote.fs.version_aware:
+            return fetch_worktree(self, _remote, targets=targets)
 
     failed_count = 0
 

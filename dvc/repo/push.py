@@ -30,7 +30,7 @@ def push(
 
     _remote = self.cloud.get_remote(name=remote)
     if _remote.worktree or _remote.fs.version_aware:
-        return push_worktree(self, _remote)
+        return push_worktree(self, _remote, targets=targets)
 
     used_run_cache = (
         self.stage_cache.push(remote, odb=odb) if run_cache else []
