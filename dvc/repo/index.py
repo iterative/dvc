@@ -484,7 +484,6 @@ class IndexView:
         data: Dict[str, Union["DataIndex", "DataIndexView"]] = {}
         for workspace, data_index in self._index.data.items():
             if self._stages:
-                data_index.load()
                 data[workspace] = view(
                     data_index, partial(key_filter, workspace)
                 )
