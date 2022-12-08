@@ -71,11 +71,14 @@ def worktree_view(
 
 
 def fetch_worktree(
-    repo: "Repo", remote: "Remote", targets: Optional["TargetType"] = None
+    repo: "Repo",
+    remote: "Remote",
+    targets: Optional["TargetType"] = None,
+    **kwargs,
 ) -> int:
     from dvc_data.index import save
 
-    view = worktree_view(repo.index, targets=targets)
+    view = worktree_view(repo.index, targets=targets, **kwargs)
     index = view.data["repo"]
     for key, entry in index.iteritems():
         entry.fs = remote.fs
@@ -92,12 +95,19 @@ def fetch_worktree(
 
 
 def push_worktree(
-    repo: "Repo", remote: "Remote", targets: Optional["TargetType"] = None
+    repo: "Repo",
+    remote: "Remote",
+    targets: Optional["TargetType"] = None,
+    **kwargs,
 ) -> int:
     from dvc_data.index import checkout
 
     view = worktree_view(
-        repo.index, push=True, targets=targets, latest_only=remote.worktree
+        repo.index,
+        push=True,
+        targets=targets,
+        latest_only=remote.worktree,
+        **kwargs,
     )
     new_index = view.data["repo"]
     if remote.worktree:
