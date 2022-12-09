@@ -251,18 +251,6 @@ def run_copy_metrics(tmp_dir, copy_script):
 
 
 @pytest.fixture(autouse=True)
-def mock_hydra_conf(mocker):
-    if sys.version_info < (3, 11):
-        return
-
-    # `hydra.conf` fails to import in 3.11, it raises ValueError due to changes
-    # in dataclasses. See https://github.com/python/cpython/pull/29867.
-    # NOTE: using sentinel here so that any imports from `hydra.conf`
-    # return a mock.
-    sys.modules["hydra.conf"] = mocker.sentinel
-
-
-@pytest.fixture(autouse=True)
 def gc_collect_on_dvc_close_on_win_311(mocker):
     if sys.version_info < (3, 11) and os.name != "nt":
         return
