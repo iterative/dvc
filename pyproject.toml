@@ -161,7 +161,7 @@ line_length = 79
 
 [tool.pytest.ini_options]
 log_level = "debug"
-addopts = "-ra -p no:hydra_pytest --cov-config pyproject.toml"
+addopts = "-ra --cov-config pyproject.toml"
 markers = [
     "needs_internet: Might need network access for the tests",
     "vscode: Tests verifying contract between DVC and VSCode plugin",

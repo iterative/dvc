@@ -1,27 +1,9 @@
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-try:
-    from hydra import compose, initialize_config_dir
-    from hydra._internal.config_loader_impl import ConfigLoaderImpl
-    from hydra._internal.core_plugins.basic_sweeper import BasicSweeper
-    from hydra.core.override_parser.overrides_parser import OverridesParser
-    from hydra.core.override_parser.types import ValueType
-    from hydra.errors import ConfigCompositionException, OverrideParseException
-    from omegaconf import OmegaConf
-
-    hydra_compatible = True
-except ValueError:
-    if sys.version_info >= (3, 11):
-        hydra_compatible = False
-    else:
-        raise
-
-from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.exceptions import InvalidArgumentError
 
 from .collections import merge_dicts, remove_missing_keys, to_omegaconf
-from .serialize import DUMPERS, MODIFIERS
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
@@ -46,10 +28,10 @@ def compose_and_dump(
     .. _Hydra Override:
         https://hydra.cc/docs/advanced/override_grammar/basic/
     """
-    if not hydra_compatible:
-        raise DvcException(
-            "hydra functionality is not supported in Python >= 3.11"
-        )
+    from hydra import compose, initialize_config_dir
+    from omegaconf import OmegaConf
+
+    from .serialize import DUMPERS
 
     with initialize_config_dir(config_dir, version_base=None):
         cfg = compose(config_name=config_name, overrides=overrides)
@@ -71,10 +53,11 @@ def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
     .. _Hydra Override:
         https://hydra.cc/docs/next/advanced/override_grammar/basic/
     """
-    if not hydra_compatible:
-        raise DvcException(
-            "hydra functionality is not supported in Python >= 3.11"
-        )
+    from hydra._internal.config_loader_impl import ConfigLoaderImpl
+    from hydra.errors import ConfigCompositionException, OverrideParseException
+    from omegaconf import OmegaConf
+
+    from .serialize import MODIFIERS
 
     suffix = Path(path).suffix.lower()
 
@@ -101,10 +84,7 @@ def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
 
 
 def to_hydra_overrides(path_overrides):
-    if not hydra_compatible:
-        raise DvcException(
-            "hydra functionality is not supported in Python >= 3.11"
-        )
+    from hydra.core.override_parser.overrides_parser import OverridesParser
 
     parser = OverridesParser.create()
     return parser.parse_overrides(overrides=path_overrides)
@@ -117,10 +97,8 @@ def dict_product(dicts):
 
 
 def get_hydra_sweeps(path_overrides):
-    if not hydra_compatible:
-        raise DvcException(
-            "hydra functionality is not supported in Python >= 3.11"
-        )
+    from hydra._internal.core_plugins.basic_sweeper import BasicSweeper
+    from hydra.core.override_parser.types import ValueType
 
     path_sweeps = {}
     for path, overrides in path_overrides.items():
