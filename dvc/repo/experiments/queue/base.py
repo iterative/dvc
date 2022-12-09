@@ -30,7 +30,13 @@ from ..executor.base import BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
 from ..refs import ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
-from ..utils import EXEC_PID_DIR, EXEC_TMP_DIR, exp_refs_by_rev, get_exp_rwlock
+from ..utils import (
+    EXEC_PID_DIR,
+    EXEC_TMP_DIR,
+    exp_refs_by_rev,
+    get_exp_rwlock,
+    get_random_exp_name,
+)
 from .utils import get_remote_executor_refs
 
 if TYPE_CHECKING:
@@ -281,7 +287,7 @@ class BaseStashQueue(ABC):
                 output.
         """
 
-    def _stash_exp(
+    def _stash_exp(  # noqa: C901
         self,
         *args,
         params: Optional[Dict[str, List[str]]] = None,
@@ -399,8 +405,9 @@ class BaseStashQueue(ABC):
                     run_env = {
                         DVC_EXP_BASELINE_REV: baseline_rev,
                     }
-                    if name:
-                        run_env[DVC_EXP_NAME] = name
+                    if not name:
+                        name = get_random_exp_name(self.scm, baseline_rev)
+                    run_env[DVC_EXP_NAME] = name
                     if resume_rev:
                         run_env[DVCLIVE_RESUME] = "1"
                     self._pack_args(*args, run_env=run_env, **kwargs)

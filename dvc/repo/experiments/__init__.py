@@ -32,7 +32,7 @@ from .refs import (
     ExpRefInfo,
 )
 from .stash import ExpStashEntry
-from .utils import exp_refs_by_rev, unlocked_repo
+from .utils import check_ref_format, exp_refs_by_rev, unlocked_repo
 
 logger = logging.getLogger(__name__)
 
@@ -236,17 +236,6 @@ class Experiments:
             "\tdvc exp branch <exp> <branch>\n"
         )
 
-    def _validate_new_ref(self, exp_ref: ExpRefInfo):
-        from .utils import check_ref_format
-
-        if not exp_ref.name:
-            return
-
-        check_ref_format(self.scm, exp_ref)
-
-        if self.scm.get_ref(str(exp_ref)):
-            raise ExperimentExistsError(exp_ref.name)
-
     def new(
         self,
         queue: BaseStashQueue,
@@ -265,13 +254,15 @@ class Experiments:
 
         name = kwargs.get("name", None)
         baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
-        exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)
 
-        try:
-            self._validate_new_ref(exp_ref)
-        except ExperimentExistsError as err:
-            if not (kwargs.get("force", False) or kwargs.get("reset", False)):
-                raise err
+        if name:
+            exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)
+            check_ref_format(self.scm, exp_ref)
+            force = kwargs.get("force", False)
+            reset = kwargs.get("reset", False)
+            if self.scm.get_ref(str(exp_ref)) and not (force or reset):
+                raise ExperimentExistsError(exp_ref.name)
+
         return queue.put(*args, **kwargs)
 
     def _resume_checkpoint(
