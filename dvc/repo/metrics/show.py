@@ -44,13 +44,9 @@ def _collect_top_level_metrics(repo):
             yield repo.fs.path.normpath(path)
 
 
-def _collect_metrics(repo, targets, revision, recursive):
+def _collect_metrics(repo, targets, recursive):
     metrics, fs_paths = collect(
-        repo,
-        targets=targets,
-        output_filter=_is_metric,
-        recursive=recursive,
-        rev=revision,
+        repo, targets=targets, output_filter=_is_metric, recursive=recursive
     )
     return _to_fs_paths(metrics) + list(fs_paths)
 
@@ -109,7 +105,7 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
 
 def _gather_metrics(repo, targets, rev, recursive, onerror=None):
-    metrics = _collect_metrics(repo, targets, rev, recursive)
+    metrics = _collect_metrics(repo, targets, recursive)
     metrics.extend(_collect_top_level_metrics(repo))
     return _read_metrics(repo, metrics, rev, onerror=onerror)
 

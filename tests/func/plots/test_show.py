@@ -128,14 +128,18 @@ def test_show_from_subdir(tmp_dir, dvc, capsys):
     assert (subdir / "dvc_plots" / "index.html").is_file()
 
 
-def test_plots_show_non_existing(tmp_dir, dvc, caplog):
+def test_plots_show_non_existing(tmp_dir, dvc, capsys):
     result = dvc.plots.show(targets=["plot.json"])
     assert isinstance(
         get_plot(result, "workspace", file="plot.json", endkey="error"),
         FileNotFoundError,
     )
 
-    assert "'plot.json' was not found in current workspace." in caplog.text
+    cap = capsys.readouterr()
+    assert (
+        "DVC failed to load some plots for following revisions: 'workspace'"
+        in cap.err
+    )
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])

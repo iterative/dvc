@@ -52,7 +52,7 @@ def _collect_top_level_params(repo):
 
 
 def _collect_configs(
-    repo: "Repo", rev, targets=None, deps=False, stages=None
+    repo: "Repo", targets=None, deps=False, stages=None
 ) -> Tuple[List["Output"], List[str]]:
 
     params, fs_paths = collect(
@@ -60,7 +60,6 @@ def _collect_configs(
         targets=targets or [],
         deps=True,
         output_filter=_is_params,
-        rev=rev,
         duplicates=deps or stages is not None,
     )
     all_fs_paths = fs_paths + [p.fs_path for p in params]
@@ -156,7 +155,6 @@ def show(
     for branch in repo.brancher(revs=revs):
         params = error_handler(_gather_params)(
             repo=repo,
-            rev=branch,
             targets=targets,
             deps=deps,
             onerror=onerror,
@@ -188,11 +186,9 @@ def show(
     return res
 
 
-def _gather_params(
-    repo, rev, targets=None, deps=False, onerror=None, stages=None
-):
+def _gather_params(repo, targets=None, deps=False, onerror=None, stages=None):
     param_outs, params_fs_paths = _collect_configs(
-        repo, rev, targets=targets, deps=deps, stages=stages
+        repo, targets=targets, deps=deps, stages=stages
     )
     params_fs_paths.extend(_collect_top_level_params(repo=repo))
     params = _read_params(
