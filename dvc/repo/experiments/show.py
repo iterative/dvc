@@ -78,7 +78,7 @@ def collect_experiment_commit(
             result["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
         params = _gather_params(
-            repo, rev=rev, targets=None, deps=param_deps, onerror=onerror
+            repo, targets=None, deps=param_deps, onerror=onerror
         )
         if params:
             result["params"] = params

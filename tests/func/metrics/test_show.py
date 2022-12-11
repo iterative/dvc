@@ -1,4 +1,3 @@
-import logging
 import os
 
 import pytest
@@ -258,13 +257,8 @@ def test_show_malformed_metric(tmp_dir, scm, dvc, caplog):
     )
 
 
-def test_metrics_show_no_target(tmp_dir, dvc, caplog):
-    with caplog.at_level(logging.WARNING):
-        assert dvc.metrics.show(targets=["metrics.json"]) == {"": {}}
-
-    assert (
-        "'metrics.json' was not found in current workspace." in caplog.messages
-    )
+def test_metrics_show_no_target(tmp_dir, dvc, capsys):
+    assert dvc.metrics.show(targets=["metrics.json"]) == {"": {}}
 
 
 def test_show_no_metrics_files(tmp_dir, dvc, caplog):
