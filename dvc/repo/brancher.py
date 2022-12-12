@@ -77,7 +77,7 @@ def brancher(  # noqa: E302
         from dvc.fs import GitFileSystem
 
         for sha, names in found_revs.items():
-            self.__dict__.pop("index", None)
+            self._reset_cached_indecies()  # pylint: disable=W0212
             self.fs = GitFileSystem(scm=scm, rev=sha)
             self.root_dir = self.fs.path.join("/", *repo_root_parts)
 

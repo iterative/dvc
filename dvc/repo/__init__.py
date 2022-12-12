@@ -536,11 +536,16 @@ class Repo:
         self.scm.close()
         self.state.close()
 
+    def _reset_cached_indecies(self):
+        self.__dict__.pop("index", None)
+        self.__dict__.pop("dvcignore", None)
+        self.__dict__.pop("dvcfs", None)
+        self.__dict__.pop("datafs", None)
+
     def _reset(self):
         self.state.close()
         self.scm._reset()  # pylint: disable=protected-access
-        self.__dict__.pop("index", None)
-        self.__dict__.pop("dvcignore", None)
+        self._reset_cached_indecies()
 
     def __enter__(self):
         return self
