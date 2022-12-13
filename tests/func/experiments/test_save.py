@@ -1,12 +1,9 @@
-from contextlib import nullcontext
-
 import pytest
 from funcy import first
 
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
-from dvc.stage.exceptions import StageCommitError
 
 
 @pytest.mark.parametrize("name", (None, "test"))
@@ -22,19 +19,11 @@ def test_exp_save(tmp_dir, dvc, scm, exp_stage, name):
     assert resolve_rev(scm, exp_name) == exp
 
 
-@pytest.mark.parametrize(
-    ("force", "expected_raises"),
-    (
-        (False, pytest.raises(StageCommitError)),
-        (True, nullcontext()),
-    ),
-)
-def test_exp_save_force(tmp_dir, dvc, scm, exp_stage, force, expected_raises):
+def test_exp_save_change(tmp_dir, dvc, scm, exp_stage):
     with open(tmp_dir / "copy.py", "a", encoding="utf-8") as fh:
         fh.write("\n# dummy change")
 
-    with expected_raises:
-        dvc.experiments.save(force=force)
+    dvc.experiments.save()
 
 
 def test_exp_save_overwrite_experiment(tmp_dir, dvc, scm, exp_stage):

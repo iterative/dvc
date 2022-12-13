@@ -36,7 +36,7 @@ def save(
     executor = queue.init_executor(repo.experiments, entry)
 
     save_result = executor.save(
-        executor.info, force=force, include_untracked=include_untracked
+        executor.info, force=True, include_untracked=include_untracked
     )
     result = queue.collect_executor(repo.experiments, executor, save_result)
 
