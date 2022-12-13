@@ -32,7 +32,19 @@ def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
 
 
 @pytest.mark.parametrize(
-    "name,result", [("name", True), ("group/name", False), ("na me", False)]
+    "name,result",
+    [
+        ("name", True),
+        ("group/name", False),
+        ("na me", False),
+        ("invalid/.name", False),
+        ("@", pytest.param(False, marks=pytest.mark.xfail)),
+        (":", False),
+        ("^", False),
+        ("*", False),
+        ("~", False),
+        ("?", False),
+    ],
 )
 def test_run_check_ref_format(scm, name, result):
 
