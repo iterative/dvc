@@ -25,13 +25,13 @@ class BaselineMismatchError(DvcException):
 
 
 class ExperimentExistsError(DvcException):
-    def __init__(self, name: str):
+    def __init__(self, name: str, command: str = "run"):
         msg = (
             "Experiment conflicts with existing experiment "
             f"'{name}'. To overwrite the existing experiment run:\n\n"
-            "\tdvc exp run -f ...\n\n"
-            "To run this experiment with a different name run:\n\n"
-            f"\tdvc exp run -n <new_name> ...\n"
+            f"\tdvc exp {command} -f ...\n\n"
+            f"To {command} this experiment with a different name run:\n\n"
+            f"\tdvc exp {command} -n <new_name> ...\n"
         )
         super().__init__(msg)
         self.name = name

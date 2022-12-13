@@ -2,13 +2,12 @@ import logging
 import os
 from contextlib import ExitStack
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property, retry
 from scmrepo.exceptions import SCMError as _SCMError
 from shortuuid import uuid
 
-from dvc.exceptions import DvcException
 from dvc.lock import LockError
 from dvc.scm import SCM, GitMergeError
 from dvc.utils.fs import makedirs, remove
@@ -25,7 +24,7 @@ from ..refs import (
     ExpRefInfo,
 )
 from ..utils import EXEC_TMP_DIR, get_exp_rwlock
-from .base import BaseExecutor, ExecutorResult, TaskStatus
+from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
@@ -33,7 +32,6 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
 
     from ..stash import ExpStashEntry
-    from .base import ExecutorInfo
 
 logger = logging.getLogger(__name__)
 
@@ -249,57 +247,3 @@ class WorkspaceExecutor(BaseLocalExecutor):
             checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
             if checkpoint and checkpoint != self._orig_checkpoint:
                 self.scm.set_ref(EXEC_APPLY, checkpoint)
-
-    @classmethod
-    def save(
-        cls,
-        info: "ExecutorInfo",
-        force: bool = False,
-        include_untracked: Optional[List[str]] = None,
-    ) -> ExecutorResult:
-        from dvc.repo import Repo
-
-        exp_hash: Optional[str] = None
-        exp_ref: Optional[ExpRefInfo] = None
-
-        dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
-        old_cwd = os.getcwd()
-        if info.wdir:
-            os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
-        else:
-            os.chdir(dvc.root_dir)
-
-        try:
-            stages = dvc.commit([], force=force)
-            exp_hash = cls.hash_exp(stages)
-            if include_untracked:
-                dvc.scm.add(include_untracked)
-            cls.commit(
-                dvc.scm,
-                exp_hash,
-                exp_name=info.name,
-                force=force,
-            )
-            ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-            exp_ref = ExpRefInfo.from_ref(ref) if ref else None
-            untracked = dvc.scm.untracked_files()
-            if untracked:
-                logger.warning(
-                    "The following untracked files were present in "
-                    "the workspace before saving but "
-                    "will not be included in the experiment commit:\n"
-                    "\t%s",
-                    ", ".join(untracked),
-                )
-            info.result_hash = exp_hash
-            info.result_ref = ref
-            info.result_force = False
-            info.status = TaskStatus.SUCCESS
-        except DvcException:
-            info.status = TaskStatus.FAILED
-            raise
-        finally:
-            dvc.close()
-            os.chdir(old_cwd)
-
-        return ExecutorResult(ref, exp_ref, info.result_force)
