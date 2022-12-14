@@ -90,6 +90,21 @@ class Index:
         return self._plots
 
     @cached_property
+    def _plot_sources(self):
+        from dvc.repo.plots import _collect_pipeline_files
+
+        sources = []
+        for data in _collect_pipeline_files(self.repo, [], {}).values():
+            for plot_id, props in data.get("data", {}).items():
+                if isinstance(props.get("y"), dict):
+                    sources.extend(props["y"])
+                    if isinstance(props.get("x"), dict):
+                        sources.extend(props["x"])
+                else:
+                    sources.append(plot_id)
+        return sources
+
+    @cached_property
     def _top_params(self):
         self._collect()
         return self._params
