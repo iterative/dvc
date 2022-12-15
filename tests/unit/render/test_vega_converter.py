@@ -274,6 +274,63 @@ def test_finding_lists(dictionary, expected_result):
             {"x": "v", "y": "v2", "x_label": "v", "y_label": "v2"},
             id="multi_file_json",
         ),
+        pytest.param(
+            {"f": {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]}},
+            {"y": ["v", "v2"]},
+            [
+                {
+                    "dvc_inferred_y_value": 1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "step": 0,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "step": 1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "step": 0,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "step": 1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+            ],
+            {
+                "x": "step",
+                "y": "dvc_inferred_y_value",
+                "x_label": "step",
+                "y_label": "y",
+            },
+            id="y_list",
+        ),
     ],
 )
 def test_convert(
