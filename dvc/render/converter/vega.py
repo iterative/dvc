@@ -126,25 +126,26 @@ class VegaConverter(Converter):
                     break
 
     def _infer_x_y(self):
-        def _infer_files(from_name, to_name):
-            from_value = self.properties.get(from_name, None)
-            to_value = self.properties.get(to_name, None)
+        x = self.properties.get("x", None)
+        y = self.properties.get("y", None)
 
-            if isinstance(to_value, str):
-                self.inferred_properties[to_name] = {}
-                if isinstance(from_value, dict):
-                    for file in from_value.keys():
-                        self.inferred_properties[to_name][file] = to_value
-                else:
-                    self.inferred_properties[to_name][self.plot_id] = to_value
+        # Infer x.
+        if isinstance(x, str):
+            self.inferred_properties["x"] = {}
+            # If multiple y files, duplicate x for each file.
+            if isinstance(y, dict):
+                for file in y.keys():
+                    self.inferred_properties["x"][file] = x
+            # Otherwise use plot ID as file.
             else:
-                self.inferred_properties[to_name] = to_value
+                self.inferred_properties["x"][self.plot_id] = x
 
-        _infer_files("y", "x")
-        _infer_files("x", "y")
-
-        if self.inferred_properties.get("y", None) is None:
+        # Infer y.
+        if y is None:
             self._infer_y_from_data()
+        # If y files not provided, use plot ID as file.
+        elif not isinstance(y, dict):
+            self.inferred_properties["y"] = {self.plot_id: y}
 
     def _find_datapoints(self):
         result = {}
