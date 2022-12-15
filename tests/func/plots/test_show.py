@@ -413,3 +413,17 @@ def test_load_from_config(
             assert content == get_plot(result, "workspace", file=filename)
         else:
             assert filename not in get_plot(result, "workspace")
+
+
+def test_show_os_paths(tmp_dir, dvc, scm):
+    stage = dvc.stage.add(
+        name="create-plot",
+        cmd="mkdir subdir && echo 'foo,bar\\n1,2' > subdir/plot.csv",
+        plots=[os.path.join("subdir", "plot.csv")],
+    )
+    dvc.reproduce(stage.addressing)
+    plots = dvc.plots.show()
+    print(plots)
+    print(list((tmp_dir / "subdir").iterdir()))
+    print((tmp_dir / "subdir" / "plot.csv").read_text())
+    assert plots["workspace"]["sources"]["data"]["subdir/plot.csv"]["data"]
