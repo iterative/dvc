@@ -1,8 +1,11 @@
 import logging
 import os
+from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Generator, Optional
 
 from funcy import cached_property, first
+
+from dvc.exceptions import DvcException
 
 from ..exceptions import ExpQueueEmptyError
 from ..executor.base import (
@@ -89,6 +92,51 @@ class TempDirQueue(WorkspaceQueue):
                     executor_info.name,
                     None,
                 )
+
+    def _reproduce_entry(
+        self, entry: QueueEntry, executor: BaseExecutor
+    ) -> Dict[str, Dict[str, str]]:
+        from dvc.stage.monitor import CheckpointKilledError
+
+        results: Dict[str, Dict[str, str]] = defaultdict(dict)
+        exec_name = self._EXEC_NAME or entry.stash_rev
+        infofile = self.get_infofile_path(exec_name)
+        try:
+            rev = entry.stash_rev
+            exec_result = executor.reproduce(
+                info=executor.info,
+                rev=rev,
+                infofile=infofile,
+                log_level=logger.getEffectiveLevel(),
+                log_errors=True,
+            )
+            if not exec_result.exp_hash:
+                raise DvcException(
+                    f"Failed to reproduce experiment '{rev[:7]}'"
+                )
+            if exec_result.ref_info:
+                results[rev].update(
+                    self.collect_executor(
+                        self.repo.experiments, executor, exec_result
+                    )
+                )
+        except CheckpointKilledError:
+            results[rev].update(
+                self.collect_executor(
+                    self.repo.experiments, executor, exec_result
+                )
+            )
+
+            return results
+        except DvcException:
+            raise
+        except Exception as exc:
+            raise DvcException(
+                f"Failed to reproduce experiment '{rev[:7]}'"
+            ) from exc
+        finally:
+            executor.cleanup(infofile)
+        return results
 
     @staticmethod
     def collect_executor(

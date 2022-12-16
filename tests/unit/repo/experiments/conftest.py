@@ -30,15 +30,23 @@ CHECKPOINT_SCRIPT_FORMAT = dedent(
     shutil.copyfile({}, {})
 
     if os.getenv("DVC_CHECKPOINT"):
-        for _ in range(checkpoint_iterations):
+        for index in range(checkpoint_iterations):
             value += 1
+            {}
             with open(checkpoint_file, "w") as fobj:
                 fobj.write(str(value))
             make_checkpoint()
 """
 )
 CHECKPOINT_SCRIPT = CHECKPOINT_SCRIPT_FORMAT.format(
-    "sys.argv[1]", "sys.argv[2]", "sys.argv[3]", "sys.argv[4]"
+    "sys.argv[1]", "sys.argv[2]", "sys.argv[3]", "sys.argv[4]", ""
+)
+FAILED_CHECKPOINT_SCRIPT = CHECKPOINT_SCRIPT_FORMAT.format(
+    "sys.argv[1]",
+    "sys.argv[2]",
+    "sys.argv[3]",
+    "sys.argv[4]",
+    "if index == (checkpoint_iterations - 2): raise Exception",
 )
 
 
@@ -83,6 +91,30 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
         deps=["checkpoint.py"],
         no_exec=True,
         name="checkpoint-file",
+    )
+    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml", ".gitignore"])
+    scm.commit("init")
+    stage.iterations = DEFAULT_ITERATIONS
+    return stage
+
+
+@pytest.fixture
+def failed_checkpoint_stage(tmp_dir, scm, dvc, mocker):
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
+
+    tmp_dir.gen("checkpoint.py", FAILED_CHECKPOINT_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd=(
+            f"python checkpoint.py foo {DEFAULT_ITERATIONS+2} "
+            "params.yaml metrics.yaml"
+        ),
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        checkpoints=["foo"],
+        deps=["checkpoint.py"],
+        no_exec=True,
+        name="failed-checkpoint-file",
     )
     scm.add(["dvc.yaml", "checkpoint.py", "params.yaml", ".gitignore"])
     scm.commit("init")

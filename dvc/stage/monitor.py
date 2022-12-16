@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List
 
 from dvc.stage.decorators import relock_repo
-from dvc.stage.exceptions import StageCmdFailedError
+from dvc.stage.exceptions import CheckpointKilledError
 
 if TYPE_CHECKING:
     from dvc.stage import Stage
@@ -16,17 +16,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class CheckpointKilledError(StageCmdFailedError):
-    pass
-
-
 @dataclass
 class MonitorTask:
     stage: "Stage"
     execute: Callable
     proc: subprocess.Popen
     done: threading.Event = threading.Event()
-    killed: threading.Event = threading.Event()
+    updated: threading.Event = threading.Event()
 
     @property
     def name(self) -> str:
@@ -77,7 +73,7 @@ class CheckpointTask(MonitorTask):
 class Monitor:
     AWAIT: float = 1.0
 
-    def __init__(self, tasks: List[MonitorTask]):
+    def __init__(self, tasks: List[CheckpointTask]):
         self.done = threading.Event()
         self.tasks = tasks
         self.monitor_thread = threading.Thread(
@@ -113,6 +109,7 @@ class Monitor:
                 if os.path.exists(task.signal_path):
                     try:
                         task.execute()
+                        task.updated.set()
                     except Exception:  # pylint: disable=broad-except
                         logger.exception(
                             "Error running '%s' task, '%s' will be aborted",
@@ -120,11 +117,11 @@ class Monitor:
                             task.stage,
                         )
                         Monitor.kill(task.proc)
-                        task.killed.set()
                     finally:
                         logger.debug(
                             "Removing signal file for '%s' task", task.name
                         )
                         os.remove(task.signal_path)
+
             if done.wait(Monitor.AWAIT):
                 return

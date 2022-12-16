@@ -275,3 +275,22 @@ def test_auto_push_self_remote(
             "automatically be pushed to the default DVC remote (if any) "
             "on each experiment commit." in caplog.text
         )
+
+
+def test_tmp_dir_failed_checkpoint(
+    tmp_dir, scm, dvc, failed_checkpoint_stage, caplog
+):
+    baseline = scm.get_rev()
+
+    results = dvc.experiments.run(
+        failed_checkpoint_stage.addressing, params=["foo=2"], tmp_dir=True
+    )
+    exp = first(results)
+
+    result = dvc.experiments.show()[baseline]
+    assert len(result) == 1 + 2
+    assert exp in result
+    assert (
+        "Checkpoint stage 'failed-checkpoint-file' was interrupted remaining "
+        "stages in pipeline will not be reproduced." in caplog.text
+    )
