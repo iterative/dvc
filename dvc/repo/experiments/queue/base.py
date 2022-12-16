@@ -86,6 +86,11 @@ class QueueDoneResult(NamedTuple):
     result: Optional[ExecutorResult]
 
 
+class ExpRefAndQueueEntry(NamedTuple):
+    exp_ref_info: Optional["ExpRefInfo"]
+    queue_entry: Optional["QueueEntry"]
+
+
 class BaseStashQueue(ABC):
     """Naive Git-stash based experiment queue.
 

@@ -12,6 +12,7 @@ from typing import (
     NamedTuple,
     Optional,
     Set,
+    Union,
 )
 
 from celery.result import AsyncResult
@@ -26,7 +27,13 @@ from ..exceptions import UnresolvedQueueExpNamesError
 from ..executor.base import ExecutorInfo, ExecutorResult
 from ..refs import CELERY_STASH
 from ..utils import EXEC_TMP_DIR, get_exp_rwlock
-from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
+from .base import (
+    BaseStashQueue,
+    ExpRefAndQueueEntry,
+    QueueDoneResult,
+    QueueEntry,
+    QueueGetResult,
+)
 from .exceptions import CannotKillTasksError
 from .tasks import run_exp
 from .utils import fetch_running_exp_from_temp_dir
@@ -35,6 +42,8 @@ if TYPE_CHECKING:
     from dvc_task.app import FSApp
     from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
+
+    from ..refs import ExpRefInfo
 
 logger = logging.getLogger(__name__)
 
@@ -358,6 +367,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 missing_revs.append(rev)
             else:
                 to_kill[queue_entry] = rev
+
         if missing_revs:
             raise UnresolvedQueueExpNamesError(missing_revs)
 
@@ -449,3 +459,31 @@ class LocalCeleryQueue(BaseStashQueue):
                 )
             )
         return result
+
+    def get_ref_and_entry_by_names(
+        self,
+        exp_names: Union[str, List[str]],
+        git_remote: Optional[str] = None,
+    ) -> Dict[str, ExpRefAndQueueEntry]:
+        """Find finished ExpRefInfo or queued or failed QueueEntry by name"""
+        from ..utils import resolve_name
+
+        if isinstance(exp_names, str):
+            exp_names = [exp_names]
+        results: Dict[str, ExpRefAndQueueEntry] = {}
+
+        exp_ref_match: Dict[str, Optional["ExpRefInfo"]] = resolve_name(
+            self.scm, exp_names, git_remote
+        )
+        if not git_remote:
+            queue_entry_match: Dict[
+                str, Optional["QueueEntry"]
+            ] = self.match_queue_entry_by_name(
+                exp_names, self.iter_queued(), self.iter_done()
+            )
+
+        for exp_name in exp_names:
+            exp_ref = exp_ref_match[exp_name]
+            queue_entry = None if git_remote else queue_entry_match[exp_name]
+            results[exp_name] = ExpRefAndQueueEntry(exp_ref, queue_entry)
+        return results
