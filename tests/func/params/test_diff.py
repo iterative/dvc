@@ -1,3 +1,5 @@
+from os.path import join
+
 import pytest
 
 from dvc.utils import relpath
@@ -239,5 +241,30 @@ def test_diff_without_targets_specified(tmp_dir, dvc, scm, file):
             "foo.bar": {"new": "baz", "old": "bar"},
             "x": {"new": None, "old": "0"},
             "y": {"new": "100", "old": None},
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    "dvcfile, params_file",
+    [
+        ("dvc.yaml", "my_params.yaml"),
+        ("dir/dvc.yaml", "my_params.yaml"),
+        ("dir/dvc.yaml", join("..", "my_params.yaml")),
+    ],
+)
+def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file):
+    directory = (tmp_dir / dvcfile).parent
+    directory.mkdir(exist_ok=True)
+    (tmp_dir / dvcfile).dump({"params": [params_file]})
+
+    params_file = directory / params_file
+    params_file.dump({"foo": 3})
+    scm.add_commit([params_file, tmp_dir / dvcfile], message="add params")
+
+    params_file.dump({"foo": 5})
+    assert dvc.params.diff() == {
+        relpath(directory / params_file): {
+            "foo": {"diff": 2, "new": 5, "old": 3}
         }
     }

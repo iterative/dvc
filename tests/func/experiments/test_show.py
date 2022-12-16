@@ -220,6 +220,7 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
                 "msg": "Experiment run failed.",
                 "type": "",
             },
+            "name": ANY,
         }
     }
 

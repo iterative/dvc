@@ -24,6 +24,9 @@ class StageLoader(Mapping):
         self.dvcfile = dvcfile
         self.data = data or {}
         self.stages_data = self.data.get("stages", {})
+        self.metrics_data = self.data.get("metrics", [])
+        self.params_data = self.data.get("params", [])
+        self.plots_data = self.data.get("plots", {})
         self.repo = self.dvcfile.repo
 
         lockfile_data = lockfile_data or {}
@@ -171,6 +174,9 @@ class SingleStageLoader(Mapping):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
+        self.metrics_data = []
+        self.params_data = []
+        self.plots_data = {}
 
     def __getitem__(self, item):
         if item:

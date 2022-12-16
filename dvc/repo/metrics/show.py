@@ -9,7 +9,12 @@ from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
 from dvc.scm import NoSCMError
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils import (
+    as_posix,
+    error_handler,
+    errored_revisions,
+    onerror_collect,
+)
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
@@ -26,6 +31,17 @@ def _to_fs_paths(metrics: List[Output]) -> StrPaths:
         if out.metric:
             result.append(out.repo.dvcfs.from_os_path(out.fs_path))
     return result
+
+
+def _collect_top_level_metrics(repo):
+    top_metrics = repo.index._top_metrics  # pylint: disable=protected-access
+    for dvcfile, metrics in top_metrics.items():
+        wdir = repo.fs.path.relpath(
+            repo.fs.path.parent(dvcfile), repo.root_dir
+        )
+        for file in metrics:
+            path = repo.fs.path.join(wdir, as_posix(file))
+            yield repo.fs.path.normpath(path)
 
 
 def _collect_metrics(repo, targets, revision, recursive):
@@ -94,6 +110,7 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
 def _gather_metrics(repo, targets, rev, recursive, onerror=None):
     metrics = _collect_metrics(repo, targets, rev, recursive)
+    metrics.extend(_collect_top_level_metrics(repo))
     return _read_metrics(repo, metrics, rev, onerror=onerror)
 
 

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 from funcy import cached_property
 
-from dvc.config import RemoteConfigError
+from dvc.config import NoRemoteError, RemoteConfigError
 from dvc_data.hashfile.db import get_index
 
 if TYPE_CHECKING:
@@ -63,8 +63,6 @@ class DataCloud:
         name: Optional[str] = None,
         command: str = "<command>",
     ) -> "Remote":
-        from dvc.config import NoRemoteError
-
         if not name:
             name = self.repo.config["core"].get("remote")
 
@@ -97,6 +95,10 @@ class DataCloud:
         command: str = "<command>",
     ) -> "HashFileDB":
         remote = self.get_remote(name=name, command=command)
+        if remote.fs.version_aware or remote.worktree:
+            raise NoRemoteError(
+                f"'{command}' is unsupported for cloud versioned remotes"
+            )
         return remote.odb
 
     def _log_missing(self, status: "CompareStatusResult"):

@@ -267,11 +267,15 @@ class StageCache:
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        dest_odb = odb or self.repo.cloud.get_remote_odb(remote)
+        dest_odb = odb or self.repo.cloud.get_remote_odb(
+            remote, "push --run-cache"
+        )
         return self.transfer(self.repo.odb.local, dest_odb)
 
     def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        odb = odb or self.repo.cloud.get_remote_odb(remote)
+        odb = odb or self.repo.cloud.get_remote_odb(
+            remote, "fetch --run-cache"
+        )
         return self.transfer(odb, self.repo.odb.local)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):

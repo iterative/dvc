@@ -684,7 +684,7 @@ def test_experiments_workspace_not_log_exception(caplog, dvc, scm):
     assert not caplog.text
 
 
-def test_run_env(tmp_dir, dvc, scm):
+def test_run_env(tmp_dir, dvc, scm, mocker):
     dump_run_env = dedent(
         """\
         import os
@@ -703,7 +703,7 @@ def test_run_env(tmp_dir, dvc, scm):
     )
     dvc.experiments.run()
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
-    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == ""
+    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() != ""
 
     dvc.experiments.run(name="foo")
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline

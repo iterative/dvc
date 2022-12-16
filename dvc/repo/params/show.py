@@ -20,7 +20,12 @@ from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils import (
+    as_posix,
+    error_handler,
+    errored_revisions,
+    onerror_collect,
+)
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
@@ -33,6 +38,17 @@ logger = logging.getLogger(__name__)
 
 def _is_params(dep: "Output"):
     return isinstance(dep, ParamsDependency)
+
+
+def _collect_top_level_params(repo):
+    top_params = repo.index._top_params  # pylint: disable=protected-access
+    for dvcfile, params in top_params.items():
+        wdir = repo.fs.path.relpath(
+            repo.fs.path.parent(dvcfile), repo.root_dir
+        )
+        for file in params:
+            path = repo.fs.path.join(wdir, as_posix(file))
+            yield repo.fs.path.normpath(path)
 
 
 def _collect_configs(
@@ -176,6 +192,7 @@ def _gather_params(
     param_outs, params_fs_paths = _collect_configs(
         repo, rev, targets=targets, deps=deps, stages=stages
     )
+    params_fs_paths.extend(_collect_top_level_params(repo=repo))
     params = _read_params(
         repo,
         params=param_outs,

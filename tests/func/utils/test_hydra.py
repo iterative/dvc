@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
@@ -93,16 +91,16 @@ from dvc.exceptions import InvalidArgumentError
 def test_apply_overrides(tmp_dir, suffix, overrides, expected):
     from dvc.utils.hydra import apply_overrides
 
-    if suffix == "toml":
-        if overrides in [
-            ["foo=baz"],
-            ["foo.0=bar"],
-            ["foo=baz", "goo=bar"],
-            ["lorem=null"],
-        ]:
-            # TOML dumper breaks when overriding a list/dict with other type
-            # or when handling `null` values.
-            pytest.xfail()
+    if suffix == "toml" and overrides in [
+        ["foo=baz"],
+        ["foo.0=bar"],
+        ["foo=baz", "goo=bar"],
+        ["lorem=null"],
+    ]:
+        pytest.skip(
+            "TOML dumper breaks when overriding a list/dict with other type or"
+            " when handling `null` values."
+        )
 
     params_file = tmp_dir / f"params.{suffix}"
     params_file.dump(
@@ -140,7 +138,6 @@ def hydra_setup(tmp_dir, config_dir, config_name):
     return str(config_dir)
 
 
-@pytest.mark.skipif(sys.version_info >= (3, 11), reason="unsupported on 3.11")
 @pytest.mark.parametrize("suffix", ["yaml", "toml", "json"])
 @pytest.mark.parametrize(
     "overrides,expected",
@@ -180,7 +177,6 @@ def test_compose_and_dump(tmp_dir, suffix, overrides, expected):
     assert output_file.parse() == expected
 
 
-@pytest.mark.skipif(sys.version_info >= (3, 11), reason="unsupported on 3.11")
 def test_compose_and_dump_yaml_handles_string(tmp_dir):
     """Regression test for 8583"""
     from dvc.utils.hydra import compose_and_dump

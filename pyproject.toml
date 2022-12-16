@@ -51,10 +51,10 @@ dependencies = [
     "pyparsing>=2.4.7",
     "typing-extensions>=3.7.4",
     "scmrepo==0.1.4",
-    "dvc-render==0.0.14",
-    "dvc-task==0.1.6",
-    "dvclive>=1.0",
-    "dvc-data==0.28.2",
+    "dvc-render==0.0.15",
+    "dvc-task==0.1.8",
+    "dvclive>=1.2.2",
+    "dvc-data==0.28.4",
     "dvc-http==2.27.2",
     "hydra-core>=1.1.0",
     "iterative-telemetry==0.0.6",
@@ -90,25 +90,25 @@ tests = [
     # Test requirements
     "pytest==7.2.0",
     "pytest-cov==4.0.0",
-    "pytest-xdist==3.0.2",
+    "pytest-xdist==3.1.0",
     "pytest-mock==3.10.0",
     "pytest-lazy-fixture==0.6.3",
     # https://github.com/docker/docker-py/issues/2902
     "pytest-docker==0.11.0; python_version < '3.10' or sys_platform != 'win32'",
     "flaky==3.7.0",
     "pytest-timeout==2.1.0",
-    "filelock==3.8.0",
+    "filelock==3.8.2",
     "beautifulsoup4==4.11.1",
     "pywin32>=225; sys_platform == 'win32'",  # optional dependency
     # pylint requirements
-    "pylint==2.15.5",
+    "pylint==2.15.8",
     # we use this to suppress pytest-related false positives in our tests.
     "pylint-pytest==1.1.2",
     # we use this to suppress some messages in tests, eg: foo/bar naming,
     # and, protected method calls in our tests
     "pylint-plugin-utils==0.7",
     # type-checking
-    "mypy==0.990",
+    "mypy==0.991",
     "types-requests",
     "types-tabulate",
     "types-toml",
@@ -161,7 +161,7 @@ line_length = 79
 
 [tool.pytest.ini_options]
 log_level = "debug"
-addopts = "-ra -p no:hydra_pytest --cov-config pyproject.toml"
+addopts = "-ra --cov-config pyproject.toml"
 markers = [
     "needs_internet: Might need network access for the tests",
     "vscode: Tests verifying contract between DVC and VSCode plugin",

@@ -68,14 +68,65 @@ class Index:
         if stages is not None:
             self.stages: List["Stage"] = stages
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
+        self._metrics: Dict[str, List[str]] = {}
+        self._plots: Dict[str, Any] = {}
+        self._params: Dict[str, List[str]] = {}
 
     @cached_property
     def stages(self) -> List["Stage"]:  # pylint: disable=method-hidden
         # note that ideally we should be keeping this in a set as it is unique,
         # hashable and has no concept of orderliness on its own. But we depend
         # on this to be somewhat ordered for status/metrics/plots, etc.
+        return self._collect()
+
+    @cached_property
+    def _top_metrics(self):
+        self._collect()
+        return self._metrics
+
+    @cached_property
+    def _top_plots(self):
+        self._collect()
+        return self._plots
+
+    @cached_property
+    def _plot_sources(self):
+        from dvc.repo.plots import _collect_pipeline_files
+
+        sources = []
+        for data in _collect_pipeline_files(self.repo, [], {}).values():
+            for plot_id, props in data.get("data", {}).items():
+                if isinstance(props.get("y"), dict):
+                    sources.extend(props["y"])
+                    if isinstance(props.get("x"), dict):
+                        sources.extend(props["x"])
+                else:
+                    sources.append(plot_id)
+        return sources
+
+    @cached_property
+    def _top_params(self):
+        self._collect()
+        return self._params
+
+    def _collect(self):
+        if "stages" in self.__dict__:
+            return self.stages
+
         onerror = self.repo.stage_collection_error_handler
-        return self.stage_collector.collect_repo(onerror=onerror)
+
+        # pylint: disable=protected-access
+        (
+            stages,
+            metrics,
+            plots,
+            params,
+        ) = self.stage_collector._collect_all_from_repo(onerror=onerror)
+        self.stages = stages
+        self._metrics = metrics
+        self._plots = plots
+        self._params = params
+        return stages
 
     def __repr__(self) -> str:
         from dvc.fs import LocalFileSystem
@@ -130,7 +181,7 @@ class Index:
             )
         )
 
-    def _collect_targets(
+    def collect_targets(
         self, targets: Optional["TargetType"], **kwargs: Any
     ) -> List["StageInfo"]:
         from itertools import chain
@@ -178,7 +229,7 @@ class Index:
         """
         stage_infos = [
             stage_info
-            for stage_info in self._collect_targets(targets, **kwargs)
+            for stage_info in self.collect_targets(targets, **kwargs)
             if not stage_filter or stage_filter(stage_info.stage)
         ]
         return IndexView(self, stage_infos, outs_filter=outs_filter)
@@ -274,7 +325,7 @@ class Index:
         from collections import defaultdict
 
         used: "ObjectContainer" = defaultdict(set)
-        pairs = self._collect_targets(
+        pairs = self.collect_targets(
             targets, recursive=recursive, with_deps=with_deps
         )
         for stage, filter_info in pairs:
@@ -448,7 +499,6 @@ class IndexView:
         data: Dict[str, Union["DataIndex", "DataIndexView"]] = {}
         for workspace, data_index in self._index.data.items():
             if self._stages:
-                data_index.load()
                 data[workspace] = view(
                     data_index, partial(key_filter, workspace)
                 )
