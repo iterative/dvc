@@ -100,6 +100,25 @@ def test_params_file_sorted(dvc):
     ]
 
 
+def test_params_file_without_targets(dvc):
+    params = [
+        "foo",
+        "bar",
+        {"params.yaml": None},
+        {"custom.yaml": ["wxyz", "pqrs", "baz"]},
+        {"a-file-of-params.yaml": None},
+        {"a-file-of-params.yaml": ["barr"]},
+    ]
+    stage = create_stage(
+        PipelineStage, dvc, outs=["bar"], deps=["foo"], params=params, **kwargs
+    )
+    assert to_pipeline_file(stage)["something"][stage.PARAM_PARAMS] == [
+        {"a-file-of-params.yaml": None},
+        {"custom.yaml": ["baz", "pqrs", "wxyz"]},
+        {"params.yaml": None},
+    ]
+
+
 @pytest.mark.parametrize(
     "typ, extra",
     [("plots", {"plot": True}), ("metrics", {"metric": True}), ("outs", {})],

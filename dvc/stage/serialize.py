@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, no_type_check
 from funcy import post_processing
 
 from dvc.dependency import ParamsDependency
-from dvc.output import Output
+from dvc.output import Annotation, Output
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import parse_yaml_for_update
 
@@ -27,8 +27,9 @@ PARAM_METRIC = Output.PARAM_METRIC
 PARAM_PLOT = Output.PARAM_PLOT
 PARAM_PERSIST = Output.PARAM_PERSIST
 PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
-PARAM_DESC = Output.PARAM_DESC
+PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
+PARAM_PUSH = Output.PARAM_PUSH
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -38,8 +39,9 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 @post_processing(OrderedDict)
 def _get_flags(out):
-    if out.desc:
-        yield PARAM_DESC, out.desc
+    annot = out.annot.to_dict()
+    yield from annot.items()
+
     if not out.use_cache:
         yield PARAM_CACHE, False
     if out.checkpoint:
@@ -51,10 +53,10 @@ def _get_flags(out):
         # `out.plot` is in the same order as is in the file when read
         # and, should be dumped as-is without any sorting
         yield from out.plot.items()
-    if out.live and isinstance(out.live, dict):
-        yield from out.live.items()
     if out.remote:
         yield PARAM_REMOTE, out.remote
+    if not out.can_push:
+        yield PARAM_PUSH, False
 
 
 def _serialize_out(out):
@@ -64,19 +66,15 @@ def _serialize_out(out):
 
 @no_type_check
 def _serialize_outs(outputs: List[Output]):
-    outs, metrics, plots, live = [], [], [], None
+    outs, metrics, plots = [], [], []
     for out in sort_by_path(outputs):
         bucket = outs
         if out.plot:
             bucket = plots
         elif out.metric:
             bucket = metrics
-        elif out.live:
-            assert live is None
-            live = _serialize_out(out)
-            continue
         bucket.append(_serialize_out(out))
-    return outs, metrics, plots, live
+    return outs, metrics, plots
 
 
 def _serialize_params_keys(params):
@@ -90,18 +88,12 @@ def _serialize_params_keys(params):
     """
     keys = []
     for param_dep in sort_by_path(params):
-        dump = param_dep.dumpd()
-        path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
-        assert isinstance(params, (dict, list))
         # when on no_exec, params are not filled and are saved as list
-        k = sorted(params.keys() if isinstance(params, dict) else params)
-        if not k:
-            continue
-
-        if path == DEFAULT_PARAMS_FILE:
+        k = sorted(param_dep.params)
+        if k and param_dep.def_path == DEFAULT_PARAMS_FILE:
             keys = k + keys
         else:
-            keys.append({path: k})
+            keys.append({param_dep.def_path: k or None})
     return keys
 
 
@@ -131,7 +123,7 @@ def to_pipeline_file(stage: "PipelineStage"):
     deps = sorted(d.def_path for d in deps)
     params = _serialize_params_keys(params)
 
-    outs, metrics, plots, live = _serialize_outs(stage.outs)
+    outs, metrics, plots = _serialize_outs(stage.outs)
 
     cmd = stage.cmd
     assert cmd, (
@@ -147,7 +139,6 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_OUTS, outs),
         (stage.PARAM_METRICS, metrics),
         (stage.PARAM_PLOTS, plots),
-        (stage.PARAM_LIVE, live),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
         (stage.PARAM_META, stage.meta),
@@ -157,18 +148,24 @@ def to_pipeline_file(stage: "PipelineStage"):
     }
 
 
-def to_single_stage_lockfile(stage: "Stage") -> dict:
+def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     assert stage.cmd
 
     def _dumpd(item):
+        meta_d = item.meta.to_dict()
+        meta_d.pop("isdir", None)
         ret = [
             (item.PARAM_PATH, item.def_path),
             *item.hash_info.to_dict().items(),
-            *item.meta.to_dict().items(),
+            *meta_d.items(),
         ]
 
-        if item.isexec:
-            ret.append((item.PARAM_ISEXEC, True))
+        if item.hash_info.isdir and kwargs.get("with_files"):
+            if item.obj:
+                obj = item.obj
+            else:
+                obj = item.get_obj()
+            ret.append((item.PARAM_FILES, obj.as_list(with_meta=True)))
 
         return OrderedDict(ret)
 
@@ -189,13 +186,13 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
     return res
 
 
-def to_lockfile(stage: "PipelineStage") -> dict:
+def to_lockfile(stage: "PipelineStage", **kwargs) -> dict:
     assert stage.name
-    return {stage.name: to_single_stage_lockfile(stage)}
+    return {stage.name: to_single_stage_lockfile(stage, **kwargs)}
 
 
-def to_single_stage_file(stage: "Stage"):
-    state = stage.dumpd()
+def to_single_stage_file(stage: "Stage", **kwargs):
+    state = stage.dumpd(**kwargs)
 
     # When we load a stage we parse yaml with a fast parser, which strips
     # off all the comments and formatting. To retain those on update we do

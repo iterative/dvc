@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 
 import pytest
@@ -71,13 +70,13 @@ def test_load_vars_from_file(tmp_dir, dvc):
 def test_load_vars_with_relpath(tmp_dir, scm, dvc):
     tmp_dir.scm_gen(DEFAULT_PARAMS_FILE, dumps_yaml(DATA), commit="add params")
 
-    subdir = tmp_dir / "subdir"
-    d = {"vars": [os.path.relpath(tmp_dir / DEFAULT_PARAMS_FILE, subdir)]}
-
     revisions = ["HEAD", "workspace"]
     for rev in dvc.brancher(revs=["HEAD"]):
         assert rev == revisions.pop()
-        resolver = DataResolver(dvc, subdir.fs_path, d)
+        d = {
+            "vars": [f"../{DEFAULT_PARAMS_FILE}"],
+        }
+        resolver = DataResolver(dvc, "subdir", d)
         assert resolver.context == deepcopy(DATA)
 
 

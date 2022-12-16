@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.checkout import CmdCheckout, log_changes
+from dvc.commands.checkout import CmdCheckout, log_changes
 
 
 def test_checkout(tmp_dir, dvc, mocker):

@@ -5,153 +5,10 @@ from textwrap import dedent
 import pytest
 from funcy import lsplit
 
+from dvc.cli import main
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError, ReproductionError
-from dvc.main import main
 from dvc.stage import PipelineStage
-from tests.func import test_repro
-from tests.utils.scriptify import scriptify
-
-
-def copy_script(src, dest):
-    import shutil
-
-    shutil.copyfile(src, dest)
-
-
-COPY_SCRIPT, _ = scriptify(copy_script)
-
-
-class MultiStageRun:
-    def _run(self, **kwargs):
-        assert kwargs.get("name")
-        kwargs.pop("fname", None)
-        # ignore fname for now
-        return self.dvc.run(**kwargs)  # noqa, pylint: disable=no-member
-
-    @staticmethod
-    def _get_stage_target(stage):
-        return stage.addressing
-
-
-class TestReproFailMultiStage(MultiStageRun, test_repro.TestReproFail):
-    pass
-
-
-class TestReproCyclicGraphMultiStage(
-    MultiStageRun, test_repro.TestReproCyclicGraph
-):
-    pass
-
-
-class TestReproUnderDirMultiStage(
-    MultiStageRun, test_repro.TestReproDepUnderDir
-):
-    pass
-
-
-class TestReproDepDirWithOutputsUnderItMultiStage(
-    MultiStageRun, test_repro.TestReproDepDirWithOutputsUnderIt
-):
-    pass
-
-
-class TestReproForceMultiStage(MultiStageRun, test_repro.TestReproForce):
-    pass
-
-
-class TestReproChangedCodeMultiStage(
-    MultiStageRun, test_repro.TestReproChangedCode
-):
-    pass
-
-
-class TestReproChangedDataMultiStage(
-    MultiStageRun, test_repro.TestReproChangedData
-):
-    pass
-
-
-class TestReproDry(MultiStageRun, test_repro.TestReproDry):
-    pass
-
-
-class TestReproUpToDateMultiStage(MultiStageRun, test_repro.TestReproUpToDate):
-    pass
-
-
-class TestReproChangedDeepDataMultiStage(
-    MultiStageRun, test_repro.TestReproChangedDeepData
-):
-    pass
-
-
-class TestReproPipelineMultiStage(MultiStageRun, test_repro.TestReproPipeline):
-    pass
-
-
-class TestReproPipelinesMultiStage(
-    MultiStageRun, test_repro.TestReproPipelines
-):
-    pass
-
-
-class TestReproFrozenMultiStage(MultiStageRun, test_repro.TestReproFrozen):
-    pass
-
-
-class TestReproFrozenCallbackMultiStage(
-    MultiStageRun, test_repro.TestReproFrozenCallback
-):
-    pass
-
-
-class TestReproFrozenUnchangedMultiStage(
-    MultiStageRun, test_repro.TestReproFrozenUnchanged
-):
-    pass
-
-
-class TestReproPhonyMultiStage(MultiStageRun, test_repro.TestReproPhony):
-    pass
-
-
-class TestCmdReproMultiStage(MultiStageRun, test_repro.TestCmdRepro):
-    pass
-
-
-class TestReproAllPipelinesMultiStage(
-    MultiStageRun, test_repro.TestReproAllPipelines
-):
-    pass
-
-
-class TestReproNoCommit(MultiStageRun, test_repro.TestReproNoCommit):
-    pass
-
-
-class TestNonExistingOutputMultiStage(
-    MultiStageRun, test_repro.TestNonExistingOutput
-):
-    pass
-
-
-class TestReproAlreadyCachedMultiStage(
-    MultiStageRun, test_repro.TestReproAlreadyCached
-):
-    pass
-
-
-class TestReproChangedDirMultiStage(
-    MultiStageRun, test_repro.TestReproChangedDir
-):
-    pass
-
-
-class TestReproChangedDirDataMultiStage(
-    MultiStageRun, test_repro.TestReproChangedDirData
-):
-    pass
 
 
 def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
@@ -300,10 +157,11 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     )
 
 
-def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
+def test_repro_when_new_deps_is_added_in_dvcfile(
+    tmp_dir, dvc, run_copy, copy_script
+):
     from dvc.dvcfile import Dvcfile
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
     stage = dvc.run(
         cmd="python copy.py {} {}".format("foo", "foobar"),
@@ -322,10 +180,9 @@ def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
     assert dvc.reproduce(target)[0] == stage
 
 
-def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc):
+def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc, copy_script):
     from dvc.dvcfile import Dvcfile
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
     stage = dvc.run(
         cmd="python copy.py {} {}".format("foo", "foobar"),
@@ -344,10 +201,9 @@ def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc):
     assert dvc.reproduce(target)[0] == stage
 
 
-def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
+def test_repro_when_new_deps_is_moved(tmp_dir, dvc, copy_script):
     from dvc.dvcfile import Dvcfile
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen({"foo": "foo", "bar": "foo"})
     stage = dvc.run(
         cmd="python copy.py {} {}".format("foo", "foobar"),
@@ -360,7 +216,12 @@ def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
 
     # hardcode values in source code, ignore sys.argv
     tmp_dir.gen(
-        "copy.py", COPY_SCRIPT.replace("func(*argv)", 'func("bar", "foobar")')
+        "copy.py",
+        """
+import shutil
+
+shutil.copyfile('bar', 'foobar')
+""",
     )
     from shutil import move
 
@@ -394,8 +255,7 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
         dvc.reproduce(":run-copy")
 
 
-def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc, copy_script):
     tmp_dir.gen("foo", "foo")
     (tmp_dir / PIPELINE_FILE).dump(
         {
@@ -412,8 +272,7 @@ def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
         dvc.reproduce(":run-copy")
 
 
-def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc, copy_script):
     tmp_dir.gen("foo", "foo")
     (tmp_dir / PIPELINE_FILE).dump(
         {
@@ -430,8 +289,7 @@ def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
         dvc.reproduce(":run-copy")
 
 
-def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc, copy_script):
     tmp_dir.gen("foo", "foo")
     (tmp_dir / PIPELINE_FILE).dump(
         {

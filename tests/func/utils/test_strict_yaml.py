@@ -3,8 +3,7 @@ import os
 import pytest
 from ruamel.yaml import __with_libyaml__ as ruamel_clib
 
-from dvc.main import main
-from dvc.ui import ui
+from dvc.cli import main
 
 DUPLICATE_KEYS = """\
 stages:
@@ -20,7 +19,7 @@ While constructing a mapping, in line 3, column 5
   3 │   cmd: python train.py
 
 Found duplicate key "cmd" with value "python train.py" (original value:\
- "python \ntrain.py"), in line 4, column 5
+ "python\ntrain.py"), in line 4, column 5
   4 │   cmd: python train.py"""
 
 
@@ -161,8 +160,8 @@ stages:
 NULL_VALUE_ON_OUTS_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 6,\
- column\n9
+expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 6, \
+column\n9
   5 │   - logs:
   6 │   │   cache: false
   7 │   │   persist: true"""
@@ -180,7 +179,7 @@ stages:
 ADDITIONAL_KEY_ON_OUTS_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-extra keys not allowed, in stages -> stage1 -> outs -> 0 -> logs -> \n\
+extra keys not allowed, in stages -> stage1 -> outs -> 0 -> logs ->
 not_existing_key, line 6, column 9
   5 │   - logs:
   6 │   │   cache: false
@@ -325,25 +324,37 @@ examples = {
 }
 
 
+@pytest.fixture
+def force_posixpath(mocker):
+    # make it always return posix path, easier for validating error messages
+    mocker.patch(
+        "dvc.utils.strictyaml.make_relpath",
+        return_value="./dvc.yaml",
+    )
+
+
+@pytest.fixture
+def fixed_width_term(mocker):
+    """Fixed width console."""
+    from rich.console import Console
+
+    mocker.patch.object(
+        Console, "width", new_callable=mocker.PropertyMock(return_value=80)
+    )
+
+
 @pytest.mark.parametrize(
     "text, expected", examples.values(), ids=examples.keys()
 )
-def test_exceptions(tmp_dir, dvc, capsys, text, expected, mocker):
-    # make it always return posix path, easier for validating error messages
-    mocker.patch(
-        "dvc.utils.strictyaml.make_relpath", return_value="./dvc.yaml"
-    )
-
-    console = ui.error_console
-    original_printer = console.print
-
-    def print_with_fixed_width(*args, **kwargs):
-        console.options.min_width = console.options.max_width = 80
-        console.width = kwargs["width"] = 80
-        return original_printer(*args, **kwargs)
-
-    mocker.patch.object(console, "print", print_with_fixed_width)
-
+def test_exceptions(
+    tmp_dir,
+    dvc,
+    capsys,
+    force_posixpath,
+    fixed_width_term,
+    text,
+    expected,
+):
     tmp_dir.gen("dvc.yaml", text)
 
     capsys.readouterr()  # clear outputs
@@ -351,7 +362,43 @@ def test_exceptions(tmp_dir, dvc, capsys, text, expected, mocker):
     out, err = capsys.readouterr()
 
     assert not out
-    assert expected in err
+
+    # strip whitespace on the right: output is always left-justified
+    # by rich.syntax.Syntax:
+    for expected_line, err_line in zip(
+        expected.splitlines(), err.splitlines()
+    ):
+        assert expected_line == err_line.rstrip(" ")
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        (DUPLICATE_KEYS, "'./dvc.yaml' is invalid in revision '{short_rev}'."),
+        (
+            MISSING_CMD,
+            "'./dvc.yaml' validation failed in revision '{short_rev}'.",
+        ),
+    ],
+)
+def test_on_revision(
+    tmp_dir,
+    scm,
+    dvc,
+    force_posixpath,
+    fixed_width_term,
+    capsys,
+    text,
+    expected,
+):
+    tmp_dir.scm_gen("dvc.yaml", text, commit="add dvc.yaml")
+    capsys.readouterr()  # clear outputs
+
+    assert main(["ls", f"file://{tmp_dir.as_posix()}", "--rev", "HEAD"]) != 0
+
+    out, err = capsys.readouterr()
+    assert not out
+    assert expected.format(short_rev=scm.get_rev()[:7]) in err
 
 
 def test_make_relpath(tmp_dir, monkeypatch):

@@ -24,8 +24,8 @@ function addSymLinkPermissions($accountToAdd){
     Write-Host "Account SID: $($sidstr)" -ForegroundColor DarkCyan
     $tmp = [System.IO.Path]::GetTempFileName()
     Write-Host "Export current Local Security Policy" -ForegroundColor DarkCyan
-    secedit.exe /export /cfg "$($tmp)" 
-    $c = Get-Content -Path $tmp 
+    secedit.exe /export /cfg "$($tmp)"
+    $c = Get-Content -Path $tmp
     $currentSetting = ""
     foreach($s in $c) {
         if( $s -like "SECreateSymbolicLinkPrivilege*") {
@@ -35,7 +35,7 @@ function addSymLinkPermissions($accountToAdd){
     }
     if( $currentSetting -notlike "*$($sidstr)*" ) {
         Write-Host "Need to add permissions to SymLink" -ForegroundColor Yellow
-        
+
         Write-Host "Modify Setting ""Create SymLink""" -ForegroundColor DarkCyan
 
         if( [string]::IsNullOrEmpty($currentSetting) ) {
@@ -58,8 +58,8 @@ SECreateSymbolicLinkPrivilege = $($currentSetting)
         $outfile | Set-Content -Path $tmp2 -Encoding Unicode -Force
         Push-Location (Split-Path $tmp2)
         try {
-            secedit.exe /configure /db "secedit.sdb" /cfg "$($tmp2)" /areas USER_RIGHTS 
-        } finally { 
+            secedit.exe /configure /db "secedit.sdb" /cfg "$($tmp2)" /areas USER_RIGHTS
+        } finally {
             Pop-Location
         }
     } else {

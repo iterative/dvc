@@ -2,7 +2,6 @@
 # Including changing base dir of path specification patterns and merging
 # of two path specification patterns with different base
 # All the operations follow the documents of `gitignore`
-import os
 from collections import namedtuple
 
 from pathspec.util import normalize_file
@@ -68,7 +67,7 @@ def _change_dirname(dirname, pattern_list, new_dirname):
     ]
 
 
-def merge_patterns(pattern_a, prefix_a, pattern_b, prefix_b):
+def merge_patterns(flavour, pattern_a, prefix_a, pattern_b, prefix_b):
     """
     Merge two path specification patterns.
 
@@ -81,7 +80,7 @@ def merge_patterns(pattern_a, prefix_a, pattern_b, prefix_b):
     if not pattern_b:
         return pattern_a, prefix_a
 
-    longest_common_dir = os.path.commonpath([prefix_a, prefix_b])
+    longest_common_dir = flavour.commonpath([prefix_a, prefix_b])
     new_pattern_a = _change_dirname(prefix_a, pattern_a, longest_common_dir)
     new_pattern_b = _change_dirname(prefix_b, pattern_b, longest_common_dir)
 

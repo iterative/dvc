@@ -1,11 +1,11 @@
 import os
 
 import pytest
+from dvc_gs import GSFileSystem
+from dvc_s3 import S3FileSystem
 
 from dvc.fs import get_cloud_fs
-from dvc.fs.gs import GSFileSystem
-from dvc.fs.s3 import S3FileSystem
-from dvc.objects.db import get_index
+from dvc_data.hashfile.db import get_index
 
 
 def test_remote_with_hash_jobs(dvc):
@@ -25,7 +25,6 @@ def test_remote_with_jobs(dvc):
         "url": "s3://bucket/name",
         "jobs": 100,
     }
-    dvc.config["core"]["jobs"] = 200
 
     cls, config, _ = get_cloud_fs(dvc, name="with_jobs")
     fs = cls(**config)
@@ -51,7 +50,7 @@ def test_remote_without_hash_jobs_default(dvc):
 
 @pytest.mark.parametrize("fs_cls", [GSFileSystem, S3FileSystem])
 def test_makedirs_not_create_for_top_level_path(fs_cls, dvc, mocker):
-    url = f"{fs_cls.scheme}://bucket/"
+    url = f"{fs_cls.protocol}://bucket/"
     fs = fs_cls(url=url)
     mocked_client = mocker.PropertyMock()
     mocker.patch.object(fs_cls, "fs", mocked_client)

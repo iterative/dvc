@@ -150,9 +150,20 @@ def test_ls_repo_with_path_dir_dvc_only_empty(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
     tmp_dir.scm_gen({"folder/.keep": "content"}, commit="add .keep")
+    tmp_dir.scm_gen({"empty_scm_folder/": {}}, commit="add scm empty")
+    tmp_dir.dvc_gen({"empty_dvc_folder": {}}, commit="empty dvc folder")
 
     with pytest.raises(PathMissingError):
-        Repo.ls(os.fspath(tmp_dir), path="folder", dvc_only=True)
+        Repo.ls(os.fspath(tmp_dir), path="not_exist_folder")
+
+    assert Repo.ls(os.fspath(tmp_dir), path="empty_scm_folder") == []
+
+    assert Repo.ls(os.fspath(tmp_dir), path="folder", dvc_only=True) == []
+
+    assert (
+        Repo.ls(os.fspath(tmp_dir), path="empty_dvc_folder", dvc_only=True)
+        == []
+    )
 
 
 def test_ls_repo_with_path_subdir(tmp_dir, dvc, scm):
@@ -308,7 +319,7 @@ def test_ls_remote_repo(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url)
     match_files(
         files,
@@ -329,7 +340,7 @@ def test_ls_remote_repo_recursive(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url, recursive=True)
     match_files(
         files,
@@ -358,7 +369,7 @@ def test_ls_remote_git_only_repo_recursive(git_dir):
     with git_dir.chdir():
         git_dir.scm_gen(FS_STRUCTURE, commit="init")
 
-    url = f"file://{git_dir}"
+    url = f"file://{git_dir.as_posix()}"
     files = Repo.ls(url, recursive=True)
     match_files(
         files,
@@ -376,7 +387,7 @@ def test_ls_remote_repo_with_path_dir(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     path = "model"
     files = Repo.ls(url, path)
     match_files(
@@ -397,7 +408,7 @@ def test_ls_remote_repo_with_rev(erepo_dir):
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     rev = erepo_dir.scm.list_all_commits()[1]
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url, rev=rev)
     match_files(
         files,
@@ -416,7 +427,7 @@ def test_ls_remote_repo_with_rev_recursive(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
 
     rev = erepo_dir.scm.list_all_commits()[1]
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url, rev=rev, recursive=True)
     match_files(
         files,
@@ -473,15 +484,15 @@ def test_ls_granular(erepo_dir):
 
     entries = Repo.ls(os.fspath(erepo_dir), os.path.join("dir", "subdir"))
     assert entries == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "bar"},
-        {"isout": False, "isdir": False, "isexec": False, "path": "foo"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "bar"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "foo"},
     ]
 
     entries = Repo.ls(os.fspath(erepo_dir), "dir")
     assert entries == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "1"},
-        {"isout": False, "isdir": False, "isexec": False, "path": "2"},
-        {"isout": False, "isdir": True, "isexec": False, "path": "subdir"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "1"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "2"},
+        {"isout": True, "isdir": True, "isexec": False, "path": "subdir"},
     ]
 
 
@@ -500,18 +511,20 @@ def test_ls_target(erepo_dir, use_scm):
             commit="create dir",
         )
 
+    isout = not use_scm
+
     def _ls(path):
         return Repo.ls(os.fspath(erepo_dir), path)
 
     assert _ls(os.path.join("dir", "1")) == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "1"}
+        {"isout": isout, "isdir": False, "isexec": False, "path": "1"}
     ]
     assert _ls(os.path.join("dir", "subdir", "foo")) == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "foo"}
+        {"isout": isout, "isdir": False, "isexec": False, "path": "foo"}
     ]
     assert _ls(os.path.join("dir", "subdir")) == [
-        {"isdir": False, "isexec": 0, "isout": False, "path": "bar"},
-        {"isdir": False, "isexec": 0, "isout": False, "path": "foo"},
+        {"isdir": False, "isexec": 0, "isout": isout, "path": "bar"},
+        {"isdir": False, "isexec": 0, "isout": isout, "path": "foo"},
     ]
 
 
@@ -524,7 +537,6 @@ def test_ls_target(erepo_dir, use_scm):
 )
 def test_subrepo(dvc_top_level, erepo):
     from tests.func.test_get import make_subrepo
-    from tests.utils import clean_staging
 
     dvc_files = {"foo.txt": "foo.txt", "dvc_dir": {"lorem": "lorem"}}
     scm_files = {"bar.txt": "bar.txt", "scm_dir": {"ipsum": "ipsum"}}
@@ -536,7 +548,6 @@ def test_subrepo(dvc_top_level, erepo):
             repo.scm_gen(scm_files, commit=f"scm track for top {repo}")
             if hasattr(repo, "dvc"):
                 repo.dvc_gen(dvc_files, commit=f"dvc track for {repo}")
-        clean_staging()
 
     def _list_files(repo, path=None):
         return set(map(itemgetter("path"), Repo.ls(os.fspath(repo), path)))
@@ -557,3 +568,23 @@ def test_subrepo(dvc_top_level, erepo):
     assert _list_files(subrepo, ".") == common_outputs
     assert _list_files(subrepo, "scm_dir") == {"ipsum"}
     assert _list_files(subrepo, "dvc_dir") == {"lorem"}
+
+
+def test_broken_symlink(tmp_dir, dvc):
+    from dvc.fs import system
+
+    tmp_dir.gen("file", "content")
+    system.symlink("file", "link")
+
+    os.remove("file")
+
+    entries = Repo.ls(os.fspath(tmp_dir))
+
+    assert entries == [
+        {
+            "isout": False,
+            "isdir": False,
+            "isexec": False,
+            "path": ".dvcignore",
+        },
+    ]

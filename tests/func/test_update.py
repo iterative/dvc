@@ -4,7 +4,7 @@ import pytest
 
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import InvalidArgumentError
-from tests.unit.fs.test_repo import make_subrepo
+from dvc.testing.tmp_dir import make_subrepo
 
 
 @pytest.mark.parametrize("cached", [True, False])
@@ -174,6 +174,33 @@ def test_update_import_url(tmp_dir, dvc, workspace):
 
     assert dst.is_file()
     assert dst.read_text() == "updated file content"
+
+
+def test_update_import_url_no_download(tmp_dir, dvc, workspace):
+    workspace.gen("file", "file content")
+
+    dst = tmp_dir / "imported_file"
+    stage = dvc.imp_url(
+        "remote://workspace/file", os.fspath(dst), no_download=True
+    )
+    hash_info = stage.deps[0].hash_info
+
+    assert not dst.is_file()
+    assert stage.deps[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
+
+    workspace.gen("file", "updated file content")
+
+    updated_stage = dvc.update([stage.path], no_download=True)[0]
+    assert not dst.exists()
+
+    updated_hash_info = updated_stage.deps[0].hash_info
+    assert updated_hash_info != hash_info
+    assert updated_hash_info.value == "6ffba511ce3aa40b8231d1b1f8c5fba5"
+
+    out = updated_stage.outs[0]
+    assert out.hash_info.value is None
+    assert out.hash_info.name is None
+    assert out.meta.size is None
 
 
 def test_update_rev(tmp_dir, dvc, scm, git_dir):

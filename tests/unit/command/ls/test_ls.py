@@ -1,7 +1,7 @@
 import json
 
 from dvc.cli import parse_args
-from dvc.command.ls import CmdList
+from dvc.commands.ls import CmdList
 
 
 def _test_cli(mocker, *args):

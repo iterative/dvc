@@ -15,6 +15,7 @@ def gc(
     all_tags: Optional[bool] = False,
     all_commits: Optional[bool] = False,
     workspace: Optional[bool] = False,
+    commit_date: Optional[str] = None,
     queued: Optional[bool] = False,
 ):
     keep_revs = set(
@@ -22,6 +23,7 @@ def gc(
             all_branches=all_branches,
             all_tags=all_tags,
             all_commits=all_commits,
+            commit_date=commit_date,
             sha_only=True,
         )
     )
@@ -40,11 +42,12 @@ def gc(
     removed = len(to_remove)
 
     delete_stashes = []
-    for _, entry in repo.experiments.stash_revs.items():
+    stash = repo.experiments.celery_queue.stash
+    for stash_rev, entry in stash.stash_revs.items():
         if not queued or entry.baseline_rev not in keep_revs:
-            delete_stashes.append(entry.stash_index)
-    for index in sorted(delete_stashes, reverse=True):
-        repo.experiments.stash.drop(index)
+            delete_stashes.append(stash_rev)
+    if delete_stashes:
+        repo.experiments.celery_queue.remove(delete_stashes)
     removed += len(delete_stashes)
 
     return removed

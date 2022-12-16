@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.main import main
+from dvc.cli import main
 from dvc.utils.fs import remove
 
 
@@ -39,6 +39,22 @@ def _gen(tmp_dir, struct, name):
         (None, {"foo": "foo"}, {"bar": "bar"}, {"foo": "foo", "bar": "bar"}),
         (None, None, {"bar": "bar"}, {"bar": "bar"}),
         (None, {"foo": "foo"}, None, {"foo": "foo"}),
+        (
+            {"foo": "foo"},
+            {"foo": "bar"},
+            {"foo": "foo", "baz": "baz"},
+            {"foo": "bar", "baz": "baz"},
+        ),
+        ({"foo": "foo"}, {}, {"foo": "foo", "bar": "bar"}, {"bar": "bar"}),
+        (
+            {"common": "common", "subdir": {"foo": "foo", "bar": "bar"}},
+            {"common": "common", "subdir": {"foo": "foo", "bar": "baz"}},
+            {"common": "common", "subdir": {"bar": "bar", "bizz": "bizz"}},
+            {
+                "common": "common",
+                "subdir": {"bar": "baz", "bizz": "bizz"},
+            },
+        ),
     ],
 )
 def test_merge(tmp_dir, dvc, ancestor, our, their, merged):
@@ -74,18 +90,15 @@ def test_merge(tmp_dir, dvc, ancestor, our, their, merged):
             {"foo": "foo"},
             {"foo": "bar"},
             {"foo": "baz"},
-            (
-                "unable to auto-merge directories with "
-                "diff that contains 'change'ed files"
-            ),
+            ("unable to auto-merge the following paths:\nfoo"),
         ),
         (
             {"common": "common", "foo": "foo"},
             {"common": "common", "bar": "bar"},
             {"baz": "baz"},
             (
-                "unable to auto-merge directories with "
-                "diff that contains 'remove'ed files"
+                "unable to auto-merge the following paths:\n"
+                "both deleted: ('foo',)"
             ),
         ),
     ],

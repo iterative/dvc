@@ -1,6 +1,6 @@
 import fnmatch
 import logging
-import os
+import time
 import typing
 from contextlib import suppress
 from functools import partial, wraps
@@ -15,13 +15,16 @@ from typing import (
     Union,
 )
 
+from funcy.debug import format_time
+
 from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
     OutputNotFoundError,
 )
 from dvc.repo import lock_repo
-from dvc.utils import parse_target, relpath
+from dvc.ui import ui
+from dvc.utils import as_posix, parse_target, relpath
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,14 @@ if typing.TYPE_CHECKING:
     from dvc.types import OptStr
 
 PIPELINE_FILE = "dvc.yaml"
+
+
+def log_walk(seq):
+    for root, dirs, files in seq:
+        start = time.perf_counter()
+        yield root, dirs, files
+        duration = format_time(time.perf_counter() - start)
+        logger.trace("%s in collecting stages from %s", duration, root)
 
 
 class StageInfo(NamedTuple):
@@ -72,7 +83,6 @@ def _collect_specific_target(
     target: str,
     with_deps: bool,
     recursive: bool,
-    accept_group: bool,
 ) -> Tuple[StageIter, "OptStr", "OptStr"]:
     from dvc.dvcfile import is_valid_filename
 
@@ -88,13 +98,11 @@ def _collect_specific_target(
         msg = "Checking if stage '%s' is in '%s'"
         logger.debug(msg, target, PIPELINE_FILE)
         if not (recursive and loader.fs.isdir(target)):
-            stages = _maybe_collect_from_dvc_yaml(
-                loader, target, with_deps, accept_group=accept_group
-            )
+            stages = _maybe_collect_from_dvc_yaml(loader, target, with_deps)
             if stages:
                 return stages, file, name
     elif not with_deps and is_valid_filename(file):
-        stages = loader.load_all(file, name, accept_group=accept_group)
+        stages = loader.load_all(file, name)
         return stages, file, name
     return [], file, name
 
@@ -132,7 +140,14 @@ class StageLoad:
         )
         with self.repo.scm_context:
             stage.dump(update_lock=update_lock)
-            stage.ignore_outs()
+            try:
+                stage.ignore_outs()
+            except FileNotFoundError as exc:
+                ui.warn(
+                    f"Could not create .gitignore entry in {exc.filename}."
+                    " DVC will attempt to create .gitignore entry again when"
+                    " the stage is run."
+                )
 
         return stage
 
@@ -157,7 +172,12 @@ class StageLoad:
             stage_data: Stage data to create from
                 (see create_stage and loads_from for more information)
         """
-        from dvc.stage import PipelineStage, Stage, create_stage, restore_meta
+        from dvc.stage import (
+            PipelineStage,
+            Stage,
+            create_stage,
+            restore_fields,
+        )
         from dvc.stage.exceptions import InvalidStageName
         from dvc.stage.utils import (
             is_valid_name,
@@ -190,11 +210,11 @@ class StageLoad:
             new_index = self.repo.index.add(stage)
             new_index.check_graph()
 
-        restore_meta(stage)
+        restore_fields(stage)
         return stage
 
     def from_target(
-        self, target: str, accept_group: bool = False, glob: bool = False
+        self, target: str, accept_group: bool = True, glob: bool = False
     ) -> StageList:
         """
         Returns a list of stage from the provided target.
@@ -213,10 +233,9 @@ class StageLoad:
         path, name = parse_target(target)
         return self.load_one(path=path, name=name)
 
-    @staticmethod
-    def _get_filepath(path: str = None, name: str = None) -> str:
+    def _get_filepath(self, path: str = None, name: str = None) -> str:
         if path:
-            return path
+            return self.repo.fs.path.realpath(path)
 
         path = PIPELINE_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
@@ -235,15 +254,12 @@ class StageLoad:
         self,
         stages: "StageLoader",
         name: str = None,
-        accept_group: bool = False,
+        accept_group: bool = True,
         glob: bool = False,
     ) -> Iterable[str]:
 
-        assert not (accept_group and glob)
-
         if not name:
             return stages.keys()
-
         if accept_group and stages.is_foreach_generated(name):
             return self._get_group_keys(stages, name)
         if glob:
@@ -254,7 +270,7 @@ class StageLoad:
         self,
         path: str = None,
         name: str = None,
-        accept_group: bool = False,
+        accept_group: bool = True,
         glob: bool = False,
     ) -> StageList:
         """Load a list of stages from a file.
@@ -323,7 +339,6 @@ class StageLoad:
         with_deps: bool = False,
         recursive: bool = False,
         graph: "DiGraph" = None,
-        accept_group: bool = False,
         glob: bool = False,
     ) -> StageIter:
         """Collect list of stages from the provided target.
@@ -332,15 +347,14 @@ class StageLoad:
             target: if not provided, all of the stages in the graph are
                 returned.
                 Target can be:
-                - a stage name in the `dvc.yaml` file.
+                - a foreach group name or a stage name in the `dvc.yaml` file.
+                - a generated stage name from a foreach group.
                 - a path to `dvc.yaml` or `.dvc` file.
                 - in case of a stage to a dvc.yaml file in a different
                   directory than current working directory, it can be a path
                   to dvc.yaml file, followed by a colon `:`, followed by stage
                   name (eg: `../dvc.yaml:build`).
                 - in case of `recursive`, it can be a path to a directory.
-                - in case of `accept_group`, it can be a group name of
-                    `foreach` generated stage.
                 - in case of `glob`, it can be a wildcard pattern to match
                   stages. Example: `build*` for stages in `dvc.yaml` file, or
                   `../dvc.yaml:build*` for stages in dvc.yaml in a different
@@ -352,8 +366,6 @@ class StageLoad:
             recursive: if true and if `target` is a directory, all of the
                 stages inside that directory is returned.
             graph: graph to use. Defaults to `repo.graph`.
-            accept_group: if true, all of the `foreach` generated stages of
-                the specified target is returned.
             glob: Use `target` as a pattern to match stages in a file.
         """
         if not target:
@@ -362,10 +374,10 @@ class StageLoad:
         if recursive and self.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
 
-            path = os.path.abspath(target)
+            path = self.fs.path.abspath(target)
             return collect_inside_path(path, graph or self.graph)
 
-        stages = self.from_target(target, accept_group=accept_group, glob=glob)
+        stages = self.from_target(target, glob=glob)
         if not with_deps:
             return stages
 
@@ -377,14 +389,14 @@ class StageLoad:
         with_deps: bool = False,
         recursive: bool = False,
         graph: "DiGraph" = None,
-        accept_group: bool = False,
     ) -> List[StageInfo]:
         """Collects a list of (stage, filter_info) from the given target.
 
         Priority is in the order of following in case of ambiguity:
         - .dvc file or .yaml file
         - dir if recursive and directory exists
-        - stage_name
+        - foreach_group_name or stage_name
+        - generated stage name from a foreach group
         - output file
 
         Args:
@@ -400,14 +412,16 @@ class StageLoad:
         if not target:
             return [StageInfo(stage) for stage in self.repo.index]
 
+        target = as_posix(target)
+
         stages, file, _ = _collect_specific_target(
-            self, target, with_deps, recursive, accept_group
+            self, target, with_deps, recursive
         )
         if not stages:
             if not (recursive and self.fs.isdir(target)):
                 try:
                     (out,) = self.repo.find_outs_by_path(target, strict=False)
-                    return [StageInfo(out.stage, os.path.abspath(target))]
+                    return [StageInfo(out.stage, self.fs.path.abspath(target))]
                 except OutputNotFoundError:
                     pass
 
@@ -423,7 +437,6 @@ class StageLoad:
                     with_deps,
                     recursive,
                     graph,
-                    accept_group=accept_group,
                 )
             except StageFileDoesNotExistError as exc:
                 # collect() might try to use `target` as a stage name
@@ -448,10 +461,10 @@ class StageLoad:
                 the collection.
         """
         from dvc.dvcfile import is_valid_filename
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         scm = self.repo.scm
-        sep = os.sep
+        sep = self.fs.sep
         outs: Set[str] = set()
 
         is_local_fs = isinstance(self.fs, LocalFileSystem)
@@ -470,12 +483,14 @@ class StageLoad:
             # trailing slash needed to check if a directory is gitignored
             return dir_path in outs or is_ignored(f"{dir_path}{sep}")
 
-        for root, dirs, files in self.repo.dvcignore.walk(
-            self.fs, self.repo.root_dir
-        ):
+        walk_iter = self.repo.dvcignore.walk(self.fs, self.repo.root_dir)
+        if logger.isEnabledFor(logging.TRACE):  # type: ignore[attr-defined]
+            walk_iter = log_walk(walk_iter)
+
+        for root, dirs, files in walk_iter:
             dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
             for file in filter(dvcfile_filter, files):
-                file_path = os.path.join(root, file)
+                file_path = self.fs.path.join(root, file)
                 try:
                     new_stages = self.load_file(file_path)
                 except DvcException as exc:
@@ -489,9 +504,110 @@ class StageLoad:
                     out.fspath
                     for stage in new_stages
                     for out in stage.outs
-                    if out.scheme == "local"
+                    if out.protocol == "local"
                 )
             dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
 
     def collect_repo(self, onerror: Callable[[str, Exception], None] = None):
         return list(self._collect_repo(onerror))
+
+    def _load_file(self, path):
+        from dvc.dvcfile import Dvcfile
+        from dvc.stage.loader import SingleStageLoader, StageLoader
+
+        path = self._get_filepath(path)
+        dvcfile = Dvcfile(self.repo, path)
+        # `dvcfile.stages` is not cached
+        stages = dvcfile.stages  # type: ignore
+
+        if isinstance(stages, SingleStageLoader):
+            stages_ = [stages[None]]
+        else:
+            assert isinstance(stages, StageLoader)
+            keys = self._get_keys(stages)
+            stages_ = [stages[key] for key in keys]
+
+        return (
+            stages_,
+            stages.metrics_data,
+            stages.plots_data,
+            stages.params_data,
+        )
+
+    def _collect_all_from_repo(
+        self, onerror: Callable[[str, Exception], None] = None
+    ):
+        """Collects all of the stages present in the DVC repo.
+
+        Args:
+            onerror (optional): callable that will be called with two args:
+                the filepath whose collection failed and the exc instance.
+                It can report the error to continue with the collection
+                (and, skip failed ones), or raise the exception to abort
+                the collection.
+        """
+        from dvc.dvcfile import is_valid_filename
+        from dvc.fs import LocalFileSystem
+
+        scm = self.repo.scm
+        sep = self.fs.sep
+        outs: Set[str] = set()
+
+        is_local_fs = isinstance(self.fs, LocalFileSystem)
+
+        def is_ignored(path):
+            # apply only for the local fs
+            return is_local_fs and scm.is_ignored(path)
+
+        def is_dvcfile_and_not_ignored(root, file):
+            return is_valid_filename(file) and not is_ignored(
+                f"{root}{sep}{file}"
+            )
+
+        def is_out_or_ignored(root, directory):
+            dir_path = f"{root}{sep}{directory}"
+            # trailing slash needed to check if a directory is gitignored
+            return dir_path in outs or is_ignored(f"{dir_path}{sep}")
+
+        walk_iter = self.repo.dvcignore.walk(self.fs, self.repo.root_dir)
+        if logger.isEnabledFor(logging.TRACE):  # type: ignore[attr-defined]
+            walk_iter = log_walk(walk_iter)
+
+        stages = []
+        metrics = {}
+        plots = {}
+        params = {}
+
+        for root, dirs, files in walk_iter:
+            dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
+            for file in filter(dvcfile_filter, files):
+                file_path = self.fs.path.join(root, file)
+                try:
+                    (
+                        new_stages,
+                        new_metrics,
+                        new_plots,
+                        new_params,
+                    ) = self._load_file(file_path)
+                except DvcException as exc:
+                    if onerror:
+                        onerror(relpath(file_path), exc)
+                        continue
+                    raise
+
+                stages.extend(new_stages)
+                if new_metrics:
+                    metrics[file_path] = new_metrics
+                if new_plots:
+                    plots[file_path] = new_plots
+                if new_params:
+                    params[file_path] = new_params
+
+                outs.update(
+                    out.fspath
+                    for stage in new_stages
+                    for out in stage.outs
+                    if out.protocol == "local"
+                )
+            dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
+        return stages, metrics, plots, params

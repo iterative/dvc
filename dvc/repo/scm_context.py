@@ -46,7 +46,7 @@ class SCMContext:
     @staticmethod
     def _make_git_add_cmd(paths: Union[str, Iterable[str]]) -> str:
         files = " ".join(map(shlex.quote, ensure_list(paths)))
-        return f"\tgit add {files}".expandtabs(4)
+        return f"\tgit add {files}"
 
     def add(self, paths: Union[str, Iterable[str]]) -> None:
         from scmrepo.exceptions import UnsupportedIndexFormat
@@ -75,13 +75,13 @@ class SCMContext:
 
         from dvc.scm import SCMError
 
-        logger.debug("Adding '%s' to gitignore file.", path)
         try:
             gitignore_file = self.scm.ignore(path)
         except FileNotInRepoError as exc:
             raise SCMError(str(exc))
 
         if gitignore_file:
+            logger.debug("Added '%s' to gitignore file.", path)
             self.track_file(relpath(gitignore_file))
             return self.ignored_paths.append(path)
 
@@ -124,7 +124,11 @@ class SCMContext:
 
         if autostage:
             self.track_changed_files()
-        elif not quiet and not isinstance(self.scm, NoSCM):
+        elif (
+            not quiet
+            and not isinstance(self.scm, NoSCM)
+            and logger.isEnabledFor(logging.INFO)
+        ):
             add_cmd = self._make_git_add_cmd(self.files_to_track)
             logger.info(
                 f"\nTo track the changes with git, run:\n" f"\n{add_cmd}"

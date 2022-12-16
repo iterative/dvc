@@ -28,14 +28,14 @@ def _reproduce_stage(stage: "Stage", **kwargs):
         else:
             raise DvcException(
                 "Checkpoint stages are not supported in 'dvc repro'. "
-                "Checkpoint stages must be reproduced with 'dvc exp run' "
-                "or 'dvc exp resume'."
+                "Checkpoint stages must be reproduced with 'dvc exp run'. "
             )
 
     if stage.frozen and not stage.is_import:
         logger.warning(
-            "{} is frozen. Its dependencies are"
-            " not going to be reproduced.".format(stage)
+            "%s is frozen. Its dependencies are"
+            " not going to be reproduced.",
+            stage,
         )
 
     stage = stage.reproduce(**kwargs)
@@ -64,18 +64,14 @@ def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
         if (
             not dep.use_scm_ignore
             and dep.is_in_repo
-            and not stage.repo.repo_fs.isdvc(dep.fs_path)
+            and not stage.repo.dvcfs.isdvc(
+                stage.repo.dvcfs.from_os_path(str(dep))
+            )
         ):
             yield dep.fs_path
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
             yield out.fs_path
-        if out.live:
-            from dvc.repo.live import summary_fs_path
-
-            summary = summary_fs_path(out)
-            if summary:
-                yield summary
 
 
 def _track_stage(stage: "Stage") -> None:
@@ -100,7 +96,6 @@ def reproduce(
     from .graph import get_pipeline, get_pipelines
 
     glob = kwargs.pop("glob", False)
-    accept_group = not glob
 
     if isinstance(targets, str):
         targets = [targets]
@@ -135,7 +130,6 @@ def reproduce(
                 self.stage.collect(
                     target,
                     recursive=recursive,
-                    accept_group=accept_group,
                     glob=glob,
                 )
             )
@@ -218,7 +212,7 @@ def _reproduce_stages(
         except CheckpointKilledError:
             raise
         except Exception as exc:
-            raise ReproductionError(stage.relpath) from exc
+            raise ReproductionError(stage.addressing) from exc
 
     if on_unchanged is not None:
         on_unchanged(unchanged)

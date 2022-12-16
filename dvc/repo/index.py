@@ -1,17 +1,20 @@
 from contextlib import suppress
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
     Dict,
     Iterable,
     Iterator,
     List,
+    NamedTuple,
     Optional,
-    Sequence,
     Set,
+    Tuple,
+    Union,
 )
 
-from funcy import cached_property, memoize, nullcontext
+from funcy import cached_property, nullcontext
 
 from dvc.utils import dict_md5
 
@@ -20,12 +23,14 @@ if TYPE_CHECKING:
     from pygtrie import Trie
 
     from dvc.dependency import Dependency, ParamsDependency
-    from dvc.fs.base import FileSystem
-    from dvc.objects import HashInfo, ObjectDB
+    from dvc.fs import FileSystem
     from dvc.output import Output
-    from dvc.repo.stage import StageLoad
+    from dvc.repo.stage import StageInfo, StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
+    from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.index import DataIndex, DataIndexKey, DataIndexView
+    from dvc_objects.db import ObjectDB
 
 
 ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]
@@ -62,17 +67,69 @@ class Index:
         self.stage_collector: "StageLoad" = repo.stage
         if stages is not None:
             self.stages: List["Stage"] = stages
+        self._collected_targets: Dict[int, List["StageInfo"]] = {}
+        self._metrics: Dict[str, List[str]] = {}
+        self._plots: Dict[str, Any] = {}
+        self._params: Dict[str, List[str]] = {}
 
     @cached_property
     def stages(self) -> List["Stage"]:  # pylint: disable=method-hidden
         # note that ideally we should be keeping this in a set as it is unique,
         # hashable and has no concept of orderliness on its own. But we depend
         # on this to be somewhat ordered for status/metrics/plots, etc.
+        return self._collect()
+
+    @cached_property
+    def _top_metrics(self):
+        self._collect()
+        return self._metrics
+
+    @cached_property
+    def _top_plots(self):
+        self._collect()
+        return self._plots
+
+    @cached_property
+    def _plot_sources(self):
+        from dvc.repo.plots import _collect_pipeline_files
+
+        sources = []
+        for data in _collect_pipeline_files(self.repo, [], {}).values():
+            for plot_id, props in data.get("data", {}).items():
+                if isinstance(props.get("y"), dict):
+                    sources.extend(props["y"])
+                    if isinstance(props.get("x"), dict):
+                        sources.extend(props["x"])
+                else:
+                    sources.append(plot_id)
+        return sources
+
+    @cached_property
+    def _top_params(self):
+        self._collect()
+        return self._params
+
+    def _collect(self):
+        if "stages" in self.__dict__:
+            return self.stages
+
         onerror = self.repo.stage_collection_error_handler
-        return self.stage_collector.collect_repo(onerror=onerror)
+
+        # pylint: disable=protected-access
+        (
+            stages,
+            metrics,
+            plots,
+            params,
+        ) = self.stage_collector._collect_all_from_repo(onerror=onerror)
+        self.stages = stages
+        self._metrics = metrics
+        self._plots = plots
+        self._params = params
+        return stages
 
     def __repr__(self) -> str:
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         rev = "workspace"
         if not isinstance(self.fs, LocalFileSystem):
@@ -89,6 +146,13 @@ class Index:
     def __iter__(self) -> Iterator["Stage"]:
         yield from self.stages
 
+    def __getitem__(self, item: str) -> "Stage":
+        """Get a stage by its addressing attribute."""
+        for stage in self:
+            if stage.addressing == item:
+                return stage
+        raise KeyError(f"{item} - available stages are {self.stages}")
+
     def filter(self, filter_fn: Callable[["Stage"], bool]) -> "Index":
         stages_it = filter(filter_fn, self)
         return Index(self.repo, self.fs, stages=list(stages_it))
@@ -103,6 +167,72 @@ class Index:
             return path_isin(stage.path_in_repo, target_path)
 
         return self.filter(is_stage_inside_path)
+
+    @staticmethod
+    def _hash_targets(
+        targets: Iterable[Optional[str]],
+        **kwargs: Any,
+    ) -> int:
+        return hash(
+            (
+                frozenset(targets),
+                kwargs.get("with_deps", False),
+                kwargs.get("recursive", False),
+            )
+        )
+
+    def collect_targets(
+        self, targets: Optional["TargetType"], **kwargs: Any
+    ) -> List["StageInfo"]:
+        from itertools import chain
+
+        from dvc.repo.stage import StageInfo
+        from dvc.utils.collections import ensure_list
+
+        targets = ensure_list(targets)
+        if not targets:
+            return [StageInfo(stage) for stage in self.stages]
+        targets_hash = self._hash_targets(targets, **kwargs)
+        if targets_hash not in self._collected_targets:
+            self._collected_targets[targets_hash] = list(
+                chain.from_iterable(
+                    self.stage_collector.collect_granular(target, **kwargs)
+                    for target in targets
+                )
+            )
+        return self._collected_targets[targets_hash]
+
+    def targets_view(
+        self,
+        targets: Optional["TargetType"],
+        stage_filter: Optional[Callable[["Stage"], bool]] = None,
+        outs_filter: Optional[Callable[["Output"], bool]] = None,
+        **kwargs: Any,
+    ) -> "IndexView":
+        """Return read-only view of index for the specified targets.
+
+        Args:
+            targets: Targets to collect
+            stage_filter: Optional stage filter to be applied after collecting
+                targets.
+            outs_filter: Optional output filter to be applied after collecting
+                targets.
+
+        Additional kwargs will be passed into the stage collector.
+
+        Note:
+            If both stage_filter and outs_filter are provided, stage_filter
+            will be applied first, and the resulting view will only contain
+            outputs from stages that matched stage_filter. Outputs from stages
+            that did not match will be excluded from the view (whether or not
+            the output would have matched outs_filter).
+        """
+        stage_infos = [
+            stage_info
+            for stage_info in self.collect_targets(targets, **kwargs)
+            if not stage_filter or stage_filter(stage_info.stage)
+        ]
+        return IndexView(self, stage_infos, outs_filter=outs_filter)
 
     @property
     def outs(self) -> Iterator["Output"]:
@@ -146,15 +276,41 @@ class Index:
 
         return build_outs_trie(self.stages)
 
-    @property
+    @cached_property
     def graph(self) -> "DiGraph":
-        return self.build_graph()
+        from dvc.repo.graph import build_graph
+
+        return build_graph(self.stages, self.outs_trie)
 
     @cached_property
     def outs_graph(self) -> "DiGraph":
         from dvc.repo.graph import build_outs_graph
 
         return build_outs_graph(self.graph, self.outs_trie)
+
+    @cached_property
+    def data(self) -> "Dict[str, DataIndex]":
+        from collections import defaultdict
+
+        from dvc_data.index import DataIndex
+
+        by_workspace: dict = defaultdict(DataIndex)
+
+        by_workspace["repo"] = DataIndex()
+        by_workspace["local"] = DataIndex()
+
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            workspace, key = out.index_key
+            data_index = by_workspace[workspace]
+
+            entry = out.get_entry()
+            entry.key = key
+            data_index.add(entry)
+
+        return dict(by_workspace)
 
     def used_objs(
         self,
@@ -164,30 +320,21 @@ class Index:
         force: bool = False,
         recursive: bool = False,
         jobs: int = None,
+        push: bool = False,
     ) -> "ObjectContainer":
         from collections import defaultdict
-        from itertools import chain
-
-        from dvc.utils.collections import ensure_list
 
         used: "ObjectContainer" = defaultdict(set)
-        collect_targets: Sequence[Optional[str]] = (None,)
-        if targets:
-            collect_targets = ensure_list(targets)
-
-        pairs = chain.from_iterable(
-            self.stage_collector.collect_granular(
-                target, recursive=recursive, with_deps=with_deps
-            )
-            for target in collect_targets
+        pairs = self.collect_targets(
+            targets, recursive=recursive, with_deps=with_deps
         )
-
         for stage, filter_info in pairs:
             for odb, objs in stage.get_used_objs(
                 remote=remote,
                 force=force,
                 jobs=jobs,
                 filter_info=filter_info,
+                push=push,
             ).items():
                 used[odb].update(objs)
         return used
@@ -230,15 +377,9 @@ class Index:
             stages.remove(stage)
         return stages
 
-    @memoize
-    def build_graph(self) -> "DiGraph":
-        from dvc.repo.graph import build_graph
-
-        return build_graph(self.stages, self.outs_trie)
-
     def check_graph(self) -> None:
         if not getattr(self.repo, "_skip_graph_checks", False):
-            self.build_graph()
+            self.graph  # pylint: disable=pointless-statement
 
     def dumpd(self) -> Dict[str, Dict]:
         def dump(stage: "Stage"):
@@ -263,10 +404,118 @@ class Index:
         return dict_md5(self.dumpd())
 
 
+class _DataPrefixes(NamedTuple):
+    explicit: Set["DataIndexKey"]
+    recursive: Set["DataIndexKey"]
+
+
+class IndexView:
+    """Read-only view of Index.data using filtered stages."""
+
+    def __init__(  # pylint: disable=redefined-outer-name
+        self,
+        index: Index,
+        stage_infos: Iterable["StageInfo"],
+        outs_filter: Optional[Callable[["Output"], bool]],
+    ):
+        self._index = index
+        self._stage_infos = stage_infos
+        # NOTE: stage_infos might have the same stage multiple times but with
+        # different filter_info
+        self._stages = list({stage for stage, _ in stage_infos})
+        self._outs_filter = outs_filter
+
+    def __len__(self) -> int:
+        return len(self._stages)
+
+    def __contains__(self, stage: "Stage") -> bool:
+        # as we are keeping stages inside a list, it might be slower.
+        return stage in self._stages
+
+    def __iter__(self) -> Iterator["Stage"]:
+        yield from self._stages
+
+    def __getitem__(self, item: str) -> "Stage":
+        """Get a stage by its addressing attribute."""
+        for stage in self:
+            if stage.addressing == item:
+                return stage
+        raise KeyError(f"{item} - available stages are {self.stages}")
+
+    @property
+    def stages(self):
+        return self._stages
+
+    @property
+    def deps(self) -> Iterator["Dependency"]:
+        for stage in self:
+            yield from stage.deps
+
+    @property
+    def _filtered_outs(self) -> Iterator[Tuple["Output", Optional[str]]]:
+        for stage, filter_info in self._stage_infos:
+            for out in stage.filter_outs(filter_info):
+                if not self._outs_filter or self._outs_filter(out):
+                    yield out, filter_info
+
+    @property
+    def outs(self) -> Iterator["Output"]:
+        yield from {out for (out, _) in self._filtered_outs}
+
+    @cached_property
+    def _data_prefixes(self) -> Dict[str, "_DataPrefixes"]:
+        from collections import defaultdict
+
+        prefixes: Dict[str, "_DataPrefixes"] = defaultdict(
+            lambda: _DataPrefixes(set(), set())
+        )
+        for out, filter_info in self._filtered_outs:
+            workspace, key = out.index_key
+            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
+                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            if out.meta.isdir:
+                prefixes[workspace].recursive.add(key)
+            prefixes[workspace].explicit.update(
+                key[:i] for i in range(len(key), 0, -1)
+            )
+        return prefixes
+
+    @cached_property
+    def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
+        from functools import partial
+
+        from dvc_data.index import DataIndex, view
+
+        def key_filter(workspace: str, key: "DataIndexKey"):
+            try:
+                prefixes = self._data_prefixes[workspace]
+                return key in prefixes.explicit or any(
+                    key[: len(prefix)] == prefix
+                    for prefix in prefixes.recursive
+                )
+            except KeyError:
+                return False
+
+        data: Dict[str, Union["DataIndex", "DataIndexView"]] = {}
+        for workspace, data_index in self._index.data.items():
+            if self._stages:
+                data[workspace] = view(
+                    data_index, partial(key_filter, workspace)
+                )
+            else:
+                data[workspace] = DataIndex()
+        return data
+
+
 if __name__ == "__main__":
+    import logging
+
     from funcy import log_durations
 
+    from dvc.logger import setup
     from dvc.repo import Repo
+
+    setup(level=logging.TRACE)  # type: ignore[attr-defined]
 
     repo = Repo()
     index = Index(repo, repo.fs)
@@ -275,7 +524,7 @@ if __name__ == "__main__":
         # pylint: disable=pointless-statement
         print("no of stages", len(index.stages))
     with log_durations(print, "building graph"):
-        index.build_graph()
+        index.graph  # pylint: disable=pointless-statement
     with log_durations(print, "calculating hash"):
         print(index.identifier)
     with log_durations(print, "updating"):

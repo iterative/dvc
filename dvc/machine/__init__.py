@@ -37,6 +37,8 @@ sudo wget https://dvc.org/deb/dvc.list
 sudo apt-get update
 sudo apt-get install --yes dvc
 popd
+
+sudo echo "OK" > /var/log/dvc-machine-init.log
 """
 
 
@@ -188,6 +190,7 @@ class MachineManager:
         else:
             startup_script = DEFAULT_STARTUP_SCRIPT
         config["startup_script"] = startup_script
+        config.pop("setup_script", None)
         return backend.create(**config)
 
     def destroy(self, name: Optional[str]):
@@ -215,3 +218,7 @@ class MachineManager:
     def get_executor_kwargs(self, name: Optional[str]):
         config, backend = self.get_config_and_backend(name)
         return backend.get_executor_kwargs(**config)
+
+    def get_setup_script(self, name: Optional[str]) -> Optional[str]:
+        config, _backend = self.get_config_and_backend(name)
+        return config.get("setup_script")

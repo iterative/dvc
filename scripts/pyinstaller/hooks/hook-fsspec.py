@@ -1,0 +1,1 @@
+hiddenimports = ["fsspec.implementations.memory"]

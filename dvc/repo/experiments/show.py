@@ -1,197 +1,480 @@
 import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from enum import Enum
+from itertools import chain
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
-from dvc.exceptions import InvalidArgumentError
-from dvc.repo import locked
-from dvc.repo.experiments.base import ExpRefInfo
-from dvc.repo.experiments.utils import fix_exp_head
+from scmrepo.exceptions import SCMError as InnerScmError
+
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
-from dvc.utils import error_handler, onerror_collect
+from dvc.scm import SCMError, iter_revs, resolve_rev
+from dvc.utils import error_handler, onerror_collect, relpath
+
+from .refs import ExpRefInfo
+
+if TYPE_CHECKING:
+    from scmrepo.git import Git
+    from scmrepo.git.objects import GitCommit
+
+    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
 
+class ExpStatus(Enum):
+    Success = 0
+    Queued = 1
+    Running = 2
+    Failed = 3
+
+
+def _is_scm_error(collected_exp: Dict[str, Any]) -> bool:
+    if "error" in collected_exp and (
+        isinstance(collected_exp["error"], SCMError)
+        or isinstance(collected_exp["error"], InnerScmError)
+    ):
+        return True
+    return False
+
+
+def _show_onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
+    onerror_collect(result, exception, *args, **kwargs)
+    result["data"] = {}
+
+
 @error_handler
-def _collect_experiment_commit(
-    repo,
-    exp_rev,
-    stash=False,
-    sha_only=True,
+def collect_experiment_commit(
+    repo: "Repo",
+    exp_rev: str,
+    status: ExpStatus = ExpStatus.Success,
     param_deps=False,
-    running=None,
+    running: Optional[Dict[str, Any]] = None,
     onerror: Optional[Callable] = None,
-):
-    res: Dict[str, Optional[Any]] = defaultdict(dict)
+) -> Dict[str, Any]:
+    from dvc.dependency import ParamsDependency, RepoDependency
+
+    result: Dict[str, Any] = defaultdict(dict)
+    running = running or {}
     for rev in repo.brancher(revs=[exp_rev]):
         if rev == "workspace":
             if exp_rev != "workspace":
                 continue
-            res["timestamp"] = None
+            result["timestamp"] = None
         else:
             commit = repo.scm.resolve_commit(rev)
-            res["timestamp"] = datetime.fromtimestamp(commit.commit_time)
+            result["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
         params = _gather_params(
             repo, rev=rev, targets=None, deps=param_deps, onerror=onerror
         )
         if params:
-            res["params"] = params
+            result["params"] = params
 
-        res["queued"] = stash
-        if running is not None and exp_rev in running:
-            res["running"] = True
-            res["executor"] = running[exp_rev].get("location")
+        result["deps"] = {
+            relpath(dep.fs_path, repo.root_dir): {
+                "hash": dep.hash_info.value,
+                "size": dep.meta.size,
+                "nfiles": dep.meta.nfiles,
+            }
+            for dep in repo.index.deps
+            if not isinstance(dep, (ParamsDependency, RepoDependency))
+        }
+        result["outs"] = {
+            relpath(out.fs_path, repo.root_dir): {
+                "hash": out.hash_info.value,
+                "size": out.meta.size,
+                "nfiles": out.meta.nfiles,
+                "use_cache": out.use_cache,
+                "is_data_source": out.stage.is_data_source,
+            }
+            for out in repo.index.outs
+            if not (out.is_metric or out.is_plot)
+        }
+
+        result["status"] = status.name
+        if status == ExpStatus.Running:
+            result["executor"] = running.get(exp_rev, {}).get("location", None)
         else:
-            res["running"] = False
-            res["executor"] = None
-        if not stash:
+            result["executor"] = None
+
+        if status == ExpStatus.Failed:
+            result["error"] = {
+                "msg": "Experiment run failed.",
+                "type": "",
+            }
+
+        if status not in {ExpStatus.Queued, ExpStatus.Failed}:
             vals = _gather_metrics(
                 repo, targets=None, rev=rev, recursive=False, onerror=onerror
             )
-            res["metrics"] = vals
+            result["metrics"] = vals
 
-        if not sha_only and rev != "workspace":
-            for refspec in ["refs/tags", "refs/heads"]:
-                name = repo.scm.describe(rev, base=refspec)
-                if name:
-                    break
-            if not name:
-                name = repo.experiments.get_exact_name(rev)
-            if name:
-                name = name.rsplit("/")[-1]
-                res["name"] = name
-
-    return res
+    return result
 
 
-def _collect_experiment_branch(
-    res, repo, branch, baseline, onerror: Optional[Callable] = None, **kwargs
-):
-    from dvc.scm import resolve_rev
+def _collect_complete_experiment(
+    repo: "Repo",
+    baseline: str,
+    exp_rev: str,
+    running: Dict[str, Any],
+    revs: List[str],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    results: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
 
-    exp_rev = resolve_rev(repo.scm, branch)
-    prev = None
-    revs = list(repo.scm.branch_revs(exp_rev, baseline))
+    checkpoint: bool = True if len(revs) > 1 else False
+    prev = ""
+
     for rev in revs:
-        collected_exp = _collect_experiment_commit(
-            repo, rev, onerror=onerror, **kwargs
+        status = ExpStatus.Running if rev in running else ExpStatus.Success
+        collected_exp = collect_experiment_commit(
+            repo,
+            rev,
+            status=status,
+            running=running,
+            **kwargs,
         )
-        if len(revs) > 1:
+        if _is_scm_error(collected_exp):
+            return {}
+        if checkpoint:
             exp = {"checkpoint_tip": exp_rev}
             if prev:
-                res[prev]["data"][  # type: ignore[unreachable]
+                results[prev]["data"][  # type: ignore[unreachable]
                     "checkpoint_parent"
                 ] = rev
-            if rev in res:
-                res[rev]["data"].update(exp)
-                res.move_to_end(rev)
+            if rev in results:
+                results[rev]["data"].update(exp)
+                results.move_to_end(rev)
             else:
                 exp.update(collected_exp["data"])
         else:
             exp = collected_exp["data"]
-        if rev not in res:
-            res[rev] = {"data": exp}
+        if rev not in results:
+            results[rev] = {"data": exp}
         prev = rev
-    if len(revs) > 1:
-        res[prev]["data"]["checkpoint_parent"] = baseline
-    return res
+    if checkpoint and prev:
+        results[prev]["data"]["checkpoint_parent"] = baseline
+    return results
 
 
-@locked
+def _collect_branch(
+    repo: "Repo",
+    baseline: str,
+    running: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    results: Dict[str, Dict[str, Any]] = OrderedDict()
+    status = ExpStatus.Running if baseline in running else ExpStatus.Success
+    results["baseline"] = collect_experiment_commit(
+        repo,
+        baseline,
+        status=status,
+        running=running,
+        **kwargs,
+    )
+    if baseline == "workspace" or _is_scm_error(results["baseline"]):
+        return results
+
+    ref_info = ExpRefInfo(baseline_sha=baseline)
+    commits: List[Tuple[str, "GitCommit", str, List[str]]] = []
+
+    for ref in repo.scm.iter_refs(base=str(ref_info)):
+        try:
+            commit = repo.scm.resolve_commit(ref)
+            exp_rev = resolve_rev(repo.scm, ref)
+            revs = list(repo.scm.branch_revs(exp_rev, baseline))
+        except (SCMError, InnerScmError):
+            continue
+        commits.append((ref, commit, exp_rev, revs))
+
+    for exp_ref, _, exp_rev, revs in sorted(
+        commits, key=lambda x: x[1].commit_time, reverse=True
+    ):
+        ref_info = ExpRefInfo.from_ref(exp_ref)
+        assert ref_info.baseline_sha == baseline
+        collected_exp = _collect_complete_experiment(
+            repo,
+            baseline=baseline,
+            exp_rev=exp_rev,
+            running=running,
+            revs=revs,
+            **kwargs,
+        )
+        if _is_scm_error(collected_exp):
+            continue
+        results.update(collected_exp)
+    return results
+
+
+def get_branch_names(
+    scm: "Git", baseline_set: Iterable[str]
+) -> Dict[str, Optional[str]]:
+    names: Dict[str, Optional[str]] = {}
+    for base in [
+        f"refs/exps/{baseline[:2]}/{baseline[2:]}/"
+        for baseline in baseline_set
+    ] + ["refs/heads/", "refs/tags/"]:
+        for ref in scm.iter_refs(base=base):
+            if ref:
+                try:
+                    rev = scm.get_ref(ref)
+                    names[rev] = ref[len(base) :]
+                except KeyError:
+                    logger.debug("unreosolved ref %s", ref)
+    logger.debug("found refs for revs: %s", names)
+    return names
+
+
+def update_names(
+    repo: "Repo",
+    branch_names: Dict[str, Optional[str]],
+    result: Dict[str, Dict[str, Any]],
+):
+
+    rev_set = set()
+    for baseline in result:
+        for rev in result[baseline]:
+            if rev == "baseline":
+                rev = baseline
+            if rev != "workspace":
+                rev_set.add(rev)
+
+    if rev_set:
+        rev_set.difference_update(branch_names.keys())
+
+    exact_name = repo.experiments.get_exact_name(rev_set)
+
+    for baseline, baseline_results in result.items():
+        name_set: Set[str] = set()
+        for rev, rev_result in baseline_results.items():
+            name: Optional[str] = None
+            if rev == "baseline":
+                rev = baseline
+                if rev == "workspace":
+                    continue
+            name = branch_names.get(rev, None) or exact_name[rev]
+            if name and name not in name_set:
+                name_set.add(name)
+                rev_result["data"]["name"] = name
+
+
+def _collect_active_experiment(
+    repo: "Repo",
+    found_revs: Dict[str, List[str]],
+    running: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    result: Dict[str, Dict] = defaultdict(OrderedDict)
+    for entry in chain(
+        repo.experiments.tempdir_queue.iter_active(),
+        repo.experiments.celery_queue.iter_active(),
+    ):
+        stash_rev = entry.stash_rev
+        if entry.baseline_rev in found_revs and (
+            stash_rev not in running or not running[stash_rev].get("last")
+        ):
+            collected_exp = collect_experiment_commit(
+                repo,
+                stash_rev,
+                status=ExpStatus.Running,
+                running=running,
+                **kwargs,
+            )
+            if _is_scm_error(collected_exp):
+                continue
+            result[entry.baseline_rev][stash_rev] = collected_exp
+    return result
+
+
+def _collect_queued_experiment(
+    repo: "Repo",
+    found_revs: Dict[str, List[str]],
+    running: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    result: Dict[str, Dict] = defaultdict(OrderedDict)
+    for entry in repo.experiments.celery_queue.iter_queued():
+        stash_rev = entry.stash_rev
+        if entry.baseline_rev in found_revs:
+            collected_exp = collect_experiment_commit(
+                repo,
+                stash_rev,
+                status=ExpStatus.Queued,
+                running=running,
+                **kwargs,
+            )
+            if _is_scm_error(collected_exp):
+                continue
+            result[entry.baseline_rev][stash_rev] = collected_exp
+    return result
+
+
+def _collect_failed_experiment(
+    repo: "Repo",
+    found_revs: Dict[str, List[str]],
+    running: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    result: Dict[str, Dict] = defaultdict(OrderedDict)
+    for queue_done_result in repo.experiments.celery_queue.iter_failed():
+        entry = queue_done_result.entry
+        stash_rev = entry.stash_rev
+        if entry.baseline_rev in found_revs:
+            collected_exp = collect_experiment_commit(
+                repo,
+                stash_rev,
+                status=ExpStatus.Failed,
+                running=running,
+                **kwargs,
+            )
+            if _is_scm_error(collected_exp):
+                continue
+            result[entry.baseline_rev][stash_rev] = collected_exp
+    return result
+
+
+def update_new(
+    to_dict: Dict[str, Dict[str, Any]], from_dict: Dict[str, Dict[str, Any]]
+):
+    for baseline, experiments in from_dict.items():
+        for rev, experiment in experiments.items():
+            to_dict[baseline][rev] = to_dict[baseline].get(rev, experiment)
+
+
+def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
+    for _, baseline_results in result.items():
+        checkpoint: bool = False
+        head: Dict[str, Any] = {}
+        for rev, rev_data in baseline_results.items():
+            if (
+                "data" not in rev_data
+                or rev_data["data"].get("checkpoint_tip", None) is None
+            ):
+                checkpoint = False
+                head = {}
+                continue
+
+            rev_result: Dict[str, Any] = rev_data["data"]
+            if (
+                checkpoint is True
+                and rev_result["checkpoint_tip"] == head["checkpoint_tip"]
+            ):
+                if "name" in rev_result and "name" not in head:
+                    head["name"] = rev_result["name"]
+                    del rev_result["name"]
+                if rev_result["executor"]:
+                    if not head["executor"]:
+                        head["executor"] = rev_result["executor"]
+                    rev_result["executor"] = None
+                if rev_result["status"] == ExpStatus.Running.name:
+                    head["status"] = ExpStatus.Running.name
+                    rev_result["status"] = ExpStatus.Success.name
+            else:
+                if rev_result["checkpoint_tip"] == rev:
+                    head = rev_result
+                    checkpoint = True
+
+
 def show(
-    repo,
+    repo: "Repo",
     all_branches=False,
     all_tags=False,
-    revs=None,
+    revs: Union[List[str], str, None] = None,
     all_commits=False,
+    hide_queued=False,
+    hide_failed=False,
     sha_only=False,
     num=1,
     param_deps=False,
     onerror: Optional[Callable] = None,
+    fetch_running: bool = True,
 ):
-    if onerror is None:
-        onerror = onerror_collect
+
+    if repo.scm.no_commits:
+        return {}
+
+    onerror = onerror or _show_onerror_collect
 
     res: Dict[str, Dict] = defaultdict(OrderedDict)
 
-    if num < 1:
-        raise InvalidArgumentError(f"Invalid number of commits '{num}'")
+    if not any([revs, all_branches, all_tags, all_commits]):
+        revs = ["HEAD"]
+    if isinstance(revs, str):
+        revs = [revs]
 
-    if revs is None:
-        from dvc.scm import RevError, resolve_rev
+    found_revs: Dict[str, List[str]] = {"workspace": []}
+    found_revs.update(
+        iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
+    )
+    branch_names = get_branch_names(repo.scm, found_revs)
 
-        revs = []
-        for n in range(num):
-            try:
-                head = fix_exp_head(repo.scm, f"HEAD~{n}")
-                assert head
-                revs.append(resolve_rev(repo.scm, head))
-            except RevError:
-                break
-
-    revs = OrderedDict(
-        (rev, None)
-        for rev in repo.brancher(
-            revs=revs,
-            all_branches=all_branches,
-            all_tags=all_tags,
-            all_commits=all_commits,
-            sha_only=True,
-        )
+    running: Dict[str, Dict] = repo.experiments.get_running_exps(
+        fetch_refs=fetch_running
     )
 
-    running = repo.experiments.get_running_exps()
-
-    for rev in revs:
-        res[rev]["baseline"] = _collect_experiment_commit(
+    queued_experiment = (
+        _collect_queued_experiment(
             repo,
-            rev,
-            sha_only=sha_only,
+            found_revs,
+            running,
             param_deps=param_deps,
+            onerror=onerror,
+        )
+        if not hide_queued
+        else {}
+    )
+
+    active_experiment = _collect_active_experiment(
+        repo,
+        found_revs,
+        running,
+        param_deps=param_deps,
+        onerror=onerror,
+    )
+
+    failed_experiments = (
+        _collect_failed_experiment(
+            repo,
+            found_revs,
+            running,
+            param_deps=param_deps,
+            onerror=onerror,
+        )
+        if not hide_failed
+        else {}
+    )
+
+    for baseline in found_revs:
+        res[baseline] = _collect_branch(
+            repo,
+            baseline,
             running=running,
+            param_deps=param_deps,
             onerror=onerror,
         )
 
-        if rev == "workspace":
-            continue
+    update_new(res, failed_experiments)
 
-        ref_info = ExpRefInfo(baseline_sha=rev)
-        commits = [
-            (ref, repo.scm.resolve_commit(ref))
-            for ref in repo.scm.iter_refs(base=str(ref_info))
-        ]
-        for exp_ref, _ in sorted(
-            commits, key=lambda x: x[1].commit_time, reverse=True
-        ):
-            ref_info = ExpRefInfo.from_ref(exp_ref)
-            assert ref_info.baseline_sha == rev
-            _collect_experiment_branch(
-                res[rev],
-                repo,
-                exp_ref,
-                rev,
-                sha_only=sha_only,
-                param_deps=param_deps,
-                running=running,
-                onerror=onerror,
-            )
-        # collect queued (not yet reproduced) experiments
-        for stash_rev, entry in repo.experiments.stash_revs.items():
-            if entry.baseline_rev in revs:
-                if stash_rev not in running or not running[stash_rev].get(
-                    "last"
-                ):
-                    experiment = _collect_experiment_commit(
-                        repo,
-                        stash_rev,
-                        sha_only=sha_only,
-                        stash=stash_rev not in running,
-                        param_deps=param_deps,
-                        running=running,
-                        onerror=onerror,
-                    )
-                    res[entry.baseline_rev][stash_rev] = experiment
+    update_new(res, active_experiment)
+
+    update_new(res, queued_experiment)
+
+    if not sha_only:
+        update_names(repo, branch_names, res)
+
+    move_properties_to_head(res)
+
     return res

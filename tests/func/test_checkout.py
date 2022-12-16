@@ -1,15 +1,13 @@
-import collections
-import filecmp
 import logging
 import os
 import shutil
 import stat
 import textwrap
-from unittest.mock import patch
 
 import pytest
 
-from dvc.dvcfile import DVC_FILE_SUFFIX, PIPELINE_FILE, Dvcfile
+from dvc.cli import main
+from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 from dvc.exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
@@ -17,479 +15,382 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
-from dvc.fs.local import LocalFileSystem
-from dvc.main import main
+from dvc.fs import LocalFileSystem, system
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
 from dvc.utils import relpath
-from dvc.utils.fs import remove, walk_files
+from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
-from tests.basic_env import TestDvc, TestDvcGit
-from tests.func.test_repro import TestRepro
+from tests.utils import get_gitignore_content
 
 logger = logging.getLogger("dvc")
 
 
-class TestCheckout(TestRepro):
-    def setUp(self):
-        super().setUp()
-
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.data_dir_stage = stages[0]
-        self.assertTrue(self.data_dir_stage is not None)
-
-        self.orig = "orig"
-        shutil.copy(self.FOO, self.orig)
-        os.unlink(self.FOO)
-
-        self.orig_dir = "orig_dir"
-        shutil.copytree(self.DATA_DIR, self.orig_dir)
-        shutil.rmtree(self.DATA_DIR)
-
-    def test(self):
-        self.dvc.checkout(force=True)
-        self._test_checkout()
-
-    def _test_checkout(self):
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertTrue(filecmp.cmp(self.FOO, self.orig, shallow=False))
+def walk_files(directory):
+    for root, _, files in os.walk(directory):
+        for f in files:
+            yield os.path.join(root, f)
 
 
-class TestCheckoutSingleStage(TestCheckout):
-    def test(self):
-        ret = main(["checkout", "--force", self.foo_stage.path])
-        self.assertEqual(ret, 0)
+def test_checkout(tmp_dir, dvc, copy_script):
+    tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
+    dvc.run(
+        fname="file1.dvc",
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        single_stage=True,
+    )
+    remove(tmp_dir / "foo")
+    remove("data")
 
-        ret = main(["checkout", "--force", self.data_dir_stage.path])
-        self.assertEqual(ret, 0)
-
-        self._test_checkout()
-
-
-class TestCheckoutCorruptedCacheFile(TestRepro):
-    def test(self):
-        cache = self.foo_stage.outs[0].cache_path
-
-        os.chmod(cache, 0o644)
-        with open(cache, "a", encoding="utf-8") as fd:
-            fd.write("1")
-
-        with pytest.raises(CheckoutError):
-            self.dvc.checkout(force=True)
-
-        self.assertFalse(os.path.isfile(self.FOO))
-        self.assertFalse(os.path.isfile(cache))
+    dvc.checkout(force=True)
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "data").read_text() == {"file": "file"}
 
 
-class TestCheckoutCorruptedCacheDir(TestDvc):
-    def test(self):
-        from dvc.objects import load
+def test_checkout_cli(tmp_dir, dvc, copy_script):
+    tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
+    dvc.run(
+        fname="file1.dvc",
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        single_stage=True,
+    )
+    remove(tmp_dir / "foo")
+    remove("data")
 
-        # NOTE: using 'copy' so that cache and link don't have same inode
-        ret = main(["config", "cache.type", "copy"])
-        self.assertEqual(ret, 0)
+    assert main(["checkout", "--force"]) == 0
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "data").read_text() == {"file": "file"}
 
-        self.dvc.config.load()
+    remove(tmp_dir / "foo")
+    remove("data")
 
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.assertEqual(len(stages[0].outs), 1)
-        out = stages[0].outs[0]
-
-        # NOTE: modifying cache file for one of the files inside the directory
-        # to check if dvc will detect that the cache is corrupted.
-        obj = load(self.dvc.odb.local, out.hash_info)
-        _, _, entry_oid = list(obj)[0]
-        cache = self.dvc.odb.local.hash_to_path(entry_oid.value)
-
-        os.chmod(cache, 0o644)
-        with open(cache, "w+", encoding="utf-8") as fobj:
-            fobj.write("1")
-
-        with pytest.raises(CheckoutError):
-            self.dvc.checkout(force=True)
-
-        self.assertFalse(os.path.exists(cache))
+    assert main(["checkout", "--force", "foo.dvc"]) == 0
+    assert main(["checkout", "--force", "data.dvc"]) == 0
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "data").read_text() == {"file": "file"}
 
 
-class TestCmdCheckout(TestCheckout):
-    def test(self):
-        ret = main(["checkout", "--force"])
-        self.assertEqual(ret, 0)
-        self._test_checkout()
+def test_checkout_corrupted_cache_file(tmp_dir, dvc):
+    (foo_stage,) = tmp_dir.dvc_gen("foo", "foo")
+    cache = foo_stage.outs[0].cache_path
+
+    os.chmod(cache, 0o644)
+    with open(cache, "a", encoding="utf-8") as fd:
+        fd.write("1")
+
+    with pytest.raises(CheckoutError):
+        dvc.checkout(force=True)
+
+    assert not os.path.isfile("foo")
+    assert not os.path.isfile(cache)
 
 
-class CheckoutBase(TestDvcGit):
-    GIT_IGNORE = ".gitignore"
+def test_checkout_corrupted_cache_dir(tmp_dir, dvc):
+    from dvc_data.hashfile import load
 
-    def commit_data_file(self, fname, content="random text"):
-        with open(fname, "w", encoding="utf-8") as fd:
-            fd.write(content)
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-        self.dvc.scm.add([fname + ".dvc", ".gitignore"])
-        self.dvc.scm.commit("adding " + fname)
+    tmp_dir.gen("data", {"foo": "foo", "bar": "bar"})
+    # NOTE: using 'copy' so that cache and link don't have same inode
+    ret = main(["config", "cache.type", "copy"])
+    assert ret == 0
 
-    def read_ignored(self):
-        with open(self.GIT_IGNORE, encoding="utf-8") as f:
-            return [s.strip("\n") for s in f.readlines()]
+    dvc.config.load()
 
-    def outs_info(self, stage):
-        FileInfo = collections.namedtuple("FileInfo", "path inode")
+    stages = dvc.add("data")
+    assert len(stages) == 1
+    assert len(stages[0].outs) == 1
+    out = stages[0].outs[0]
 
-        paths = [
-            path
-            for output in stage["outs"]
-            for path in self.dvc.fs.find(output["path"])
-        ]
+    # NOTE: modifying cache file for one of the files inside the directory
+    # to check if dvc will detect that the cache is corrupted.
+    obj = load(dvc.odb.local, out.hash_info)
+    _, _, entry_oid = list(obj)[0]
+    cache = dvc.odb.local.oid_to_path(entry_oid.value)
 
-        return [
-            FileInfo(path=path, inode=System.inode(path)) for path in paths
-        ]
+    os.chmod(cache, 0o644)
+    with open(cache, "w+", encoding="utf-8") as fobj:
+        fobj.write("1")
 
+    with pytest.raises(CheckoutError):
+        dvc.checkout(force=True)
 
-class TestRemoveFilesWhenCheckout(CheckoutBase):
-    def test(self):
-        fname = "file_in_a_branch"
-        branch_master = "master"
-        branch_1 = "b1"
-
-        self.dvc.scm.add(self.dvc.scm.untracked_files())
-        self.dvc.scm.commit("add all files")
-
-        # add the file into a separate branch
-        self.dvc.scm.checkout(branch_1, True)
-        ret = main(["checkout", "--force"])
-        self.assertEqual(ret, 0)
-        self.commit_data_file(fname)
-
-        # Checkout back in master
-        self.dvc.scm.checkout(branch_master)
-        self.assertTrue(os.path.exists(fname))
-
-        # Make sure `dvc checkout` removes the file
-        # self.dvc.checkout()
-        ret = main(["checkout", "--force"])
-        self.assertEqual(ret, 0)
-        self.assertFalse(os.path.exists(fname))
+    assert not os.path.exists(cache)
 
 
-class TestCheckoutCleanWorkingDir(CheckoutBase):
-    @patch("dvc.prompt.confirm", return_value=True)
-    def test(self, mock_prompt):
-        mock_prompt.return_value = True
+def test_remove_files_when_checkout(tmp_dir, dvc, scm):
+    # add the file into a separate branch
+    scm.checkout("branch", True)
+    ret = main(["checkout", "--force"])
+    assert ret == 0
+    tmp_dir.dvc_gen("file_in_a_branch", "random text", commit="add file")
 
-        stages = self.dvc.add(self.DATA_DIR)
-        stage = stages[0]
+    # Checkout back in master
+    scm.checkout("master")
+    assert os.path.exists("file_in_a_branch")
 
-        working_dir_change = os.path.join(self.DATA_DIR, "not_cached.txt")
-        with open(working_dir_change, "w", encoding="utf-8") as f:
-            f.write("not_cached")
+    # Make sure `dvc checkout` removes the file
+    # self.dvc.checkout()
+    ret = main(["checkout", "--force"])
+    assert ret == 0
+    assert not os.path.exists("file_in_a_branch")
 
-        ret = main(["checkout", stage.relpath])
-        self.assertEqual(ret, 0)
-        self.assertFalse(os.path.exists(working_dir_change))
 
-    @patch("dvc.prompt.confirm", return_value=False)
-    def test_force(self, mock_prompt):
-        mock_prompt.return_value = False
+class TestCheckoutCleanWorkingDir:
+    def test(self, mocker, tmp_dir, dvc):  # pylint: disable=unused-argument
+        mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=True)
+        (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-
-        working_dir_change = os.path.join(self.DATA_DIR, "not_cached.txt")
-        with open(working_dir_change, "w", encoding="utf-8") as f:
-            f.write("not_cached")
-
-        ret = main(["checkout", stage.relpath])
-        self.assertNotEqual(ret, 0)
-
+        # change working directory
+        (tmp_dir / "data").gen("not_cached.txt", "not_cached")
+        assert main(["checkout", stage.relpath]) == 0
         mock_prompt.assert_called()
-        self.assertNotEqual(ret, 0)
-        self.assertRaises(DvcException)
+        assert not (tmp_dir / "data" / "not_cached.txt").exists()
+
+    def test_force(self, mocker, tmp_dir, dvc):
+        mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=False)
+        (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
+
+        # change working directory
+        (tmp_dir / "data").gen("not_cached.txt", "not_cached")
+        assert main(["checkout", stage.relpath]) != 0
+        mock_prompt.assert_called()
+        assert (tmp_dir / "data" / "not_cached.txt").exists()
+
+
+def test_checkout_selective_remove(tmp_dir, dvc):
+    # Use copy to test for changes in the inodes
+    dvc.odb.local.cache_types = ["copy"]
+    tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    foo_inode = system.inode(os.path.join("data", "foo"))
+    bar_inode = system.inode(os.path.join("data", "bar"))
+    # move instead of remove, to lock inode assigned to stage_files[0].path
+    # if we were to use remove, we might end up with same inode assigned to
+    # newly checked out file
+    shutil.move(os.path.join("data", "foo"), "random_name")
+
+    assert main(["checkout", "--force", "data.dvc"]) == 0
+    assert (tmp_dir / "data").read_text() == {"foo": "foo", "bar": "bar"}
+    assert system.inode(os.path.join("data", "foo")) != foo_inode
+    assert system.inode(os.path.join("data", "bar")) == bar_inode
+
+
+def test_gitignore_basic(tmp_dir, dvc, scm):
+    tmp_dir.gen("foo", "foo")
+    assert not os.path.exists(scm.GITIGNORE)
+
+    tmp_dir.dvc_gen("file1", "random text1", commit="add file1")
+    tmp_dir.dvc_gen("file2", "random text2", commit="add file2")
+    dvc.run(
+        single_stage=True,
+        cmd="cp foo file3",
+        deps=["foo"],
+        outs_no_cache=["file3"],
+    )
+    assert get_gitignore_content() == ["/file1", "/file2"]
+
+
+def test_gitignore_when_checkout(tmp_dir, dvc, scm):
+    tmp_dir.dvc_gen("file_in_a_master", "master", commit="master")
 
+    scm.checkout("branch", True)
+    ret = main(["checkout", "--force"])
+    assert ret == 0
+    tmp_dir.dvc_gen("file_in_a_branch", "branch", commit="branch")
+
+    scm.checkout("master")
+    ret = main(["checkout", "--force"])
+    assert ret == 0
+
+    ignored = get_gitignore_content()
+
+    assert len(ignored) == 1
+    assert "/file_in_a_master" in ignored
+
+    scm.checkout("branch")
+    ret = main(["checkout", "--force"])
+    assert ret == 0
+    ignored = get_gitignore_content()
+    assert "/file_in_a_branch" in ignored
+
+
+def test_checkout_missing_md5_in_stage_file(tmp_dir, dvc, copy_script):
+    tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
+    stage = dvc.run(
+        fname="file1.dvc",
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        single_stage=True,
+    )
+    d = load_yaml(stage.relpath)
+    del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
+    del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
+    dump_yaml(stage.relpath, d)
+
+    with pytest.raises(CheckoutError):
+        dvc.checkout(force=True)
+
+
+def test_checkout_empty_dir(tmp_dir, dvc):
+    empty_dir = tmp_dir / "empty_dir"
+    empty_dir.mkdir()
+    (stage,) = dvc.add("empty_dir")
+
+    stage.outs[0].remove()
+    assert not empty_dir.exists()
+
+    stats = dvc.checkout(force=True)
+    assert stats["added"] == [os.path.join("empty_dir", "")]
+    assert empty_dir.is_dir()
+    assert not list(empty_dir.iterdir())
+
 
-class TestCheckoutSelectiveRemove(CheckoutBase):
-    def test(self):
-        # Use copy to test for changes in the inodes
-        ret = main(["config", "cache.type", "copy"])
-        self.assertEqual(ret, 0)
+def test_checkout_not_cached_file(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.run(
+        cmd="cp foo bar",
+        deps=["foo"],
+        outs_no_cache=["bar"],
+        single_stage=True,
+    )
+    stats = dvc.checkout(force=True)
+    assert not any(stats.values())
 
-        ret = main(["add", self.DATA_DIR])
-        self.assertEqual(0, ret)
+
+def test_checkout_with_deps_cli(tmp_dir, dvc, copy_script):
+    tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
+    dvc.run(
+        fname="file1.dvc",
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        single_stage=True,
+    )
+    remove("foo")
+    remove("file1")
 
-        stage_path = self.DATA_DIR + DVC_FILE_SUFFIX
-        stage = load_yaml(stage_path)
-        staged_files = self.outs_info(stage)
+    assert not os.path.exists("foo")
+    assert not os.path.exists("file1")
 
-        # move instead of remove, to lock inode assigned to stage_files[0].path
-        # if we were to use remove, we might end up with same inode assigned to
-        # newly checked out file
-        shutil.move(staged_files[0].path, "random_name")
+    ret = main(["checkout", "--force", "file1.dvc", "--with-deps"])
+    assert ret == 0
 
-        ret = main(["checkout", "--force", stage_path])
-        self.assertEqual(ret, 0)
+    assert os.path.exists("foo")
+    assert os.path.exists("file1")
 
-        checkedout_files = self.outs_info(stage)
 
-        self.assertEqual(len(staged_files), len(checkedout_files))
-        self.assertEqual(staged_files[0].path, checkedout_files[0].path)
-        self.assertNotEqual(staged_files[0].inode, checkedout_files[0].inode)
-        self.assertEqual(staged_files[1].inode, checkedout_files[1].inode)
+def test_checkout_directory(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
 
+    remove("data")
+    assert not os.path.exists("data")
 
-class TestGitIgnoreBasic(CheckoutBase):
-    def test(self):
-        fname1 = "file_1"
-        fname2 = "file_2"
-        fname3 = "file_3"
+    ret = main(["checkout", stage.path])
+    assert ret == 0
 
-        self.dvc.scm.add(self.dvc.scm.untracked_files())
-        self.dvc.scm.commit("add all files")
+    assert os.path.exists("data")
 
-        self.assertFalse(os.path.exists(self.GIT_IGNORE))
 
-        self.commit_data_file(fname1)
-        self.commit_data_file(fname2)
-        self.dvc.run(
-            single_stage=True,
-            cmd=f"python {self.CODE} {self.FOO} {fname3}",
-            deps=[self.CODE, self.FOO],
-            outs_no_cache=[fname3],
-        )
+def test_checkout_hook(mocker, tmp_dir, dvc):
+    """Test that dvc checkout handles EOFError gracefully, which is what
+    it will experience when running in a git hook.
+    """
+    tmp_dir.dvc_gen({"data": {"foo": "foo"}})
+    mocker.patch("sys.stdout.isatty", return_value=True)
+    mocker.patch("dvc.prompt.input", side_effect=EOFError)
 
-        self.assertTrue(os.path.exists(self.GIT_IGNORE))
+    (tmp_dir / "data").gen("test", "test")
+    with pytest.raises(ConfirmRemoveError):
+        dvc.checkout()
 
-        ignored = self.read_ignored()
 
-        self.assertEqual(len(ignored), 2)
+def test_checkout_suggest_git(tmp_dir, dvc, scm):
+    # pylint: disable=no-member
+    tmp_dir.dvc_gen("foo", "foo")
+    try:
+        dvc.checkout(targets="gitbranch")
+    except DvcException as exc:
+        assert isinstance(exc, CheckoutErrorSuggestGit)
+        assert isinstance(exc.__cause__, NoOutputOrStageError)
+        assert isinstance(exc.__cause__.__cause__, StageFileDoesNotExistError)
 
-        self.assertIn("/" + fname1, ignored)
-        self.assertIn("/" + fname2, ignored)
+    try:
+        dvc.checkout(targets="foo")
+    except DvcException as exc:
+        assert isinstance(exc, CheckoutErrorSuggestGit)
+        assert isinstance(exc.__cause__, NoOutputOrStageError)
+        assert exc.__cause__.__cause__ is None
 
+    try:
+        dvc.checkout(targets="looks-like-dvcfile.dvc")
+    except DvcException as exc:
+        assert isinstance(exc, CheckoutErrorSuggestGit)
+        assert isinstance(exc.__cause__, StageFileDoesNotExistError)
+        assert exc.__cause__.__cause__ is None
 
-class TestGitIgnoreWhenCheckout(CheckoutBase):
-    def test(self):
-        fname_master = "file_in_a_master"
-        branch_master = "master"
-        fname_branch = "file_in_a_branch"
-        branch_1 = "b1"
 
-        self.dvc.scm.add(self.dvc.scm.untracked_files())
-        self.dvc.scm.commit("add all files")
-        self.commit_data_file(fname_master)
+def test_checkout_target_recursive_should_not_remove_other_used_files(
+    tmp_dir, dvc
+):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar", "data": {"file": "file"}})
+    assert main(["checkout", "-R", "data"]) == 0
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "bar").exists()
 
-        self.dvc.scm.checkout(branch_1, True)
-        ret = main(["checkout", "--force"])
-        self.assertEqual(ret, 0)
-        self.commit_data_file(fname_branch)
 
-        self.dvc.scm.checkout(branch_master)
-        ret = main(["checkout", "--force"])
-        self.assertEqual(ret, 0)
+def test_checkout_recursive_not_directory(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    ret = main(["add", "foo"])
+    assert ret == 0
 
-        ignored = self.read_ignored()
+    stats = dvc.checkout(targets=["foo" + ".dvc"], recursive=True)
+    assert stats == {"added": [], "modified": [], "deleted": []}
 
-        self.assertEqual(len(ignored), 1)
-        self.assertIn("/" + fname_master, ignored)
 
-        self.dvc.scm.checkout(branch_1)
-        ret = main(["checkout", "--force"])
-        self.assertEqual(ret, 0)
-        ignored = self.read_ignored()
-        self.assertIn("/" + fname_branch, ignored)
+def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
+    tmp_dir.gen({"foo": "foo", "data": {"file": "file"}})
+    ret = main(["config", "cache.type", "symlink"])
+    assert ret == 0
 
+    ret = main(["add", "foo"])
+    assert ret == 0
 
-class TestCheckoutMissingMd5InStageFile(TestRepro):
-    def test(self):
-        d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
-        dump_yaml(self.file1_stage, d)
+    ret = main(["add", "data"])
+    assert ret == 0
 
-        with pytest.raises(CheckoutError):
-            self.dvc.checkout(force=True)
+    assert system.is_symlink("foo")
+    old_foo_link = os.path.realpath("foo")
 
+    assert system.is_symlink(os.path.join("data", "file"))
+    old_data_link = os.path.realpath(os.path.join("data", "file"))
 
-class TestCheckoutEmptyDir(TestDvc):
-    def test(self):
-        dname = "empty_dir"
-        os.mkdir(dname)
+    old_cache_dir = dvc.odb.local.path
+    new_cache_dir = old_cache_dir + "_new"
+    os.rename(old_cache_dir, new_cache_dir)
 
-        stages = self.dvc.add(dname)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
-        self.assertEqual(len(stage.outs), 1)
+    ret = main(["cache", "dir", new_cache_dir])
+    assert ret == 0
 
-        stage.outs[0].remove()
-        self.assertFalse(os.path.exists(dname))
+    ret = main(["checkout", "-f"])
+    assert ret == 0
 
-        stats = self.dvc.checkout(force=True)
-        assert stats["added"] == [dname + os.sep]
+    assert system.is_symlink("foo")
+    new_foo_link = os.path.realpath("foo")
 
-        self.assertTrue(os.path.isdir(dname))
-        self.assertEqual(len(os.listdir(dname)), 0)
+    assert system.is_symlink(os.path.join("data", "file"))
+    new_data_link = os.path.realpath(os.path.join("data", "file"))
 
+    assert relpath(old_foo_link, old_cache_dir) == relpath(
+        new_foo_link, new_cache_dir
+    )
 
-class TestCheckoutNotCachedFile(TestDvc):
-    def test(self):
-        cmd = "python {} {} {}".format(self.CODE, self.FOO, "out")
-
-        self.dvc.add(self.FOO)
-        stage = self.dvc.run(
-            cmd=cmd,
-            deps=[self.FOO, self.CODE],
-            outs_no_cache=["out"],
-            single_stage=True,
-        )
-        self.assertTrue(stage is not None)
-
-        stats = self.dvc.checkout(force=True)
-        assert not any(stats.values())
-
-
-class TestCheckoutWithDeps(TestRepro):
-    def test(self):
-        os.unlink(self.FOO)
-        os.unlink(self.file1)
-
-        self.assertFalse(os.path.exists(self.FOO))
-        self.assertFalse(os.path.exists(self.file1))
-
-        ret = main(["checkout", "--force", self.file1_stage, "--with-deps"])
-        self.assertEqual(ret, 0)
-
-        self.assertTrue(os.path.exists(self.FOO))
-        self.assertTrue(os.path.exists(self.file1))
-
-
-class TestCheckoutDirectory(TestRepro):
-    def test(self):
-        stage = self.dvc.add(self.DATA_DIR)[0]
-
-        shutil.rmtree(self.DATA_DIR)
-        self.assertFalse(os.path.exists(self.DATA_DIR))
-
-        ret = main(["checkout", stage.path])
-        self.assertEqual(ret, 0)
-
-        self.assertTrue(os.path.exists(self.DATA_DIR))
-
-
-class TestCheckoutHook(TestDvc):
-    @patch("sys.stdout.isatty", return_value=True)
-    @patch("dvc.prompt.input", side_effect=EOFError)
-    def test(self, _mock_input, _mock_isatty):
-        """Test that dvc checkout handles EOFError gracefully, which is what
-        it will experience when running in a git hook.
-        """
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertNotEqual(stage, None)
-
-        self.create(os.path.join(self.DATA_DIR, "test"), "test")
-
-        with self.assertRaises(ConfirmRemoveError):
-            self.dvc.checkout()
-
-
-class TestCheckoutSuggestGit(TestRepro):
-    def test(self):
-        # pylint: disable=no-member
-
-        try:
-            self.dvc.checkout(targets="gitbranch")
-        except DvcException as exc:
-            self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.__cause__, NoOutputOrStageError)
-            self.assertIsInstance(
-                exc.__cause__.__cause__, StageFileDoesNotExistError
-            )
-
-        try:
-            self.dvc.checkout(targets=self.FOO)
-        except DvcException as exc:
-            self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.__cause__, NoOutputOrStageError)
-            self.assertIsNone(exc.__cause__.__cause__)
-
-        try:
-            self.dvc.checkout(targets="looks-like-dvcfile.dvc")
-        except DvcException as exc:
-            self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.__cause__, StageFileDoesNotExistError)
-            self.assertIsNone(exc.__cause__.__cause__)
-
-
-class TestCheckoutTargetRecursiveShouldNotRemoveOtherUsedFiles(TestDvc):
-    def test(self):
-        ret = main(["add", self.DATA_DIR, self.FOO, self.BAR])
-        self.assertEqual(0, ret)
-
-        ret = main(["checkout", "-R", self.DATA_DIR])
-        self.assertEqual(0, ret)
-
-        self.assertTrue(os.path.exists(self.FOO))
-        self.assertTrue(os.path.exists(self.BAR))
-
-
-class TestCheckoutRecursiveNotDirectory(TestDvc):
-    def test(self):
-        ret = main(["add", self.FOO])
-        self.assertEqual(0, ret)
-
-        stats = self.dvc.checkout(targets=[self.FOO + ".dvc"], recursive=True)
-        assert stats == {"added": [], "modified": [], "deleted": []}
-
-
-class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
-    def test(self):
-        ret = main(["config", "cache.type", "symlink"])
-        self.assertEqual(ret, 0)
-
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
-
-        ret = main(["add", self.DATA_DIR])
-        self.assertEqual(ret, 0)
-
-        self.assertTrue(System.is_symlink(self.FOO))
-        old_foo_link = os.path.realpath(self.FOO)
-
-        self.assertTrue(System.is_symlink(self.DATA))
-        old_data_link = os.path.realpath(self.DATA)
-
-        old_cache_dir = self.dvc.odb.local.cache_dir
-        new_cache_dir = old_cache_dir + "_new"
-        os.rename(old_cache_dir, new_cache_dir)
-
-        ret = main(["cache", "dir", new_cache_dir])
-        self.assertEqual(ret, 0)
-
-        ret = main(["checkout", "-f"])
-        self.assertEqual(ret, 0)
-
-        self.assertTrue(System.is_symlink(self.FOO))
-        new_foo_link = os.path.realpath(self.FOO)
-
-        self.assertTrue(System.is_symlink(self.DATA))
-        new_data_link = os.path.realpath(self.DATA)
-
-        self.assertEqual(
-            relpath(old_foo_link, old_cache_dir),
-            relpath(new_foo_link, new_cache_dir),
-        )
-
-        self.assertEqual(
-            relpath(old_data_link, old_cache_dir),
-            relpath(new_data_link, new_cache_dir),
-        )
+    assert relpath(old_data_link, old_cache_dir) == relpath(
+        new_data_link, new_cache_dir
+    )
 
 
 def test_checkout_no_checksum(tmp_dir, dvc):
@@ -506,7 +407,7 @@ def test_checkout_no_checksum(tmp_dir, dvc):
 
 @pytest.mark.parametrize(
     "link, link_test_func",
-    [("hardlink", System.is_hardlink), ("symlink", System.is_symlink)],
+    [("hardlink", system.is_hardlink), ("symlink", system.is_symlink)],
 )
 def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
     dvc.odb.local.cache_types = [link]

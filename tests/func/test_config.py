@@ -3,8 +3,8 @@ import textwrap
 
 import pytest
 
+from dvc.cli import main
 from dvc.config import Config, ConfigError
-from dvc.main import main
 
 
 def test_config_set(tmp_dir, dvc):
@@ -239,6 +239,7 @@ def test_merging_two_levels(dvc):
     assert dvc.config["remote"]["test"] == {
         "url": "ssh://example.com",
         "password": "1",
+        "verify": False,
     }
 
 
@@ -276,6 +277,16 @@ def test_load_relative_paths(dvc, field, remote_url):
     assert cfg["remote"]["test"][field] == os.path.join(
         dvc_dir, "..", "file.txt"
     )
+
+
+def test_config_gdrive_fields(tmp_dir, dvc):
+    with dvc.config.edit() as conf:
+        conf["remote"]["test"] = {
+            "url": "gdrive://root/test",
+            "profile": "myprofile",
+        }
+
+    Config(validate=True)
 
 
 def test_config_remote(tmp_dir, dvc, capsys):

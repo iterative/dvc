@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from ruamel.yaml import StreamMark
     from voluptuous import MultipleInvalid
 
-    from dvc.fs.base import FileSystem
+    from dvc.fs import FileSystem
     from dvc.ui import RichText
 
 
@@ -71,13 +71,20 @@ def _prepare_code_snippets(
 
 
 class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
-    def __init__(self, path: str, yaml_text: str, exc: Exception) -> None:
+    def __init__(
+        self,
+        path: str,
+        yaml_text: str,
+        exc: Exception,
+        rev: Optional[str] = None,
+    ) -> None:
         self.path: str = path
         self.yaml_text: str = yaml_text
         self.exc: Exception = exc
 
         merge_conflicts = merge_conflict_marker.search(self.yaml_text)
         self.hint = " (possible merge conflicts)" if merge_conflicts else ""
+        self.rev: Optional[str] = rev
         super().__init__(self.path)
 
     def __pretty_exc__(self, **kwargs: Any) -> None:
@@ -133,7 +140,9 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             lines.insert(0, "")
 
         rel = make_relpath(self.path)
-        lines.insert(0, _prepare_message(f"'{rel}' is invalid{self.hint}."))
+        rev_msg = f" in revision '{self.rev[:7]}'" if self.rev else ""
+        msg_fmt = f"'{rel}' is invalid{self.hint}{rev_msg}."
+        lines.insert(0, _prepare_message(msg_fmt))
         for line in lines:
             ui.error_write(line, styled=True)
 
@@ -189,6 +198,7 @@ class YAMLValidationError(PrettyDvcException):
         exc: "MultipleInvalid",
         path: str = None,
         text: str = None,
+        rev: str = None,
     ) -> None:
         self.text = text or ""
         self.exc = exc
@@ -197,6 +207,7 @@ class YAMLValidationError(PrettyDvcException):
         self.path = path or ""
 
         message = f"'{rel}' validation failed"
+        message += f" in revision '{rev[:7]}'" if rev else ""
         if len(self.exc.errors) > 1:
             message += f": {len(self.exc.errors)} errors"
         super().__init__(f"{message}")
@@ -254,13 +265,14 @@ def validate(
     schema: Callable[[_T], _T],
     text: str = None,
     path: str = None,
+    rev: str = None,
 ) -> _T:
     from voluptuous import MultipleInvalid
 
     try:
         return schema(data)
     except MultipleInvalid as exc:
-        raise YAMLValidationError(exc, path, text) from exc
+        raise YAMLValidationError(exc, path, text, rev=rev) from exc
 
 
 def load(
@@ -271,6 +283,8 @@ def load(
     round_trip: bool = False,
 ) -> Any:
     open_fn = fs.open if fs else open
+    rev = getattr(fs, "rev", None)
+
     try:
         with open_fn(path, encoding=encoding) as fd:  # type: ignore
             text = fd.read()
@@ -279,10 +293,10 @@ def load(
         raise EncodingError(path, encoding) from exc
     except YAMLFileCorruptedError as exc:
         cause = exc.__cause__
-        raise YAMLSyntaxError(path, text, exc) from cause
+        raise YAMLSyntaxError(path, text, exc, rev=rev) from cause
 
     if schema:
         # not returning validated data, as it may remove
         # details from CommentedMap that we get from roundtrip parser
-        validate(data, schema, text=text, path=path)
+        validate(data, schema, text=text, path=path, rev=rev)
     return data, text

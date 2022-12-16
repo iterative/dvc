@@ -8,7 +8,7 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
 from dvc.utils.fs import remove
-from dvc.utils.serialize import YAMLFileCorruptedError
+from dvc.utils.serialize import JSONFileCorruptedError, YAMLFileCorruptedError
 
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
@@ -21,6 +21,32 @@ def test_show_simple(tmp_dir, dvc, run_copy_metrics):
     }
 
 
+def test_show_simple_from_subdir(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+    tmp_dir.gen("metrics_t.yaml", "1.1")
+    run_copy_metrics(
+        "metrics_t.yaml",
+        "subdir/metrics.yaml",
+        metrics=["subdir/metrics.yaml"],
+    )
+
+    expected_path = os.path.join("subdir", "metrics.yaml")
+    assert dvc.metrics.show() == {"": {"data": {expected_path: {"data": 1.1}}}}
+
+    expected_path = os.path.join("..", "subdir", "metrics.yaml")
+    with subdir.chdir():
+        assert dvc.metrics.show() == {
+            "": {"data": {expected_path: {"data": 1.1}}}
+        }
+    subdir2 = tmp_dir / "subdir2"
+    subdir2.mkdir()
+    with subdir2.chdir():
+        assert dvc.metrics.show() == {
+            "": {"data": {expected_path: {"data": 1.1}}}
+        }
+
+
 def test_show(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
     run_copy_metrics(
@@ -29,6 +55,29 @@ def test_show(tmp_dir, dvc, run_copy_metrics):
     assert dvc.metrics.show() == {
         "": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}
     }
+
+
+def test_show_toml(tmp_dir, dvc, run_copy_metrics):
+    tmp_dir.gen("metrics_t.toml", "[foo]\nbar = 1.2")
+    run_copy_metrics(
+        "metrics_t.toml", "metrics.toml", metrics=["metrics.toml"]
+    )
+    assert dvc.metrics.show() == {
+        "": {"data": {"metrics.toml": {"data": {"foo": {"bar": 1.2}}}}}
+    }
+
+
+def test_show_targets(tmp_dir, dvc, run_copy_metrics):
+    tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
+    run_copy_metrics(
+        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
+    )
+    expected = {"": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}}
+    assert dvc.metrics.show(targets=["metrics.yaml"]) == expected
+    assert (
+        dvc.metrics.show(targets=(tmp_dir / "metrics.yaml").fs_path)
+        == expected
+    )
 
 
 def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
@@ -205,7 +254,7 @@ def test_show_malformed_metric(tmp_dir, scm, dvc, caplog):
         dvc.metrics.show(targets=["metric.json"])[""]["data"]["metric.json"][
             "error"
         ],
-        YAMLFileCorruptedError,
+        JSONFileCorruptedError,
     )
 
 
@@ -249,7 +298,7 @@ def test_metrics_show_overlap(
     # so as it works even for optimized cases
     if clear_before_run:
         remove(data_dir)
-        remove(dvc.odb.local.cache_dir)
+        remove(dvc.odb.local.path)
 
     dvc._reset()
 

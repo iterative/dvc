@@ -119,16 +119,32 @@ def test_wdir_failed_to_interpolate(tmp_dir, dvc, wdir, expected_msg):
 
 def test_interpolate_non_string(tmp_dir, dvc):
     definition = make_entry_definition(
-        tmp_dir, "build", {"cmd": "echo ${models}"}, Context(models={})
+        tmp_dir, "build", {"outs": "${models}"}, Context(models={})
+    )
+    with pytest.raises(ResolveError) as exc_info:
+        definition.resolve()
+
+    assert str(exc_info.value) == (
+        "failed to parse 'stages.build.outs' in 'dvc.yaml':\n"
+        "Cannot interpolate data of type 'dict'"
+    )
+    assert definition.context == {"models": {}}
+
+
+def test_interpolate_nested_iterable(tmp_dir, dvc):
+    definition = make_entry_definition(
+        tmp_dir,
+        "build",
+        {"cmd": "echo ${models}"},
+        Context(models={"list": [1, [2, 3]]}),
     )
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve()
 
     assert str(exc_info.value) == (
         "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
-        "Cannot interpolate data of type 'dict'"
+        "Cannot interpolate nested iterable in 'list'"
     )
-    assert definition.context == {"models": {}}
 
 
 def test_partial_vars_doesnot_exist(tmp_dir, dvc):

@@ -3,9 +3,9 @@ import os
 
 import pytest
 
+from dvc.cli import main
 from dvc.config import Config
 from dvc.exceptions import InitError
-from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 
 
@@ -64,7 +64,7 @@ def test_init_quiet_should_not_display_welcome_screen(tmp_dir, scm, caplog):
     with caplog.at_level(logging.INFO, logger="dvc"):
         ret = main(["init", "--quiet"])
 
-        assert 0 == ret
+        assert ret == 0
         assert "" == caplog.text
 
 

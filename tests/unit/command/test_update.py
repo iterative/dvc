@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.update import CmdUpdate
+from dvc.commands.update import CmdUpdate
 
 
 def test_update(dvc, mocker):
@@ -26,6 +26,7 @@ def test_update(dvc, mocker):
         rev="REV",
         recursive=True,
         to_remote=False,
+        no_download=False,
         remote=None,
         jobs=8,
     )
@@ -56,6 +57,7 @@ def test_update_to_remote(dvc, mocker):
         rev=None,
         recursive=True,
         to_remote=True,
+        no_download=False,
         remote="remote",
         jobs=5,
     )

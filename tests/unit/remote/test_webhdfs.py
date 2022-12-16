@@ -1,9 +1,6 @@
-from unittest.mock import Mock, create_autospec
-
 import pytest
 import requests
-
-from dvc.fs.webhdfs import WebHDFSFileSystem
+from dvc_webhdfs import WebHDFSFileSystem
 
 host = "host"
 kerberos = False
@@ -16,8 +13,8 @@ use_https = True
 user = "test"
 
 
-@pytest.fixture()
-def webhdfs_config():
+@pytest.fixture(name="webhdfs_config")
+def fixture_webhdfs_config():
     url = f"webhdfs://{user}@{host}:{port}"
     url_config = WebHDFSFileSystem._get_kwargs_from_urls(url)
     return {
@@ -43,9 +40,11 @@ def test_init(dvc, webhdfs_config):
     assert fs.fs_args["use_https"] == use_https
 
 
-def test_verify_ssl(dvc, webhdfs_config, monkeypatch):
-    mock_session = create_autospec(requests.Session)
-    monkeypatch.setattr(requests, "Session", Mock(return_value=mock_session))
+def test_verify_ssl(dvc, webhdfs_config, monkeypatch, mocker):
+    mock_session = mocker.create_autospec(requests.Session)
+    monkeypatch.setattr(
+        requests, "Session", mocker.Mock(return_value=mock_session)
+    )
     # can't have token at the same time as user or proxy_to
     del webhdfs_config["token"]
     fs = WebHDFSFileSystem(**webhdfs_config)

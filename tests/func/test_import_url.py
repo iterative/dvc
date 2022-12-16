@@ -5,43 +5,40 @@ from uuid import uuid4
 
 import pytest
 
-from dvc.dependency.base import DependencyDoesNotExistError
+from dvc.annotations import Annotation
+from dvc.cli import main
+from dvc.dependency.base import Dependency, DependencyDoesNotExistError
+from dvc.dvcfile import Dvcfile
 from dvc.exceptions import InvalidArgumentError
-from dvc.main import main
 from dvc.stage import Stage
-from dvc.testing.test_workspace import TestImport as _TestImport
+from dvc.testing.workspace_tests import TestImport as _TestImport
 from dvc.utils.fs import makedirs
-from tests.basic_env import TestDvc
 
 
-class TestCmdImport(TestDvc):
-    def test(self):
-        ret = main(["import-url", self.FOO, "import"])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.exists("import.dvc"))
+def test_cmd_import(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    ret = main(["import-url", "foo", "import"])
+    assert ret == 0
+    assert os.path.exists("import.dvc")
 
-        ret = main(["import-url", "non-existing-file", "import"])
-        self.assertNotEqual(ret, 0)
-
-    def test_unsupported(self):
-        ret = main(["import-url", "unsupported://path", "import_unsupported"])
-        self.assertNotEqual(ret, 0)
+    ret = main(["import-url", "non-existing-file", "import"])
+    assert ret != 0
 
 
-class TestDefaultOutput(TestDvc):
-    def test(self):
-        tmpdir = self.mkdtemp()
-        filename = str(uuid4())
-        tmpfile = os.path.join(tmpdir, filename)
+def test_cmd_unsupported_scheme(dvc):
+    ret = main(["import-url", "unsupported://path", "import_unsupported"])
+    assert ret != 0
 
-        with open(tmpfile, "w", encoding="utf-8") as fd:
-            fd.write("content")
 
-        ret = main(["import-url", tmpfile])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.exists(filename))
-        with open(filename, encoding="utf-8") as fd:
-            self.assertEqual(fd.read(), "content")
+def test_default_output(tmp_dir, dvc, cloud):
+    filename = str(uuid4())
+    tmpfile = cloud / filename
+    tmpfile.write_bytes(b"content")
+    cloud.gen(filename, "content")
+
+    ret = main(["import-url", tmpfile.fs_path])
+    assert ret == 0
+    assert (tmp_dir / filename).read_bytes() == b"content"
 
 
 def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
@@ -54,26 +51,22 @@ def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
     assert remove_outs_call_counter.mock.call_count == 1
 
 
-class TestImportFilename(TestDvc):
-    def setUp(self):
-        super().setUp()
-        tmp_dir = self.mkdtemp()
-        self.external_source = os.path.join(tmp_dir, "file")
-        with open(self.external_source, "w", encoding="utf-8") as fobj:
-            fobj.write("content")
+def test_import_filename(tmp_dir, dvc, cloud):
+    external_source = cloud / "file"
+    (cloud / "file").write_text("content", encoding="utf-8")
+    ret = main(["import-url", "--file", "bar.dvc", external_source.fs_path])
+    assert ret == 0
+    assert (tmp_dir / "bar.dvc").exists()
 
-    def test(self):
-        ret = main(["import-url", "--file", "bar.dvc", self.external_source])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
+    (tmp_dir / "bar.dvc").unlink()
+    (tmp_dir / "sub").mkdir()
 
-        os.remove("bar.dvc")
-        os.mkdir("sub")
-
-        path = os.path.join("sub", "bar.dvc")
-        ret = main(["import-url", "--file", path, self.external_source, "out"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists(path))
+    path = tmp_dir / "sub" / "bar.dvc"
+    ret = main(
+        ["import-url", "--file", path.fs_path, external_source.fs_path, "out"]
+    )
+    assert ret == 0
+    assert path.exists()
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
@@ -132,7 +125,7 @@ class TestImport(_TestImport):
         return False
 
 
-def test_import_url_preserve_meta(tmp_dir, dvc):
+def test_import_url_preserve_fields(tmp_dir, dvc):
     text = textwrap.dedent(
         """\
         # top comment
@@ -142,6 +135,12 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
         outs:
         - path: bar # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
+          meta:
+            key: value
         meta: some metadata
     """
     )
@@ -160,6 +159,12 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
         outs:
         - path: bar # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
+          meta:
+            key: value
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta: some metadata
@@ -187,7 +192,7 @@ def test_import_url_to_remote_single_file(
 
     hash_info = stage.outs[0].hash_info
     with open(
-        local_remote.hash_to_path(hash_info.value), encoding="utf-8"
+        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
     ) as fobj:
         assert fobj.read() == "foo"
     assert stage.outs[0].meta.size == len("foo")
@@ -216,7 +221,7 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
 
     hash_info = stage.outs[0].hash_info
     with open(
-        local_remote.hash_to_path(hash_info.value), encoding="utf-8"
+        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
     ) as stream:
         file_parts = json.load(stream)
 
@@ -229,7 +234,7 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
 
     for file_part in file_parts:
         with open(
-            local_remote.hash_to_path(file_part["md5"]), encoding="utf-8"
+            local_remote.oid_to_path(file_part["md5"]), encoding="utf-8"
         ) as fobj:
             assert fobj.read() == file_part["relpath"]
 
@@ -254,11 +259,6 @@ def test_import_url_to_remote_invalid_combinations(dvc):
         dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)
 
 
-empty_xfail = pytest.mark.xfail(
-    reason="https://github.com/iterative/dvc/issues/5521"
-)
-
-
 def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
     local_cloud.gen("foo", "foo")
 
@@ -272,3 +272,87 @@ def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
 
     status = dvc.status()
     assert len(status) == 0
+
+
+def test_import_url_no_download(tmp_dir, scm, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    stage = dvc.imp_url(
+        "remote://workspace/file", os.fspath(dst), no_download=True
+    )
+
+    assert stage.deps[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
+
+    assert not dst.exists()
+    assert scm.is_ignored(dst)
+
+    out = stage.outs[0]
+    assert not out.hash_info
+    assert out.meta.size is None
+
+    status = dvc.status()
+    assert status["file.dvc"] == [
+        {"changed outs": {"file": "deleted"}},
+    ]
+
+
+def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
+
+    dvc.pull(["file.dvc"])
+
+    assert dst.exists()
+
+    stage = Dvcfile(dvc, "file.dvc").stage
+
+    assert stage.outs[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
+    assert stage.outs[0].meta.size == 12
+
+
+def test_imp_url_with_annotations(M, tmp_dir, dvc, local_workspace):
+    local_workspace.gen("foo", "foo")
+    annot = {
+        "desc": "foo desc",
+        "labels": ["l1", "l2"],
+        "type": "t1",
+        "meta": {"key": "value"},
+    }
+    stage = dvc.imp_url(
+        "remote://workspace/foo",
+        os.fspath(tmp_dir / "foo"),
+        no_exec=True,
+        **annot,
+    )
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+    # try to selectively update/overwrite some annotations
+    annot = {**annot, "type": "t2"}
+    stage = dvc.imp_url(
+        "remote://workspace/foo",
+        os.fspath(tmp_dir / "foo"),
+        no_exec=True,
+        type="t2",
+    )
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+
+def test_import_url_fs_config(tmp_dir, dvc, workspace, mocker):
+    import dvc.fs as dvc_fs
+
+    workspace.gen("foo", "foo")
+
+    url = "remote://workspace/foo"
+    get_fs_config = mocker.spy(dvc_fs, "get_fs_config")
+    dep_init = mocker.spy(Dependency, "__init__")
+    dvc.imp_url(url, fs_config={"jobs": 42})
+
+    dep_init_kwargs = dep_init.call_args[1]
+    assert dep_init_kwargs.get("fs_config") == {"jobs": 42}
+
+    assert get_fs_config.call_args_list[0][1] == {"url": "foo"}
+    assert get_fs_config.call_args_list[1][1] == {"url": url, "jobs": 42}
+    assert get_fs_config.call_args_list[2][1] == {"name": "workspace"}

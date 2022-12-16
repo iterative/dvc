@@ -1,3 +1,7 @@
+from os.path import join
+
+import pytest
+
 from dvc.utils import relpath
 
 
@@ -129,10 +133,9 @@ def test_no_commits(tmp_dir):
     from scmrepo.git import Git
 
     from dvc.repo import Repo
-    from tests.dir_helpers import git_init
 
-    git_init(".")
-    assert Git().no_commits
+    git = Git.init(tmp_dir.fs_path)
+    assert git.no_commits
 
     assert Repo.init().params.diff() == {}
 
@@ -218,4 +221,50 @@ def test_diff_targeted(tmp_dir, scm, dvc, run_copy):
 
     assert dvc.params.diff(a_rev="HEAD~2", targets=["other_params.yaml"]) == {
         "other_params.yaml": {"xyz": {"old": "val", "new": "val3"}}
+    }
+
+
+@pytest.mark.parametrize("file", ["params.yaml", "other_params.yaml"])
+def test_diff_without_targets_specified(tmp_dir, dvc, scm, file):
+    params_file = tmp_dir / file
+    params_file.dump({"foo": {"bar": "bar"}, "x": "0"})
+    dvc.stage.add(
+        name="test",
+        cmd=f"echo {file}",
+        params=[{file: None}],
+    )
+    scm.add_commit([params_file, "dvc.yaml"], message="foo")
+
+    params_file.dump({"foo": {"bar": "baz"}, "y": "100"})
+    assert dvc.params.diff() == {
+        file: {
+            "foo.bar": {"new": "baz", "old": "bar"},
+            "x": {"new": None, "old": "0"},
+            "y": {"new": "100", "old": None},
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    "dvcfile, params_file",
+    [
+        ("dvc.yaml", "my_params.yaml"),
+        ("dir/dvc.yaml", "my_params.yaml"),
+        ("dir/dvc.yaml", join("..", "my_params.yaml")),
+    ],
+)
+def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file):
+    directory = (tmp_dir / dvcfile).parent
+    directory.mkdir(exist_ok=True)
+    (tmp_dir / dvcfile).dump({"params": [params_file]})
+
+    params_file = directory / params_file
+    params_file.dump({"foo": 3})
+    scm.add_commit([params_file, tmp_dir / dvcfile], message="add params")
+
+    params_file.dump({"foo": 5})
+    assert dvc.params.diff() == {
+        relpath(directory / params_file): {
+            "foo": {"diff": 2, "new": 5, "old": 3}
+        }
     }

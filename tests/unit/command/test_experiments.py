@@ -1,28 +1,29 @@
 import csv
+import pathlib
 import textwrap
 from datetime import datetime
 
 import pytest
 
-from dvc.cli import parse_args
-from dvc.command.experiments.apply import CmdExperimentsApply
-from dvc.command.experiments.branch import CmdExperimentsBranch
-from dvc.command.experiments.diff import CmdExperimentsDiff
-from dvc.command.experiments.gc import CmdExperimentsGC
-from dvc.command.experiments.init import CmdExperimentsInit
-from dvc.command.experiments.ls import CmdExperimentsList
-from dvc.command.experiments.pull import CmdExperimentsPull
-from dvc.command.experiments.push import CmdExperimentsPush
-from dvc.command.experiments.remove import CmdExperimentsRemove
-from dvc.command.experiments.run import CmdExperimentsRun
-from dvc.command.experiments.show import CmdExperimentsShow, show_experiments
-from dvc.exceptions import DvcParserError, InvalidArgumentError
+from dvc.cli import DvcParserError, parse_args
+from dvc.commands.experiments.apply import CmdExperimentsApply
+from dvc.commands.experiments.branch import CmdExperimentsBranch
+from dvc.commands.experiments.diff import CmdExperimentsDiff
+from dvc.commands.experiments.gc import CmdExperimentsGC
+from dvc.commands.experiments.init import CmdExperimentsInit
+from dvc.commands.experiments.ls import CmdExperimentsList
+from dvc.commands.experiments.pull import CmdExperimentsPull
+from dvc.commands.experiments.push import CmdExperimentsPush
+from dvc.commands.experiments.remove import CmdExperimentsRemove
+from dvc.commands.experiments.run import CmdExperimentsRun
+from dvc.commands.experiments.save import CmdExperimentsSave
+from dvc.commands.experiments.show import CmdExperimentsShow, show_experiments
+from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
-from dvc.stage import PipelineStage
 from tests.utils import ANY
 from tests.utils.asserts import called_once_with_subset
 
-from .test_repro import default_arguments as repro_arguments
+from .test_repro import common_arguments as repro_arguments
 
 
 def test_experiments_apply(dvc, scm, mocker):
@@ -95,10 +96,14 @@ def test_experiments_show(dvc, scm, mocker):
             "--all-tags",
             "--all-branches",
             "--all-commits",
+            "--hide-queued",
+            "--hide-failed",
             "--sha",
             "--param-deps",
             "-n",
             "1",
+            "--rev",
+            "foo",
         ]
     )
     assert cli_args.func == CmdExperimentsShow
@@ -113,9 +118,13 @@ def test_experiments_show(dvc, scm, mocker):
         all_tags=True,
         all_branches=True,
         all_commits=True,
-        sha_only=True,
+        hide_queued=True,
+        hide_failed=True,
         num=1,
+        revs="foo",
+        sha_only=True,
         param_deps=True,
+        fetch_running=True,
     )
 
 
@@ -129,6 +138,7 @@ def test_experiments_run(dvc, scm, mocker):
         "tmp_dir": False,
         "checkpoint_resume": None,
         "reset": False,
+        "machine": None,
     }
     default_arguments.update(repro_arguments)
 
@@ -150,6 +160,8 @@ def test_experiments_gc(dvc, scm, mocker):
             "--all-branches",
             "--all-commits",
             "--queued",
+            "--date",
+            "2022-07-04",
             "--force",
         ]
     )
@@ -166,6 +178,7 @@ def test_experiments_gc(dvc, scm, mocker):
         all_tags=True,
         all_branches=True,
         all_commits=True,
+        commit_date="2022-07-04",
         queued=True,
     )
 
@@ -193,10 +206,12 @@ def test_experiments_list(dvc, scm, mocker):
             "experiments",
             "list",
             "origin",
+            "--all-commits",
+            "-n",
+            "-1",
             "--rev",
             "foo",
-            "--all",
-            "--names-only",
+            "--name-only",
         ]
     )
     assert cli_args.func == CmdExperimentsList
@@ -207,7 +222,11 @@ def test_experiments_list(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, git_remote="origin", rev="foo", all_=True
+        cmd.repo,
+        git_remote="origin",
+        rev="foo",
+        all_commits=True,
+        num=-1,
     )
 
 
@@ -217,7 +236,13 @@ def test_experiments_push(dvc, scm, mocker):
             "experiments",
             "push",
             "origin",
-            "experiment",
+            "experiment1",
+            "experiment2",
+            "--all-commits",
+            "-n",
+            "2",
+            "--rev",
+            "foo",
             "--force",
             "--no-cache",
             "--remote",
@@ -237,12 +262,31 @@ def test_experiments_push(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo,
         "origin",
-        "experiment",
+        ["experiment1", "experiment2"],
+        rev="foo",
+        all_commits=True,
+        num=2,
         force=True,
         push_cache=False,
         dvc_remote="my-remote",
         jobs=1,
         run_cache=True,
+    )
+
+    cli_args = parse_args(
+        [
+            "experiments",
+            "push",
+            "origin",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+
+    with pytest.raises(InvalidArgumentError) as exp_info:
+        cmd.run()
+    assert (
+        str(exp_info.value) == "Either provide an `experiment` argument"
+        ", or use the `--rev` or `--all-commits` flag."
     )
 
 
@@ -253,6 +297,9 @@ def test_experiments_pull(dvc, scm, mocker):
             "pull",
             "origin",
             "experiment",
+            "--all-commits",
+            "--rev",
+            "foo",
             "--force",
             "--no-cache",
             "--remote",
@@ -272,7 +319,10 @@ def test_experiments_pull(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo,
         "origin",
-        "experiment",
+        ["experiment"],
+        rev="foo",
+        all_commits=True,
+        num=1,
         force=True,
         pull_cache=False,
         dvc_remote="my-remote",
@@ -280,31 +330,90 @@ def test_experiments_pull(dvc, scm, mocker):
         run_cache=True,
     )
 
+    cli_args = parse_args(
+        [
+            "experiments",
+            "pull",
+            "origin",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
 
-@pytest.mark.parametrize(
-    "queue,clear_all,remote",
-    [(True, False, None), (False, True, None), (False, False, True)],
-)
-def test_experiments_remove(dvc, scm, mocker, queue, clear_all, remote):
-    if queue:
-        args = ["--queue"]
-    if clear_all:
-        args = ["--all"]
-    if remote:
-        args = ["--git-remote", "myremote", "exp-123", "exp-234"]
-    cli_args = parse_args(["experiments", "remove"] + args)
+    with pytest.raises(InvalidArgumentError) as exp_info:
+        cmd.run()
+    assert (
+        str(exp_info.value) == "Either provide an `experiment` argument"
+        ", or use the `--rev` or `--all-commits` flag."
+    )
+
+
+def test_experiments_remove_flag(dvc, scm, mocker, capsys, caplog):
+    cli_args = parse_args(
+        [
+            "experiments",
+            "remove",
+            "--all-commits",
+            "--rev",
+            "foo",
+            "--num",
+            "2",
+            "--git-remote",
+            "myremote",
+        ]
+    )
     assert cli_args.func == CmdExperimentsRemove
-
     cmd = cli_args.func(cli_args)
     m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
-
     assert cmd.run() == 0
     m.assert_called_once_with(
         cmd.repo,
-        exp_names=["exp-123", "exp-234"] if remote else [],
-        queue=queue,
-        clear_all=clear_all,
-        remote="myremote" if remote else None,
+        exp_names=[],
+        all_commits=True,
+        rev="foo",
+        num=2,
+        queue=False,
+        git_remote="myremote",
+    )
+
+
+def test_experiments_remove_special(dvc, scm, mocker, capsys, caplog):
+    cli_args = parse_args(
+        [
+            "experiments",
+            "remove",
+            "--git-remote",
+            "myremote",
+            "exp-123",
+            "exp-234",
+        ]
+    )
+    assert cli_args.func == CmdExperimentsRemove
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
+    assert cmd.run() == 0
+    m.assert_called_once_with(
+        cmd.repo,
+        exp_names=["exp-123", "exp-234"],
+        all_commits=False,
+        rev=None,
+        num=1,
+        queue=False,
+        git_remote="myremote",
+    )
+
+
+def test_experiments_remove_invalid(dvc, scm, mocker, capsys, caplog):
+    cmd = CmdExperimentsRemove(
+        parse_args(["exp", "remove", "--all-commits", "exp-1", "exp-2"])
+    )
+    with pytest.raises(InvalidArgumentError):
+        cmd.run()
+    cmd = CmdExperimentsRemove(parse_args(["exp", "remove"]))
+    with pytest.raises(InvalidArgumentError) as excinfo:
+        cmd.run()
+    assert (
+        str(excinfo.value) == "Either provide an `experiment` argument"
+        ", or use the `--rev` or `--all-commits` or `--queue` flag."
     )
 
 
@@ -329,8 +438,7 @@ def test_show_experiments_csv(capsys):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {
@@ -366,8 +474,7 @@ def test_show_experiments_csv(capsys):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {
@@ -402,8 +509,7 @@ def test_show_experiments_csv(capsys):
                             }
                         }
                     },
-                    "queued": True,
-                    "running": True,
+                    "status": "Running",
                     "executor": None,
                     "metrics": {
                         "scores.json": {
@@ -457,8 +563,7 @@ def test_show_experiments_md(capsys):
                 "data": {
                     "timestamp": None,
                     "params": {"params.yaml": {"data": {"foo": 1}}},
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {"data": {"bar": 0.9544670443829399}}
@@ -495,8 +600,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                 }
@@ -513,8 +617,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "master",
@@ -530,8 +633,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "exp-89140",
@@ -547,8 +649,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "exp-43537",
@@ -564,8 +665,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "exp-4f89e",
@@ -588,7 +688,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
     rows = list(csv.reader(cap.out.strip().split("\n")))
     # [3:] To skip header, workspace and baseline(master)
     # which are not affected by order
-    params = tuple([int(row[-1]) for row in rows[3:]])
+    params = tuple(int(row[-1]) for row in rows[3:])
 
     if sort_order == "asc":
         assert params == (0, 1, 2)
@@ -598,9 +698,9 @@ def test_show_experiments_sort_by(capsys, sort_order):
 
 @pytest.mark.parametrize("extra_args", [(), ("--run",)])
 def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
+    stage = mocker.Mock(outs=[], addressing="train")
     m = mocker.patch(
-        "dvc.repo.experiments.init.init",
-        return_value=PipelineStage(dvc, path="dvc.yaml", name="stage1"),
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     runner = mocker.patch("dvc.repo.experiments.run.run", return_value=0)
     cli_args = parse_args(["exp", "init", *extra_args, "cmd"])
@@ -619,28 +719,25 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
             "metrics": "metrics.json",
             "params": "params.yaml",
             "plots": "plots",
-            "live": "dvclive",
         },
         overrides={"cmd": "cmd"},
         interactive=False,
         force=False,
     )
-    expected = "Created train stage in dvc.yaml."
-    if not extra_args:
-        expected += (
-            ' To run, use "dvc exp run".\n' "See https://s.dvc.org/g/exp/run."
-        )
-    assert capsys.readouterr() == (expected + "\n", "")
+
     if extra_args:
         # `parse_args` creates a new `Repo` object
-        runner.assert_called_once_with(ANY(Repo), targets=["stage1"])
+        runner.assert_called_once_with(ANY(Repo), targets=["train"])
 
 
 def test_experiments_init_config(dvc, scm, mocker):
     with dvc.config.edit() as conf:
         conf["exp"] = {"code": "new_src", "models": "new_models"}
 
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
+    )
     cli_args = parse_args(["exp", "init", "cmd"])
     cmd = cli_args.func(cli_args)
 
@@ -658,7 +755,6 @@ def test_experiments_init_config(dvc, scm, mocker):
             "metrics": "metrics.json",
             "params": "params.yaml",
             "plots": "plots",
-            "live": "dvclive",
         },
         overrides={"cmd": "cmd"},
         interactive=False,
@@ -667,7 +763,10 @@ def test_experiments_init_config(dvc, scm, mocker):
 
 
 def test_experiments_init_explicit(dvc, mocker):
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
+    )
     cli_args = parse_args(["exp", "init", "--explicit", "cmd"])
     cmd = cli_args.func(cli_args)
 
@@ -698,7 +797,10 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
     cmd = cli_args.func(cli_args)
     assert isinstance(cmd, CmdExperimentsInit)
 
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
+    )
     assert cmd.run() == 0
     assert called_once_with_subset(m, ANY(Repo), interactive=True)
 
@@ -707,11 +809,11 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
     "extra_args, expected_kw",
     [
         (["--type", "default"], {"type": "default", "name": "train"}),
-        (["--type", "dl"], {"type": "dl", "name": "train"}),
+        (["--type", "checkpoint"], {"type": "checkpoint", "name": "train"}),
         (["--force"], {"force": True, "name": "train"}),
         (
-            ["--name", "name", "--type", "dl"],
-            {"name": "name", "type": "dl"},
+            ["--name", "name", "--type", "checkpoint"],
+            {"name": "name", "type": "checkpoint"},
         ),
         (
             [
@@ -751,7 +853,10 @@ def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
     cmd = cli_args.func(cli_args)
     assert isinstance(cmd, CmdExperimentsInit)
 
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
+    )
     assert cmd.run() == 0
     assert called_once_with_subset(m, ANY(Repo), **expected_kw)
 
@@ -761,15 +866,52 @@ def test_experiments_init_type_invalid_choice():
         parse_args(["exp", "init", "--type=invalid", "cmd"])
 
 
-def test_show_experiments_html(tmp_dir, mocker):
+@pytest.mark.parametrize("args", [[], ["--run"]])
+def test_experiments_init_displays_output_on_no_run(dvc, mocker, capsys, args):
+    model_dir = pathlib.Path("models")
+    model_path = str(model_dir / "predict.h5")
+    stage = dvc.stage.create(
+        name="train",
+        cmd=["cmd"],
+        deps=["code", "data"],
+        params=["params.yaml"],
+        outs=["metrics.json", "plots", model_path],
+    )
+    mocker.patch(
+        "dvc.repo.experiments.init.init",
+        return_value=(stage, stage.deps, [model_dir]),
+    )
+    mocker.patch("dvc.repo.experiments.run.run", return_value=0)
+    cli_args = parse_args(["exp", "init", "cmd", *args])
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+
+    expected_lines = [
+        "Creating dependencies: code, data and params.yaml",
+        "Creating output directories: models",
+        "Creating train stage in dvc.yaml",
+        "",
+        "Ensure your experiment command creates metrics.json, plots and ",
+        f"{model_path}.",
+    ]
+    if not cli_args.run:
+        expected_lines += [
+            'You can now run your experiment using "dvc exp run".',
+        ]
+
+    out, err = capsys.readouterr()
+    assert not err
+    assert out.splitlines() == expected_lines
+
+
+def test_show_experiments_pcp(tmp_dir, mocker):
     all_experiments = {
         "workspace": {
             "baseline": {
                 "data": {
                     "timestamp": None,
                     "params": {"params.yaml": {"data": {"foo": 1}}},
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {"data": {"bar": 0.9544670443829399}}
@@ -779,17 +921,31 @@ def test_show_experiments_html(tmp_dir, mocker):
         },
     }
     experiments_table = mocker.patch(
-        "dvc.command.experiments.show.experiments_table"
+        "dvc.commands.experiments.show.experiments_table"
     )
     td = experiments_table.return_value
 
-    show_experiments(all_experiments, html=True)
+    show_experiments(all_experiments, pcp=True)
 
-    td.dropna.assert_called_with("rows", how="all")
+    td.drop.assert_called_with("Created")
+    td.dropna.assert_called_with("rows", how="all", subset=set())
+    td.drop_duplicates.assert_called_with("rows", subset=set())
 
-    render_kwargs = td.render.call_args[1]
+    kwargs = td.to_parallel_coordinates.call_args[1]
 
-    for arg in ["html", "output_path", "color_by"]:
-        assert arg in render_kwargs
-    assert render_kwargs["output_path"] == tmp_dir / "dvc_plots"
-    assert render_kwargs["color_by"] == "Experiment"
+    assert kwargs["output_path"] == str(tmp_dir / "dvc_plots" / "index.html")
+    assert kwargs["color_by"] == "Experiment"
+
+
+def test_experiments_save(dvc, scm, mocker):
+    cli_args = parse_args(["exp", "save", "--name", "exp-name", "--force"])
+    assert cli_args.func == CmdExperimentsSave
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.save.save", return_value="acabb")
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo, name="exp-name", force=True, include_untracked=[]
+    )

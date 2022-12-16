@@ -1,15 +1,22 @@
 """Common utilities for serialize."""
 import os
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Callable, ContextManager, Dict, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    Dict,
+    Protocol,
+    Union,
+)
 
 from funcy import reraise
-from typing_extensions import Protocol
 
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.fs.base import FileSystem
+    from dvc.fs import FileSystem
     from dvc.types import AnyPath
 
 

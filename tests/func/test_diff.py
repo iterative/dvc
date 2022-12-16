@@ -117,6 +117,37 @@ def test_modified(tmp_dir, scm, dvc):
     }
 
 
+def test_modified_subrepo(tmp_dir, scm, dvc):
+    from dvc.repo import Repo
+
+    tmp_dir.gen({"subdir": {"file": "first"}})
+    subrepo_dir = tmp_dir / "subdir"
+
+    with subrepo_dir.chdir():
+        subrepo = Repo.init(subdir=True)
+        subrepo.add("file")
+
+    scm.add(os.path.join("subdir", "file.dvc"))
+    scm.commit("init")
+
+    (subrepo_dir / "file").write_text("second")
+
+    with subrepo_dir.chdir():
+        subrepo = Repo()
+        assert subrepo.diff() == {
+            "added": [],
+            "deleted": [],
+            "modified": [
+                {
+                    "path": "file",
+                    "hash": {"old": digest("first"), "new": digest("second")},
+                }
+            ],
+            "not in cache": [],
+            "renamed": [],
+        }
+
+
 def test_refs(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "first", commit="first version")
     tmp_dir.dvc_gen("file", "second", commit="second version")
@@ -221,7 +252,7 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     )
     scm.tag("v2")
 
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
 
     # invalidate_dir_info to force cache loading
     dvc.odb.local._dir_info = {}
@@ -293,12 +324,23 @@ def test_no_commits(tmp_dir):
     from scmrepo.git import Git
 
     from dvc.repo import Repo
-    from tests.dir_helpers import git_init
 
-    git_init(".")
-    assert Git().no_commits
+    git = Git.init(tmp_dir.fs_path)
+    assert git.no_commits
 
     assert Repo.init().diff() == {}
+
+
+def test_abs_target(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "text")
+
+    assert dvc.diff(targets=(tmp_dir / "file").fs_path) == {
+        "added": [{"path": "file", "hash": digest("text")}],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+        "renamed": [],
+    }
 
 
 def setup_targets_test(tmp_dir):

@@ -2,10 +2,11 @@ import os
 import pathlib
 from typing import TYPE_CHECKING, Union
 
-from funcy import concat, first, lsplit, rpartial, without
+from funcy import concat, first, lsplit, rpartial
 
+from dvc.annotations import ANNOTATION_FIELDS
 from dvc.exceptions import InvalidArgumentError
-from dvc.objects.meta import Meta
+from dvc_data.hashfile.meta import Meta
 
 from .exceptions import (
     MissingDataSource,
@@ -50,18 +51,20 @@ def fill_stage_outputs(stage, **kwargs):
     keys = [
         "outs_persist",
         "outs_persist_no_cache",
-        "metrics_no_cache",
         "metrics",
-        "plots_no_cache",
+        "metrics_persist",
+        "metrics_no_cache",
+        "metrics_persist_no_cache",
         "plots",
+        "plots_persist",
+        "plots_no_cache",
+        "plots_persist_no_cache",
         "outs_no_cache",
         "outs",
         "checkpoints",
     ]
 
     stage.outs = []
-
-    stage.outs += _load_live_output(stage, **kwargs)
 
     for key in keys:
         stage.outs += loads_from(
@@ -75,40 +78,16 @@ def fill_stage_outputs(stage, **kwargs):
         )
 
 
-def _load_live_output(
-    stage,
-    live=None,
-    live_no_cache=None,
-    live_summary=False,
-    live_html=False,
-    **kwargs,
+def fill_stage_dependencies(
+    stage, deps=None, erepo=None, params=None, fs_config=None
 ):
-    from dvc.output import Output, loads_from
-
-    outs = []
-    if live or live_no_cache:
-        assert bool(live) != bool(live_no_cache)
-
-        path = live or live_no_cache
-        outs += loads_from(
-            stage,
-            [path],
-            use_cache=not bool(live_no_cache),
-            live={
-                Output.PARAM_LIVE_SUMMARY: live_summary,
-                Output.PARAM_LIVE_HTML: live_html,
-            },
-        )
-
-    return outs
-
-
-def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
     from dvc.dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
-    stage.deps += loads_from(stage, deps or [], erepo=erepo)
+    stage.deps += loads_from(
+        stage, deps or [], erepo=erepo, fs_config=fs_config
+    )
     stage.deps += loads_params(stage, params or [])
 
 
@@ -190,13 +169,13 @@ def compute_md5(stage):
     return dict_md5(
         d,
         exclude=[
+            *ANNOTATION_FIELDS,
             stage.PARAM_LOCKED,  # backward compatibility
             stage.PARAM_FROZEN,
-            Output.PARAM_DESC,
             Output.PARAM_METRIC,
             Output.PARAM_PERSIST,
             Output.PARAM_CHECKPOINT,
-            Output.PARAM_ISEXEC,
+            Meta.PARAM_ISEXEC,
             Meta.PARAM_SIZE,
             Meta.PARAM_NFILES,
         ],
@@ -210,14 +189,14 @@ def resolve_wdir(wdir, path):
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
 
 
-def resolve_paths(path, wdir=None):
-    path = os.path.abspath(path)
+def resolve_paths(fs, path, wdir=None):
+    path = fs.path.abspath(path)
     wdir = wdir or os.curdir
-    wdir = os.path.abspath(os.path.join(os.path.dirname(path), wdir))
+    wdir = fs.path.abspath(fs.path.join(fs.path.dirname(path), wdir))
     return path, wdir
 
 
-def get_dump(stage):
+def get_dump(stage, **kwargs):
     return {
         key: value
         for key, value in {
@@ -226,8 +205,8 @@ def get_dump(stage):
             stage.PARAM_CMD: stage.cmd,
             stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),
             stage.PARAM_FROZEN: stage.frozen,
-            stage.PARAM_DEPS: [d.dumpd() for d in stage.deps],
-            stage.PARAM_OUTS: [o.dumpd() for o in stage.outs],
+            stage.PARAM_DEPS: [d.dumpd(**kwargs) for d in stage.deps],
+            stage.PARAM_OUTS: [o.dumpd(**kwargs) for o in stage.outs],
             stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
             stage.PARAM_META: stage.meta,
         }.items()
@@ -265,7 +244,6 @@ def prepare_file_path(kwargs):
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
             kwargs.get("checkpoints", []),
-            without([kwargs.get("live", None)], None),
         )
     )
 
@@ -323,15 +301,4 @@ def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
     if single_stage:
         kwargs.pop("name", None)
 
-    if kwargs.get("live") and kwargs.get("live_no_cache"):
-        raise InvalidArgumentError(
-            "cannot specify both `--live` and `--live-no-cache`"
-        )
-
-    kwargs.update(
-        {
-            "live_summary": not kwargs.pop("live_no_summary", False),
-            "live_html": not kwargs.pop("live_no_html", False),
-        }
-    )
     return kwargs

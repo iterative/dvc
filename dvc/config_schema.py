@@ -78,14 +78,16 @@ REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
     "jobs": All(Coerce(int), Range(1)),
+    Optional("worktree"): Bool,
     Optional("no_traverse"): Bool,  # obsoleted
-    "verify": Bool,
+    Optional("version_aware"): Bool,
 }
 LOCAL_COMMON = {
     "type": supported_cache_type,
     Optional("protected", default=False): Bool,  # obsoleted
     "shared": All(Lower, Choices("group")),
     Optional("slow_link_warning", default=True): Bool,
+    Optional("verify", default=False): Bool,
 }
 HTTP_COMMON = {
     "auth": All(Lower, Choices("basic", "digest", "custom")),
@@ -95,6 +97,7 @@ HTTP_COMMON = {
     "ask_password": Bool,
     "ssl_verify": Any(Bool, str),
     "method": str,
+    Optional("verify", default=False): Bool,
 }
 WEBDAV_COMMON = {
     "user": str,
@@ -105,6 +108,7 @@ WEBDAV_COMMON = {
     "key_path": str,
     "timeout": Coerce(int),
     "ssl_verify": Any(Bool, str),
+    Optional("verify", default=False): Bool,
 }
 
 SCHEMA = {
@@ -150,6 +154,8 @@ SCHEMA = {
                     "ssl_verify": Any(Bool, str),
                     "sse": str,
                     "sse_kms_key_id": str,
+                    "sse_customer_algorithm": str,
+                    "sse_customer_key": str,
                     "acl": str,
                     "grant_read": str,
                     "grant_read_acp": str,
@@ -158,11 +164,14 @@ SCHEMA = {
                     "cache_regions": bool,
                     "read_timeout": Coerce(int),
                     "connect_timeout": Coerce(int),
+                    Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "gs": {
                     "projectname": str,
                     "credentialpath": str,
+                    "endpointurl": str,
+                    Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "ssh": {
@@ -171,10 +180,13 @@ SCHEMA = {
                     "user": str,
                     "password": str,
                     "ask_password": Bool,
+                    "passphrase": str,
+                    "ask_passphrase": Bool,
                     "keyfile": str,
                     "timeout": Coerce(int),
                     "gss_auth": Bool,
                     "allow_agent": Bool,
+                    Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "hdfs": {"user": str, "kerb_ticket": str, **REMOTE_COMMON},
@@ -185,6 +197,7 @@ SCHEMA = {
                     "ssl_verify": Any(Bool, str),
                     "token": str,
                     "use_https": Bool,
+                    Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "azure": {
@@ -200,15 +213,18 @@ SCHEMA = {
                     "exclude_visual_studio_code_credential": Bool,
                     "exclude_shared_token_cache_credential": Bool,
                     "exclude_managed_identity_credential": Bool,
+                    Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "oss": {
                     "oss_key_id": str,
                     "oss_key_secret": str,
                     "oss_endpoint": str,
+                    Optional("verify", default=True): Bool,
                     **REMOTE_COMMON,
                 },
                 "gdrive": {
+                    "profile": str,
                     "gdrive_use_service_account": Bool,
                     "gdrive_client_id": str,
                     "gdrive_client_secret": str,
@@ -216,6 +232,8 @@ SCHEMA = {
                     "gdrive_service_account_user_email": str,
                     "gdrive_service_account_json_file_path": str,
                     Optional("gdrive_trash_only", default=False): Bool,
+                    Optional("gdrive_acknowledge_abuse", default=False): Bool,
+                    Optional("verify", default=True): Bool,
                     **REMOTE_COMMON,
                 },
                 "http": {**HTTP_COMMON, **REMOTE_COMMON},
@@ -248,6 +266,7 @@ SCHEMA = {
             "instance_gpu": Lower,
             "ssh_private": str,
             "startup_script": str,
+            "setup_script": str,
         },
     },
     # section for experimental features
@@ -256,7 +275,11 @@ SCHEMA = {
         # enabled by default. It's of no use, kept for backward compatibility.
         Optional("parametrization", default=True): Bool,
     },
-    "plots": {"html_template": str},
+    "plots": {
+        "html_template": str,
+        Optional("auto_open", default=False): Bool,
+        "out_dir": str,
+    },
     "exp": {
         "code": str,
         "data": str,
@@ -265,5 +288,14 @@ SCHEMA = {
         "params": str,
         "plots": str,
         "live": str,
+    },
+    "parsing": {
+        "bool": All(Lower, Choices("store_true", "boolean_optional")),
+        "list": All(Lower, Choices("nargs", "append")),
+    },
+    "hydra": {
+        Optional("enabled", default=False): Bool,
+        "config_dir": str,
+        "config_name": str,
     },
 }

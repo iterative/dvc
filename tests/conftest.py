@@ -1,4 +1,7 @@
+import gc
+import json
 import os
+import sys
 from contextlib import suppress
 
 import pytest
@@ -7,7 +10,7 @@ from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
 
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
 from .remotes import *  # noqa, pylint: disable=wildcard-import
-from .utils.scriptify import scriptify
+from .scripts import *  # noqa, pylint: disable=wildcard-import
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -56,12 +59,12 @@ def enable_ui():
     ui.enable()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _close_pools():
-    from dvc.fs.pool import close_pools
+@pytest.fixture(autouse=True)
+def clean_repos():
+    # pylint: disable=redefined-outer-name
+    from dvc.external_repo import clean_repos
 
-    yield
-    close_pools()
+    clean_repos()
 
 
 def _get_opt(remote_name, action):
@@ -161,27 +164,103 @@ def pytest_configure(config):
             enabled_remotes.add(remote_name)
 
 
-@pytest.fixture()
+@pytest.fixture
 def custom_template(tmp_dir, dvc):
-    try:
-        import importlib_resources
-    except ImportError:
-        import importlib.resources as importlib_resources
-
-    content = (
-        importlib_resources.files("dvc.repo.plots")
-        / "templates"
-        / "simple.json"
-    ).read_text()
+    from dvc_render.vega_templates import SimpleLinearTemplate
 
     template = tmp_dir / "custom_template.json"
-    template.write_text(content)
+    template.write_text(json.dumps(SimpleLinearTemplate.DEFAULT_CONTENT))
     return template
-
-
-scriptify_fixture = pytest.fixture(lambda: scriptify, name="scriptify")
 
 
 @pytest.fixture(autouse=True)
 def mocked_webbrowser_open(mocker):
     mocker.patch("webbrowser.open")
+
+
+@pytest.fixture(autouse=True)
+def isolate(tmp_path_factory, monkeypatch) -> None:
+    path = tmp_path_factory.mktemp("mock")
+    home_dir = path / "home"
+    home_dir.mkdir()
+
+    if sys.platform == "win32":
+        home_drive, home_path = os.path.splitdrive(home_dir)
+        monkeypatch.setenv("USERPROFILE", str(home_dir))
+        monkeypatch.setenv("HOMEDRIVE", home_drive)
+        monkeypatch.setenv("HOMEPATH", home_path)
+
+        for env_var, sub_path in (
+            ("APPDATA", "Roaming"),
+            ("LOCALAPPDATA", "Local"),
+        ):
+            path = home_dir / "AppData" / sub_path
+            path.mkdir(parents=True)
+            monkeypatch.setenv(env_var, os.fspath(path))
+    else:
+        monkeypatch.setenv("HOME", str(home_dir))
+
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    contents = b"""
+[user]
+name=DVC Tester
+email=dvctester@example.com
+[init]
+defaultBranch=master
+"""
+    (home_dir / ".gitconfig").write_bytes(contents)
+
+    import pygit2
+
+    pygit2.settings.search_path[pygit2.GIT_CONFIG_LEVEL_GLOBAL] = str(home_dir)
+
+
+@pytest.fixture
+def run_copy_metrics(tmp_dir, copy_script):
+    def run(
+        file1,
+        file2,
+        commit=None,
+        tag=None,
+        single_stage=True,
+        name=None,
+        **kwargs,
+    ):
+        if name:
+            single_stage = False
+
+        stage = tmp_dir.dvc.run(
+            cmd=f"python copy.py {file1} {file2}",
+            deps=[file1],
+            single_stage=single_stage,
+            name=name,
+            **kwargs,
+        )
+
+        if hasattr(tmp_dir.dvc, "scm"):
+            files = [stage.path]
+            files += [out.fs_path for out in stage.outs if not out.use_cache]
+            tmp_dir.dvc.scm.add(files)
+            if commit:
+                tmp_dir.dvc.scm.commit(commit)
+            if tag:
+                tmp_dir.dvc.scm.tag(tag)
+        return stage
+
+    return run
+
+
+@pytest.fixture(autouse=True)
+def gc_collect_on_dvc_close_on_win_311(mocker):
+    if sys.version_info < (3, 11) and os.name != "nt":
+        return
+
+    from dvc.repo import Repo
+
+    close = Repo.close
+
+    def wrapped(repo):
+        close(repo)
+        gc.collect()
+
+    mocker.patch("dvc.repo.Repo.close", wrapped)

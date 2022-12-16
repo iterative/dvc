@@ -2,8 +2,8 @@ import os
 
 import pytest
 
+from dvc.cli import main
 from dvc.ignore import DvcIgnore
-from dvc.main import main
 
 
 @pytest.mark.parametrize(

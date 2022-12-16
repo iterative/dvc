@@ -1,4 +1,5 @@
 """Exceptions raised by the dvc."""
+from dvc.utils import format_link
 
 
 class DvcException(Exception):
@@ -128,20 +129,20 @@ class NotDvcRepoError(DvcException):
     """Thrown if a directory is not a DVC repo"""
 
 
-class DvcParserError(DvcException):
-    """Base class for CLI parser errors."""
-
-    def __init__(self):
-        super().__init__("parser error")
-
-
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
-        msg = "Pipeline has a cycle involving: {}.".format(
-            ", ".join(s.addressing for s in stages)
+        stage_part = "stage" if len(stages) == 1 else "stages"
+        msg = (
+            "Same item(s) are defined as both a dependency and an output "
+            "in {stage_part}: {stage}."
         )
-        super().__init__(msg)
+        super().__init__(
+            msg.format(
+                stage_part=stage_part,
+                stage=", ".join(s.addressing for s in stages),
+            )
+        )
 
 
 class ConfirmRemoveError(DvcException):
@@ -157,9 +158,9 @@ class InitError(DvcException):
 
 
 class ReproductionError(DvcException):
-    def __init__(self, dvc_file_name):
-        self.path = dvc_file_name
-        super().__init__(f"failed to reproduce '{dvc_file_name}'")
+    def __init__(self, name):
+        self.name = name
+        super().__init__(f"failed to reproduce '{name}'")
 
 
 class BadMetricError(DvcException):
@@ -205,14 +206,6 @@ class FileMissingError(DvcException):
         hint = "" if hint is None else f". {hint}"
         super().__init__(
             f"Can't find '{path}' neither locally nor on remote{hint}"
-        )
-
-
-class DvcIgnoreInCollectedDirError(DvcException):
-    def __init__(self, ignore_dirname):
-        super().__init__(
-            ".dvcignore file should not be in collected dir path: "
-            "'{}'".format(ignore_dirname)
         )
 
 
@@ -292,9 +285,13 @@ class PathMissingError(DvcException):
         self.dvc_only = dvc_only
 
 
+class URLMissingError(DvcException):
+    def __init__(self, url):
+        super().__init__(f"The path '{url}' does not exist")
+
+
 class RemoteCacheRequiredError(DvcException):
     def __init__(self, scheme, fs_path):
-        from dvc.utils import format_link
 
         super().__init__(
             (
@@ -330,7 +327,6 @@ class MergeError(DvcException):
 
 
 class CacheLinkError(DvcException):
-    from dvc.utils import format_link
 
     SUPPORT_LINK = "See {} for more information.".format(
         format_link(

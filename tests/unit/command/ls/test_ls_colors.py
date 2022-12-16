@@ -1,4 +1,4 @@
-from dvc.command.ls.ls_colors import LsColors
+from dvc.commands.ls.ls_colors import LsColors
 
 
 def colorize(ls_colors):

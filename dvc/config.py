@@ -86,22 +86,21 @@ class Config(dict):
     def __init__(
         self, dvc_dir=None, validate=True, fs=None, config=None
     ):  # pylint: disable=super-init-not-called
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         self.dvc_dir = dvc_dir
+        self.wfs = LocalFileSystem()
+        self.fs = fs or self.wfs
 
         if not dvc_dir:
             try:
                 from dvc.repo import Repo
 
-                self.dvc_dir = os.path.join(Repo.find_dvc_dir())
+                self.dvc_dir = Repo.find_dvc_dir()
             except NotDvcRepoError:
                 self.dvc_dir = None
         else:
-            self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
-
-        self.wfs = LocalFileSystem(url=self.dvc_dir)
-        self.fs = fs or self.wfs
+            self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
 
         self.load(validate=validate, config=config)
 
@@ -124,8 +123,8 @@ class Config(dict):
         }
 
         if self.dvc_dir is not None:
-            files["repo"] = os.path.join(self.dvc_dir, self.CONFIG)
-            files["local"] = os.path.join(self.dvc_dir, self.CONFIG_LOCAL)
+            files["repo"] = self.fs.path.join(self.dvc_dir, self.CONFIG)
+            files["local"] = self.fs.path.join(self.dvc_dir, self.CONFIG_LOCAL)
 
         return files
 
@@ -177,7 +176,10 @@ class Config(dict):
 
         if fs.exists(filename):
             with fs.open(filename) as fobj:
-                conf_obj = ConfigObj(fobj)
+                try:
+                    conf_obj = ConfigObj(fobj)
+                except UnicodeDecodeError as exc:
+                    raise ConfigError(str(exc)) from exc
         else:
             conf_obj = ConfigObj()
         return _parse_named(_lower_keys(conf_obj.dict()))
@@ -188,7 +190,7 @@ class Config(dict):
         filename = self.files[level]
         fs = self._get_fs(level)
 
-        logger.debug(f"Writing '{filename}'.")
+        logger.debug("Writing '%s'.", filename)
 
         fs.makedirs(os.path.dirname(filename))
 
@@ -228,7 +230,7 @@ class Config(dict):
 
     @staticmethod
     def _to_relpath(conf_dir, path):
-        from dvc.fs.local import localfs
+        from dvc.fs import localfs
         from dvc.utils import relpath
 
         from .config_schema import RelPath
@@ -266,7 +268,12 @@ class Config(dict):
                     "key_path": func,
                 }
             },
-            "machine": {str: {"startup_script": func}},
+            "machine": {
+                str: {
+                    "startup_script": func,
+                    "setup_script": func,
+                }
+            },
         }
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 

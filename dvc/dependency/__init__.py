@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Mapping
 
-from dvc.output import ARTIFACT_SCHEMA, Output
+from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
 from .param import ParamsDependency
@@ -15,10 +15,11 @@ SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
     **ParamsDependency.PARAM_SCHEMA,
+    Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
 
 
-def _get(stage, p, info):
+def _get(stage, p, info, **kwargs):
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)
         return RepoDependency(repo, stage, p, info)
@@ -27,36 +28,58 @@ def _get(stage, p, info):
         params = info.pop(ParamsDependency.PARAM_PARAMS)
         return ParamsDependency(stage, p, params)
 
-    return Dependency(stage, p, info)
+    return Dependency(stage, p, info, **kwargs)
 
 
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
         p = d.pop(Output.PARAM_PATH, None)
-        ret.append(_get(stage, p, d))
+        files = d.pop(Output.PARAM_FILES, None)
+        ret.append(_get(stage, p, d, files=files))
     return ret
 
 
-def loads_from(stage, s_list, erepo=None):
+def loads_from(stage, s_list, erepo=None, fs_config=None):
     assert isinstance(s_list, list)
     info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
-    return [_get(stage, s, info.copy()) for s in s_list]
+    return [
+        _get(
+            stage,
+            s,
+            info.copy(),
+            fs_config=fs_config,
+        )
+        for s in s_list
+    ]
 
 
 def _merge_params(s_list):
     d = defaultdict(list)
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
+
+    # figure out completely tracked params file, and ignore specific keys
+    wholly_tracked = set()
+    for key in s_list:
+        if not isinstance(key, dict):
+            continue
+        wholly_tracked.update(k for k, params in key.items() if not params)
+
     for key in s_list:
         if isinstance(key, str):
-            d[default_file].append(key)
+            if default_file not in wholly_tracked:
+                d[default_file].append(key)
             continue
+
         if not isinstance(key, dict):
             msg = "Only list of str/dict is supported. Got: "
             msg += f"'{type(key).__name__}'."
             raise ValueError(msg)
 
         for k, params in key.items():
+            if k in wholly_tracked:
+                d[k] = []
+                continue
             if not isinstance(params, list):
                 msg = "Expected list of params for custom params file "
                 msg += f"'{k}', got '{type(params).__name__}'."

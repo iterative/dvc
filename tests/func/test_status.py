@@ -1,6 +1,6 @@
 import os
 
-from dvc.main import main
+from dvc.cli import main
 
 
 def test_quiet(tmp_dir, dvc, capsys):
@@ -136,4 +136,50 @@ def test_status_outputs(tmp_dir, dvc):
 
     assert dvc.status(targets=["alice"]) == {
         "alice_bob": [{"changed outs": {"alice": "modified"}}]
+    }
+
+
+def test_params_without_targets(tmp_dir, dvc):
+    dvc.stage.add(
+        name="test", cmd="echo params.yaml", params=[{"params.yaml": None}]
+    )
+    assert dvc.status() == {
+        "test": [{"changed deps": {"params.yaml": "deleted"}}]
+    }
+
+    (tmp_dir / "params.yaml").touch()
+    assert dvc.status() == {"test": [{"changed deps": {"params.yaml": "new"}}]}
+
+    dvc.commit("test", force=True)
+    # make sure that we are able to keep track of "empty" contents
+    # and be able to distinguish between no-lock-entry and empty-lock-entry.
+    assert (tmp_dir / "dvc.lock").parse() == {
+        "schema": "2.0",
+        "stages": {
+            "test": {"cmd": "echo params.yaml", "params": {"params.yaml": {}}}
+        },
+    }
+    assert dvc.status() == {}
+
+    (tmp_dir / "params.yaml").dump({"foo": "foo", "bar": "bar"})
+    assert dvc.status() == {
+        "test": [
+            {"changed deps": {"params.yaml": {"bar": "new", "foo": "new"}}}
+        ]
+    }
+    dvc.commit("test", force=True)
+
+    (tmp_dir / "params.yaml").dump({"foo": "foobar", "lorem": "ipsum"})
+    assert dvc.status() == {
+        "test": [
+            {
+                "changed deps": {
+                    "params.yaml": {
+                        "bar": "deleted",
+                        "foo": "modified",
+                        "lorem": "new",
+                    }
+                }
+            }
+        ]
     }

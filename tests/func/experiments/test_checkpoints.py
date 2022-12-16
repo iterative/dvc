@@ -6,14 +6,13 @@ from funcy import first
 from dvc.config import NoRemoteError
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
-from dvc.repo.experiments import MultipleBranchError
-from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
+from dvc.repo.experiments.exceptions import MultipleBranchError
 from dvc.repo.experiments.executor.base import BaseExecutor
+from dvc.repo.experiments.refs import EXEC_APPLY, EXEC_CHECKPOINT
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import InvalidRemoteSCMRepo
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 @pytest.mark.parametrize("links", ["reflink,copy", "hardlink,symlink"])
 def test_new_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, mocker, workspace, links
@@ -31,10 +30,10 @@ def test_new_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -47,10 +46,7 @@ def test_new_checkpoint(
         assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
 
-@pytest.mark.parametrize(
-    "checkpoint_resume, workspace",
-    [(None, True), (None, False), ("foo", True), ("foo", False)],
-)
+@pytest.mark.parametrize("checkpoint_resume", [None, "foo"])
 def test_resume_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, checkpoint_resume, workspace
 ):
@@ -80,10 +76,10 @@ def test_resume_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -91,7 +87,6 @@ def test_resume_checkpoint(
     assert scm.get_ref(EXEC_CHECKPOINT) == exp
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_reset_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
 ):
@@ -111,10 +106,10 @@ def test_reset_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -122,7 +117,6 @@ def test_reset_checkpoint(
     assert scm.get_ref(EXEC_CHECKPOINT) == exp
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
@@ -150,19 +144,19 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     for rev in dvc.brancher([checkpoint_a]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     for rev in dvc.brancher([checkpoint_b]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 100"
 
     with pytest.raises(MultipleBranchError):
@@ -173,7 +167,6 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     )
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_resume_non_head_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, workspace
 ):

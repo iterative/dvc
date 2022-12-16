@@ -14,7 +14,7 @@ def test_no_remote_imports():
         "pyarrow",
     }
 
-    code = "import dvc.main, sys; print(' '.join(sys.modules))"
+    code = "import dvc.cli, sys; print(' '.join(sys.modules))"
     res = subprocess.run(
         [sys.executable, "-c", code], stdout=subprocess.PIPE, check=True
     )

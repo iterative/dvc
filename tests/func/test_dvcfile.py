@@ -3,6 +3,7 @@ import textwrap
 
 import pytest
 
+from dvc.annotations import Annotation
 from dvc.dvcfile import (
     PIPELINE_FILE,
     PIPELINE_LOCK,
@@ -13,6 +14,16 @@ from dvc.dvcfile import (
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.stage.loader import StageNotFound
 from dvc.utils.strictyaml import YAMLValidationError
+
+STAGE_EXAMPLE = {
+    "stage1": {
+        "cmd": "cp foo bar",
+        "desc": "stage desc",
+        "meta": {"key1": "value1", "key2": "value2"},
+        "deps": ["foo"],
+        "outs": [{"bar": {"desc": "bar desc", "meta": {"key": "value"}}}],
+    }
+}
 
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):
@@ -335,7 +346,7 @@ def test_dvcfile_dump_preserves_desc(tmp_dir, dvc, run_copy):
     (tmp_dir / dvcfile.path).dump(data)
 
     assert stage.desc == stage_desc
-    stage.outs[0].desc = out_desc
+    stage.outs[0].annot.desc = out_desc
     dvcfile.dump(stage)
     loaded = dvcfile._load()[0]
     assert loaded == data
@@ -382,3 +393,53 @@ def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
         dvcfile.dump(stage)
 
     assert str(exc.value) == f"cannot dump a parametrized stage: '{name}'"
+
+
+def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
+    data = {"stages": STAGE_EXAMPLE}
+    (tmp_dir / "dvc.yaml").dump(data)
+
+    stage = dvc.stage.load_one(name="stage1")
+    assert stage.meta == {"key1": "value1", "key2": "value2"}
+    assert stage.desc == "stage desc"
+    assert stage.outs[0].annot == Annotation(
+        desc="bar desc", meta={"key": "value"}
+    )
+
+    # sanity check
+    stage.dump()
+    assert (tmp_dir / "dvc.yaml").parse() == data
+
+
+@pytest.mark.parametrize(
+    "data",
+    (
+        {
+            "plots": {
+                "path/to/plot": {"x": "value", "y": "value"},
+                "path/to/another/plot": {"x": "value", "y": "value"},
+                "path/to/empty/plot": None,
+            },
+            "stages": STAGE_EXAMPLE,
+        },
+        {
+            "plots": [
+                {"path/to/plot": {"x": "value", "y": "value"}},
+                {"path/to/another/plot": {"x": "value", "y": "value"}},
+                {"path/to/empty/plot": None},
+                "path/to/plot/str",
+            ],
+            "stages": STAGE_EXAMPLE,
+        },
+    ),
+)
+def test_dvcfile_load_with_plots(tmp_dir, dvc, data):
+    (tmp_dir / "dvc.yaml").dump(data)
+    plots = list(dvc.plots.collect())
+    top_level_plots = plots[0]["workspace"]["definitions"]["data"]["dvc.yaml"][
+        "data"
+    ]
+    assert all(
+        name in top_level_plots
+        for name in ("path/to/plot", "path/to/another/plot")
+    )

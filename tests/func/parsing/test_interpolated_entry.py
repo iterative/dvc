@@ -6,6 +6,7 @@ import pytest
 from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
 from dvc.parsing.context import recurse_not_a_node
+from dvc.parsing.interpolate import escape_str
 
 from . import (
     CONTEXT_DATA,
@@ -160,7 +161,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
             DEFAULT_PARAMS_FILE: {"dict.bar": "bar", "dict.ws": "data"},
         }
     }
-    assert resolver.context.imports == {str(tmp_dir / "params.yaml"): None}
+    assert resolver.context.imports == {"params.yaml": None}
     assert resolver.context == {"dict": {"bar": "bar", "ws": "data"}}
 
 
@@ -236,7 +237,7 @@ def test_vars_relpath_overwrite(tmp_dir, dvc):
     }
     resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     resolver.resolve()
-    assert resolver.context.imports == {str(tmp_dir / "params.yaml"): None}
+    assert resolver.context.imports == {"params.yaml": None}
 
 
 @pytest.mark.parametrize("local", [True, False])
@@ -259,3 +260,64 @@ def test_vars_load_partial(tmp_dir, dvc, local, vars_):
         d["vars"] = vars_
     resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     resolver.resolve()
+
+
+@pytest.mark.parametrize(
+    "bool_config, list_config",
+    [(None, None), ("store_true", "nargs"), ("boolean_optional", "append")],
+)
+def test_cmd_dict(tmp_dir, dvc, bool_config, list_config):
+    with dvc.config.edit() as conf:
+        if bool_config:
+            conf["parsing"]["bool"] = bool_config
+        if list_config:
+            conf["parsing"]["list"] = list_config
+
+    string = "spaced string"
+    mixed_quote_string = "quote\"'d"
+    data = {
+        "dict": {
+            "foo": "foo",
+            "bar": 2,
+            "string": string,
+            "mixed_quote_string": mixed_quote_string,
+            "bool": True,
+            "bool-false": False,
+            "list": [1, 2, "foo", mixed_quote_string],
+            "nested": {"foo": "foo"},
+        }
+    }
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(data)
+    resolver = DataResolver(
+        dvc,
+        tmp_dir.fs_path,
+        {"stages": {"stage1": {"cmd": "python script.py ${dict}"}}},
+    )
+
+    if bool_config is None or bool_config == "store_true":
+        bool_resolved = " --bool"
+    else:
+        bool_resolved = " --bool --no-bool-false"
+
+    if list_config is None or list_config == "nargs":
+        list_resolved = f" --list 1 2 foo {escape_str(mixed_quote_string)}"
+    else:
+        list_resolved = " --list 1 --list 2 --list foo"
+        list_resolved += f" --list {escape_str(mixed_quote_string)}"
+
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "stage1": {
+                    "cmd": "python script.py"
+                    " --foo foo --bar 2"
+                    f" --string {escape_str(string)}"
+                    f" --mixed_quote_string {escape_str(mixed_quote_string)}"
+                    f"{bool_resolved}"
+                    f"{list_resolved}"
+                    " --nested.foo foo"
+                }
+            }
+        },
+    )

@@ -2,11 +2,14 @@ import os
 
 import pytest
 
-from dvc.exceptions import DvcException
-from dvc.main import main
-from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
+from dvc.cli import main
+from dvc.fs import system
+from dvc.stage.exceptions import (
+    StageFileDoesNotExistError,
+    StageFileIsNotDvcFileError,
+)
 from dvc.utils.fs import remove
+from dvc_objects.errors import ObjectDBError
 from tests.utils import get_gitignore_content
 
 
@@ -32,6 +35,18 @@ def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
     assert not (tmp_dir / ".gitignore").exists()
 
 
+def test_remove_file_target(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    with pytest.raises(
+        StageFileIsNotDvcFileError,
+        match="'foo' is not a .dvc file. Do you mean 'foo.dvc'?",
+    ):
+        dvc.remove("foo")
+
+    dvc.remove("foo.dvc")
+
+
 def test_remove_non_existent_file(tmp_dir, dvc):
     with pytest.raises(StageFileDoesNotExistError):
         dvc.remove("non_existent_dvc_file.dvc")
@@ -44,10 +59,10 @@ def test_remove_broken_symlink(tmp_dir, dvc):
     dvc.odb.local.cache_types = ["symlink"]
 
     (stage,) = dvc.add("foo")
-    remove(dvc.odb.local.cache_dir)
-    assert System.is_symlink("foo")
+    remove(dvc.odb.local.path)
+    assert system.is_symlink("foo")
 
-    with pytest.raises(DvcException):
+    with pytest.raises(ObjectDBError):
         dvc.remove(stage.addressing)
     assert os.path.lexists("foo")
     assert (tmp_dir / stage.relpath).exists()

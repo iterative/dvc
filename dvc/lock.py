@@ -70,6 +70,8 @@ class LockNoop(LockBase):
         self._lock = True
 
     def unlock(self):
+        if not self.is_locked:
+            raise DvcException("Unlock called on an unlocked lock")
         self._lock = False
 
     @property
@@ -93,6 +95,7 @@ class Lock(LockBase):
         super().__init__(lockfile)
         self._friendly = friendly
         self._lock = None
+        self._lock_failed = False
 
     @property
     def files(self):
@@ -100,6 +103,7 @@ class Lock(LockBase):
 
     def _do_lock(self):
         try:
+            self._lock_failed = False
             with Tqdm(
                 bar_format="{desc}",
                 disable=not self._friendly,
@@ -111,6 +115,7 @@ class Lock(LockBase):
             ):
                 self._lock = zc.lockfile.LockFile(self._lockfile)
         except zc.lockfile.LockError:
+            self._lock_failed = True
             raise LockError(FAILED_TO_LOCK_MESSAGE)
 
     def lock(self):
@@ -120,6 +125,12 @@ class Lock(LockBase):
         lock_retry()
 
     def unlock(self):
+        if self._lock_failed:
+            assert self._lock is None
+            return
+
+        if not self.is_locked:
+            raise DvcException("Unlock called on an unlocked lock")
         self._lock.close()
         self._lock = None
 

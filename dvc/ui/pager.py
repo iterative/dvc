@@ -62,9 +62,8 @@ def find_pager():
         if os.system(f"({DEFAULT_PAGER}) 2>{os.devnull}") != 0:
             logger.warning(
                 "Unable to find `less` in the PATH. Check out "
-                "{} for more info.".format(
-                    format_link("https://man.dvc.org/pipeline/show")
-                )
+                "%s for more info.",
+                format_link("https://man.dvc.org/pipeline/show"),
             )
         else:
             pager = DEFAULT_PAGER
@@ -86,7 +85,7 @@ def find_pager():
 
 def pager(text: str) -> None:
     _pager = find_pager()
-    logger.trace(f"Using pager: '{_pager}'")  # type: ignore[attr-defined]
+    logger.trace("Using pager: '%s'", _pager)  # type: ignore[attr-defined]
     make_pager(_pager)(text)
 
 

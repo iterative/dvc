@@ -14,10 +14,13 @@ def _joint_status(pairs):
     status_info = {}
 
     for stage, filter_info in pairs:
-        if stage.frozen and not stage.is_repo_import:
+        if stage.frozen and not (
+            stage.is_repo_import or stage.is_versioned_import
+        ):
             logger.warning(
-                "{} is frozen. Its dependencies are"
-                " not going to be shown in the status output.".format(stage)
+                "%s is frozen. Its dependencies are"
+                " not going to be shown in the status output.",
+                stage,
             )
         status_info.update(
             stage.status(check_updates=True, filter_info=filter_info)
@@ -86,6 +89,7 @@ def _cloud_status(
         remote=remote,
         jobs=jobs,
         recursive=recursive,
+        push=True,
     )
 
     ret = {}

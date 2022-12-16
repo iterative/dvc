@@ -47,40 +47,26 @@ from global repo template to creating everything inplace, which:
 
 import os
 import pathlib
-from textwrap import dedent
 
 import pytest
 
 from dvc.logger import disable_other_loggers
-from dvc.testing.tmp_dir import git_init
 
 __all__ = [
     "run_copy",
     "run_head",
     "erepo_dir",
     "git_dir",
-    "git_init",
     "git_upstream",
     "git_downstream",
 ]
-
 
 # see https://github.com/iterative/dvc/issues/3167
 disable_other_loggers()
 
 
 @pytest.fixture
-def run_copy(tmp_dir, dvc):
-    tmp_dir.gen(
-        "copy.py",
-        (
-            "import sys, shutil, os\n"
-            "shutil.copyfile(sys.argv[1], sys.argv[2]) "
-            "if os.path.isfile(sys.argv[1]) "
-            "else shutil.copytree(sys.argv[1], sys.argv[2])"
-        ),
-    )
-
+def run_copy(tmp_dir, copy_script, dvc):
     def run_copy(src, dst, **run_kwargs):
         wdir = pathlib.Path(run_kwargs.get("wdir", "."))
         wdir = pathlib.Path("../" * len(wdir.parts))
@@ -97,23 +83,7 @@ def run_copy(tmp_dir, dvc):
 
 
 @pytest.fixture
-def run_head(tmp_dir, dvc):
-    """Output first line of each file to different file with '-1' appended.
-    Useful for tracking multiple outputs/dependencies which are not a copy
-    of each others.
-    """
-    tmp_dir.gen(
-        {
-            "head.py": dedent(
-                """
-        import sys
-        for file in sys.argv[1:]:
-            with open(file) as f, open(file +"-1","w+") as w:
-                w.write(f.readline())
-        """
-            )
-        }
-    )
+def run_head(tmp_dir, head_script, dvc):
     script = os.path.abspath(tmp_dir / "head.py")
 
     def run(*args, **run_kwargs):
@@ -151,7 +121,7 @@ class GitRemote:
 @pytest.fixture
 def git_upstream(tmp_dir, erepo_dir, git_dir, request):
     remote = erepo_dir if "dvc" in request.fixturenames else git_dir
-    url = "file://{}".format(remote.resolve().as_posix())
+    url = f"file://{remote.resolve().as_posix()}"
     tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
     return GitRemote(remote, "upstream", url)
 
@@ -159,6 +129,6 @@ def git_upstream(tmp_dir, erepo_dir, git_dir, request):
 @pytest.fixture
 def git_downstream(tmp_dir, erepo_dir, git_dir, request):
     remote = erepo_dir if "dvc" in request.fixturenames else git_dir
-    url = "file://{}".format(tmp_dir.resolve().as_posix())
+    url = f"file://{tmp_dir.resolve().as_posix()}"
     remote.scm.gitpython.repo.create_remote("upstream", url)
     return GitRemote(remote, "upstream", url)

@@ -3,23 +3,22 @@ import os
 
 import pytest
 
-from dvc.command.experiments.init import CmdExperimentsInit
-from dvc.exceptions import DvcException
-from dvc.main import main
+from dvc.cli import main
+from dvc.commands.experiments.init import CmdExperimentsInit
 from dvc.repo.experiments.init import init
 from dvc.stage.exceptions import DuplicateStageName
 
 # the tests may hang on prompts on failure
-pytestmark = pytest.mark.timeout(2, func_only=True)
+pytestmark = pytest.mark.timeout(3, func_only=True)
 
 
+@pytest.mark.timeout(5, func_only=True)
 def test_init_simple(tmp_dir, scm, dvc, capsys):
     tmp_dir.gen(
         {
             CmdExperimentsInit.CODE: {"copy.py": ""},
             "data": "data",
             "params.yaml": '{"foo": 1}',
-            "dvclive": {},
             "plots": {},
         }
     )
@@ -30,7 +29,11 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
     assert main(["exp", "init", script]) == 0
     out, err = capsys.readouterr()
     assert not err
-    assert "Created train stage in dvc.yaml" in out
+    assert (
+        "Creating train stage in dvc.yaml\n\n"
+        "Ensure your experiment command creates metrics.json, plots and models"
+        '.\nYou can now run your experiment using "dvc exp run".' in out
+    )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
             "train": {
@@ -38,11 +41,13 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
                 "deps": ["data", "src"],
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
     }
+    assert (tmp_dir / "data").read_text() == "data"
+    assert (tmp_dir / "src").is_dir()
 
 
 @pytest.mark.parametrize("interactive", [True, False])
@@ -74,6 +79,20 @@ def test_when_stage_force_if_already_exists(tmp_dir, dvc):
     assert d["stages"]["train"]["cmd"] == "true"
 
 
+@pytest.mark.parametrize("interactive", [True, False])
+def test_creates_params_file_by_default(tmp_dir, dvc, interactive):
+    init(
+        dvc,
+        interactive=interactive,
+        defaults=CmdExperimentsInit.DEFAULTS,
+        overrides={"cmd": "cmd"},
+        stream=io.StringIO(""),
+    )
+
+    assert (tmp_dir / "params.yaml").is_file()
+    assert (tmp_dir / "params.yaml").parse() == {}
+
+
 def test_with_a_custom_name(tmp_dir, dvc):
     init(dvc, name="custom", overrides={"cmd": "cmd"})
     assert (tmp_dir / "dvc.yaml").parse() == {
@@ -90,21 +109,6 @@ def test_init_with_no_defaults_non_interactive(tmp_dir, scm, dvc):
     scm._reset()
     assert not (tmp_dir / "dvc.lock").exists()
     assert scm.is_tracked("dvc.yaml")
-
-
-def test_abort_confirmation(tmp_dir, dvc):
-    (tmp_dir / "param").dump({"foo": 1})
-    inp = io.StringIO("./script\nscript\ndata\nmodel\nparam\nmetric\nplt\nn")
-    with pytest.raises(DvcException) as exc:
-        init(
-            dvc,
-            interactive=True,
-            defaults=CmdExperimentsInit.DEFAULTS,
-            stream=inp,
-        )
-    assert str(exc.value) == "Aborting ..."
-    assert not (tmp_dir / "dvc.yaml").exists()
-    assert not (tmp_dir / "dvc.lock").exists()
 
 
 @pytest.mark.parametrize(
@@ -124,28 +128,31 @@ def test_init_interactive_when_no_path_prompts_need_to_be_asked(
         interactive=True,
         defaults=CmdExperimentsInit.DEFAULTS,
         overrides={**CmdExperimentsInit.DEFAULTS, **extra_overrides},
-        stream=inp,  # we still need to confirm
+        stream=inp,
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
             "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
-                "live": {"dvclive": {"html": True, "summary": True}},
-                "metrics": [{"metrics.json": {"cache": False}}],
-                # we specify `live` through `overrides`,
-                # so it creates checkpoint-based output.
-                "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
-                "plots": [{"plots": {"cache": False}}],
+                "metrics": [
+                    {"metrics.json": {"cache": False}},
+                ],
+                "outs": ["models"],
+                "params": [{"params.yaml": None}],
+                "plots": [
+                    {"plots": {"cache": False}},
+                ],
             }
         }
     }
+    assert (tmp_dir / "src").is_dir()
+    assert (tmp_dir / "data").is_dir()
 
 
 def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
     (tmp_dir / "params.yaml").dump({"foo": 1})
-    inp = io.StringIO("python script.py\nscript.py\ndata\nmodels\nn")
+    inp = io.StringIO("python script.py\nscript.py\ndata\nn")
 
     init(
         dvc, interactive=True, stream=inp, defaults=CmdExperimentsInit.DEFAULTS
@@ -163,6 +170,8 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
+    assert (tmp_dir / "script.py").read_text() == ""
+    assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
     assert not scm.is_tracked("params.yaml")
@@ -173,9 +182,7 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
 def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
     tmp_dir.gen({"data": {"foo": "foo"}})
     (tmp_dir / "params.yaml").dump({"foo": 1})
-    inp = io.StringIO(
-        "python script.py\nscript.py\ndata\nmodels\nparams.json\ndata\n"
-    )
+    inp = io.StringIO("python script.py\nscript.py\ndata\ndata")
 
     init(
         dvc, stream=inp, interactive=True, defaults=CmdExperimentsInit.DEFAULTS
@@ -188,35 +195,26 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
                 "deps": ["data", "script.py"],
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
     }
+    assert (tmp_dir / "script.py").read_text() == ""
+    assert (tmp_dir / "data").is_dir()
 
     out, err = capsys.readouterr()
+    assert not out
     assert (
-        "Path to a parameters file [params.yaml, n to omit]: "
-        "'params.json' does not exist. "
-        "Please retry with an existing parameters file.\n"
         "Path to a parameters file [params.yaml, n to omit]: "
         "'data' is a directory. "
         "Please retry with an existing parameters file.\n"
-        "Path to a parameters file [params.yaml, n to omit]:"
-    ) in err
-    assert not out
+        "Path to a parameters file [params.yaml, n to omit]:" in err
+    )
 
 
 def test_init_with_no_defaults_interactive(tmp_dir, dvc):
-    inp = io.StringIO(
-        "python script.py\n"
-        "script.py\n"
-        "data\n"
-        "model\n"
-        "n\n"
-        "metric\n"
-        "n\n"
-    )
+    inp = io.StringIO("script.py\ndata\nn\nmodel\nmetric\nn\n")
     init(
         dvc,
         defaults={},
@@ -228,12 +226,14 @@ def test_init_with_no_defaults_interactive(tmp_dir, dvc):
         "stages": {
             "train": {
                 "cmd": "python script.py",
-                "deps": ["python script.py", "script.py"],
+                "deps": ["data", "script.py"],
                 "metrics": [{"metric": {"cache": False}}],
-                "outs": ["data"],
+                "outs": ["model"],
             }
         }
     }
+    assert (tmp_dir / "script.py").read_text() == ""
+    assert (tmp_dir / "data").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -247,8 +247,8 @@ def test_init_with_no_defaults_interactive(tmp_dir, dvc):
                 "python script.py\n"
                 "script.py\n"
                 "data\n"
-                "models\n"
                 "params.yaml\n"
+                "models\n"
                 "metrics.json\n"
                 "plots\n"
                 "y"
@@ -257,9 +257,7 @@ def test_init_with_no_defaults_interactive(tmp_dir, dvc):
     ],
     ids=["non-interactive", "interactive"],
 )
-def test_init_interactive_default(
-    tmp_dir, scm, dvc, interactive, overrides, inp, capsys
-):
+def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
     (tmp_dir / "params.yaml").dump({"foo": {"bar": 1}})
 
     init(
@@ -277,12 +275,14 @@ def test_init_interactive_default(
                 "deps": ["data", "script.py"],
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
+    assert (tmp_dir / "script.py").read_text() == ""
+    assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
     assert scm.is_tracked("params.yaml")
@@ -290,12 +290,13 @@ def test_init_interactive_default(
     assert scm.is_ignored("models")
     out, err = capsys.readouterr()
 
-    if interactive:
-        assert "'script.py' does not exist in the workspace." in err
-        assert "'data' does not exist in the workspace." in err
     assert not out
+    if interactive:
+        assert "'script.py' does not exist, the file will be created." in err
+        assert "'data' does not exist, the directory will be created." in err
 
 
+@pytest.mark.timeout(5, func_only=True)
 @pytest.mark.parametrize(
     "interactive, overrides, inp",
     [
@@ -304,31 +305,18 @@ def test_init_interactive_default(
             True,
             {},
             io.StringIO(
-                "python script.py\n"
-                "script.py\n"
-                "data\n"
-                "models\n"
-                "params.yaml\n"
-                "dvclive\n"
-                "y"
+                "python script.py\nscript.py\ndata\nparams.yaml\nmodels\ny"
             ),
         ),
         (
             True,
             {"cmd": "python script.py"},
-            io.StringIO(
-                "script.py\n"
-                "data\n"
-                "models\n"
-                "params.yaml\n"
-                "dvclive\n"
-                "y"
-            ),
+            io.StringIO("script.py\ndata\nparams.yaml\nmodels\ny"),
         ),
         (
             True,
             {"cmd": "python script.py", "models": "models"},
-            io.StringIO("script.py\ndata\nparams.yaml\ndvclive\ny"),
+            io.StringIO("script.py\ndata\nparams.yaml\ny"),
         ),
     ],
     ids=[
@@ -341,11 +329,12 @@ def test_init_interactive_default(
 def test_init_interactive_live(
     tmp_dir, scm, dvc, interactive, overrides, inp, capsys
 ):
+    overrides["live"] = "dvclive"
+
     (tmp_dir / "params.yaml").dump({"foo": {"bar": 1}})
 
     init(
         dvc,
-        type="dl",
         interactive=interactive,
         defaults=CmdExperimentsInit.DEFAULTS,
         overrides=overrides,
@@ -356,13 +345,20 @@ def test_init_interactive_live(
             "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
-                "live": {"dvclive": {"html": True, "summary": True}},
-                "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
+                "metrics": [
+                    {os.path.join("dvclive", "metrics.json"): {"cache": False}}
+                ],
+                "outs": ["models"],
+                "params": [{"params.yaml": None}],
+                "plots": [
+                    {os.path.join("dvclive", "plots"): {"cache": False}}
+                ],
             }
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
+    assert (tmp_dir / "script.py").read_text() == ""
+    assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
     assert scm.is_tracked("params.yaml")
@@ -370,10 +366,11 @@ def test_init_interactive_live(
     assert scm.is_ignored("models")
 
     out, err = capsys.readouterr()
-    if interactive:
-        assert "'script.py' does not exist in the workspace." in err
-        assert "'data' does not exist in the workspace." in err
+
     assert not out
+    if interactive:
+        assert "'script.py' does not exist, the file will be created." in err
+        assert "'data' does not exist, the directory will be created." in err
 
 
 @pytest.mark.parametrize(
@@ -383,13 +380,13 @@ def test_init_interactive_live(
         (True, io.StringIO()),
     ],
 )
-def test_init_with_type_live_and_models_plots_provided(
+def test_init_with_type_checkpoint_and_models_plots_provided(
     tmp_dir, dvc, interactive, inp
 ):
     (tmp_dir / "params.yaml").dump({"foo": 1})
     init(
         dvc,
-        type="dl",
+        type="checkpoint",
         interactive=interactive,
         stream=inp,
         defaults=CmdExperimentsInit.DEFAULTS,
@@ -400,14 +397,19 @@ def test_init_with_type_live_and_models_plots_provided(
             "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
-                "live": {"dvclive": {"html": True, "summary": True}},
-                "metrics": [{"m": {"cache": False}}],
+                "metrics": [
+                    {"m": {"cache": False, "persist": True}},
+                ],
                 "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
-                "plots": [{"p": {"cache": False}}],
+                "params": [{"params.yaml": None}],
+                "plots": [
+                    {"p": {"cache": False, "persist": True}},
+                ],
             }
         }
     }
+    assert (tmp_dir / "src").is_dir()
+    assert (tmp_dir / "data").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -433,11 +435,82 @@ def test_init_with_type_default_and_live_provided(
             "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
-                "live": {"live": {"html": True, "summary": True}},
-                "metrics": [{"metrics.json": {"cache": False}}],
-                "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
-                "plots": [{"plots": {"cache": False}}],
+                "metrics": [
+                    {os.path.join("live", "metrics.json"): {"cache": False}},
+                ],
+                "outs": ["models"],
+                "params": [{"params.yaml": None}],
+                "plots": [
+                    {os.path.join("live", "plots"): {"cache": False}},
+                ],
             }
         }
     }
+    assert (tmp_dir / "src").is_dir()
+    assert (tmp_dir / "data").is_dir()
+
+
+@pytest.mark.parametrize(
+    "interactive, inp",
+    [
+        (False, None),
+        (True, io.StringIO()),
+    ],
+)
+def test_init_with_live_and_metrics_plots_provided(
+    tmp_dir, dvc, interactive, inp
+):
+    (tmp_dir / "params.yaml").dump({"foo": 1})
+    init(
+        dvc,
+        interactive=interactive,
+        stream=inp,
+        defaults=CmdExperimentsInit.DEFAULTS,
+        overrides={
+            "cmd": "cmd",
+            "live": "live",
+            "metrics": "metrics.json",
+            "plots": "plots",
+        },
+    )
+    assert (tmp_dir / "dvc.yaml").parse() == {
+        "stages": {
+            "train": {
+                "cmd": "cmd",
+                "deps": ["data", "src"],
+                "metrics": [
+                    {os.path.join("live", "metrics.json"): {"cache": False}},
+                    {"metrics.json": {"cache": False}},
+                ],
+                "outs": ["models"],
+                "params": [{"params.yaml": None}],
+                "plots": [
+                    {os.path.join("live", "plots"): {"cache": False}},
+                    {"plots": {"cache": False}},
+                ],
+            }
+        }
+    }
+    assert (tmp_dir / "src").is_dir()
+    assert (tmp_dir / "data").is_dir()
+
+
+def test_gen_output_dirs(tmp_dir, dvc):
+    init(
+        dvc,
+        defaults=CmdExperimentsInit.DEFAULTS,
+        overrides={
+            "cmd": "cmd",
+            "models": "models/predict.h5",
+            "metrics": "eval/scores.json",
+            "plots": "eval/plots",
+            "live": "eval/live",
+        },
+    )
+
+    assert (tmp_dir / "models").is_dir()
+    assert (tmp_dir / "eval").is_dir()
+    assert (tmp_dir / "eval/plots").is_dir()
+    assert (tmp_dir / "eval/live").is_dir()
+    assert not (tmp_dir / "models/predict.h5").exists()
+    assert not (tmp_dir / "eval/scores.json").exists()

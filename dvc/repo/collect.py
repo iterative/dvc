@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import TYPE_CHECKING, Callable, Iterable, List, Tuple
 
 from dvc.types import AnyPath
@@ -30,40 +29,41 @@ def _collect_paths(
     targets: Iterable[str],
     recursive: bool = False,
     rev: str = None,
-):
-    from dvc.fs.repo import RepoFileSystem
-    from dvc.utils import relpath
+) -> StrPaths:
+    from dvc.fs.dvc import DVCFileSystem
 
-    fs_paths = [os.path.abspath(target) for target in targets]
-    fs = RepoFileSystem(repo)
+    fs = DVCFileSystem(repo=repo)
+    fs_paths = [fs.from_os_path(target) for target in targets]
 
-    target_paths = []
+    target_paths: StrPaths = []
     for fs_path in fs_paths:
-
         if recursive and fs.isdir(fs_path):
-            target_paths.extend(repo.dvcignore.find(fs, fs_path))
+            target_paths.extend(fs.find(fs_path))
 
+        rel = fs.path.relpath(fs_path)
         if not fs.exists(fs_path):
-            rel = relpath(fs_path)
             if rev == "workspace" or rev == "":
                 logger.warning("'%s' was not found in current workspace.", rel)
             else:
                 logger.warning("'%s' was not found at: '%s'.", rel, rev)
         target_paths.append(fs_path)
+
     return target_paths
 
 
-def _filter_duplicates(
-    outs: Outputs, fs_paths: StrPaths
+def _filter_outs(
+    outs: Outputs, fs_paths: StrPaths, duplicates=False
 ) -> Tuple[Outputs, StrPaths]:
     res_outs: Outputs = []
     fs_res_paths = fs_paths
 
     for out in outs:
-        if out.fs_path in fs_paths:
+        fs_path = out.repo.dvcfs.from_os_path(out.fs_path)
+        if fs_path in fs_paths:
             res_outs.append(out)
-            # MUTATING THE SAME LIST!!
-            fs_res_paths.remove(out.fs_path)
+            if not duplicates:
+                # MUTATING THE SAME LIST!!
+                fs_res_paths.remove(fs_path)
 
     return res_outs, fs_res_paths
 
@@ -75,6 +75,7 @@ def collect(
     output_filter: FilterFn = None,
     rev: str = None,
     recursive: bool = False,
+    duplicates: bool = False,
 ) -> Tuple[Outputs, StrPaths]:
     assert targets or output_filter
 
@@ -86,4 +87,4 @@ def collect(
 
     target_paths = _collect_paths(repo, targets, recursive=recursive, rev=rev)
 
-    return _filter_duplicates(outs, target_paths)
+    return _filter_outs(outs, target_paths, duplicates=duplicates)

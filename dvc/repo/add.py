@@ -187,7 +187,7 @@ def add(  # noqa: C901
                 stage.transfer(source, to_remote=to_remote, odb=odb, **kwargs)
             else:
                 try:
-                    stage.save()
+                    stage.save(merge_versioned=True)
                     if not no_commit:
                         stage.commit()
                 except CacheLinkError:
@@ -264,6 +264,7 @@ def create_stages(
             outs=[out],
             external=external,
         )
-        if kwargs.get("desc"):
-            stage.outs[0].desc = kwargs["desc"]
+
+        out_obj = stage.outs[0]
+        out_obj.annot.update(**kwargs)
         yield stage

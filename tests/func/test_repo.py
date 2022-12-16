@@ -1,6 +1,6 @@
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
-from dvc.objects.db import ODBManager
-from dvc.system import System
+from dvc.fs import system
+from dvc.odbmgr import ODBManager
 
 
 def test_destroy(tmp_dir, dvc, run_copy):
@@ -19,6 +19,7 @@ def test_destroy(tmp_dir, dvc, run_copy):
     # Remove all the files related to DVC
     for path in [
         ".dvc",
+        ".dvcignore",
         "file.dvc",
         "file2.dvc",
         "dir.dvc",
@@ -49,4 +50,4 @@ def test_destroy(tmp_dir, dvc, run_copy):
         "dir/subdir",
         "dir/subdir/file",
     ]:
-        assert not System.is_symlink(tmp_dir / path)
+        assert not system.is_symlink(tmp_dir / path)

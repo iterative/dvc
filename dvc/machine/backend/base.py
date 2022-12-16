@@ -3,7 +3,8 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
 if TYPE_CHECKING:
-    from dvc.fs.ssh import SSHFileSystem
+    from dvc_ssh import SSHFileSystem
+
     from dvc.types import StrPath
 
 
@@ -25,7 +26,7 @@ class BaseMachineBackend(ABC):
     ) -> Iterator[dict]:
         """Iterate over status of all instances of the specified machine."""
 
-    def close(self):
+    def close(self):  # noqa: B027
         pass
 
     @abstractmethod

@@ -4,8 +4,6 @@ import signal
 import subprocess
 import threading
 
-from funcy import first
-
 from dvc.stage.monitor import Monitor
 from dvc.utils import fix_env
 
@@ -116,12 +114,6 @@ def _get_monitor_tasks(stage, checkpoint_func, proc):
 
         result.append(CheckpointTask(stage, checkpoint_func, proc))
 
-    live = first(o for o in stage.outs if (o.live and o.live["html"]))
-    if live:
-        from .monitor import LiveTask
-
-        result.append(LiveTask(stage, live, proc))
-
     return result
 
 
@@ -147,14 +139,16 @@ def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
 def run_stage(
     stage, dry=False, force=False, checkpoint_func=None, run_env=None, **kwargs
 ):
-    if not (dry or force or checkpoint_func):
+    if not (force or checkpoint_func):
         from .cache import RunCacheNotFoundError
 
         try:
-            stage.repo.stage_cache.restore(stage, **kwargs)
-            return
+            stage.repo.stage_cache.restore(stage, dry=dry, **kwargs)
+            if not dry:
+                return
         except RunCacheNotFoundError:
-            stage.save_deps()
+            if not dry:
+                stage.save_deps()
 
     run = cmd_run if dry else unlocked_repo(cmd_run)
     run(stage, dry=dry, checkpoint_func=checkpoint_func, run_env=run_env)

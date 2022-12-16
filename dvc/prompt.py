@@ -52,5 +52,5 @@ def password(statement):
     Returns:
         str: password entered by the user.
     """
-    logger.info(f"{statement}: ")
+    logger.info("%s: ", statement)
     return getpass("")

@@ -3,14 +3,17 @@
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
-• `Twitter <https://twitter.com/DVCorg>`_
-• `Chat (Community & Support) <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
-• `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
+• `Related Technologies <https://dvc.org/doc/user-guide/related-technologies>`_
+• `How DVC works`_
+• `VS Code Extension`_
+• `Installation`_
+• `Contributing`_
+• `Community and Support`_
 
-|CI| |Maintainability| |Coverage| |Donate| |DOI|
+|CI| |Python Version| |Coverage| |VS Code| |DOI|
 
-|PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
+|PyPI| |PyPI Downloads| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
 Warning! This fork contains several modifications:
@@ -23,86 +26,100 @@ Warning! This fork contains several modifications:
 
 |
 
-**Data Version Control** or **DVC** is an **open-source** tool for data science and machine
-learning projects. Key features:
+**Data Version Control** or **DVC** is a command line tool and `VS Code Extension`_ to help you develop reproducible machine learning projects:
 
-#. Simple **command line** Git-like experience. Does not require installing and maintaining
-   any databases. Does not depend on any proprietary online services.
+#. **Version** your data and models.
+   Store them in your cloud storage but keep their version info in your Git repo.
 
-#. Management and versioning of **datasets** and **machine learning
-   models**. Data can be saved in S3, Google cloud, Azure, Alibaba 
-   cloud, SSH server, HDFS, or even local HDD RAID.
+#. **Iterate** fast with lightweight pipelines.
+   When you make changes, only run the steps impacted by those changes.
 
-#. Makes projects **reproducible** and **shareable**; helping to answer questions about how
-   a model was built.
+#. **Track** experiments in your local Git repo (no servers needed).
 
-#. Helps manage experiments with Git tags/branches and **metrics** tracking.
+#. **Compare** any data, code, parameters, model, or performance plots.
 
-**DVC** aims to replace spreadsheet and document sharing tools (such as Excel or Google Docs)
-frequently used as both knowledge repositories and team ledgers.
-DVC also replaces both ad-hoc scripts to track, move, and deploy different model versions
-and ad-hoc data file suffixes and prefixes.
-
-.. contents:: **Contents**
-  :backlinks: none
-
-How DVC works
-=============
-
-We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ guide to better understand what DVC
-is and how it can fit your scenarios.
-
-The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-LFS to be precise) & Makefiles
-made right and tailored specifically for ML and Data Science scenarios.
-
-#. ``Git/Git-LFS`` part - DVC helps store and share data artifacts and models, connecting them with a Git repository.
-#. ``Makefile``\ s part - DVC describes how one data or model artifact was built from other data and code.
-
-DVC usually runs along with Git. Git is used as usual to store and version code (including DVC meta-files). DVC helps
-to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they
-were stored in Git itself. To store and share the data cache, DVC supports multiple remotes - any cloud (S3, Azure,
-Google Cloud, etc) or any on-premise network storage (via SSH, for example).
-
-|Flowchart|
-
-The DVC pipelines (computational graph) feature connects code and data together. It is possible to explicitly
-specify all steps required to produce a model: input dependencies including data, commands to run,
-and output information to be saved. See the quick start section below or
-the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
+#. **Share** experiments and automatically reproduce anyone's experiment.
 
 Quick start
 ===========
 
-Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full version. Common workflow commands include:
+    Please read our `Command Reference <https://dvc.org/doc/command-reference>`_ for a complete list.
 
-+-----------------------------------+----------------------------------------------------------------------------+
-| Step                              | Command                                                                    |
-+===================================+============================================================================+
-| Track data                        | | ``$ git add train.py``                                                   |
-|                                   | | ``$ dvc add images.zip``                                                 |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Connect code and data by commands | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
-|                                   | | ``$ dvc run -n train -d images/ -d train.py -o model.p python train.py`` |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Make changes and reproduce        | | ``$ vi train.py``                                                        |
-|                                   | | ``$ dvc repro model.p.dvc``                                              |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Share code                        | | ``$ git add .``                                                          |
-|                                   | | ``$ git commit -m 'The baseline model'``                                 |
-|                                   | | ``$ git push``                                                           |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                 |
-|                                   | | ``$ dvc push``                                                           |
-+-----------------------------------+----------------------------------------------------------------------------+
+A common CLI workflow includes:
+
+
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Task                              | Terminal                                                                                           |
++===================================+====================================================================================================+
+| Track data                        | | ``$ git add train.py params.yaml``                                                               |
+|                                   | | ``$ dvc add images/``                                                                            |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Connect code and data             | | ``$ dvc stage add -n featurize -d images/ -o features/ python featurize.py``                     |
+|                                   | | ``$ dvc stage add -n train -d features/ -d train.py -o model.p -M metrics.json python train.py`` |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Make changes and experiment       | | ``$ dvc exp run -n exp-baseline``                                                                |
+|                                   | | ``$ vi train.py``                                                                                |
+|                                   | | ``$ dvc exp run -n exp-code-change``                                                             |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Compare and select experiments    | | ``$ dvc exp show``                                                                               |
+|                                   | | ``$ dvc exp apply exp-baseline``                                                                 |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Share code                        | | ``$ git add .``                                                                                  |
+|                                   | | ``$ git commit -m 'The baseline model'``                                                         |
+|                                   | | ``$ git push``                                                                                   |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                                         |
+|                                   | | ``$ dvc push``                                                                                   |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+
+How DVC works
+=============
+
+    We encourage you to read our `Get Started
+    <https://dvc.org/doc/get-started>`_ docs to better understand what DVC
+    does and how it can fit your scenarios.
+
+The closest *analogies* to describe the main DVC features are these:
+
+#. **Git for data**: Store and share data artifacts (like Git-LFS but without a server) and models, connecting them with a Git repository. Data management meets GitOps!
+#. **Makefiles** for ML: Describes how data or model artifacts are built from other data and code in a standard format. Now you can version your data pipelines with Git.
+#. Local **experiment tracking**: Turn your machine into an ML experiment management platform, and collaborate with others using existing Git hosting (Github, Gitlab, etc.).
+
+Git is employed as usual to store and version code (including DVC meta-files as placeholders for data).
+DVC `stores data and model files <https://dvc.org/doc/start/data-management>`_ seamlessly in a cache outside of Git, while preserving almost the same user experience as if they were in the repo.
+To share and back up the *data cache*, DVC supports multiple remote storage platforms - any cloud (S3, Azure, Google Cloud, etc.) or on-premise network storage (via SSH, for example).
+
+|Flowchart|
+
+`DVC pipelines <https://dvc.org/doc/start/data-management/data-pipelines>`_ (computational graphs) connect code and data together.
+They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
+
+Last but not least, `DVC Experiment Versioning <https://dvc.org/doc/start/experiments>`_ lets you prepare and run a large number of experiments.
+Their results can be filtered and compared based on hyperparameters and metrics, and visualized with multiple plots.
+
+.. _`VS Code Extension`:
+
+Visual Studio Code Extension
+============================
+
+|VS Code|
+
+To use DVC as a GUI right from your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
+It currently features experiment tracking and data management, and more features (data pipeline support, etc.) are coming soon!
+
+|VS Code Extension Overview|
+
+    Note: You'll have to install core DVC on your system separately (as detailed
+    below). The Extension will guide you if needed.
 
 Installation
 ============
 
-There are four options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package.
+There are several ways to install DVC: in VS Code; using ``snap``, ``choco``, ``brew``, ``conda``, ``pip``; or with an OS-specific package.
 Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
 
-Snap (Snapcraft/Linux)
-----------------------
+Snapcraft (Linux)
+-----------------
 
 |Snap|
 
@@ -111,11 +128,10 @@ Snap (Snapcraft/Linux)
    snap install dvc --classic
 
 This corresponds to the latest tagged release.
-Add ``--beta`` for the latest tagged release candidate,
-or ``--edge`` for the latest ``main`` version.
+Add ``--beta`` for the latest tagged release candidate, or ``--edge`` for the latest ``main`` version.
 
-Choco (Chocolatey/Windows)
---------------------------
+Chocolatey (Windows)
+--------------------
 
 |Choco|
 
@@ -123,8 +139,8 @@ Choco (Chocolatey/Windows)
 
    choco install dvc
 
-Brew (Homebrew/Mac OS)
-----------------------
+Brew (mac OS)
+-------------
 
 |Brew|
 
@@ -132,8 +148,8 @@ Brew (Homebrew/Mac OS)
 
    brew install dvc
 
-Conda (Anaconda)
-----------------
+Anaconda (Any platform)
+-----------------------
 
 |Conda|
 
@@ -142,11 +158,10 @@ Conda (Anaconda)
    conda install -c conda-forge mamba # installs much faster than conda
    mamba install -c conda-forge dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to
-install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
+Depending on the remote storage type you plan to use to keep and share your data, you might need to install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
 
-pip (PyPI)
-----------
+PyPI (Python)
+-------------
 
 |PyPI|
 
@@ -154,10 +169,8 @@ pip (PyPI)
 
    pip install dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to specify
-one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
-The command should look like this: ``pip install dvc[s3]`` (in this case AWS S3 dependencies such as ``boto3``
-will be installed automatically).
+Depending on the remote storage type you plan to use to keep and share your data, you might need to specify one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
+The command should look like this: ``pip install 'dvc[s3]'`` (in this case AWS S3 dependencies such as ``boto3`` will be installed automatically).
 
 To install the development version, run:
 
@@ -165,88 +178,58 @@ To install the development version, run:
 
    pip install git+git://github.com/iterative/dvc
 
-Package
--------
+Package (Platform-specific)
+---------------------------
 
 |Packages|
 
-Self-contained packages for Linux, Windows, and Mac are available. The latest version of the packages
-can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
+Self-contained packages for Linux, Windows, and Mac are available.
+The latest version of the packages can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
 Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
    sudo wget https://dvc.org/deb/dvc.list -O /etc/apt/sources.list.d/dvc.list
-   sudo apt-get update
-   sudo apt-get install dvc
+   wget -qO - https://dvc.org/deb/iterative.asc | sudo apt-key add -
+   sudo apt update
+   sudo apt install dvc
 
 Fedora / CentOS (rpm)
 ^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
    sudo wget https://dvc.org/rpm/dvc.repo -O /etc/yum.repos.d/dvc.repo
+   sudo rpm --import https://dvc.org/rpm/iterative.asc
    sudo yum update
    sudo yum install dvc
-
-Comparison to related technologies
-==================================
-
-#. Data Engineering tools such as `AirFlow <https://airflow.apache.org/>`,
-   `Luigi <https://github.com/spotify/luigi>`, and others - in DVC data,
-   model and ML pipelines represent a single ML project focused on data
-   scientists' experience.  Data engineering tools orchestrate multiple data
-   projects and focus on efficient execution. A DVC project can be used from
-   existing data pipelines as a single execution step.
-
-#. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (which should
-   not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of
-   copying/duplicating files.
-
-#. `Git-LFS <https://git-lfs.github.com/>`_ - DVC is compatible with many
-   remote storage services (S3, Google Cloud, Azure, SSH, etc). DVC also
-   uses reflinks or hardlinks to avoid copy operations on checkouts; thus
-   handling large data files much more efficiently.
-
-#. Makefile (and analogues including ad-hoc scripts) - DVC tracks
-   dependencies (in a directed acyclic graph).
-
-#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_ - DVC is a workflow
-   management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
-
-#. `DAGsHub <https://dagshub.com/>`_ - online service to host DVC
-   projects.  It provides a useful UI around DVC repositories and integrates
-   other tools.
-
-#. `DVC Studio <https://studio.iterative.ai/>`_ - official online
-   platform for DVC projects.  It can be used to manage data and models, run
-   and track experiments, and visualize and share results.  Also, it
-   integrates with `CML (CI/CD for ML) <https://cml.dev/>` for training
-   models in the cloud or Kubernetes.
-
 
 Contributing
 ============
 
-|Maintainability| |Donate|
+|Maintainability|
 
-Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more
-details. Thanks to all our contributors!
+Contributions are welcome!
+Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more details.
+Thanks to all our contributors!
 
 |Contribs|
 
-Mailing List
-============
+Community and Support
+=====================
 
-Want to stay up to date? Want to help improve DVC by participating in our occasional polls? Subscribe to our `mailing list <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_. No spam, really low traffic.
+* `Twitter <https://twitter.com/DVCorg>`_
+* `Forum <https://discuss.dvc.org/>`_
+* `Discord Chat <https://dvc.org/chat>`_
+* `Email <mailto:support@dvc.org>`_
+* `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
 Copyright
 =========
 
 This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
 
-By submitting a pull request to this project, you agree to license your contribution under the Apache license version
-2.0 to this project.
+By submitting a pull request to this project, you agree to license your contribution under the Apache license version 2.0 to this project.
 
 Citation
 ========
@@ -263,6 +246,9 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://dvc.org
    :alt: DVC logo
 
+.. |VS Code Extension Overview| image:: https://raw.githubusercontent.com/iterative/vscode-dvc/main/extension/docs/overview.gif
+   :alt: DVC Extension for VS Code
+
 .. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=main
    :target: https://github.com/iterative/dvc/actions
    :alt: GHA Tests
@@ -271,13 +257,13 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://codeclimate.com/github/iterative/dvc
    :alt: Code Climate
 
+.. |Python Version| image:: https://img.shields.io/pypi/pyversions/dvc
+   :target: https://pypi.org/project/dvc
+   :alt: Python Version
+
 .. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/iterative/dvc
    :alt: Codecov
-
-.. |Donate| image:: https://img.shields.io/badge/patreon-donate-green.svg?logo=patreon
-   :target: https://www.patreon.com/DVCorg/overview
-   :alt: Donate
 
 .. |Snap| image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
    :target: https://snapcraft.io/dvc
@@ -299,6 +285,10 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://pypi.org/project/dvc
    :alt: PyPI
 
+.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/dvc.svg?color=blue&label=Downloads&logo=pypi&logoColor=gold
+   :target: https://pypi.org/project/dvc
+   :alt: PyPI Downloads
+
 .. |Packages| image:: https://img.shields.io/github/v/release/iterative/dvc?label=deb|pkg|rpm|exe&logo=GitHub
    :target: https://github.com/iterative/dvc/releases/latest
    :alt: deb|pkg|rpm|exe
@@ -314,3 +304,7 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Contribs| image:: https://contrib.rocks/image?repo=iterative/dvc
    :target: https://github.com/iterative/dvc/graphs/contributors
    :alt: Contributors
+
+.. |VS Code| image:: https://img.shields.io/visual-studio-marketplace/v/Iterative.dvc?color=blue&label=VSCode&logo=visualstudiocode&logoColor=blue
+   :target: https://marketplace.visualstudio.com/items?itemName=Iterative.dvc
+   :alt: VS Code Extension

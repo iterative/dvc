@@ -2,183 +2,92 @@ import logging
 import os
 import shutil
 
-import configobj
 import pytest
-from git import Repo
 
+from dvc.cli import main
 from dvc.exceptions import CollectCacheError
-from dvc.fs.local import LocalFileSystem
-from dvc.main import main
-from dvc.objects.db.local import LocalObjectDB
-from dvc.repo import Repo as DvcRepo
+from dvc.fs import LocalFileSystem
 from dvc.utils.fs import remove
-from tests.basic_env import TestDir, TestDvcGit
+from dvc_data.hashfile.db.local import LocalHashFileDB
 
 
-class TestGC(TestDvcGit):
-    def setUp(self):
-        super().setUp()
+@pytest.fixture
+def good_and_bad_cache(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    (stage,) = tmp_dir.dvc_gen(
+        "data",
+        {"sub": {"data_sub": "data_sub", "data": "data", "тест": "проверка"}},
+    )
+    raw_dir_hash = stage.outs[0].hash_info.as_raw().value
+    odb = dvc.odb.local
 
-        self.dvc.add(self.FOO)
-        self.dvc.add(self.DATA_DIR)
-        self.good_cache = [
-            self.dvc.odb.local.hash_to_path(md5)
-            for md5 in self.dvc.odb.local.all()
-        ]
+    bad_cache = {raw_dir_hash}
+    for i in ["123", "234", "345"]:
+        odb.add_bytes(i, i.encode("utf8"))
+        bad_cache.add(i)
 
-        self.bad_cache = []
-        for i in ["123", "234", "345"]:
-            path = os.path.join(self.dvc.odb.local.cache_dir, i[0:2], i[2:])
-            self.create(path, i)
-            self.bad_cache.append(path)
-
-    def test_api(self):
-        self.dvc.gc(workspace=True)
-        self._test_gc()
-
-    def test_cli(self):
-        ret = main(["gc", "-wf"])
-        self.assertEqual(ret, 0)
-        self._test_gc()
-
-    def _test_gc(self):
-        self.assertTrue(os.path.isdir(self.dvc.odb.local.cache_dir))
-        for c in self.bad_cache:
-            self.assertFalse(os.path.exists(c))
-
-        for c in self.good_cache:
-            self.assertTrue(os.path.exists(c))
+    good_cache = {md5 for md5 in odb.all() if md5 not in bad_cache}
+    return good_cache, bad_cache
 
 
-class TestGCBranchesTags(TestDvcGit):
-    def _check_cache(self, num):
-        total = 0
-        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
-            total += len(files)
-        self.assertEqual(total, num)
-
-    def test(self):
-        fname = "file"
-
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("v1.0")
-
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
-        self.dvc.scm.add([".gitignore", stages[0].relpath])
-        self.dvc.scm.commit("v1.0")
-        self.dvc.scm.tag("v1.0")
-
-        self.dvc.scm.checkout("test", create_new=True)
-        self.dvc.remove(stages[0].relpath)
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("test")
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
-        self.dvc.scm.add([".gitignore", stages[0].relpath])
-        self.dvc.scm.commit("test")
-
-        self.dvc.scm.checkout("master")
-        self.dvc.remove(stages[0].relpath)
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("trash")
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
-        self.dvc.scm.add([".gitignore", stages[0].relpath])
-        self.dvc.scm.commit("trash")
-
-        self.dvc.remove(stages[0].relpath)
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("master")
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
-        self.dvc.scm.add([".gitignore", stages[0].relpath])
-        self.dvc.scm.commit("master")
-
-        self._check_cache(4)
-
-        self.dvc.gc(all_tags=True, all_branches=True)
-
-        self._check_cache(3)
-
-        self.dvc.gc(all_tags=False, all_branches=True)
-
-        self._check_cache(2)
-
-        self.dvc.gc(all_tags=True, all_branches=False)
-
-        self._check_cache(1)
+def test_gc_api(dvc, good_and_bad_cache):
+    dvc.gc(workspace=True)
+    odb = dvc.odb.local
+    good_cache, bad_cache = good_and_bad_cache
+    assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
 
 
-class TestGCMultipleDvcRepos(TestDvcGit):
-    def _check_cache(self, num):
-        total = 0
-        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
-            total += len(files)
-        self.assertEqual(total, num)
+def test_gc_cli(dvc, good_and_bad_cache):
+    assert main(["gc", "-wf"]) == 0
+    odb = dvc.odb.local
+    good_cache, bad_cache = good_and_bad_cache
+    assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
 
-    def setUp(self):
-        super().setUp()
-        self.additional_path = TestDir.mkdtemp()
-        self.additional_git = Repo.init(self.additional_path)
-        self.additional_dvc = DvcRepo.init(self.additional_path)
 
-        cache_path = os.path.join(self._root_dir, ".dvc", "cache")
-        config_path = os.path.join(
-            self.additional_path, ".dvc", "config.local"
-        )
-        cfg = configobj.ConfigObj()
-        cfg.filename = config_path
-        cfg["cache"] = {"dir": cache_path}
-        cfg.write()
+def test_gc_branches_tags(tmp_dir, dvc, scm):
+    tmp_dir.dvc_gen("file", "v1.0", commit="v1.0")
+    scm.tag("v1.0")
 
-        self.additional_dvc = DvcRepo(self.additional_path)
+    with tmp_dir.branch("test", new=True):
+        dvc.remove("file.dvc")
+        tmp_dir.dvc_gen("file", "test", commit="test")
 
-    def test(self):
+    dvc.remove("file.dvc")
+    tmp_dir.dvc_gen("file", "trash", commit="trash")
 
-        # ADD FILE ONLY IN MAIN PROJECT
-        fname = "only_in_first"
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("only in main repo")
+    dvc.remove("file.dvc")
+    tmp_dir.dvc_gen("file", "master", commit="trash")
 
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
+    odb = dvc.odb.local
+    assert len(list(odb.all())) == 4
 
-        # ADD FILE IN MAIN PROJECT THAT IS ALSO IN SECOND PROJECT
-        fname = "in_both"
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("in both repos")
+    dvc.gc(all_tags=True, all_branches=True)
+    assert len(list(odb.all())) == 3
 
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
+    dvc.gc(all_tags=False, all_branches=True)
+    assert len(list(odb.all())) == 2
 
-        cwd = os.getcwd()
-        os.chdir(self.additional_path)
-        # ADD FILE ONLY IN SECOND PROJECT
-        fname = "only_in_second"
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("only in additional repo")
+    dvc.gc(all_tags=True, all_branches=False)
+    assert len(list(odb.all())) == 1
 
-        stages = self.additional_dvc.add(fname)
-        self.assertEqual(len(stages), 1)
 
-        # ADD FILE IN SECOND PROJECT THAT IS ALSO IN MAIN PROJECT
-        fname = "in_both"
-        with open(fname, "w+", encoding="utf-8") as fobj:
-            fobj.write("in both repos")
+def test_gc_multiple_dvc_repos(tmp_dir, scm, dvc, erepo_dir):
+    tmp_dir.dvc_gen("only_in_first", "only in main repo")
+    tmp_dir.dvc_gen("in_both", "in both repos")
 
-        stages = self.additional_dvc.add(fname)
-        self.assertEqual(len(stages), 1)
+    erepo_dir.dvc.odb.local.path = dvc.odb.local.path
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("in_both", "in both repos")
+        erepo_dir.dvc_gen("only_in_second", "only in additional repo")
 
-        os.chdir(cwd)
+    odb = dvc.odb.local
+    assert len(list(odb.all())) == 3
 
-        self._check_cache(3)
+    dvc.gc(repos=[erepo_dir], workspace=True)
+    assert len(list(odb.all())) == 3
 
-        self.dvc.gc(repos=[self.additional_path], workspace=True)
-        self._check_cache(3)
-
-        self.dvc.gc(workspace=True)
-        self._check_cache(2)
+    dvc.gc(workspace=True)
+    assert len(list(odb.all())) == 2
 
 
 def test_all_commits(tmp_dir, scm, dvc):
@@ -187,11 +96,11 @@ def test_all_commits(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "modified", commit="modified")
     tmp_dir.dvc_gen("testfile", "workspace")
 
-    n = _count_files(dvc.odb.local.cache_dir)
+    n = _count_files(dvc.odb.local.path)
     dvc.gc(all_commits=True)
 
     # Only one uncommitted file should go away
-    assert _count_files(dvc.odb.local.cache_dir) == n - 1
+    assert _count_files(dvc.odb.local.path) == n - 1
 
 
 def test_gc_no_dir_cache(tmp_dir, dvc):
@@ -203,9 +112,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
 
-    assert _count_files(dvc.odb.local.cache_dir) == 4
+    assert _count_files(dvc.odb.local.path) == 4
     dvc.gc(force=True, workspace=True)
-    assert _count_files(dvc.odb.local.cache_dir) == 2
+    assert _count_files(dvc.odb.local.path) == 2
 
 
 def _count_files(path):
@@ -218,7 +127,7 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     os.remove("dir.dvc")
     unpackeddir = (
-        dir_stages[0].outs[0].cache_path + LocalObjectDB.UNPACKED_DIR_SUFFIX
+        dir_stages[0].outs[0].cache_path + LocalHashFileDB.UNPACKED_DIR_SUFFIX
     )
 
     # older (pre 1.0) versions of dvc used to generate this dir
@@ -265,23 +174,15 @@ def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
     dvc.gc(force=False, all_branches=True, all_commits=False, workspace=False)
 
 
-def test_gc_without_workspace(tmp_dir, dvc, caplog):
+@pytest.mark.parametrize("cloud", ["c", ""])
+def test_gc_without_workspace(tmp_dir, dvc, caplog, cloud):
     with caplog.at_level(logging.WARNING, logger="dvc"):
-        assert main(["gc", "-vf"]) == 255
+        assert main(["gc", f"-{cloud}vf"]) == 255
 
     assert (
         "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-        "`--all-experiments` or `--all-commits` needs to be set."
-    ) in caplog.text
-
-
-def test_gc_cloud_without_any_specifier(tmp_dir, dvc, caplog):
-    with caplog.at_level(logging.WARNING, logger="dvc"):
-        assert main(["gc", "-cvf"]) == 255
-
-    assert (
-        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-        "`--all-experiments` or `--all-commits` needs to be set."
+        "`--all-experiments`, `--all-commits`, `--date` or `--rev` "
+        "needs to be set."
     ) in caplog.text
 
 
@@ -333,14 +234,14 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
 
     run_copy("foo", "foo2", name="copy")
     shutil.rmtree(dvc.stage_cache.cache_dir)
-    assert _count_files(dvc.odb.local.cache_dir) == 1
+    assert _count_files(dvc.odb.local.path) == 1
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.odb.local.cache_dir) == 1
+    assert _count_files(dvc.odb.local.path) == 1
 
     # remove pipeline file and lockfile and check
     Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.odb.local.cache_dir) == 0
+    assert _count_files(dvc.odb.local.path) == 0
 
 
 def test_gc_external_output(tmp_dir, dvc, workspace):
@@ -370,7 +271,7 @@ def test_gc_external_output(tmp_dir, dvc, workspace):
 
 
 def test_gc_all_experiments(tmp_dir, scm, dvc):
-    from dvc.repo.experiments.base import ExpRefInfo
+    from dvc.repo.experiments.refs import ExpRefInfo
 
     (foo,) = tmp_dir.dvc_gen("foo", "foo", commit="foo")
     foo_hash = foo.outs[0].hash_info.value
@@ -398,3 +299,22 @@ def test_gc_all_experiments(tmp_dir, scm, dvc):
     assert (
         tmp_dir / ".dvc" / "cache" / baz_hash[:2] / baz_hash[2:]
     ).read_text() == "baz"
+
+
+def test_gc_rev_num(tmp_dir, scm, dvc):
+    num = 2
+
+    hashes = {}
+    for i in range(4):
+        i_str = str(i)
+        f = tmp_dir.dvc_gen("foo", i_str, commit=i_str)
+        hashes[i] = f[0].outs[0].hash_info.value
+
+    dvc.gc(rev="HEAD", num=num, force=True)
+
+    for n, i in enumerate(reversed(range(4))):
+        cache = tmp_dir / ".dvc" / "cache" / hashes[i][:2] / hashes[i][2:]
+        if n >= num:
+            assert not cache.exists()
+        else:
+            assert cache.read_text() == str(i)

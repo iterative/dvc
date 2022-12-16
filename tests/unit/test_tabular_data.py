@@ -144,12 +144,28 @@ def test_fill_value():
 
 
 def test_drop():
-    td = TabularData(["col1", "col2", "col3"])
-    td.append(["foo", "bar", "baz"])
-    assert list(td) == [["foo", "bar", "baz"]]
+    td = TabularData(["col1", "col2", "col3", "other"])
+    td.append(["foo", "bar", "baz", "other_val"])
+    assert list(td) == [["foo", "bar", "baz", "other_val"]]
     td.drop("col2")
-    assert td.keys() == ["col1", "col3"]
-    assert list(td) == [["foo", "baz"]]
+    assert td.keys() == ["col1", "col3", "other"]
+    assert list(td) == [["foo", "baz", "other_val"]]
+
+
+def test_protected():
+    td = TabularData(["col1", "col2", "col3", "other"])
+    td.append(["foo", "bar", "baz", "other_val"])
+    td.protect("col1", "col2")
+
+    td.drop("col1", "col2", "col3", "other")
+    assert td.keys() == ["col1", "col2"]
+    assert list(td) == [["foo", "bar"]]
+
+    td.unprotect("col2")
+
+    td.drop("col1", "col2")
+    assert td.keys() == ["col1"]
+    assert list(td) == [["foo"]]
 
 
 def test_row_from_dict():
@@ -223,32 +239,128 @@ def test_dropna(axis, how, data, expected):
 @pytest.mark.parametrize(
     "axis,expected",
     [
+        ("cols", [["foo", ""], ["foo", ""], ["foo", "foobar"]]),
+        ("rows", [["foo", "bar", ""], ["foo", "bar", "foobar"]]),
+    ],
+)
+def test_dropna_subset(axis, expected):
+    td = TabularData(["col-1", "col-2", "col-3"])
+    td.extend([["foo"], ["foo", "bar"], ["foo", "bar", "foobar"]])
+    td.dropna(axis, subset=["col-1", "col-2"])
+    assert list(td) == expected
+
+
+@pytest.mark.parametrize(
+    "axis,expected,ignore_empty",
+    [
         (
             "rows",
             [
-                ["foo", "", ""],
-                ["foo", "foo", ""],
+                ["foo", "-", "-"],
+                ["foo", "foo", "-"],
                 ["foo", "bar", "foobar"],
             ],
+            True,
         ),
-        ("cols", [[""], ["foo"], ["foo"], ["bar"]]),
+        ("cols", [["-"], ["foo"], ["foo"], ["bar"]], True),
+        (
+            "cols",
+            [
+                ["-", "-"],
+                ["foo", "-"],
+                ["foo", "-"],
+                ["bar", "foobar"],
+            ],
+            False,
+        ),
     ],
 )
-def test_drop_duplicates(axis, expected):
-    td = TabularData(["col-1", "col-2", "col-3"])
+def test_drop_duplicates(axis, expected, ignore_empty):
+    td = TabularData(["col-1", "col-2", "col-3"], fill_value="-")
     td.extend(
         [["foo"], ["foo", "foo"], ["foo", "foo"], ["foo", "bar", "foobar"]]
     )
 
     assert list(td) == [
-        ["foo", "", ""],
-        ["foo", "foo", ""],
-        ["foo", "foo", ""],
+        ["foo", "-", "-"],
+        ["foo", "foo", "-"],
+        ["foo", "foo", "-"],
         ["foo", "bar", "foobar"],
     ]
 
-    td.drop_duplicates(axis)
+    td.drop_duplicates(axis, ignore_empty=ignore_empty)
 
+    assert list(td) == expected
+
+
+def test_drop_duplicates_rich_text():
+    from dvc.ui import ui
+
+    td = TabularData(["col-1", "col-2", "col-3"], fill_value="-")
+
+    td.extend(
+        [
+            ["foo", None, ui.rich_text("-")],
+            ["foo", "foo"],
+            ["foo", "foo"],
+            ["foo", "bar", "foobar"],
+        ]
+    )
+
+    assert list(td) == [
+        ["foo", "-", ui.rich_text("-")],
+        ["foo", "foo", "-"],
+        ["foo", "foo", "-"],
+        ["foo", "bar", "foobar"],
+    ]
+
+    td.drop_duplicates("cols")
+
+    assert list(td) == [["-"], ["foo"], ["foo"], ["bar"]]
+
+
+@pytest.mark.parametrize(
+    "axis,subset,expected",
+    [
+        (
+            "rows",
+            ["col-1"],
+            [["foo", "foo", "foo", "bar"]],
+        ),
+        (
+            "rows",
+            ["col-1", "col-3"],
+            [
+                ["foo", "foo", "foo", "bar"],
+                ["foo", "bar", "foobar", "bar"],
+            ],
+        ),
+        (
+            "cols",
+            ["col-1", "col-3"],
+            [
+                ["foo", "foo", "bar"],
+                ["bar", "foo", "bar"],
+                ["bar", "foobar", "bar"],
+            ],
+        ),
+    ],
+)
+def test_drop_duplicates_subset(axis, subset, expected):
+    td = TabularData(["col-1", "col-2", "col-3", "col-4"])
+    td.extend(
+        [
+            ["foo", "foo", "foo", "bar"],
+            ["foo", "bar", "foo", "bar"],
+            ["foo", "bar", "foobar", "bar"],
+        ]
+    )
+    assert list(td) == [
+        ["foo", "foo", "foo", "bar"],
+        ["foo", "bar", "foo", "bar"],
+        ["foo", "bar", "foobar", "bar"],
+    ]
+    td.drop_duplicates(axis, subset=subset)
     assert list(td) == expected
 
 
@@ -271,14 +383,16 @@ def test_to_parallel_coordinates(tmp_dir, mocker):
     td = TabularData(["categorical", "scalar"])
     td.extend([["foo", "0.1"], ["bar", "2"]])
 
-    write = mocker.patch("dvc.render.html.write")
+    write = mocker.patch("dvc_render.html.render_html")
     renderer_class = mocker.patch(
-        "dvc.render.plotly.ParallelCoordinatesRenderer"
+        "dvc_render.plotly.ParallelCoordinatesRenderer"
     )
     renderer = renderer_class.return_value
 
-    td.render(html=True, output_path="foo")
+    td.to_parallel_coordinates(output_path="foo")
 
-    renderer_class.assert_called_with(td, None, td._fill_value)
+    renderer_class.assert_called_with(
+        td.as_dict(), color_by=None, fill_value=td._fill_value
+    )
 
-    write.assert_called_with("foo", renderers=[renderer])
+    write.assert_called_with(renderers=[renderer], output_file="foo")

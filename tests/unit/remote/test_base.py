@@ -1,11 +1,8 @@
 import math
 import posixpath
-from unittest import mock
 
-import pytest
-
-from dvc.fs.base import FileSystem, RemoteCmdError
-from dvc.objects.db.base import ObjectDB
+from dvc.fs import FileSystem
+from dvc_data.hashfile.db import ObjectDB
 
 
 class _CallableOrNone:
@@ -18,120 +15,90 @@ class _CallableOrNone:
 CallableOrNone = _CallableOrNone()
 
 
-def test_cmd_error(dvc):
-    config = {}
-
-    cmd = "sed 'hello'"
-    ret = "1"
-    err = "sed: expression #1, char 2: extra characters after command"
-
-    with mock.patch.object(
-        FileSystem,
-        "remove",
-        side_effect=RemoteCmdError("base", cmd, ret, err),
-    ):
-        with pytest.raises(RemoteCmdError):
-            FileSystem(**config).remove("file")
-
-
-@mock.patch.object(ObjectDB, "_list_hashes_traverse")
-@mock.patch.object(ObjectDB, "list_hashes_exists")
-def test_hashes_exist(object_exists, traverse, dvc):
+def test_oids_exist(mocker, dvc):
+    traverse = mocker.patch.object(ObjectDB, "_list_oids_traverse")
+    object_exists = mocker.patch.object(ObjectDB, "list_oids_exists")
     odb = ObjectDB(FileSystem(), None)
 
     # remote does not support traverse
     odb.fs.CAN_TRAVERSE = False
-    with mock.patch.object(odb, "_list_hashes", return_value=list(range(256))):
-        hashes = set(range(1000))
-        odb.hashes_exist(hashes)
-        object_exists.assert_called_with(hashes, None, None)
-        traverse.assert_not_called()
+    mocker.patch.object(odb, "_list_oids", return_value=list(range(256)))
+    oids = set(range(1000))
+    odb.oids_exist(oids)
+    object_exists.assert_called_with(oids, None)
+    traverse.assert_not_called()
 
     odb.fs.CAN_TRAVERSE = True
 
     # large remote, small local
     object_exists.reset_mock()
     traverse.reset_mock()
-    with mock.patch.object(odb, "_list_hashes", return_value=list(range(256))):
-        hashes = list(range(1000))
-        odb.hashes_exist(hashes)
-        # verify that _odb_paths_with_max() short circuits
-        # before returning all 256 remote hashes
-        max_hashes = math.ceil(
-            odb._max_estimation_size(hashes)
-            / pow(16, odb.fs.TRAVERSE_PREFIX_LEN)
-        )
-        assert max_hashes < 256
-        object_exists.assert_called_with(
-            frozenset(range(max_hashes, 1000)), None, None
-        )
-        traverse.assert_not_called()
+
+    mocker.patch.object(odb, "_list_oids", return_value=list(range(2048)))
+    oids = list(range(1000))
+    odb.oids_exist(oids)
+    # verify that _odb_paths_with_max() short circuits
+    # before returning all 2048 remote oids
+    max_oids = math.ceil(
+        odb._max_estimation_size(oids) / pow(16, odb.fs.TRAVERSE_PREFIX_LEN)
+    )
+    assert max_oids < 2048
+    object_exists.assert_called_with(frozenset(range(max_oids, 1000)), None)
+    traverse.assert_not_called()
 
     # large remote, large local
     object_exists.reset_mock()
     traverse.reset_mock()
     odb.fs._JOBS = 16
-    with mock.patch.object(odb, "_list_hashes", return_value=list(range(256))):
-        hashes = list(range(1000000))
-        odb.hashes_exist(hashes)
-        object_exists.assert_not_called()
-        traverse.assert_called_with(
-            256 * pow(16, odb.fs.TRAVERSE_PREFIX_LEN),
-            set(range(256)),
-            None,
-            None,
-        )
+    mocker.patch.object(odb, "_list_oids", return_value=list(range(256)))
+    oids = list(range(1000000))
+    odb.oids_exist(oids)
+    object_exists.assert_not_called()
+    traverse.assert_called_with(
+        256 * pow(16, odb.fs.TRAVERSE_PREFIX_LEN),
+        set(range(256)),
+        jobs=None,
+    )
 
 
-@mock.patch.object(ObjectDB, "_list_hashes", return_value=[])
-@mock.patch.object(ObjectDB, "_path_to_hash", side_effect=lambda x: x)
-def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
+def test_list_oids_traverse(mocker, dvc):  # pylint: disable=unused-argument
+    list_oids = mocker.patch.object(ObjectDB, "_list_oids", return_value=[])
     odb = ObjectDB(FileSystem(), None)
     odb.fs_path = "foo"
 
     # parallel traverse
     size = 256 / odb.fs._JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
-    list(odb._list_hashes_traverse(size, {0}))
+    list(odb._list_oids_traverse(size, {0}))
     for i in range(1, 16):
-        list_hashes.assert_any_call(
-            prefix=f"{i:03x}", progress_callback=CallableOrNone
-        )
+        list_oids.assert_any_call(f"{i:0{odb.fs.TRAVERSE_PREFIX_LEN}x}")
     for i in range(1, 256):
-        list_hashes.assert_any_call(
-            prefix=f"{i:02x}", progress_callback=CallableOrNone
-        )
+        list_oids.assert_any_call(f"{i:02x}")
 
     # default traverse (small remote)
     size -= 1
-    list_hashes.reset_mock()
-    list(odb._list_hashes_traverse(size - 1, {0}))
-    list_hashes.assert_called_with(
-        prefix=None, progress_callback=CallableOrNone
-    )
+    list_oids.reset_mock()
+    list(odb._list_oids_traverse(size - 1, {0}))
+    list_oids.assert_called_with(None)
 
 
-def test_list_hashes(dvc):
+def test_list_oids(mocker, dvc):
     odb = ObjectDB(FileSystem(), None)
     odb.fs_path = "foo"
 
-    with mock.patch.object(
-        odb, "_list_paths", return_value=["12/3456", "bar"]
-    ):
-        hashes = list(odb._list_hashes())
-        assert hashes == ["123456"]
+    mocker.patch.object(odb, "_list_paths", return_value=["12/3456", "bar"])
+    oids = list(odb._list_oids())
+    assert oids == ["123456"]
 
 
-def test_list_paths(dvc):
+def test_list_paths(mocker, dvc):
     path = "foo"
     odb = ObjectDB(FileSystem(), path)
 
-    with mock.patch.object(odb.fs, "find", return_value=[]) as walk_mock:
-        for _ in odb._list_paths():
-            pass
-        walk_mock.assert_called_with(path, prefix=False)
+    walk_mock = mocker.patch.object(odb.fs, "find", return_value=[])
+    for _ in odb._list_paths():
+        pass
+    walk_mock.assert_called_with(path, prefix=False)
 
-        for _ in odb._list_paths(prefix="000"):
-            pass
-        walk_mock.assert_called_with(
-            posixpath.join(path, "00", "0"), prefix=True
-        )
+    for _ in odb._list_paths(prefix="000"):
+        pass
+    walk_mock.assert_called_with(posixpath.join(path, "00", "0"), prefix=True)

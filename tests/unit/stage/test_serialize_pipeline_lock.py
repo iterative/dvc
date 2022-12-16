@@ -4,7 +4,6 @@ import pytest
 from voluptuous import Schema as _Schema
 
 from dvc.dvcfile import PIPELINE_FILE
-from dvc.hash_info import HashInfo
 from dvc.schema import LOCK_FILE_STAGE_SCHEMA, LOCKFILE_STAGES_SCHEMA
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import DEFAULT_PARAMS_FILE, to_lockfile
@@ -12,6 +11,7 @@ from dvc.stage.serialize import (
     to_single_stage_lockfile as _to_single_stage_lockfile,
 )
 from dvc.stage.utils import split_params_deps
+from dvc_data.hashfile.hash_info import HashInfo
 
 kwargs = {"name": "something", "cmd": "command", "path": PIPELINE_FILE}
 Schema = _Schema(LOCK_FILE_STAGE_SCHEMA)
@@ -120,6 +120,25 @@ def test_lock_params_no_values_filled(dvc):
     assert to_single_stage_lockfile(stage) == {"cmd": "command"}
 
 
+@pytest.mark.parametrize(
+    "info, expected",
+    [
+        (None, {}),
+        ({}, {}),
+        ({"foo": "foo", "bar": "bar"}, {"bar": "bar", "foo": "foo"}),
+    ],
+)
+def test_lock_params_without_targets(dvc, info, expected):
+    stage = create_stage(
+        PipelineStage, dvc, params=[{"params.yaml": None}], **kwargs
+    )
+    stage.deps[0].fill_values(info)
+    assert to_single_stage_lockfile(stage) == {
+        "cmd": "command",
+        "params": {"params.yaml": OrderedDict(expected)},
+    }
+
+
 @pytest.mark.parametrize("typ", ["plots", "metrics", "outs"])
 def test_lock_outs(dvc, typ):
     stage = create_stage(PipelineStage, dvc, **{typ: ["input"]}, **kwargs)
@@ -136,7 +155,7 @@ def test_lock_outs(dvc, typ):
 def test_lock_outs_isexec(dvc, typ):
     stage = create_stage(PipelineStage, dvc, **{typ: ["input"]}, **kwargs)
     stage.outs[0].hash_info = HashInfo("md5", "md-five")
-    stage.outs[0].isexec = True
+    stage.outs[0].meta.isexec = True
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),

@@ -6,11 +6,11 @@ from operator import itemgetter
 import pytest
 
 from dvc.dvcfile import PIPELINE_LOCK, Lockfile
-from dvc.hash_info import HashInfo
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
 from dvc.utils.strictyaml import YAMLValidationError, make_relpath
+from dvc_data.hashfile.hash_info import HashInfo
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {
@@ -207,7 +207,7 @@ def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
     lockdata = {**version_info, "stages": {"foo": {"cmd": "echo foo"}}}
     (tmp_dir / "dvc.lock").dump(lockdata)
     with pytest.raises(YAMLValidationError) as exc_info:
-        Lockfile(dvc, tmp_dir / "dvc.lock").load()
+        Lockfile(dvc, (tmp_dir / "dvc.lock").fs_path).load()
 
     rel = make_relpath("dvc.lock")
     assert f"'{rel}' validation failed" in str(exc_info.value)

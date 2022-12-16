@@ -1,5 +1,4 @@
 import logging
-import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -18,8 +17,8 @@ from dvc.parsing.interpolate import (
     normalize_key,
     recurse,
     str_interpolate,
+    validate_value,
 )
-from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 SeqOrMap = Union[Sequence, Mapping]
@@ -160,7 +159,7 @@ class Value(Node):
 PRIMITIVES = (int, float, str, bytes, bool)
 
 
-class Container(Node, ABC):
+class Container(Node, ABC):  # noqa: B024
     meta: Meta
     data: Union[list, dict]
     _key_transform = staticmethod(identity)
@@ -378,22 +377,18 @@ class Context(CtxDict):
     def load_from(
         cls, fs, path: str, select_keys: List[str] = None
     ) -> "Context":
-        from dvc.utils.serialize import LOADERS
+        from dvc.utils.serialize import load_path
 
-        file = relpath(path)
         if not fs.exists(path):
-            raise ParamsLoadError(f"'{file}' does not exist")
+            raise ParamsLoadError(f"'{path}' does not exist")
         if fs.isdir(path):
-            raise ParamsLoadError(f"'{file}' is a directory")
+            raise ParamsLoadError(f"'{path}' is a directory")
 
-        _, ext = os.path.splitext(file)
-        loader = LOADERS[ext]
-
-        data = loader(path, fs=fs)
+        data = load_path(path, fs)
         if not isinstance(data, Mapping):
             typ = type(data).__name__
             raise ParamsLoadError(
-                f"expected a dictionary, got '{typ}' in file '{file}'"
+                f"expected a dictionary, got '{typ}' in file '{path}'"
             )
 
         if select_keys:
@@ -402,12 +397,12 @@ class Context(CtxDict):
             except KeyError as exc:
                 key, *_ = exc.args
                 raise ParamsLoadError(
-                    f"could not find '{key}' in '{file}'"
+                    f"could not find '{key}' in '{path}'"
                 ) from exc
 
-        meta = Meta(source=file, local=False)
+        meta = Meta(source=path, local=False)
         ctx = cls(data, meta=meta)
-        ctx.imports[os.path.abspath(path)] = select_keys
+        ctx.imports[path] = select_keys
         return ctx
 
     def merge_update(self, other: "Context", overwrite=False):
@@ -418,26 +413,26 @@ class Context(CtxDict):
 
     def merge_from(self, fs, item: str, wdir: str, overwrite=False):
         path, _, keys_str = item.partition(":")
+        path = fs.path.normpath(fs.path.join(wdir, path))
+
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
-
-        abspath = os.path.abspath(fs.path.join(wdir, path))
-        if abspath in self.imports:
-            if not select_keys and self.imports[abspath] is None:
+        if path in self.imports:
+            if not select_keys and self.imports[path] is None:
                 return  # allow specifying complete filepath multiple times
-            self.check_loaded(abspath, item, select_keys)
+            self.check_loaded(path, item, select_keys)
 
-        ctx = Context.load_from(fs, abspath, select_keys)
+        ctx = Context.load_from(fs, path, select_keys)
 
         try:
             self.merge_update(ctx, overwrite=overwrite)
         except ReservedKeyError as exc:
             raise ReservedKeyError(exc.keys, item) from exc
 
-        cp = ctx.imports[abspath]
-        if abspath not in self.imports:
-            self.imports[abspath] = cp
+        cp = ctx.imports[path]
+        if path not in self.imports:
+            self.imports[path] = cp
         elif cp:
-            self.imports[abspath].extend(cp)
+            self.imports[path].extend(cp)
 
     def check_loaded(self, path, item, keys):
         if not keys and isinstance(self.imports[path], list):
@@ -529,7 +524,7 @@ class Context(CtxDict):
                 self.data.pop(key, None)
 
     def resolve(
-        self, src, unwrap=True, skip_interpolation_checks=False
+        self, src, unwrap=True, skip_interpolation_checks=False, key=None
     ) -> Any:
         """Recursively resolves interpolation and returns resolved data.
 
@@ -545,10 +540,10 @@ class Context(CtxDict):
         {'lst': [1, 2, 3]}
         """
         func = recurse(self.resolve_str)
-        return func(src, unwrap, skip_interpolation_checks)
+        return func(src, unwrap, skip_interpolation_checks, key)
 
     def resolve_str(
-        self, src: str, unwrap=True, skip_interpolation_checks=False
+        self, src: str, unwrap=True, skip_interpolation_checks=False, key=None
     ) -> str:
         """Resolves interpolated string to it's original value,
         or in case of multiple interpolations, a combined string.
@@ -566,10 +561,12 @@ class Context(CtxDict):
             expr = get_expression(
                 matches[0], skip_checks=skip_interpolation_checks
             )
-            return self.select(expr, unwrap=unwrap)
+            value = self.select(expr, unwrap=unwrap)
+            validate_value(value, key)
+            return value
         # but not "${num} days"
         return str_interpolate(
-            src, matches, self, skip_checks=skip_interpolation_checks
+            src, matches, self, skip_checks=skip_interpolation_checks, key=key
         )
 
 

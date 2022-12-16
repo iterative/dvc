@@ -6,11 +6,12 @@ from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property, first
 
+from dvc import fs
 from dvc.exceptions import DvcException
 from dvc.utils import dict_sha256, relpath
 
 if TYPE_CHECKING:
-    from dvc.objects.db.base import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,12 @@ class RunCacheNotFoundError(DvcException):
         super().__init__(f"No run-cache for {stage.addressing}")
 
 
+class RunCacheNotSupported(DvcException):
+    pass
+
+
 def _get_cache_hash(cache, key=False):
-    from dvc.objects.meta import Meta
+    from dvc_data.hashfile.meta import Meta
 
     if key:
         cache["outs"] = [out["path"] for out in cache.get("outs", [])]
@@ -36,11 +41,11 @@ def _can_hash(stage):
         return False
 
     for dep in stage.deps:
-        if not (dep.scheme == "local" and dep.def_path and dep.get_hash()):
+        if not (dep.protocol == "local" and dep.def_path and dep.get_hash()):
             return False
 
     for out in stage.outs:
-        if out.scheme != "local" or not out.def_path or out.persist:
+        if out.protocol != "local" or not out.def_path or out.persist:
             return False
 
     return True
@@ -59,7 +64,7 @@ class StageCache:
 
     @cached_property
     def cache_dir(self):
-        return os.path.join(self.repo.odb.local.cache_dir, "runs")
+        return os.path.join(self.repo.odb.local.path, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
@@ -175,7 +180,7 @@ class StageCache:
         dump_yaml(tmp, cache)
         self.repo.odb.local.move(tmp, path)
 
-    def restore(self, stage, run_cache=True, pull=False):
+    def restore(self, stage, run_cache=True, pull=False, dry=False):
         from .serialize import to_single_stage_lockfile
 
         if not _can_hash(stage):
@@ -190,14 +195,15 @@ class StageCache:
         else:
             if not run_cache:  # backward compatibility
                 raise RunCacheNotFoundError(stage)
-            stage.save_deps()
+            if not dry:
+                stage.save_deps()
             cache = self._load(stage)
             if not cache:
                 raise RunCacheNotFoundError(stage)
 
         cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
-        if pull:
+        if pull and not dry:
             for objs in cached_stage.get_used_objs().values():
                 self.repo.cloud.pull(objs)
 
@@ -208,53 +214,69 @@ class StageCache:
             "Stage '%s' is cached - skipping run, checking out outputs",
             stage.addressing,
         )
-        cached_stage.checkout()
+        if not dry:
+            cached_stage.checkout()
 
-    @staticmethod
-    def _transfer(func, from_remote, to_remote):
+    def transfer(self, from_odb, to_odb):
+        from dvc.fs import HTTPFileSystem, LocalFileSystem
+        from dvc.fs.callbacks import Callback
+
+        from_fs = from_odb.fs
+        to_fs = to_odb.fs
+        func = fs.generic.log_exceptions(fs.generic.copy)
+        runs = from_fs.path.join(from_odb.path, "runs")
+
+        http_odb = next(
+            (
+                odb
+                for odb in (from_odb, to_odb)
+                if isinstance(odb.fs, HTTPFileSystem)
+            ),
+            None,
+        )
+        if http_odb:
+            path = http_odb.path
+            message = f"run-cache is not supported for http filesystem: {path}"
+            raise RunCacheNotSupported(message)
+
         ret = []
+        if not from_fs.exists(runs):
+            return ret
 
-        runs = from_remote.fs.path.join(from_remote.fs_path, "runs")
-        if not from_remote.fs.exists(runs):
-            return []
+        for src in from_fs.find(runs):
+            rel = from_fs.path.relpath(src, from_odb.path)
+            if not isinstance(to_fs, LocalFileSystem):
+                rel = from_fs.path.as_posix(rel)
 
-        from_path = from_remote.fs.path
-        for src in from_remote.fs.find(runs):
-            rel = from_path.relpath(src, from_remote.fs_path)
-            dst = to_remote.fs.path.join(to_remote.fs_path, rel)
-            key = to_remote.fs.path.parent(dst)
+            dst = to_fs.path.join(to_odb.path, rel)
+            key = to_fs.path.parent(dst)
             # check if any build cache already exists for this key
             # TODO: check if MaxKeys=1 or something like that applies
             # or otherwise this will take a lot of time!
-            if to_remote.fs.exists(key) and first(to_remote.fs.find(key)):
+            if to_fs.exists(key) and first(to_fs.find(key)):
                 continue
-            func(src, dst)
-            ret.append(
-                (from_path.name(from_path.parent(src)), from_path.name(src))
-            )
 
+            src_name = from_fs.path.name(src)
+            parent_name = from_fs.path.name(from_fs.path.parent(src))
+            with Callback.as_tqdm_callback(
+                desc=src_name,
+                bytes=True,
+            ) as cb:
+                func(from_fs, src, to_fs, dst, callback=cb)
+            ret.append((parent_name, src_name))
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        from dvc.objects.transfer import _log_exceptions
-
-        if odb is None:
-            odb = self.repo.cloud.get_remote_odb(remote)
-        return self._transfer(
-            _log_exceptions(odb.fs.upload),
-            self.repo.odb.local,
-            odb,
+        dest_odb = odb or self.repo.cloud.get_remote_odb(
+            remote, "push --run-cache"
         )
+        return self.transfer(self.repo.odb.local, dest_odb)
 
-    def pull(self, remote: Optional[str]):
-        from dvc.objects.transfer import _log_exceptions
-
-        odb = self.repo.cloud.get_remote_odb(remote)
-        return self._transfer(
-            _log_exceptions(odb.fs.download),
-            odb,
-            self.repo.odb.local,
+    def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
+        odb = odb or self.repo.cloud.get_remote_odb(
+            remote, "fetch --run-cache"
         )
+        return self.transfer(odb, self.repo.odb.local)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):
         """Return used cache for the specified run-cached stages."""

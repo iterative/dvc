@@ -3,8 +3,8 @@ import textwrap
 
 import pytest
 
-from dvc.config import Config
-from dvc.fs.local import LocalFileSystem
+from dvc.config import Config, ConfigError
+from dvc.fs import LocalFileSystem
 
 
 @pytest.mark.parametrize(
@@ -70,3 +70,14 @@ def test_s3_ssl_verify(tmp_dir, dvc):
             ssl_verify = /path/to/custom/cabundle.pem
         """
     )
+
+
+def test_load_unicode_error(tmp_dir, dvc, mocker):
+    config = Config(validate=False)
+    mocker.patch(
+        "configobj.ConfigObj",
+        side_effect=UnicodeDecodeError("", b"", 0, 0, ""),
+    )
+    with pytest.raises(ConfigError):
+        with config.edit():
+            pass

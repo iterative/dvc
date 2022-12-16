@@ -5,7 +5,7 @@ from typing import Dict, List
 
 from dvc.exceptions import PathMissingError
 from dvc.repo import locked
-from dvc.repo.experiments.utils import fix_exp_head
+from dvc.utils.collections import ensure_list
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +23,13 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if self.scm.no_commits:
         return {}
 
-    from dvc.fs.repo import RepoFileSystem
+    from dvc.fs.dvc import DVCFileSystem
 
-    repo_fs = RepoFileSystem(self)
+    dvcfs = DVCFileSystem(repo=self)
+    targets = ensure_list(targets)
+    targets = [dvcfs.from_os_path(target) for target in targets]
 
-    a_rev = fix_exp_head(self.scm, a_rev)
-    b_rev = fix_exp_head(self.scm, b_rev) if b_rev else "workspace"
+    b_rev = b_rev if b_rev else "workspace"
     results = {}
     missing_targets = {}
     for rev in self.brancher(revs=[a_rev, b_rev]):
@@ -38,15 +39,15 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
             continue
 
         targets_paths = None
-        if targets is not None:
+        if targets:
             # convert targets to paths, and capture any missing targets
             targets_paths, missing_targets[rev] = _targets_to_paths(
-                repo_fs, targets
+                dvcfs, targets
             )
 
         results[rev] = _paths_checksums(self, targets_paths)
 
-    if targets is not None:
+    if targets:
         # check for overlapping missing targets between a_rev and b_rev
         for target in set(missing_targets[a_rev]) & set(
             missing_targets[b_rev]
@@ -63,7 +64,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if b_rev == "workspace":
         # missing status is only applicable when diffing local workspace
         # against a commit
-        missing = sorted(_filter_missing(repo_fs, deleted_or_missing))
+        missing = sorted(_filter_missing(dvcfs, deleted_or_missing))
     else:
         missing = []
     deleted = sorted(deleted_or_missing - set(missing))
@@ -113,8 +114,8 @@ def _paths_checksums(repo, targets):
 
 
 def _output_paths(repo, targets):
-    from dvc.fs.local import LocalFileSystem
-    from dvc.objects.stage import stage as ostage
+    from dvc.fs import LocalFileSystem
+    from dvc_data.hashfile.build import build
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 
@@ -124,11 +125,11 @@ def _output_paths(repo, targets):
         return True
 
     def _to_path(output):
-        return (
-            str(output)
-            if not output.is_dir_checksum
-            else os.path.join(str(output), "")
-        )
+        relparts = output.fs.path.relparts(output.fs_path)
+        base = os.path.join(*relparts)
+        if output.is_dir_checksum:
+            return os.path.join(base, "")
+        return base
 
     for output in repo.index.outs:
         if _exists(output):
@@ -138,13 +139,13 @@ def _output_paths(repo, targets):
             )
 
             if on_working_fs:
-                _, _, obj = ostage(
-                    repo.odb.local,
+                _, _, obj = build(
+                    repo.odb.repo,
                     output.fs_path,
-                    repo.odb.local.fs,
+                    repo.odb.repo.fs,
                     "md5",
                     dry_run=True,
-                    dvcignore=output.dvcignore,
+                    ignore=output.dvcignore,
                 )
                 hash_info = obj.hash_info
             else:
@@ -170,41 +171,40 @@ def _output_paths(repo, targets):
 
 
 def _dir_output_paths(fs, fs_path, obj, targets=None):
-    if fs.scheme == "local":
-        # NOTE: workaround for filesystems that are based on full local paths
-        # (e.g. gitfs, dvcfs, repofs). Proper solution is to use upcoming
-        # fsspec's prefixfs to use relpaths as fs_paths.
-        base = fs.path.relpath(fs_path, os.getcwd())
-    else:
-        base = fs_path
+    base = os.path.join(*fs.path.relparts(fs_path))
     for key, _, oid in obj:
         fname = fs.path.join(fs_path, *key)
         if targets is None or any(
             fs.path.isin_or_eq(fname, target) for target in targets
         ):
             # pylint: disable=no-member
-            yield fs.path.join(base, *key), oid.value
+            yield os.path.join(base, *key), oid.value
 
 
-def _filter_missing(repo_fs, paths):
+def _filter_missing(dvcfs, paths):
     for path in paths:
+        fs_path = dvcfs.from_os_path(path)
         try:
-            metadata = repo_fs.metadata(path)
-            if metadata.is_dvc:
-                out = metadata.outs[0]
-                if out.status().get(str(out)) == "not in cache":
-                    yield path
+            info = dvcfs.info(fs_path)
+            dvc_info = info.get("dvc_info", {})
+            entry = dvc_info.get("entry")
+            if (
+                entry
+                and info["type"] == "directory"
+                and not entry.odb.exists(entry.hash_info.value)
+            ):
+                yield path
         except FileNotFoundError:
             pass
 
 
-def _targets_to_paths(repo_fs, targets):
+def _targets_to_paths(dvcfs, targets):
     paths = []
     missing = []
 
     for target in targets:
-        if repo_fs.exists(target):
-            paths.append(repo_fs.metadata(target).fs_path)
+        if dvcfs.exists(target):
+            paths.append(dvcfs.repo.fs.path.abspath(target))
         else:
             missing.append(target)
 

@@ -40,6 +40,37 @@ def test_loads_params(dvc):
     assert not deps[2].hash_info
 
 
+def test_loads_params_without_any_specific_targets(dvc):
+    stage = Stage(dvc)
+    deps = loads_params(
+        stage,
+        [
+            "foo",
+            {"params.yaml": None},
+            {"a_file": []},
+            {"b_file": ["baz"]},
+            {"b_file": ["bat"]},
+            {"a_file": ["foobar"]},
+        ],
+    )
+    assert len(deps) == 3
+
+    assert isinstance(deps[0], ParamsDependency)
+    assert deps[0].def_path == ParamsDependency.DEFAULT_PARAMS_FILE
+    assert deps[0].params == []
+    assert not deps[0].hash_info
+
+    assert isinstance(deps[1], ParamsDependency)
+    assert deps[1].def_path == "a_file"
+    assert deps[1].params == []
+    assert not deps[1].hash_info
+
+    assert isinstance(deps[2], ParamsDependency)
+    assert deps[2].def_path == "b_file"
+    assert deps[2].params == ["baz", "bat"]
+    assert not deps[2].hash_info
+
+
 @pytest.mark.parametrize("params", [[3], [{"b_file": "cat"}]])
 def test_params_error(dvc, params):
     with pytest.raises(ValueError):
@@ -199,3 +230,25 @@ def test_params_with_false_values(tmp_dir, dvc, param_value):
     dep.fill_values(load_yaml(DEFAULT_PARAMS_FILE))
 
     assert dep.status() == {}
+
+
+def test_params_status_without_targets(tmp_dir, dvc):
+    params_file = tmp_dir / "params.yaml"
+    dep = ParamsDependency(Stage(dvc), str(params_file), [])
+
+    assert dep.hash_info.value is None
+    assert dep.status() == {"params.yaml": "deleted"}
+
+    params_file.dump({"foo": "foo", "bar": "bar"})
+
+    assert dep.status() == {"params.yaml": "new"}
+
+    dep.fill_values({})
+    assert dep.hash_info.value == {}
+    assert dep.status() == {"params.yaml": {"bar": "new", "foo": "new"}}
+
+    dep.fill_values({"foo": "foobar", "lorem": "ipsum"})
+    assert dep.hash_info.value == {"foo": "foobar", "lorem": "ipsum"}
+    assert dep.status() == {
+        "params.yaml": {"bar": "new", "foo": "modified", "lorem": "deleted"}
+    }

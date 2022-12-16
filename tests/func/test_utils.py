@@ -1,12 +1,9 @@
+import re
+
+import pytest
+
 from dvc import utils
-from dvc.fs.local import LocalFileSystem
-
-
-def test_file_md5_crlf(tmp_dir):
-    fs = LocalFileSystem()
-    tmp_dir.gen("cr", b"a\nb\nc")
-    tmp_dir.gen("crlf", b"a\r\nb\r\nc")
-    assert utils.file_md5("cr", fs) == utils.file_md5("crlf", fs)
+from dvc.exceptions import DvcException
 
 
 def test_dict_md5():
@@ -42,3 +39,10 @@ def test_boxify():
     )
 
     assert expected == utils.boxify("message")
+
+
+def test_glob_no_match():
+    with pytest.raises(
+        DvcException, match=re.escape("Glob ['invalid*'] has no matches.")
+    ):
+        utils.glob_targets(["invalid*"], glob=True)

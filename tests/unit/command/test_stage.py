@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.stage import CmdStageAdd
+from dvc.commands.stage import CmdStageAdd
 from tests.utils.asserts import called_once_with_subset
 
 
@@ -35,10 +35,6 @@ def test_stage_add(mocker, dvc, command, parsed_command):
             "plots",
             "--plots-no-cache",
             "plots-no-cache",
-            "--live",
-            "live",
-            "--live-no-summary",
-            "--live-no-html",
             "--wdir",
             "wdir",
             "--force",
@@ -80,9 +76,6 @@ def test_stage_add(mocker, dvc, command, parsed_command):
         metrics_no_cache=["metrics-no-cache"],
         plots=["plots"],
         plots_no_cache=["plots-no-cache"],
-        live="live",
-        live_no_summary=True,
-        live_no_html=True,
         wdir="wdir",
         outs_persist=["outs-persist"],
         outs_persist_no_cache=["outs-persist-no-cache"],

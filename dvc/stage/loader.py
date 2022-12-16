@@ -6,10 +6,10 @@ from itertools import chain
 from funcy import cached_property, get_in, lcat, once, project
 
 from dvc import dependency, output
-from dvc.hash_info import HashInfo
-from dvc.objects.meta import Meta
 from dvc.parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
 from dvc.parsing.versions import LOCKFILE_VERSION
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.meta import Meta
 
 from . import PipelineStage, Stage, loads_from
 from .exceptions import StageNameUnspecified, StageNotFound
@@ -24,6 +24,9 @@ class StageLoader(Mapping):
         self.dvcfile = dvcfile
         self.data = data or {}
         self.stages_data = self.data.get("stages", {})
+        self.metrics_data = self.data.get("metrics", [])
+        self.params_data = self.data.get("params", [])
+        self.plots_data = self.data.get("plots", {})
         self.repo = self.dvcfile.repo
 
         lockfile_data = lockfile_data or {}
@@ -68,9 +71,12 @@ class StageLoader(Mapping):
             info = get_in(checksums, [key, path], {})
             info = info.copy()
             info.pop("path", None)
-            item.isexec = info.pop("isexec", None)
             item.meta = Meta.from_dict(info)
-            item.hash_info = HashInfo.from_dict(info)
+            hash_value = getattr(item.meta, item.hash_name, None)
+            item.hash_info = HashInfo(item.hash_name, hash_value)
+            if item.hash_info and item.hash_info.isdir:
+                item.meta.isdir = True
+            item.files = get_in(checksums, [key, path, item.PARAM_FILES])
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data=None):
@@ -78,7 +84,7 @@ class StageLoader(Mapping):
         assert stage_data and isinstance(stage_data, dict)
 
         path, wdir = resolve_paths(
-            dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
+            dvcfile.repo.fs, dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
         )
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
@@ -101,7 +107,6 @@ class StageLoader(Mapping):
                 stage.PARAM_OUTS,
                 stage.PARAM_METRICS,
                 stage.PARAM_PLOTS,
-                stage.PARAM_LIVE,
             ],
         )
         if isinstance(outs.get(stage.PARAM_OUTS), dict):
@@ -178,6 +183,9 @@ class SingleStageLoader(Mapping):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
+        self.metrics_data = []
+        self.params_data = []
+        self.plots_data = {}
 
     def __getitem__(self, item):
         if item:
@@ -194,7 +202,9 @@ class SingleStageLoader(Mapping):
 
     @classmethod
     def load_stage(cls, dvcfile, d, stage_text):
-        path, wdir = resolve_paths(dvcfile.path, d.get(Stage.PARAM_WDIR))
+        path, wdir = resolve_paths(
+            dvcfile.repo.fs, dvcfile.path, d.get(Stage.PARAM_WDIR)
+        )
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
         stage._stage_text = stage_text  # noqa, pylint:disable=protected-access
         stage.deps = dependency.loadd_from(

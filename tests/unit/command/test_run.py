@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.run import CmdRun
+from dvc.commands.run import CmdRun
 from tests.utils.asserts import called_once_with_subset
 
 
@@ -8,7 +8,7 @@ def test_run(mocker, dvc):
         [
             "run",
             "--name",
-            "nam",
+            "name",
             "--deps",
             "deps",
             "--outs",
@@ -23,12 +23,6 @@ def test_run(mocker, dvc):
             "plots",
             "--plots-no-cache",
             "plots-no-cache",
-            "--live",
-            "live",
-            "--live-no-cache",
-            "live-no-cache",
-            "--live-no-summary",
-            "--live-no-html",
             "--file",
             "file",
             "--wdir",
@@ -74,10 +68,6 @@ def test_run(mocker, dvc):
         outs_persist_no_cache=["outs-persist-no-cache"],
         checkpoints=["checkpoints"],
         params=["file:param1,param2", "param3"],
-        live="live",
-        live_no_cache="live-no-cache",
-        live_no_summary=True,
-        live_no_html=True,
         fname="file",
         wdir="wdir",
         no_exec=True,
@@ -86,7 +76,7 @@ def test_run(mocker, dvc):
         no_commit=True,
         always_changed=True,
         cmd="command",
-        name="nam",
+        name="name",
         single_stage=False,
         external=True,
         desc="description",
@@ -107,10 +97,6 @@ def test_run_args_from_cli(mocker, dvc):
         metrics_no_cache=[],
         plots=[],
         plots_no_cache=[],
-        live=None,
-        live_no_cache=None,
-        live_no_summary=False,
-        live_no_html=False,
         outs_persist=[],
         outs_persist_no_cache=[],
         checkpoints=[],
@@ -144,10 +130,6 @@ def test_run_args_with_spaces(mocker, dvc):
         metrics_no_cache=[],
         plots=[],
         plots_no_cache=[],
-        live=None,
-        live_no_cache=None,
-        live_no_summary=False,
-        live_no_html=False,
         outs_persist=[],
         outs_persist_no_cache=[],
         checkpoints=[],

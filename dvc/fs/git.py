@@ -1,10 +1,9 @@
-import os
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from funcy import cached_property, wrap_prop
 
-from .fsspec_wrapper import AnyFSPath, FSSpecWrapper
+from . import FileSystem
 
 if TYPE_CHECKING:
     from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
@@ -12,11 +11,11 @@ if TYPE_CHECKING:
     from scmrepo.git.objects import GitTrie
 
 
-class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
+class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
-    sep = os.sep
-    scheme = "local"
+    protocol = "local"
+    PARAM_CHECKSUM = "md5"
 
     def __init__(
         self,
@@ -47,26 +46,13 @@ class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
         return FsspecGitFileSystem(**self.fs_args)
 
+    @cached_property
+    def path(self):
+        return self.fs.path
+
     @property
     def rev(self) -> str:
         return self.fs.rev
 
-    def isexec(self, path: AnyFSPath) -> bool:
-        from dvc.utils import is_exec
-
-        try:
-            return is_exec(self.info(path)["mode"])
-        except FileNotFoundError:
-            return False
-
-    def isfile(self, path: AnyFSPath) -> bool:
-        return self.fs.isfile(path)
-
-    def walk(
-        self,
-        top: AnyFSPath,
-        topdown: bool = True,
-        onerror: Callable[[OSError], None] = None,
-        **kwargs: Any,
-    ):
-        return self.fs.walk(top, topdown=topdown, onerror=onerror, **kwargs)
+    def ls(self, path, detail=True, **kwargs):
+        return self.fs.ls(path, detail=detail, **kwargs) or []

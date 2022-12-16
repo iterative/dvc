@@ -1,6 +1,10 @@
 import json
+from os.path import join
 
-from dvc.main import main
+import pytest
+
+from dvc.cli import main
+from dvc.utils import relpath
 
 
 def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
@@ -148,10 +152,9 @@ def test_no_commits(tmp_dir):
     from scmrepo.git import Git
 
     from dvc.repo import Repo
-    from tests.dir_helpers import git_init
 
-    git_init(".")
-    assert Git().no_commits
+    git = Git.init(tmp_dir.fs_path)
+    assert git.no_commits
 
     assert Repo.init().metrics.diff() == {}
 
@@ -206,4 +209,29 @@ def test_metrics_diff_non_metrics(tmp_dir, scm, dvc):
     result = dvc.metrics.diff(targets=["some_file.yaml"], a_rev="HEAD~2")
     assert result == {
         "some_file.yaml": {"foo": {"old": 1, "new": 3, "diff": 2}}
+    }
+
+
+@pytest.mark.parametrize(
+    "dvcfile, metrics_file",
+    [
+        ("dvc.yaml", "my_metrics.yaml"),
+        ("dir/dvc.yaml", "my_metrics.yaml"),
+        ("dir/dvc.yaml", join("..", "my_metrics.yaml")),
+    ],
+)
+def test_diff_top_level_metrics(tmp_dir, dvc, scm, dvcfile, metrics_file):
+    directory = (tmp_dir / dvcfile).parent
+    directory.mkdir(exist_ok=True)
+    (tmp_dir / dvcfile).dump({"metrics": [metrics_file]})
+
+    metrics_file = directory / metrics_file
+    metrics_file.dump({"foo": 3})
+    scm.add_commit([metrics_file, tmp_dir / dvcfile], message="add metrics")
+
+    metrics_file.dump({"foo": 5})
+    assert dvc.metrics.diff() == {
+        relpath(directory / metrics_file): {
+            "foo": {"diff": 2, "new": 5, "old": 3}
+        }
     }

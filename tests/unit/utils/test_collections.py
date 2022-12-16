@@ -1,14 +1,14 @@
 # pylint: disable=unidiomatic-typecheck
 import json
-from json import encoder
 
 import pytest
-from mock import create_autospec
 
 from dvc.utils.collections import (
     apply_diff,
     chunk_dict,
-    merge_params,
+    merge_dicts,
+    remove_missing_keys,
+    to_omegaconf,
     validate,
 )
 from dvc.utils.serialize import dumps_yaml
@@ -82,7 +82,7 @@ def _test_func(x, y, *args, j=3, k=5, **kwargs):
 def test_pre_validate_decorator_required_args(mocker):
     mock = mocker.MagicMock()
 
-    func_mock = create_autospec(_test_func)
+    func_mock = mocker.create_autospec(_test_func)
     func = validate(mock)(func_mock)
 
     func("x", "y")
@@ -101,7 +101,7 @@ def test_pre_validate_decorator_required_args(mocker):
 
 def test_pre_validate_decorator_kwargs_args(mocker):
     mock = mocker.MagicMock()
-    func_mock = create_autospec(_test_func)
+    func_mock = mocker.create_autospec(_test_func)
     func = validate(mock)(func_mock)
 
     func("x", "y", "part", "of", "args", j=1, k=10, m=100, n=1000)
@@ -119,7 +119,7 @@ def test_pre_validate_decorator_kwargs_args(mocker):
     assert args.kwargs == {"m": 100, "n": 1000}
 
 
-def test_pre_validate_update_args():
+def test_pre_validate_update_args(mocker):
     def test_validator(args):
         args.w += 50
         del args.x
@@ -128,7 +128,7 @@ def test_pre_validate_update_args():
     def test_func(w=1, x=5, y=10, z=15):
         pass
 
-    mock = create_autospec(test_func)
+    mock = mocker.create_autospec(test_func)
     func = validate(test_validator)(mock)
 
     func(100, 100)
@@ -153,6 +153,24 @@ def is_serializable(d):
     return True
 
 
+def test_to_omegaconf():
+    class CustomDict(dict):
+        pass
+
+    class CustomList(list):
+        pass
+
+    data = {
+        "foo": CustomDict(bar=1, bag=CustomList([1, 2])),
+        "goo": CustomList([CustomDict(goobar=1)]),
+    }
+    new_data = to_omegaconf(data)
+    assert not isinstance(new_data["foo"], CustomDict)
+    assert not isinstance(new_data["foo"]["bag"], CustomList)
+    assert not isinstance(new_data["goo"], CustomList)
+    assert not isinstance(new_data["goo"][0], CustomDict)
+
+
 @pytest.mark.parametrize(
     "changes, expected",
     [
@@ -162,11 +180,11 @@ def is_serializable(d):
             {"foo": "baz", "goo": "bar", "lorem": False},
         ],
         [
-            {"goo.bag": 4},
+            {"goo": {"bag": 4}},
             {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 4}, "lorem": False},
         ],
         [
-            {"foo[0]": "bar"},
+            {"foo": {"bar": 1, "baz": 2, 0: "bar"}},
             {
                 "foo": {"bar": 1, "baz": 2, 0: "bar"},
                 "goo": {"bag": 3},
@@ -174,23 +192,7 @@ def is_serializable(d):
             },
         ],
         [
-            {"foo[1].baz": 3},
-            {
-                "foo": {"bar": 1, "baz": 2, 1: {"baz": 3}},
-                "goo": {"bag": 3},
-                "lorem": False,
-            },
-        ],
-        [
-            {"foo[1]": ["baz", "goo"]},
-            {
-                "foo": {"bar": 1, "baz": 2, 1: ["baz", "goo"]},
-                "goo": {"bag": 3},
-                "lorem": False,
-            },
-        ],
-        [
-            {"lorem.ipsum": 3},
+            {"lorem": {"ipsum": 3}},
             {
                 "foo": {"bar": 1, "baz": 2},
                 "goo": {"bag": 3},
@@ -200,35 +202,28 @@ def is_serializable(d):
         [{}, {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 3}, "lorem": False}],
     ],
 )
-def test_merge_params(changes, expected):
+def test_merge_dicts(changes, expected):
     params = {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 3}, "lorem": False}
-    merged = merge_params(params, changes)
+    merged = merge_dicts(params, changes)
     assert merged == expected == params
     assert params is merged  # references should be preserved
-    assert encoder.c_make_encoder
     assert is_serializable(params)
 
 
 @pytest.mark.parametrize(
     "changes, expected",
     [
-        [{"foo": "baz"}, {"foo": "baz"}],
-        [{"foo": "baz", "goo": "bar"}, {"foo": "baz", "goo": "bar"}],
-        [{"foo[1]": ["baz", "goo"]}, {"foo": [None, ["baz", "goo"]]}],
-        [{"foo.bar": "baz"}, {"foo": {"bar": "baz"}}],
+        [{"foo": "baz"}, {"foo": {"baz": 2}}],
+        [
+            {"foo": "baz", "goo": "bag"},
+            {"foo": {"baz": 2}, "goo": {"bag": 3}},
+        ],
+        [{}, {}],
     ],
 )
-def test_merge_params_on_empty_src(changes, expected):
-    params = {}
-    merged = merge_params(params, changes)
-    assert merged == expected == params
-    assert params is merged  # references should be preserved
-    assert encoder.c_make_encoder
+def test_remove_missing_keys(changes, expected):
+    params = {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 3}, "lorem": False}
+    removed = remove_missing_keys(params, changes)
+    assert removed == expected == params
+    assert params is removed  # references should be preserved
     assert is_serializable(params)
-
-
-def test_benedict_rollback_its_monkeypatch():
-    from dvc.utils._benedict import benedict
-
-    assert benedict({"foo": "foo"}) == {"foo": "foo"}
-    assert encoder.c_make_encoder

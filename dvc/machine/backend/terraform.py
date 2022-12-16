@@ -3,8 +3,9 @@ from contextlib import contextmanager
 from functools import partial, partialmethod
 from typing import TYPE_CHECKING, Iterator, Optional
 
+from dvc_ssh import DEFAULT_PORT, SSHFileSystem
+
 from dvc.exceptions import DvcException
-from dvc.fs.ssh import SSHFileSystem
 from dvc.utils.fs import makedirs
 
 from .base import BaseMachineBackend
@@ -68,7 +69,7 @@ class TerraformBackend(BaseMachineBackend):
             resource = tpi.default_resource(name)
         return {
             "host": resource["instance_ip"],
-            "port": SSHFileSystem.DEFAULT_PORT,
+            "port": DEFAULT_PORT,
             "username": "ubuntu",
             "fs_factory": partial(_sshfs, dict(resource)),
         }

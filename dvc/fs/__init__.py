@@ -1,44 +1,70 @@
 from urllib.parse import urlparse
 
-from ..scheme import Schemes
-from . import utils  # noqa: F401
-from .azure import AzureFileSystem
-from .gdrive import GDriveFileSystem
-from .gs import GSFileSystem
-from .hdfs import HDFSFileSystem
-from .http import HTTPFileSystem
-from .https import HTTPSFileSystem
-from .local import LocalFileSystem
-from .oss import OSSFileSystem
-from .s3 import S3FileSystem
-from .ssh import SSHFileSystem
-from .webdav import WebDAVFileSystem, WebDAVSFileSystem
-from .webhdfs import WebHDFSFileSystem
+from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
 
-FS_MAP = {
-    Schemes.AZURE: AzureFileSystem,
-    Schemes.GDRIVE: GDriveFileSystem,
-    Schemes.GS: GSFileSystem,
-    Schemes.HDFS: HDFSFileSystem,
-    Schemes.WEBHDFS: WebHDFSFileSystem,
-    Schemes.HTTP: HTTPFileSystem,
-    Schemes.HTTPS: HTTPSFileSystem,
-    Schemes.S3: S3FileSystem,
-    Schemes.SSH: SSHFileSystem,
-    Schemes.OSS: OSSFileSystem,
-    Schemes.WEBDAV: WebDAVFileSystem,
-    Schemes.WEBDAVS: WebDAVSFileSystem,
-    # NOTE: LocalFileSystem is the default
-}
+from dvc.config import ConfigError as RepoConfigError
+from dvc.config_schema import SCHEMA, Invalid
+
+# pylint: disable=unused-import
+from dvc_objects.fs import utils  # noqa: F401
+from dvc_objects.fs import (  # noqa: F401
+    LocalFileSystem,
+    MemoryFileSystem,
+    Schemes,
+    generic,
+    get_fs_cls,
+    known_implementations,
+    localfs,
+    registry,
+    system,
+)
+from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
+from dvc_objects.fs.errors import (  # noqa: F401
+    AuthError,
+    ConfigError,
+    RemoteMissingDepsError,
+)
+from dvc_objects.fs.path import Path  # noqa: F401
+
+from .callbacks import Callback
+from .data import DataFileSystem  # noqa: F401
+from .dvc import DVCFileSystem  # noqa: F401
+from .git import GitFileSystem  # noqa: F401
+
+known_implementations.update(
+    {
+        "dvc": {
+            "class": "dvc.fs.dvc.DVCFileSystem",
+            "err": "dvc is supported, but requires 'dvc' to be installed",
+        },
+        "git": {
+            "class": "dvc.fs.git.GitFileSystem",
+            "err": "git is supported, but requires 'dvc' to be installed",
+        },
+    }
+)
 
 
-def get_fs_cls(remote_conf, scheme=None):
-    if not scheme:
-        scheme = urlparse(remote_conf["url"]).scheme
-    return FS_MAP.get(scheme, LocalFileSystem)
+# pylint: enable=unused-import
 
 
-def get_fs_config(repo, config, **kwargs):
+def download(fs, fs_path, to, jobs=None):
+    with Callback.as_tqdm_callback(
+        desc=f"Downloading {fs.path.name(fs_path)}",
+        unit="files",
+    ) as cb:
+        fs.get(fs_path, to.fs_path, batch_size=jobs, callback=cb)
+
+
+def parse_external_url(url, config=None):
+    remote_config = dict(config) if config else {}
+    remote_config["url"] = url
+    fs_cls, fs_config, fs_path = get_cloud_fs(None, **remote_config)
+    fs = fs_cls(**fs_config)
+    return fs, fs_path
+
+
+def get_fs_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
         try:
@@ -49,10 +75,10 @@ def get_fs_config(repo, config, **kwargs):
             raise RemoteNotFoundError(f"remote '{name}' doesn't exist")
     else:
         remote_conf = kwargs
-    return _resolve_remote_refs(repo, config, remote_conf)
+    return _resolve_remote_refs(config, remote_conf)
 
 
-def _resolve_remote_refs(repo, config, remote_conf):
+def _resolve_remote_refs(config, remote_conf):
     # Support for cross referenced remotes.
     # This will merge the settings, shadowing base ref with remote_conf.
     # For example, having:
@@ -78,30 +104,26 @@ def _resolve_remote_refs(repo, config, remote_conf):
     if parsed.scheme != "remote":
         return remote_conf
 
-    base = get_fs_config(repo, config, name=parsed.netloc)
-    cls, _, _ = get_cloud_fs(repo, **base)
+    base = get_fs_config(config, name=parsed.netloc)
+    cls, _, _ = _get_cloud_fs(config, **base)
     relpath = parsed.path.lstrip("/").replace("/", cls.sep)
     url = cls.sep.join((base["url"], relpath))
     return {**base, **remote_conf, "url": url}
 
 
 def get_cloud_fs(repo, **kwargs):
-    from dvc.config import ConfigError
-    from dvc.config_schema import SCHEMA, Invalid
-
     repo_config = repo.config if repo else {}
+    return _get_cloud_fs(repo_config, **kwargs)
+
+
+def _get_cloud_fs(repo_config, **kwargs):
     core_config = repo_config.get("core", {})
 
-    remote_conf = get_fs_config(repo, repo_config, **kwargs)
+    remote_conf = get_fs_config(repo_config, **kwargs)
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
-        raise ConfigError(str(exc)) from None
-
-    if "jobs" not in remote_conf:
-        jobs = core_config.get("jobs")
-        if jobs:
-            remote_conf["jobs"] = jobs
+        raise RepoConfigError(str(exc)) from None
 
     if "checksum_jobs" not in remote_conf:
         checksum_jobs = core_config.get("checksum_jobs")
@@ -110,11 +132,13 @@ def get_cloud_fs(repo, **kwargs):
 
     cls = get_fs_cls(remote_conf)
 
-    if cls == GDriveFileSystem and repo:
-        remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
-
     url = remote_conf.pop("url")
-    fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
+    if cls.protocol in ["webdav", "webdavs"]:
+        # For WebDAVFileSystem, provided url is the base path itself, so it
+        # should be treated as being a root path.
+        fs_path = cls.root_marker
+    else:
+        fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
 
     extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
     conf = {**extras, **remote_conf}  # remote config takes priority
