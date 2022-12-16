@@ -164,7 +164,6 @@ class Index:
         force: bool = False,
         recursive: bool = False,
         jobs: int = None,
-        allow_no_hash: bool = False,
     ) -> "ObjectContainer":
         from collections import defaultdict
         from itertools import chain
@@ -189,7 +188,6 @@ class Index:
                 force=force,
                 jobs=jobs,
                 filter_info=filter_info,
-                allow_no_hash=allow_no_hash,
             ).items():
                 used[odb].update(objs)
         return used

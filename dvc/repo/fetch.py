@@ -21,7 +21,6 @@ def fetch(
     all_commits=False,
     run_cache=False,
     revs=None,
-    allow_no_hash=False,
 ):
     """Download data items from a cloud and imported repositories
 
@@ -49,7 +48,6 @@ def fetch(
         jobs=jobs,
         recursive=recursive,
         revs=revs,
-        allow_no_hash=allow_no_hash,
     )
 
     downloaded = 0

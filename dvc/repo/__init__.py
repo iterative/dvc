@@ -394,7 +394,6 @@ class Repo:
         recursive=False,
         used_run_cache=None,
         revs=None,
-        allow_no_hash=False,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -436,7 +435,6 @@ class Repo:
                 jobs=jobs,
                 recursive=recursive,
                 with_deps=with_deps,
-                allow_no_hash=allow_no_hash,
             ).items():
                 if branch:
                     _add_suffix(objs, f" ({branch})")
