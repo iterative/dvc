@@ -114,7 +114,7 @@ def test_experiments_start(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.spawn_worker",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue._spawn_worker",
     )
 
     assert cmd.run() == 0

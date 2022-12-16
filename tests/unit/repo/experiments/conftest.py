@@ -132,7 +132,7 @@ def test_queue(tmp_dir, dvc, scm, mocker) -> LocalCeleryQueue:
     import celery
 
     queue = dvc.experiments.celery_queue
-    mocker.patch.object(queue, "spawn_worker")
+    mocker.patch.object(queue, "_spawn_worker")
 
     f = partial(
         _thread_worker,
