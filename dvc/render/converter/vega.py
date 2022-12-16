@@ -134,8 +134,12 @@ class VegaConverter(Converter):
             self.inferred_properties["x"] = {}
             # If multiple y files, duplicate x for each file.
             if isinstance(y, dict):
-                for file in y.keys():
-                    self.inferred_properties["x"][file] = x
+                for file, fields in y.items():
+                    # Duplicate x for each y.
+                    if isinstance(fields, list):
+                        self.inferred_properties["x"][file] = [x] * len(fields)
+                    else:
+                        self.inferred_properties["x"][file] = x
             # Otherwise use plot ID as file.
             else:
                 self.inferred_properties["x"][self.plot_id] = x

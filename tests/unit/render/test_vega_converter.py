@@ -331,6 +331,54 @@ def test_finding_lists(dictionary, expected_result):
             },
             id="y_list",
         ),
+        pytest.param(
+            {
+                "f": {"metric": [{"v": 1, "v2": 0.1, "v3": 0.01}]},
+                "f2": {"metric": [{"v": 1, "v2": 0.1}]},
+            },
+            {"y": {"f": ["v2", "v3"], "f2": ["v2"]}, "x": "v"},
+            [
+                {
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "v3": 0.01,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.01,
+                    "v": 1,
+                    "v2": 0.1,
+                    "v3": 0.01,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v3",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f2",
+                        "field": "v2",
+                    },
+                },
+            ],
+            {
+                "x": "v",
+                "y": "dvc_inferred_y_value",
+                "x_label": "v",
+                "y_label": "y",
+            },
+            id="multi_source_y_single_x",
+        ),
     ],
 )
 def test_convert(
