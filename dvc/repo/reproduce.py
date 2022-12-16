@@ -1,13 +1,14 @@
 import logging
-import typing
 from functools import partial
+from typing import TYPE_CHECKING, Iterator
 
 from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.scm_context import scm_context
+from dvc.stage.exceptions import CheckpointKilledError
 
 from . import locked
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from dvc.stage import Stage
 
     from . import Repo
@@ -58,7 +59,7 @@ def _dump_stage(stage):
     dvcfile.dump(stage, update_pipeline=False)
 
 
-def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
+def _get_stage_files(stage: "Stage") -> Iterator[str]:
     yield stage.dvcfile.relpath
     for dep in stage.deps:
         if (
@@ -183,7 +184,8 @@ def _reproduce_stages(
     # `ret` is used to add a cosmetic newline.
     ret = []
     checkpoint_func = kwargs.pop("checkpoint_func", None)
-    for stage in steps:
+
+    for i, stage in enumerate(steps):
         if ret:
             logger.info("")
 
@@ -191,8 +193,6 @@ def _reproduce_stages(
             kwargs["checkpoint_func"] = partial(
                 _repro_callback, checkpoint_func, unchanged
             )
-
-        from dvc.stage.monitor import CheckpointKilledError
 
         try:
             ret = _reproduce_stage(stage, **kwargs)
@@ -210,7 +210,18 @@ def _reproduce_stages(
             if ret:
                 result.extend(ret)
         except CheckpointKilledError:
-            raise
+            result.append(stage)
+            logger.warning(
+                "Checkpoint stage '%s' was interrupted remaining stages in "
+                "pipeline will not be reproduced.",
+                stage.addressing,
+            )
+            logger.warning(
+                "skipped stages '%s'",
+                ", ".join(s.addressing for s in steps[i + 1 :]),
+            )
+
+            break
         except Exception as exc:
             raise ReproductionError(stage.addressing) from exc
 

@@ -3,12 +3,16 @@ import os
 import signal
 import subprocess
 import threading
+from typing import TYPE_CHECKING, List
 
-from dvc.stage.monitor import Monitor
+from dvc.stage.monitor import CheckpointTask, Monitor
 from dvc.utils import fix_env
 
 from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
+
+if TYPE_CHECKING:
+    from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -74,10 +78,11 @@ def get_executable():
     return (os.getenv("SHELL") or "/bin/sh") if os.name != "nt" else None
 
 
-def _run(stage, executable, cmd, checkpoint_func, **kwargs):
+def _run(stage: "Stage", executable, cmd, checkpoint_func, **kwargs):
+    # pylint: disable=protected-access
     main_thread = isinstance(
         threading.current_thread(),
-        threading._MainThread,  # pylint: disable=protected-access
+        threading._MainThread,  # type: ignore[attr-defined]
     )
 
     exec_cmd = _make_cmd(executable, cmd)
@@ -98,7 +103,7 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
 
         if p.returncode != 0:
             for t in tasks:
-                if t.killed.is_set():
+                if t.updated.is_set():
                     raise t.error_cls(cmd, p.returncode)
             raise StageCmdFailedError(cmd, p.returncode)
     finally:
@@ -106,12 +111,10 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
             signal.signal(signal.SIGINT, old_handler)
 
 
-def _get_monitor_tasks(stage, checkpoint_func, proc):
+def _get_monitor_tasks(stage, checkpoint_func, proc) -> List[CheckpointTask]:
 
     result = []
     if checkpoint_func:
-        from .monitor import CheckpointTask
-
         result.append(CheckpointTask(stage, checkpoint_func, proc))
 
     return result
