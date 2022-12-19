@@ -16,9 +16,10 @@ from .executor.base import BaseExecutor
 from .refs import EXEC_APPLY
 
 if TYPE_CHECKING:
-    from scmrepo import Git
+    from scmrepo.git import Git
 
     from dvc.repo import Repo
+    from dvc.repo.experiments import Experiments
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +32,32 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
     from dvc.scm import GitMergeError, RevError, resolve_rev
 
-    exps = repo.experiments
+    exps: "Experiments" = repo.experiments
+
+    is_stash: bool = False
 
     try:
         exp_rev = resolve_rev(repo.scm, rev)
         exps.check_baseline(exp_rev)
-    except (RevError, BaselineMismatchError) as exc:
+    except RevError as exc:
+        (
+            exp_ref_info,
+            queue_entry,
+        ) = exps.celery_queue.get_ref_and_entry_by_names(rev)[rev]
+        baseline_sha = repo.scm.get_rev()
+        if exp_ref_info:
+            if baseline_sha != exp_ref_info.baseline_sha:
+                raise InvalidExpRevError(rev)
+            exp_rev = repo.scm.get_ref(str(exp_ref_info))
+        elif queue_entry:
+            if queue_entry.baseline_rev != baseline_sha:
+                raise InvalidExpRevError(rev)
+            exp_rev = queue_entry.stash_rev
+            is_stash = True
+        else:
+            raise InvalidExpRevError(rev) from exc
+    except BaselineMismatchError as exc:
         raise InvalidExpRevError(rev) from exc
-
-    stash_rev = exp_rev in exps.stash_revs
-    if not stash_rev and not exps.get_branch_by_rev(
-        exp_rev, allow_multiple=True
-    ):
-        raise InvalidExpRevError(exp_rev)
 
     # NOTE: we don't use scmrepo's stash_workspace() here since we need
     # finer control over the merge behavior when we unstash everything
@@ -55,7 +69,7 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
 
     repo.scm.reset()
 
-    if stash_rev:
+    if is_stash:
         args_path = os.path.join(repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
         if os.path.exists(args_path):
             remove(args_path)
