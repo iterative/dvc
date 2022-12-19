@@ -11,6 +11,7 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import ReproductionError
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
+from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
@@ -114,12 +115,12 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     exp_a = first(results)
 
     results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=3"], tmp_dir=True
+        exp_stage.addressing, params=["foo=3"], tmp_dir=True, name="foo"
     )
     exp_b = first(results)
 
     with pytest.raises(InvalidArgumentError):
-        dvc.experiments.apply("foo")
+        dvc.experiments.apply("bar")
 
     dvc.experiments.apply(exp_a)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
@@ -131,9 +132,32 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
         assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
         assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
-    dvc.experiments.apply(exp_b)
+    dvc.experiments.apply("foo")
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
+
+
+def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
+    from dvc.exceptions import InvalidArgumentError
+
+    dvc.experiments.run(
+        failed_exp_stage.addressing, params=["foo=2"], queue=True
+    )
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
+
+    dvc.experiments.run(
+        failed_exp_stage.addressing, params=["foo=3"], queue=True, name="foo"
+    )
+    dvc.experiments.run(run_all=True)
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.apply("bar")
+
+    dvc.experiments.apply(exp_rev)
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
+
+    dvc.experiments.apply("foo")
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
 
 
 def test_apply_queued(tmp_dir, scm, dvc, exp_stage):
@@ -183,7 +207,6 @@ def test_apply_untracked(tmp_dir, scm, dvc, exp_stage):
 
 
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
-    from dvc.repo.experiments.refs import CELERY_STASH
 
     init_rev = scm.get_rev()
     assert dvc.experiments.get_baseline(init_rev) is None
