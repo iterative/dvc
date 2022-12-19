@@ -96,12 +96,17 @@ class WorkspaceQueue(BaseStashQueue):
     def _reproduce_entry(
         self, entry: QueueEntry, executor: BaseExecutor
     ) -> Dict[str, Dict[str, str]]:
+        from dvc_studio_client.post_live_metrics import post_live_metrics
+
         from dvc.stage.monitor import CheckpointKilledError
 
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
         exec_name = self._EXEC_NAME or entry.stash_rev
         infofile = self.get_infofile_path(exec_name)
         try:
+            post_live_metrics(
+                "start", executor.info.baseline_rev, executor.info.name, "dvc"
+            )
             rev = entry.stash_rev
             exec_result = executor.reproduce(
                 info=executor.info,
@@ -130,6 +135,13 @@ class WorkspaceQueue(BaseStashQueue):
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
         finally:
+            post_live_metrics(
+                "done",
+                executor.info.baseline_rev,
+                executor.info.name,
+                "dvc",
+                experiment_rev=first(results.get(rev, {})),
+            )
             executor.cleanup(infofile)
         return results
 
