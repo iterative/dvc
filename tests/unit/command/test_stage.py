@@ -63,6 +63,7 @@ def test_stage_add(mocker, dvc, command, parsed_command):
 
     assert cmd.run() == 0
     assert called_once_with_subset(
+        mocker,
         m,
         name="name",
         deps=["deps"],

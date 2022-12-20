@@ -4,7 +4,6 @@ import os
 import shutil
 import stat
 import textwrap
-from unittest.mock import call
 
 import colorama
 import pytest
@@ -739,8 +738,8 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 8
-    assert m.call_args != call(tmp_dir / "foo")
-    assert m.call_args != call(tmp_dir / "bar")
+    assert m.call_args != mocker.call(tmp_dir / "foo")
+    assert m.call_args != mocker.call(tmp_dir / "bar")
 
     for stage in stages[:2]:
         # hardlinks are not created for empty files

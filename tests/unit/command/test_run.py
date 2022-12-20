@@ -56,6 +56,7 @@ def test_run(mocker, dvc):
     assert cmd.run() == 0
 
     assert called_once_with_subset(
+        mocker,
         m,
         deps=["deps"],
         outs=["outs"],
@@ -89,6 +90,7 @@ def test_run_args_from_cli(mocker, dvc):
     m = mocker.patch.object(cmd.repo, "run", autospec=True)
     assert cmd.run() == 0
     assert called_once_with_subset(
+        mocker,
         m,
         deps=[],
         outs=[],
@@ -122,6 +124,7 @@ def test_run_args_with_spaces(mocker, dvc):
     m = mocker.patch.object(cmd.repo, "run", autospec=True)
     assert cmd.run() == 0
     assert called_once_with_subset(
+        mocker,
         m,
         deps=[],
         outs=[],

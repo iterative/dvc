@@ -1,5 +1,3 @@
-from unittest.mock import call
-
 from dvc.repo.experiments.queue.base import QueueDoneResult
 
 
@@ -40,7 +38,11 @@ def test_remove_queued(test_queue, mocker):
     assert test_queue.clear(queued=True) == queued_test
     remove_revs_mocker.assert_called_once_with(list(stash_dict.values()))
     reject_mocker.assert_has_calls(
-        [call("msg_queue1"), call("msg_queue2"), call("msg_queue3")]
+        [
+            mocker.call("msg_queue1"),
+            mocker.call("msg_queue2"),
+            mocker.call("msg_queue3"),
+        ]
     )
 
 
@@ -98,7 +100,9 @@ def test_remove_done(test_queue, mocker):
         "success2",
     ]
     remove_revs_mocker.assert_called_once_with([stash_dict["failed3"]])
-    purge_mocker.assert_has_calls([call("msg_failed3"), call("msg_success2")])
+    purge_mocker.assert_has_calls(
+        [mocker.call("msg_failed3"), mocker.call("msg_success2")]
+    )
 
     remove_revs_mocker.reset_mock()
     purge_mocker.reset_mock()
@@ -108,12 +112,12 @@ def test_remove_done(test_queue, mocker):
     ) | set(success_test)
     purge_mocker.assert_has_calls(
         [
-            call("msg_failed1"),
-            call("msg_failed2"),
-            call("msg_failed3"),
-            call("msg_success1"),
-            call("msg_success2"),
-            call("msg_success3"),
+            mocker.call("msg_failed1"),
+            mocker.call("msg_failed2"),
+            mocker.call("msg_failed3"),
+            mocker.call("msg_success1"),
+            mocker.call("msg_success2"),
+            mocker.call("msg_success3"),
         ],
         any_order=True,
     )

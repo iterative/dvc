@@ -1,5 +1,4 @@
 import os
-from unittest.mock import ANY
 
 from scmrepo.git import Git
 
@@ -141,7 +140,7 @@ def test_shallow_clone_branch(erepo_dir, mocker):
             assert fd.read() == "branch"
 
     clone_spy.assert_called_with(
-        url, ANY, shallow_branch="branch", progress=ANY
+        url, mocker.ANY, shallow_branch="branch", progress=mocker.ANY
     )
 
     path, _ = CLONES[url]
@@ -167,7 +166,9 @@ def test_shallow_clone_tag(erepo_dir, mocker):
         with repo.open_by_relpath("file") as fd:
             assert fd.read() == "foo"
 
-    clone_spy.assert_called_with(url, ANY, shallow_branch="v1", progress=ANY)
+    clone_spy.assert_called_with(
+        url, mocker.ANY, shallow_branch="v1", progress=mocker.ANY
+    )
 
     path, _ = CLONES[url]
     CLONES[url] = (path, True)

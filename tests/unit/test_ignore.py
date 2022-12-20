@@ -1,21 +1,22 @@
 import os
-from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
 from dvc.ignore import DvcIgnorePatterns
 
 
-def mock_dvcignore(dvcignore_path, patterns):
+def mock_dvcignore(dvcignore_path, patterns, mocker):
     from dvc.fs import localfs
 
-    fs = MagicMock()
+    fs = mocker.MagicMock()
     fs.path = localfs.path
     fs.sep = localfs.sep
-    with patch.object(fs, "open", mock_open(read_data="\n".join(patterns))):
-        ignore_patterns = DvcIgnorePatterns.from_file(
-            dvcignore_path, fs, "mocked"
-        )
+    original = fs.open
+    mocker.patch.object(
+        fs, "open", mocker.mock_open(read_data="\n".join(patterns))
+    )
+    ignore_patterns = DvcIgnorePatterns.from_file(dvcignore_path, fs, "mocked")
+    mocker.patch.object(fs, "open", original)
 
     return ignore_patterns
 
@@ -179,7 +180,7 @@ def mock_dvcignore(dvcignore_path, patterns):
     ],
 )
 def test_match_ignore_from_file(
-    file_to_ignore_relpath, patterns, expected_match
+    file_to_ignore_relpath, patterns, expected_match, mocker
 ):
 
     dvcignore_path = os.path.join(
@@ -187,7 +188,7 @@ def test_match_ignore_from_file(
     )
     dvcignore_dirname = os.path.dirname(dvcignore_path)
 
-    ignore_file = mock_dvcignore(dvcignore_path, patterns)
+    ignore_file = mock_dvcignore(dvcignore_path, patterns, mocker)
 
     assert (
         ignore_file.matches(dvcignore_dirname, file_to_ignore_relpath)

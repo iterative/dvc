@@ -1,5 +1,4 @@
 import os
-from unittest.mock import call
 
 import configobj
 import pytest
@@ -83,7 +82,7 @@ def test_status(tmp_dir, scm, dvc, mocker):
     )
     assert cmd.run() == 0
     assert m.call_count == 2
-    m.assert_has_calls([call("foo"), call("myaws")])
+    m.assert_has_calls([mocker.call("foo"), mocker.call("myaws")])
 
 
 def test_destroy(tmp_dir, dvc, mocker):

@@ -2,7 +2,6 @@ import logging
 import os
 import random
 from datetime import datetime
-from unittest.mock import ANY
 
 import pytest
 from funcy import first, get_in
@@ -77,14 +76,14 @@ def test_show_branch_and_tag_name(tmp_dir, scm, dvc, exp_stage):
 
 
 @pytest.mark.vscode
-def test_show_simple(tmp_dir, scm, dvc, exp_stage):
+def test_show_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
             "data": {
                 "deps": {
                     "copy.py": {
-                        "hash": ANY,
-                        "size": ANY,
+                        "hash": mocker.ANY,
+                        "size": mocker.ANY,
                         "nfiles": None,
                     }
                 },
@@ -101,7 +100,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
 
 @pytest.mark.vscode
 @pytest.mark.parametrize("workspace", [True, False])
-def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
+def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace, mocker):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
@@ -116,8 +115,8 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
         "data": {
             "deps": {
                 "copy.py": {
-                    "hash": ANY,
-                    "size": ANY,
+                    "hash": mocker.ANY,
+                    "size": mocker.ANY,
                     "nfiles": None,
                 }
             },
@@ -176,7 +175,7 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
 
 
 @pytest.mark.vscode
-def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
+def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage, mocker):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
@@ -193,8 +192,8 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
         "data": {
             "deps": {
                 "copy.py": {
-                    "hash": ANY,
-                    "size": ANY,
+                    "hash": mocker.ANY,
+                    "size": mocker.ANY,
                     "nfiles": None,
                 }
             },
@@ -210,7 +209,7 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
 
     expected_failed = {
         "data": {
-            "timestamp": ANY,
+            "timestamp": mocker.ANY,
             "params": {"params.yaml": {"data": {"foo": 2}}},
             "deps": {"copy.py": {"hash": None, "size": None, "nfiles": None}},
             "outs": {},
@@ -220,7 +219,7 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
                 "msg": "Experiment run failed.",
                 "type": "",
             },
-            "name": ANY,
+            "name": mocker.ANY,
         }
     }
 
@@ -457,8 +456,8 @@ def test_show_running_workspace(
             "data": {
                 "deps": {
                     "copy.py": {
-                        "hash": ANY,
-                        "size": ANY,
+                        "hash": mocker.ANY,
+                        "size": mocker.ANY,
                         "nfiles": None,
                     }
                 },
@@ -813,7 +812,7 @@ def test_show_parallel_coordinates(
 
 
 @pytest.mark.vscode
-def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
+def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script, mocker):
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,
@@ -835,8 +834,8 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
     outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
     assert outs == {
         "out": {
-            "hash": ANY,
-            "size": ANY,
+            "hash": mocker.ANY,
+            "size": mocker.ANY,
             "nfiles": None,
             "use_cache": True,
             "is_data_source": False,
@@ -848,15 +847,15 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
     outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
     assert outs == {
         "out": {
-            "hash": ANY,
-            "size": ANY,
+            "hash": mocker.ANY,
+            "size": mocker.ANY,
             "nfiles": None,
             "use_cache": True,
             "is_data_source": False,
         },
         "out_add": {
-            "hash": ANY,
-            "size": ANY,
+            "hash": mocker.ANY,
+            "size": mocker.ANY,
             "nfiles": None,
             "use_cache": True,
             "is_data_source": True,
@@ -871,22 +870,22 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
     outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
     assert outs == {
         "out": {
-            "hash": ANY,
-            "size": ANY,
+            "hash": mocker.ANY,
+            "size": mocker.ANY,
             "nfiles": None,
             "use_cache": True,
             "is_data_source": False,
         },
         "out_add": {
-            "hash": ANY,
-            "size": ANY,
+            "hash": mocker.ANY,
+            "size": mocker.ANY,
             "nfiles": None,
             "use_cache": True,
             "is_data_source": True,
         },
         "out_imported": {
-            "hash": ANY,
-            "size": ANY,
+            "hash": mocker.ANY,
+            "size": mocker.ANY,
             "nfiles": None,
             "use_cache": True,
             "is_data_source": True,

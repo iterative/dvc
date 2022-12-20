@@ -38,6 +38,7 @@ def test_add_annotations(mocker, func, args):
 
     assert cmd.run() == 0
     assert called_once_with_subset(
+        mocker,
         getattr(cmd.repo, func),
         posargs,
         desc="description",

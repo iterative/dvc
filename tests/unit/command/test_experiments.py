@@ -802,7 +802,7 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
         "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     assert cmd.run() == 0
-    assert called_once_with_subset(m, ANY(Repo), interactive=True)
+    assert called_once_with_subset(mocker, m, ANY(Repo), interactive=True)
 
 
 @pytest.mark.parametrize(
@@ -858,7 +858,7 @@ def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
         "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     assert cmd.run() == 0
-    assert called_once_with_subset(m, ANY(Repo), **expected_kw)
+    assert called_once_with_subset(mocker, m, ANY(Repo), **expected_kw)
 
 
 def test_experiments_init_type_invalid_choice():

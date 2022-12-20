@@ -1,5 +1,4 @@
 import os
-from unittest.mock import call
 
 import pytest
 
@@ -41,7 +40,7 @@ def test_collect_and_send_report(mocker, dvc, mock_daemon):
 
     assert mock_daemon.call_count == 1
     assert mock_post.call_count == 1
-    assert mock_post.call_args == call(
+    assert mock_post.call_args == mocker.call(
         "https://analytics.dvc.org",
         json=ANY(dict),
         headers={"content-type": "application/json"},

@@ -1,7 +1,6 @@
 import os
 import posixpath
 import shutil
-from unittest import mock
 
 import pytest
 
@@ -352,33 +351,36 @@ def test_subrepos(tmp_dir, scm, dvc, mocker):
 
         return f
 
-    with mock.patch.object(
+    original = fs.fs._get_repo
+
+    mocker.patch.object(
         fs.fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo1.dvc)
-    ):
-        assert fs.exists("dir/repo/foo") is True
-        assert fs.exists("dir/repo/bar") is False
+    )
+    assert fs.exists("dir/repo/foo") is True
+    assert fs.exists("dir/repo/bar") is False
 
-        assert fs.isfile("dir/repo/foo") is True
-        assert fs.isfile("dir/repo/dir1/bar") is True
-        assert fs.isfile("dir/repo/dir1") is False
+    assert fs.isfile("dir/repo/foo") is True
+    assert fs.isfile("dir/repo/dir1/bar") is True
+    assert fs.isfile("dir/repo/dir1") is False
 
-        assert fs.isdir("dir/repo/dir1") is True
-        assert fs.isdir("dir/repo/dir1/bar") is False
-        assert fs.isdvc("dir/repo/foo") is True
+    assert fs.isdir("dir/repo/dir1") is True
+    assert fs.isdir("dir/repo/dir1/bar") is False
+    assert fs.isdvc("dir/repo/foo") is True
+    mocker.patch.object(fs.fs, "_get_repo", original)
 
-    with mock.patch.object(
+    mocker.patch.object(
         fs.fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo2.dvc)
-    ):
-        assert fs.exists("dir/repo2/lorem") is True
-        assert fs.exists("dir/repo2/ipsum") is False
+    )
+    assert fs.exists("dir/repo2/lorem") is True
+    assert fs.exists("dir/repo2/ipsum") is False
 
-        assert fs.isfile("dir/repo2/lorem") is True
-        assert fs.isfile("dir/repo2/dir2/ipsum") is True
-        assert fs.isfile("dir/repo2/dir2") is False
+    assert fs.isfile("dir/repo2/lorem") is True
+    assert fs.isfile("dir/repo2/dir2/ipsum") is True
+    assert fs.isfile("dir/repo2/dir2") is False
 
-        assert fs.isdir("dir/repo2/dir2") is True
-        assert fs.isdir("dir/repo2/dir2/ipsum") is False
-        assert fs.isdvc("dir/repo2/lorem") is True
+    assert fs.isdir("dir/repo2/dir2") is True
+    assert fs.isdir("dir/repo2/dir2/ipsum") is False
+    assert fs.isdvc("dir/repo2/lorem") is True
 
 
 @pytest.mark.parametrize(

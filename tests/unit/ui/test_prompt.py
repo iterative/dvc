@@ -1,5 +1,4 @@
 import io
-from unittest.mock import call
 
 import pytest
 from rich.console import Console as RichConsole
@@ -90,7 +89,7 @@ def test_prompt_retries_on_invalid_response_from_validator(mocker):
         )
         == "foo"
     )
-    mocked_validator.assert_has_calls([call("3"), call("foo")])
+    mocked_validator.assert_has_calls([mocker.call("3"), mocker.call("foo")])
 
     expected = "what is your name?: it is a number\nwhat is your name?: "
     assert console.file.getvalue() == expected
@@ -110,7 +109,7 @@ def test_prompt_shows_message_from_validator_response(mocker):
         )
         == "foo@email"
     )
-    mocked_validator.assert_has_calls([call("foo@email")])
+    mocked_validator.assert_has_calls([mocker.call("foo@email")])
 
     expected = "what is your email?: failed to send a verification email\n"
     assert console.file.getvalue() == expected
@@ -130,7 +129,7 @@ def test_prompt_default(mocker):
         == "default"
     )
     assert console.file.getvalue() == "What is your name? [default]: "
-    mocked_validator.assert_has_calls([call("default")])
+    mocked_validator.assert_has_calls([mocker.call("default")])
 
 
 @pytest.mark.parametrize(
