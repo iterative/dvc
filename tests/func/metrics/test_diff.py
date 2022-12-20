@@ -235,3 +235,20 @@ def test_diff_top_level_metrics(tmp_dir, dvc, scm, dvcfile, metrics_file):
             "foo": {"diff": 2, "new": 5, "old": 3}
         }
     }
+
+
+def test_metrics_diff_active_branch_unchanged(
+    tmp_dir, scm, dvc, run_copy_metrics
+):
+    def _gen(val):
+        metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
+        (tmp_dir / "m_temp.yaml").dump(metrics)
+        run_copy_metrics(
+            "m_temp.yaml", "m.yaml", metrics=["m.yaml"], commit=str(val)
+        )
+
+    _gen(1)
+    _gen(2)
+    _gen(1)
+
+    assert dvc.metrics.diff(a_rev=tmp_dir.scm.active_branch()) == {}
