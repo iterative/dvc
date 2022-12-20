@@ -29,27 +29,25 @@ def test_shutdown(test_queue, mocker):
 
 def test_shutdown_with_kill(test_queue, mocker):
 
-    sig = _foo.s()
-    mock_entry = mocker.Mock(stash_rev=_foo.name)
-
-    result = sig.freeze()
+    mock_entry_foo = mocker.Mock(stash_rev="af12de")
+    mock_entry_foo.name = "foo"
+    mock_entry_bar = mocker.Mock(stash_rev="bar")
+    mock_entry_bar.name = None
 
     shutdown_spy = mocker.patch("celery.app.control.Control.shutdown")
     mocker.patch.object(
         test_queue,
-        "_iter_active_tasks",
-        return_value=[(result, mock_entry)],
+        "iter_active",
+        return_value=[mock_entry_foo, mock_entry_bar],
     )
-    kill_spy = mocker.patch.object(test_queue.proc, "kill")
+    kill_spy = mocker.patch.object(test_queue, "_kill_entries")
 
     test_queue.shutdown(kill=True)
 
-    sig.delay()
-
-    assert result.get() == "foo"
-    assert result.id not in test_queue._shutdown_task_ids
-    kill_spy.assert_called_once_with(mock_entry.stash_rev)
     shutdown_spy.assert_called_once()
+    kill_spy.assert_called_once_with(
+        {mock_entry_foo: "foo", mock_entry_bar: "bar"}
+    )
 
 
 def test_post_run_after_kill(test_queue):
