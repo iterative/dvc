@@ -268,3 +268,11 @@ def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file):
             "foo": {"diff": 2, "new": 5, "old": 3}
         }
     }
+
+
+def test_diff_active_branch_no_changes(tmp_dir, scm, dvc):
+    tmp_dir.gen("params.yaml", "foo: bar")
+    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    scm.add(["params.yaml", "Dvcfile"])
+    scm.commit("bar")
+    assert dvc.params.diff(a_rev=tmp_dir.scm.active_branch()) == {}
