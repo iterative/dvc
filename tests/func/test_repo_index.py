@@ -1,12 +1,10 @@
-import os
 from itertools import chain
 
 import pytest
 from pygtrie import Trie
 
 from dvc.repo.index import Index
-from dvc.stage import PipelineStage, Stage
-from dvc.utils import relpath
+from dvc.stage import Stage
 
 
 def test_index(tmp_dir, scm, dvc, run_copy):
@@ -17,15 +15,11 @@ def test_index(tmp_dir, scm, dvc, run_copy):
     index = Index(dvc)
     assert index.fs == dvc.fs
 
-    assert len(index) == len(index.stages) == 2
-    assert set(index.stages) == set(index) == {stage1, stage2}
-    assert stage1 in index
-    assert stage2 in index
+    assert set(index.stages) == {stage1, stage2}
 
     assert index.outs_graph
     assert index.graph
     assert isinstance(index.outs_trie, Trie)
-    assert index.identifier
     index.check_graph()
 
 
@@ -40,41 +34,6 @@ def test_repr(tmp_dir, scm, dvc):
     rev = next(brancher)
     assert rev == scm.get_rev()
     assert repr(Index(dvc)) == f"Index({dvc}, fs@{rev[:7]})"
-
-
-def test_filter_index(tmp_dir, dvc, run_copy):
-    tmp_dir.dvc_gen("foo", "foo")
-    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
-
-    def filter_pipeline(stage):
-        return bool(stage.cmd)
-
-    filtered_index = Index(dvc).filter(filter_pipeline)
-    assert list(filtered_index) == [stage2]
-
-
-def test_slice_index(tmp_dir, dvc):
-    tmp_dir.gen({"dir1": {"foo": "foo"}, "dir2": {"bar": "bar"}})
-    with (tmp_dir / "dir1").chdir():
-        (stage1,) = dvc.add("foo")
-    with (tmp_dir / "dir2").chdir():
-        (stage2,) = dvc.add("bar")
-
-    index = Index(dvc)
-
-    sliced = index.slice("dir1")
-    assert set(sliced) == {stage1}
-    assert sliced.stages is not index.stages  # sanity check
-
-    sliced = index.slice(tmp_dir / "dir1")
-    assert set(sliced) == {stage1}
-
-    sliced = index.slice("dir2")
-    assert set(sliced) == {stage2}
-
-    with (tmp_dir / "dir1").chdir():
-        sliced = index.slice(relpath(tmp_dir / "dir2"))
-        assert set(sliced) == {stage2}
 
 
 def outputs_equal(actual, expected):
@@ -147,7 +106,7 @@ def test_add_update(dvc):
     dup_stage2 = Stage(dvc, path="path2")
     dup_index = index.update([dup_stage1, dup_stage2])
     assert not index.stages
-    assert len(new_index) == 1
+    assert len(new_index.stages) == 1
     assert new_index.stages[0] is new_stage
     assert set(map(id, dup_index.stages)) == {id(dup_stage1), id(dup_stage2)}
 
@@ -163,67 +122,6 @@ def assert_index_equal(first, second, strict=True, ordered=True):
         assert set(map(id, first)) == set(
             map(id, second)
         ), "Index is not strictly equal"
-
-
-def test_discard_remove(dvc):
-    stage = Stage(dvc, path="path1")
-    index = Index(dvc, stages=[stage])
-
-    assert list(index.discard(Stage(dvc, "path2"))) == list(index)
-    new_index = index.discard(stage)
-    assert len(new_index) == 0
-
-    with pytest.raises(ValueError):
-        index.remove(Stage(dvc, "path2"))
-    assert index.stages == [stage]
-    assert list(index.remove(stage)) == []
-
-
-def test_difference(dvc):
-    stages = [Stage(dvc, path=f"path{i}") for i in range(10)]
-    index = Index(dvc, stages=stages)
-
-    new_index = index.difference([*stages[:5], Stage(dvc, path="path100")])
-    assert index.stages == stages
-    assert set(new_index) == set(stages[5:])
-
-
-def test_dumpd(dvc):
-    stages = [
-        PipelineStage(dvc, "dvc.yaml", name="stage1"),
-        Stage(dvc, "path"),
-    ]
-    index = Index(dvc, stages=stages)
-    assert index.dumpd() == {"dvc.yaml:stage1": {}, "path": {}}
-    assert index.identifier == "d43da84e9001540c26abf2bf4541c275"
-
-
-def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
-    dvc.scm_context.autostage = True
-    tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar", name="copy-foo-bar")
-
-    revs = []
-    n_commits = 5
-    for i in range(n_commits):
-        # create a few empty commits
-        scm.commit(f"commit {i}")
-        revs.append(scm.get_rev())
-    assert len(set(revs)) == n_commits  # the commit revs should be unique
-
-    ids = []
-    for _ in dvc.brancher(revs=revs):
-        index = Index(dvc)
-        assert index.stages
-        ids.append(index.identifier)
-
-    # we get "workspace" as well from the brancher by default
-    assert len(revs) + 1 == len(ids)
-    possible_ids = {
-        True: "dd9cf3a3dc2caac5835e64f258ac2d7b",
-        False: "b446f3cdc35539884dcc474d90ac6286",
-    }
-    assert set(ids) == {possible_ids[os.name == "posix"]}
 
 
 def test_skip_graph_checks(dvc, mocker):
@@ -291,18 +189,6 @@ def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
     assert index.used_objs("copy-foo-bar", with_deps=True) == {
         None: {expected_objs[0]}
     }
-
-
-def test_getitem(tmp_dir, dvc, run_copy):
-    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
-    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
-
-    index = Index(dvc)
-    assert index["foo.dvc"] == stage1
-    assert index["copy-foo-bar"] == stage2
-
-    with pytest.raises(KeyError):
-        _ = index["no-valid-stage-name"]
 
 
 def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):

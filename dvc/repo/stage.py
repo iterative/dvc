@@ -369,7 +369,7 @@ class StageLoad:
             glob: Use `target` as a pattern to match stages in a file.
         """
         if not target:
-            return list(graph) if graph else list(self.repo.index)
+            return list(graph) if graph else self.repo.index.stages
 
         if recursive and self.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
@@ -410,7 +410,7 @@ class StageLoad:
             (see `collect()` for other arguments)
         """
         if not target:
-            return [StageInfo(stage) for stage in self.repo.index]
+            return [StageInfo(stage) for stage in self.repo.index.stages]
 
         target = as_posix(target)
 
