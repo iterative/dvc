@@ -112,6 +112,59 @@ def collect_files(
         dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
 
 
+def _load_data_from_outs(index, prefix, outs):
+    from dvc_data.index import DataIndexEntry
+
+    for out in outs:
+        if not out.use_cache:
+            continue
+
+        ws, key = out.index_key
+
+        entry = DataIndexEntry(
+            key=key,
+            meta=out.meta,
+            hash_info=out.hash_info,
+        )
+
+        if out.stage.is_import and not out.stage.is_repo_import:
+            dep = out.stage.deps[0]
+            entry.meta = dep.meta
+            entry.hash_info = dep.hash_info
+
+        # FIXME PyGTrie-based DataIndex doesn't remove entry.key during
+        # index.add, so we have to set the entry manually here to make
+        # index.view() work correctly.
+        index[(*prefix, ws, *key)] = entry
+
+
+def _load_storage_from_out(storage_map, key, out):
+    from dvc.config import NoRemoteError
+    from dvc_data.index import FileStorage, ObjectStorage
+
+    if out.odb:
+        storage_map.add_data(ObjectStorage(key, out.odb))
+    storage_map.add_cache(ObjectStorage(key, out.cache))
+    try:
+        remote = out.repo.cloud.get_remote(out.remote)
+        if remote.fs.version_aware:
+            storage_map.add_remote(
+                FileStorage(
+                    key=key,
+                    fs=remote.fs,
+                    path=remote.fs.path.join(remote.path, *key),
+                )
+            )
+        else:
+            storage_map.add_remote(ObjectStorage(key, remote.odb))
+    except NoRemoteError:
+        pass
+
+    if out.stage.is_import and not out.stage.is_repo_import:
+        dep = out.stage.deps[0]
+        storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
+
+
 class Index:
     def __init__(
         self,
@@ -282,60 +335,78 @@ class Index:
         return dict(by_workspace)
 
     @cached_property
-    def data(self) -> "Dict[str, DataIndex]":
-        from collections import defaultdict
+    def data_tree(self):
+        from dvc_data.hashfile import Tree
 
-        from dvc.config import NoRemoteError
-        from dvc_data.index import DataIndex, DataIndexEntry, FileStorage, ObjectStorage
-
-        by_workspace: dict = defaultdict(DataIndex)
-
-        by_workspace["repo"] = DataIndex()
-        by_workspace["local"] = DataIndex()
-
+        tree = Tree()
         for out in self.outs:
             if not out.use_cache:
                 continue
 
-            workspace, key = out.index_key
-            data_index = by_workspace[workspace]
+            ws, key = out.index_key
 
-            entry = DataIndexEntry(
-                key=key,
-                meta=out.meta,
-                hash_info=out.hash_info,
+            tree.add((ws, *key), out.meta, out.hash_info)
+
+        tree.digest()
+
+        return tree
+
+    @cached_property
+    def data(self) -> "Dict[str, DataIndex]":
+        from dvc_data.index import DataIndex
+
+        prefix: "DataIndexKey"
+        loaded = False
+
+        if self.repo.config["feature"].get("data_index_cache"):
+            import os
+
+            from appdirs import user_cache_dir
+            from fsspec.utils import tokenize
+
+            cache_dir = user_cache_dir(
+                self.repo.config.APPNAME, self.repo.config.APPAUTHOR
             )
+            index_dir = os.path.join(
+                cache_dir,
+                "index",
+                "data",
+                # scm.root_dir and repo.root_dir don't match for subrepos
+                tokenize((self.repo.scm.root_dir, self.repo.root_dir)),
+            )
+            os.makedirs(index_dir, exist_ok=True)
 
-            storage_map = data_index.storage_map
-            if out.odb:
-                storage_map.add_data(ObjectStorage(key, out.odb))
-            storage_map.add_cache(ObjectStorage(key, out.cache))
-            try:
-                remote = self.repo.cloud.get_remote(out.remote)
-                if remote.fs.version_aware:
-                    storage_map.add_remote(
-                        FileStorage(
-                            key=key,
-                            fs=remote.fs,
-                            path=remote.fs.path.join(remote.path, *key),
-                        )
-                    )
-                else:
-                    storage_map.add_remote(ObjectStorage(key, remote.odb))
-            except NoRemoteError:
-                pass
+            index = DataIndex.open(os.path.join(index_dir, "db.db"))
+            prefix = (self.data_tree.hash_info.value,)
+            if prefix in index.ls((), detail=False):
+                loaded = True
+        else:
+            index = DataIndex()
+            prefix = ()
 
-            if out.stage.is_import and not out.stage.is_repo_import:
-                dep = out.stage.deps[0]
+        try:
+            if not loaded:
+                _load_data_from_outs(index, prefix, self.outs)
+                index.commit()
 
-                entry.meta = dep.meta
-                entry.hash_info = dep.hash_info
+            by_workspace = {}
+            by_workspace["repo"] = index.view((*prefix, "repo"))
+            by_workspace["local"] = index.view((*prefix, "local"))
 
-                storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
+            for out in self.outs:
+                if not out.use_cache:
+                    continue
 
-            data_index.add(entry)
+                ws, key = out.index_key
+                if ws not in by_workspace:
+                    by_workspace[ws] = index.view((*prefix, ws))
 
-        return dict(by_workspace)
+                data_index = by_workspace[ws]
+                _load_storage_from_out(data_index.storage_map, key, out)
+
+            return by_workspace
+        finally:
+            index.close()
 
     @staticmethod
     def _hash_targets(
