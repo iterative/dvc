@@ -97,6 +97,8 @@ HTTP_COMMON = {
     "ask_password": Bool,
     "ssl_verify": Any(Bool, str),
     "method": str,
+    "connect_timeout": All(Coerce(float), Range(0, min_included=True)),
+    "read_timeout": All(Coerce(float), Range(0, min_included=True)),
     Optional("verify", default=False): Bool,
 }
 WEBDAV_COMMON = {
