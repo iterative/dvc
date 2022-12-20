@@ -57,8 +57,6 @@ class LocalCeleryQueue(BaseStashQueue):
 
     CELERY_DIR = "celery"
 
-    _shutdown_task_ids: Set[str] = set()
-
     @cached_property
     def wdir(self) -> str:
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, self.CELERY_DIR)
@@ -333,13 +331,26 @@ class LocalCeleryQueue(BaseStashQueue):
         if remained_revs:
             raise CannotKillTasksError(remained_revs)
 
+    def _kill_entries(self, entries: Dict[QueueEntry, str]):
+        logger.debug(
+            "Found active tasks: '%s' to kill",
+            list(entries.values()),
+        )
+        inactive_entries: Dict[QueueEntry, str] = self._try_to_kill_tasks(
+            entries
+        )
+
+        if inactive_entries:
+            self._mark_inactive_tasks_failure(inactive_entries)
+
     def kill(self, revs: Collection[str]) -> None:
+
         name_dict: Dict[
             str, Optional[QueueEntry]
         ] = self.match_queue_entry_by_name(set(revs), self.iter_active())
 
-        to_kill: Dict[QueueEntry, str] = {}
         missing_revs: List[str] = []
+        to_kill: Dict[QueueEntry, str] = {}
         for rev, queue_entry in name_dict.items():
             if queue_entry is None:
                 missing_revs.append(rev)
@@ -348,21 +359,17 @@ class LocalCeleryQueue(BaseStashQueue):
         if missing_revs:
             raise UnresolvedQueueExpNamesError(missing_revs)
 
-        fail_to_kill_entries: Dict[QueueEntry, str] = self._try_to_kill_tasks(
-            to_kill
-        )
-
-        if fail_to_kill_entries:
-            self._mark_inactive_tasks_failure(fail_to_kill_entries)
+        if to_kill:
+            self._kill_entries(to_kill)
 
     def shutdown(self, kill: bool = False):
         self.celery.control.shutdown()
         if kill:
-            for _, task_entry in self._iter_active_tasks():
-                try:
-                    self.proc.kill(task_entry.stash_rev)
-                except ProcessLookupError:
-                    continue
+            to_kill: Dict[QueueEntry, str] = {}
+            for entry in self.iter_active():
+                to_kill[entry] = entry.name or entry.stash_rev
+            if to_kill:
+                self._kill_entries(to_kill)
 
     def follow(
         self,
