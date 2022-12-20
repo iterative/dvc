@@ -1,4 +1,3 @@
-from contextlib import suppress
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -14,9 +13,7 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property, nullcontext
-
-from dvc.utils import dict_md5
+from funcy import cached_property
 
 if TYPE_CHECKING:
     from networkx import DiGraph
@@ -25,9 +22,10 @@ if TYPE_CHECKING:
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs import FileSystem
     from dvc.output import Output
+    from dvc.repo import Repo
     from dvc.repo.stage import StageInfo, StageLoad
     from dvc.stage import Stage
-    from dvc.types import StrPath, TargetType
+    from dvc.types import TargetType
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.index import DataIndex, DataIndexKey, DataIndexView
     from dvc_objects.db import ObjectDB
@@ -136,38 +134,6 @@ class Index:
             rev = self.repo.get_rev()[:7]
         return f"Index({self.repo}, fs@{rev})"
 
-    def __len__(self) -> int:
-        return len(self.stages)
-
-    def __contains__(self, stage: "Stage") -> bool:
-        # as we are keeping stages inside a list, it might be slower.
-        return stage in self.stages
-
-    def __iter__(self) -> Iterator["Stage"]:
-        yield from self.stages
-
-    def __getitem__(self, item: str) -> "Stage":
-        """Get a stage by its addressing attribute."""
-        for stage in self:
-            if stage.addressing == item:
-                return stage
-        raise KeyError(f"{item} - available stages are {self.stages}")
-
-    def filter(self, filter_fn: Callable[["Stage"], bool]) -> "Index":
-        stages_it = filter(filter_fn, self)
-        return Index(self.repo, self.fs, stages=list(stages_it))
-
-    def slice(self, path: "StrPath") -> "Index":
-        from dvc.utils import relpath
-        from dvc.utils.fs import path_isin
-
-        target_path = relpath(path, self.repo.root_dir)
-
-        def is_stage_inside_path(stage: "Stage") -> bool:
-            return path_isin(stage.path_in_repo, target_path)
-
-        return self.filter(is_stage_inside_path)
-
     @staticmethod
     def _hash_targets(
         targets: Iterable[Optional[str]],
@@ -236,7 +202,7 @@ class Index:
 
     @property
     def outs(self) -> Iterator["Output"]:
-        for stage in self:
+        for stage in self.stages:
             yield from stage.outs
 
     @property
@@ -259,7 +225,7 @@ class Index:
 
     @property
     def deps(self) -> Iterator["Dependency"]:
-        for stage in self:
+        for stage in self.stages:
             yield from stage.deps
 
     @property
@@ -353,55 +319,9 @@ class Index:
     def add(self, stage: "Stage") -> "Index":
         return self.update([stage])
 
-    def remove(
-        self, stage: "Stage", ignore_not_existing: bool = False
-    ) -> "Index":
-        stages = self._discard_stage(
-            stage, ignore_not_existing=ignore_not_existing
-        )
-        return Index(self.repo, self.fs, stages=stages)
-
-    def discard(self, stage: "Stage") -> "Index":
-        return self.remove(stage, ignore_not_existing=True)
-
-    def difference(self, stages: Iterable["Stage"]) -> "Index":
-        stages_set = set(self.stages) - set(stages)
-        return Index(self.repo, self.fs, stages=list(stages_set))
-
-    def _discard_stage(
-        self, stage: "Stage", ignore_not_existing: bool = False
-    ) -> List["Stage"]:
-        stages = self.stages[:]
-        ctx = suppress(ValueError) if ignore_not_existing else nullcontext()
-        with ctx:
-            stages.remove(stage)
-        return stages
-
     def check_graph(self) -> None:
         if not getattr(self.repo, "_skip_graph_checks", False):
             self.graph  # pylint: disable=pointless-statement
-
-    def dumpd(self) -> Dict[str, Dict]:
-        def dump(stage: "Stage"):
-            key = stage.path_in_repo
-            try:
-                key += ":" + stage.name  # type: ignore[attr-defined]
-            except AttributeError:
-                pass
-            return key, stage.dumpd()
-
-        return dict(dump(stage) for stage in self)
-
-    @cached_property
-    def identifier(self) -> str:
-        """Unique identifier for the index.
-
-        We can use this to optimize and skip opening some indices
-        eg: on push/pull/fetch/gc --all-commits.
-
-        Currently, it is unique to the platform (windows vs posix).
-        """
-        return dict_md5(self.dumpd())
 
 
 class _DataPrefixes(NamedTuple):
@@ -425,30 +345,13 @@ class IndexView:
         self._stages = list({stage for stage, _ in stage_infos})
         self._outs_filter = outs_filter
 
-    def __len__(self) -> int:
-        return len(self._stages)
-
-    def __contains__(self, stage: "Stage") -> bool:
-        # as we are keeping stages inside a list, it might be slower.
-        return stage in self._stages
-
-    def __iter__(self) -> Iterator["Stage"]:
-        yield from self._stages
-
-    def __getitem__(self, item: str) -> "Stage":
-        """Get a stage by its addressing attribute."""
-        for stage in self:
-            if stage.addressing == item:
-                return stage
-        raise KeyError(f"{item} - available stages are {self.stages}")
-
     @property
     def stages(self):
         return self._stages
 
     @property
     def deps(self) -> Iterator["Dependency"]:
-        for stage in self:
+        for stage in self.stages:
             yield from stage.deps
 
     @property
@@ -505,29 +408,3 @@ class IndexView:
             else:
                 data[workspace] = DataIndex()
         return data
-
-
-if __name__ == "__main__":
-    import logging
-
-    from funcy import log_durations
-
-    from dvc.logger import setup
-    from dvc.repo import Repo
-
-    setup(level=logging.TRACE)  # type: ignore[attr-defined]
-
-    repo = Repo()
-    index = Index(repo, repo.fs)
-    print(index)
-    with log_durations(print, "collecting stages"):
-        # pylint: disable=pointless-statement
-        print("no of stages", len(index.stages))
-    with log_durations(print, "building graph"):
-        index.graph  # pylint: disable=pointless-statement
-    with log_durations(print, "calculating hash"):
-        print(index.identifier)
-    with log_durations(print, "updating"):
-        index2 = index.update(index.stages)
-    with log_durations(print, "calculating hash"):
-        print(index2.identifier)
