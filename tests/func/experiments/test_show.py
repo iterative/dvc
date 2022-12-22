@@ -689,14 +689,14 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,
-        "bar": 1,
+        "goobar": 1,
     }
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
-        params=["foo", "bar"],
+        params=["foo", "goobar"],
         name="copy-file",
         deps=["copy.py"],
     )
@@ -717,18 +717,18 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     capsys.readouterr()
     assert main(["exp", "show"]) == 0
     cap = capsys.readouterr()
-    assert "bar" in cap.out
+    assert "goobar" in cap.out
 
     capsys.readouterr()
     assert main(["exp", "show", "--only-changed"]) == 0
     cap = capsys.readouterr()
-    assert "bar" not in cap.out
+    assert "goobar" not in cap.out
 
     capsys.readouterr()
     assert main(["exp", "show", "--only-changed", "--keep=.*bar"]) == 0
     cap = capsys.readouterr()
-    assert "params.yaml:bar" in cap.out
-    assert "metrics.yaml:bar" in cap.out
+    assert "params.yaml:goobar" in cap.out
+    assert "metrics.yaml:goobar" in cap.out
 
 
 def test_show_parallel_coordinates(
