@@ -49,7 +49,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Save even if hash value for dependencies/outputs changed.",
+        help="Replace experiment if it already exists",
     )
     save_parser.add_argument(
         "--json",
