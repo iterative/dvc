@@ -68,7 +68,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "-f",
         "--force",
         action="store_true",
-        help="Replace local experiment already exists.",
+        help="Replace local experiment if it already exists.",
     )
     experiments_pull_parser.add_argument(
         "--no-cache",
