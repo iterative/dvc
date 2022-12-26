@@ -116,7 +116,7 @@ class LocalCeleryQueue(BaseStashQueue):
             timeout=10,
         )
 
-    def spawn_worker(self, num: int = 1):
+    def _spawn_worker(self, num: int = 1):
         """spawn one single worker to process to queued tasks.
 
         Argument:
@@ -159,7 +159,7 @@ class LocalCeleryQueue(BaseStashQueue):
             if node_name in active_worker:
                 logger.debug(f"Exp queue worker {node_name} already exist")
                 continue
-            self.spawn_worker(num)
+            self._spawn_worker(num)
             started += 1
 
         return started
