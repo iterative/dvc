@@ -8,9 +8,6 @@ on:
     - cron: '5 1 * * *'  # every day at 01:05
   workflow_dispatch:
 
-env:
-  SHELL: /bin/bash
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true

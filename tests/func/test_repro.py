@@ -776,7 +776,8 @@ def test_cmd_repro(tmp_dir, copy_script, run_stage):
 
 
 @pytest.mark.skipif(os.name == "nt", reason="not on nt")
-def test_repro_shell(tmp_dir, dvc):
+def test_repro_shell(tmp_dir, monkeypatch, dvc):
+    monkeypatch.setenv("SHELL", "/bin/sh")
     dvc.run(
         fname="shell.txt.dvc",
         outs=["shell.txt"],
