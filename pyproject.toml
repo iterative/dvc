@@ -55,7 +55,7 @@ dependencies = [
     "dvc-task==0.1.8",
     "dvclive>=1.2.2",
     "dvc-data==0.28.4",
-    "dvc-http==2.27.2",
+    "dvc-http==2.28.0",
     "hydra-core>=1.1.0",
     "iterative-telemetry==0.0.6",
     "dvc-studio-client>=0.1.1"
