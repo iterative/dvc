@@ -22,7 +22,7 @@ from ..executor.base import (
 )
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH, WORKSPACE_STASH
-from ..utils import get_exp_rwlock
+from ..utils import get_exp_rwlock, to_studio_params
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 
 if TYPE_CHECKING:
@@ -104,10 +104,14 @@ class WorkspaceQueue(BaseStashQueue):
         exec_name = self._EXEC_NAME or entry.stash_rev
         infofile = self.get_infofile_path(exec_name)
         try:
-            post_live_metrics(
-                "start", executor.info.baseline_rev, executor.info.name, "dvc"
-            )
             rev = entry.stash_rev
+            post_live_metrics(
+                "start",
+                executor.info.baseline_rev,
+                executor.info.name,
+                "dvc",
+                params=to_studio_params(self.repo.params.show()),
+            )
             exec_result = executor.reproduce(
                 info=executor.info,
                 rev=rev,

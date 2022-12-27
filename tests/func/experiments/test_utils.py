@@ -53,6 +53,7 @@ def test_post_to_studio(tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch):
         "repo_url": "STUDIO_REPO_URL",
         "baseline_sha": baseline_sha,
         "name": name,
+        "params": {"params.yaml": {"foo": 1}},
         "client": "dvc",
     }
 

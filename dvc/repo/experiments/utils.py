@@ -310,3 +310,32 @@ def get_random_exp_name(scm, baseline_rev):
         exp_ref = ExpRefInfo(baseline_sha=baseline_rev, name=name)
         if not scm.get_ref(str(exp_ref)):
             return name
+
+
+def to_studio_params(dvc_params):
+    """Convert from internal DVC format to Studio format.
+
+    From:
+
+    {
+        "workspace": {
+            "data": {
+                "params.yaml": {
+                    "data": {"foo": 1}
+                }
+            }
+        }
+    }
+
+    To:
+
+    {
+        "params.yaml": {"foo": 1}
+    }
+    """
+    result = {}
+    for rev_data in dvc_params.values():
+        for file_name, file_data in rev_data["data"].items():
+            result[file_name] = file_data["data"]
+
+    return result
