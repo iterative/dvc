@@ -731,3 +731,10 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     dvc.experiments.run(name="foo")
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
     assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == "foo"
+
+
+def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
+    dvc.experiments.run(exp_stage.addressing)
+    dvc.experiments.run(exp_stage.addressing)
+
+    assert len(dvc.experiments.ls()["master"]) == 2

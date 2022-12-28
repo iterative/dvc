@@ -4,7 +4,6 @@ from funcy import first
 from dvc.repo.experiments.exceptions import (
     ExperimentExistsError,
     InvalidArgumentError,
-    UnchangedExperimentError,
 )
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
@@ -18,10 +17,7 @@ def modified_exp_stage(exp_stage, tmp_dir):
 
 
 def test_exp_save_unchanged(tmp_dir, dvc, scm, exp_stage):
-    with pytest.raises(UnchangedExperimentError):
-        dvc.experiments.save()
-
-    dvc.experiments.save(force=True)
+    dvc.experiments.save()
 
 
 @pytest.mark.parametrize("name", (None, "test"))

@@ -30,11 +30,7 @@ from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 
-from ..exceptions import (
-    CheckpointExistsError,
-    ExperimentExistsError,
-    UnchangedExperimentError,
-)
+from ..exceptions import CheckpointExistsError, ExperimentExistsError
 from ..refs import EXEC_BASELINE, EXEC_BRANCH, EXEC_CHECKPOINT, ExpRefInfo
 
 if TYPE_CHECKING:
@@ -522,24 +518,21 @@ class BaseExecutor(ABC):
         git_remote,
         repro_force,
     ) -> Tuple[Optional[str], Optional["ExpRefInfo"], bool]:
-        try:
-            is_checkpoint = any(stage.is_checkpoint for stage in stages)
-            if is_checkpoint and checkpoint_reset:
-                # For reset checkpoint stages, we need to force
-                # overwriting existing checkpoint refs even though
-                # repro may not have actually been run with --force
-                repro_force = True
-            cls.commit(
-                dvc.scm,
-                exp_hash,
-                exp_name=info.name,
-                force=repro_force,
-                checkpoint=is_checkpoint,
-            )
-            if auto_push:
-                cls._auto_push(dvc, dvc.scm, git_remote)
-        except UnchangedExperimentError:
-            pass
+        is_checkpoint = any(stage.is_checkpoint for stage in stages)
+        if is_checkpoint and checkpoint_reset:
+            # For reset checkpoint stages, we need to force
+            # overwriting existing checkpoint refs even though
+            # repro may not have actually been run with --force
+            repro_force = True
+        cls.commit(
+            dvc.scm,
+            exp_hash,
+            exp_name=info.name,
+            force=repro_force,
+            checkpoint=is_checkpoint,
+        )
+        if auto_push:
+            cls._auto_push(dvc, dvc.scm, git_remote)
         ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
         exp_ref: Optional["ExpRefInfo"] = (
             ExpRefInfo.from_ref(ref) if ref else None
@@ -650,18 +643,15 @@ class BaseExecutor(ABC):
         unchanged: Iterable["PipelineStage"],
         stages: Iterable["PipelineStage"],
     ):
-        try:
-            exp_hash = cls.hash_exp(list(stages) + list(unchanged))
-            exp_rev = cls.commit(
-                scm, exp_hash, exp_name=name, force=force, checkpoint=True
-            )
+        exp_hash = cls.hash_exp(list(stages) + list(unchanged))
+        exp_rev = cls.commit(
+            scm, exp_hash, exp_name=name, force=force, checkpoint=True
+        )
 
-            if env2bool(DVC_EXP_AUTO_PUSH):
-                git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
-                cls._auto_push(dvc, scm, git_remote)
-            ui.write(f"Checkpoint experiment iteration '{exp_rev[:7]}'.")
-        except UnchangedExperimentError:
-            pass
+        if env2bool(DVC_EXP_AUTO_PUSH):
+            git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
+            cls._auto_push(dvc, scm, git_remote)
+        ui.write(f"Checkpoint experiment iteration '{exp_rev[:7]}'.")
 
     @classmethod
     def commit(
@@ -676,7 +666,6 @@ class BaseExecutor(ABC):
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=False):
             logger.debug("No changes to commit")
-            raise UnchangedExperimentError(rev)
 
         check_conflict = False
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
