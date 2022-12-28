@@ -93,6 +93,12 @@ class WorkspaceQueue(BaseStashQueue):
             pass
         return results
 
+    def _exp_params_for_studio(self, rev) -> Dict[str, Dict]:
+        params = self.repo.params.show(revs=[rev])
+        if "workspace" not in params or "data" not in params["workspace"]:
+            return {}
+        return {k: v["data"] for k, v in params["workspace"]["data"].items()}
+
     def _reproduce_entry(
         self, entry: QueueEntry, executor: BaseExecutor
     ) -> Dict[str, Dict[str, str]]:
@@ -104,10 +110,14 @@ class WorkspaceQueue(BaseStashQueue):
         exec_name = self._EXEC_NAME or entry.stash_rev
         infofile = self.get_infofile_path(exec_name)
         try:
-            post_live_metrics(
-                "start", executor.info.baseline_rev, executor.info.name, "dvc"
-            )
             rev = entry.stash_rev
+            post_live_metrics(
+                "start",
+                executor.info.baseline_rev,
+                executor.info.name,
+                "dvc",
+                params=self._exp_params_for_studio(rev),
+            )
             exec_result = executor.reproduce(
                 info=executor.info,
                 rev=rev,

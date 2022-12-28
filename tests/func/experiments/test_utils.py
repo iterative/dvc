@@ -54,6 +54,7 @@ def test_post_to_studio(tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch):
         "baseline_sha": baseline_sha,
         "name": name,
         "client": "dvc",
+        "params": {"params.yaml": {"foo": 1}},
     }
 
     assert done_call.kwargs["json"] == {
