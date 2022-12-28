@@ -2,7 +2,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
-from .exceptions import ExperimentExistsError, UnchangedExperimentError
+from .exceptions import ExperimentExistsError
 from .refs import ExpRefInfo
 from .utils import check_ref_format, get_random_exp_name
 
@@ -70,9 +70,6 @@ def save(
             try:
                 if workspace is not None:
                     repo.scm.stash.apply(workspace)
-                else:
-                    if not (include_untracked or force):
-                        raise UnchangedExperimentError(orig_head)
 
                 exp_rev = _save_experiment(
                     repo, orig_head, force, name, include_untracked

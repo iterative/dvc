@@ -6,12 +6,6 @@ if TYPE_CHECKING:
     from .refs import ExpRefInfo
 
 
-class UnchangedExperimentError(DvcException):
-    def __init__(self, rev):
-        super().__init__(f"Experiment unchanged from '{rev[:7]}'.")
-        self.rev = rev
-
-
 class BaselineMismatchError(DvcException):
     def __init__(self, rev, expected):
         if hasattr(rev, "hexsha"):
