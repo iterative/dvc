@@ -258,8 +258,7 @@ class Experiments:
             exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)
             check_ref_format(self.scm, exp_ref)
             force = kwargs.get("force", False)
-            reset = kwargs.get("reset", False)
-            if self.scm.get_ref(str(exp_ref)) and not (force or reset):
+            if self.scm.get_ref(str(exp_ref)) and not force:
                 raise ExperimentExistsError(exp_ref.name)
 
         return queue.put(*args, **kwargs)

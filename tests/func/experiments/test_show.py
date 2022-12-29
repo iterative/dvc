@@ -245,7 +245,8 @@ def test_show_checkpoint(
     exp_rev = first(results)
 
     results = dvc.experiments.show()[baseline_rev]
-    assert len(results) == checkpoint_stage.iterations + 1
+    # Assert 4 rows: baseline, 2 checkpoints, and final commit
+    assert len(results) == checkpoint_stage.iterations + 2
 
     checkpoints = []
     for rev, exp in results.items():
@@ -1049,7 +1050,8 @@ def test_show_checkpoint_error(tmp_dir, scm, dvc, checkpoint_stage, mocker):
     exp_ref = str(first(exp_refs_by_rev(scm, exp_rev)))
 
     results = dvc.experiments.show()[baseline_rev]
-    assert len(results) == checkpoint_stage.iterations + 1
+    # Assert 4 rows: baseline, 2 checkpoints, and final commit
+    assert len(results) == checkpoint_stage.iterations + 2
 
     checkpoints = {}
     for rev in results:
