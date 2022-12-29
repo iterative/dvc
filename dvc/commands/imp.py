@@ -5,6 +5,7 @@ from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
+from dvc.scm import CloneError
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,9 @@ class CmdImport(CmdBase):
                 meta=self.args.meta,
                 jobs=self.args.jobs,
             )
+        except CloneError:
+            logger.exception(f"failed to import '{self.args.path}'")
+            return 1
         except DvcException:
             logger.exception(
                 "failed to import '{}' from '{}'.".format(

@@ -147,7 +147,7 @@ def clone(url: str, to_path: str, **kwargs):
                 fetch_all_exps(git, url, progress=pbar.update_git)
             return git
         except InternalCloneError as exc:
-            raise CloneError(str(exc))
+            raise CloneError("SCM error") from exc
 
 
 def resolve_rev(scm: "Git", rev: str) -> str:

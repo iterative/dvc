@@ -4,6 +4,7 @@ import logging
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.exceptions import DvcException
+from dvc.scm import CloneError
 
 from ..cli.utils import append_doc_link
 
@@ -44,6 +45,9 @@ class CmdGet(CmdBaseNoRepo):
                 jobs=self.args.jobs,
             )
             return 0
+        except CloneError:
+            logger.exception(f"failed to get '{self.args.path}'")
+            return 1
         except DvcException:
             logger.exception(
                 "failed to get '{}' from '{}'".format(
