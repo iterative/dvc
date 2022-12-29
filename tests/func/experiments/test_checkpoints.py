@@ -90,14 +90,11 @@ def test_resume_checkpoint(
 def test_reset_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
 ):
-    dvc.experiments.run(
-        checkpoint_stage.addressing, name="foo", tmp_dir=not workspace
-    )
+    dvc.experiments.run(checkpoint_stage.addressing, tmp_dir=not workspace)
 
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         params=["foo=2"],
-        name="foo",
         tmp_dir=not workspace,
         reset=True,
     )
@@ -228,7 +225,8 @@ def test_auto_push_during_iterations(
     ref_info = first(exp_refs_by_rev(scm, exp))
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info)) == exp
 
-    assert auto_push_spy.call_count == 2
+    # Assert 3 pushes: 2 checkpoints and final commit
+    assert auto_push_spy.call_count == 3
     assert auto_push_spy.call_args[0][2] == remote
 
 
@@ -288,7 +286,8 @@ def test_tmp_dir_failed_checkpoint(
     exp = first(results)
 
     result = dvc.experiments.show()[baseline]
-    assert len(result) == 1 + 2
+    # Assert 4 rows: baseline, 2 checkpoints, and final commit
+    assert len(result) == 4
     assert exp in result
     assert (
         "Checkpoint stage 'failed-checkpoint-file' was interrupted remaining "

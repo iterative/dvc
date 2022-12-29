@@ -492,7 +492,6 @@ class BaseExecutor(ABC):
                     info,
                     stages,
                     exp_hash,
-                    checkpoint_reset,
                     auto_push,
                     git_remote,
                     repro_force,
@@ -513,17 +512,11 @@ class BaseExecutor(ABC):
         info,
         stages,
         exp_hash,
-        checkpoint_reset,
         auto_push,
         git_remote,
         repro_force,
     ) -> Tuple[Optional[str], Optional["ExpRefInfo"], bool]:
         is_checkpoint = any(stage.is_checkpoint for stage in stages)
-        if is_checkpoint and checkpoint_reset:
-            # For reset checkpoint stages, we need to force
-            # overwriting existing checkpoint refs even though
-            # repro may not have actually been run with --force
-            repro_force = True
         cls.commit(
             dvc.scm,
             exp_hash,
