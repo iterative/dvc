@@ -98,7 +98,7 @@ tests = [
     "pytest-docker==0.11.0; python_version < '3.10' or sys_platform != 'win32'",
     "flaky==3.7.0",
     "pytest-timeout==2.1.0",
-    "filelock==3.8.2",
+    "filelock==3.9.0",
     "beautifulsoup4==4.11.1",
     "pywin32>=225; sys_platform == 'win32'",  # optional dependency
     # pylint requirements
