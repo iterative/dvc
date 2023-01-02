@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+from dvc.dependency import base
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import InvalidArgumentError
 from dvc.testing.tmp_dir import make_subrepo
@@ -156,6 +157,47 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
     assert dvc.status([stage.path]) == {}
 
 
+def test_update_unchanged(tmp_dir, dvc, erepo_dir, mocker):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "file content", commit="add file")
+
+    assert (erepo_dir / "file").exists()
+    stage = dvc.imp(os.fspath(erepo_dir), "file")
+
+    spy = mocker.spy(base, "fs_download")
+    dvc.update([stage.path])
+
+    assert not spy.called
+
+
+@pytest.mark.parametrize("outs_exist", (False, True))
+def test_update_no_download(tmp_dir, dvc, erepo_dir, outs_exist, mocker):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "file content", commit="add file")
+        initial_rev = erepo_dir.scm.get_rev()
+
+    stage = dvc.imp(os.fspath(erepo_dir), "file", no_download=not outs_exist)
+
+    assert stage.deps[0].def_repo["rev_lock"] == initial_rev
+
+    dst = tmp_dir / "file"
+    assert dst.exists() is outs_exist
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "updated file content", commit="update file")
+        new_rev = erepo_dir.scm.get_rev()
+
+    updated_stage = dvc.update([stage.path], rev=new_rev, no_download=True)[0]
+    assert not dst.exists()
+
+    assert updated_stage.deps[0].def_repo["rev_lock"] == new_rev
+
+    # output must have no information since no_download=True
+    out = updated_stage.outs[0]
+    assert out.hash_info.value is None
+    assert out.meta.size is None
+
+
 def test_update_import_url(tmp_dir, dvc, workspace):
     workspace.gen("file", "file content")
 
@@ -176,17 +218,20 @@ def test_update_import_url(tmp_dir, dvc, workspace):
     assert dst.read_text() == "updated file content"
 
 
-def test_update_import_url_no_download(tmp_dir, dvc, workspace):
+@pytest.mark.parametrize("outs_exist", (False, True))
+def test_update_import_url_no_download(
+    tmp_dir, dvc, workspace, outs_exist, mocker
+):
     workspace.gen("file", "file content")
 
     dst = tmp_dir / "imported_file"
     stage = dvc.imp_url(
-        "remote://workspace/file", os.fspath(dst), no_download=True
+        "remote://workspace/file", os.fspath(dst), no_download=not outs_exist
     )
-    hash_info = stage.deps[0].hash_info
 
-    assert not dst.is_file()
-    assert stage.deps[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
+    assert dst.exists() is outs_exist
+    hash_info = stage.deps[0].hash_info
+    assert hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
 
     workspace.gen("file", "updated file content")
 
@@ -197,10 +242,23 @@ def test_update_import_url_no_download(tmp_dir, dvc, workspace):
     assert updated_hash_info != hash_info
     assert updated_hash_info.value == "6ffba511ce3aa40b8231d1b1f8c5fba5"
 
+    # output must have no information since no_download=True
     out = updated_stage.outs[0]
     assert out.hash_info.value is None
     assert out.hash_info.name is None
     assert out.meta.size is None
+
+
+def test_update_import_url_unchanged(tmp_dir, dvc, workspace, mocker):
+    workspace.gen("file", "file content")
+
+    dst = tmp_dir / "imported_file"
+    stage = dvc.imp_url("remote://workspace/file", os.fspath(dst))
+
+    spy = mocker.spy(base, "fs_download")
+
+    dvc.update([stage.path])
+    assert not spy.called
 
 
 def test_update_rev(tmp_dir, dvc, scm, git_dir):
