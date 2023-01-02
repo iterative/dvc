@@ -55,18 +55,19 @@ def test_path_conversion(dvc):
     assert stage.dumpd()["wdir"] == "../.."
 
 
-def test_stage_update(mocker):
+def test_stage_update(dvc, mocker):
     dep = RepoDependency({"url": "example.com"}, None, "dep_path")
     mocker.patch.object(dep, "update", return_value=None)
 
-    stage = Stage(None, "path", deps=[dep])
+    stage = Stage(dvc, "path", deps=[dep])
     reproduce = mocker.patch.object(stage, "reproduce")
     is_repo_import = mocker.patch(
         __name__ + ".Stage.is_repo_import", new_callable=mocker.PropertyMock
     )
 
     is_repo_import.return_value = True
-    stage.update()
+    with dvc.lock:
+        stage.update()
     assert reproduce.called_once_with()
 
     is_repo_import.return_value = False
