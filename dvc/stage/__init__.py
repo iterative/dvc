@@ -775,6 +775,7 @@ class PipelineStage(Stage):
         return f"{super().addressing}:{self.name}"
 
     def reload(self):
+        self.dvcfile._reset()  # pylint: disable=protected-access
         return self.dvcfile.stages[self.name]
 
     def _status_stage(self, ret):

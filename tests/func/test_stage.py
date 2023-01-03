@@ -317,6 +317,8 @@ def test_stage_remove_pipeline_stage(tmp_dir, dvc, run_copy):
 
     with dvc.lock:
         stage.remove()
+
+    dvc_file._reset()
     assert stage.name not in dvc_file.stages
     assert "copy-bar-foobar" in dvc_file.stages
 
