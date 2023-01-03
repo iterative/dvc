@@ -6,7 +6,7 @@ from itertools import chain
 from funcy import cached_property, get_in, lcat, once, project
 
 from dvc import dependency, output
-from dvc.parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
+from dvc.parsing import FOREACH_KWD, JOIN, EntryNotFound
 from dvc.parsing.versions import LOCKFILE_VERSION
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
@@ -20,13 +20,16 @@ logger = logging.getLogger(__name__)
 
 
 class StageLoader(Mapping):
-    def __init__(self, dvcfile, data, lockfile_data=None):
+    def __init__(
+        self,
+        dvcfile,
+        data,
+        lockfile_data=None,
+    ):
         self.dvcfile = dvcfile
+        self.resolver = self.dvcfile.resolver
         self.data = data or {}
         self.stages_data = self.data.get("stages", {})
-        self.metrics_data = self.data.get("metrics", [])
-        self.params_data = self.data.get("params", [])
-        self.plots_data = self.data.get("plots", {})
         self.repo = self.dvcfile.repo
 
         lockfile_data = lockfile_data or {}
@@ -35,11 +38,6 @@ class StageLoader(Mapping):
             self._lockfile_data = lockfile_data
         else:
             self._lockfile_data = lockfile_data.get("stages", {})
-
-    @cached_property
-    def resolver(self):
-        wdir = self.repo.fs.path.parent(self.dvcfile.path)
-        return DataResolver(self.repo, wdir, self.data)
 
     @cached_property
     def lockfile_data(self):
@@ -174,9 +172,6 @@ class SingleStageLoader(Mapping):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
-        self.metrics_data = []
-        self.params_data = []
-        self.plots_data = {}
 
     def __getitem__(self, item):
         if item:

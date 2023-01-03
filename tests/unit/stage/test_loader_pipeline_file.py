@@ -247,11 +247,11 @@ def test_load_stage_wdir_and_path_correctly(dvc, stage_data, lock_data):
 
 def test_load_stage_mapping(dvc, stage_data, lock_data):
     dvcfile = Dvcfile(dvc, PIPELINE_FILE)
-    loader = StageLoader(
-        dvcfile, {"stages": {"stage": stage_data}}, {"stage": lock_data}
-    )
-    assert len(loader) == 1
-    assert "stage" in loader
-    assert "stage1" not in loader
-    assert loader.keys() == {"stage"}
-    assert isinstance(loader["stage"], PipelineStage)
+    dvcfile.contents = {"stages": {"stage": stage_data}}
+    dvcfile.lockfile_contents = {"stage": lock_data}
+
+    assert len(dvcfile.stages) == 1
+    assert "stage" in dvcfile.stages
+    assert "stage1" not in dvcfile.stages
+    assert dvcfile.stages.keys() == {"stage"}
+    assert isinstance(dvcfile.stages["stage"], PipelineStage)

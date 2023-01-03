@@ -1,7 +1,18 @@
 import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Tuple,
+    TypeVar,
+    Union,
+)
+
+from funcy import cached_property
 
 from dvc.exceptions import DvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
@@ -180,6 +191,10 @@ class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
     from dvc.stage.loader import SingleStageLoader as LOADER
 
+    metrics: List[str] = []
+    plots: Dict[str, Any] = {}
+    params: List[str] = []
+
     @property
     def stage(self):
         data, raw = self._load()
@@ -222,6 +237,11 @@ class PipelineFile(FileMixin):
     @property
     def _lockfile(self):
         return Lockfile(self.repo, os.path.splitext(self.path)[0] + ".lock")
+
+    def _reset(self):
+        self.__dict__.pop("contents", None)
+        self.__dict__.pop("lockfile_contents", None)
+        self.__dict__.pop("resolver", None)
 
     def dump(
         self, stage, update_pipeline=True, update_lock=True, **kwargs
@@ -278,11 +298,36 @@ class PipelineFile(FileMixin):
             "PipelineFile has multiple stages. Please specify it's name."
         )
 
+    @cached_property
+    def contents(self):
+        return self._load()[0]
+
+    @cached_property
+    def lockfile_contents(self):
+        return self._lockfile.load()
+
+    @cached_property
+    def resolver(self):
+        from .parsing import DataResolver
+
+        wdir = self.repo.fs.path.parent(self.path)
+        return DataResolver(self.repo, wdir, self.contents)
+
     @property
     def stages(self):
-        data, _ = self._load()
-        lockfile_data = self._lockfile.load()
-        return self.LOADER(self, data, lockfile_data)
+        return self.LOADER(self, self.contents, self.lockfile_contents)
+
+    @property
+    def metrics(self):
+        return self.contents.get("metrics", [])
+
+    @property
+    def plots(self):
+        return self.contents.get("plots", {})
+
+    @property
+    def params(self):
+        return self.contents.get("params", [])
 
     def remove(self, force=False):
         if not force:

@@ -517,7 +517,6 @@ class StageLoad:
 
         path = self._get_filepath(path)
         dvcfile = Dvcfile(self.repo, path)
-        # `dvcfile.stages` is not cached
         stages = dvcfile.stages  # type: ignore
 
         if isinstance(stages, SingleStageLoader):
@@ -526,13 +525,7 @@ class StageLoad:
             assert isinstance(stages, StageLoader)
             keys = self._get_keys(stages)
             stages_ = [stages[key] for key in keys]
-
-        return (
-            stages_,
-            stages.metrics_data,
-            stages.plots_data,
-            stages.params_data,
-        )
+        return stages_, dvcfile
 
     def _collect_all_from_repo(
         self, onerror: Callable[[str, Exception], None] = None
@@ -583,12 +576,7 @@ class StageLoad:
             for file in filter(dvcfile_filter, files):
                 file_path = self.fs.path.join(root, file)
                 try:
-                    (
-                        new_stages,
-                        new_metrics,
-                        new_plots,
-                        new_params,
-                    ) = self._load_file(file_path)
+                    new_stages, dvcfile = self._load_file(file_path)
                 except DvcException as exc:
                     if onerror:
                         onerror(relpath(file_path), exc)
@@ -596,11 +584,11 @@ class StageLoad:
                     raise
 
                 stages.extend(new_stages)
-                if new_metrics:
+                if new_metrics := dvcfile.metrics:
                     metrics[file_path] = new_metrics
-                if new_plots:
+                if new_plots := dvcfile.plots:
                     plots[file_path] = new_plots
-                if new_params:
+                if new_params := dvcfile.params:
                     params[file_path] = new_params
 
                 outs.update(
