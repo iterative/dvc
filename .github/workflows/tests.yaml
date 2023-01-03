@@ -43,17 +43,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest]
+        os: [windows-latest]
         pyv: ["3.8", "3.9", "3.10", "3.11"]
         pytest-filter:
-        - "import or plot or live or experiment"
-        - "not (import or plot or live or experiment)"
-        include:
-        - {os: macos-latest, pyv: "3.8"}
-        - {os: macos-latest, pyv: "3.9"}
-        - {os: macos-latest, pyv: "3.10"}
-        - {os: macos-latest, pyv: "3.11"}
-
+        - experiment
+        - experiment
+        - experiment
     steps:
     - uses: actions/checkout@v3
       with:
@@ -68,6 +63,7 @@ jobs:
       run: |
         pip install --upgrade pip wheel
         pip install -e ".[dev]"
+        pip install "dvc-task @ git+https://github.com/iterative/dvc-task.git@log-oserror"
     - name: run tests
       timeout-minutes: 20
       run: pytest -nauto --durations 100 --cov --cov-report=xml --cov-report=term -k "${{ matrix.pytest-filter }}"
