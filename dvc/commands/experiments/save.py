@@ -49,7 +49,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Replace experiment if it already exists",
+        help="Replace experiment if it already exists.",
     )
     save_parser.add_argument(
         "--json",
