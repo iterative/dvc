@@ -55,6 +55,7 @@ def push(
             all_tags=all_tags,
             all_commits=all_commits,
             targets=expanded_targets,
+            jobs=jobs,
             with_deps=with_deps,
             recursive=recursive,
         )
@@ -105,6 +106,7 @@ def _push_worktree(
     all_tags: bool = False,
     all_commits: bool = False,
     targets: Optional["TargetType"] = None,
+    jobs: Optional[int] = None,
     **kwargs,
 ) -> int:
     from dvc.repo.worktree import push_worktree
@@ -114,4 +116,4 @@ def _push_worktree(
             "Multiple rev push is unsupported for cloud versioned remotes"
         )
 
-    return push_worktree(repo, remote, targets=targets, **kwargs)
+    return push_worktree(repo, remote, targets=targets, jobs=jobs, **kwargs)
