@@ -24,6 +24,8 @@ class DvcIgnore:
 
 class DvcIgnorePatterns(DvcIgnore):
     def __init__(self, pattern_list, dirname, sep):
+        from pathspec.patterns.gitwildmatch import _DIR_MARK
+
         if pattern_list and isinstance(pattern_list[0], str):
             pattern_list = [
                 PatternInfo(pattern, "") for pattern in pattern_list
@@ -33,10 +35,16 @@ class DvcIgnorePatterns(DvcIgnore):
         self.pattern_list = pattern_list
         self.dirname = dirname
 
-        self.regex_pattern_list = [
-            GitWildMatchPattern.pattern_to_regex(pattern_info.patterns)
-            for pattern_info in pattern_list
-        ]
+        self.regex_pattern_list = []
+        for count, pattern in enumerate(pattern_list):
+            pattern, group = GitWildMatchPattern.pattern_to_regex(
+                pattern.patterns
+            )
+            if pattern:
+                pattern = pattern.replace(
+                    f"<{_DIR_MARK}>", f"<{_DIR_MARK}{count}>"
+                )
+                self.regex_pattern_list.append((pattern, group))
 
         self.ignore_spec = [
             (ignore, re.compile("|".join(item[0] for item in group)))
