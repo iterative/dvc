@@ -74,6 +74,7 @@ def fetch_worktree(
     repo: "Repo",
     remote: "Remote",
     targets: Optional["TargetType"] = None,
+    jobs: Optional[int] = None,
     **kwargs,
 ) -> int:
     from dvc_data.index import save
@@ -91,13 +92,14 @@ def fetch_worktree(
         unit="file", desc="Fetch", disable=total == 0
     ) as cb:
         cb.set_size(total)
-        return save(index, callback=cb)
+        return save(index, callback=cb, jobs=jobs)
 
 
 def push_worktree(
     repo: "Repo",
     remote: "Remote",
     targets: Optional["TargetType"] = None,
+    jobs: Optional[int] = None,
     **kwargs,
 ) -> int:
     from dvc_data.index import checkout
@@ -139,6 +141,7 @@ def push_worktree(
             delete=remote.worktree,
             callback=cb,
             latest_only=remote.worktree,
+            jobs=jobs,
             **diff_kwargs,
         )
     if pushed:

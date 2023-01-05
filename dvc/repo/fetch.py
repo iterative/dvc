@@ -78,6 +78,7 @@ def fetch(
                 all_tags=all_tags,
                 all_commits=all_commits,
                 targets=targets,
+                jobs=jobs,
                 with_deps=with_deps,
                 recursive=recursive,
             )
@@ -181,6 +182,7 @@ def _fetch_worktree(
     all_tags: bool = False,
     all_commits: bool = False,
     targets: Optional["TargetType"] = None,
+    jobs: Optional[int] = None,
     **kwargs,
 ) -> int:
     from dvc.repo.worktree import fetch_worktree
@@ -192,5 +194,7 @@ def _fetch_worktree(
         all_tags=all_tags,
         all_commits=all_commits,
     ):
-        downloaded += fetch_worktree(repo, remote, targets=targets, **kwargs)
+        downloaded += fetch_worktree(
+            repo, remote, targets=targets, jobs=jobs, **kwargs
+        )
     return downloaded
