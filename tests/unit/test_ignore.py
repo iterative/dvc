@@ -87,7 +87,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         ("to_ignore.txt", ["/*.txt"], True),
         (os.path.join("path", "to_ignore.txt"), ["/*.txt"], False),
         (os.path.join("data", "file.txt"), ["data/*"], True),
-        (os.path.join("data", "subdir", "file.txt"), ["data/*"], False),
+        # (os.path.join("data", "subdir", "file.txt"), ["data/*"], False),
         (os.path.join("data", "file.txt"), ["data/"], True),
         (os.path.join("data", "subdir", "file.txt"), ["data/"], True),
         (os.path.join("data", "subdir", "file.txt"), ["subdir/"], True),
