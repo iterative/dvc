@@ -4,6 +4,8 @@ import os
 import stat
 from textwrap import dedent
 
+import dulwich.errors
+import dulwich.file
 import pytest
 from funcy import first
 
@@ -137,6 +139,14 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
+@pytest.mark.xfail(
+    raises=(
+        dulwich.errors.CommitError,
+        dulwich.file.FileLocked,
+    ),
+    strict=False,
+    reason="See https://github.com/iterative/dvc/issues/8570",
+)
 def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
     from dvc.exceptions import InvalidArgumentError
 
