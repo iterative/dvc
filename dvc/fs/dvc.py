@@ -276,43 +276,38 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         key = self._get_key_from_relative(path)
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
-        names = set()
+        dvc_infos = {}
         if dvc_fs:
             with suppress(FileNotFoundError):
                 dvc_path = _get_dvc_path(dvc_fs, subkey)
-                for entry in dvc_fs.ls(dvc_path, detail=False):
-                    names.add(dvc_fs.path.name(entry))
+                for info in dvc_fs.ls(dvc_path, detail=True):
+                    dvc_infos[dvc_fs.path.name(info["name"])] = info
 
+        fs_infos = {}
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
         if not dvc_only:
             fs = self.repo.fs
             fs_path = self._from_key(key)
             try:
-                for entry in repo.dvcignore.ls(
-                    fs, fs_path, detail=False, ignore_subrepos=ignore_subrepos
+                for info in repo.dvcignore.ls(
+                    fs, fs_path, detail=True, ignore_subrepos=ignore_subrepos
                 ):
-                    names.add(fs.path.name(entry))
+                    fs_infos[fs.path.name(info["name"])] = info
             except (FileNotFoundError, NotADirectoryError):
                 pass
 
         dvcfiles = kwargs.get("dvcfiles", False)
-        if not dvcfiles:
-            names = (name for name in names if not _is_dvc_file(name))
 
         infos = []
         paths = []
+        names = set(dvc_infos.keys()) | set(fs_infos.keys())
         for name in names:
-            entry_path = self.path.join(path, name)
-            entry_key = key + (name,)
-            try:
-                info = self._info(
-                    entry_key,
-                    entry_path,
-                    ignore_subrepos=ignore_subrepos,
-                    check_ignored=False,
-                )
-            except FileNotFoundError:
+            if not dvcfiles and _is_dvc_file(name):
                 continue
+
+            entry_path = self.path.join(path, name)
+            info = _merge_info(repo, fs_infos.get(name), dvc_infos.get(name))
+            info["name"] = entry_path
             infos.append(info)
             paths.append(entry_path)
 
