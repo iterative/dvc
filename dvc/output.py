@@ -375,6 +375,8 @@ class Output:
                     self.hash_info = HashInfo("md5", md5)
 
     def _parse_path(self, fs, fs_path):
+        from urllib.parse import quote, unquote
+
         parsed = urlparse(self.def_path)
         if (
             parsed.scheme != "remote"
@@ -390,7 +392,9 @@ class Output:
             # then we have #2059 bug and can't really handle that.
             fs_path = fs.path.join(self.stage.wdir, fs_path)
 
-        return fs.path.abspath(fs.path.normpath(fs_path))
+        return unquote(
+            fs.path.abspath(fs.path.normpath(quote(fs_path, safe="/\\:")))
+        )
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(

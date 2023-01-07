@@ -1143,3 +1143,11 @@ def test_add_with_annotations(M, tmp_dir, dvc):
     (stage,) = dvc.add("foo", type="t2")
     assert stage.outs[0].annot == Annotation(**annot)
     assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+
+@pytest.mark.skipif(
+    os.name == "nt", reason="A file name can't contain ? on Windows"
+)
+def test_add_file_startswith_question(tmp_dir, dvc):
+    tmp_dir.gen({"?foo": "foo"})
+    assert main(["add", "?foo"]) == 0
