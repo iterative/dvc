@@ -70,11 +70,12 @@ def _ls(
         if not recursive:
             files.update(dirs)
 
+        parts = fs.path.relparts(root, fs_path)
+        if parts == (".",):
+            parts = ()
+
         for name, entry in files.items():
-            entry_fs_path = fs.path.join(root, name)
-            relparts = fs.path.relparts(entry_fs_path, fs_path)
-            name = os.path.join(*relparts)
-            infos[name] = entry
+            infos[os.path.join(*parts, name)] = entry
 
         if not recursive:
             break
