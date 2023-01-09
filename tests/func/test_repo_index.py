@@ -12,11 +12,9 @@ def test_index(tmp_dir, scm, dvc, run_copy):
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
     tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
 
-    index = Index(dvc)
-    assert index.fs == dvc.fs
+    index = Index.from_repo(dvc)
 
     assert set(index.stages) == {stage1, stage2}
-
     assert index.outs_graph
     assert index.graph
     assert isinstance(index.outs_trie, Trie)
@@ -70,7 +68,7 @@ def test_deps_outs_getters(tmp_dir, dvc, run_copy_metrics):
         name="copy-metrics2",
     )
 
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
 
     stages = [foo_stage, run_stage1, run_stage2]
     (metrics,) = run_stage1.outs
@@ -88,16 +86,16 @@ def test_deps_outs_getters(tmp_dir, dvc, run_copy_metrics):
     assert outputs_equal(index.params, [params])
 
 
-def test_add_update(dvc):
-    """Test that add/update overwrites existing stages with the new ones.
+def test_update(dvc):
+    """Test that update overwrites existing stages with the new ones.
 
     The old stages and the new ones might have same hash, so we are
     making sure that the old stages were removed and replaced by new ones
     using `id`/`is` checks.
     """
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
     new_stage = Stage(dvc, path="path1")
-    new_index = index.add(new_stage)
+    new_index = index.update({new_stage})
 
     assert not index.stages
     assert new_index.stages == [new_stage]
@@ -151,14 +149,14 @@ def get_index(dvc, rev):
         if rev != "workspace":
             assert next(brancher) == "workspace"
         next(brancher)
-    return Index(dvc)
+    return Index.from_repo(dvc)
 
 
 @pytest.mark.parametrize("rev", ["workspace", "HEAD"])
 def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
     from dvc_data.hashfile.hash_info import HashInfo
 
-    dvc.config["core"]["autostage"] = True
+    dvc.scm_context.autostage = True
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}}, "foo": "foo"})
     run_copy("foo", "bar", name="copy-foo-bar")
     scm.commit("commit")
@@ -196,7 +194,7 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
         {"dir": {"subdir": {"in-subdir": "in-subdir"}, "in-dir": "in-dir"}},
         commit="init",
     )
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
 
     # view should include the specific target, parent dirs, and children
     # view should exclude any siblings of the target
@@ -218,7 +216,7 @@ def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
     tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
 
     view = index.targets_view(None)
     assert set(view.stages) == {stage1, stage2}
@@ -239,7 +237,7 @@ def test_view_outs_filter(tmp_dir, scm, dvc, run_copy):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
     tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
 
     view = index.targets_view(None, outs_filter=lambda o: o.def_path == "foo")
     assert set(view.stages) == {stage1, stage2}
@@ -252,7 +250,7 @@ def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
     tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
 
     view = index.targets_view(
         None,
@@ -271,3 +269,24 @@ def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
     assert {out.fs_path for out in view.outs} == {
         out.fs_path for out in stage2.outs
     }
+
+
+def test_with_gitignore(tmp_dir, dvc, scm):
+    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    index = Index.from_repo(dvc)
+    assert index.stages == [stage]
+
+    scm.ignore(stage.path)
+    scm._reset()
+
+    index = Index.from_repo(dvc)
+    assert not index.stages
+
+
+def test_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
+    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.dvc"})
+    scm.add([".gitignore"])
+    (stage,) = tmp_dir.dvc_gen({"data/raw/tracked.csv": "5,6,7,8"})
+    index = Index.from_repo(dvc)
+    assert index.stages == [stage]

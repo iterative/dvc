@@ -391,7 +391,7 @@ def test_collect_optimization(tmp_dir, dvc, mocker):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.index.Index.stages",
+        "dvc.repo.Repo.index",
         property(raiser(Exception("Should not collect"))),
     )
 
@@ -406,7 +406,7 @@ def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.index.Index.stages",
+        "dvc.repo.Repo.index",
         property(raiser(Exception("Should not collect"))),
     )
 
@@ -429,17 +429,6 @@ def test_collect_repo_callback(tmp_dir, dvc, mocker):
     file_path, exc = mock.call_args[0]
     assert file_path == PIPELINE_FILE
     assert isinstance(exc, YAMLValidationError)
-
-
-def test_gitignored_collect_repo(tmp_dir, dvc, scm):
-    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
-
-    assert dvc.stage.collect_repo() == [stage]
-
-    scm.ignore(stage.path)
-    scm._reset()
-
-    assert not dvc.stage.collect_repo()
 
 
 def test_gitignored_file_try_collect_granular_for_data_files(
