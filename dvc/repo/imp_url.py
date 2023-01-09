@@ -78,8 +78,7 @@ def imp_url(  # noqa: C901
     dvcfile.remove()
 
     try:
-        new_index = self.index.add(stage)
-        new_index.check_graph()
+        self.ensure_graph_correctness_with(stages={stage})
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(  # noqa: B904
             exc.output, set(exc.stages) - {stage}

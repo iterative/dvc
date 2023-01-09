@@ -1,16 +1,7 @@
 import contextlib
 import logging
 import os
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, List, Tuple, TypeVar, Union
 
 from funcy import cached_property
 
@@ -192,7 +183,7 @@ class SingleStageFile(FileMixin):
     from dvc.stage.loader import SingleStageLoader as LOADER
 
     metrics: List[str] = []
-    plots: Dict[str, Any] = {}
+    plots: Any = {}
     params: List[str] = []
 
     @property
@@ -242,6 +233,7 @@ class PipelineFile(FileMixin):
         self.__dict__.pop("contents", None)
         self.__dict__.pop("lockfile_contents", None)
         self.__dict__.pop("resolver", None)
+        self.__dict__.pop("stages", None)
 
     def dump(
         self, stage, update_pipeline=True, update_lock=True, **kwargs
@@ -313,7 +305,7 @@ class PipelineFile(FileMixin):
         wdir = self.repo.fs.path.parent(self.path)
         return DataResolver(self.repo, wdir, self.contents)
 
-    @property
+    @cached_property
     def stages(self):
         return self.LOADER(self, self.contents, self.lockfile_contents)
 

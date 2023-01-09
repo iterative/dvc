@@ -34,7 +34,7 @@ def _to_fs_paths(metrics: List[Output]) -> StrPaths:
 
 
 def _collect_top_level_metrics(repo):
-    top_metrics = repo.index._top_metrics  # pylint: disable=protected-access
+    top_metrics = repo.index._metrics  # pylint: disable=protected-access
     for dvcfile, metrics in top_metrics.items():
         wdir = repo.fs.path.relpath(
             repo.fs.path.parent(dvcfile), repo.root_dir

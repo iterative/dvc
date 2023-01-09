@@ -239,7 +239,14 @@ class Repo:
     def index(self):
         from dvc.repo.index import Index
 
-        return Index(self)
+        return Index.from_repo(self)
+
+    def ensure_graph_correctness_with(self, stages=None, callback=None):
+        if not getattr(self, "_skip_graph_checks", False):
+            new = self.index.update(stages)
+            if callable(callback):
+                callback()
+            new.check_graph()
 
     @staticmethod
     def open(url, *args, **kwargs):

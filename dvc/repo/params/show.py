@@ -41,7 +41,7 @@ def _is_params(dep: "Output"):
 
 
 def _collect_top_level_params(repo):
-    top_params = repo.index._top_params  # pylint: disable=protected-access
+    top_params = repo.index._params  # pylint: disable=protected-access
     for dvcfile, params in top_params.items():
         wdir = repo.fs.path.relpath(
             repo.fs.path.parent(dvcfile), repo.root_dir

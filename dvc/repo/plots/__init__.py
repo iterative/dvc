@@ -453,7 +453,7 @@ def _resolve_definitions(
 
 def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
     result: Dict[str, Dict] = {}
-    top_plots = repo.index._top_plots  # pylint: disable=protected-access
+    top_plots = repo.index._plots  # pylint: disable=protected-access
     for dvcfile, plots_def in top_plots.items():
         dvcfile_path = _relpath(repo.dvcfs, dvcfile)
         dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
