@@ -124,6 +124,7 @@ def show(
     revs=None,
     all_commits=False,
     onerror=None,
+    hide_workspace=True,
 ):
     if onerror is None:
         onerror = onerror_collect
@@ -142,16 +143,17 @@ def show(
             repo, targets, rev, recursive, onerror=onerror
         )
 
-    # Hide workspace metrics if they are the same as in the active branch
-    try:
-        active_branch = repo.scm.active_branch()
-    except (SCMError, NoSCMError):
-        # SCMError - detached head
-        # NoSCMError - no repo case
-        pass
-    else:
-        if res.get("workspace") == res.get(active_branch):
-            res.pop("workspace", None)
+    if hide_workspace:
+        # Hide workspace metrics if they are the same as in the active branch
+        try:
+            active_branch = repo.scm.active_branch()
+        except (SCMError, NoSCMError):
+            # SCMError - detached head
+            # NoSCMError - no repo case
+            pass
+        else:
+            if res.get("workspace") == res.get(active_branch):
+                res.pop("workspace", None)
 
     errored = errored_revisions(res)
     if errored:
