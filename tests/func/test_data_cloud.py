@@ -478,7 +478,7 @@ def test_push_pull_all(tmp_dir, scm, dvc, local_remote, key, expected):
 
 def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
+    run_copy("foo", "bar", name="copy-foo-bar")
 
     dvc.push("copy-foo-bar")
     assert len(recurse_list_dir(local_remote.url)) == 1
