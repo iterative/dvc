@@ -463,7 +463,12 @@ class Stage(params.StageParams):
         logger.debug("Computed %s md5: '%s'", self, m)
         return m
 
-    def save(self, allow_missing: bool = False, merge_versioned: bool = False):
+    def save(
+        self,
+        allow_missing: bool = False,
+        merge_versioned: bool = False,
+        run_cache: bool = True,
+    ):
         self.save_deps(allow_missing=allow_missing)
 
         self.save_outs(
@@ -471,7 +476,8 @@ class Stage(params.StageParams):
         )
         self.md5 = self.compute_md5()
 
-        self.repo.stage_cache.save(self)
+        if run_cache:
+            self.repo.stage_cache.save(self)
 
     def save_deps(self, allow_missing=False):
         from dvc.dependency.base import DependencyDoesNotExistError
@@ -584,7 +590,9 @@ class Stage(params.StageParams):
         if not dry:
             if kwargs.get("checkpoint_func", None) or no_download:
                 allow_missing = True
-            self.save(allow_missing=allow_missing)
+
+            self.save(allow_missing=allow_missing, run_cache=not no_commit)
+
             if no_download:
                 self.ignore_outs()
             if not no_commit:
