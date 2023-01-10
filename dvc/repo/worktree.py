@@ -32,7 +32,6 @@ def worktree_view(
     index: "Index",
     targets: Optional["TargetType"] = None,
     push: bool = False,
-    latest_only: bool = True,
     **kwargs,
 ) -> "IndexView":
     """Return view of data that can be stored in worktree remotes.
@@ -55,10 +54,6 @@ def worktree_view(
             or not out.use_cache
             or (push and not out.can_push)
         ):
-            return False
-        # If we are not enforcing push to latest version and have a version
-        # for this out, we assume it still exists and can skip pushing it
-        if push and not latest_only and out.meta.version_id is not None:
             return False
         return True
 
@@ -108,7 +103,6 @@ def push_worktree(
         repo.index,
         push=True,
         targets=targets,
-        latest_only=remote.worktree,
         **kwargs,
     )
     new_index = view.data["repo"]
