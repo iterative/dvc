@@ -73,7 +73,18 @@ def add_parser(subparsers, parent_parser):
         help="Specify name of the .dvc file this command will generate.",
         metavar="<filename>",
     ).complete = completion.DIR
-    no_download_exec_group = import_parser.add_mutually_exclusive_group()
+    import_parser.add_argument(
+        "--to-remote",
+        action="store_true",
+        default=False,
+        help="Download it directly to the remote",
+    )
+    import_parser.add_argument(
+        "-r",
+        "--remote",
+        help="Remote storage to download to",
+        metavar="<name>",
+    )    no_download_exec_group = import_parser.add_mutually_exclusive_group()
     no_download_exec_group.add_argument(
         "--no-exec",
         action="store_true",
@@ -86,18 +97,6 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Create .dvc file including target data hash value(s)"
         " but do not actually download the file(s).",
-    )
-    import_parser.add_argument(
-        "--to-remote",
-        action="store_true",
-        default=False,
-        help="Download it directly to the remote",
-    )
-    import_parser.add_argument(
-        "-r",
-        "--remote",
-        help="Remote storage to download to",
-        metavar="<name>",
     )
     import_parser.add_argument(
         "-j",
