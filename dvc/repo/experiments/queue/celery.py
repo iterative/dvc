@@ -23,7 +23,10 @@ from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
 from dvc.ui import ui
 
-from ..exceptions import UnresolvedQueueExpNamesError
+from ..exceptions import (
+    UnresolvedQueueExpNamesError,
+    UnresolvedRunningExpNamesError,
+)
 from ..executor.base import ExecutorInfo, ExecutorResult
 from ..refs import CELERY_STASH
 from ..utils import EXEC_TMP_DIR, get_exp_rwlock
@@ -316,7 +319,7 @@ class LocalCeleryQueue(BaseStashQueue):
                     self.proc.kill(queue_entry.stash_rev)
                 else:
                     self.proc.interrupt(queue_entry.stash_rev)
-                logger.debug(f"Task {rev} had been killed.")
+                ui.write(f"Task {rev} has been killed.")
             except ProcessLookupError:
                 fail_to_kill_entries[queue_entry] = rev
         return fail_to_kill_entries
@@ -369,7 +372,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 to_kill[queue_entry] = rev
 
         if missing_revs:
-            raise UnresolvedQueueExpNamesError(missing_revs)
+            raise UnresolvedRunningExpNamesError(missing_revs)
 
         if to_kill:
             self._kill_entries(to_kill, force)
