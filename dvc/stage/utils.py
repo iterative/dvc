@@ -149,8 +149,7 @@ def check_missing_outputs(stage):
 
 def compute_md5(stage):
     from dvc.output import Output
-
-    from ..utils import dict_md5
+    from dvc.utils import dict_md5
 
     d = stage.dumpd()
 
@@ -183,7 +182,7 @@ def compute_md5(stage):
 
 
 def resolve_wdir(wdir, path):
-    from ..utils import relpath
+    from dvc.utils import relpath
 
     rel_wdir = relpath(wdir, os.path.dirname(path))
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
@@ -215,7 +214,7 @@ def get_dump(stage, **kwargs):
 
 
 def split_params_deps(stage):
-    from ..dependency import ParamsDependency
+    from dvc.dependency import ParamsDependency
 
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
 

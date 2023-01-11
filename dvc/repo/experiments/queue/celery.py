@@ -21,12 +21,12 @@ from kombu.message import Message
 
 from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
+from dvc.repo.experiments.exceptions import UnresolvedQueueExpNamesError
+from dvc.repo.experiments.executor.base import ExecutorInfo, ExecutorResult
+from dvc.repo.experiments.refs import CELERY_STASH
+from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.ui import ui
 
-from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import ExecutorInfo, ExecutorResult
-from ..refs import CELERY_STASH
-from ..utils import EXEC_TMP_DIR, get_exp_rwlock
 from .base import (
     BaseStashQueue,
     ExpRefAndQueueEntry,
@@ -39,11 +39,10 @@ from .tasks import run_exp
 from .utils import fetch_running_exp_from_temp_dir
 
 if TYPE_CHECKING:
+    from dvc.repo.experiments.refs import ExpRefInfo
     from dvc_task.app import FSApp
     from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
-
-    from ..refs import ExpRefInfo
 
 logger = logging.getLogger(__name__)
 
@@ -468,7 +467,7 @@ class LocalCeleryQueue(BaseStashQueue):
         git_remote: Optional[str] = None,
     ) -> Dict[str, ExpRefAndQueueEntry]:
         """Find finished ExpRefInfo or queued or failed QueueEntry by name"""
-        from ..utils import resolve_name
+        from dvc.repo.experiments.utils import resolve_name
 
         if isinstance(exp_names, str):
             exp_names = [exp_names]

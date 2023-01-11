@@ -138,7 +138,7 @@ def push_refspec(
     from scmrepo.exceptions import AuthError
     from scmrepo.git.backend.base import SyncStatus
 
-    from ...scm import GitAuthError, SCMError
+    from dvc.scm import GitAuthError, SCMError
 
     refspecs = []
     for src, dest in push_list:

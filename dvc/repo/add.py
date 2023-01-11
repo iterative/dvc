@@ -6,18 +6,23 @@ from typing import TYPE_CHECKING, Any, Iterator, List
 
 import colorama
 
-from dvc.ui import ui
-
-from ..exceptions import (
+from dvc.exceptions import (
     CacheLinkError,
     InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from ..repo.scm_context import scm_context
-from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
-from ..utils.collections import ensure_list, validate
+from dvc.repo.scm_context import scm_context
+from dvc.ui import ui
+from dvc.utils import (
+    LARGE_DIR_SIZE,
+    glob_targets,
+    resolve_output,
+    resolve_paths,
+)
+from dvc.utils.collections import ensure_list, validate
+
 from . import locked
 
 if TYPE_CHECKING:

@@ -4,10 +4,9 @@ from typing import List, Mapping, Optional
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.commands.experiments.show import format_time
 from dvc.compare import TabularData
 from dvc.ui import ui
-
-from ..experiments.show import format_time
 
 logger = logging.getLogger(__name__)
 

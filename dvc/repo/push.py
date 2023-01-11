@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Optional, Sequence
 
 from dvc.exceptions import InvalidArgumentError, UploadError
+from dvc.utils import glob_targets
 
-from ..utils import glob_targets
 from . import locked
 
 if TYPE_CHECKING:

@@ -278,10 +278,10 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
+    from dvc.dvcfile import DVC_FILE_SUFFIX
+    from dvc.exceptions import DvcException
     from dvc.fs import localfs
 
-    from ..dvcfile import DVC_FILE_SUFFIX
-    from ..exceptions import DvcException
     from .fs import contains_symlink_up_to
 
     abspath = os.path.abspath(out)
@@ -379,7 +379,7 @@ def parse_target(
 
 
 def glob_targets(targets, glob=True, recursive=True):
-    from ..exceptions import DvcException
+    from dvc.exceptions import DvcException
 
     if not glob:
         return targets

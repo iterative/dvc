@@ -9,10 +9,7 @@ from scmrepo.exceptions import SCMError as _SCMError
 from shortuuid import uuid
 
 from dvc.lock import LockError
-from dvc.scm import SCM, GitMergeError
-from dvc.utils.fs import makedirs, remove
-
-from ..refs import (
+from dvc.repo.experiments.refs import (
     EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -23,15 +20,17 @@ from ..refs import (
     EXPS_TEMP,
     ExpRefInfo,
 )
-from ..utils import EXEC_TMP_DIR, get_exp_rwlock
+from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
+from dvc.scm import SCM, GitMergeError
+from dvc.utils.fs import makedirs, remove
+
 from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
-
-    from ..stash import ExpStashEntry
+    from dvc.repo.experiments.stash import ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +82,7 @@ class TempDirExecutor(BaseLocalExecutor):
     ):
         from dulwich.repo import Repo as DulwichRepo
 
-        from ..utils import push_refspec
+        from dvc.repo.experiments.utils import push_refspec
 
         DulwichRepo.init(os.fspath(self.root_dir))
 

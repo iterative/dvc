@@ -25,13 +25,20 @@ from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
+from dvc.repo.experiments.exceptions import (
+    CheckpointExistsError,
+    ExperimentExistsError,
+)
+from dvc.repo.experiments.refs import (
+    EXEC_BASELINE,
+    EXEC_BRANCH,
+    EXEC_CHECKPOINT,
+    ExpRefInfo,
+)
 from dvc.stage.serialize import to_lockfile
 from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
-
-from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..refs import EXEC_BASELINE, EXEC_BRANCH, EXEC_CHECKPOINT, ExpRefInfo
 
 if TYPE_CHECKING:
     from queue import Queue
