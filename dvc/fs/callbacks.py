@@ -21,7 +21,7 @@ class RichCallback(Callback):
         value: int = 0,
         progress: "RichTransferProgress" = None,
         desc: str = None,
-        bytes: bool = False,  # pylint: disable=redefined-builtin
+        bytes: bool = False,  # noqa: A002, pylint: disable=redefined-builtin
         unit: str = None,
         disable: bool = False,
         transient: bool = True,

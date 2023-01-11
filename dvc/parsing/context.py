@@ -414,19 +414,19 @@ class Context(CtxDict):
             self.imports[path].extend(cp)
 
     def check_loaded(self, path, item, keys):
-        if not keys and isinstance(self.imports[path], list):
+        imported = self.imports[path]
+        if not keys and isinstance(imported, list):
             raise VarsAlreadyLoaded(
                 f"cannot load '{item}' as it's partially loaded already"
             )
-        elif keys and self.imports[path] is None:
+        if keys and imported is None:
             raise VarsAlreadyLoaded(
                 f"cannot partially load '{item}' as it's already loaded."
             )
-        elif isinstance(self.imports[path], list):
-            if not set(keys).isdisjoint(set(self.imports[path])):
-                raise VarsAlreadyLoaded(
-                    f"cannot load '{item}' as it's partially loaded already"
-                )
+        if isinstance(imported, list) and set(keys) & set(imported):
+            raise VarsAlreadyLoaded(
+                f"cannot load '{item}' as it's partially loaded already"
+            )
 
     def load_from_vars(
         self,
@@ -482,7 +482,7 @@ class Context(CtxDict):
         try:
             yield
         finally:
-            for key in new.keys():
+            for key in new:
                 self._reserved_keys.pop(key)
 
     @contextmanager

@@ -279,7 +279,7 @@ class Console:
 
         if not opened:
             ui.error_write(
-                f"Failed to open {url}. " "Please try opening it manually."
+                f"Failed to open {url}. Please try opening it manually."
             )
             return 1
 

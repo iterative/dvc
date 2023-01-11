@@ -18,7 +18,7 @@ def test_str_workdir_inside_repo(dvc):
     stage = Stage(dvc)
     output = Output(stage, "path", cache=False)
 
-    assert "path" == str(output)
+    assert str(output) == "path"
 
     stage = Stage(dvc, wdir="some_folder")
     output = Output(stage, "path", cache=False)

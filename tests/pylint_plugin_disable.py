@@ -12,7 +12,7 @@ from pylint.checkers.base import NameChecker
 from pylint.checkers.classes import ClassChecker
 
 if TYPE_CHECKING:
-    from astroid import node_classes, scoped_nodes  # noqa
+    from astroid import node_classes, scoped_nodes
     from pylint.lint import PyLinter
 
 
@@ -34,14 +34,12 @@ def is_node_in_tests(node: "node_classes.NodeNG"):
     return module.file.startswith(TESTS_FOLDER)
 
 
-def register(linter: "PyLinter"):  # noqa
+def register(linter: "PyLinter"):
     try:
         from pylint_plugin_utils import suppress_message
     except ImportError:
-        print("Cannot suppress message. 'pylint_plugin_utils' not installed.")
         return
 
-    print("Registered custom plugin. Some checks will be disabled for tests.")
     for msg, checks in SUPPRESS_CHECKS.items():
         for checker_method in checks:
             suppress_message(linter, checker_method, msg, is_node_in_tests)

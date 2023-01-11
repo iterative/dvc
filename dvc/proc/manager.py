@@ -83,13 +83,12 @@ class ProcessManager:
     def send_signal(self, name: str, sig: int):
         """Send `signal` to the specified named process."""
         process_info = self[name]
-        if sys.platform == "win32":
-            if sig not in (
-                signal.SIGTERM,
-                signal.CTRL_C_EVENT,
-                signal.CTRL_BREAK_EVENT,
-            ):
-                raise UnsupportedSignalError(sig)
+        if sys.platform == "win32" and sig not in (
+            signal.SIGTERM,
+            signal.CTRL_C_EVENT,  # pylint: disable=no-member
+            signal.CTRL_BREAK_EVENT,  # pylint: disable=no-member
+        ):
+            raise UnsupportedSignalError(sig)
 
         def handle_closed_process():
             logging.warning(
@@ -105,10 +104,9 @@ class ProcessManager:
                 handle_closed_process()
                 raise
             except OSError as exc:
-                if sys.platform == "win32":
-                    if exc.winerror == 87:
-                        handle_closed_process()
-                        raise ProcessLookupError from exc
+                if getattr(exc, "winerror", None) == 87:
+                    handle_closed_process()
+                    raise ProcessLookupError from exc
                 raise
 
     def terminate(self, name: str):

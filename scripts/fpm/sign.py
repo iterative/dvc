@@ -28,11 +28,11 @@ else:
     pkgs = list(path.glob("*.pkg"))
     if not pkgs:
         print("No pkgs found")
-        exit(1)
+        sys.exit(1)
 
     if len(pkgs) > 1:
         print("Too many packages")
-        exit(1)
+        sys.exit(1)
 
     (pkg,) = pkgs
 

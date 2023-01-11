@@ -160,6 +160,28 @@ profile = "black"
 known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
 line_length = 79
 
+
+
+[tool.ruff]
+line-length = 79
+ignore = ["B904", "S101", "RUF100", "SIM108", "SIM110", "SIM111", "SIM105", "SIM117", "A003", "PGH004", "PGH003", "BLE001", "ARG002"]
+select = ["F", "E", "W", "C90", "UP", "YTT", "S", "B", "A", "C4", "T10", "ISC", "ICN", "T20", "PT003", "PT008", "PT009", "PT010", "PT015", "PT016", "PT017", "PT020", "PT021", "PT024", "PT025", "PT026", "Q", "RET501", "RET504", "SIM", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "PIE", "RUF"]
+target-version = "py38"
+
+[tool.ruff.per-file-ignores]
+"scripts/**/*.py" = ["T201"]
+
+[tool.ruff.mccabe]
+max-complexity = 15
+
+[tool.ruff.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+parametrize-names-type = "csv"
+
+[tool.ruff.flake8-unused-arguments]
+ignore-variadic-names = true
+
 [tool.pytest.ini_options]
 log_level = "debug"
 addopts = "-ra --cov-config pyproject.toml"

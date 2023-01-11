@@ -152,7 +152,7 @@ class WorkspaceQueue(BaseStashQueue):
     @staticmethod
     def collect_executor(  # pylint: disable=unused-argument
         exp: "Experiments",
-        executor: BaseExecutor,
+        executor: BaseExecutor,  # noqa: ARG004
         exec_result: ExecutorResult,
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}

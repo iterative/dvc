@@ -58,9 +58,9 @@ def to_omegaconf(item):
     Cast the custom classes to Python primitives.
     """
     if isinstance(item, dict):
-        item = {k: to_omegaconf(v) for k, v in item.items()}
-    elif isinstance(item, list):
-        item = [to_omegaconf(x) for x in item]
+        return {k: to_omegaconf(v) for k, v in item.items()}
+    if isinstance(item, list):
+        return [to_omegaconf(x) for x in item]
     return item
 
 
@@ -177,7 +177,6 @@ def nested_contains(dictionary: Dict, phrase: str) -> bool:
         if key == phrase and val:
             return True
 
-        if isinstance(val, dict):
-            if nested_contains(val, phrase):
-                return True
+        if isinstance(val, dict) and nested_contains(val, phrase):
+            return True
     return False

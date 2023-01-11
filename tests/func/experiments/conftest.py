@@ -24,7 +24,7 @@ def http_auth_patch(mocker):
 
 
 @pytest.fixture(params=[True, False])
-def workspace(request, test_queue) -> bool:  # noqa
+def workspace(request, test_queue) -> bool:  # noqa: F811
     return request.param
 
 

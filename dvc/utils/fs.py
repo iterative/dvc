@@ -40,7 +40,7 @@ def contains_symlink_up_to(path: "StrPath", base_path: "StrPath"):
     return contains_symlink_up_to(os.path.dirname(path), base_path)
 
 
-def _chmod(func, p, excinfo):  # pylint: disable=unused-argument
+def _chmod(func, p, excinfo):  # noqa: ARG001, pylint: disable=unused-argument
     perm = os.lstat(p).st_mode
     perm |= stat.S_IWRITE
 

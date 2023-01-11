@@ -235,7 +235,7 @@ class LocalCeleryQueue(BaseStashQueue):
                     raise DvcException(
                         f"Invalid experiment '{entry.stash_rev[:7]}'."
                     )
-                elif result.status == "FAILURE":
+                if result.status == "FAILURE":
                     exp_result = None
             yield QueueDoneResult(entry, exp_result)
 

@@ -65,7 +65,7 @@ def test_init_quiet_should_not_display_welcome_screen(tmp_dir, scm, caplog):
         ret = main(["init", "--quiet"])
 
         assert ret == 0
-        assert "" == caplog.text
+        assert caplog.text == ""
 
 
 def test_allow_init_dvc_subdir(tmp_dir, scm, monkeypatch):

@@ -63,8 +63,7 @@ def test_dead_process(tmp_dir, mocker, running_process):
             err = OSError()
             err.winerror = 87
             raise err
-        else:
-            raise ProcessLookupError()
+        raise ProcessLookupError()
 
     mocker.patch("os.kill", side_effect=side_effect)
     with pytest.raises(ProcessLookupError):

@@ -24,11 +24,10 @@ class DvcIgnore:
 
 class DvcIgnorePatterns(DvcIgnore):
     def __init__(self, pattern_list, dirname, sep):
-        if pattern_list:
-            if isinstance(pattern_list[0], str):
-                pattern_list = [
-                    PatternInfo(pattern, "") for pattern in pattern_list
-                ]
+        if pattern_list and isinstance(pattern_list[0], str):
+            pattern_list = [
+                PatternInfo(pattern, "") for pattern in pattern_list
+            ]
 
         self.sep = sep
         self.pattern_list = pattern_list
@@ -84,7 +83,7 @@ class DvcIgnorePatterns(DvcIgnore):
             return False
 
         if os.name == "nt":
-            path = normalize_file(path)
+            return normalize_file(path)
         return path
 
     def matches(self, dirname, basename, is_dir=False, details: bool = False):
@@ -195,8 +194,8 @@ class DvcIgnoreFilter:
 
     def _get_key(self, path):
         parts = self.fs.path.relparts(path, self.root_dir)
-        if parts == (".",):
-            parts = ()
+        if parts == (os.curdir,):
+            return ()
         return parts
 
     def _update_trie(self, dirname: str, trie: Trie) -> None:
@@ -379,7 +378,7 @@ class DvcIgnoreFilter:
         return False
 
     def is_ignored_dir(self, path: str, ignore_subrepos: bool = True) -> bool:
-        "Only used in LocalFileSystem"
+        # only used in LocalFileSystem
         path = self.fs.path.abspath(path)
         if path == self.root_dir:
             return False
@@ -387,7 +386,7 @@ class DvcIgnoreFilter:
         return self._is_ignored(path, True, ignore_subrepos=ignore_subrepos)
 
     def is_ignored_file(self, path: str, ignore_subrepos: bool = True) -> bool:
-        "Only used in LocalFileSystem"
+        # only used in LocalFileSystem
         path = self.fs.path.abspath(path)
         return self._is_ignored(path, False, ignore_subrepos=ignore_subrepos)
 

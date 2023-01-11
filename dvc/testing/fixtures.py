@@ -111,7 +111,7 @@ def local_cloud(make_cloud):
 
 
 @pytest.fixture
-def make_remote(tmp_dir, dvc, make_cloud):
+def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
         cloud = make_cloud(typ)  # pylint: disable=W0621
         tmp_dir.add_remote(name=name, config=cloud.config, **kwargs)
@@ -179,7 +179,7 @@ def docker():
 
 
 @pytest.fixture(scope="session")
-def docker_compose(docker):
+def docker_compose(docker):  # noqa: ARG001
     try:
         subprocess.check_output("docker-compose version", shell=True)
     except (subprocess.CalledProcessError, OSError):

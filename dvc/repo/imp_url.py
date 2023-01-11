@@ -26,7 +26,7 @@ def imp_url(
     remote=None,
     to_remote=False,
     desc=None,
-    type=None,  # pylint: disable=redefined-builtin
+    type=None,  # noqa: A002, pylint: disable=redefined-builtin
     labels=None,
     meta=None,
     jobs=None,

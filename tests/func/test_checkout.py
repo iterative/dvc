@@ -347,7 +347,7 @@ def test_checkout_recursive_not_directory(tmp_dir, dvc):
     ret = main(["add", "foo"])
     assert ret == 0
 
-    stats = dvc.checkout(targets=["foo" + ".dvc"], recursive=True)
+    stats = dvc.checkout(targets=["foo.dvc"], recursive=True)
     assert stats == {"added": [], "modified": [], "deleted": []}
 
 
@@ -603,7 +603,7 @@ def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, capsys):
     assert main(["checkout", "--summary"]) == 0
 
     out, _ = capsys.readouterr()
-    assert "2 files deleted" == out.rstrip()
+    assert out.rstrip() == "2 files deleted"
 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])

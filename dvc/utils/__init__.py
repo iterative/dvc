@@ -196,13 +196,11 @@ def boxify(message, border_color=None):
         for line in lines
     ]
 
-    box_str = "{margin}{padding}{content}{padding}{margin}".format(
+    return "{margin}{padding}{content}{padding}{margin}".format(
         margin=colorize(margin, color=border_color),
         padding="".join(padding_lines),
         content="".join(content_lines),
     )
-
-    return box_str
 
 
 def _visual_width(line):

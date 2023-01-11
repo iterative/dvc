@@ -156,14 +156,14 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     def _get_key(self, path) -> Key:
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
-        if parts == (".",):
-            parts = ()
+        if parts == (os.curdir,):
+            return ()
         return parts
 
     def _get_key_from_relative(self, path) -> Key:
         parts = self.path.relparts(path, self.root_marker)
         if parts and parts[0] == os.curdir:
-            parts = parts[1:]
+            return parts[1:]
         return parts
 
     def _from_key(self, parts: Key) -> str:

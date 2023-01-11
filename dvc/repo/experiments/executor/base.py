@@ -77,9 +77,8 @@ class ExecutorInfo:
 
     @classmethod
     def from_dict(cls, d):
-        if "collected" in d:
-            if d.pop("collected"):
-                d["status"] = TaskStatus.FINISHED
+        if d.pop("collected", None):
+            d["status"] = TaskStatus.FINISHED
         return cls(**d)
 
     def asdict(self):
@@ -247,7 +246,7 @@ class BaseExecutor(ABC):
         root_dir: str,
         **kwargs,
     ) -> _T:
-        executor = cls(
+        return cls(
             root_dir=root_dir,
             dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
             baseline_rev=entry.baseline_rev,
@@ -256,7 +255,6 @@ class BaseExecutor(ABC):
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
         )
-        return executor
 
     @staticmethod
     def hash_exp(stages: Iterable["PipelineStage"]) -> str:

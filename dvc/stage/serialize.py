@@ -201,8 +201,9 @@ def to_single_stage_file(stage: "Stage", **kwargs):
     # - apply changes to a returned structure
     # - serialize it
     text = stage._stage_text  # noqa, pylint: disable=protected-access
-    if text is not None:
-        saved_state = parse_yaml_for_update(text, stage.path)
-        apply_diff(state, saved_state)
-        state = saved_state
-    return state
+    if text is None:
+        return state
+
+    saved_state = parse_yaml_for_update(text, stage.path)
+    apply_diff(state, saved_state)
+    return saved_state

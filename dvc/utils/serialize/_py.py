@@ -23,8 +23,7 @@ def parse_py(text, path):
     with reraise(SyntaxError, PythonFileCorruptedError(path)):
         tree = ast.parse(text, filename=path)
 
-    result = _ast_tree_to_dict(tree)
-    return result
+    return _ast_tree_to_dict(tree)
 
 
 def parse_py_for_update(text, path):
@@ -161,9 +160,7 @@ def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):
 
 def _get_ast_name(target, only_self_params=False):
     if hasattr(target, "id") and not only_self_params:
-        result = target.id
-    elif hasattr(target, "attr") and target.value.id == "self":
-        result = target.attr
-    else:
-        raise AttributeError
-    return result
+        return target.id
+    if hasattr(target, "attr") and target.value.id == "self":
+        return target.attr
+    raise AttributeError

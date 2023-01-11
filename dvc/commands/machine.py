@@ -199,7 +199,7 @@ class CmdMachineDefault(CmdMachineConfig):
         if self.args.name is None and not self.args.unset:
             conf = self.config.read(self.args.level)
             try:
-                print(conf["core"]["machine"])
+                ui.write(conf["core"]["machine"])
             except KeyError:
                 ui.write("No default machine set")
                 return 1
@@ -324,7 +324,7 @@ def add_parser(subparsers, parent_parser):
 
     machine_subparsers = machine_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc machine CMD --help` for " "command-specific help.",
+        help="Use `dvc machine CMD --help` for command-specific help.",
     )
 
     fix_subparsers(machine_subparsers)

@@ -161,35 +161,35 @@ class VegaConverter(Converter):
     @staticmethod
     def infer_y_label(properties):
         y_label = properties.get("y_label", None)
-        if y_label is None:
-            y = properties.get("y", None)
-            if isinstance(y, dict):
-                fields = {field for _, field in _file_field(y)}
-                if len(fields) == 1:
-                    y_label = first(fields)
-                else:
-                    y_label = "y"
-            elif isinstance(y, list):
-                y_label = "y"
-            elif isinstance(y, str):
-                y_label = y
+        if y_label is not None:
+            return y_label
+        y = properties.get("y", None)
+        if isinstance(y, str):
+            return y
+        if isinstance(y, list):
+            return "y"
+        if not isinstance(y, dict):
+            return
 
-        return y_label
+        fields = {field for _, field in _file_field(y)}
+        if len(fields) == 1:
+            return first(fields)
+        return "y"
 
     @staticmethod
     def infer_x_label(properties):
         x_label = properties.get("x_label", None)
-        if x_label is None:
-            x = properties.get("x", None)
-            if isinstance(x, dict):
-                fields = {field for _, field in _file_field(x)}
-                if len(fields) == 1:
-                    x_label = first(fields)
-                else:
-                    x_label = "x"
-            else:
-                x_label = INDEX_FIELD
-        return x_label
+        if x_label is not None:
+            return x_label
+
+        x = properties.get("x", None)
+        if not isinstance(x, dict):
+            return INDEX_FIELD
+
+        fields = {field for _, field in _file_field(x)}
+        if len(fields) == 1:
+            return first(fields)
+        return "x"
 
     def flat_datapoints(self, revision):
 

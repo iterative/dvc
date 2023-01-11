@@ -146,10 +146,9 @@ def validate_prompts(
                 f"[prompt.invalid]'{value}' is a directory. "
                 "Please retry with an existing parameters file."
             )
-    elif key in ("code", "data"):
-        if not os.path.exists(value):
-            typ = "file" if is_file(value) else "directory"
-            return value, msg_format.format(value, typ)
+    elif key in ("code", "data") and not os.path.exists(value):
+        typ = "file" if is_file(value) else "directory"
+        return value, msg_format.format(value, typ)
     return value
 
 
@@ -200,7 +199,7 @@ def init_out_dirs(stage: PipelineStage) -> List[str]:
 def init(
     repo: "Repo",
     name: str = "train",
-    type: str = "default",  # pylint: disable=redefined-builtin
+    type: str = "default",  # noqa: A002, pylint: disable=redefined-builtin
     defaults: Dict[str, str] = None,
     overrides: Dict[str, str] = None,
     interactive: bool = False,

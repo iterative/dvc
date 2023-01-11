@@ -44,7 +44,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             logger.info("message")
 
-            assert "message" == formatter.format(caplog.records[0])
+            assert formatter.format(caplog.records[0]) == "message"
 
     def test_warning(self, caplog):
         with caplog.at_level(logging.INFO, logger="dvc"):
@@ -251,7 +251,7 @@ def test_info_with_debug_loglevel_shows_no_datetime(caplog, dt):
     with caplog.at_level(logging.DEBUG, logger="dvc"):
         logger.info("message")
 
-        assert "message" == formatter.format(caplog.records[0])
+        assert formatter.format(caplog.records[0]) == "message"
 
 
 def test_add_existing_level(caplog, dt):

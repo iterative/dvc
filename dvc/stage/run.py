@@ -66,7 +66,7 @@ def prepare_kwargs(stage, checkpoint_func=None, run_env=None):
     #                                                            #L1426
     # [2] https://github.com/iterative/dvc/issues/2506
     #                                           #issuecomment-535396799
-    kwargs["shell"] = True if os.name == "nt" else False
+    kwargs["shell"] = os.name == "nt"
     return kwargs
 
 
