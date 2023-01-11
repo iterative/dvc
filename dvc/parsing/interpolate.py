@@ -186,7 +186,7 @@ def parse_expr(s: str):
         result = get_parser().parseString(s, parseAll=True)
     except ParseException as exc:
         format_and_raise_parse_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable")  # noqa: B904
 
     joined = result.asList()
     assert len(joined) == 1

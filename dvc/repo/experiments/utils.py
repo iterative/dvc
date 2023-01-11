@@ -122,9 +122,9 @@ def iter_remote_refs(
     try:
         yield from scm.iter_remote_refs(url, base=base, **kwargs)
     except InvalidRemote as exc:
-        raise InvalidRemoteSCMRepo(str(exc))
+        raise InvalidRemoteSCMRepo(str(exc))  # noqa: B904
     except AuthError as exc:
-        raise GitAuthError(str(exc))
+        raise GitAuthError(str(exc))  # noqa: B904
 
 
 def push_refspec(
@@ -169,7 +169,7 @@ def push_refspec(
                 f"local ref '{diverged}' diverged from remote '{url}'"
             )
     except AuthError as exc:
-        raise GitAuthError(str(exc))
+        raise GitAuthError(str(exc))  # noqa: B904
 
 
 def remote_exp_refs(scm: "Git", url: str) -> Generator[ExpRefInfo, None, None]:

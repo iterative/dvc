@@ -289,7 +289,7 @@ class StageLoad:
         path = self._get_filepath(path, name)
         dvcfile = Dvcfile(self.repo, path)
         # `dvcfile.stages` is not cached
-        stages = dvcfile.stages  # type: ignore
+        stages = dvcfile.stages  # type: ignore[attr-defined]
 
         if isinstance(stages, SingleStageLoader):
             stage = stages[name]
@@ -311,7 +311,7 @@ class StageLoad:
         path = self._get_filepath(path, name)
         dvcfile = Dvcfile(self.repo, path)
 
-        stages = dvcfile.stages  # type: ignore
+        stages = dvcfile.stages  # type: ignore[attr-defined]
 
         return stages[name]
 
@@ -517,7 +517,7 @@ class StageLoad:
 
         path = self._get_filepath(path)
         dvcfile = Dvcfile(self.repo, path)
-        stages = dvcfile.stages  # type: ignore
+        stages = dvcfile.stages
 
         if isinstance(stages, SingleStageLoader):
             stages_ = [stages[None]]

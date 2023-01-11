@@ -54,7 +54,9 @@ def install_hooks(scm: "Git") -> None:
             scm.verify_hook(hook)
         except GitHookAlreadyExists as exc:
             link = format_link("https://man.dvc.org/install")
-            raise DvcException(f"{exc}. Please refer to {link} for more info.")
+            raise DvcException(  # noqa: B904
+                f"{exc}. Please refer to {link} for more info."
+            )
 
     for hook in hooks:
         scm.install_hook(hook, f"exec dvc git-hook {hook} $@")

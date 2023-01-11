@@ -43,7 +43,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
     try:
         scm = SCM(root_dir, search_parent_directories=subdir, no_scm=no_scm)
     except SCMError:
-        raise InitError(
+        raise InitError(  # noqa: B904
             f"{root_dir} is not tracked by any supported SCM tool (e.g. Git). "
             "Use `--no-scm` if you don't want to use any SCM or "
             "`--subdir` if initializing inside a subdirectory of a parent SCM "

@@ -116,7 +116,7 @@ class Lock(LockBase):
                 self._lock = zc.lockfile.LockFile(self._lockfile)
         except zc.lockfile.LockError:
             self._lock_failed = True
-            raise LockError(FAILED_TO_LOCK_MESSAGE)
+            raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
     def lock(self):
         retries = 6
@@ -185,7 +185,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         try:
             super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:
-            raise LockError(FAILED_TO_LOCK_MESSAGE)
+            raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
     def _set_claimfile(self):
         super()._set_claimfile()

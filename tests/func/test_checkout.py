@@ -12,7 +12,6 @@ from dvc.exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
     ConfirmRemoveError,
-    DvcException,
     NoOutputOrStageError,
 )
 from dvc.fs import LocalFileSystem, system
@@ -310,27 +309,20 @@ def test_checkout_hook(mocker, tmp_dir, dvc):
 
 def test_checkout_suggest_git(tmp_dir, dvc, scm):
     # pylint: disable=no-member
-    tmp_dir.dvc_gen("foo", "foo")
-    try:
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="gitbranch")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, NoOutputOrStageError)
-        assert isinstance(exc.__cause__.__cause__, StageFileDoesNotExistError)
+    assert isinstance(e.value.__cause__, NoOutputOrStageError)
+    assert isinstance(e.value.__cause__.__cause__, StageFileDoesNotExistError)
 
-    try:
-        dvc.checkout(targets="foo")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, NoOutputOrStageError)
-        assert exc.__cause__.__cause__ is None
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
+        dvc.checkout(targets="foobar")
+    assert isinstance(e.value.__cause__, NoOutputOrStageError)
+    assert isinstance(e.value.__cause__.__cause__, StageFileDoesNotExistError)
 
-    try:
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="looks-like-dvcfile.dvc")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, StageFileDoesNotExistError)
-        assert exc.__cause__.__cause__ is None
+    assert isinstance(e.value.__cause__, StageFileDoesNotExistError)
+    assert e.value.__cause__.__cause__ is None
 
 
 def test_checkout_target_recursive_should_not_remove_other_used_files(

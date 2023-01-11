@@ -134,7 +134,7 @@ class WorkspaceQueue(BaseStashQueue):
             return {}
         except DvcException:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             raise DvcException(
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc

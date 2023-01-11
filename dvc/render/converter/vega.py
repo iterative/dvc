@@ -251,7 +251,7 @@ class VegaConverter(Converter):
                         source_datapoints=x_datapoints,
                     )
                 except IndexError:
-                    raise DvcException(
+                    raise DvcException(  # noqa: B904
                         f"Cannot join '{x_field}' from '{x_file}' and "
                         f"'{y_field}' from '{y_file}'. "
                         "They have to have same length."

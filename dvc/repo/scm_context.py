@@ -78,7 +78,7 @@ class SCMContext:
         try:
             gitignore_file = self.scm.ignore(path)
         except FileNotInRepoError as exc:
-            raise SCMError(str(exc))
+            raise SCMError(str(exc))  # noqa: B904
 
         if gitignore_file:
             logger.debug("Added '%s' to gitignore file.", path)
@@ -94,7 +94,7 @@ class SCMContext:
         try:
             gitignore_file = self.scm.ignore_remove(path)
         except FileNotInRepoError as exc:
-            raise SCMError(str(exc))
+            raise SCMError(str(exc))  # noqa: B904
 
         if gitignore_file:
             return self.track_file(relpath(gitignore_file))

@@ -91,9 +91,11 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
             parent=exc.parent.fs_path,
             parent_stage=exc.parent.stage.addressing,
         )
-        raise OverlappingOutputPathsError(exc.parent, exc.overlapping_out, msg)
+        raise OverlappingOutputPathsError(  # noqa: B904
+            exc.parent, exc.overlapping_out, msg
+        )
     except OutputDuplicationError as exc:
-        raise OutputDuplicationError(
+        raise OutputDuplicationError(  # noqa: B904
             exc.output, list(set(exc.stages) - set(stages))
         )
 

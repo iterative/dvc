@@ -674,11 +674,11 @@ class Output:
         try:
             return checkout(*args, **kwargs)
         except PromptError as exc:
-            raise ConfirmRemoveError(exc.path)
+            raise ConfirmRemoveError(exc.path)  # noqa: B904
         except LinkError as exc:
-            raise CacheLinkError([exc.path])
+            raise CacheLinkError([exc.path])  # noqa: B904
         except _CheckoutError as exc:
-            raise CheckoutError(exc.paths)
+            raise CheckoutError(exc.paths)  # noqa: B904
 
     def commit(self, filter_info=None):
         if not self.exists:
@@ -1019,7 +1019,7 @@ class Output:
                 "Would you like to continue? Use '-f' to force."
             )
             if not force and not prompt.confirm(msg.format(self.fs_path)):
-                raise CollectCacheError(
+                raise CollectCacheError(  # noqa: B904
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )

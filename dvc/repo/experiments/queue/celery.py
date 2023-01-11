@@ -72,7 +72,7 @@ class LocalCeleryQueue(BaseStashQueue):
 
     @cached_property
     def celery(self) -> "FSApp":
-        from kombu.transport.filesystem import Channel  # type: ignore
+        from kombu.transport.filesystem import Channel
 
         # related to https://github.com/iterative/dvc-task/issues/61
         Channel.QoS.restore_at_shutdown = False
@@ -232,7 +232,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 exp_result = self.get_result(entry)
             except FileNotFoundError:
                 if result.status == "SUCCESS":
-                    raise DvcException(
+                    raise DvcException(  # noqa: B904
                         f"Invalid experiment '{entry.stash_rev[:7]}'."
                     )
                 if result.status == "FAILURE":
@@ -421,7 +421,9 @@ class LocalCeleryQueue(BaseStashQueue):
         try:
             proc_info = self.proc[queue_entry.stash_rev]
         except KeyError:
-            raise DvcException(f"No output logs found for experiment '{rev}'")
+            raise DvcException(  # noqa: B904
+                f"No output logs found for experiment '{rev}'"
+            )
         with open(
             proc_info.stdout,
             encoding=encoding or locale.getpreferredencoding(),

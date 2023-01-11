@@ -96,7 +96,7 @@ def _push(
                 progress=pbar.update_git,
             )
         except AuthError as exc:
-            raise GitAuthError(str(exc))
+            raise GitAuthError(str(exc))  # noqa: B904
 
     def group_result(refspec):
         return results[str(refspec)]

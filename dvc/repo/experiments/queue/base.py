@@ -508,7 +508,7 @@ class BaseStashQueue(ABC):
             with open(self.args_file, "rb") as fobj:
                 try:
                     data = pickle.load(fobj)
-                except Exception:  # pylint: disable=broad-except
+                except Exception:  # noqa: BLE001, pylint: disable=broad-except
                     data = {}
             extra = int(data.get("extra", 0)) + 1
         else:

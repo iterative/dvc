@@ -66,7 +66,7 @@ def _dump(data, stream):
     try:
         ast.parse(new_text)
     except SyntaxError:
-        raise PythonFileCorruptedError(
+        raise PythonFileCorruptedError(  # noqa: B904
             stream.name,
             "Python file structure is corrupted after update params",
         )

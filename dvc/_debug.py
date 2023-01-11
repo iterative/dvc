@@ -12,7 +12,9 @@ def viztracer_profile(path: Union[Callable[[], str], str], depth: int = -1):
     try:
         import viztracer  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, viztracer is not installed")  # noqa
+        print(  # noqa: T201
+            "Failed to run profiler, viztracer is not installed"
+        )
         yield
         return
 
@@ -34,7 +36,7 @@ def yappi_profile(
     try:
         import yappi  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, yappi is not installed")  # noqa
+        print("Failed to run profiler, yappi is not installed")  # noqa: T201
         yield
         return
 
@@ -74,7 +76,9 @@ def instrument(html_output=False):
     try:
         from pyinstrument import Profiler  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, pyinstrument is not installed")  # noqa
+        print(  # noqa: T201
+            "Failed to run profiler, pyinstrument is not installed"
+        )
         yield
         return
 
@@ -128,7 +132,9 @@ def _sigshow(_, frame: Optional["FrameType"]) -> None:
 
     lines = "\u2015" * get_terminal_size().columns
     file = sys.stderr
-    print(lines, "\n", *format_stack(frame), lines, sep="", file=file)  # noqa
+    print(  # noqa: T201
+        lines, "\n", *format_stack(frame), lines, sep="", file=file
+    )
 
 
 @contextmanager

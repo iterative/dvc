@@ -38,7 +38,7 @@ class ProcessManager:
             with open(info_path, encoding="utf-8") as fobj:
                 return ProcessInfo.from_dict(json.load(fobj))
         except FileNotFoundError:
-            raise KeyError
+            raise KeyError  # noqa: B904
 
     @reraise(FileNotFoundError, KeyError)
     def __setitem__(self, key: str, value: "ProcessInfo"):

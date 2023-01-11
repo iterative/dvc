@@ -377,7 +377,7 @@ class BaseExecutor(ABC):
         try:
             dvc.scm.validate_git_remote(git_remote)
         except InvalidRemote as exc:
-            raise InvalidRemoteSCMRepo(str(exc))
+            raise InvalidRemoteSCMRepo(str(exc))  # noqa: B904
         dvc.cloud.get_remote_odb()
 
     @classmethod
@@ -616,7 +616,7 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:  # pylint: disable=broad-except
+        except BaseException as exc:  # noqa: BLE001, pylint: disable=W0703
             logger.warning(
                 "Something went wrong while auto pushing experiment "
                 "to the remote '%s': %s",

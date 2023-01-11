@@ -142,7 +142,7 @@ def validate_prompts(
         except MissingParamsFile:
             return value, msg_format.format(value, "file")
         except ParamsIsADirectoryError:
-            raise InvalidResponse(
+            raise InvalidResponse(  # noqa: B904
                 f"[prompt.invalid]'{value}' is a directory. "
                 "Please retry with an existing parameters file."
             )
@@ -243,7 +243,9 @@ def init(
         try:
             ParamsDependency(None, params, repo=repo).validate_filepath()
         except ParamsIsADirectoryError as exc:
-            raise DvcException(f"{exc}.")  # swallow cause for display
+            raise DvcException(  # noqa: B904
+                f"{exc}."
+            )  # swallow cause for display
         except MissingParamsFile:
             pass
 
