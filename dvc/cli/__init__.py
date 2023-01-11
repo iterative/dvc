@@ -45,7 +45,6 @@ def _log_unknown_exceptions() -> None:
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Version info for developers:\n%s", get_dvc_info())
     logger.info(FOOTER)
-    return None
 
 
 def _log_exceptions(exc: Exception) -> Optional[int]:

@@ -58,7 +58,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return self._columns[name]
 
     def items(self) -> ItemsView[str, Column]:
-        projection = {k: self.column(k) for k in self.keys()}
+        projection = {k: self.column(k) for k in self.keys()}  # noqa: SIM118
         return projection.items()
 
     def keys(self) -> List[str]:
@@ -195,7 +195,8 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 self.add_column(key)
 
         row: List["CellT"] = [
-            with_value(d.get(key), self._fill_value) for key in self.keys()
+            with_value(d.get(key), self._fill_value)
+            for key in self.keys()  # noqa: SIM118
         ]
         self.append(row)
 
@@ -228,7 +229,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             )
         if how not in ["any", "all"]:
             raise ValueError(
-                f"Invalid 'how' value {how}." "Choose one of ['any', 'all']"
+                f"Invalid 'how' value {how}. Choose one of ['any', 'all']"
             )
 
         match_line: Set = set()
@@ -244,8 +245,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                     if axis == "rows":
                         match_line.add(n_row)
                         break
-                    else:
-                        match_line.add(self.keys()[n_col])
+                    match_line.add(self.keys()[n_col])
 
         to_drop = match_line
         if how == "all":
@@ -256,7 +256,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             to_drop -= match_line
 
         if axis == "rows":
-            for name in self.keys():
+            for name in self.keys():  # noqa: SIM118
                 self._columns[name] = Column(
                     [
                         x
@@ -309,7 +309,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 else:
                     unique_rows.append(tuple_row)
 
-            for name in self.keys():
+            for name in self.keys():  # noqa: SIM118
                 self._columns[name] = Column(
                     [
                         x

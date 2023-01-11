@@ -264,7 +264,7 @@ def test_ignore_blank_line(tmp_dir, dvc):
 
 # It is not possible to re-include a file if a parent directory of
 # that file is excluded.
-# Git doesn’t list excluded directories for performance reasons,
+# Git doesn't list excluded directories for performance reasons,
 # so any patterns on contained files have no effect,
 # no matter where they are defined.
 @pytest.mark.parametrize(

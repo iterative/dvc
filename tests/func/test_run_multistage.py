@@ -106,7 +106,7 @@ def test_multistage_with_wdir(tmp_dir, dvc):
     )
 
     data, _ = Dvcfile(dvc, stage.path)._load()
-    assert "dir" == data["stages"]["copy-foo1-foo2"]["wdir"]
+    assert data["stages"]["copy-foo1-foo2"]["wdir"] == "dir"
 
 
 def test_multistage_always_changed(tmp_dir, dvc):
@@ -305,7 +305,7 @@ def test_run_params_no_exec(tmp_dir, dvc):
 def test_run_without_cmd(tmp_dir, dvc, kwargs):
     with pytest.raises(InvalidArgumentError) as exc:
         dvc.run(**kwargs)
-    assert "command is not specified" == str(exc.value)
+    assert str(exc.value) == "command is not specified"
 
 
 def test_run_overwrite_order(tmp_dir, dvc, run_copy):

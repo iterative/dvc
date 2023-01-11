@@ -78,7 +78,7 @@ class SCMContext:
         try:
             gitignore_file = self.scm.ignore(path)
         except FileNotInRepoError as exc:
-            raise SCMError(str(exc))
+            raise SCMError(str(exc))  # noqa: B904
 
         if gitignore_file:
             logger.debug("Added '%s' to gitignore file.", path)
@@ -94,7 +94,7 @@ class SCMContext:
         try:
             gitignore_file = self.scm.ignore_remove(path)
         except FileNotInRepoError as exc:
-            raise SCMError(str(exc))
+            raise SCMError(str(exc))  # noqa: B904
 
         if gitignore_file:
             return self.track_file(relpath(gitignore_file))
@@ -130,9 +130,7 @@ class SCMContext:
             and logger.isEnabledFor(logging.INFO)
         ):
             add_cmd = self._make_git_add_cmd(self.files_to_track)
-            logger.info(
-                f"\nTo track the changes with git, run:\n" f"\n{add_cmd}"
-            )
+            logger.info(f"\nTo track the changes with git, run:\n\n{add_cmd}")
             logger.info(
                 "\nTo enable auto staging, run:\n\n"
                 "\tdvc config core.autostage true"

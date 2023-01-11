@@ -267,10 +267,10 @@ class Output:
         },
     )
 
-    DoesNotExistError = OutputDoesNotExistError  # type: Type[DvcException]
-    IsNotFileOrDirError = OutputIsNotFileOrDirError  # type: Type[DvcException]
-    IsStageFileError = OutputIsStageFileError  # type: Type[DvcException]
-    IsIgnoredError = OutputIsIgnoredError  # type: Type[DvcException]
+    DoesNotExistError: Type[DvcException] = OutputDoesNotExistError
+    IsNotFileOrDirError: Type[DvcException] = OutputIsNotFileOrDirError
+    IsStageFileError: Type[DvcException] = OutputIsStageFileError
+    IsIgnoredError: Type[DvcException] = OutputIsIgnoredError
 
     def __init__(
         self,
@@ -283,7 +283,7 @@ class Output:
         persist=False,
         checkpoint=False,
         desc=None,
-        type=None,  # pylint: disable=redefined-builtin
+        type=None,  # noqa: A002, pylint: disable=redefined-builtin
         labels=None,
         meta=None,
         remote=None,
@@ -486,10 +486,9 @@ class Output:
         return self.hash_info.isdir
 
     def _is_path_dvcignore(self, path) -> bool:
-        if not self.IS_DEPENDENCY and self.dvcignore:
-            if self.dvcignore.is_ignored(self.fs, path, ignore_subrepos=False):
-                return True
-        return False
+        if self.IS_DEPENDENCY or not self.dvcignore:
+            return False
+        return self.dvcignore.is_ignored(self.fs, path, ignore_subrepos=False)
 
     @property
     def exists(self):
@@ -675,11 +674,11 @@ class Output:
         try:
             return checkout(*args, **kwargs)
         except PromptError as exc:
-            raise ConfirmRemoveError(exc.path)
+            raise ConfirmRemoveError(exc.path)  # noqa: B904
         except LinkError as exc:
-            raise CacheLinkError([exc.path])
+            raise CacheLinkError([exc.path])  # noqa: B904
         except _CheckoutError as exc:
-            raise CheckoutError(exc.paths)
+            raise CheckoutError(exc.paths)  # noqa: B904
 
     def commit(self, filter_info=None):
         if not self.exists:
@@ -762,12 +761,12 @@ class Output:
             if not self.use_cache:
                 ret[self.PARAM_CACHE] = self.use_cache
 
-            if isinstance(self.metric, dict):
-                if (
-                    self.PARAM_METRIC_XPATH in self.metric
-                    and not self.metric[self.PARAM_METRIC_XPATH]
-                ):
-                    del self.metric[self.PARAM_METRIC_XPATH]
+            if (
+                isinstance(self.metric, dict)
+                and self.PARAM_METRIC_XPATH in self.metric
+                and not self.metric[self.PARAM_METRIC_XPATH]
+            ):
+                del self.metric[self.PARAM_METRIC_XPATH]
 
             if self.metric:
                 ret[self.PARAM_METRIC] = self.metric
@@ -1020,7 +1019,7 @@ class Output:
                 "Would you like to continue? Use '-f' to force."
             )
             if not force and not prompt.confirm(msg.format(self.fs_path)):
-                raise CollectCacheError(
+                raise CollectCacheError(  # noqa: B904
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
@@ -1032,7 +1031,7 @@ class Output:
             prefix = self.fs.path.parts(
                 self.fs.path.relpath(filter_info, self.fs_path)
             )
-            obj = obj.filter(prefix)
+            return obj.filter(prefix)
         return obj
 
     def get_used_objs(

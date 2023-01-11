@@ -276,7 +276,7 @@ class Stage(params.StageParams):
             with suppress(ValueError):
                 # try to use first non-empty line as a description
                 line = next(filter(None, self.desc.splitlines()))
-                desc = line.strip()
+                return line.strip()
         return desc
 
     def _read_env(self, out, checkpoint_func=None) -> Env:

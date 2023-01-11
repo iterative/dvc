@@ -1,5 +1,6 @@
 import os
 import subprocess
+from typing import Dict, Tuple
 
 import pytest
 
@@ -24,7 +25,7 @@ __all__ = [
     "docker_services",
 ]
 
-CACHE = {}  # type: ignore
+CACHE: Dict[Tuple[bool, bool, bool], str] = {}
 
 
 @pytest.fixture(scope="session")
@@ -42,9 +43,9 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
 
         cache = CACHE.get((scm, dvc, subdir))
         if not cache:
-            cache = tmp_path_factory.mktemp("dvc-test-cache" + worker_id)
-            TmpDir(cache).init(scm=scm, dvc=dvc, subdir=subdir)
-            CACHE[(scm, dvc, subdir)] = os.fspath(cache)
+            cache_dir = tmp_path_factory.mktemp("dvc-test-cache" + worker_id)
+            TmpDir(cache_dir).init(scm=scm, dvc=dvc, subdir=subdir)
+            CACHE[(scm, dvc, subdir)] = cache = os.fspath(cache_dir)
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
 
         # ignore sqlite files from .dvc/tmp. We might not be closing the cache
@@ -111,7 +112,7 @@ def local_cloud(make_cloud):
 
 
 @pytest.fixture
-def make_remote(tmp_dir, dvc, make_cloud):
+def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
         cloud = make_cloud(typ)  # pylint: disable=W0621
         tmp_dir.add_remote(name=name, config=cloud.config, **kwargs)
@@ -179,7 +180,7 @@ def docker():
 
 
 @pytest.fixture(scope="session")
-def docker_compose(docker):
+def docker_compose(docker):  # noqa: ARG001
     try:
         subprocess.check_output("docker-compose version", shell=True)
     except (subprocess.CalledProcessError, OSError):

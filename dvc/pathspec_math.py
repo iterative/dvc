@@ -50,8 +50,7 @@ def change_rule(rule, rel):
         rule = f"!/{rel}{rule}"
     else:
         rule = f"/{rel}{rule}"
-    rule = normalize_file(rule)
-    return rule
+    return normalize_file(rule)
 
 
 def _change_dirname(dirname, pattern_list, new_dirname):

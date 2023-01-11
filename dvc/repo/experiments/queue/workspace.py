@@ -134,7 +134,7 @@ class WorkspaceQueue(BaseStashQueue):
             return {}
         except DvcException:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             raise DvcException(
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
@@ -152,7 +152,7 @@ class WorkspaceQueue(BaseStashQueue):
     @staticmethod
     def collect_executor(  # pylint: disable=unused-argument
         exp: "Experiments",
-        executor: BaseExecutor,
+        executor: BaseExecutor,  # noqa: ARG004
         exec_result: ExecutorResult,
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}

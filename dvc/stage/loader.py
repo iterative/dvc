@@ -126,7 +126,7 @@ class StageLoader(Mapping):
         try:
             resolved_data = self.resolver.resolve_one(name)
         except EntryNotFound:
-            raise StageNotFound(self.dvcfile, name)
+            raise StageNotFound(self.dvcfile, name)  # noqa: B904
 
         if self.lockfile_data and name not in self.lockfile_data:
             self.lockfile_needs_update()

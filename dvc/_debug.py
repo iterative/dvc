@@ -12,7 +12,9 @@ def viztracer_profile(path: Union[Callable[[], str], str], depth: int = -1):
     try:
         import viztracer  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, viztracer is not installed")
+        print(  # noqa: T201
+            "Failed to run profiler, viztracer is not installed"
+        )
         yield
         return
 
@@ -34,7 +36,7 @@ def yappi_profile(
     try:
         import yappi  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, yappi is not installed")
+        print("Failed to run profiler, yappi is not installed")  # noqa: T201
         yield
         return
 
@@ -60,7 +62,7 @@ def yappi_profile(
             st.save(out, type="callgrind")
         else:
             if ctx_id is not None:
-                print(f"\nThread {ctx_id}")
+                print(f"\nThread {ctx_id}")  # noqa: T201
             st.print_all()  # pylint:disable=no-member
             if ctx_id is None:
                 threads.print_all()  # pylint:disable=no-member
@@ -74,7 +76,9 @@ def instrument(html_output=False):
     try:
         from pyinstrument import Profiler  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, pyinstrument is not installed")
+        print(  # noqa: T201
+            "Failed to run profiler, pyinstrument is not installed"
+        )
         yield
         return
 
@@ -87,7 +91,7 @@ def instrument(html_output=False):
     if html_output:
         profiler.open_in_browser()
         return
-    print(profiler.output_text(unicode=True, color=True))
+    print(profiler.output_text(unicode=True, color=True))  # noqa: T201
 
 
 @contextmanager
@@ -122,13 +126,15 @@ def debug():
 
 
 def _sigshow(_, frame: Optional["FrameType"]) -> None:
+    import sys
     from shutil import get_terminal_size
     from traceback import format_stack
 
-    from dvc.ui import ui
-
     lines = "\u2015" * get_terminal_size().columns
-    ui.error_write(lines, "\n", *format_stack(frame), lines, sep="")
+    file = sys.stderr
+    print(  # noqa: T201
+        lines, "\n", *format_stack(frame), lines, sep="", file=file
+    )
 
 
 @contextmanager

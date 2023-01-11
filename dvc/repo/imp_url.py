@@ -1,5 +1,4 @@
 import os
-from typing import TYPE_CHECKING
 
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
@@ -7,9 +6,6 @@ from dvc.utils.fs import path_isin
 
 from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from . import locked
-
-if TYPE_CHECKING:
-    from dvc.dvcfile import DVCFile
 
 
 @locked
@@ -26,14 +22,14 @@ def imp_url(
     remote=None,
     to_remote=False,
     desc=None,
-    type=None,  # pylint: disable=redefined-builtin
+    type=None,  # noqa: A002, pylint: disable=redefined-builtin
     labels=None,
     meta=None,
     jobs=None,
     fs_config=None,
     version_aware: bool = False,
 ):
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import make_dvcfile
     from dvc.stage import Stage, create_stage, restore_fields
 
     out = resolve_output(url, out)
@@ -78,14 +74,16 @@ def imp_url(
 
     out_obj = stage.outs[0]
     out_obj.annot.update(desc=desc, type=type, labels=labels, meta=meta)
-    dvcfile: "DVCFile" = Dvcfile(self, stage.path)  # type: ignore
+    dvcfile = make_dvcfile(self, stage.path)
     dvcfile.remove()
 
     try:
         new_index = self.index.add(stage)
         new_index.check_graph()
     except OutputDuplicationError as exc:
-        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
+        raise OutputDuplicationError(  # noqa: B904
+            exc.output, set(exc.stages) - {stage}
+        )
 
     if no_exec:
         stage.ignore_outs()

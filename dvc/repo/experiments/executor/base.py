@@ -77,9 +77,8 @@ class ExecutorInfo:
 
     @classmethod
     def from_dict(cls, d):
-        if "collected" in d:
-            if d.pop("collected"):
-                d["status"] = TaskStatus.FINISHED
+        if d.pop("collected", None):
+            d["status"] = TaskStatus.FINISHED
         return cls(**d)
 
     def asdict(self):
@@ -247,7 +246,7 @@ class BaseExecutor(ABC):
         root_dir: str,
         **kwargs,
     ) -> _T:
-        executor = cls(
+        return cls(
             root_dir=root_dir,
             dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
             baseline_rev=entry.baseline_rev,
@@ -256,7 +255,6 @@ class BaseExecutor(ABC):
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
         )
-        return executor
 
     @staticmethod
     def hash_exp(stages: Iterable["PipelineStage"]) -> str:
@@ -379,7 +377,7 @@ class BaseExecutor(ABC):
         try:
             dvc.scm.validate_git_remote(git_remote)
         except InvalidRemote as exc:
-            raise InvalidRemoteSCMRepo(str(exc))
+            raise InvalidRemoteSCMRepo(str(exc))  # noqa: B904
         dvc.cloud.get_remote_odb()
 
     @classmethod
@@ -618,7 +616,7 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:  # pylint: disable=broad-except
+        except BaseException as exc:  # noqa: BLE001, pylint: disable=W0703
             logger.warning(
                 "Something went wrong while auto pushing experiment "
                 "to the remote '%s': %s",

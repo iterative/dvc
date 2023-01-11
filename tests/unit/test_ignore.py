@@ -13,11 +13,7 @@ def mock_dvcignore(dvcignore_path, patterns):
     fs.path = localfs.path
     fs.sep = localfs.sep
     with patch.object(fs, "open", mock_open(read_data="\n".join(patterns))):
-        ignore_patterns = DvcIgnorePatterns.from_file(
-            dvcignore_path, fs, "mocked"
-        )
-
-    return ignore_patterns
+        return DvcIgnorePatterns.from_file(dvcignore_path, fs, "mocked")
 
 
 @pytest.mark.parametrize(
@@ -45,7 +41,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         ("to_ignore.txt", ["!to_ignore.txt", "to_ignore*"], True),
         # It is not possible to re-include a file if a parent directory of
         # that file is excluded.
-        # Git doesn’t list excluded directories for performance reasons,
+        # Git doesn't list excluded directories for performance reasons,
         # so any patterns on contained files have no effect,
         # no matter where they are defined.
         # see (`tests/func/test_ignore.py::test_ignore_parent_path`)

@@ -998,8 +998,7 @@ def test_show_queued_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == exp_rev_3:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,
@@ -1027,8 +1026,7 @@ def test_show_completed_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == exp_rev_3:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,
@@ -1088,8 +1086,7 @@ def test_show_baseline_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == baseline_rev:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,

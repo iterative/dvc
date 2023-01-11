@@ -25,11 +25,9 @@ class DependencyIsStageFileError(DvcException):
 class Dependency(Output):
     IS_DEPENDENCY = True
 
-    DoesNotExistError = DependencyDoesNotExistError  # type: Type[DvcException]
-    IsNotFileOrDirError = (
-        DependencyIsNotFileOrDirError
-    )  # type: Type[DvcException]
-    IsStageFileError = DependencyIsStageFileError  # type: Type[DvcException]
+    DoesNotExistError: Type[DvcException] = DependencyDoesNotExistError
+    IsNotFileOrDirError: Type[DvcException] = DependencyIsNotFileOrDirError
+    IsStageFileError: Type[DvcException] = DependencyIsStageFileError
 
     def workspace_status(self) -> Dict[str, str]:
         if self.fs.version_aware:

@@ -78,7 +78,7 @@ def test_stage_update(dvc, mocker):
 @pytest.mark.skipif(
     not isinstance(
         threading.current_thread(),
-        threading._MainThread,  # noqa, pylint: disable=protected-access
+        threading._MainThread,  # pylint: disable=protected-access
     ),
     reason="Not running in the main thread.",
 )

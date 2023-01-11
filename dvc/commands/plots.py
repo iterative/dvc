@@ -79,10 +79,8 @@ class CmdPlots(CmdBase):
         return {k: v for k, v in props.items() if v is not None}
 
     def _config_files(self):
-        config_files = None
         if self.args.from_config:
-            config_files = {self.args.from_config}
-        return config_files
+            return {self.args.from_config}
 
     def _html_template_path(self):
         html_template_path = self.args.html_template
@@ -223,9 +221,8 @@ class CmdPlotsTemplates(CmdBase):
                         return 0
                 raise InvalidArgumentError(f"Unexpected template: {target}.")
 
-            else:
-                for template in TEMPLATES:
-                    ui.write(template.DEFAULT_NAME)
+            for template in TEMPLATES:
+                ui.write(template.DEFAULT_NAME)
 
             return 0
         except DvcException:

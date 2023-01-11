@@ -359,7 +359,7 @@ def show_experiments(
         kwargs.get("iso"),
     )
     if keep:
-        for col in td.keys():
+        for col in td.keys():  # noqa: SIM118
             if re.match(keep, col):
                 td.protect(col)
 
@@ -410,13 +410,15 @@ def show_experiments(
 
     cols_to_drop = set()
     if drop is not None:
-        cols_to_drop = {col for col in td.keys() if re.match(drop, col)}
+        cols_to_drop = {
+            col for col in td.keys() if re.match(drop, col)  # noqa: SIM118
+        }
     if pcp:
         cols_to_drop.add("Created")
     td.drop(*cols_to_drop)
 
     if pcp:
-        subset = {x for x in td.keys() if x != "Experiment"}
+        subset = {x for x in td.keys() if x != "Experiment"}  # noqa: SIM118
         td.dropna(
             "rows",
             how="all",
@@ -494,7 +496,7 @@ class CmdExperimentsShow(CmdBase):
                 else DEFAULT_PRECISION
             )
             fill_value = "" if self.args.csv else FILL_VALUE
-            iso = True if self.args.csv else False
+            iso = self.args.csv
 
             show_experiments(
                 all_experiments,

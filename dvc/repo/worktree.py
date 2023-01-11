@@ -232,17 +232,20 @@ def update_worktree_stages(
                 )
                 continue
             entry = remote_index[key]
-            if entry.meta and entry.meta.isdir:
-                if not any(
+            if (
+                entry.meta
+                and entry.meta.isdir
+                and not any(
                     subkey != key and subentry.meta and not subentry.meta.isdir
                     for subkey, subentry in remote_index.iteritems(key)
-                ):
-                    logger.warning(
-                        "Could not update '%s', directory is empty in the "
-                        "remote",
-                        out,
-                    )
-                    continue
+                )
+            ):
+                logger.warning(
+                    "Could not update '%s', directory is empty in the "
+                    "remote",
+                    out,
+                )
+                continue
             _fetch_out_changes(out, local_index, remote_index, remote)
         stage.save(merge_versioned=True)
         for out in stage.outs:

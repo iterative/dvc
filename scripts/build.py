@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import sys
 from subprocess import STDOUT, check_call
 
 path = pathlib.Path(__file__).parent.absolute()
@@ -37,7 +38,7 @@ if args.sign_application:
         raise NotImplementedError
     if not args.application_id:
         print("--sign-application requires --application-id")
-        exit(1)
+        sys.exit(1)
     check_call(
         ["python", "sign.py", "--application-id", args.application_id],
         cwd=pyinstaller,
@@ -64,7 +65,7 @@ if args.sign_installer:
         [args.installer_id, args.apple_id_username, args.apple_id_password]
     ):
         print("--sign-installer requires --installer-id")
-        exit(1)
+        sys.exit(1)
     check_call(
         ["python", "sign.py", "--installer-id", args.installer_id],
         cwd=fpm,
@@ -78,7 +79,7 @@ if args.notarize:
         print(
             "--notarize requires --apple-id-username and --apple-id-password"
         )
-        exit(1)
+        sys.exit(1)
     check_call(
         [
             "python",

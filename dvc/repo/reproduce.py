@@ -222,7 +222,7 @@ def _reproduce_stages(
             )
 
             break
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             raise ReproductionError(stage.addressing) from exc
 
     if on_unchanged is not None:

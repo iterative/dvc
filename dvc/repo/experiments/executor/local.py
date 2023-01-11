@@ -137,7 +137,7 @@ class TempDirExecutor(BaseLocalExecutor):
         try:
             self.scm.merge(merge_rev, squash=True, commit=False)
         except _SCMError as exc:
-            raise GitMergeError(str(exc), scm=self.scm)
+            raise GitMergeError(str(exc), scm=self.scm)  # noqa: B904
 
     def _config(self, cache_dir):
         local_config = os.path.join(
@@ -227,7 +227,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
             try:
                 self.scm.merge(merge_rev, squash=True, commit=False)
             except _SCMError as exc:
-                raise GitMergeError(str(exc), scm=self.scm)
+                raise GitMergeError(str(exc), scm=self.scm)  # noqa: B904
             if branch:
                 self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
             elif scm.get_ref(EXEC_BRANCH):

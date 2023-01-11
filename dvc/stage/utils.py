@@ -273,7 +273,7 @@ def check_stage_exists(
         raise StageFileAlreadyExistsError(
             f"'{stage.relpath}' already exists. {hint}"
         )
-    elif stage.name and stage.name in dvcfile.stages:
+    if stage.name and stage.name in dvcfile.stages:
         raise DuplicateStageName(
             f"Stage '{stage.name}' already exists in '{stage.relpath}'. {hint}"
         )

@@ -238,7 +238,7 @@ def params_show(
     if isinstance(stages, str):
         stages = [stages]
 
-    def _onerror_raise(result: Dict, exception: Exception, *args, **kwargs):
+    def _onerror_raise(_result: Dict, exception: Exception, *args, **kwargs):
         raise exception
 
     def _postprocess(params):

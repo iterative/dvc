@@ -283,7 +283,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev_lock": branch1_head,
     }
     with open(tmp_dir / "foo", encoding="utf-8") as f:
-        assert "foobar" == f.read()
+        assert f.read() == "foobar"
 
     stage = dvc.update(["foo.dvc"], rev="branch2")[0]
     assert stage.deps[0].def_repo == {
@@ -292,7 +292,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev_lock": branch2_head,
     }
     with open(tmp_dir / "foo", encoding="utf-8") as f:
-        assert "foobar foo" == f.read()
+        assert f.read() == "foobar foo"
 
 
 def test_update_recursive(tmp_dir, dvc, erepo_dir):

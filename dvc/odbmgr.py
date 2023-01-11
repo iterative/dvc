@@ -39,7 +39,7 @@ class ODBManager:
             from dvc.config_schema import LOCAL_COMMON
 
             settings = {"url": config["dir"]}
-            for opt in LOCAL_COMMON.keys():
+            for opt in LOCAL_COMMON:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 

@@ -34,11 +34,14 @@ def update(
             "--to-remote can't be used with --no-download"
         )
 
-    if not to_remote and remote:
-        if not self.cloud.get_remote(name=remote).worktree:
-            raise InvalidArgumentError(
-                "--remote can't be used without --to-remote"
-            )
+    if (
+        not to_remote
+        and remote
+        and not self.cloud.get_remote(name=remote).worktree
+    ):
+        raise InvalidArgumentError(
+            "--remote can't be used without --to-remote"
+        )
 
     import_stages = set()
     other_stage_infos: List["StageInfo"] = []
