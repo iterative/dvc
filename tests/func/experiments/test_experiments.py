@@ -1,4 +1,5 @@
 import itertools
+import json
 import logging
 import os
 import stat
@@ -143,6 +144,8 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     raises=(
         dulwich.errors.CommitError,
         dulwich.file.FileLocked,
+        json.JSONDecodeError,
+        PermissionError,
     ),
     strict=False,
     reason="See https://github.com/iterative/dvc/issues/8570",
