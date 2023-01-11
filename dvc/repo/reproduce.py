@@ -86,7 +86,7 @@ def _track_stage(stage: "Stage") -> None:
 
 @locked
 @scm_context
-def reproduce(
+def reproduce(  # noqa: C901
     self: "Repo",
     targets=None,
     recursive=False,
@@ -138,7 +138,7 @@ def reproduce(
     return _reproduce_stages(self.index.graph, list(stages), **kwargs)
 
 
-def _reproduce_stages(
+def _reproduce_stages(  # noqa: C901
     G, stages, downstream=False, single_item=False, on_unchanged=None, **kwargs
 ):
     r"""Derive the evaluation of the given node for the given graph.

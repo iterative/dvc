@@ -4,7 +4,7 @@ from functools import wraps
 from typing import Callable, Dict, Iterable, List, TypeVar, Union
 
 
-def apply_diff(src, dest):
+def apply_diff(src, dest):  # noqa: C901
     """Recursively apply changes from src to dest.
 
     Preserves dest type and hidden info in dest structure,

@@ -742,7 +742,7 @@ class Output:
         )
         return checkout_obj
 
-    def dumpd(self, **kwargs):
+    def dumpd(self, **kwargs):  # noqa: C901
         meta = self.meta.to_dict()
         meta.pop("isdir", None)
         ret = {**self.hash_info.to_dict(), **meta}
@@ -1034,7 +1034,7 @@ class Output:
             return obj.filter(prefix)
         return obj
 
-    def get_used_objs(
+    def get_used_objs(  # noqa: C901
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""

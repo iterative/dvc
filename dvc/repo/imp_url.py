@@ -10,7 +10,7 @@ from . import locked
 
 @locked
 @scm_context
-def imp_url(
+def imp_url(  # noqa: C901
     self,
     url,
     out=None,

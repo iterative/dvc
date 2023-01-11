@@ -94,7 +94,7 @@ class CmdPlots(CmdBase):
                 )
         return html_template_path
 
-    def run(self):
+    def run(self):  # noqa: C901
         from pathlib import Path
 
         from dvc.render.match import match_defs_renderers

@@ -8,7 +8,6 @@ from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
     contains_symlink_up_to,
-    makedirs,
     path_isin,
     remove,
 )
@@ -155,5 +154,5 @@ def test_contains_symlink_case_sensitive_posix():
 def test_makedirs(tmp_dir):
     path = os.path.join(tmp_dir, "directory")
 
-    makedirs(path)
+    os.makedirs(path)
     assert os.path.isdir(path)

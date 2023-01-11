@@ -6,7 +6,7 @@ ignore=
     P1,  # unindexed parameters in the str.format, see:
     # https://pypi.org/project/flake8-string-format/
 max_line_length = 79
-max-complexity = 15
+max-complexity = 10
 select = B,C,E,F,W,T4,B902,T,P
 show_source = true
 count = true

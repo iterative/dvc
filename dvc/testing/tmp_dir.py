@@ -52,7 +52,6 @@ from contextlib import contextmanager
 from functools import partialmethod
 
 from dvc.utils import serialize
-from dvc.utils.fs import makedirs
 
 
 class TmpDir(pathlib.Path):
@@ -138,11 +137,11 @@ class TmpDir(pathlib.Path):
 
             if isinstance(contents, dict):
                 if not contents:
-                    makedirs(path, exist_ok=True)
+                    os.makedirs(path, exist_ok=True)
                 else:
                     self._gen(contents, prefix=path)
             else:
-                makedirs(path.parent, exist_ok=True)
+                os.makedirs(path.parent, exist_ok=True)
                 if isinstance(contents, bytes):
                     path.write_bytes(contents)
                 else:

@@ -321,7 +321,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
         return self._info(key, path, ignore_subrepos=ignore_subrepos)
 
-    def _info(self, key, path, ignore_subrepos=True, check_ignored=True):
+    def _info(  # noqa: C901
+        self, key, path, ignore_subrepos=True, check_ignored=True
+    ):
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
         dvc_info = None

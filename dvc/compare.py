@@ -216,7 +216,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             {k: self._columns[k][i] for k in keys} for i in range(len(self))
         ]
 
-    def dropna(
+    def dropna(  # noqa: C901
         self,
         axis: str = "rows",
         how="any",
@@ -267,7 +267,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         else:
             self.drop(*to_drop)
 
-    def drop_duplicates(
+    def drop_duplicates(  # noqa: C901
         self,
         axis: str = "rows",
         subset: Optional[Iterable[str]] = None,

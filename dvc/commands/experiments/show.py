@@ -62,7 +62,7 @@ experiment_types = {
 }
 
 
-def _collect_rows(
+def _collect_rows(  # noqa: C901
     base_rev,
     experiments,
     all_headers,
@@ -314,7 +314,7 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(
+def show_experiments(  # noqa: C901
     all_experiments,
     keep=None,
     drop=None,

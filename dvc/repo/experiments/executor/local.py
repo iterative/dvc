@@ -22,7 +22,7 @@ from dvc.repo.experiments.refs import (
 )
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.scm import SCM, GitMergeError
-from dvc.utils.fs import makedirs, remove
+from dvc.utils.fs import remove
 
 from .base import BaseExecutor, TaskStatus
 
@@ -166,7 +166,7 @@ class TempDirExecutor(BaseLocalExecutor):
         **kwargs,
     ):
         parent_dir: str = wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
-        makedirs(parent_dir, exist_ok=True)
+        os.makedirs(parent_dir, exist_ok=True)
         tmp_dir = mkdtemp(dir=parent_dir)
         try:
             executor = cls._from_stash_entry(repo, entry, tmp_dir, **kwargs)

@@ -10,8 +10,6 @@ from typing import List, Optional, TextIO, Union
 from funcy import cached_property
 from shortuuid import uuid
 
-from dvc.utils.fs import makedirs
-
 from .exceptions import TimeoutExpired
 
 logger = logging.getLogger(__name__)
@@ -103,7 +101,7 @@ class ManagedProcess(AbstractContextManager):
 
     def _make_wdir(self):
         if self.wdir:
-            makedirs(self.wdir, exist_ok=True)
+            os.makedirs(self.wdir, exist_ok=True)
 
     def _dump(self):
         self._make_wdir()

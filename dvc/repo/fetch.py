@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def fetch(
+def fetch(  # noqa: C901
     self,
     targets=None,
     jobs=None,

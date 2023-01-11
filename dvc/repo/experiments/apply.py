@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
+def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):  # noqa: C901
     from scmrepo.exceptions import SCMError as _SCMError
 
     from dvc.repo.checkout import checkout as dvc_checkout

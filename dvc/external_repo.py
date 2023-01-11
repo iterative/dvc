@@ -185,7 +185,7 @@ def _cached_clone(url, rev, for_write=False):
 
 
 @wrap_with(threading.Lock())
-def _clone_default_branch(url, rev, for_write=False):
+def _clone_default_branch(url, rev, for_write=False):  # noqa: C901
     """Get or create a clean clone of the url.
 
     The cloned is reactualized with git pull unless rev is a known sha.

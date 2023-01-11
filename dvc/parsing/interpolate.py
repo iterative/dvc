@@ -92,7 +92,7 @@ def _(obj: bool):
 
 
 @to_str.register(dict)
-def _(obj: dict):
+def _(obj: dict):  # noqa: C901
     from dvc.config import Config
 
     config = Config().get("parsing", {})

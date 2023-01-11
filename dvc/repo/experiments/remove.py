@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def remove(
+def remove(  # noqa: C901
     repo: "Repo",
     exp_names: Union[None, str, List[str]] = None,
     rev: Optional[str] = None,
