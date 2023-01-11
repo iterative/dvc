@@ -108,7 +108,7 @@ def restore_fields(stage):
         return
 
     # will be used to restore comments later
-    # noqa, pylint: disable=protected-access
+    # pylint: disable=protected-access
     stage._stage_text = old._stage_text
     stage.meta = old.meta
     stage.desc = old.desc

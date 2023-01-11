@@ -23,20 +23,23 @@ from dvc.dependency import ParamsDependency
 from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
-from dvc.ui import ui
-
-from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..executor.base import BaseExecutor, ExecutorResult
-from ..executor.local import WorkspaceExecutor
-from ..refs import ExpRefInfo
-from ..stash import ExpStash, ExpStashEntry
-from ..utils import (
+from dvc.repo.experiments.exceptions import (
+    CheckpointExistsError,
+    ExperimentExistsError,
+)
+from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorResult
+from dvc.repo.experiments.executor.local import WorkspaceExecutor
+from dvc.repo.experiments.refs import ExpRefInfo
+from dvc.repo.experiments.stash import ExpStash, ExpStashEntry
+from dvc.repo.experiments.utils import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
     exp_refs_by_rev,
     get_exp_rwlock,
     get_random_exp_name,
 )
+from dvc.ui import ui
+
 from .utils import get_remote_executor_refs
 
 if TYPE_CHECKING:

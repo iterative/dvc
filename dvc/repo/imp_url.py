@@ -1,10 +1,10 @@
 import os
 
+from dvc.exceptions import InvalidArgumentError, OutputDuplicationError
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
 from dvc.utils.fs import path_isin
 
-from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from . import locked
 
 

@@ -9,20 +9,20 @@ from voluptuous import Invalid
 
 from dvc.exceptions import DvcException
 from dvc.lock import make_lock
-from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
-from dvc.utils import relpath
-from dvc.utils.fs import remove
-
-from ..exceptions import ExpQueueEmptyError
-from ..executor.base import (
+from dvc.repo.experiments.exceptions import ExpQueueEmptyError
+from dvc.repo.experiments.executor.base import (
     BaseExecutor,
     ExecutorInfo,
     ExecutorResult,
     TaskStatus,
 )
-from ..executor.local import WorkspaceExecutor
-from ..refs import EXEC_BRANCH, WORKSPACE_STASH
-from ..utils import get_exp_rwlock, to_studio_params
+from dvc.repo.experiments.executor.local import WorkspaceExecutor
+from dvc.repo.experiments.refs import EXEC_BRANCH, WORKSPACE_STASH
+from dvc.repo.experiments.utils import get_exp_rwlock, to_studio_params
+from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
+from dvc.utils import relpath
+from dvc.utils.fs import remove
+
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 
 if TYPE_CHECKING:

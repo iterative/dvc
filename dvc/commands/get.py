@@ -3,10 +3,9 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
+from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
 from dvc.scm import CloneError
-
-from ..cli.utils import append_doc_link
 
 logger = logging.getLogger(__name__)
 

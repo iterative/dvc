@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING, Any, Dict
 from celery import shared_task
 from celery.utils.log import get_task_logger
 
-from ..executor.base import ExecutorInfo
-from ..executor.local import TempDirExecutor
+from dvc.repo.experiments.executor.base import ExecutorInfo
+from dvc.repo.experiments.executor.local import TempDirExecutor
+
 from .base import BaseStashQueue, QueueEntry
 
 if TYPE_CHECKING:
-    from ..executor.base import BaseExecutor
+    from dvc.repo.experiments.executor.base import BaseExecutor
 
 
 logger = get_task_logger(__name__)

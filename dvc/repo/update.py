@@ -20,7 +20,8 @@ def update(
     remote=None,
     jobs=None,
 ):
-    from ..dvcfile import Dvcfile
+    from dvc.dvcfile import Dvcfile
+
     from .worktree import update_worktree_stages
 
     if not targets:

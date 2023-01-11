@@ -131,10 +131,8 @@ def _sigshow(_, frame: Optional["FrameType"]) -> None:
     from traceback import format_stack
 
     lines = "\u2015" * get_terminal_size().columns
-    file = sys.stderr
-    print(  # noqa: T201
-        lines, "\n", *format_stack(frame), lines, sep="", file=file
-    )
+    stack = format_stack(frame)
+    print(lines, "\n", *stack, lines, sep="", file=sys.stderr)  # noqa: T201
 
 
 @contextmanager

@@ -1,3 +1,2 @@
 extend = "../pyproject.toml"
-# keep in sync with `../pyproject.toml`
-ignore = ["S", "RUF001", "RUF100", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "A003", "ARG001", "ARG002"]
+extend-ignore = ["S", "RUF001", "ARG001", "ARG002"]

@@ -82,7 +82,7 @@ def _push(
 ) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
     from scmrepo.exceptions import AuthError
 
-    from ...scm import GitAuthError
+    from dvc.scm import GitAuthError
 
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
     logger.debug("git push experiment '%s' -> '%s'", refspec_list, git_remote)

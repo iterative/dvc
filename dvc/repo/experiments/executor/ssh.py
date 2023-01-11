@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Iterable, Optional
 from dvc_ssh import SSHFileSystem
 from funcy import first
 
-from ..refs import (
+from dvc.repo.experiments.refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
@@ -16,6 +16,7 @@ from ..refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
+
 from .base import BaseExecutor, ExecutorInfo, ExecutorResult, TaskStatus
 
 if TYPE_CHECKING:
@@ -126,7 +127,7 @@ class SSHExecutor(BaseExecutor):
         infofile: Optional[str],
         branch: Optional[str] = None,
     ):
-        from ..utils import push_refspec
+        from dvc.repo.experiments.utils import push_refspec
 
         self.status = TaskStatus.PREPARING
         if infofile:
