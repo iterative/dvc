@@ -26,7 +26,7 @@ dependencies = [
     "voluptuous>=0.11.7",
     "requests>=2.22.0",
     # See https://github.com/bdcht/grandalf/issues/26
-    "grandalf==0.6",
+    "grandalf==0.8",
     "distro>=1.3.0",
     "appdirs>=1.4.3",
     "ruamel.yaml>=0.17.11",
