@@ -113,7 +113,7 @@ def _paths_checksums(repo, targets):
     return dict(_output_paths(repo, targets))
 
 
-def _output_paths(repo, targets):
+def _output_paths(repo, targets):  # noqa: C901
     from dvc.fs import LocalFileSystem
     from dvc_data.hashfile.build import build
 

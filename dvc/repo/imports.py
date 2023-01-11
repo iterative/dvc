@@ -1,4 +1,5 @@
 import logging
+import os
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, List, Set, Tuple, Union
 
@@ -94,7 +95,6 @@ def save_imports(
         Objects which were downloaded from source location.
     """
     from dvc.stage.exceptions import DataSourceChanged
-    from dvc.utils.fs import makedirs
     from dvc_data.index import checkout, md5, save
     from dvc_objects.fs.callbacks import Callback
 
@@ -110,7 +110,7 @@ def save_imports(
     if len(data_view):
         cache = repo.odb.local
         if not cache.fs.exists(cache.path):
-            makedirs(cache.path)
+            os.makedirs(cache.path)
         with TemporaryDirectory(dir=cache.path) as tmpdir:
             with Callback.as_tqdm_callback(
                 desc="Downloading imports from source",

@@ -195,7 +195,7 @@ def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
     return results
 
 
-def iter_revs(
+def iter_revs(  # noqa: C901
     scm: "Git",
     revs: Optional[List[str]] = None,
     num: int = 1,

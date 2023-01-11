@@ -527,7 +527,7 @@ class StageLoad:
             stages_ = [stages[key] for key in keys]
         return stages_, dvcfile
 
-    def _collect_all_from_repo(
+    def _collect_all_from_repo(  # noqa: C901
         self, onerror: Callable[[str, Exception], None] = None
     ):
         """Collects all of the stages present in the DVC repo.

@@ -12,7 +12,6 @@ from dvc.dvcfile import Dvcfile
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
 from dvc.testing.workspace_tests import TestImport as _TestImport
-from dvc.utils.fs import makedirs
 
 
 def test_cmd_import(tmp_dir, dvc):
@@ -74,7 +73,7 @@ def test_import_url_to_dir(dname, tmp_dir, dvc):
     tmp_dir.gen({"data_dir": {"file": "file content"}})
     src = os.path.join("data_dir", "file")
 
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     stage = dvc.imp_url(src, dname)
 

@@ -237,7 +237,7 @@ def get_branch_names(
     return names
 
 
-def update_names(
+def update_names(  # noqa: C901
     repo: "Repo",
     branch_names: Dict[str, Optional[str]],
     result: Dict[str, Dict[str, Any]],

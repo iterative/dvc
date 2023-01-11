@@ -9,7 +9,6 @@ from dvc.odbmgr import ODBManager
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.testing.tmp_dir import make_subrepo
-from dvc.utils.fs import makedirs
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):
@@ -170,7 +169,7 @@ def test_get_to_dir(tmp_dir, erepo_dir, dname):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "contents", commit="create file")
 
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     Repo.get(os.fspath(erepo_dir), "file", dname)
 

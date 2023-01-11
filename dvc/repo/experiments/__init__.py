@@ -160,7 +160,7 @@ class Experiments:
             return last_applied
         return None
 
-    def reproduce_celery(
+    def reproduce_celery(  # noqa: C901
         self, entries: Optional[Iterable[QueueEntry]] = None, **kwargs
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}

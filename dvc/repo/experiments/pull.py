@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def pull(
+def pull(  # noqa: C901
     repo,
     git_remote: str,
     exp_names: Union[Iterable[str], str],

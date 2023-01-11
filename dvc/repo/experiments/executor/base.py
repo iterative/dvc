@@ -102,10 +102,9 @@ class ExecutorInfo:
         )
 
     def dump_json(self, filename: str):
-        from dvc.utils.fs import makedirs
         from dvc.utils.serialize import modify_json
 
-        makedirs(os.path.dirname(filename), exist_ok=True)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         with modify_json(filename) as d:
             d.update(self.asdict())
 
@@ -288,10 +287,9 @@ class BaseExecutor(ABC):
             open_func = fs.open
             fs.makedirs(dpath)
         else:
-            from dvc.utils.fs import makedirs
 
             open_func = open
-            makedirs(dpath, exist_ok=True)
+            os.makedirs(dpath, exist_ok=True)
 
         data = {"args": args, "kwargs": kwargs}
         if extra is not None:
@@ -549,7 +547,7 @@ class BaseExecutor(ABC):
 
     @classmethod
     @contextmanager
-    def _repro_dvc(
+    def _repro_dvc(  # noqa: C901
         cls,
         info: "ExecutorInfo",
         infofile: str = None,

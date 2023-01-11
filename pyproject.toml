@@ -162,18 +162,14 @@ line_length = 79
 [tool.ruff]
 line-length = 79
 target-version = "py38"
-format = "grouped"
 show-source = true
 ignore = ["S101", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "A003", "ARG002"]
 select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "T20", "PT003", "PT008", "PT009", "PT010", "PT015", "PT016", "PT017", "PT020", "PT021", "PT024", "PT025", "PT026", "Q", "RET501", "RET504", "SIM", "ARG", "TID", "PGH", "PLC", "PLE", "PLR", "PLW", "PIE", "RUF"]
 # external flake8 codes that should be preserved
-external = ["B301", "B024", "C901", "E302", "C901", "F401", "W601"]
+external = ["B301", "B024", "C901", "E302", "F401", "W601"]
 
 [tool.ruff.per-file-ignores]
 "scripts/**/*.py" = ["T201"]
-
-[tool.ruff.mccabe]
-max-complexity = 15
 
 [tool.ruff.flake8-pytest-style]
 fixture-parentheses = false

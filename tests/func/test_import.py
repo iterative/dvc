@@ -13,7 +13,7 @@ from dvc.fs import system
 from dvc.odbmgr import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
-from dvc.utils.fs import makedirs, remove
+from dvc.utils.fs import remove
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -376,7 +376,7 @@ def test_download_error_pulling_imported_stage(
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
 def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir):
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
