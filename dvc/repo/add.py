@@ -180,7 +180,7 @@ def add(  # noqa: C901
     with translate_graph_error(stages), ui.status(msg) as status:
         # remove existing stages that are to-be replaced with these
         # new stages for the graph checks.
-        repo.ensure_graph_correctness_with(
+        repo.check_graph(
             stages=stages, callback=lambda: status.update("Checking graph")
         )
 

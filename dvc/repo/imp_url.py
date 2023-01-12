@@ -1,9 +1,13 @@
 import os
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import InvalidArgumentError, OutputDuplicationError
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
 from dvc.utils.fs import path_isin
+
+if TYPE_CHECKING:
+    from . import Repo
 
 from . import locked
 
@@ -11,7 +15,7 @@ from . import locked
 @locked
 @scm_context
 def imp_url(  # noqa: C901
-    self,
+    self: "Repo",
     url,
     out=None,
     fname=None,
@@ -78,7 +82,7 @@ def imp_url(  # noqa: C901
     dvcfile.remove()
 
     try:
-        self.ensure_graph_correctness_with(stages={stage})
+        self.check_graph(stages={stage})
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(  # noqa: B904
             exc.output, set(exc.stages) - {stage}
