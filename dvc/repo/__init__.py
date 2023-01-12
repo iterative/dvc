@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import cached_property
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
+    from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +242,9 @@ class Repo:
 
         return Index.from_repo(self)
 
-    def ensure_graph_correctness_with(self, stages=None, callback=None):
+    def check_graph(
+        self, stages: Iterable["Stage"] = None, callback: Callable = None
+    ) -> None:
         if not getattr(self, "_skip_graph_checks", False):
             new = self.index.update(stages)
             if callable(callback):

@@ -185,7 +185,7 @@ class StageLoad:
 
                 check_stage_exists(self.repo, stage, stage.path)
 
-            self.repo.ensure_graph_correctness_with(stages={stage})
+            self.repo.check_graph(stages={stage})
 
         restore_fields(stage)
         return stage
