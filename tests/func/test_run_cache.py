@@ -1,7 +1,8 @@
 import os
 
+import pytest
+
 from dvc.dvcfile import PIPELINE_LOCK
-from dvc.utils import relpath
 from dvc.utils.fs import remove
 
 
@@ -65,16 +66,24 @@ def test_do_not_save_on_no_exec_and_dry(tmp_dir, dvc, run_copy):
     assert not dvc.stage_cache._load(stage)
 
 
-def test_uncached_outs_are_cached(tmp_dir, dvc, run_copy):
+@pytest.mark.parametrize(
+    "out_type,run_cache",
+    [
+        ("metrics_no_cache", True),
+        ("plots_no_cache", True),
+        ("outs_no_cache", False),
+    ],
+)
+def test_outs_no_cache_deactivate_run_cache(tmp_dir, dvc, out_type, run_cache):
     tmp_dir.gen("foo", "foo")
-    stage = dvc.run(
+    dvc.run(
         deps=["foo"],
-        cmd="cp foo bar",
-        outs_no_cache=["bar"],
+        cmd="cp foo bar && cp foo goo",
+        outs=["goo"],
         name="copy-foo-bar",
+        **{out_type: ["bar"]}
     )
-    stage.outs[0].hash_info = stage.outs[0].get_hash()
-    assert os.path.exists(relpath(stage.outs[0].cache_path))
+    assert os.path.isdir(dvc.stage_cache.cache_dir) == run_cache
 
 
 def test_memory_for_multiple_runs_of_same_stage(

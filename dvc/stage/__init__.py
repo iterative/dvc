@@ -591,7 +591,15 @@ class Stage(params.StageParams):
             if kwargs.get("checkpoint_func", None) or no_download:
                 allow_missing = True
 
-            self.save(allow_missing=allow_missing, run_cache=not no_commit)
+            no_cache_outs = any(
+                not out.use_cache
+                for out in self.outs
+                if not (out.is_metric or out.is_plot)
+            )
+            self.save(
+                allow_missing=allow_missing,
+                run_cache=not no_commit and not no_cache_outs,
+            )
 
             if no_download:
                 self.ignore_outs()
