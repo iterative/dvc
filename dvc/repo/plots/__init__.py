@@ -11,7 +11,7 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generator,
+    Iterator,
     List,
     Optional,
     Set,
@@ -20,10 +20,11 @@ from typing import (
 
 import dpath.options
 import dpath.util
-from funcy import cached_property, distinct, first, project
+from funcy import distinct, first, project
 
 from dvc.exceptions import DvcException
 from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils.objects import cached_property
 from dvc.utils.serialize import LOADERS
 from dvc.utils.threadpool import ThreadPoolExecutor
 
@@ -73,7 +74,7 @@ class Plots:
         onerror: Optional[Callable] = None,
         props: Optional[Dict] = None,
         config_files: Optional[Set[str]] = None,
-    ) -> Generator[Dict, None, None]:
+    ) -> Iterator[Dict]:
         """Collects plots definitions and data sources.
 
         Generator yielding a structure like:
@@ -260,9 +261,10 @@ class Plots:
         dvcfile.dump(out.stage, update_lock=False)
 
     @cached_property
-    def templates_dir(self):
+    def templates_dir(self) -> Optional[str]:
         if self.repo.dvc_dir:
             return os.path.join(self.repo.dvc_dir, "plots")
+        return None
 
 
 def _is_plot(out: "Output") -> bool:

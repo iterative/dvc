@@ -4,10 +4,13 @@ import os
 import re
 from contextlib import contextmanager
 from functools import partial
+from typing import Dict
 
-from funcy import cached_property, compact, memoize, re_find
+from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+
+from .utils.objects import cached_property
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +119,7 @@ class Config(dict):
             return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
 
     @cached_property
-    def files(self):
+    def files(self) -> Dict[str, str]:
         files = {
             level: os.path.join(self.get_dir(level), self.CONFIG)
             for level in ("system", "global")

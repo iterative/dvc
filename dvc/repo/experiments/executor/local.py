@@ -2,9 +2,9 @@ import logging
 import os
 from contextlib import ExitStack
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
-from funcy import cached_property, retry
+from funcy import retry
 from scmrepo.exceptions import SCMError as _SCMError
 from shortuuid import uuid
 
@@ -23,6 +23,7 @@ from dvc.repo.experiments.refs import (
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.scm import SCM, GitMergeError
 from dvc.utils.fs import remove
+from dvc.utils.objects import cached_property
 
 from .base import BaseExecutor, TaskStatus
 
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
 
     from dvc.repo import Repo
     from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import NoSCM
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class BaseLocalExecutor(BaseExecutor):
         return f"file://{root_dir}"
 
     @cached_property
-    def scm(self):
+    def scm(self) -> Union["Git", "NoSCM"]:
         return SCM(self.root_dir)
 
     def cleanup(self, infofile: str):

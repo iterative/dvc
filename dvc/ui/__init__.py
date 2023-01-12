@@ -13,9 +13,10 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property
+from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
+    from rich.console import Console as RichConsole
     from rich.status import Status
     from rich.text import Text as RichText
 
@@ -206,14 +207,14 @@ class Console:
         return answer.startswith("y")
 
     @cached_property
-    def rich_console(self):
+    def rich_console(self) -> "RichConsole":
         """rich_console is only set to stdout for now."""
         from rich import console
 
         return console.Console()
 
     @cached_property
-    def error_console(self):
+    def error_console(self) -> "RichConsole":
         from rich import console
 
         return console.Console(stderr=True)

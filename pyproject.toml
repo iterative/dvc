@@ -179,6 +179,10 @@ parametrize-names-type = "csv"
 [tool.ruff.flake8-unused-arguments]
 ignore-variadic-names = true
 
+[tool.ruff.flake8-tidy-imports]
+[tool.ruff.flake8-tidy-imports.banned-api]
+"funcy.cached_property".msg = "use `from dvc.utils.objects import cached_property` instead."
+
 [tool.pytest.ini_options]
 log_level = "debug"
 addopts = "-ra --cov-config pyproject.toml"

@@ -16,7 +16,7 @@ from typing import (
 )
 
 from celery.result import AsyncResult
-from funcy import cached_property, first
+from funcy import first
 from kombu.message import Message
 
 from dvc.daemon import daemonize
@@ -26,6 +26,7 @@ from dvc.repo.experiments.executor.base import ExecutorInfo, ExecutorResult
 from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.ui import ui
+from dvc.utils.objects import cached_property
 
 from .base import (
     BaseStashQueue,

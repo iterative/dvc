@@ -1,9 +1,8 @@
 # pylint: disable=unused-import
 from contextlib import ExitStack
-from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union, cast
 
-from funcy import cached_property
-
+from dvc.utils.objects import cached_property
 from dvc_objects.fs.callbacks import (  # noqa: F401
     DEFAULT_CALLBACK,
     Callback,
@@ -11,6 +10,8 @@ from dvc_objects.fs.callbacks import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from rich.progress import TaskID
+
     from dvc.ui._rich_progress import RichTransferProgress
 
 
@@ -41,7 +42,7 @@ class RichCallback(Callback):
         super().__init__(size=size, value=value)
 
     @cached_property
-    def progress(self):
+    def progress(self) -> "RichTransferProgress":
         from dvc.ui import ui
         from dvc.ui._rich_progress import RichTransferProgress
 
@@ -53,11 +54,13 @@ class RichCallback(Callback):
             disable=self.disable,
             console=ui.error_console,
         )
-        return self._stack.enter_context(progress)
+        return cast(RichTransferProgress, self._stack.enter_context(progress))
 
     @cached_property
-    def task(self):
-        return self.progress.add_task(**self._task_kwargs)
+    def task(self) -> "TaskID":
+        return self.progress.add_task(
+            **self._task_kwargs  # type: ignore[arg-type]
+        )
 
     def __enter__(self):
         return self

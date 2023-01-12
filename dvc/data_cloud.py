@@ -3,9 +3,8 @@
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from funcy import cached_property
-
 from dvc.config import NoRemoteError, RemoteConfigError
+from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
 
 if TYPE_CHECKING:
@@ -34,7 +33,7 @@ class Remote:
                 self.fs.version_aware = True
 
     @cached_property
-    def odb(self):
+    def odb(self) -> "HashFileDB":
         from dvc_data.hashfile.db import get_odb
 
         path = self.path

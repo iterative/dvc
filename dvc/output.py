@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type
 from urllib.parse import urlparse
 
-from funcy import cached_property, collecting, project
+from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
@@ -17,6 +17,7 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
+from dvc.utils.objects import cached_property
 from dvc_data.hashfile import Tree
 from dvc_data.hashfile import check as ocheck
 from dvc_data.hashfile import load as oload

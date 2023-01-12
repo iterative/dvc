@@ -4,11 +4,12 @@ import re
 import time
 from typing import Dict, Iterable, Optional
 
-from funcy import cached_property, chain, first
+from funcy import chain, first
 
 from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import relpath
+from dvc.utils.objects import cached_property
 
 from .exceptions import (
     BaselineMismatchError,
@@ -62,11 +63,11 @@ class Experiments:
         return self.repo.scm
 
     @cached_property
-    def dvc_dir(self):
+    def dvc_dir(self) -> str:
         return relpath(self.repo.dvc_dir, self.repo.scm.root_dir)
 
     @cached_property
-    def args_file(self):
+    def args_file(self) -> str:
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @cached_property
@@ -427,8 +428,10 @@ class Experiments:
             if not name:
                 if rev in self.stash_revs:
                     name = self.stash_revs[rev].name
-                elif rev in self.celery_queue.failed_stash.stash_revs:
-                    name = self.celery_queue.failed_stash.stash_revs[rev].name
+                else:
+                    failed_stash = self.celery_queue.failed_stash
+                    if failed_stash and rev in failed_stash.stash_revs:
+                        name = failed_stash.stash_revs[rev].name
             result[rev] = name
         return result
 

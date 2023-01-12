@@ -7,8 +7,9 @@ from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass
 from typing import List, Optional, TextIO, Union
 
-from funcy import cached_property
 from shortuuid import uuid
+
+from dvc.utils.objects import cached_property
 
 from .exceptions import TimeoutExpired
 
