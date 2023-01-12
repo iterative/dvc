@@ -81,3 +81,16 @@ def test_load_unicode_error(tmp_dir, dvc, mocker):
     with pytest.raises(ConfigError):
         with config.edit():
             pass
+
+
+def test_load_configob_error(tmp_dir, dvc, mocker):
+    from configobj import ConfigObjError
+
+    config = Config(validate=False)
+    mocker.patch(
+        "configobj.ConfigObj",
+        side_effect=ConfigObjError(),
+    )
+    with pytest.raises(ConfigError):
+        with config.edit():
+            pass
