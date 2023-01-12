@@ -169,7 +169,7 @@ class Config(dict):
         return self.fs if level == "repo" else self.wfs
 
     def _load_config(self, level):
-        from configobj import ConfigObj
+        from configobj import ConfigObj, ConfigObjError
 
         filename = self.files[level]
         fs = self._get_fs(level)
@@ -179,6 +179,8 @@ class Config(dict):
                 try:
                     conf_obj = ConfigObj(fobj)
                 except UnicodeDecodeError as exc:
+                    raise ConfigError(str(exc)) from exc
+                except ConfigObjError as exc:
                     raise ConfigError(str(exc)) from exc
         else:
             conf_obj = ConfigObj()
