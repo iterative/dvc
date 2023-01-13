@@ -371,11 +371,11 @@ class LocalCeleryQueue(BaseStashQueue):
             else:
                 to_kill[queue_entry] = rev
 
-        if missing_revs:
-            raise UnresolvedRunningExpNamesError(missing_revs)
-
         if to_kill:
             self._kill_entries(to_kill, force)
+
+        if missing_revs:
+            raise UnresolvedRunningExpNamesError(missing_revs)
 
     def shutdown(self, kill: bool = False):
         self.celery.control.shutdown()
@@ -404,8 +404,8 @@ class LocalCeleryQueue(BaseStashQueue):
             {rev}, self.iter_active(), self.iter_done()
         ).get(rev)
         if queue_entry is None:
-            if rev in self.match_queue_entry_by_name(
-                {rev}, self.iter_queued()
+            if self.match_queue_entry_by_name({rev}, self.iter_queued()).get(
+                rev
             ):
                 raise DvcException(
                     f"Experiment '{rev}' is in queue but has not been started"
