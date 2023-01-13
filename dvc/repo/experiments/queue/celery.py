@@ -319,7 +319,7 @@ class LocalCeleryQueue(BaseStashQueue):
                     self.proc.kill(queue_entry.stash_rev)
                 else:
                     self.proc.interrupt(queue_entry.stash_rev)
-                ui.write(f"Task {rev} has been killed.")
+                ui.write(f"{rev} has been killed.")
             except ProcessLookupError:
                 fail_to_kill_entries[queue_entry] = rev
         return fail_to_kill_entries
