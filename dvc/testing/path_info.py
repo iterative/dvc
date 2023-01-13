@@ -5,9 +5,8 @@ import posixpath
 from typing import Callable
 from urllib.parse import urlparse
 
-from funcy import cached_property
-
 from dvc.utils import relpath
+from dvc.utils.objects import cached_property
 
 
 class _BasePath:
@@ -169,7 +168,7 @@ class URLInfo(_BasePath):
         return self.from_parts(*self._base_parts, path=path)
 
     @cached_property
-    def url(self):
+    def url(self) -> str:
         return f"{self.scheme}://{self.netloc}{self._spath}"
 
     def __str__(self):
@@ -203,15 +202,17 @@ class URLInfo(_BasePath):
         return self._spath
 
     @cached_property
-    def _path(self):  # false-positive, pylint: disable=method-hidden
+    def _path(  # pylint: disable=method-hidden
+        self,
+    ) -> "_URLPathInfo":
         return _URLPathInfo(self._spath)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._path.name
 
     @cached_property
-    def netloc(self):
+    def netloc(self) -> str:
         netloc = self.host
         if self.user:
             netloc = self.user + "@" + netloc
@@ -220,7 +221,7 @@ class URLInfo(_BasePath):
         return netloc
 
     @property
-    def bucket(self):
+    def bucket(self) -> str:
         return self.netloc
 
     @property
@@ -321,7 +322,7 @@ class HTTPURLInfo(URLInfo):
         return self._base_parts + self._path.parts + self._extra_parts
 
     @cached_property
-    def url(self):
+    def url(self) -> str:
         return "{}://{}{}{}{}{}".format(
             self.scheme,
             self.netloc,
@@ -344,7 +345,7 @@ class HTTPURLInfo(URLInfo):
 
 class WebDAVURLInfo(URLInfo):
     @cached_property
-    def url(self):
+    def url(self) -> str:
         return "{}://{}{}".format(
             self.scheme.replace("webdav", "http"), self.netloc, self._spath
         )

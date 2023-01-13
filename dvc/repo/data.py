@@ -13,14 +13,12 @@ from typing import (
     Tuple,
     TypedDict,
     Union,
-    cast,
 )
 
 from dvc.fs.git import GitFileSystem
 from dvc.ui import ui
 
 if TYPE_CHECKING:
-    from dvc.output import Output
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
     from dvc_data.hashfile.db import HashFileDB
@@ -175,7 +173,6 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
 
     unstaged_diff = defaultdict(list)
     for out in repo.index.outs:
-        out = cast("Output", out)
         if not out.use_cache:
             continue
 
@@ -223,7 +220,6 @@ def _diff_head_to_index(
     staged_diff = defaultdict(list)
     for rev in repo.brancher(revs=[head]):
         for out in repo.index.outs:
-            out = cast("Output", out)
             if not out.use_cache:
                 continue
 

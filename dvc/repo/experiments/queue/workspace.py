@@ -57,7 +57,7 @@ class WorkspaceQueue(BaseStashQueue):
         return QueueGetResult(entry, executor)
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
-        for rev, entry in self.stash.stash_revs:
+        for rev, entry in self.stash.stash_revs.items():
             yield QueueEntry(
                 self.repo.root_dir,
                 self.scm.root_dir,

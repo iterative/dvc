@@ -1,4 +1,5 @@
 import errno
+import functools
 import logging
 import ntpath
 import os
@@ -8,7 +9,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
-from funcy import cached_property, wrap_prop, wrap_with
+from funcy import wrap_with
 
 from dvc_objects.fs.base import FileSystem
 from dvc_objects.fs.path import Path
@@ -374,9 +375,8 @@ class DVCFileSystem(FileSystem):
     def _prepare_credentials(self, **config):
         return config
 
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def fs(self):
+    @functools.cached_property
+    def fs(self):  # pylint: disable=invalid-overridden-method
         return _DVCFileSystem(**self.fs_args)
 
     def isdvc(self, path, **kwargs):

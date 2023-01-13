@@ -3,9 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Iterable, Optional
-
-from funcy import cached_property
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Union
 
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
@@ -13,12 +11,19 @@ from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
 from dvc.utils import env2bool
 from dvc.utils.fs import path_isin
+from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
-    from dvc.repo.scm_context import SCMContext
-    from dvc.scm import Base
+    from dvc.fs.data import DataFileSystem
+    from dvc.fs.dvc import DVCFileSystem
+    from dvc.machine import MachineManager
+    from dvc.scm import Base, Git, NoSCM
     from dvc.stage import Stage
+
+    from .experiments import Experiments
+    from .index import Index
+    from .scm_context import SCMContext
 
 logger = logging.getLogger(__name__)
 
@@ -237,13 +242,13 @@ class Repo:
         return self.url or self.root_dir
 
     @cached_property
-    def index(self):
+    def index(self) -> "Index":
         from dvc.repo.index import Index
 
         return Index.from_repo(self)
 
     def check_graph(
-        self, stages: Iterable["Stage"] = None, callback: Callable = None
+        self, stages: Iterable["Stage"], callback: Callable = None
     ) -> None:
         if not getattr(self, "_skip_graph_checks", False):
             new = self.index.update(stages)
@@ -267,7 +272,7 @@ class Repo:
         return external_repo(url, *args, **kwargs)
 
     @cached_property
-    def scm(self):
+    def scm(self) -> Union["Git", "NoSCM"]:
         from dvc.scm import SCM, SCMError
 
         if self._scm:
@@ -291,7 +296,6 @@ class Repo:
 
     @cached_property
     def dvcignore(self) -> DvcIgnoreFilter:
-
         return DvcIgnoreFilter(self.fs, self.root_dir)
 
     def get_rev(self):
@@ -306,13 +310,13 @@ class Repo:
         return self.fs.rev
 
     @cached_property
-    def experiments(self):
+    def experiments(self) -> "Experiments":
         from dvc.repo.experiments import Experiments
 
         return Experiments(self)
 
     @cached_property
-    def machine(self):
+    def machine(self) -> Optional["MachineManager"]:
         from dvc.machine import MachineManager
 
         if self.tmp_dir and (
@@ -366,12 +370,14 @@ class Repo:
         raise NotDvcRepoError(msg)
 
     @classmethod
-    def find_dvc_dir(cls, root=None):
+    def find_dvc_dir(cls, root=None) -> str:
         root_dir = cls.find_root(root)
         return os.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
-    def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
+    def init(
+        root_dir=os.curdir, no_scm=False, force=False, subdir=False
+    ) -> "Repo":
         from dvc.repo.init import init
 
         return init(
@@ -459,7 +465,9 @@ class Repo:
         return used
 
     @property
-    def stages(self):  # obsolete, only for backward-compatibility
+    def stages(
+        self,
+    ) -> List["Stage"]:  # obsolete, only for backward-compatibility
         return self.index.stages
 
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
@@ -494,13 +502,13 @@ class Repo:
         return self.DVC_DIR in path_parts
 
     @cached_property
-    def datafs(self):
+    def datafs(self) -> "DataFileSystem":
         from dvc.fs.data import DataFileSystem
 
         return DataFileSystem(index=self.index.data["repo"])
 
     @cached_property
-    def dvcfs(self):
+    def dvcfs(self) -> "DVCFileSystem":
         from dvc.fs.dvc import DVCFileSystem
 
         return DVCFileSystem(

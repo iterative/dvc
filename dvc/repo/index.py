@@ -16,10 +16,10 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property
 from funcy.debug import format_time
 
 from dvc.fs import LocalFileSystem
+from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
     from networkx import DiGraph

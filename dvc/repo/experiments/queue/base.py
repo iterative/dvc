@@ -17,7 +17,7 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property, retry
+from funcy import retry
 
 from dvc.dependency import ParamsDependency
 from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
@@ -39,6 +39,7 @@ from dvc.repo.experiments.utils import (
     get_random_exp_name,
 )
 from dvc.ui import ui
+from dvc.utils.objects import cached_property
 
 from .utils import get_remote_executor_refs
 
@@ -131,7 +132,7 @@ class BaseStashQueue(ABC):
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
 
     @cached_property
-    def args_file(self):
+    def args_file(self) -> str:
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @abstractmethod

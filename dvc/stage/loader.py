@@ -2,12 +2,14 @@ import logging
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
+from typing import Any, Dict
 
-from funcy import cached_property, get_in, lcat, once, project
+from funcy import get_in, lcat, once, project
 
 from dvc import dependency, output
 from dvc.parsing import FOREACH_KWD, JOIN, EntryNotFound
 from dvc.parsing.versions import LOCKFILE_VERSION
+from dvc.utils.objects import cached_property
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 
@@ -40,7 +42,7 @@ class StageLoader(Mapping):
             self._lockfile_data = lockfile_data.get("stages", {})
 
     @cached_property
-    def lockfile_data(self):
+    def lockfile_data(self) -> Dict[str, Any]:
         if not self._lockfile_data:
             logger.debug("Lockfile for '%s' not found", self.dvcfile.relpath)
         return self._lockfile_data

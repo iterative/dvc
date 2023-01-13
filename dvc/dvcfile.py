@@ -1,9 +1,16 @@
 import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, List, Tuple, TypeVar, Union
-
-from funcy import cached_property
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from dvc.exceptions import DvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
@@ -16,10 +23,13 @@ from dvc.stage.exceptions import (
 from dvc.types import AnyPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
+from dvc.utils.objects import cached_property
 from dvc.utils.serialize import dump_yaml, modify_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+
+    from .parsing import DataResolver
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -291,34 +301,34 @@ class PipelineFile(FileMixin):
         )
 
     @cached_property
-    def contents(self):
+    def contents(self) -> Dict[str, Any]:
         return self._load()[0]
 
     @cached_property
-    def lockfile_contents(self):
+    def lockfile_contents(self) -> Dict[str, Any]:
         return self._lockfile.load()
 
     @cached_property
-    def resolver(self):
+    def resolver(self) -> "DataResolver":
         from .parsing import DataResolver
 
         wdir = self.repo.fs.path.parent(self.path)
         return DataResolver(self.repo, wdir, self.contents)
 
     @cached_property
-    def stages(self):
+    def stages(self) -> LOADER:
         return self.LOADER(self, self.contents, self.lockfile_contents)
 
     @property
-    def metrics(self):
+    def metrics(self) -> List[str]:
         return self.contents.get("metrics", [])
 
     @property
-    def plots(self):
+    def plots(self) -> Any:
         return self.contents.get("plots", {})
 
     @property
-    def params(self):
+    def params(self) -> List[str]:
         return self.contents.get("params", [])
 
     def remove(self, force=False):

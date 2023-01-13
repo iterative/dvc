@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Generator, Optional
 
-from funcy import cached_property, first
+from funcy import first
 
 from dvc.exceptions import DvcException
 from dvc.repo.experiments.exceptions import ExpQueueEmptyError
@@ -15,6 +15,7 @@ from dvc.repo.experiments.executor.base import (
 )
 from dvc.repo.experiments.executor.local import TempDirExecutor
 from dvc.repo.experiments.utils import EXEC_PID_DIR, EXEC_TMP_DIR
+from dvc.utils.objects import cached_property
 
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
 from .utils import fetch_running_exp_from_temp_dir

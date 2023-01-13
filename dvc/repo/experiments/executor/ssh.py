@@ -81,6 +81,7 @@ class SSHExecutor(BaseExecutor):
         **kwargs,
     ):
         machine_name: Optional[str] = kwargs.pop("machine_name", None)
+        assert repo.machine
         executor = cls._from_stash_entry(
             repo,
             entry,

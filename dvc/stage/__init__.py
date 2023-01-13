@@ -6,7 +6,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 
-from funcy import cached_property, project
+from funcy import project
 
 from dvc import prompt
 from dvc.exceptions import (
@@ -16,6 +16,7 @@ from dvc.exceptions import (
     MergeError,
 )
 from dvc.utils import relpath
+from dvc.utils.objects import cached_property
 
 from . import params
 from .decorators import rwlocked
@@ -216,11 +217,11 @@ class Stage(params.StageParams):
         )
 
     @cached_property
-    def path_in_repo(self):
+    def path_in_repo(self) -> str:
         return relpath(self.path, self.repo.root_dir)
 
     @cached_property
-    def relpath(self):
+    def relpath(self) -> str:
         return relpath(self.path)
 
     @property

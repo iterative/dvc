@@ -14,10 +14,11 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property, collecting, first, isa, join, reraise
+from funcy import collecting, first, isa, join, reraise
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import ParseError
+from dvc.utils.objects import cached_property
 
 from .context import (
     Context,
