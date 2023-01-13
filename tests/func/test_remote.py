@@ -1,4 +1,5 @@
 import errno
+import itertools
 import os
 import stat
 from unittest.mock import patch
@@ -163,7 +164,9 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     assert hash1 == hash2
 
 
-def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
+def test_partial_push_n_pull(  # noqa: C901
+    tmp_dir, dvc, tmp_path_factory, local_remote
+):
     from dvc_objects.fs import generic
 
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
@@ -175,10 +178,26 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     odb = dvc.cloud.get_remote_odb("upstream")
 
     def unreliable_upload(from_fs, from_info, to_fs, to_info, **kwargs):
-        if os.path.abspath(to_info) == os.path.abspath(
-            odb.get(foo.hash_info.value).path
-        ):
-            raise Exception("stop foo")
+        on_error = kwargs["on_error"]
+        assert on_error
+        if isinstance(from_info, str):
+            from_info = [from_info]
+        else:
+            from_info = list(from_info)
+        if isinstance(to_info, str):
+            to_info = [to_info]
+        else:
+            to_info = list(to_info)
+        for i in range(len(from_info) - 1, -1, -1):
+            from_i = from_info[i]
+            to_i = to_info[i]
+            if os.path.abspath(to_i) == os.path.abspath(
+                odb.get(foo.hash_info.value).path
+            ):
+                if on_error:
+                    on_error(from_i, to_i, Exception("stop foo"))
+                del from_info[i]
+                del to_info[i]
         return original(from_fs, from_info, to_fs, to_info, **kwargs)
 
     with patch.object(generic, "transfer", unreliable_upload):
@@ -195,7 +214,18 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     dvc.odb.local.clear()
 
     baz._collect_used_dir_cache()
-    with patch.object(generic, "transfer", side_effect=Exception):
+
+    def unreliable_download(_from_fs, from_info, _to_fs, to_info, **kwargs):
+        on_error = kwargs["on_error"]
+        assert on_error
+        if isinstance(from_info, str):
+            from_info = [from_info]
+        if isinstance(to_info, str):
+            to_info = [to_info]
+        for from_i, to_i in zip(from_info, to_info):
+            on_error(from_i, to_i, Exception())
+
+    with patch.object(generic, "transfer", unreliable_download):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -270,7 +300,11 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     odb = dvc.cloud.get_remote_odb("upstream")
     foo_path = odb.oid_to_path(foo.hash_info.value)
     bar_path = odb.oid_to_path(foo.obj._trie[("bar",)][1].value)
-    paths = [args[3] for args, _ in mocked_upload.call_args_list]
+    paths = list(
+        itertools.chain.from_iterable(
+            args[3] for args, _ in mocked_upload.call_args_list
+        )
+    )
     assert paths.index(foo_path) > paths.index(bar_path)
 
 
