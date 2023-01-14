@@ -97,6 +97,7 @@ def push_worktree(
     jobs: Optional[int] = None,
     **kwargs,
 ) -> int:
+    from dvc.repo.index import build_data_index
     from dvc_data.index import checkout
 
     view = worktree_view(
@@ -108,7 +109,7 @@ def push_worktree(
     new_index = view.data["repo"]
     if remote.worktree:
         logger.debug("indexing latest worktree for '%s'", remote.path)
-        old_index = _build_worktree_index(repo, remote, view)
+        old_index = build_data_index(view, remote.path, remote.fs)
         logger.debug("Pushing worktree changes to '%s'", remote.path)
     else:
         old_index = None
@@ -145,26 +146,6 @@ def push_worktree(
                 _update_out_meta(out, repo.index.data[workspace])
             stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
     return pushed
-
-
-def _build_worktree_index(
-    repo: "Repo", remote: "Remote", view: "IndexView"
-) -> "DataIndex":
-    from dvc_data.index import DataIndex
-    from dvc_data.index.build import build_entries
-
-    index = DataIndex()
-    for out in view.outs:
-        _workspace, key = out.index_key
-        parts = out.fs.path.relparts(out.fs_path, repo.root_dir)
-        path = remote.fs.path.join(remote.path, *parts)
-        for entry in build_entries(path, remote.fs):
-            if not entry.key or entry.key == ("",):
-                entry.key = key
-            else:
-                entry.key = key + entry.key
-            index.add(entry)
-    return index
 
 
 def _update_out_meta(

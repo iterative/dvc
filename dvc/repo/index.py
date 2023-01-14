@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.index import DataIndex, DataIndexKey, DataIndexView
     from dvc_objects.db import ObjectDB
+    from dvc_objects.fs.base import FileSystem
 
 
 logger = logging.getLogger(__name__)
@@ -447,3 +448,50 @@ class IndexView:
             else:
                 data[workspace] = DataIndex()
         return data
+
+
+def build_data_index(
+    index: Union["Index", "IndexView"],
+    path: str,
+    fs: "FileSystem",
+    workspace: Optional[str] = "repo",
+) -> "DataIndex":
+    from dvc_data.index import DataIndex, DataIndexEntry
+    from dvc_data.index.build import build_entries, build_entry
+
+    data = DataIndex()
+    for out in index.outs:
+        if not out.use_cache:
+            continue
+
+        ws, key = out.index_key
+        if ws != workspace:
+            continue
+
+        parts = out.fs.path.relparts(out.fs_path, out.repo.root_dir)
+        out_path = fs.path.join(path, *parts)
+
+        try:
+            entry = build_entry(out_path, fs)
+        except FileNotFoundError:
+            entry = DataIndexEntry(path=out_path, fs=fs)
+
+        entry.key = key
+
+        if not entry.meta or not entry.meta.isdir:
+            data.add(entry)
+            continue
+
+        entry.loaded = True
+        data.add(entry)
+
+        for entry in build_entries(out_path, fs):
+            if not entry.key or entry.key == ("",):
+                # NOTE: whether the root will be returned by build_entries
+                # depends on the filesystem (e.g. local doesn't, but s3 does).
+                entry.key = key
+            else:
+                entry.key = key + entry.key
+            data.add(entry)
+
+    return data
