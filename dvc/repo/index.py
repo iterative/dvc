@@ -396,6 +396,10 @@ class IndexView:
         self._outs_filter = outs_filter
 
     @property
+    def repo(self) -> "Repo":
+        return self._index.repo
+
+    @property
     def deps(self) -> Iterator["Dependency"]:
         for stage in self.stages:
             yield from stage.deps
@@ -459,9 +463,11 @@ def build_data_index(
     path: str,
     fs: "FileSystem",
     workspace: Optional[str] = "repo",
+    compute_hash: Optional[bool] = False,
 ) -> "DataIndex":
     from dvc_data.index import DataIndex, DataIndexEntry
     from dvc_data.index.build import build_entries, build_entry
+    from dvc_data.index.save import build_tree
 
     data = DataIndex()
     for out in index.outs:
@@ -476,26 +482,39 @@ def build_data_index(
         out_path = fs.path.join(path, *parts)
 
         try:
-            entry = build_entry(out_path, fs)
+            out_entry = build_entry(
+                out_path,
+                fs,
+                compute_hash=compute_hash,
+                state=index.repo.state,
+            )
         except FileNotFoundError:
-            entry = DataIndexEntry(path=out_path, fs=fs)
+            out_entry = DataIndexEntry(path=out_path, fs=fs)
 
-        entry.key = key
+        out_entry.key = key
 
-        if not entry.meta or not entry.meta.isdir:
-            data.add(entry)
+        if not out_entry.meta or not out_entry.meta.isdir:
+            data.add(out_entry)
             continue
 
-        entry.loaded = True
-        data.add(entry)
-
-        for entry in build_entries(out_path, fs):
+        for entry in build_entries(
+            out_path, fs, compute_hash=compute_hash, state=index.repo.state
+        ):
             if not entry.key or entry.key == ("",):
                 # NOTE: whether the root will be returned by build_entries
                 # depends on the filesystem (e.g. local doesn't, but s3 does).
-                entry.key = key
+                continue
             else:
                 entry.key = key + entry.key
+
             data.add(entry)
+
+        if compute_hash:
+            tree_meta, tree = build_tree(data, key)
+            out_entry.meta = tree_meta
+            out_entry.hash_info = tree.hash_info
+
+        out_entry.loaded = True
+        data.add(out_entry)
 
     return data
