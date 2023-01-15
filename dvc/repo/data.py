@@ -214,7 +214,7 @@ def _diff_head_to_index(
     repo: "Repo", head: str = "HEAD", **kwargs: Any
 ) -> Dict[str, List[str]]:
     # we need to store objects from index and the HEAD to diff later
-    objs: Dict[str, Dict[str, Tuple["HashFile", "HashInfo"]]]
+    objs: Dict[str, Dict[str, Tuple[Optional["HashFile"], "HashInfo"]]]
     objs = defaultdict(dict)
 
     staged_diff = defaultdict(list)

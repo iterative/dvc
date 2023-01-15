@@ -11,6 +11,7 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    cast,
 )
 
 from dvc.exceptions import FileMissingError
@@ -22,7 +23,7 @@ from dvc.utils.fs import path_isin
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
-    from dvc.fs import FileSystem
+    from dvc.fs import FileSystem, GitFileSystem
     from dvc.fs.data import DataFileSystem
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from dvc.scm import Base, Git, NoSCM
     from dvc.stage import Stage
     from dvc.types import DictStrAny
+    from dvc_data.hashfile.state import StateBase
 
     from .experiments import Experiments
     from .index import Index
@@ -215,13 +217,14 @@ class Repo:
 
         self.lock: "LockBase"
         self.odb: ODBManager
+        self.state: "StateBase"
         if isinstance(self.fs, GitFileSystem) or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()
             self.odb = ODBManager(self)
             self.tmp_dir = None
         else:
-            self.fs.makedirs(self.tmp_dir, exist_ok=True)
+            self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
 
             if isinstance(self.fs, LocalFileSystem):
                 self.lock = make_lock(
@@ -322,7 +325,7 @@ class Repo:
 
             with map_scm_exception():
                 return self.scm.get_rev()
-        return self.fs.rev
+        return cast("GitFileSystem", self.fs).rev
 
     @cached_property
     def experiments(self) -> "Experiments":
@@ -541,6 +544,7 @@ class Repo:
         from dvc.fs.data import DataFileSystem
         from dvc.fs.dvc import DVCFileSystem
 
+        fs: Union["FileSystem", DataFileSystem, DVCFileSystem]
         if os.path.isabs(path):
             fs = DataFileSystem(index=self.index.data["local"])
             fs_path = path

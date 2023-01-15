@@ -2,7 +2,7 @@ import logging
 import os
 import typing
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, cast
 
 import dpath.util
 from voluptuous import Any
@@ -41,7 +41,10 @@ class ParamsDependency(Dependency):
         self.params = list(params) if params else []
         hash_info = HashInfo()
         if isinstance(params, dict):
-            hash_info = HashInfo(self.PARAM_PARAMS, params)
+            hash_info = HashInfo(
+                self.PARAM_PARAMS,
+                params,  # type: ignore[arg-type]
+            )
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
         super().__init__(stage, path, repo=repo)
@@ -64,7 +67,10 @@ class ParamsDependency(Dependency):
         for param in self.params:
             if param in values:
                 info[param] = values[param]
-        self.hash_info = HashInfo(self.PARAM_PARAMS, info)
+        self.hash_info = HashInfo(
+            self.PARAM_PARAMS,
+            info,  # type: ignore[arg-type]
+        )
 
     def read_params(
         self, flatten: bool = True, **kwargs: typing.Any
@@ -105,7 +111,7 @@ class ParamsDependency(Dependency):
         from funcy import ldistinct
 
         status: Dict[str, Any] = defaultdict(dict)
-        info = self.hash_info.value if self.hash_info else {}
+        info = cast(dict, self.hash_info.value) if self.hash_info else {}
         actual = self.read_params()
 
         # NOTE: we want to preserve the order of params as specified in the
@@ -159,7 +165,7 @@ class ParamsDependency(Dependency):
                 )
             )
 
-        return HashInfo(self.PARAM_PARAMS, info)
+        return HashInfo(self.PARAM_PARAMS, info)  # type: ignore[arg-type]
 
     def save(self):
         if not self.exists:

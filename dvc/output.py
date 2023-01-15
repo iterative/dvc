@@ -1,7 +1,7 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
 from urllib.parse import urlparse
 
 from funcy import collecting, project
@@ -732,7 +732,8 @@ class Output:
             self.hash_name,
             ignore=self.dvcignore,
         )
-        save_obj = save_obj.filter(prefix)
+        save_obj = cast(Tree, save_obj)
+        save_obj = cast(Tree, save_obj.filter(prefix))
         checkout_obj = save_obj.get_obj(self.odb, prefix)
         otransfer(
             staging,
@@ -746,7 +747,7 @@ class Output:
     def dumpd(self, **kwargs):  # noqa: C901
         meta = self.meta.to_dict()
         meta.pop("isdir", None)
-        ret = {**self.hash_info.to_dict(), **meta}
+        ret: Dict[str, Any] = {**self.hash_info.to_dict(), **meta}
 
         if self.is_in_repo:
             path = self.fs.path.as_posix(
@@ -792,11 +793,14 @@ class Output:
             and self.hash_info.isdir
             and (kwargs.get("with_files") or self.files is not None)
         ):
+            obj: Optional["HashFile"]
             if self.obj:
                 obj = self.obj
             else:
                 obj = self.get_obj()
-            ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
+            if obj:
+                obj = cast(Tree, obj)
+                ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
 
         return ret
 
@@ -844,6 +848,7 @@ class Output:
         fs_path = self.fs.path
         if filter_info and filter_info != self.fs_path:
             prefix = fs_path.relparts(filter_info, self.fs_path)
+            obj = cast(Tree, obj)
             obj = obj.get_obj(self.odb, prefix)
 
         return obj
@@ -1032,8 +1037,9 @@ class Output:
             prefix = self.fs.path.parts(
                 self.fs.path.relpath(filter_info, self.fs_path)
             )
+            obj = cast(Tree, obj)
             return obj.filter(prefix)
-        return obj
+        return cast(Tree, obj)
 
     def get_used_objs(  # noqa: C901
         self, **kwargs
@@ -1071,6 +1077,7 @@ class Output:
             logger.warning(msg)
             return {}
 
+        obj: Optional["HashFile"]
         if self.is_dir_checksum:
             obj = self._collect_used_dir_cache(**kwargs)
         else:

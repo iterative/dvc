@@ -1,7 +1,7 @@
 import logging
 import os
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, List, Set, Tuple, Union
+from typing import TYPE_CHECKING, List, Set, Tuple, Union, cast
 
 if TYPE_CHECKING:
     from dvc.dependency.base import Dependency
@@ -77,7 +77,7 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
                 out.hash_info = dep.get_obj().hash_info
                 out.meta = dep.get_meta()
             else:
-                out.hash_info = entry.hash_info
+                out.hash_info = cast("HashInfo", entry.hash_info)
                 out.meta = entry.meta
             out.stage.dump()
             updated += out.meta.nfiles if out.meta.nfiles is not None else 1
@@ -123,7 +123,9 @@ def save_imports(
         downloaded.update(
             entry.hash_info
             for _, entry in data_view.iteritems()
-            if not entry.meta.isdir and entry.hash_info is not None
+            if entry.meta is not None
+            and not entry.meta.isdir
+            and entry.hash_info is not None
         )
 
     if unpartial:
