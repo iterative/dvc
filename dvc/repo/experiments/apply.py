@@ -70,6 +70,7 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):  # noqa: C901
     repo.scm.reset()
 
     if is_stash:
+        assert repo.tmp_dir is not None
         args_path = os.path.join(repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
         if os.path.exists(args_path):
             remove(args_path)

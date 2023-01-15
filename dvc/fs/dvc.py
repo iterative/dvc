@@ -6,11 +6,21 @@ import os
 import posixpath
 import threading
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from fsspec.spec import AbstractFileSystem
 from funcy import wrap_with
 
+from dvc.types import StrPath
 from dvc_objects.fs.base import FileSystem
 from dvc_objects.fs.path import Path
 
@@ -155,7 +165,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
-    def _get_key(self, path) -> Key:
+    def _get_key(self, path: StrPath) -> Key:
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
         if parts == (os.curdir,):
             return ()
@@ -372,29 +382,30 @@ class DVCFileSystem(FileSystem):
     protocol = "local"
     PARAM_CHECKSUM = "md5"
 
-    def _prepare_credentials(self, **config):
+    def _prepare_credentials(self, **config) -> Dict[str, Any]:
         return config
 
     @functools.cached_property
-    def fs(self):  # pylint: disable=invalid-overridden-method
+    # pylint: disable-next=invalid-overridden-method
+    def fs(self) -> "DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
 
-    def isdvc(self, path, **kwargs):
+    def isdvc(self, path, **kwargs) -> bool:
         return self.fs.isdvc(path, **kwargs)
 
     @property
-    def path(self):  # pylint: disable=invalid-overridden-method
+    def path(self) -> Path:  # pylint: disable=invalid-overridden-method
         return self.fs.path
 
     @property
-    def repo(self):
+    def repo(self) -> "Repo":
         return self.fs.repo
 
     @property
-    def repo_url(self):
+    def repo_url(self) -> str:
         return self.fs.repo_url
 
-    def from_os_path(self, path):
+    def from_os_path(self, path: str) -> str:
         if os.path.isabs(path):
             path = os.path.relpath(path, self.repo.root_dir)
 

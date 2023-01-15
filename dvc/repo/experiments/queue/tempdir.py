@@ -38,6 +38,7 @@ class TempDirQueue(WorkspaceQueue):
 
     @cached_property
     def _standalone_tmp_dir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, _STANDALONE_TMP_DIR)
 
     @cached_property

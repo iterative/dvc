@@ -167,6 +167,7 @@ class TempDirExecutor(BaseLocalExecutor):
         wdir: Optional[str] = None,
         **kwargs,
     ):
+        assert repo.tmp_dir
         parent_dir: str = wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
         os.makedirs(parent_dir, exist_ok=True)
         tmp_dir = mkdtemp(dir=parent_dir)

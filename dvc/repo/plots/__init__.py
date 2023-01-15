@@ -29,8 +29,10 @@ from dvc.utils.serialize import LOADERS
 from dvc.utils.threadpool import ThreadPoolExecutor
 
 if TYPE_CHECKING:
+    from dvc.fs import FileSystem
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.types import DictAny, DictStrAny, StrPath
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
@@ -420,7 +422,12 @@ def _adjust_sources(fs, plot_props, config_dir):
 
 
 def _resolve_definitions(
-    fs, targets, props, config_path, definitions, onerror=None
+    fs: "FileSystem",
+    targets: List[str],
+    props: "DictAny",
+    config_path: "StrPath",
+    definitions: "DictStrAny",
+    onerror: Optional[Callable[[Any], Any]] = None,
 ):
     config_dir = fs.path.dirname(config_path)
     result: Dict[str, Dict] = {}

@@ -7,7 +7,7 @@ from scmrepo.exceptions import SCMError
 from dvc.fs.dvc import DVCFileSystem
 from dvc.output import Output
 from dvc.repo import locked
-from dvc.repo.collect import StrPaths, collect
+from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.utils import (
     as_posix,
@@ -25,7 +25,7 @@ def _is_metric(out: Output) -> bool:
     return bool(out.metric)
 
 
-def _to_fs_paths(metrics: List[Output]) -> StrPaths:
+def _to_fs_paths(metrics: List[Output]) -> List["str"]:
     result = []
     for out in metrics:
         if out.metric:

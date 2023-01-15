@@ -68,6 +68,7 @@ class LocalCeleryQueue(BaseStashQueue):
 
     @cached_property
     def wdir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, self.CELERY_DIR)
 
     @cached_property
@@ -321,7 +322,9 @@ class LocalCeleryQueue(BaseStashQueue):
                 fail_to_kill_entries[queue_entry] = rev
         return fail_to_kill_entries
 
-    def _mark_inactive_tasks_failure(self, remained_entries):
+    def _mark_inactive_tasks_failure(
+        self, remained_entries: Dict[QueueEntry, str]
+    ) -> None:
         remained_revs: List[str] = []
         running_ids = self._get_running_task_ids()
         logger.debug(f"Current running tasks ids: {running_ids}.")
@@ -343,7 +346,9 @@ class LocalCeleryQueue(BaseStashQueue):
         if remained_revs:
             raise CannotKillTasksError(remained_revs)
 
-    def _kill_entries(self, entries: Dict[QueueEntry, str], force: bool):
+    def _kill_entries(
+        self, entries: Dict[QueueEntry, str], force: bool
+    ) -> None:
         logger.debug(
             "Found active tasks: '%s' to kill",
             list(entries.values()),
