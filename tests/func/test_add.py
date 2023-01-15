@@ -762,13 +762,13 @@ def test_output_duplication_for_pipeline_tracked(tmp_dir, dvc, run_copy):
 
 
 def test_add_pipeline_file(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE
+    from dvc.dvcfile import PROJECT_FILE
 
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
 
     with pytest.raises(OutputIsStageFileError):
-        dvc.add(PIPELINE_FILE)
+        dvc.add(PROJECT_FILE)
 
 
 def test_add_symlink_file(tmp_dir, dvc):

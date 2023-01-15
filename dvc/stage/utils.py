@@ -256,14 +256,14 @@ def prepare_file_path(kwargs):
 def check_stage_exists(
     repo: "Repo", stage: Union["Stage", "PipelineStage"], path: str
 ):
-    from dvc.dvcfile import make_dvcfile
+    from dvc.dvcfile import load_file
     from dvc.stage import PipelineStage
     from dvc.stage.exceptions import (
         DuplicateStageName,
         StageFileAlreadyExistsError,
     )
 
-    dvcfile = make_dvcfile(repo, path)
+    dvcfile = load_file(repo, path)
     if not dvcfile.exists():
         return
 

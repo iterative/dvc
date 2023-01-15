@@ -20,8 +20,6 @@ def update(  # noqa: C901
     remote=None,
     jobs=None,
 ):
-    from dvc.dvcfile import Dvcfile
-
     from .worktree import update_worktree_stages
 
     if not targets:
@@ -61,8 +59,7 @@ def update(  # noqa: C901
             no_download=no_download,
             jobs=jobs,
         )
-        dvcfile = Dvcfile(self, stage.path)
-        dvcfile.dump(stage)
+        stage.dump()
 
     if other_stage_infos:
         remote_obj = self.cloud.get_remote(name=remote)

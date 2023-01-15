@@ -5,7 +5,7 @@ from operator import itemgetter
 
 import pytest
 
-from dvc.dvcfile import PIPELINE_LOCK, Lockfile
+from dvc.dvcfile import LOCK_FILE, Lockfile
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
@@ -22,7 +22,7 @@ FS_STRUCTURE = {
 }
 
 
-def read_lock_file(file=PIPELINE_LOCK):
+def read_lock_file(file=LOCK_FILE):
     with open(file, encoding="utf-8") as f:
         data = parse_yaml_for_update(f.read(), file)
     assert isinstance(data, OrderedDict)
@@ -86,7 +86,7 @@ def test_order_is_preserved_when_pipeline_order_changes(
         new_lock_content = read_lock_file()
         assert_eq_lockfile(new_lock_content, initial_content)
 
-        (tmp_dir / PIPELINE_LOCK).unlink()
+        (tmp_dir / LOCK_FILE).unlink()
         assert dvc.reproduce(stage.addressing) == [stage]
         new_lock_content = read_lock_file()
         assert_eq_lockfile(new_lock_content, initial_content)
@@ -152,12 +152,12 @@ def test_params_dump(tmp_dir, dvc, run_head):
     stage.dvcfile._dump_pipeline_file(stage)
     assert not dvc.reproduce(stage.addressing)
 
-    (tmp_dir / PIPELINE_LOCK).unlink()
+    (tmp_dir / LOCK_FILE).unlink()
     assert dvc.reproduce(stage.addressing) == [stage]
     assert_eq_lockfile(initial_content, read_lock_file())
 
     # remove build-cache and check if the same structure is built
-    for item in [dvc.stage_cache.cache_dir, PIPELINE_LOCK]:
+    for item in [dvc.stage_cache.cache_dir, LOCK_FILE]:
         remove(item)
     assert dvc.reproduce(stage.addressing) == [stage]
     assert_eq_lockfile(initial_content, read_lock_file())

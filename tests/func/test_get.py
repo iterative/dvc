@@ -255,13 +255,13 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
 def test_get_pipeline_tracked_outs(
     tmp_dir, dvc, scm, git_dir, run_copy, local_remote
 ):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     dvc.push()
 
-    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.add([PROJECT_FILE, LOCK_FILE])
     dvc.scm.commit("add pipeline stage")
 
     with git_dir.chdir():

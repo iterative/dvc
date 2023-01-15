@@ -22,8 +22,8 @@ from dvc.stage import PipelineStage
 from dvc.types import OptStr
 
 if TYPE_CHECKING:
+    from dvc.dvcfile import ProjectFile, SingleStageFile
     from dvc.repo import Repo
-    from dvc.dvcfile import DVCFile
     from dvc.dependency import Dependency
 
 from dvc.ui import ui
@@ -112,7 +112,9 @@ def init_interactive(
 
 
 def _check_stage_exists(
-    dvcfile: "DVCFile", name: str, force: bool = False
+    dvcfile: Union["ProjectFile", "SingleStageFile"],
+    name: str,
+    force: bool = False,
 ) -> None:
     if not force and dvcfile.exists() and name in dvcfile.stages:
         from dvc.stage.exceptions import DuplicateStageName
@@ -206,9 +208,9 @@ def init(
     force: bool = False,
     stream: Optional[TextIO] = None,
 ) -> Tuple[PipelineStage, List["Dependency"], List[str]]:
-    from dvc.dvcfile import make_dvcfile
+    from dvc.dvcfile import PROJECT_FILE, load_file
 
-    dvcfile = make_dvcfile(repo, "dvc.yaml")
+    dvcfile = load_file(repo, PROJECT_FILE)
     _check_stage_exists(dvcfile, name, force=force)
 
     defaults = defaults.copy() if defaults else {}

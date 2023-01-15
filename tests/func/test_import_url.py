@@ -8,7 +8,7 @@ import pytest
 from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dependency.base import Dependency, DependencyDoesNotExistError
-from dvc.dvcfile import Dvcfile
+from dvc.dvcfile import load_file
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
 from dvc.testing.workspace_tests import TestImport as _TestImport
@@ -304,7 +304,7 @@ def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):
 
     assert dst.exists()
 
-    stage = Dvcfile(dvc, "file.dvc").stage
+    stage = load_file(dvc, "file.dvc").stage
 
     assert stage.outs[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
     assert stage.outs[0].meta.size == 12

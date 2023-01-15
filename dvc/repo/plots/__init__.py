@@ -230,7 +230,6 @@ class Plots:
             out.plot.pop(prop)
 
     def modify(self, path, props=None, unset=None):
-        from dvc.dvcfile import Dvcfile
         from dvc_render.vega_templates import get_template
 
         props = props or {}
@@ -256,9 +255,7 @@ class Plots:
             out.plot = True
 
         out.verify_metric()
-
-        dvcfile = Dvcfile(self.repo, out.stage.path)
-        dvcfile.dump(out.stage, update_lock=False)
+        out.stage.dump(update_lock=False)
 
     @cached_property
     def templates_dir(self) -> Optional[str]:

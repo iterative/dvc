@@ -33,7 +33,7 @@ def imp_url(  # noqa: C901
     fs_config=None,
     version_aware: bool = False,
 ):
-    from dvc.dvcfile import make_dvcfile
+    from dvc.dvcfile import load_file
     from dvc.stage import Stage, create_stage, restore_fields
 
     out = resolve_output(url, out)
@@ -78,7 +78,7 @@ def imp_url(  # noqa: C901
 
     out_obj = stage.outs[0]
     out_obj.annot.update(desc=desc, type=type, labels=labels, meta=meta)
-    dvcfile = make_dvcfile(self, stage.path)
+    dvcfile = load_file(self, stage.path)
     dvcfile.remove()
 
     try:

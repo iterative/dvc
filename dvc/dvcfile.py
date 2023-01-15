@@ -20,7 +20,7 @@ from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileIsNotDvcFileError,
 )
-from dvc.types import AnyPath
+from dvc.types import StrOrBytesPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.objects import cached_property
@@ -36,8 +36,8 @@ _T = TypeVar("_T")
 
 DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
-PIPELINE_FILE = "dvc.yaml"
-PIPELINE_LOCK = "dvc.lock"
+PROJECT_FILE = "dvc.yaml"
+LOCK_FILE = "dvc.lock"
 
 
 class FileIsGitIgnored(DvcException):
@@ -56,7 +56,7 @@ class ParametrizedDumpError(DvcException):
 def is_valid_filename(path):
     return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
         DVC_FILE,
-        PIPELINE_FILE,
+        PROJECT_FILE,
     ]
 
 
@@ -67,7 +67,7 @@ def is_dvc_file(path):
 
 
 def is_lock_file(path):
-    return os.path.basename(path) == PIPELINE_LOCK
+    return os.path.basename(path) == LOCK_FILE
 
 
 def is_git_ignored(repo, path):
@@ -87,7 +87,7 @@ def check_dvcfile_path(repo, path):
         raise StageFileBadNameError(
             "bad DVC file name '{}'. DVC files should be named "
             "'{}' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                relpath(path), PIPELINE_FILE, os.path.basename(path)
+                relpath(path), PROJECT_FILE, os.path.basename(path)
             )
         )
 
@@ -229,7 +229,7 @@ class SingleStageFile(FileMixin):
         self.dump(stage)
 
 
-class PipelineFile(FileMixin):
+class ProjectFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
@@ -297,7 +297,7 @@ class PipelineFile(FileMixin):
     @property
     def stage(self):
         raise DvcException(
-            "PipelineFile has multiple stages. Please specify it's name."
+            "ProjectFile has multiple stages. Please specify it's name."
         )
 
     @cached_property
@@ -462,20 +462,10 @@ class Lockfile(FileMixin):
         raise NotImplementedError
 
 
-class Dvcfile:
-    def __new__(cls, repo: "Repo", path: AnyPath, **kwargs: Any):
-        assert path
-        assert repo
-
-        return make_dvcfile(repo, path, **kwargs)
-
-
-DVCFile = Union["PipelineFile", "SingleStageFile"]
-
-
-def make_dvcfile(repo: "Repo", path: AnyPath, **kwargs: Any) -> DVCFile:
-    _, ext = os.path.splitext(str(path))
-    if ext in [".yaml", ".yml"]:
-        return PipelineFile(repo, path, **kwargs)
-    # fallback to single stage file for better error messages
+def load_file(
+    repo: "Repo", path: StrOrBytesPath, **kwargs: Any
+) -> Union[ProjectFile, SingleStageFile]:
+    _, ext = os.path.splitext(path)
+    if ext in (".yaml", ".yml"):
+        return ProjectFile(repo, path, **kwargs)
     return SingleStageFile(repo, path, **kwargs)

@@ -227,7 +227,7 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
 
 
 def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+    from dvc.dvcfile import PROJECT_FILE, load_file
 
     tmp_dir.gen("foo", "foo")
     tmp_dir.gen("bar", "bar")
@@ -239,7 +239,7 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
     assert _count_files(dvc.odb.local.path) == 1
 
     # remove pipeline file and lockfile and check
-    Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
+    load_file(dvc, PROJECT_FILE).remove(force=True)
     dvc.gc(workspace=True, force=True)
     assert _count_files(dvc.odb.local.path) == 0
 
