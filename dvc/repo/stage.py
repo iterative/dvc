@@ -20,7 +20,7 @@ if typing.TYPE_CHECKING:
     from dvc.stage.loader import StageLoader
     from dvc.types import OptStr
 
-PIPELINE_FILE = "dvc.yaml"
+PROJECT_FILE = "dvc.yaml"
 
 
 class StageInfo(NamedTuple):
@@ -48,9 +48,9 @@ def _maybe_collect_from_dvc_yaml(
     from dvc.stage.exceptions import StageNotFound
 
     stages: StageList = []
-    if loader.fs.exists(PIPELINE_FILE):
+    if loader.fs.exists(PROJECT_FILE):
         with suppress(StageNotFound):
-            stages = loader.load_all(PIPELINE_FILE, target, **load_kwargs)
+            stages = loader.load_all(PROJECT_FILE, target, **load_kwargs)
     if with_deps:
         return _collect_with_deps(stages, loader.repo.index.graph)
     return stages
@@ -74,7 +74,7 @@ def _collect_specific_target(
         # `dvc.yaml` stage name here. If it exists, then we move on.
         # else, we assume it's a output name in the `collect_granular()` below
         msg = "Checking if stage '%s' is in '%s'"
-        logger.debug(msg, target, PIPELINE_FILE)
+        logger.debug(msg, target, PROJECT_FILE)
         if not (recursive and loader.fs.isdir(target)):
             stages = _maybe_collect_from_dvc_yaml(loader, target, with_deps)
             if stages:
@@ -170,7 +170,7 @@ class StageLoad:
             stage_cls = Stage
             path = fname or prepare_file_path(stage_data)
         else:
-            path = PIPELINE_FILE
+            path = PROJECT_FILE
             stage_cls = PipelineStage
             stage_name = stage_data["name"]
             if not (stage_name and is_valid_name(stage_name)):
@@ -214,7 +214,7 @@ class StageLoad:
         if path:
             return self.repo.fs.path.realpath(path)
 
-        path = PIPELINE_FILE
+        path = PROJECT_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
         return path
 
@@ -260,11 +260,11 @@ class StageLoad:
             glob: if true, `name` is considered as a glob, which is
                 used to filter list of stages from the given `path`.
         """
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import load_file
         from dvc.stage.loader import SingleStageLoader, StageLoader
 
         path = self._get_filepath(path, name)
-        dvcfile = Dvcfile(self.repo, path)
+        dvcfile = load_file(self.repo, path)
         # `dvcfile.stages` is not cached
         stages = dvcfile.stages  # type: ignore[attr-defined]
 
@@ -283,11 +283,10 @@ class StageLoad:
             path: if not provided, default `dvc.yaml` is assumed.
             name: required for `dvc.yaml` files, ignored for `.dvc` files.
         """
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import load_file
 
         path = self._get_filepath(path, name)
-        dvcfile = Dvcfile(self.repo, path)
-
+        dvcfile = load_file(self.repo, path)
         stages = dvcfile.stages  # type: ignore[attr-defined]
 
         return stages[name]

@@ -333,14 +333,14 @@ def error_link(name):
 def parse_target(
     target: str, default: str = None, isa_glob: bool = False
 ) -> Tuple[Optional[str], Optional[str]]:
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE, is_valid_filename
     from dvc.exceptions import DvcException
     from dvc.parsing import JOIN
 
     if not target:
         return None, None
 
-    default = default or PIPELINE_FILE
+    default = default or PROJECT_FILE
     if isa_glob:
         path, _, glob = target.rpartition(":")
         return path or default, glob or None
@@ -360,7 +360,7 @@ def parse_target(
         name += f"{JOIN}{key}"
 
     if path:
-        if os.path.basename(path) == PIPELINE_LOCK:
+        if os.path.basename(path) == LOCK_FILE:
             raise DvcException(
                 "Did you mean: `{}`?".format(
                     target.replace(".lock", ".yaml", 1)

@@ -1,8 +1,6 @@
 import logging
 from typing import TYPE_CHECKING, Callable, Iterable, List, Tuple
 
-from dvc.types import AnyPath
-
 if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
@@ -12,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 FilterFn = Callable[["Output"], bool]
 Outputs = List["Output"]
-AnyPaths = List[AnyPath]
 StrPaths = List[str]
 
 

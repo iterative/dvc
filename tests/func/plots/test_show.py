@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
 from dvc.repo.plots import PlotMetricTypeError
@@ -227,7 +227,7 @@ def test_ignore_parsing_error(tmp_dir, dvc, run_copy_metrics):
 @pytest.mark.parametrize(
     "file,path_kwargs",
     (
-        (PIPELINE_FILE, {"revision": "workspace", "endkey": "error"}),
+        (PROJECT_FILE, {"revision": "workspace", "endkey": "error"}),
         (
             "plot.yaml",
             {"revision": "workspace", "file": "plot.yaml", "endkey": "error"},

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def _reproduce_stage(stage: "Stage", **kwargs):
     def _run_callback(repro_callback):
-        _dump_stage(stage)
+        stage.dump(update_pipeline=False)
         _track_stage(stage)
         repro_callback([stage])
 
@@ -45,18 +45,11 @@ def _reproduce_stage(stage: "Stage", **kwargs):
 
     if not kwargs.get("dry", False):
         track = checkpoint_func is not None
-        _dump_stage(stage)
+        stage.dump(update_pipeline=False)
         if track:
             _track_stage(stage)
 
     return [stage]
-
-
-def _dump_stage(stage):
-    from dvc.dvcfile import Dvcfile
-
-    dvcfile = Dvcfile(stage.repo, stage.path)
-    dvcfile.dump(stage, update_pipeline=False)
 
 
 def _get_stage_files(stage: "Stage") -> Iterator[str]:
@@ -102,9 +95,9 @@ def reproduce(  # noqa: C901
         targets = [targets]
 
     if not all_pipelines and not targets:
-        from dvc.dvcfile import PIPELINE_FILE
+        from dvc.dvcfile import PROJECT_FILE
 
-        targets = [PIPELINE_FILE]
+        targets = [PROJECT_FILE]
 
     interactive = kwargs.get("interactive", False)
     if not interactive:

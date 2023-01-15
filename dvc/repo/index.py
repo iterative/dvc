@@ -157,9 +157,9 @@ class Index:
 
     @classmethod
     def from_file(cls, repo: "Repo", path: str) -> "Index":
-        from dvc.dvcfile import make_dvcfile
+        from dvc.dvcfile import load_file
 
-        dvcfile = make_dvcfile(repo, path)
+        dvcfile = load_file(repo, path)
         return cls(
             repo,
             stages=list(dvcfile.stages.values()),

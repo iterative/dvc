@@ -7,7 +7,7 @@ import textwrap
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+from dvc.dvcfile import PROJECT_FILE, load_file
 from dvc.exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
@@ -496,7 +496,7 @@ def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
-    stage = Dvcfile(dvc, "foo.dvc").stage
+    stage = load_file(dvc, "foo.dvc").stage
     tmp_dir.dvc_gen({"foo": "foobar", "other": "other other"}, commit="second")
 
     # corrupt cache
@@ -673,7 +673,7 @@ def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
-    assert set(dvc.checkout(PIPELINE_FILE)["added"]) == {"bar", "ipsum"}
+    assert set(dvc.checkout(PROJECT_FILE)["added"]) == {"bar", "ipsum"}
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
@@ -721,7 +721,7 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     assert dvc.checkout(["bar"])["added"] == ["bar"]
 
     (tmp_dir / "bar").unlink()
-    assert set(dvc.checkout([PIPELINE_FILE])["added"]) == {"bar", "ipsum"}
+    assert set(dvc.checkout([PROJECT_FILE])["added"]) == {"bar", "ipsum"}
 
     for out in ["bar", "ipsum"]:
         (tmp_dir / out).unlink()

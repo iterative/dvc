@@ -458,11 +458,11 @@ def test_ls_not_existed_url():
 
 
 def test_ls_shows_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
-    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.add([PROJECT_FILE, LOCK_FILE])
     dvc.scm.commit("add pipeline stage")
 
     files = Repo.ls(os.curdir, dvc_only=True)

@@ -4,7 +4,7 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Union
 
 from funcy import project
 
@@ -36,7 +36,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from dvc.dvcfile import DVCFile
+    from dvc.dvcfile import ProjectFile, SingleStageFile
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db.base import ObjectDB
 
@@ -173,7 +173,7 @@ class Stage(params.StageParams):
         self.__dict__.pop("relpath", None)
 
     @property
-    def dvcfile(self) -> "DVCFile":
+    def dvcfile(self) -> Union["ProjectFile", "SingleStageFile"]:
         if self.path and self._dvcfile and self.path == self._dvcfile.path:
             return self._dvcfile
 
@@ -183,13 +183,15 @@ class Stage(params.StageParams):
                 "and is detached from dvcfile."
             )
 
-        from dvc.dvcfile import make_dvcfile
+        from dvc.dvcfile import load_file
 
-        self._dvcfile = make_dvcfile(self.repo, self.path)
+        self._dvcfile = load_file(self.repo, self.path)
         return self._dvcfile
 
     @dvcfile.setter
-    def dvcfile(self, dvcfile: "DVCFile") -> None:
+    def dvcfile(
+        self, dvcfile: Union["ProjectFile", "SingleStageFile"]
+    ) -> None:
         self._dvcfile = dvcfile
 
     def __repr__(self):
@@ -785,9 +787,9 @@ class PipelineStage(Stage):
 
     @property
     def addressing(self):
-        from dvc.dvcfile import PIPELINE_FILE
+        from dvc.dvcfile import PROJECT_FILE
 
-        if self.path and self.relpath == PIPELINE_FILE:
+        if self.path and self.relpath == PROJECT_FILE:
             return self.name
         return f"{super().addressing}:{self.name}"
 

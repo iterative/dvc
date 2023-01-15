@@ -4,7 +4,7 @@ from functools import reduce
 import pytest
 
 from dvc.repo import Repo
-from dvc.repo.stage import PIPELINE_FILE
+from dvc.repo.stage import PROJECT_FILE
 from dvc.utils.serialize import YAMLFileCorruptedError
 
 
@@ -112,7 +112,7 @@ def test_pipeline_params(tmp_dir, scm, dvc, run_copy):
         {"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"}
     )
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo,xyz"])
-    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
     tmp_dir.scm_gen(
@@ -155,7 +155,7 @@ def test_show_no_repo(tmp_dir):
 @pytest.mark.parametrize(
     "file,error_path",
     (
-        (PIPELINE_FILE, ["v1", "error"]),
+        (PROJECT_FILE, ["v1", "error"]),
         ("params_other.yaml", ["v1", "data", "params_other.yaml", "error"]),
     ),
 )
@@ -171,7 +171,7 @@ def test_log_errors(tmp_dir, scm, dvc, capsys, file, error_path):
     with open(tmp_dir / file, "a", encoding="utf-8") as fd:
         fd.write("\nmalformed!")
 
-    scm.add([PIPELINE_FILE, "params_other.yaml"])
+    scm.add([PROJECT_FILE, "params_other.yaml"])
     scm.commit("init")
     scm.tag("v1")
 
@@ -211,7 +211,7 @@ def test_deps_multi_stage(tmp_dir, scm, dvc, run_copy):
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
     run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
 
-    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
     assert dvc.params.show(revs=["master"], deps=True) == {
@@ -228,7 +228,7 @@ def test_deps_with_targets(tmp_dir, scm, dvc, run_copy):
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
     run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
 
-    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
     assert dvc.params.show(targets=["params.yaml"], deps=True) == {
@@ -246,6 +246,6 @@ def test_deps_with_bad_target(tmp_dir, scm, dvc, run_copy):
     )
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
     run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
-    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
     assert dvc.params.show(targets=["foobar"], deps=True) == {}

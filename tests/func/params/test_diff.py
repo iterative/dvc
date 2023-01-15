@@ -113,12 +113,12 @@ def test_diff_with_unchanged(tmp_dir, scm, dvc):
 
 
 def test_pipeline_tracked_params(tmp_dir, scm, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE
+    from dvc.dvcfile import PROJECT_FILE
 
     tmp_dir.gen({"foo": "foo", "params.yaml": "foo: bar\nxyz: val"})
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo,xyz"])
 
-    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
     tmp_dir.scm_gen("params.yaml", "foo: baz\nxyz: val", commit="baz")
@@ -182,7 +182,7 @@ def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
 
 
 def test_diff_targeted(tmp_dir, scm, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE
+    from dvc.dvcfile import PROJECT_FILE
 
     tmp_dir.gen(
         {
@@ -198,7 +198,7 @@ def test_diff_targeted(tmp_dir, scm, dvc, run_copy):
         params=["foo", "other_params.yaml:xyz"],
     )
 
-    scm.add(["params.yaml", "other_params.yaml", PIPELINE_FILE])
+    scm.add(["params.yaml", "other_params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
     tmp_dir.scm_gen(
