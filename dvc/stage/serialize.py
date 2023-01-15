@@ -1,7 +1,14 @@
 from collections import OrderedDict
-from functools import partial
 from operator import attrgetter
-from typing import TYPE_CHECKING, List, no_type_check
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Union,
+    no_type_check,
+)
 
 from funcy import post_processing
 
@@ -34,9 +41,6 @@ PARAM_PUSH = Output.PARAM_PUSH
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 
-sort_by_path = partial(sorted, key=attrgetter("def_path"))
-
-
 @post_processing(OrderedDict)
 def _get_flags(out):
     annot = out.annot.to_dict()
@@ -67,7 +71,7 @@ def _serialize_out(out):
 @no_type_check
 def _serialize_outs(outputs: List[Output]):
     outs, metrics, plots = [], [], []
-    for out in sort_by_path(outputs):
+    for out in sorted(outputs, key=attrgetter("def_path")):
         bucket = outs
         if out.plot:
             bucket = plots
@@ -77,7 +81,7 @@ def _serialize_outs(outputs: List[Output]):
     return outs, metrics, plots
 
 
-def _serialize_params_keys(params):
+def _serialize_params_keys(params: Iterable["ParamsDependency"]):
     """
     Returns the following format of data:
      ['lr', 'train', {'params2.yaml': ['lr']}]
@@ -86,12 +90,12 @@ def _serialize_params_keys(params):
     at the first, and then followed by entry of other files in lexicographic
     order. The keys of those custom files are also sorted in the same order.
     """
-    keys = []
-    for param_dep in sort_by_path(params):
+    keys: List[Union[str, Dict[str, Optional[List[str]]]]] = []
+    for param_dep in sorted(params, key=attrgetter("def_path")):
         # when on no_exec, params are not filled and are saved as list
-        k = sorted(param_dep.params)
+        k: List[str] = sorted(param_dep.params)
         if k and param_dep.def_path == DEFAULT_PARAMS_FILE:
-            keys = k + keys
+            keys = k + keys  # type: ignore[operator,assignment]
         else:
             keys.append({param_dep.def_path: k or None})
     return keys
@@ -106,7 +110,7 @@ def _serialize_params_values(params: List[ParamsDependency]):
     alphabetical order. The param values are sorted too(not recursively though)
     """
     key_vals = OrderedDict()
-    for param_dep in sort_by_path(params):
+    for param_dep in sorted(params, key=attrgetter("def_path")):
         dump = param_dep.dumpd()
         path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
         if isinstance(params, dict):
@@ -119,9 +123,9 @@ def _serialize_params_values(params: List[ParamsDependency]):
 
 def to_pipeline_file(stage: "PipelineStage"):
     wdir = resolve_wdir(stage.wdir, stage.path)
-    params, deps = split_params_deps(stage)
-    deps = sorted(d.def_path for d in deps)
-    params = _serialize_params_keys(params)
+    param_objs, deps_objs = split_params_deps(stage)
+    deps = sorted(d.def_path for d in deps_objs)
+    params = _serialize_params_keys(param_objs)
 
     outs, metrics, plots = _serialize_outs(stage.outs)
 
@@ -172,7 +176,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     res = OrderedDict([("cmd", stage.cmd)])
     params, deps = split_params_deps(stage)
     deps, outs = (
-        [_dumpd(item) for item in sort_by_path(items)]
+        [_dumpd(item) for item in sorted(items, key=attrgetter("def_path"))]
         for items in [deps, stage.outs]
     )
     params = _serialize_params_values(params)

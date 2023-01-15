@@ -204,7 +204,7 @@ def disable_other_loggers():
     loggerDict = logging.root.manager.loggerDict  # pylint: disable=no-member
     for logger_name, logger in loggerDict.items():
         if logger_name != "dvc" and not logger_name.startswith("dvc."):
-            logger.disabled = True
+            logger.disabled = True  # type: ignore[union-attr]
 
 
 def set_loggers_level(level: int = logging.INFO) -> None:

@@ -244,9 +244,9 @@ class Repo:
 
             self._ignore()
 
-        self.metrics = Metrics(self)
+        self.metrics: Metrics = Metrics(self)
         self.plots: Plots = Plots(self)
-        self.params = Params(self)
+        self.params: Params = Params(self)
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]
@@ -403,10 +403,11 @@ class Repo:
         return self.odb.repo.unprotect(target)
 
     def _ignore(self):
-        flist = [self.config.files["local"], self.tmp_dir]
-
+        flist = [self.config.files["local"]]
+        if tmp_dir := self.tmp_dir:
+            flist.append(tmp_dir)
         if path_isin(self.odb.repo.path, self.root_dir):
-            flist += [self.odb.repo.path]
+            flist.append(self.odb.repo.path)
 
         for file in flist:
             self.scm_context.ignore(file)

@@ -200,7 +200,10 @@ class SingleStageLoader(Mapping):
 
     @classmethod
     def load_stage(
-        cls, dvcfile: "SingleStageFile", d: Dict[str, Any], stage_text: str
+        cls,
+        dvcfile: "SingleStageFile",
+        d: Dict[str, Any],
+        stage_text: Optional[str],
     ) -> Stage:
         path, wdir = resolve_paths(
             dvcfile.repo.fs, dvcfile.path, d.get(Stage.PARAM_WDIR)

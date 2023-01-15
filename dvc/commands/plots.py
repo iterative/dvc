@@ -89,6 +89,7 @@ class CmdPlots(CmdBase):
                 "html_template", None
             )
             if html_template_path and not os.path.isabs(html_template_path):
+                assert self.repo.dvc_dir
                 html_template_path = os.path.join(
                     self.repo.dvc_dir, html_template_path
                 )

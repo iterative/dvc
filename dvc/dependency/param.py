@@ -104,7 +104,7 @@ class ParamsDependency(Dependency):
 
         from funcy import ldistinct
 
-        status = defaultdict(dict)
+        status: Dict[str, Any] = defaultdict(dict)
         info = self.hash_info.value if self.hash_info else {}
         actual = self.read_params()
 
@@ -165,7 +165,7 @@ class ParamsDependency(Dependency):
         if not self.exists:
             raise self.DoesNotExistError(self)
 
-        if not self.isfile and not self.isdir:
+        if not self.isfile() and not self.isdir():
             raise self.IsNotFileOrDirError(self)
 
         self.ignore()

@@ -1,5 +1,6 @@
 import ast
 from contextlib import contextmanager
+from typing import Any
 
 from funcy import reraise
 
@@ -81,7 +82,7 @@ def dump_py(path, data, fs=None):
 
 @contextmanager
 def modify_py(path, fs=None):
-    with _modify_data(path, parse_py_for_update, dump_py, fs=fs) as d:
+    with _modify_data(path, parse_py_for_update, _dump, fs=fs) as d:
         yield d
 
 
@@ -129,16 +130,18 @@ def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):
     else:
         raise AttributeError
 
+    value: Any
     if isinstance(assign.value, ast.Dict):
         value = {}
         for key, val in zip(assign.value.keys, assign.value.values):
             if lineno:
-                value[ast.literal_eval(key)] = {
+                value[ast.literal_eval(key)] = {  # type: ignore[arg-type]
                     "lineno": assign.lineno - 1,
                     "value": ast.literal_eval(val),
                 }
             else:
-                value[ast.literal_eval(key)] = ast.literal_eval(val)
+                v = ast.literal_eval(val)
+                value[ast.literal_eval(key)] = v  # type: ignore[arg-type]
     elif isinstance(assign.value, ast.List):
         value = [ast.literal_eval(val) for val in assign.value.elts]
     elif isinstance(assign.value, ast.Set):

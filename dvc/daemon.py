@@ -25,21 +25,24 @@ def _popen(cmd, **kwargs):
 
 
 def _spawn_windows(cmd, env):
-    from subprocess import (
-        CREATE_NEW_PROCESS_GROUP,
-        CREATE_NO_WINDOW,
-        STARTF_USESHOWWINDOW,
-        STARTUPINFO,
-    )
+    if sys.platform == "win32":
+        from subprocess import (
+            CREATE_NEW_PROCESS_GROUP,
+            CREATE_NO_WINDOW,
+            STARTF_USESHOWWINDOW,
+            STARTUPINFO,
+        )
 
-    # https://stackoverflow.com/a/7006424
-    # https://bugs.python.org/issue41619
-    creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
+        # https://stackoverflow.com/a/7006424
+        # https://bugs.python.org/issue41619
+        creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
 
-    startupinfo = STARTUPINFO()
-    startupinfo.dwFlags |= STARTF_USESHOWWINDOW
+        startupinfo = STARTUPINFO()
+        startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-    _popen(cmd, env=env, creationflags=creationflags, startupinfo=startupinfo)
+        _popen(
+            cmd, env=env, creationflags=creationflags, startupinfo=startupinfo
+        )
 
 
 def _spawn_posix(cmd, env):

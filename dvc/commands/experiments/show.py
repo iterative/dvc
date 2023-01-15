@@ -4,7 +4,7 @@ import os
 import re
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Set
 
 from funcy import lmap
 
@@ -37,9 +37,9 @@ def _update_names(names, items):
 
 
 def _collect_names(all_experiments, **kwargs):
-    metric_names = defaultdict(dict)
-    param_names = defaultdict(dict)
-    deps_names = set()
+    metric_names: Dict[str, Dict[str, Any]] = defaultdict(dict)
+    param_names: Dict[str, Dict[str, Any]] = defaultdict(dict)
+    deps_names: Set[str] = set()
 
     for _, experiments in all_experiments.items():
         for exp_data in experiments.values():
@@ -328,7 +328,7 @@ def show_experiments(  # noqa: C901
 
     metric_names, param_names, deps_names = _collect_names(all_experiments)
 
-    headers = [
+    headers_list = [
         "Experiment",
         "rev",
         "typ",
@@ -340,13 +340,13 @@ def show_experiments(  # noqa: C901
 
     names = {**metric_names, **param_names}
     counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
-    counter.update(headers)
+    counter.update(headers_list)
     metric_headers = _normalize_headers(metric_names, counter)
     param_headers = _normalize_headers(param_names, counter)
 
     td = experiments_table(
         all_experiments,
-        headers,
+        headers_list,
         metric_headers,
         metric_names,
         param_headers,

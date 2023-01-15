@@ -95,7 +95,7 @@ class CmdStageList(CmdBase):
 
         stages = self._get_stages()
         data = prepare_stages_data(stages, description=not self.args.name_only)
-        ui.table(data.items())
+        ui.table(list(data.items()))
 
         return 0
 

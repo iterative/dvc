@@ -144,7 +144,7 @@ def _split_dict(d, keys):
 
 
 def _merge_data(s_list):
-    d = defaultdict(dict)
+    d: Dict[str, Dict] = defaultdict(dict)
     for key in s_list:
         if isinstance(key, str):
             d[key].update({})
@@ -316,7 +316,7 @@ class Output:
             and isinstance(stage.repo.fs, LocalFileSystem)
             and path_isin(path, stage.repo.root_dir)
         ):
-            self.def_path = relpath(path, stage.wdir)
+            self.def_path: str = relpath(path, stage.wdir)
             self.fs = stage.repo.fs
         else:
             self.def_path = path

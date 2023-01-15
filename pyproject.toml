@@ -226,7 +226,7 @@ show_error_context = true
 show_traceback = true
 pretty = true
 no_implicit_optional = true
-check_untyped_defs = false
+check_untyped_defs = true
 strict_equality = true
 strict_concatenate = true
 # Warnings
