@@ -9,6 +9,7 @@ from typing import (
     Dict,
     Optional,
     Protocol,
+    TextIO,
     Union,
 )
 
@@ -25,6 +26,11 @@ class DumperFn(Protocol):
     def __call__(
         self, path: "StrPath", data: Any, fs: Optional["FileSystem"] = None
     ) -> Any:
+        ...
+
+
+class DumpersFn(Protocol):
+    def __call__(self, data: Any, stream: TextIO) -> Any:
         ...
 
 
@@ -78,7 +84,7 @@ def _load_data(
 def _dump_data(
     path,
     data: Any,
-    dumper: DumperFn,
+    dumper: DumpersFn,
     fs: Optional["FileSystem"] = None,
     **dumper_args,
 ):
@@ -91,11 +97,11 @@ def _dump_data(
 def _modify_data(
     path: "StrPath",
     parser: ParserFn,
-    dumper: DumperFn,
+    dumper: DumpersFn,
     fs: Optional["FileSystem"] = None,
 ):
     exists_fn = fs.exists if fs else os.path.exists
     file_exists = exists_fn(path)
     data = _load_data(path, parser=parser, fs=fs) if file_exists else {}
     yield data
-    dumper(path, data, fs=fs)
+    _dump_data(path, data, dumper=dumper, fs=fs)

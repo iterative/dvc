@@ -3,7 +3,7 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional
+from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional, Tuple
 
 from funcy import retry, wrap_with
 
@@ -114,7 +114,7 @@ def erepo_factory(url, root_dir, cache_config):
     return make_repo
 
 
-CLONES: Dict[str, str] = {}
+CLONES: Dict[str, Tuple[str, bool]] = {}
 CACHE_DIRS: Dict[str, str] = {}
 
 
@@ -198,7 +198,7 @@ def _clone_default_branch(url, rev, for_write=False):  # noqa: C901
     """
     from scmrepo.git import Git
 
-    clone_path, shallow = CLONES.get(url, (None, False))
+    clone_path, shallow = CLONES.get(url) or (None, False)
 
     git = None
     try:

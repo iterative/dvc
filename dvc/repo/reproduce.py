@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING, Iterator, List
 
 from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.scm_context import scm_context
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _reproduce_stage(stage: "Stage", **kwargs):
+def _reproduce_stage(stage: "Stage", **kwargs) -> List["Stage"]:
     def _run_callback(repro_callback):
         stage.dump(update_pipeline=False)
         _track_stage(stage)
@@ -173,9 +173,9 @@ def _reproduce_stages(  # noqa: C901
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
-    unchanged = []
+    unchanged: List["Stage"] = []
     # `ret` is used to add a cosmetic newline.
-    ret = []
+    ret: List["Stage"] = []
     checkpoint_func = kwargs.pop("checkpoint_func", None)
 
     for i, stage in enumerate(steps):
@@ -234,7 +234,7 @@ def _get_steps(G, stages, downstream, single_item):
                 # NOTE: disconnect frozen stage from its dependencies
                 active.remove_edges_from(G.out_edges(stage))
 
-    all_pipelines = []
+    all_pipelines: List["Stage"] = []
     for stage in stages:
         if downstream:
             # NOTE (py3 only):

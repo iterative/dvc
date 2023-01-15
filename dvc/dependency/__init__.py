@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Mapping
+from typing import Any, Mapping, Set
 
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
@@ -59,7 +59,7 @@ def _merge_params(s_list):
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
 
     # figure out completely tracked params file, and ignore specific keys
-    wholly_tracked = set()
+    wholly_tracked: Set[str] = set()
     for key in s_list:
         if not isinstance(key, dict):
             continue

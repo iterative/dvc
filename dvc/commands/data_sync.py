@@ -122,7 +122,7 @@ def shared_parent_parser():
             "Limit command scope to these tracked files/directories, "
             ".dvc files and stage names."
         ),
-    ).complete = completion.DVC_FILE
+    ).complete = completion.DVC_FILE  # type: ignore[attr-defined]
 
     return parent_parser
 

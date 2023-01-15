@@ -605,7 +605,7 @@ def _load_sv(path, fs, delimiter=",", header=True):
             fieldnames=[str(i) for i in range(len(first_row))],
         )
 
-    fieldnames = reader.fieldnames
+    fieldnames = reader.fieldnames or []
     data = list(reader)
 
     return [

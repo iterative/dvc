@@ -1,6 +1,7 @@
 import io
 from collections import OrderedDict
 from contextlib import contextmanager
+from typing import Any, TextIO
 
 from funcy import reraise
 
@@ -53,7 +54,7 @@ def _get_yaml():
     return yaml
 
 
-def _dump(data, stream):
+def _dump(data: Any, stream: TextIO) -> Any:
     yaml = _get_yaml()
     return yaml.dump(data, stream)
 
@@ -76,5 +77,5 @@ def dumps_yaml(d):
 
 @contextmanager
 def modify_yaml(path, fs=None):
-    with _modify_data(path, parse_yaml_for_update, dump_yaml, fs=fs) as d:
+    with _modify_data(path, parse_yaml_for_update, _dump, fs=fs) as d:
         yield d

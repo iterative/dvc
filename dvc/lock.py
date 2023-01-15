@@ -131,6 +131,7 @@ class Lock(LockBase):
 
         if not self.is_locked:
             raise DvcException("Unlock called on an unlocked lock")
+        assert self._lock
         self._lock.close()
         self._lock = None
 

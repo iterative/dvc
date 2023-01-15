@@ -177,6 +177,7 @@ class CmdMachineRename(CmdBase):
             self._check_exists(conf)
             conf["machine"][self.args.new] = conf["machine"][self.args.name]
             try:
+                assert self.repo.machine
                 self.repo.machine.rename(self.args.name, self.args.new)
             except DvcException as error:
                 del conf["machine"][self.args.new]

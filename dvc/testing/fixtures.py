@@ -46,6 +46,8 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
             cache_dir = tmp_path_factory.mktemp("dvc-test-cache" + worker_id)
             TmpDir(cache_dir).init(scm=scm, dvc=dvc, subdir=subdir)
             CACHE[(scm, dvc, subdir)] = cache = os.fspath(cache_dir)
+
+        assert cache
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
 
         # ignore sqlite files from .dvc/tmp. We might not be closing the cache

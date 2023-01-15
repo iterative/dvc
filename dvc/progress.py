@@ -147,10 +147,16 @@ class Tqdm(tqdm):
     def format_dict(self):
         """inject `ncols_desc` to fill the display width (`ncols`)"""
         d = super().format_dict
-        ncols = d["ncols"] or 80
+        ncols: int = d["ncols"] or 80
         # assumes `bar_format` has max one of ("ncols_desc" & "ncols_info")
         ncols_left = (
-            ncols - len(self.format_meter(ncols_desc=1, ncols_info=1, **d)) + 1
+            ncols
+            - len(
+                self.format_meter(  # type: ignore[call-arg]
+                    ncols_desc=1, ncols_info=1, **d
+                )
+            )
+            + 1
         )
         ncols_left = max(ncols_left, 0)
         if ncols_left:

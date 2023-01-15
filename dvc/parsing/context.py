@@ -306,7 +306,7 @@ class Context(CtxDict):
         """
         super().__init__(*args, **kwargs)
         self._track = False
-        self._tracked_data = defaultdict(dict)
+        self._tracked_data: Dict[str, Dict] = defaultdict(dict)
         self.imports = {}
         self._reserved_keys = {}
 

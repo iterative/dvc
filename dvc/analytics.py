@@ -125,7 +125,7 @@ def _system_info():
     system = platform.system()
 
     if system == "Windows":
-        version = sys.getwindowsversion()
+        version = sys.getwindowsversion()  # type: ignore[attr-defined]
 
         return {
             "os": "windows",

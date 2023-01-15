@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
+RepoFactory = Union[Callable[..., "Repo"], Type["Repo"]]
 Key = Tuple[str, ...]
 
 
@@ -129,7 +129,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             repo = self._make_repo(
                 url=url, rev=rev, subrepos=subrepos, **repo_kwargs
             )
-            assert repo
+            assert repo is not None
             # pylint: disable=protected-access
             repo_factory = repo._fs_conf["repo_factory"]
 
@@ -142,6 +142,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         def _getcwd():
             relparts = ()
+            assert repo is not None
             if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
                 relparts = repo.fs.path.relparts(
                     repo.fs.path.getcwd(), repo.root_dir
@@ -182,8 +183,6 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     @property
     def repo_url(self):
-        if self.repo is None:
-            return None
         return self.repo.url
 
     @classmethod

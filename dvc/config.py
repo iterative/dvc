@@ -291,7 +291,7 @@ class Config(dict):
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
     def load_config_to_level(self, level=None):
-        merged_conf = {}
+        merged_conf: Dict = {}
         for merge_level in self.LEVELS:
             if merge_level == level:
                 break
@@ -337,7 +337,7 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result = {"remote": {}, "machine": {}}
+    result: Dict[str, Dict] = {"remote": {}, "machine": {}}
 
     for section, val in conf.items():
         match = re_find(r'^\s*(remote|machine)\s*"(.*)"\s*$', section)

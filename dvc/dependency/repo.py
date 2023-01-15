@@ -5,7 +5,6 @@ from typing import (
     TYPE_CHECKING,
     ContextManager,
     Dict,
-    Iterable,
     Optional,
     Set,
     Tuple,
@@ -169,7 +168,7 @@ class RepoDependency(Dependency):
             return used_obj_ids, meta, obj
 
     def _check_circular_import(
-        self, odb: "ObjectDB", obj_ids: Iterable[str]
+        self, odb: "ObjectDB", obj_ids: Set["HashInfo"]
     ) -> None:
         from dvc.exceptions import CircularImportError
         from dvc.fs.dvc import DVCFileSystem

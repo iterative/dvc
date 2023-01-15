@@ -1,9 +1,18 @@
 import inspect
 from collections.abc import Mapping
 from functools import wraps
-from typing import Callable, Dict, Iterable, List, TypeVar, Union
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    TypeVar,
+    Union,
+    no_type_check,
+)
 
 
+@no_type_check
 def apply_diff(src, dest):  # noqa: C901
     """Recursively apply changes from src to dest.
 
@@ -155,7 +164,9 @@ def validate(*validators: Callable, post: bool = False):
         def inner(*args, **kwargs):
             ba = sig.bind(*args, **kwargs)
             ba.apply_defaults()
-            ba.arguments = _NamespacedDict(ba.arguments)
+            ba.arguments = _NamespacedDict(  # type: ignore[assignment]
+                ba.arguments
+            )
 
             if not post:
                 for validator in validators:

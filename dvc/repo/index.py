@@ -46,7 +46,9 @@ def log_walk(seq):
         start = time.perf_counter()
         yield root, dirs, files
         duration = format_time(time.perf_counter() - start)
-        logger.trace("%s in collecting stages from %s", duration, root)
+        logger.trace(  # type: ignore[attr-defined]
+            "%s in collecting stages from %s", duration, root
+        )
 
 
 def collect_files(

@@ -119,7 +119,7 @@ def debug():
         try:
             import ipdb as pdb  # noqa: T100, pylint: disable=import-error
         except ImportError:
-            import pdb  # noqa: T100
+            import pdb  # type: ignore[no-redef]  # noqa: T100
         pdb.post_mortem()
 
         raise  # prevent from jumping ahead

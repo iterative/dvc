@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from funcy import first
 
@@ -236,7 +236,7 @@ class StageCache:
             message = f"run-cache is not supported for http filesystem: {path}"
             raise RunCacheNotSupported(message)
 
-        ret = []
+        ret: List[Tuple[str, str]] = []
         if not from_fs.exists(runs):
             return ret
 

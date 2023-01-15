@@ -328,8 +328,9 @@ def _format_field(
 ) -> str:
     def _format(_val):
         if isinstance(_val, float) and precision:
-            func = round if round_digits else _normalize_float
-            return func(_val, precision)
+            if round_digits:
+                return round(val, precision)
+            return _normalize_float(val, precision)
         if isinstance(_val, abc.Mapping):
             return {k: _format(v) for k, v in _val.items()}
         if isinstance(_val, list):
