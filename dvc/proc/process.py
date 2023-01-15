@@ -117,7 +117,7 @@ class ManagedProcess(AbstractContextManager):
             "Appending output to '%s'",
             self.stdout_path,
         )
-        self._stdout = open(self.stdout_path, "ab")
+        self._stdout = open(self.stdout_path, "ab")  # noqa: SIM115
         try:
             self._proc = subprocess.Popen(
                 self.args,

@@ -26,7 +26,7 @@ def parse_yaml(text, path, typ="safe"):
 
     yaml = YAML(typ=typ)
     with reraise(_YAMLError, YAMLFileCorruptedError(path)):
-        return yaml.load(text) or {}  # noqa: S506
+        return yaml.load(text) or {}
 
 
 def parse_yaml_for_update(text, path):

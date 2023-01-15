@@ -142,8 +142,8 @@ class Config(dict):
             dvc.config.Config: config object.
         """
         config_file = os.path.join(dvc_dir, Config.CONFIG)
-        open(config_file, "w+", encoding="utf-8").close()
-        return Config(dvc_dir)
+        with open(config_file, "w+", encoding="utf-8"):
+            return Config(dvc_dir)
 
     def load(self, validate=True, config=None):
         """Loads config from all the config files.

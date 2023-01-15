@@ -326,7 +326,8 @@ def test_push_pull_cache(
         hash_ = digest(str(x))
         path = os.path.join(local_remote.url, hash_[:2], hash_[2:])
         assert os.path.exists(path)
-        assert open(path, encoding="utf-8").read() == str(x)
+        with open(path, encoding="utf-8") as f:
+            assert f.read() == str(x)
 
     remove(dvc.odb.local.path)
 
@@ -335,7 +336,8 @@ def test_push_pull_cache(
         hash_ = digest(str(x))
         path = os.path.join(dvc.odb.local.path, hash_[:2], hash_[2:])
         assert os.path.exists(path)
-        assert open(path, encoding="utf-8").read() == str(x)
+        with open(path, encoding="utf-8") as f:
+            assert f.read() == str(x)
 
 
 def test_auth_error_list(tmp_dir, scm, dvc, http_auth_patch):
