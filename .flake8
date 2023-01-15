@@ -1,10 +1,16 @@
 [flake8]
 ignore=
-    E203, # Whitespace before ':'
-    E266, # Too many leading '#' for block comment
-    W503, # Line break occurred before a binary operator
-    P1,  # unindexed parameters in the str.format, see:
+    # Whitespace before ':'
+    E203
+    # Too many leading '#' for block comment
+    E266
+    # Line break occurred before a binary operator
+    W503
+    # unindexed parameters in the str.format, see:
     # https://pypi.org/project/flake8-string-format/
+    P1
+    # use `!r` instead of surrounding by quotes
+    B028
 max_line_length = 79
 max-complexity = 10
 select = B,C,E,F,W,T4,B902,T,P

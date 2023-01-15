@@ -262,11 +262,11 @@ class TestRunBadWdir:
 
     def test_not_dir(self, tmp_dir, dvc):
         with pytest.raises(StagePathNotDirectoryError):
-            path = os.path.join(tmp_dir, str(uuid.uuid4()))
-            os.mkdir(path)
-            path = os.path.join(path, str(uuid.uuid4()))
-            open(path, "a", encoding="utf-8").close()
-            dvc.run(cmd="command", wdir=path, single_stage=True)
+            path = tmp_dir / str(uuid.uuid4())
+            path.mkdir()
+            path = path / str(uuid.uuid4())
+            path.touch()
+            dvc.run(cmd="command", wdir=os.fspath(path), single_stage=True)
 
 
 class TestRunBadName:
