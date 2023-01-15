@@ -286,7 +286,7 @@ def load(
     rev = getattr(fs, "rev", None)
 
     try:
-        with open_fn(path, encoding=encoding) as fd:
+        with open_fn(path, encoding=encoding) as fd:  # type: ignore[operator]
             text = fd.read()
         data = parse_yaml(text, path, typ="rt" if round_trip else "safe")
     except UnicodeDecodeError as exc:

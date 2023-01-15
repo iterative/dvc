@@ -184,6 +184,7 @@ class RepoDependency(Dependency):
                     tree = Tree.load(odb, hash_info)
                     yield from (odb.get(hi.value) for _, _, hi in tree)
                 else:
+                    assert hash_info.value
                     yield odb.get(hash_info.value)
 
         checked_urls = set()

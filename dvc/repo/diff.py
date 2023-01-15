@@ -11,6 +11,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    cast,
 )
 
 from dvc.exceptions import PathMissingError
@@ -21,7 +22,8 @@ if TYPE_CHECKING:
     from dvc.fs import DVCFileSystem, FileSystem
     from dvc.output import Output
     from dvc.repo import Repo
-    from dvc_objects.obj import Object
+    from dvc_data.hashfile.obj import HashFile
+    from dvc_data.hashfile.tree import Tree
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +166,7 @@ def _output_paths(  # noqa: C901
             for target in targets
         )
 
+        obj: Optional["HashFile"]
         if on_working_fs:
             _, _, obj = build(
                 repo.odb.repo,
@@ -194,6 +197,7 @@ def _output_paths(  # noqa: C901
                 )
             )
         ):
+            obj = cast("Tree", obj)
             yield from _dir_output_paths(
                 output.fs, output.fs_path, obj, targets
             )
@@ -202,7 +206,7 @@ def _output_paths(  # noqa: C901
 def _dir_output_paths(
     fs: "FileSystem",
     fs_path: str,
-    obj: "Object",
+    obj: "Tree",
     targets: Optional[Iterable[str]] = None,
 ) -> Iterator[Tuple[str, str]]:
     base = os.path.join(*fs.path.relparts(fs_path))

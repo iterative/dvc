@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def _meta_checksum(fs: "FileSystem", meta: "Meta") -> Any:
     if not meta or meta.isdir:
         return meta
-    return getattr(meta, fs.PARAM_CHECKSUM)
+    return getattr(meta, cast(str, fs.PARAM_CHECKSUM))
 
 
 def worktree_view(
@@ -161,14 +161,14 @@ def _update_out_meta(
         entry.hash_info = old_tree.hash_info
         entry.meta = out.meta
         for subkey, entry in index.iteritems(key):
-            if entry.meta.isdir:
+            if entry.meta is not None and entry.meta.isdir:
                 continue
             fs_path = repo.fs.path.join(repo.root_dir, *subkey)
             meta, hash_info = old_tree.get(
                 repo.fs.path.relparts(fs_path, out.fs_path)
-            )
+            ) or (None, None)
             entry.hash_info = hash_info
-            if meta.version_id is not None:
+            if meta is not None and meta.version_id is not None:
                 # preserve existing version IDs for unchanged files in
                 # this dir (entry will have the latest remote version
                 # ID after checkout)
@@ -236,8 +236,8 @@ def update_worktree_stages(
 
 def _fetch_out_changes(
     out: "Output",
-    local_index: "DataIndex",
-    remote_index: "DataIndex",
+    local_index: Union["DataIndex", "DataIndexView"],
+    remote_index: Union["DataIndex", "DataIndexView"],
     remote: "Remote",
 ):
     from dvc_data.index import DataIndex, checkout

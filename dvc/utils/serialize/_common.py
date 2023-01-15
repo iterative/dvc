@@ -11,6 +11,7 @@ from typing import (
     Protocol,
     TextIO,
     Union,
+    cast,
 )
 
 from funcy import reraise
@@ -76,7 +77,7 @@ def _load_data(
 ):
     open_fn = fs.open if fs else open
     encoding = "utf-8"
-    with open_fn(path, encoding=encoding) as fd:
+    with open_fn(path, encoding=encoding) as fd:  # type: ignore[operator]
         with reraise(UnicodeDecodeError, EncodingError(path, encoding)):
             return parser(fd.read(), path)
 
@@ -89,7 +90,7 @@ def _dump_data(
     **dumper_args,
 ):
     open_fn = fs.open if fs else open
-    with open_fn(path, "w+", encoding="utf-8") as fd:
+    with open_fn(path, "w+", encoding="utf-8") as fd:  # type: ignore[operator]
         dumper(data, fd, **dumper_args)
 
 
@@ -101,7 +102,7 @@ def _modify_data(
     fs: Optional["FileSystem"] = None,
 ):
     exists_fn = fs.exists if fs else os.path.exists
-    file_exists = exists_fn(path)
+    file_exists = exists_fn(cast(str, path))
     data = _load_data(path, parser=parser, fs=fs) if file_exists else {}
     yield data
     _dump_data(path, data, dumper=dumper, fs=fs)
