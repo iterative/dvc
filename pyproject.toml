@@ -112,6 +112,10 @@ tests = [
     "types-requests",
     "types-tabulate",
     "types-toml",
+    "types-appdirs",
+    "types-colorama",
+    "types-psutil",
+    "types-tqdm",
 ]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
 dev = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs,tests]"]
@@ -221,8 +225,6 @@ show_error_codes = true
 show_error_context = true
 show_traceback = true
 pretty = true
-# See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports.
-ignore_missing_imports = true
 implicit_optional = true
 check_untyped_defs = false
 # Warnings
@@ -230,6 +232,39 @@ warn_no_return = true
 warn_redundant_casts = true
 warn_unreachable = true
 files = ["dvc"]
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "configobj.*",
+    "dpath.*",
+    "dvc_data.*",
+    "dvc_http.*",
+    "dvc_objects.*",
+    "dvc_render.*",
+    "dvc_ssh",
+    "dvc_studio_client.*",
+    "dvc_task.*",
+    "flatten_dict",
+    "fsspec.*",
+    "funcy.*",  # https://github.com/Suor/funcy/issues/106,
+    "grandalf.*",
+    "ipdb",
+    "iterative_telemetry",
+    "kombu.*",
+    "networkx.*",  # https://github.com/networkx/networkx/issues/3988
+    "pygtrie.*",
+    "pyinstrument",
+    "pytest_docker.plugin",
+    "ruamel.yaml.*",
+    "scmrepo.*",
+    "tpi.*",
+    "viztracer",
+    "voluptuous",
+    "yappi",
+    "zc.*",
+]
+ignore_missing_imports = true
 
 [tool.pylint.master]
 extension-pkg-whitelist = ["pygit2"]

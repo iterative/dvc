@@ -38,7 +38,7 @@ from .utils import (
 if TYPE_CHECKING:
     from dvc.dvcfile import ProjectFile, SingleStageFile
     from dvc_data.hashfile.hash_info import HashInfo
-    from dvc_objects.db.base import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
