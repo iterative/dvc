@@ -50,7 +50,7 @@ def log_walk(seq):
 
 
 def collect_files(
-    repo: "Repo", onerror: Callable[[str, Exception], None] = None
+    repo: "Repo", onerror: Optional[Callable[[str, Exception], None]] = None
 ):
     """Collects all of the stages present in the DVC repo.
 
@@ -114,10 +114,10 @@ class Index:
     def __init__(
         self,
         repo: "Repo",
-        stages: List["Stage"] = None,
-        metrics: Dict[str, List[str]] = None,
-        plots: Dict[str, List[str]] = None,
-        params: Dict[str, Any] = None,
+        stages: Optional[List["Stage"]] = None,
+        metrics: Optional[Dict[str, List[str]]] = None,
+        plots: Optional[Dict[str, List[str]]] = None,
+        params: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.repo = repo
         self.stages = stages or []
@@ -134,7 +134,9 @@ class Index:
 
     @classmethod
     def from_repo(
-        cls, repo: "Repo", onerror: Callable[[str, Exception], None] = None
+        cls,
+        repo: "Repo",
+        onerror: Optional[Callable[[str, Exception], None]] = None,
     ) -> "Index":
         stages = []
         metrics = {}
@@ -315,12 +317,12 @@ class Index:
 
     def used_objs(
         self,
-        targets: "TargetType" = None,
+        targets: Optional["TargetType"] = None,
         with_deps: bool = False,
-        remote: str = None,
+        remote: Optional[str] = None,
         force: bool = False,
         recursive: bool = False,
-        jobs: int = None,
+        jobs: Optional[int] = None,
         push: bool = False,
     ) -> "ObjectContainer":
         from collections import defaultdict

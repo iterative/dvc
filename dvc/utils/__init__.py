@@ -331,7 +331,7 @@ def error_link(name):
 
 
 def parse_target(
-    target: str, default: str = None, isa_glob: bool = False
+    target: str, default: Optional[str] = None, isa_glob: bool = False
 ) -> Tuple[Optional[str], Optional[str]]:
     from dvc.dvcfile import LOCK_FILE, PROJECT_FILE, is_valid_filename
     from dvc.exceptions import DvcException

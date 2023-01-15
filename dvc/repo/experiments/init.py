@@ -41,8 +41,10 @@ PROMPTS = {
 
 def _prompts(
     keys: Iterable[str],
-    defaults: Dict[str, str] = None,
-    validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
+    defaults: Optional[Dict[str, str]] = None,
+    validator: Optional[
+        Callable[[str, str], Union[str, Tuple[str, str]]]
+    ] = None,
     allow_omission: bool = True,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, OptStr]:
@@ -77,7 +79,9 @@ def _disable_logging(highest_level=logging.CRITICAL):
 def init_interactive(
     defaults: Dict[str, str],
     provided: Dict[str, str],
-    validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
+    validator: Optional[
+        Callable[[str, str], Union[str, Tuple[str, str]]]
+    ] = None,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, str]:
     command_prompts = lremove(provided.keys(), ["cmd"])
@@ -202,8 +206,8 @@ def init(
     repo: "Repo",
     name: str = "train",
     type: str = "default",  # noqa: A002, pylint: disable=redefined-builtin
-    defaults: Dict[str, str] = None,
-    overrides: Dict[str, str] = None,
+    defaults: Optional[Dict[str, str]] = None,
+    overrides: Optional[Dict[str, str]] = None,
     interactive: bool = False,
     force: bool = False,
     stream: Optional[TextIO] = None,

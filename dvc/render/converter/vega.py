@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from funcy import first, last
 
@@ -106,7 +106,10 @@ class VegaConverter(Converter):
     """
 
     def __init__(
-        self, plot_id: str, data: Dict = None, properties: Dict = None
+        self,
+        plot_id: str,
+        data: Optional[Dict] = None,
+        properties: Optional[Dict] = None,
     ):
         super().__init__(plot_id, data, properties)
         self.plot_id = plot_id
@@ -304,8 +307,8 @@ class VegaConverter(Converter):
 def _update_from_field(
     target_datapoints: List[Dict],
     field: str,
-    source_datapoints: List[Dict] = None,
-    source_field: str = None,
+    source_datapoints: Optional[List[Dict]] = None,
+    source_field: Optional[str] = None,
 ):
     if source_datapoints is None:
         source_datapoints = target_datapoints

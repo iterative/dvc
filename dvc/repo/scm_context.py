@@ -9,6 +9,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Optional,
     Set,
     Union,
 )
@@ -26,7 +27,9 @@ logger = logging.getLogger(__name__)
 
 
 class SCMContext:
-    def __init__(self, scm: "Base", config: Dict[str, Any] = None) -> None:
+    def __init__(
+        self, scm: "Base", config: Optional[Dict[str, Any]] = None
+    ) -> None:
         from funcy import get_in
 
         self.scm: "Base" = scm
@@ -101,7 +104,7 @@ class SCMContext:
 
     @contextmanager
     def __call__(
-        self, autostage: bool = None, quiet: bool = None
+        self, autostage: Optional[bool] = None, quiet: Optional[bool] = None
     ) -> Iterator["SCMContext"]:
         try:
             yield self
@@ -147,7 +150,9 @@ class SCMContext:
         self._cm.__exit__(*exc_args)  # pylint: disable=no-member
 
 
-def scm_context(method, autostage: bool = None, quiet: bool = None):
+def scm_context(
+    method, autostage: Optional[bool] = None, quiet: Optional[bool] = None
+):
     @wraps(method)
     def run(repo: "Repo", *args, **kw):
         with repo.scm_context(autostage=autostage, quiet=quiet):

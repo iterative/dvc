@@ -5,7 +5,7 @@ from dvc.repo import locked
 from dvc.utils import glob_targets
 
 if TYPE_CHECKING:
-    from dvc_objects.db.base import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 

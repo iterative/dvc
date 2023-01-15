@@ -6,10 +6,10 @@ from dvc.utils import glob_targets
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc.cloud import Remote
+    from dvc.data_cloud import Remote
     from dvc.repo import Repo
     from dvc.types import TargetType
-    from dvc_objects.db.base import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 
 @locked

@@ -103,7 +103,7 @@ class StageLoad:
     def add(
         self,
         single_stage: bool = False,
-        fname: str = None,
+        fname: Optional[str] = None,
         validate: bool = True,
         force: bool = False,
         update_lock: bool = False,
@@ -133,7 +133,7 @@ class StageLoad:
         self,
         single_stage: bool = False,
         validate: bool = True,
-        fname: str = None,
+        fname: Optional[str] = None,
         force: bool = False,
         **stage_data,
     ) -> Union["Stage", "PipelineStage"]:
@@ -210,7 +210,9 @@ class StageLoad:
         path, name = parse_target(target)
         return self.load_one(path=path, name=name)
 
-    def _get_filepath(self, path: str = None, name: str = None) -> str:
+    def _get_filepath(
+        self, path: Optional[str] = None, name: Optional[str] = None
+    ) -> str:
         if path:
             return self.repo.fs.path.realpath(path)
 
@@ -230,7 +232,7 @@ class StageLoad:
     def _get_keys(
         self,
         stages: "StageLoader",
-        name: str = None,
+        name: Optional[str] = None,
         accept_group: bool = True,
         glob: bool = False,
     ) -> Iterable[str]:
@@ -245,8 +247,8 @@ class StageLoad:
 
     def load_all(
         self,
-        path: str = None,
-        name: str = None,
+        path: Optional[str] = None,
+        name: Optional[str] = None,
         accept_group: bool = True,
         glob: bool = False,
     ) -> StageList:
@@ -276,7 +278,9 @@ class StageLoad:
         keys = self._get_keys(stages, name, accept_group, glob)
         return [stages[key] for key in keys]
 
-    def load_one(self, path: str = None, name: str = None) -> "Stage":
+    def load_one(
+        self, path: Optional[str] = None, name: Optional[str] = None
+    ) -> "Stage":
         """Load a single stage from a file.
 
         Args:
@@ -291,20 +295,20 @@ class StageLoad:
 
         return stages[name]
 
-    def load_file(self, path: str = None) -> StageList:
+    def load_file(self, path: Optional[str] = None) -> StageList:
         """Load all of the stages from a file."""
         return self.load_all(path)
 
-    def load_glob(self, path: str, expr: str = None):
+    def load_glob(self, path: str, expr: Optional[str] = None):
         """Load stages from `path`, filtered with `expr` provided."""
         return self.load_all(path, expr, glob=True)
 
     def collect(
         self,
-        target: str = None,
+        target: Optional[str] = None,
         with_deps: bool = False,
         recursive: bool = False,
-        graph: "DiGraph" = None,
+        graph: Optional["DiGraph"] = None,
         glob: bool = False,
     ) -> StageIter:
         """Collect list of stages from the provided target.
@@ -351,10 +355,10 @@ class StageLoad:
 
     def collect_granular(
         self,
-        target: str = None,
+        target: Optional[str] = None,
         with_deps: bool = False,
         recursive: bool = False,
-        graph: "DiGraph" = None,
+        graph: Optional["DiGraph"] = None,
     ) -> List[StageInfo]:
         """Collects a list of (stage, filter_info) from the given target.
 

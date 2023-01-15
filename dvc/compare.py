@@ -167,7 +167,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return buff.getvalue()
 
     def to_parallel_coordinates(
-        self, output_path: "StrPath", color_by: str = None
+        self, output_path: "StrPath", color_by: Optional[str] = None
     ) -> "StrPath":
         from dvc_render.html import render_html
         from dvc_render.plotly import ParallelCoordinatesRenderer
@@ -209,7 +209,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             ui.table(self, headers=self.keys(), **kwargs)
 
     def as_dict(
-        self, cols: Iterable[str] = None
+        self, cols: Optional[Iterable[str]] = None
     ) -> Iterable[Dict[str, "CellT"]]:
         keys = self.keys() if cols is None else set(cols)
         return [
@@ -324,7 +324,7 @@ def _normalize_float(val: float, precision: int):
 
 
 def _format_field(
-    val: Any, precision: int = None, round_digits: bool = False
+    val: Any, precision: Optional[int] = None, round_digits: bool = False
 ) -> str:
     def _format(_val):
         if isinstance(_val, float) and precision:
@@ -345,11 +345,11 @@ def diff_table(
     old: bool = True,
     no_path: bool = False,
     show_changes: bool = True,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
-    on_empty_diff: str = None,
-    a_rev: str = None,
-    b_rev: str = None,
+    on_empty_diff: Optional[str] = None,
+    a_rev: Optional[str] = None,
+    b_rev: Optional[str] = None,
 ) -> TabularData:
     a_rev = a_rev or "HEAD"
     b_rev = b_rev or "workspace"
@@ -393,12 +393,12 @@ def show_diff(
     old: bool = True,
     no_path: bool = False,
     show_changes: bool = True,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
-    on_empty_diff: str = None,
+    on_empty_diff: Optional[str] = None,
     markdown: bool = False,
-    a_rev: str = None,
-    b_rev: str = None,
+    a_rev: Optional[str] = None,
+    b_rev: Optional[str] = None,
 ) -> None:
     td = diff_table(
         diff,
@@ -420,7 +420,7 @@ def metrics_table(
     all_branches: bool = False,
     all_tags: bool = False,
     all_commits: bool = False,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
 ):
     from dvc.utils.diff import format_dict
@@ -460,7 +460,7 @@ def show_metrics(
     all_branches: bool = False,
     all_tags: bool = False,
     all_commits: bool = False,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
 ) -> None:
     td = metrics_table(

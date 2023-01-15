@@ -2,7 +2,7 @@ import logging
 import os
 from contextlib import contextmanager
 from itertools import tee
-from typing import TYPE_CHECKING, Any, Iterator, List
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional
 
 import colorama
 
@@ -160,7 +160,7 @@ def add(  # noqa: C901
     targets: "TargetType",
     recursive: bool = False,
     no_commit: bool = False,
-    fname: str = None,
+    fname: Optional[str] = None,
     to_remote: bool = False,
     **kwargs: Any,
 ):
@@ -251,7 +251,7 @@ def _find_all_targets(
 def create_stages(
     repo: "Repo",
     targets: Iterator[str],
-    fname: str = None,
+    fname: Optional[str] = None,
     transfer: bool = False,
     external: bool = False,
     **kwargs: Any,

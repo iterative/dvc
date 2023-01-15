@@ -92,10 +92,10 @@ class Repo:
 
     def _get_repo_dirs(
         self,
-        root_dir: str = None,
-        fs: "FileSystem" = None,
+        root_dir: Optional[str] = None,
+        fs: Optional["FileSystem"] = None,
         uninitialized: bool = False,
-        scm: "Base" = None,
+        scm: Optional["Base"] = None,
     ):
         from dvc.fs import localfs
         from dvc.scm import SCM, SCMError
@@ -248,7 +248,7 @@ class Repo:
         return Index.from_repo(self)
 
     def check_graph(
-        self, stages: Iterable["Stage"], callback: Callable = None
+        self, stages: Iterable["Stage"], callback: Optional[Callable] = None
     ) -> None:
         if not getattr(self, "_skip_graph_checks", False):
             new = self.index.update(stages)

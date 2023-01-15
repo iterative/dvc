@@ -5,7 +5,7 @@ class Converter:
     def __init__(
         self,
         plot_id: str,
-        data: Dict[str, Any] = None,
+        data: Optional[Dict[str, Any]] = None,
         properties: Optional[Dict] = None,
     ):
         self.plot_id = plot_id

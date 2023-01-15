@@ -69,11 +69,13 @@ repos:
       files: ^dvc/
       language: system
       types: [python]
+      require_serial: true
     - id: pylint
       name: pylint
       entry: pylint
       language: system
       types: [python]
+      require_serial: true
   - hooks:
       - args:
           - git-hook

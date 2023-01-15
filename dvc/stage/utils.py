@@ -1,6 +1,6 @@
 import os
 import pathlib
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from funcy import concat, first, lsplit, rpartial
 
@@ -278,7 +278,9 @@ def check_stage_exists(
         )
 
 
-def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
+def validate_kwargs(
+    single_stage: bool = False, fname: Optional[str] = None, **kwargs
+):
     """Prepare, validate and process kwargs passed from cli"""
     cmd = kwargs.get("cmd")
     if not cmd and not single_stage:

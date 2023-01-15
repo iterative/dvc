@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Union, cast
 from dvc.fs.callbacks import Callback
 
 if TYPE_CHECKING:
-    from dvc.cloud import Remote
-    from dvc.index import Index, IndexView
+    from dvc.data_cloud import Remote
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.repo.index import Index, IndexView
     from dvc.repo.stage import StageInfo
     from dvc.stage import Stage
     from dvc.types import TargetType
@@ -144,7 +144,7 @@ def push_worktree(
             for out in stage.outs:
                 workspace, _key = out.index_key
                 _update_out_meta(out, repo.index.data[workspace])
-            stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
+            stage.dump(with_files=True, update_pipeline=False)
     return pushed
 
 
@@ -231,7 +231,7 @@ def update_worktree_stages(
         stage.save(merge_versioned=True)
         for out in stage.outs:
             _update_out_meta(out, remote_index)
-        stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
+        stage.dump(with_files=True, update_pipeline=False)
 
 
 def _fetch_out_changes(

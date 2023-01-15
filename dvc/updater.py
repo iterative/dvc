@@ -123,7 +123,7 @@ class Updater:
     def _get_message(
         self,
         latest: str,
-        current: str = None,
+        current: Optional[str] = None,
         color: str = "yellow",
         pkg: Optional[str] = None,
     ) -> "RichText":

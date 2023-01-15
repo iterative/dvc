@@ -7,6 +7,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     Tuple,
     TypeVar,
     Union,
@@ -162,7 +163,7 @@ class FileMixin:
         return self._load_yaml(**kwargs)
 
     @classmethod
-    def validate(cls, d: _T, fname: str = None) -> _T:
+    def validate(cls, d: _T, fname: Optional[str] = None) -> _T:
         from dvc.utils.strictyaml import validate
 
         return validate(d, cls.SCHEMA, path=fname)  # type: ignore[arg-type]

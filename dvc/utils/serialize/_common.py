@@ -7,6 +7,7 @@ from typing import (
     Callable,
     ContextManager,
     Dict,
+    Optional,
     Protocol,
     Union,
 )
@@ -22,20 +23,22 @@ if TYPE_CHECKING:
 
 class DumperFn(Protocol):
     def __call__(
-        self, path: "StrPath", data: Any, fs: "FileSystem" = None
+        self, path: "StrPath", data: Any, fs: Optional["FileSystem"] = None
     ) -> Any:
         ...
 
 
 class ModifierFn(Protocol):
     def __call__(
-        self, path: "StrPath", fs: "FileSystem" = None
+        self, path: "StrPath", fs: Optional["FileSystem"] = None
     ) -> ContextManager[Dict]:
         ...
 
 
 class LoaderFn(Protocol):
-    def __call__(self, path: "StrPath", fs: "FileSystem" = None) -> Any:
+    def __call__(
+        self, path: "StrPath", fs: Optional["FileSystem"] = None
+    ) -> Any:
         ...
 
 
@@ -62,7 +65,9 @@ class EncodingError(ParseError):
         super().__init__(path, f"is not valid {encoding}")
 
 
-def _load_data(path: "StrPath", parser: ParserFn, fs: "FileSystem" = None):
+def _load_data(
+    path: "StrPath", parser: ParserFn, fs: Optional["FileSystem"] = None
+):
     open_fn = fs.open if fs else open
     encoding = "utf-8"
     with open_fn(path, encoding=encoding) as fd:
@@ -74,7 +79,7 @@ def _dump_data(
     path,
     data: Any,
     dumper: DumperFn,
-    fs: "FileSystem" = None,
+    fs: Optional["FileSystem"] = None,
     **dumper_args,
 ):
     open_fn = fs.open if fs else open
@@ -87,7 +92,7 @@ def _modify_data(
     path: "StrPath",
     parser: ParserFn,
     dumper: DumperFn,
-    fs: "FileSystem" = None,
+    fs: Optional["FileSystem"] = None,
 ):
     exists_fn = fs.exists if fs else os.path.exists
     file_exists = exists_fn(path)

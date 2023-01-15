@@ -205,7 +205,7 @@ def remote_exp_refs_by_baseline(
 
 
 def exp_commits(
-    scm: "Git", ref_infos: Iterable[ExpRefInfo] = None
+    scm: "Git", ref_infos: Optional[Iterable[ExpRefInfo]] = None
 ) -> Iterable[str]:
     """Iterate over all experiment commits."""
     shas: Set["str"] = set()

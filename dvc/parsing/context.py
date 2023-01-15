@@ -172,7 +172,7 @@ class Container(Node, ABC):  # noqa: B024
         return self._convert_with_meta(value, meta)
 
     @staticmethod
-    def _convert_with_meta(value, meta: Meta = None):
+    def _convert_with_meta(value, meta: Optional[Meta] = None):
         if value is None or isinstance(value, PRIMITIVES):
             assert meta
             return Value(value, meta=meta)
@@ -240,7 +240,7 @@ class Container(Node, ABC):  # noqa: B024
 class CtxList(Container, MutableSequence):
     _key_transform = staticmethod(int)
 
-    def __init__(self, values: Sequence, meta: Meta = None):
+    def __init__(self, values: Sequence, meta: Optional[Meta] = None):
         super().__init__(meta=meta)
         self.data: list = []
         self.extend(values)
@@ -263,7 +263,12 @@ class CtxList(Container, MutableSequence):
 
 
 class CtxDict(Container, MutableMapping):
-    def __init__(self, mapping: Mapping = None, meta: Meta = None, **kwargs):
+    def __init__(
+        self,
+        mapping: Optional[Mapping] = None,
+        meta: Optional[Meta] = None,
+        **kwargs,
+    ):
         super().__init__(meta=meta)
 
         self.data: dict = {}
@@ -354,7 +359,7 @@ class Context(CtxDict):
 
     @classmethod
     def load_from(
-        cls, fs, path: str, select_keys: List[str] = None
+        cls, fs, path: str, select_keys: Optional[List[str]] = None
     ) -> "Context":
         from dvc.utils.serialize import load_path
 
@@ -433,8 +438,8 @@ class Context(CtxDict):
         fs,
         vars_: List,
         wdir: str,
-        stage_name: str = None,
-        default: str = None,
+        stage_name: Optional[str] = None,
+        default: Optional[str] = None,
     ):
         if default:
             to_import = fs.path.join(wdir, default)
