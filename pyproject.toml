@@ -225,11 +225,14 @@ show_error_codes = true
 show_error_context = true
 show_traceback = true
 pretty = true
-implicit_optional = true
+no_implicit_optional = true
 check_untyped_defs = false
+strict_equality = true
+strict_concatenate = true
 # Warnings
 warn_no_return = true
 warn_redundant_casts = true
+warn_unused_configs = true
 warn_unreachable = true
 files = ["dvc"]
 

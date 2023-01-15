@@ -141,7 +141,7 @@ def show(
     revs=None,
     targets=None,
     deps=False,
-    onerror: Callable = None,
+    onerror: Optional[Callable] = None,
     stages=None,
     hide_workspace=True,
 ):

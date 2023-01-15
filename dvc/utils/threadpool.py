@@ -2,7 +2,7 @@ import queue
 import sys
 from concurrent import futures
 from itertools import islice
-from typing import Any, Callable, Iterable, Iterator, Set, TypeVar
+from typing import Any, Callable, Iterable, Iterator, Optional, Set, TypeVar
 
 _T = TypeVar("_T")
 
@@ -11,7 +11,10 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
     _max_workers: int
 
     def __init__(
-        self, max_workers: int = None, cancel_on_error: bool = False, **kwargs
+        self,
+        max_workers: Optional[int] = None,
+        cancel_on_error: bool = False,
+        **kwargs
     ):
         super().__init__(max_workers=max_workers, **kwargs)
         self._cancel_on_error = cancel_on_error

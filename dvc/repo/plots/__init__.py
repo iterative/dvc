@@ -68,8 +68,8 @@ class Plots:
 
     def collect(
         self,
-        targets: List[str] = None,
-        revs: List[str] = None,
+        targets: Optional[List[str]] = None,
+        revs: Optional[List[str]] = None,
         recursive: bool = False,
         onerror: Optional[Callable] = None,
         props: Optional[Dict] = None,
@@ -180,7 +180,7 @@ class Plots:
 
     def show(
         self,
-        targets: List[str] = None,
+        targets: Optional[List[str]] = None,
         revs=None,
         props=None,
         recursive=False,
@@ -295,7 +295,7 @@ def _resolve_data_sources(plots_data: Dict):
 
 def _collect_plots(
     repo: "Repo",
-    targets: List[str] = None,
+    targets: Optional[List[str]] = None,
     recursive: bool = False,
 ) -> Dict[str, Dict]:
     from dvc.repo.collect import collect
@@ -486,7 +486,7 @@ def _collect_definitions(
     repo: "Repo",
     targets=None,
     config_files: Optional[Set[str]] = None,
-    props: Dict = None,
+    props: Optional[Dict] = None,
     onerror: Optional[Callable] = None,
     **kwargs,
 ) -> Dict:

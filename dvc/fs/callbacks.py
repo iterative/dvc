@@ -20,10 +20,10 @@ class RichCallback(Callback):
         self,
         size: Optional[int] = None,
         value: int = 0,
-        progress: "RichTransferProgress" = None,
-        desc: str = None,
+        progress: Optional["RichTransferProgress"] = None,
+        desc: Optional[str] = None,
         bytes: bool = False,  # noqa: A002, pylint: disable=redefined-builtin
-        unit: str = None,
+        unit: Optional[str] = None,
         disable: bool = False,
         transient: bool = True,
     ) -> None:
@@ -83,7 +83,7 @@ class RichCallback(Callback):
         path_1: Union[str, BinaryIO],
         path_2: str,
         kwargs: Dict[str, Any],
-        child: "Callback" = None,
+        child: Optional["Callback"] = None,
     ):
         child = child or RichCallback(
             progress=self.progress,

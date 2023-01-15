@@ -29,7 +29,7 @@ def viztracer_profile(path: Union[Callable[[], str], str], depth: int = -1):
 
 @contextmanager
 def yappi_profile(
-    path: Union[Callable[[], str], str] = None,
+    path: Optional[Union[Callable[[], str], str]] = None,
     wall_clock: Optional[bool] = True,
     separate_threads: Optional[bool] = False,
 ):
@@ -95,7 +95,7 @@ def instrument(html_output=False):
 
 
 @contextmanager
-def profile(dump_path: str = None):
+def profile(dump_path: Optional[str] = None):
     """Run a cprofile"""
     import cProfile
 
@@ -158,7 +158,7 @@ def _get_path_func(tool: str, ext: str):
 
 
 @contextmanager
-def debugtools(args: "Namespace" = None, **kwargs):
+def debugtools(args: Optional["Namespace"] = None, **kwargs):
     kw = vars(args) if args else {}
     kw.update(kwargs)
 

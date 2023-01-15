@@ -82,7 +82,7 @@ def format_and_raise(exc: Exception, msg: str, path: str) -> "NoReturn":
 
 
 def _reraise_err(
-    exc_cls: Type[Exception], *args, from_exc: Exception = None
+    exc_cls: Type[Exception], *args, from_exc: Optional[Exception] = None
 ) -> "NoReturn":
     err = exc_cls(*args)
     if from_exc and logger.isEnabledFor(logging.DEBUG):
@@ -194,7 +194,7 @@ class DataResolver:
     def has_key(self, key: str):
         return self._has_group_and_key(*split_foreach_name(key))
 
-    def _has_group_and_key(self, group: str, key: str = None):
+    def _has_group_and_key(self, group: str, key: Optional[str] = None):
         try:
             definition = self.definitions[group]
         except KeyError:
@@ -236,7 +236,7 @@ class EntryDefinition:
         self.where = where
 
     def _resolve_wdir(
-        self, context: Context, name: str, wdir: str = None
+        self, context: Context, name: str, wdir: Optional[str] = None
     ) -> str:
         if not wdir:
             return self.wdir

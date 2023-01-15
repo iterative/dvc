@@ -1,7 +1,7 @@
 from collections import abc
 from contextlib import ExitStack, contextmanager
 from itertools import zip_longest
-from typing import TYPE_CHECKING, Dict, Iterator, Sequence, Union
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Sequence, Union
 
 from dvc.types import DictStrAny
 
@@ -24,7 +24,7 @@ Styles = DictStrAny
 def plain_table(
     ui: "Console",
     data: TableData,
-    headers: Headers = None,
+    headers: Optional[Headers] = None,
     markdown: bool = False,
     pager: bool = False,
     force: bool = True,
@@ -76,10 +76,10 @@ def console_width(
 def rich_table(
     ui: "Console",
     data: TableData,
-    headers: Headers = None,
+    headers: Optional[Headers] = None,
     pager: bool = False,
-    header_styles: Union[Dict[str, Styles], Sequence[Styles]] = None,
-    row_styles: Sequence[Styles] = None,
+    header_styles: Optional[Union[Dict[str, Styles], Sequence[Styles]]] = None,
+    row_styles: Optional[Sequence[Styles]] = None,
     borders: Union[bool, str] = False,
 ) -> None:
     from rich import box

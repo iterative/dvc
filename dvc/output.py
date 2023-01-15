@@ -290,7 +290,7 @@ class Output:
         remote=None,
         repo=None,
         fs_config=None,
-        files: List[Dict[str, Any]] = None,
+        files: Optional[List[Dict[str, Any]]] = None,
         push: bool = True,
     ):
         self.annot = Annotation(

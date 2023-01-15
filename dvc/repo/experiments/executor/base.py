@@ -308,7 +308,7 @@ class BaseExecutor(ABC):
         dest_scm: "Git",
         refs: List[str],
         force: bool = False,
-        on_diverged: Callable[[str, bool], None] = None,
+        on_diverged: Optional[Callable[[str, bool], None]] = None,
         **kwargs,
     ) -> Iterable[str]:
         """Fetch reproduced experiment refs into the specified SCM.
@@ -550,7 +550,7 @@ class BaseExecutor(ABC):
     def _repro_dvc(  # noqa: C901
         cls,
         info: "ExecutorInfo",
-        infofile: str = None,
+        infofile: Optional[str] = None,
         log_errors: bool = True,
         **kwargs,
     ):

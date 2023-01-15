@@ -1,5 +1,5 @@
 import functools
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from . import FileSystem
 
@@ -17,10 +17,10 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
 
     def __init__(
         self,
-        path: str = None,
-        rev: str = None,
-        scm: "Git" = None,
-        trie: "GitTrie" = None,
+        path: Optional[str] = None,
+        rev: Optional[str] = None,
+        scm: Optional["Git"] = None,
+        trie: Optional["GitTrie"] = None,
         **kwargs: Any,
     ) -> None:
         from dvc.scm import resolve_rev

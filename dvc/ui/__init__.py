@@ -26,7 +26,9 @@ if TYPE_CHECKING:
 
 
 class Formatter:
-    def __init__(self, theme: Dict = None, defaults: Dict = None) -> None:
+    def __init__(
+        self, theme: Optional[Dict] = None, defaults: Optional[Dict] = None
+    ) -> None:
         from collections import defaultdict
 
         theme = theme or {
@@ -36,7 +38,9 @@ class Formatter:
         }
         self.theme = defaultdict(lambda: defaults or {}, theme)
 
-    def format(self, message: str, style: str = None, **kwargs) -> str:
+    def format(
+        self, message: str, style: Optional[str] = None, **kwargs
+    ) -> str:
         from dvc.utils import colorize
 
         return colorize(message, **self.theme[style])
@@ -44,7 +48,7 @@ class Formatter:
 
 class Console:
     def __init__(
-        self, formatter: Formatter = None, enable: bool = False
+        self, formatter: Optional[Formatter] = None, enable: bool = False
     ) -> None:
         from contextvars import ContextVar
 
@@ -69,9 +73,9 @@ class Console:
     def error_write(
         self,
         *objects: Any,
-        style: str = None,
-        sep: str = None,
-        end: str = None,
+        style: Optional[str] = None,
+        sep: Optional[str] = None,
+        end: Optional[str] = None,
         styled: bool = False,
         force: bool = True,
     ) -> None:
@@ -88,8 +92,8 @@ class Console:
     def write_json(
         self,
         data: Any,
-        indent: int = None,
-        highlight: bool = None,
+        indent: Optional[int] = None,
+        highlight: Optional[bool] = None,
         stderr: bool = False,
         skip_keys: bool = False,
         ensure_ascii: bool = True,
@@ -119,13 +123,13 @@ class Console:
     def write(
         self,
         *objects: Any,
-        style: str = None,
-        sep: str = None,
-        end: str = None,
+        style: Optional[str] = None,
+        sep: Optional[str] = None,
+        end: Optional[str] = None,
         stderr: bool = False,
         force: bool = False,
         styled: bool = False,
-        file: TextIO = None,
+        file: Optional[TextIO] = None,
     ) -> None:
         import sys
 
@@ -172,7 +176,10 @@ class Console:
             self._paginate.reset(tok)
 
     def prompt(
-        self, text: str, choices: Iterable[str] = None, password: bool = False
+        self,
+        text: str,
+        choices: Optional[Iterable[str]] = None,
+        password: bool = False,
     ) -> Optional[str]:
         while True:
             try:
@@ -222,13 +229,15 @@ class Console:
     def table(
         self,
         data: "TableData",
-        headers: "Headers" = None,
+        headers: Optional["Headers"] = None,
         markdown: bool = False,
         rich_table: bool = False,
         force: bool = True,
         pager: bool = False,
-        header_styles: Union[Dict[str, "Styles"], Sequence["Styles"]] = None,
-        row_styles: Sequence["Styles"] = None,
+        header_styles: Optional[
+            Union[Dict[str, "Styles"], Sequence["Styles"]]
+        ] = None,
+        row_styles: Optional[Sequence["Styles"]] = None,
         borders: Union[bool, str] = False,
     ) -> None:
         from dvc.ui import table as t

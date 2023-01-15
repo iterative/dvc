@@ -309,7 +309,7 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
 
 def ls(
     repo: "Repo",
-    targets: List[Optional[str]] = None,
+    targets: Optional[List[Optional[str]]] = None,
     recursive: bool = False,
 ) -> Iterator[Dict[str, Any]]:
     targets = targets or [None]

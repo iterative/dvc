@@ -396,7 +396,7 @@ class Stage(params.StageParams):
     def transfer(
         self,
         source: str,
-        odb: "ObjectDB" = None,
+        odb: Optional["ObjectDB"] = None,
         to_remote: bool = False,
         **kwargs: Any,
     ) -> None:
