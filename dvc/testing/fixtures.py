@@ -4,6 +4,8 @@ from typing import Dict, Tuple
 
 import pytest
 
+# pylint: disable=redefined-outer-name,unused-argument
+
 __all__ = [
     "make_tmp_dir",
     "tmp_dir",

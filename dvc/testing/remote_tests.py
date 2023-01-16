@@ -6,6 +6,8 @@ import pytest
 from dvc.stage.cache import RunCacheNotSupported
 from dvc.utils.fs import remove
 
+# pylint: disable=unused-argument
+
 
 class TestRemote:
     def test(self, tmp_dir, dvc, remote):  # pylint: disable=W0613

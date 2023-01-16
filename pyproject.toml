@@ -100,13 +100,7 @@ tests = [
     "filelock==3.9.0",
     "beautifulsoup4==4.11.1",
     "pywin32>=225; sys_platform == 'win32'",  # optional dependency
-    # pylint requirements
     "pylint==2.15.10",
-    # we use this to suppress pytest-related false positives in our tests.
-    "pylint-pytest==1.1.2",
-    # we use this to suppress some messages in tests, eg: foo/bar naming,
-    # and, protected method calls in our tests
-    "pylint-plugin-utils==0.7",
     # type-checking
     "mypy==0.991",
     "types-requests",
@@ -242,13 +236,10 @@ module = [
     "celery.*",
     "configobj.*",
     "dpath.*",
-    "dvc_data.*",
     "dvc_http.*",
-    "dvc_objects.*",
     "dvc_render.*",
     "dvc_ssh",
     "dvc_studio_client.*",
-    "dvc_task.*",
     "flatten_dict",
     "fsspec.*",
     "funcy.*",  # https://github.com/Suor/funcy/issues/106,
@@ -271,11 +262,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-[tool.pylint.master]
-extension-pkg-whitelist = ["pygit2"]
-init-hook = "import sys; sys.path.append(str('tests'))"
-load-plugins = ["pylint_pytest", "pylint_plugin_disable"]
-
 [tool.pylint.message_control]
 disable = [
     "format", "refactoring", "spelling", "design",
@@ -285,19 +271,16 @@ disable = [
     "logging-format-interpolation", "logging-fstring-interpolation",
     "missing-function-docstring", "missing-module-docstring",
     "missing-class-docstring", "raise-missing-from", "import-outside-toplevel",
-    "cannot-enumerate-pytest-fixtures",
 ]
 enable = ["c-extension-no-member", "no-else-return"]
 
 [tool.pylint.typecheck]
 generated-members = ["pytest.lazy_fixture", "logging.TRACE", "logger.trace", "sys.getwindowsversion", "argparse.Namespace"]
-ignored-classes = ["Dvcfile"]
-ignored-modules = ["azure"]
 signature-mutators = ["funcy.decorators.decorator"]
 
 [tool.pylint.variables]
-dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_"
-ignored-argument-names = "_.*|^ignored_|^unused_|args|kwargs"
+dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)"
+ignored-argument-names = "_.*|args|kwargs"
 
 [tool.codespell]
-ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
+ignore-words-list = "ba,datas,fo,uptodate,cachable"
