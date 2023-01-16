@@ -5,12 +5,11 @@ import shlex
 import subprocess
 from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass
-from typing import List, Optional, TextIO, Union
+from typing import BinaryIO, List, Optional, Union
 
-from funcy import cached_property
 from shortuuid import uuid
 
-from dvc.utils.fs import makedirs
+from dvc.utils.objects import cached_property
 
 from .exceptions import TimeoutExpired
 
@@ -60,8 +59,8 @@ class ManagedProcess(AbstractContextManager):
         self.wdir = wdir
         self.name = name or uuid()
         self.returncode: Optional[int] = None
-        self._stdout: Optional[TextIO] = None
-        self._stderr: Optional[TextIO] = None
+        self._stdout: Optional[BinaryIO] = None
+        self._stderr: Optional[BinaryIO] = None
 
         self._run()
 
@@ -103,7 +102,7 @@ class ManagedProcess(AbstractContextManager):
 
     def _make_wdir(self):
         if self.wdir:
-            makedirs(self.wdir, exist_ok=True)
+            os.makedirs(self.wdir, exist_ok=True)
 
     def _dump(self):
         self._make_wdir()
@@ -112,13 +111,13 @@ class ManagedProcess(AbstractContextManager):
         with open(self.pidfile_path, "w", encoding="utf-8") as fobj:
             fobj.write(str(self.pid))
 
-    def _run(self):
+    def _run(self) -> None:
         self._make_wdir()
         logger.debug(
             "Appending output to '%s'",
             self.stdout_path,
         )
-        self._stdout = open(self.stdout_path, "ab")
+        self._stdout = open(self.stdout_path, "ab")  # noqa: SIM115
         try:
             self._proc = subprocess.Popen(
                 self.args,

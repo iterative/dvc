@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.dependency import base
-from dvc.dvcfile import Dvcfile
+from dvc.dvcfile import load_file
 from dvc.exceptions import InvalidArgumentError
 from dvc.testing.tmp_dir import make_subrepo
 
@@ -117,7 +117,7 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
     assert imported.is_file()
     assert imported.read_text() == "updated"
 
-    stage = Dvcfile(dvc, stage.path).stage
+    stage = load_file(dvc, stage.path).stage
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev": "branch",
@@ -283,7 +283,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev_lock": branch1_head,
     }
     with open(tmp_dir / "foo", encoding="utf-8") as f:
-        assert "foobar" == f.read()
+        assert f.read() == "foobar"
 
     stage = dvc.update(["foo.dvc"], rev="branch2")[0]
     assert stage.deps[0].def_repo == {
@@ -292,7 +292,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev_lock": branch2_head,
     }
     with open(tmp_dir / "foo", encoding="utf-8") as f:
-        assert "foobar foo" == f.read()
+        assert f.read() == "foobar foo"
 
 
 def test_update_recursive(tmp_dir, dvc, erepo_dir):
@@ -344,9 +344,9 @@ def test_update_recursive(tmp_dir, dvc, erepo_dir):
 
     dvc.update(["dir"], recursive=True)
 
-    stage1 = Dvcfile(dvc, stage1.path).stage
-    stage2 = Dvcfile(dvc, stage2.path).stage
-    stage3 = Dvcfile(dvc, stage3.path).stage
+    stage1 = load_file(dvc, stage1.path).stage
+    stage2 = load_file(dvc, stage2.path).stage
+    stage3 = load_file(dvc, stage3.path).stage
     assert stage1.deps[0].def_repo["rev_lock"] == new_rev
     assert stage2.deps[0].def_repo["rev_lock"] == new_rev
     assert stage3.deps[0].def_repo["rev_lock"] == new_rev

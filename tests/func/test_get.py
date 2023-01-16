@@ -9,7 +9,6 @@ from dvc.odbmgr import ODBManager
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.testing.tmp_dir import make_subrepo
-from dvc.utils.fs import makedirs
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):
@@ -170,7 +169,7 @@ def test_get_to_dir(tmp_dir, erepo_dir, dname):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "contents", commit="create file")
 
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     Repo.get(os.fspath(erepo_dir), "file", dname)
 
@@ -256,13 +255,13 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
 def test_get_pipeline_tracked_outs(
     tmp_dir, dvc, scm, git_dir, run_copy, local_remote
 ):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     dvc.push()
 
-    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.add([PROJECT_FILE, LOCK_FILE])
     dvc.scm.commit("add pipeline stage")
 
     with git_dir.chdir():

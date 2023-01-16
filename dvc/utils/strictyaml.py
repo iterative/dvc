@@ -87,7 +87,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         self.rev: Optional[str] = rev
         super().__init__(self.path)
 
-    def __pretty_exc__(self, **kwargs: Any) -> None:
+    def __pretty_exc__(self, **kwargs: Any) -> None:  # noqa: C901
         from ruamel.yaml.error import MarkedYAMLError
 
         exc = self.exc.__cause__
@@ -101,7 +101,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             return f"in line {mark.line + 1}, column {mark.column + 1}"
 
         def prepare_message(
-            message: str, mark: "StreamMark" = None
+            message: str, mark: Optional["StreamMark"] = None
         ) -> "RichText":
             cause = ", ".join(
                 [message.capitalize(), prepare_linecol(mark) if mark else ""]
@@ -196,9 +196,9 @@ class YAMLValidationError(PrettyDvcException):
     def __init__(
         self,
         exc: "MultipleInvalid",
-        path: str = None,
-        text: str = None,
-        rev: str = None,
+        path: Optional[str] = None,
+        text: Optional[str] = None,
+        rev: Optional[str] = None,
     ) -> None:
         self.text = text or ""
         self.exc = exc
@@ -263,9 +263,9 @@ class YAMLValidationError(PrettyDvcException):
 def validate(
     data: _T,
     schema: Callable[[_T], _T],
-    text: str = None,
-    path: str = None,
-    rev: str = None,
+    text: Optional[str] = None,
+    path: Optional[str] = None,
+    rev: Optional[str] = None,
 ) -> _T:
     from voluptuous import MultipleInvalid
 
@@ -277,8 +277,8 @@ def validate(
 
 def load(
     path: str,
-    schema: Callable[[_T], _T] = None,
-    fs: "FileSystem" = None,
+    schema: Optional[Callable[[_T], _T]] = None,
+    fs: Optional["FileSystem"] = None,
     encoding: str = "utf-8",
     round_trip: bool = False,
 ) -> Any:
@@ -286,7 +286,7 @@ def load(
     rev = getattr(fs, "rev", None)
 
     try:
-        with open_fn(path, encoding=encoding) as fd:  # type: ignore
+        with open_fn(path, encoding=encoding) as fd:  # type: ignore[operator]
             text = fd.read()
         data = parse_yaml(text, path, typ="rt" if round_trip else "safe")
     except UnicodeDecodeError as exc:

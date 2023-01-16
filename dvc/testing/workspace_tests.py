@@ -1,4 +1,5 @@
 import os
+from typing import Dict, Union
 
 import pytest
 
@@ -74,7 +75,7 @@ class TestImport:
         # of directories. So instead we create an empty file that ends with a
         # trailing slash in order to actually support this operation
         if is_object_storage:
-            contents = ""
+            contents: Union[str, Dict[str, str]] = ""
         else:
             contents = {}
 

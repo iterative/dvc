@@ -400,7 +400,7 @@ def test_should_update_state_entry_for_directory_after_add(
     assert ret == 0
     assert file_md5_counter.mock.call_count == 8
 
-    os.rename("data", "data" + ".back")
+    os.rename("data", "data.back")
     ret = main(["checkout"])
     assert ret == 0
     assert file_md5_counter.mock.call_count == 8
@@ -417,7 +417,7 @@ def test_add_commit(tmp_dir, dvc):
     assert os.path.isfile("foo")
     assert not os.path.exists(dvc.odb.local.path)
 
-    ret = main(["commit", "foo" + ".dvc"])
+    ret = main(["commit", "foo.dvc"])
     assert ret == 0
     assert os.path.isfile("foo")
     assert dvc.odb.local.exists("acbd18db4cc2f85cedef654fccc4a4d8")
@@ -762,13 +762,13 @@ def test_output_duplication_for_pipeline_tracked(tmp_dir, dvc, run_copy):
 
 
 def test_add_pipeline_file(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE
+    from dvc.dvcfile import PROJECT_FILE
 
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
 
     with pytest.raises(OutputIsStageFileError):
-        dvc.add(PIPELINE_FILE)
+        dvc.add(PROJECT_FILE)
 
 
 def test_add_symlink_file(tmp_dir, dvc):

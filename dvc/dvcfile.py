@@ -7,12 +7,11 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     Tuple,
     TypeVar,
     Union,
 )
-
-from funcy import cached_property
 
 from dvc.exceptions import DvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
@@ -22,21 +21,25 @@ from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileIsNotDvcFileError,
 )
-from dvc.types import AnyPath
+from dvc.types import StrOrBytesPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
+from dvc.utils.objects import cached_property
 from dvc.utils.serialize import dump_yaml, modify_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+
+    from .parsing import DataResolver
+    from .stage import Stage
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
 
 DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
-PIPELINE_FILE = "dvc.yaml"
-PIPELINE_LOCK = "dvc.lock"
+PROJECT_FILE = "dvc.yaml"
+LOCK_FILE = "dvc.lock"
 
 
 class FileIsGitIgnored(DvcException):
@@ -55,7 +58,7 @@ class ParametrizedDumpError(DvcException):
 def is_valid_filename(path):
     return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
         DVC_FILE,
-        PIPELINE_FILE,
+        PROJECT_FILE,
     ]
 
 
@@ -66,7 +69,7 @@ def is_dvc_file(path):
 
 
 def is_lock_file(path):
-    return os.path.basename(path) == PIPELINE_LOCK
+    return os.path.basename(path) == LOCK_FILE
 
 
 def is_git_ignored(repo, path):
@@ -86,7 +89,7 @@ def check_dvcfile_path(repo, path):
         raise StageFileBadNameError(
             "bad DVC file name '{}'. DVC files should be named "
             "'{}' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                relpath(path), PIPELINE_FILE, os.path.basename(path)
+                relpath(path), PROJECT_FILE, os.path.basename(path)
             )
         )
 
@@ -161,7 +164,7 @@ class FileMixin:
         return self._load_yaml(**kwargs)
 
     @classmethod
-    def validate(cls, d: _T, fname: str = None) -> _T:
+    def validate(cls, d: _T, fname: Optional[str] = None) -> _T:
         from dvc.utils.strictyaml import validate
 
         return validate(d, cls.SCHEMA, path=fname)  # type: ignore[arg-type]
@@ -192,20 +195,20 @@ class SingleStageFile(FileMixin):
     from dvc.stage.loader import SingleStageLoader as LOADER
 
     metrics: List[str] = []
-    plots: Dict[str, Any] = {}
+    plots: Any = {}
     params: List[str] = []
 
     @property
-    def stage(self):
+    def stage(self) -> "Stage":
         data, raw = self._load()
         return self.LOADER.load_stage(self, data, raw)
 
     @property
-    def stages(self):
+    def stages(self) -> LOADER:
         data, raw = self._load()
         return self.LOADER(self, data, raw)
 
-    def dump(self, stage, **kwargs):
+    def dump(self, stage, **kwargs) -> None:
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 
@@ -228,7 +231,7 @@ class SingleStageFile(FileMixin):
         self.dump(stage)
 
 
-class PipelineFile(FileMixin):
+class ProjectFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
@@ -242,6 +245,7 @@ class PipelineFile(FileMixin):
         self.__dict__.pop("contents", None)
         self.__dict__.pop("lockfile_contents", None)
         self.__dict__.pop("resolver", None)
+        self.__dict__.pop("stages", None)
 
     def dump(
         self, stage, update_pipeline=True, update_lock=True, **kwargs
@@ -295,38 +299,38 @@ class PipelineFile(FileMixin):
     @property
     def stage(self):
         raise DvcException(
-            "PipelineFile has multiple stages. Please specify it's name."
+            "ProjectFile has multiple stages. Please specify it's name."
         )
 
     @cached_property
-    def contents(self):
+    def contents(self) -> Dict[str, Any]:
         return self._load()[0]
 
     @cached_property
-    def lockfile_contents(self):
+    def lockfile_contents(self) -> Dict[str, Any]:
         return self._lockfile.load()
 
     @cached_property
-    def resolver(self):
+    def resolver(self) -> "DataResolver":
         from .parsing import DataResolver
 
         wdir = self.repo.fs.path.parent(self.path)
         return DataResolver(self.repo, wdir, self.contents)
 
-    @property
-    def stages(self):
+    @cached_property
+    def stages(self) -> LOADER:
         return self.LOADER(self, self.contents, self.lockfile_contents)
 
     @property
-    def metrics(self):
+    def metrics(self) -> List[str]:
         return self.contents.get("metrics", [])
 
     @property
-    def plots(self):
+    def plots(self) -> Any:
         return self.contents.get("plots", {})
 
     @property
-    def params(self):
+    def params(self) -> List[str]:
         return self.contents.get("params", [])
 
     def remove(self, force=False):
@@ -460,20 +464,10 @@ class Lockfile(FileMixin):
         raise NotImplementedError
 
 
-class Dvcfile:
-    def __new__(cls, repo: "Repo", path: AnyPath, **kwargs: Any):
-        assert path
-        assert repo
-
-        return make_dvcfile(repo, path, **kwargs)
-
-
-DVCFile = Union["PipelineFile", "SingleStageFile"]
-
-
-def make_dvcfile(repo: "Repo", path: AnyPath, **kwargs: Any) -> DVCFile:
-    _, ext = os.path.splitext(str(path))
-    if ext in [".yaml", ".yml"]:
-        return PipelineFile(repo, path, **kwargs)
-    # fallback to single stage file for better error messages
+def load_file(
+    repo: "Repo", path: StrOrBytesPath, **kwargs: Any
+) -> Union[ProjectFile, SingleStageFile]:
+    _, ext = os.path.splitext(path)
+    if ext in (".yaml", ".yml"):
+        return ProjectFile(repo, path, **kwargs)
     return SingleStageFile(repo, path, **kwargs)

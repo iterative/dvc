@@ -9,16 +9,12 @@ def test_stage_cache(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
     tmp_dir.gen(
         "script.py",
-        (
-            'open("out", "w+").write("out"); '
-            'open("out_no_cache", "w+").write("out_no_cache")'
-        ),
+        ('open("out", "w+").write("out"); '),
     )
     stage = dvc.run(
         cmd="python script.py",
         deps=["script.py", "dep"],
         outs=["out"],
-        outs_no_cache=["out_no_cache"],
         single_stage=True,
     )
 
@@ -26,17 +22,16 @@ def test_stage_cache(tmp_dir, dvc, mocker):
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "out").exists()
-    assert not (tmp_dir / "out_no_cache").exists()
     assert not (tmp_dir / "out.dvc").exists()
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
-        "10",
-        "10b45372fdf4ec14d3f779c5b256378d7a12780e4c7f549a44138e492f098bfe",
+        "4b",
+        "4b495dc2b14e1ca5bd5f2765a99ddd8785523a8342efe6bcadac012c2db01165",
     )
     cache_file = os.path.join(
         cache_dir,
-        "bb32e04c6da96a7192513390acedbe4cd6123f8fe5b0ba5fffe39716fe87f6f4",
+        "78c427104a8e20216031c36d9c7620733066fff33ada254ad3fca551c1f8152b",
     )
 
     assert os.path.isdir(cache_dir)
@@ -49,12 +44,10 @@ def test_stage_cache(tmp_dir, dvc, mocker):
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 4
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "out").exists()
-    assert (tmp_dir / "out_no_cache").exists()
     assert (tmp_dir / "out").read_text() == "out"
-    assert (tmp_dir / "out_no_cache").read_text() == "out_no_cache"
 
 
 def test_stage_cache_params(tmp_dir, dvc, mocker):
@@ -62,16 +55,12 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
     tmp_dir.gen("myparams.yaml", "baz: 3\nqux: 4")
     tmp_dir.gen(
         "script.py",
-        (
-            'open("out", "w+").write("out"); '
-            'open("out_no_cache", "w+").write("out_no_cache")'
-        ),
+        ('open("out", "w+").write("out"); '),
     )
     stage = dvc.run(
         cmd="python script.py",
         params=["foo,bar", "myparams.yaml:baz,qux"],
         outs=["out"],
-        outs_no_cache=["out_no_cache"],
         single_stage=True,
     )
 
@@ -79,17 +68,16 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "out").exists()
-    assert not (tmp_dir / "out_no_cache").exists()
     assert not (tmp_dir / "out.dvc").exists()
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
-        "65",
-        "651d0a5b82e05e48b03acf44954f6a8599760e652a143d517a17d1065eca61a1",
+        "8f",
+        "8fdb377d1b4c0a303b788771b122dfba9bbbbc43f14ce41d35715cf4fea08459",
     )
     cache_file = os.path.join(
         cache_dir,
-        "2196a5a4dd24c5759437511fcf9d6aa66b259e1dac58e3f212aefd1797a6f114",
+        "202ea269108bf98bea3e15f978e7929864728956c9df8d927a5c7d74fc4fedc8",
     )
 
     assert os.path.isdir(cache_dir)
@@ -102,29 +90,23 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 4
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "out").exists()
-    assert (tmp_dir / "out_no_cache").exists()
     assert (tmp_dir / "out").read_text() == "out"
-    assert (tmp_dir / "out_no_cache").read_text() == "out_no_cache"
 
 
 def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
     tmp_dir.gen(
         "script.py",
-        (
-            'open("out", "w+").write("out"); '
-            'open("out_no_cache", "w+").write("out_no_cache")'
-        ),
+        ('open("out", "w+").write("out"); '),
     )
     tmp_dir.gen({"wdir": {}})
     stage = dvc.run(
         cmd="python ../script.py",
         deps=["../script.py", "../dep"],
         outs=["out"],
-        outs_no_cache=["out_no_cache"],
         single_stage=True,
         wdir="wdir",
     )
@@ -133,17 +115,16 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "wdir" / "out").exists()
-    assert not (tmp_dir / "wdir" / "out_no_cache").exists()
     assert not (tmp_dir / "wdir" / "out.dvc").exists()
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
-        "d2",
-        "d2b5da199f4da73a861027f5f76020a948794011db9704814fdb2a488ca93ec2",
+        "b5",
+        "b5d5548c43725139aa3419eb50717e062fe9b81f866f401fd6fd778d2a97822d",
     )
     cache_file = os.path.join(
         cache_dir,
-        "65cc63ade5ab338541726b26185ebaf42331141ec3a670a7d6e8a227505afade",
+        "e0a59f6a5bd193032a4d1500abd89c9b08a2e9b26c724015e0bc6374295a3b9f",
     )
 
     assert os.path.isdir(cache_dir)
@@ -156,12 +137,10 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 4
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "wdir" / "out").exists()
-    assert (tmp_dir / "wdir" / "out_no_cache").exists()
     assert (tmp_dir / "wdir" / "out").read_text() == "out"
-    assert (tmp_dir / "wdir" / "out_no_cache").read_text() == "out_no_cache"
 
 
 def test_shared_stage_cache(tmp_dir, dvc, run_copy):

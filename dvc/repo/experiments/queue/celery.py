@@ -16,17 +16,18 @@ from typing import (
 )
 
 from celery.result import AsyncResult
-from funcy import cached_property, first
+from funcy import first
 from kombu.message import Message
 
 from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
+from dvc.repo.experiments.exceptions import UnresolvedQueueExpNamesError
+from dvc.repo.experiments.executor.base import ExecutorInfo, ExecutorResult
+from dvc.repo.experiments.refs import CELERY_STASH
+from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.ui import ui
+from dvc.utils.objects import cached_property
 
-from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import ExecutorInfo, ExecutorResult
-from ..refs import CELERY_STASH
-from ..utils import EXEC_TMP_DIR, get_exp_rwlock
 from .base import (
     BaseStashQueue,
     ExpRefAndQueueEntry,
@@ -39,11 +40,10 @@ from .tasks import run_exp
 from .utils import fetch_running_exp_from_temp_dir
 
 if TYPE_CHECKING:
+    from dvc.repo.experiments.refs import ExpRefInfo
     from dvc_task.app import FSApp
     from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
-
-    from ..refs import ExpRefInfo
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +68,12 @@ class LocalCeleryQueue(BaseStashQueue):
 
     @cached_property
     def wdir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, self.CELERY_DIR)
 
     @cached_property
     def celery(self) -> "FSApp":
-        from kombu.transport.filesystem import Channel  # type: ignore
+        from kombu.transport.filesystem import Channel
 
         # related to https://github.com/iterative/dvc-task/issues/61
         Channel.QoS.restore_at_shutdown = False
@@ -232,10 +233,10 @@ class LocalCeleryQueue(BaseStashQueue):
                 exp_result = self.get_result(entry)
             except FileNotFoundError:
                 if result.status == "SUCCESS":
-                    raise DvcException(
+                    raise DvcException(  # noqa: B904
                         f"Invalid experiment '{entry.stash_rev[:7]}'."
                     )
-                elif result.status == "FAILURE":
+                if result.status == "FAILURE":
                     exp_result = None
             yield QueueDoneResult(entry, exp_result)
 
@@ -321,7 +322,9 @@ class LocalCeleryQueue(BaseStashQueue):
                 fail_to_kill_entries[queue_entry] = rev
         return fail_to_kill_entries
 
-    def _mark_inactive_tasks_failure(self, remained_entries):
+    def _mark_inactive_tasks_failure(
+        self, remained_entries: Dict[QueueEntry, str]
+    ) -> None:
         remained_revs: List[str] = []
         running_ids = self._get_running_task_ids()
         logger.debug(f"Current running tasks ids: {running_ids}.")
@@ -343,7 +346,9 @@ class LocalCeleryQueue(BaseStashQueue):
         if remained_revs:
             raise CannotKillTasksError(remained_revs)
 
-    def _kill_entries(self, entries: Dict[QueueEntry, str], force: bool):
+    def _kill_entries(
+        self, entries: Dict[QueueEntry, str], force: bool
+    ) -> None:
         logger.debug(
             "Found active tasks: '%s' to kill",
             list(entries.values()),
@@ -421,7 +426,9 @@ class LocalCeleryQueue(BaseStashQueue):
         try:
             proc_info = self.proc[queue_entry.stash_rev]
         except KeyError:
-            raise DvcException(f"No output logs found for experiment '{rev}'")
+            raise DvcException(  # noqa: B904
+                f"No output logs found for experiment '{rev}'"
+            )
         with open(
             proc_info.stdout,
             encoding=encoding or locale.getpreferredencoding(),
@@ -466,7 +473,7 @@ class LocalCeleryQueue(BaseStashQueue):
         git_remote: Optional[str] = None,
     ) -> Dict[str, ExpRefAndQueueEntry]:
         """Find finished ExpRefInfo or queued or failed QueueEntry by name"""
-        from ..utils import resolve_name
+        from dvc.repo.experiments.utils import resolve_name
 
         if isinstance(exp_names, str):
             exp_names = [exp_names]

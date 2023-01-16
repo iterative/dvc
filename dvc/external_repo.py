@@ -3,7 +3,7 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional, Tuple
 
 from funcy import retry, wrap_with
 
@@ -17,6 +17,7 @@ from dvc.exceptions import (
 )
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
+from dvc.types import StrPath
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
@@ -28,8 +29,13 @@ logger = logging.getLogger(__name__)
 @contextmanager
 @map_scm_exception()
 def external_repo(
-    url, rev=None, for_write=False, cache_dir=None, cache_types=None, **kwargs
-):
+    url,
+    rev: Optional[str] = None,
+    for_write: bool = False,
+    cache_dir: Optional[StrPath] = None,
+    cache_types: Optional[Collection[str]] = None,
+    **kwargs,
+) -> Iterator["Repo"]:
     from scmrepo.git import Git
 
     from dvc.config import NoRemoteError
@@ -108,7 +114,7 @@ def erepo_factory(url, root_dir, cache_config):
     return make_repo
 
 
-CLONES: Dict[str, str] = {}
+CLONES: Dict[str, Tuple[str, bool]] = {}
 CACHE_DIRS: Dict[str, str] = {}
 
 
@@ -185,14 +191,14 @@ def _cached_clone(url, rev, for_write=False):
 
 
 @wrap_with(threading.Lock())
-def _clone_default_branch(url, rev, for_write=False):
+def _clone_default_branch(url, rev, for_write=False):  # noqa: C901
     """Get or create a clean clone of the url.
 
     The cloned is reactualized with git pull unless rev is a known sha.
     """
     from scmrepo.git import Git
 
-    clone_path, shallow = CLONES.get(url, (None, False))
+    clone_path, shallow = CLONES.get(url) or (None, False)
 
     git = None
     try:

@@ -38,7 +38,11 @@ class _OpenContextManager(GCM):
         self, func, args, kwds
     ):  # pylint: disable=super-init-not-called
         self.gen = func(*args, **kwds)
-        self.func, self.args, self.kwds = func, args, kwds
+        self.func, self.args, self.kwds = (  # type: ignore[assignment]
+            func,
+            args,
+            kwds,
+        )
 
     def __getattr__(self, name):
         raise AttributeError(

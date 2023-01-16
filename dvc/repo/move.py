@@ -33,9 +33,8 @@ def move(self, from_path, to_path):
     also known as data sources.
     """
     import dvc.output as Output
+    from dvc.dvcfile import DVC_FILE_SUFFIX
     from dvc.stage import Stage
-
-    from ..dvcfile import DVC_FILE_SUFFIX, Dvcfile
 
     from_out = Output.loads_from(Stage(self), [from_path])[0]
     assert from_out.protocol == "local"
@@ -78,5 +77,4 @@ def move(self, from_path, to_path):
 
     out.move(to_out)
     stage.save()
-
-    Dvcfile(self, stage.path).dump(stage)
+    stage.dump()

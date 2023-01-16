@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.stash import ExpStashEntry
 
 
-def remove_tasks(
+def remove_tasks(  # noqa: C901
     celery_queue: "LocalCeleryQueue",
     queue_entries: Iterable["QueueEntry"],
 ):
@@ -24,7 +24,9 @@ def remove_tasks(
     failed_stash_revs: List["ExpStashEntry"] = []
     done_entry_set: Set["QueueEntry"] = set()
     stash_rev_all = celery_queue.stash.stash_revs
-    failed_rev_all = celery_queue.failed_stash.stash_revs
+    failed_rev_all: Dict[str, "ExpStashEntry"] = {}
+    if celery_queue.failed_stash:
+        failed_rev_all = celery_queue.failed_stash.stash_revs
     for entry in queue_entries:
         if entry.stash_rev in stash_rev_all:
             stash_revs[entry.stash_rev] = stash_rev_all[entry.stash_rev]
@@ -58,7 +60,8 @@ def remove_tasks(
                 result.forget()
             celery_queue.celery.purge(msg.delivery_tag)
     finally:
-        celery_queue.failed_stash.remove_revs(failed_stash_revs)
+        if celery_queue.failed_stash:
+            celery_queue.failed_stash.remove_revs(failed_stash_revs)
 
 
 def _get_names(entries: Iterable[Union["QueueEntry", "QueueDoneResult"]]):

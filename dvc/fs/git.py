@@ -1,7 +1,5 @@
-import threading
-from typing import TYPE_CHECKING, Any
-
-from funcy import cached_property, wrap_prop
+import functools
+from typing import TYPE_CHECKING, Any, Optional
 
 from . import FileSystem
 
@@ -19,10 +17,10 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
 
     def __init__(
         self,
-        path: str = None,
-        rev: str = None,
-        scm: "Git" = None,
-        trie: "GitTrie" = None,
+        path: Optional[str] = None,
+        rev: Optional[str] = None,
+        scm: Optional["Git"] = None,
+        trie: Optional["GitTrie"] = None,
         **kwargs: Any,
     ) -> None:
         from dvc.scm import resolve_rev
@@ -39,15 +37,16 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
             }
         )
 
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def fs(self) -> "FsspecGitFileSystem":
+    @functools.cached_property
+    def fs(  # pylint: disable=invalid-overridden-method
+        self,
+    ) -> "FsspecGitFileSystem":
         from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
 
         return FsspecGitFileSystem(**self.fs_args)
 
-    @cached_property
-    def path(self):
+    @functools.cached_property
+    def path(self):  # pylint: disable=invalid-overridden-method
         return self.fs.path
 
     @property

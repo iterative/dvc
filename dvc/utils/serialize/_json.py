@@ -19,13 +19,17 @@ def parse_json(text, path, **kwargs):
         return json.loads(text, **kwargs) or {}
 
 
+def _dump_json(data, stream, **kwargs):
+    return json.dump(data, stream, **kwargs)
+
+
 def dump_json(path, data, fs=None, **kwargs):
-    return _dump_data(path, data, dumper=json.dump, fs=fs, **kwargs)
+    return _dump_data(path, data, dumper=_dump_json, fs=fs, **kwargs)
 
 
 @contextmanager
 def modify_json(path, fs=None):
-    with _modify_data(path, parse_json, dump_json, fs=fs) as d:
+    with _modify_data(path, parse_json, _dump_json, fs=fs) as d:
         yield d
 
 

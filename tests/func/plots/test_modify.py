@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.dvcfile import PIPELINE_LOCK
+from dvc.dvcfile import LOCK_FILE
 from dvc.repo.plots import PropsNotFoundError
 from dvc.utils import relpath
 from tests.utils.plots import get_plot
@@ -37,11 +37,11 @@ def test_plots_modify_should_not_change_lockfile(
         single_stage=False,
     )
 
-    (tmp_dir / PIPELINE_LOCK).unlink()
+    (tmp_dir / LOCK_FILE).unlink()
     dvc.plots.modify(
         "metric.json", props={"template": relpath(custom_template)}
     )
-    assert not (tmp_dir / PIPELINE_LOCK).exists()
+    assert not (tmp_dir / LOCK_FILE).exists()
 
 
 def test_plots_modify_not_existing_template(dvc):

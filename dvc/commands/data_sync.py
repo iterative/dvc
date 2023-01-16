@@ -122,7 +122,7 @@ def shared_parent_parser():
             "Limit command scope to these tracked files/directories, "
             ".dvc files and stage names."
         ),
-    ).complete = completion.DVC_FILE
+    ).complete = completion.DVC_FILE  # type: ignore[attr-defined]
 
     return parent_parser
 
@@ -302,7 +302,7 @@ def add_parser(subparsers, _parent_parser):
         "--with-deps",
         action="store_true",
         default=False,
-        help="Fetch cache for all dependencies of the " "specified target.",
+        help="Fetch cache for all dependencies of the specified target.",
     )
     fetch_parser.add_argument(
         "-R",

@@ -4,7 +4,7 @@ from operator import itemgetter
 import pytest
 from funcy import raiser
 
-from dvc.dvcfile import PIPELINE_FILE, FileIsGitIgnored
+from dvc.dvcfile import PROJECT_FILE, FileIsGitIgnored
 from dvc.exceptions import NoOutputOrStageError
 from dvc.repo import Repo
 from dvc.stage.exceptions import (
@@ -186,7 +186,7 @@ def test_collect_granular_with_target(tmp_dir, dvc, stages):
     assert dvc.stage.collect_granular("bar.dvc") == [
         (stages["copy-foo-bar"], None)
     ]
-    assert dvc.stage.collect_granular(PIPELINE_FILE) == [
+    assert dvc.stage.collect_granular(PROJECT_FILE) == [
         (stages["copy-bar-foobar"], None),
         (stages["copy-lorem-ipsum"], None),
     ]
@@ -206,7 +206,7 @@ def test_collect_granular_with_target(tmp_dir, dvc, stages):
 
     with (tmp_dir / dvc.DVC_DIR).chdir():
         assert dvc.stage.collect_granular(
-            relpath(tmp_dir / PIPELINE_FILE) + ":copy-bar-foobar"
+            relpath(tmp_dir / PROJECT_FILE) + ":copy-bar-foobar"
         ) == [(stages["copy-bar-foobar"], None)]
 
     assert dvc.stage.collect_granular("foobar") == [
@@ -257,7 +257,7 @@ def test_collect_granular_with_deps(tmp_dir, dvc, stages):
     assert set(
         map(
             itemgetter(0),
-            dvc.stage.collect_granular(PIPELINE_FILE, with_deps=True),
+            dvc.stage.collect_granular(PROJECT_FILE, with_deps=True),
         )
     ) == set(stages.values())
 
@@ -333,17 +333,17 @@ def test_get_stages(tmp_dir, dvc, run_copy):
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
 
     assert set(dvc.stage.load_all()) == {stage1, stage2}
-    assert set(dvc.stage.load_all(path=PIPELINE_FILE)) == {stage1, stage2}
+    assert set(dvc.stage.load_all(path=PROJECT_FILE)) == {stage1, stage2}
     assert set(dvc.stage.load_all(name="copy-bar-foobar")) == {stage2}
     assert set(
-        dvc.stage.load_all(path=PIPELINE_FILE, name="copy-bar-foobar")
+        dvc.stage.load_all(path=PROJECT_FILE, name="copy-bar-foobar")
     ) == {stage2}
 
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.stage.load_all(path=relpath(tmp_dir / ".." / PIPELINE_FILE))
+        dvc.stage.load_all(path=relpath(tmp_dir / ".." / PROJECT_FILE))
 
     with pytest.raises(StageNotFound):
-        dvc.stage.load_all(path=PIPELINE_FILE, name="copy")
+        dvc.stage.load_all(path=PROJECT_FILE, name="copy")
 
 
 def test_get_stages_old_dvcfile(tmp_dir, dvc):
@@ -363,11 +363,9 @@ def test_get_stage(tmp_dir, dvc, run_copy):
         dvc.stage.load_one()
 
     with pytest.raises(StageNameUnspecified):
-        dvc.stage.load_one(path=PIPELINE_FILE)
+        dvc.stage.load_one(path=PROJECT_FILE)
 
-    assert (
-        dvc.stage.load_one(path=PIPELINE_FILE, name="copy-foo-bar") == stage1
-    )
+    assert dvc.stage.load_one(path=PROJECT_FILE, name="copy-foo-bar") == stage1
     assert dvc.stage.load_one(name="copy-foo-bar") == stage1
 
     with pytest.raises(StageFileDoesNotExistError):
@@ -391,7 +389,7 @@ def test_collect_optimization(tmp_dir, dvc, mocker):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.index.Index.stages",
+        "dvc.repo.Repo.index",
         property(raiser(Exception("Should not collect"))),
     )
 
@@ -406,7 +404,7 @@ def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.index.Index.stages",
+        "dvc.repo.Repo.index",
         property(raiser(Exception("Should not collect"))),
     )
 
@@ -420,26 +418,15 @@ def test_collect_repo_callback(tmp_dir, dvc, mocker):
     dvc.stage_collection_error_handler = mock
 
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
-    (tmp_dir / PIPELINE_FILE).dump({"stages": {"cmd": "echo hello world"}})
+    (tmp_dir / PROJECT_FILE).dump({"stages": {"cmd": "echo hello world"}})
 
     dvc._reset()
     assert dvc.index.stages == [stage]
     mock.assert_called_once()
 
     file_path, exc = mock.call_args[0]
-    assert file_path == PIPELINE_FILE
+    assert file_path == PROJECT_FILE
     assert isinstance(exc, YAMLValidationError)
-
-
-def test_gitignored_collect_repo(tmp_dir, dvc, scm):
-    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
-
-    assert dvc.stage.collect_repo() == [stage]
-
-    scm.ignore(stage.path)
-    scm._reset()
-
-    assert not dvc.stage.collect_repo()
 
 
 def test_gitignored_file_try_collect_granular_for_data_files(

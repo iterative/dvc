@@ -67,7 +67,7 @@ def prepare_stages_data(
 class CmdStageList(CmdBase):
     def _get_stages(self) -> Iterable["Stage"]:
         if self.args.all:
-            stages: List["Stage"] = self.repo.index.stages  # type: ignore
+            stages: List["Stage"] = self.repo.index.stages
             logger.trace(  # type: ignore[attr-defined]
                 "%d no. of stages found", len(stages)
             )
@@ -95,7 +95,7 @@ class CmdStageList(CmdBase):
 
         stages = self._get_stages()
         data = prepare_stages_data(stages, description=not self.args.name_only)
-        ui.table(data.items())
+        ui.table(list(data.items()))
 
         return 0
 

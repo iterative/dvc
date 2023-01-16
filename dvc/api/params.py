@@ -1,3 +1,4 @@
+import typing
 from collections import Counter
 from typing import Dict, Iterable, Optional, Union
 
@@ -238,15 +239,15 @@ def params_show(
     if isinstance(stages, str):
         stages = [stages]
 
-    def _onerror_raise(result: Dict, exception: Exception, *args, **kwargs):
+    def _onerror_raise(_result: Dict, exception: Exception, *args, **kwargs):
         raise exception
 
     def _postprocess(params):
-        processed = {}
+        processed: Dict[str, Dict] = {}
         for rev, rev_data in params.items():
             processed[rev] = {}
 
-            counts = Counter()
+            counts: typing.Counter[str] = Counter()
             for file_data in rev_data["data"].values():
                 for k in file_data["data"]:
                     counts[k] += 1

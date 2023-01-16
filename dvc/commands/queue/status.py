@@ -1,13 +1,12 @@
 import argparse
 import logging
-from typing import List, Mapping, Optional
+from typing import Dict, List, Optional
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.commands.experiments.show import format_time
 from dvc.compare import TabularData
 from dvc.ui import ui
-
-from ..experiments.show import format_time
 
 logger = logging.getLogger(__name__)
 
@@ -15,19 +14,21 @@ logger = logging.getLogger(__name__)
 class CmdQueueStatus(CmdBase):
     """Show queue task and worker status."""
 
-    def run(self):
+    def run(self) -> int:
         result: List[
-            Mapping[str, Optional[str]]
+            Dict[str, Optional[str]]
         ] = self.repo.experiments.celery_queue.status()
         if result:
             all_headers = ["Task", "Name", "Created", "Status"]
             td = TabularData(all_headers)
             for exp in result:
                 created = format_time(exp.get("timestamp"))
+                assert exp["rev"]
+                assert exp["status"]
                 td.append(
                     [
                         exp["rev"][:7],
-                        exp.get("name", ""),
+                        exp.get("name") or "",
                         created,
                         exp["status"],
                     ]

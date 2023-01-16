@@ -5,11 +5,11 @@ import pytest
 
 from dvc.annotations import Annotation
 from dvc.dvcfile import (
-    PIPELINE_FILE,
-    PIPELINE_LOCK,
-    Dvcfile,
+    LOCK_FILE,
+    PROJECT_FILE,
     ParametrizedDumpError,
     SingleStageFile,
+    load_file,
 )
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.stage.loader import StageNotFound
@@ -35,7 +35,7 @@ def test_run_load_one_for_multistage(tmp_dir, dvc):
         outs_persist_no_cache=["foo2"],
         always_changed=True,
     )
-    stage2 = Dvcfile(dvc, PIPELINE_FILE).stages["copy-foo-foo2"]
+    stage2 = load_file(dvc, PROJECT_FILE).stages["copy-foo-foo2"]
     assert stage1 == stage2
     foo_out = stage2.outs[0]
     assert stage2.cmd == "cp foo foo2"
@@ -49,7 +49,7 @@ def test_run_load_one_for_multistage(tmp_dir, dvc):
 
 def test_run_load_one_for_multistage_non_existing(tmp_dir, dvc):
     with pytest.raises(StageFileDoesNotExistError):
-        assert Dvcfile(dvc, PIPELINE_FILE).stages.get("copy-foo-foo2")
+        assert load_file(dvc, PROJECT_FILE).stages.get("copy-foo-foo2")
 
 
 def test_run_load_one_for_multistage_non_existing_stage_name(tmp_dir, dvc):
@@ -62,7 +62,7 @@ def test_run_load_one_for_multistage_non_existing_stage_name(tmp_dir, dvc):
         always_changed=True,
     )
     with pytest.raises(StageNotFound):
-        assert Dvcfile(dvc, stage.path).stages["random-name"]
+        assert load_file(dvc, stage.path).stages["random-name"]
 
 
 def test_run_load_one_on_single_stage(tmp_dir, dvc):
@@ -74,9 +74,9 @@ def test_run_load_one_on_single_stage(tmp_dir, dvc):
         always_changed=True,
         single_stage=True,
     )
-    assert isinstance(Dvcfile(dvc, stage.path), SingleStageFile)
-    assert Dvcfile(dvc, stage.path).stages.get("random-name") == stage
-    assert Dvcfile(dvc, stage.path).stage == stage
+    assert isinstance(load_file(dvc, stage.path), SingleStageFile)
+    assert load_file(dvc, stage.path).stages.get("random-name") == stage
+    assert load_file(dvc, stage.path).stage == stage
 
 
 def test_has_stage_with_name(tmp_dir, dvc):
@@ -88,7 +88,7 @@ def test_has_stage_with_name(tmp_dir, dvc):
         metrics=["foo2"],
         always_changed=True,
     )
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     assert "copy-foo-foo2" in dvcfile.stages
     assert "copy" not in dvcfile.stages
 
@@ -102,7 +102,7 @@ def test_load_all_multistage(tmp_dir, dvc):
         metrics=["foo2"],
         always_changed=True,
     )
-    stages = Dvcfile(dvc, PIPELINE_FILE).stages.values()
+    stages = load_file(dvc, PROJECT_FILE).stages.values()
     assert len(stages) == 1
     assert list(stages) == [stage1]
 
@@ -114,7 +114,10 @@ def test_load_all_multistage(tmp_dir, dvc):
         metrics=["bar2"],
         always_changed=True,
     )
-    assert set(Dvcfile(dvc, PIPELINE_FILE).stages.values()) == {stage2, stage1}
+    assert set(load_file(dvc, PROJECT_FILE).stages.values()) == {
+        stage2,
+        stage1,
+    }
 
 
 def test_load_all_singlestage(tmp_dir, dvc):
@@ -126,7 +129,7 @@ def test_load_all_singlestage(tmp_dir, dvc):
         always_changed=True,
         single_stage=True,
     )
-    dvcfile = Dvcfile(dvc, "foo2.dvc")
+    dvcfile = load_file(dvc, "foo2.dvc")
     assert isinstance(dvcfile, SingleStageFile)
     assert len(dvcfile.stages) == 1
     stages = dvcfile.stages.values()
@@ -146,7 +149,7 @@ def test_try_get_single_stage_from_pipeline_file(tmp_dir, dvc):
         always_changed=True,
     )
     with pytest.raises(DvcException):
-        assert Dvcfile(dvc, PIPELINE_FILE).stage
+        assert load_file(dvc, PROJECT_FILE).stage
 
 
 def test_stage_collection(tmp_dir, dvc):
@@ -180,7 +183,7 @@ def test_remove_stage(tmp_dir, dvc, run_copy):
     stage = run_copy("foo", "bar", name="copy-foo-bar")
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
 
-    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+    dvc_file = load_file(dvc, PROJECT_FILE)
     assert dvc_file.exists()
     assert {"copy-bar-foobar", "copy-foo-bar"} == set(
         dvc_file._load()[0]["stages"].keys()
@@ -205,7 +208,7 @@ def test_remove_stage_lockfile(tmp_dir, dvc, run_copy):
     stage = run_copy("foo", "bar", name="copy-foo-bar")
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
 
-    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+    dvc_file = load_file(dvc, PROJECT_FILE)
     lock_file = dvc_file._lockfile
     assert dvc_file.exists()
     assert lock_file.exists()
@@ -230,7 +233,7 @@ def test_remove_stage_dvcfiles(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", single_stage=True)
 
-    dvc_file = Dvcfile(dvc, stage.path)
+    dvc_file = load_file(dvc, stage.path)
     assert dvc_file.exists()
     dvc_file.remove_stage(stage)
     assert not dvc_file.exists()
@@ -246,7 +249,7 @@ def test_remove_stage_dvcfiles(tmp_dir, dvc, run_copy):
 def test_remove_stage_on_lockfile_format_error(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-foo-bar")
-    dvc_file = Dvcfile(dvc, stage.path)
+    dvc_file = load_file(dvc, stage.path)
     lock_file = dvc_file._lockfile
 
     data = dvc_file._load()[0]
@@ -285,19 +288,19 @@ def test_remove_stage_preserves_comment(tmp_dir, dvc, run_copy):
         ),
     )
 
-    dvc.reproduce(PIPELINE_FILE)
+    dvc.reproduce(PROJECT_FILE)
 
-    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+    dvc_file = load_file(dvc, PROJECT_FILE)
 
     assert dvc_file.exists()
-    assert (tmp_dir / PIPELINE_LOCK).exists()
+    assert (tmp_dir / LOCK_FILE).exists()
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "bar").exists()
 
     dvc_file.remove_stage(dvc_file.stages["copy-foo-bar"])
     assert (
         "# This copies 'foo' text to 'foo' file."
-        in (tmp_dir / PIPELINE_FILE).read_text()
+        in (tmp_dir / PROJECT_FILE).read_text()
     )
 
 
@@ -307,15 +310,15 @@ def test_remove_stage_removes_dvcfiles_if_no_stages_left(
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="run_copy")
 
-    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+    dvc_file = load_file(dvc, PROJECT_FILE)
 
     assert dvc_file.exists()
-    assert (tmp_dir / PIPELINE_LOCK).exists()
+    assert (tmp_dir / LOCK_FILE).exists()
     assert (tmp_dir / "foo").exists()
 
     dvc_file.remove_stage(dvc_file.stages["run_copy"])
     assert not dvc_file.exists()
-    assert not (tmp_dir / PIPELINE_LOCK).exists()
+    assert not (tmp_dir / LOCK_FILE).exists()
 
 
 def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):

@@ -1,8 +1,7 @@
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
-
-from ..utils.test_hydra import hydra_setup
+from tests.func.utils.test_hydra import hydra_setup
 
 
 @pytest.mark.parametrize(

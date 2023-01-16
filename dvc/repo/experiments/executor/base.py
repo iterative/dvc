@@ -25,13 +25,20 @@ from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
+from dvc.repo.experiments.exceptions import (
+    CheckpointExistsError,
+    ExperimentExistsError,
+)
+from dvc.repo.experiments.refs import (
+    EXEC_BASELINE,
+    EXEC_BRANCH,
+    EXEC_CHECKPOINT,
+    ExpRefInfo,
+)
 from dvc.stage.serialize import to_lockfile
 from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
-
-from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..refs import EXEC_BASELINE, EXEC_BRANCH, EXEC_CHECKPOINT, ExpRefInfo
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -77,9 +84,8 @@ class ExecutorInfo:
 
     @classmethod
     def from_dict(cls, d):
-        if "collected" in d:
-            if d.pop("collected"):
-                d["status"] = TaskStatus.FINISHED
+        if d.pop("collected", None):
+            d["status"] = TaskStatus.FINISHED
         return cls(**d)
 
     def asdict(self):
@@ -96,10 +102,9 @@ class ExecutorInfo:
         )
 
     def dump_json(self, filename: str):
-        from dvc.utils.fs import makedirs
         from dvc.utils.serialize import modify_json
 
-        makedirs(os.path.dirname(filename), exist_ok=True)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         with modify_json(filename) as d:
             d.update(self.asdict())
 
@@ -247,7 +252,7 @@ class BaseExecutor(ABC):
         root_dir: str,
         **kwargs,
     ) -> _T:
-        executor = cls(
+        return cls(
             root_dir=root_dir,
             dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
             baseline_rev=entry.baseline_rev,
@@ -256,7 +261,6 @@ class BaseExecutor(ABC):
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
         )
-        return executor
 
     @staticmethod
     def hash_exp(stages: Iterable["PipelineStage"]) -> str:
@@ -283,10 +287,9 @@ class BaseExecutor(ABC):
             open_func = fs.open
             fs.makedirs(dpath)
         else:
-            from dvc.utils.fs import makedirs
 
             open_func = open
-            makedirs(dpath, exist_ok=True)
+            os.makedirs(dpath, exist_ok=True)
 
         data = {"args": args, "kwargs": kwargs}
         if extra is not None:
@@ -305,7 +308,7 @@ class BaseExecutor(ABC):
         dest_scm: "Git",
         refs: List[str],
         force: bool = False,
-        on_diverged: Callable[[str, bool], None] = None,
+        on_diverged: Optional[Callable[[str, bool], None]] = None,
         **kwargs,
     ) -> Iterable[str]:
         """Fetch reproduced experiment refs into the specified SCM.
@@ -379,7 +382,7 @@ class BaseExecutor(ABC):
         try:
             dvc.scm.validate_git_remote(git_remote)
         except InvalidRemote as exc:
-            raise InvalidRemoteSCMRepo(str(exc))
+            raise InvalidRemoteSCMRepo(str(exc))  # noqa: B904
         dvc.cloud.get_remote_odb()
 
     @classmethod
@@ -544,10 +547,10 @@ class BaseExecutor(ABC):
 
     @classmethod
     @contextmanager
-    def _repro_dvc(
+    def _repro_dvc(  # noqa: C901
         cls,
         info: "ExecutorInfo",
-        infofile: str = None,
+        infofile: Optional[str] = None,
         log_errors: bool = True,
         **kwargs,
     ):
@@ -618,7 +621,7 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:  # pylint: disable=broad-except
+        except BaseException as exc:  # noqa: BLE001, pylint: disable=W0703
             logger.warning(
                 "Something went wrong while auto pushing experiment "
                 "to the remote '%s': %s",

@@ -174,5 +174,4 @@ def test_help_message(tmp_dir, scm, dvc, cmd, use_config, capsys):
     except SystemExit:
         pass
     cap = capsys.readouterr()
-    print(cap.out)
     assert ("--global" in cap.out) is use_config

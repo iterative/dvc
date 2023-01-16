@@ -29,7 +29,7 @@ def test_move_directory(tmp_dir, dvc):
 
 def test_cmd_move(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
-    assert main(["move", "foo", "foo" + "1"]) == 0
+    assert main(["move", "foo", "foo1"]) == 0
     assert main(["move", "non-existing-file", "dst"]) != 0
 
 
@@ -188,7 +188,6 @@ def test_move_meta(tmp_dir, dvc):
 
     dvc.move("foo", "bar")
     res = (tmp_dir / "bar.dvc").read_text()
-    print(res)
     assert res == textwrap.dedent(
         """\
         outs:

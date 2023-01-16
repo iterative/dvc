@@ -7,13 +7,13 @@ from scmrepo.git import Git
 
 from dvc.annotations import Annotation
 from dvc.config import NoRemoteError
-from dvc.dvcfile import Dvcfile
+from dvc.dvcfile import load_file
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.fs import system
 from dvc.odbmgr import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
-from dvc.utils.fs import makedirs, remove
+from dvc.utils.fs import remove
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -205,7 +205,7 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
 
-    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
+    dst_stage = load_file(dvc, "foo_imported.dvc").stage
     dst_cache = dst_stage.outs[0].cache_path
 
     remove("foo_imported")
@@ -224,7 +224,7 @@ def test_import_no_download(tmp_dir, scm, dvc, erepo_dir):
 
     assert not os.path.exists("foo_imported")
 
-    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
+    dst_stage = load_file(dvc, "foo_imported.dvc").stage
 
     assert dst_stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
@@ -250,7 +250,7 @@ def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
     dvc.pull(["foo_imported.dvc"])
     assert os.path.exists("foo_imported")
 
-    stage = Dvcfile(dvc, "foo_imported.dvc").stage
+    stage = load_file(dvc, "foo_imported.dvc").stage
 
     assert (
         stage.outs[0].hash_info.value == "bdb8641831d8fcb03939637e09011c21.dir"
@@ -363,20 +363,30 @@ def test_download_error_pulling_imported_stage(
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
 
-    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
+    dst_stage = load_file(dvc, "foo_imported.dvc").stage
     dst_cache = dst_stage.outs[0].cache_path
 
     remove("foo_imported")
     remove(dst_cache)
 
-    mocker.patch("dvc_objects.fs.generic.transfer", side_effect=Exception)
+    def unreliable_download(_from_fs, from_info, _to_fs, to_info, **kwargs):
+        on_error = kwargs["on_error"]
+        assert on_error
+        if isinstance(from_info, str):
+            from_info = [from_info]
+        if isinstance(to_info, str):
+            to_info = [to_info]
+        for from_i, to_i in zip(from_info, to_info):
+            on_error(from_i, to_i, Exception())
+
+    mocker.patch("dvc_objects.fs.generic.transfer", unreliable_download)
     with pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
 def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir):
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
@@ -427,7 +437,7 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
     assert "rev" not in stage.deps[0].def_repo
     stage.deps[0].def_repo.pop("rev_lock")
 
-    Dvcfile(dvc, stage.path).dump(stage)
+    load_file(dvc, stage.path).dump(stage)
 
     remove(stage.outs[0].cache_path)
     (tmp_dir / "foo_imported").unlink()
@@ -459,13 +469,13 @@ def test_import_from_bare_git_repo(
 def test_import_pipeline_tracked_outs(
     tmp_dir, dvc, scm, erepo_dir, run_copy, local_remote
 ):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     dvc.push()
 
-    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.add([PROJECT_FILE, LOCK_FILE])
     dvc.scm.commit("add pipeline stage")
 
     with erepo_dir.chdir():

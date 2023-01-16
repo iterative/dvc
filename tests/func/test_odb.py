@@ -187,7 +187,7 @@ def test_shared_cache(tmp_dir, dvc, group):
     assert not os.path.exists(cache_dir)
 
     tmp_dir.dvc_gen(
-        {"file": "file content", "dir": {"file2": "file 2 " "content"}}
+        {"file": "file content", "dir": {"file2": "file 2 content"}}
     )
 
     file_mode = oct(0o444)

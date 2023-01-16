@@ -169,11 +169,11 @@ def resolve_rev(scm: "Git", rev: str) -> str:
             try:
                 ref_infos = resolve_name(scm, rev).get(rev)
             except AmbiguousExpRefInfo:
-                raise RevError(f"ambiguous Git revision '{rev}'")
+                raise RevError(f"ambiguous Git revision '{rev}'")  # noqa: B904
             if ref_infos:
                 return scm.get_ref(str(ref_infos))
 
-        raise RevError(str(exc))
+        raise RevError(str(exc))  # noqa: B904
 
 
 def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
@@ -195,7 +195,7 @@ def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
     return results
 
 
-def iter_revs(
+def iter_revs(  # noqa: C901
     scm: "Git",
     revs: Optional[List[str]] = None,
     num: int = 1,

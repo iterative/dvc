@@ -1,7 +1,8 @@
+import os
+
 import pytest
 
 from dvc.exceptions import DownloadError, UploadError
-from dvc.fs import LocalFileSystem
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import get_index
 
@@ -63,22 +64,54 @@ def test_clear_on_download_err(tmp_dir, dvc, index, mocker):
 
     assert list(index.hashes())
 
-    mocker.patch("dvc_objects.fs.generic.transfer", side_effect=Exception)
+    def unreliable_download(_from_fs, from_info, _to_fs, to_info, **kwargs):
+        on_error = kwargs["on_error"]
+        assert on_error
+        if isinstance(from_info, str):
+            from_info = [from_info]
+        if isinstance(to_info, str):
+            to_info = [to_info]
+        for from_i, to_i in zip(from_info, to_info):
+            on_error(from_i, to_i, Exception())
+
+    mocker.patch("dvc_objects.fs.generic.transfer", unreliable_download)
     with pytest.raises(DownloadError):
         dvc.pull()
     assert not list(index.hashes())
 
 
 def test_partial_upload(tmp_dir, dvc, index, mocker):
+    from dvc_objects.fs import generic
+
     tmp_dir.dvc_gen({"foo": "foo content"})
-    tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})
+    baz = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
 
-    original = LocalFileSystem.put_file
+    original = generic.transfer
+    odb = dvc.cloud.get_remote_odb("upstream")
 
-    def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
-        if "baz" in name:
-            raise Exception("stop baz")
-        return original(self, from_file, to_info, name, **kwargs)
+    def unreliable_upload(from_fs, from_info, to_fs, to_info, **kwargs):
+        on_error = kwargs["on_error"]
+        assert on_error
+        if isinstance(from_info, str):
+            from_info = [from_info]
+        else:
+            from_info = list(from_info)
+        if isinstance(to_info, str):
+            to_info = [to_info]
+        else:
+            to_info = list(to_info)
+        for i in range(len(from_info) - 1, -1, -1):
+            from_i = from_info[i]
+            to_i = to_info[i]
+            if os.path.abspath(to_i) == os.path.abspath(
+                odb.get(baz.hash_info.value).path
+            ):
+                if on_error:
+                    on_error(from_i, to_i, Exception("stop baz"))
+                del from_info[i]
+                del to_info[i]
+
+        return original(from_fs, from_info, to_fs, to_info, **kwargs)
 
     mocker.patch("dvc_objects.fs.generic.transfer", unreliable_upload)
     with pytest.raises(UploadError):

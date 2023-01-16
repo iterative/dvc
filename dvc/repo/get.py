@@ -1,9 +1,14 @@
 import logging
 import os
+from typing import TYPE_CHECKING, Union
 
 from dvc.exceptions import DvcException
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
+
+if TYPE_CHECKING:
+    from dvc.fs.dvc import DVCFileSystem
+
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +55,10 @@ def get(url, path, out=None, rev=None, jobs=None):
         with external_repo(
             url=url, rev=rev, cache_dir=tmp_dir, cache_types=cache_types
         ) as repo:
+            from dvc.fs.data import DataFileSystem
 
+            fs: Union[DataFileSystem, "DVCFileSystem"]
             if os.path.isabs(path):
-                from dvc.fs.data import DataFileSystem
 
                 fs = DataFileSystem(index=repo.index.data["local"])
                 fs_path = fs.from_os_path(path)

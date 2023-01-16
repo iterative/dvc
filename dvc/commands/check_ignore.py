@@ -103,7 +103,7 @@ def add_parser(subparsers, parent_parser):
         "--all",
         action="store_true",
         default=False,
-        help="Include the target paths which don’t match any pattern "
+        help="Include the target paths which don't match any pattern "
         "in the `--details` list.",
     )
     parser.add_argument(
@@ -111,7 +111,7 @@ def add_parser(subparsers, parent_parser):
         "--non-matching",
         action="store_true",
         default=False,
-        help="Include the target paths which don’t match any pattern "
+        help="Include the target paths which don't match any pattern "
         "in the `--details` list.",
     )
     parser.add_argument(

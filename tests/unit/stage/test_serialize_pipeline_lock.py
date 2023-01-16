@@ -3,7 +3,7 @@ from collections import OrderedDict
 import pytest
 from voluptuous import Schema as _Schema
 
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.schema import LOCK_FILE_STAGE_SCHEMA, LOCKFILE_STAGES_SCHEMA
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import DEFAULT_PARAMS_FILE, to_lockfile
@@ -13,7 +13,7 @@ from dvc.stage.serialize import (
 from dvc.stage.utils import split_params_deps
 from dvc_data.hashfile.hash_info import HashInfo
 
-kwargs = {"name": "something", "cmd": "command", "path": PIPELINE_FILE}
+kwargs = {"name": "something", "cmd": "command", "path": PROJECT_FILE}
 Schema = _Schema(LOCK_FILE_STAGE_SCHEMA)
 
 

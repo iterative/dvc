@@ -5,12 +5,13 @@ import os
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
 from functools import partial
+from multiprocessing import cpu_count
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
-    Generator,
+    Iterator,
     List,
     Optional,
     Set,
@@ -19,15 +20,19 @@ from typing import (
 
 import dpath.options
 import dpath.util
-from funcy import cached_property, distinct, first, project
+from funcy import distinct, first, project
 
 from dvc.exceptions import DvcException
 from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils.objects import cached_property
 from dvc.utils.serialize import LOADERS
+from dvc.utils.threadpool import ThreadPoolExecutor
 
 if TYPE_CHECKING:
+    from dvc.fs import FileSystem
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.types import DictAny, DictStrAny, StrPath
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
@@ -65,13 +70,13 @@ class Plots:
 
     def collect(
         self,
-        targets: List[str] = None,
-        revs: List[str] = None,
+        targets: Optional[List[str]] = None,
+        revs: Optional[List[str]] = None,
         recursive: bool = False,
         onerror: Optional[Callable] = None,
         props: Optional[Dict] = None,
         config_files: Optional[Set[str]] = None,
-    ) -> Generator[Dict, None, None]:
+    ) -> Iterator[Dict]:
         """Collects plots definitions and data sources.
 
         Generator yielding a structure like:
@@ -136,7 +141,6 @@ class Plots:
                 data_targets = _get_data_targets(definitions)
 
                 res[rev]["sources"] = self._collect_data_sources(
-                    revision=rev,
                     targets=data_targets,
                     recursive=recursive,
                     props=props,
@@ -148,7 +152,6 @@ class Plots:
     def _collect_data_sources(
         self,
         targets: Optional[List[str]] = None,
-        revision: Optional[str] = None,
         recursive: bool = False,
         props: Optional[Dict] = None,
         onerror: Optional[Callable] = None,
@@ -159,7 +162,7 @@ class Plots:
 
         props = props or {}
 
-        plots = _collect_plots(self.repo, targets, revision, recursive)
+        plots = _collect_plots(self.repo, targets, recursive)
         res: Dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
             joined_props = {**rev_props, **props}
@@ -179,7 +182,7 @@ class Plots:
 
     def show(
         self,
-        targets: List[str] = None,
+        targets: Optional[List[str]] = None,
         revs=None,
         props=None,
         recursive=False,
@@ -229,7 +232,6 @@ class Plots:
             out.plot.pop(prop)
 
     def modify(self, path, props=None, unset=None):
-        from dvc.dvcfile import Dvcfile
         from dvc_render.vega_templates import get_template
 
         props = props or {}
@@ -255,14 +257,13 @@ class Plots:
             out.plot = True
 
         out.verify_metric()
-
-        dvcfile = Dvcfile(self.repo, out.stage.path)
-        dvcfile.dump(out.stage, update_lock=False)
+        out.stage.dump(update_lock=False)
 
     @cached_property
-    def templates_dir(self):
+    def templates_dir(self) -> Optional[str]:
         if self.repo.dvc_dir:
             return os.path.join(self.repo.dvc_dir, "plots")
+        return None
 
 
 def _is_plot(out: "Output") -> bool:
@@ -270,19 +271,33 @@ def _is_plot(out: "Output") -> bool:
 
 
 def _resolve_data_sources(plots_data: Dict):
-    for value in plots_data.values():
+    values = list(plots_data.values())
+    to_resolve = []
+    while values:
+        value = values.pop()
         if isinstance(value, dict):
             if "data_source" in value:
-                data_source = value.pop("data_source")
-                assert callable(data_source)
-                value.update(data_source())
-            _resolve_data_sources(value)
+                to_resolve.append(value)
+            values.extend(value.values())
+
+    def resolve(value):
+        data_source = value.pop("data_source")
+        assert callable(data_source)
+        value.update(data_source())
+
+    executor = ThreadPoolExecutor(
+        max_workers=4 * cpu_count(),
+        thread_name_prefix="resolve_data",
+        cancel_on_error=True,
+    )
+    with executor:
+        # imap_unordered is lazy, wrapping to trigger it
+        list(executor.imap_unordered(resolve, to_resolve))
 
 
 def _collect_plots(
     repo: "Repo",
-    targets: List[str] = None,
-    rev: str = None,
+    targets: Optional[List[str]] = None,
     recursive: bool = False,
 ) -> Dict[str, Dict]:
     from dvc.repo.collect import collect
@@ -291,7 +306,6 @@ def _collect_plots(
         repo,
         output_filter=_is_plot,
         targets=targets,
-        rev=rev,
         recursive=recursive,
     )
 
@@ -408,7 +422,12 @@ def _adjust_sources(fs, plot_props, config_dir):
 
 
 def _resolve_definitions(
-    fs, targets, props, config_path, definitions, onerror=None
+    fs: "FileSystem",
+    targets: List[str],
+    props: "DictAny",
+    config_path: "StrPath",
+    definitions: "DictStrAny",
+    onerror: Optional[Callable[[Any], Any]] = None,
 ):
     config_dir = fs.path.dirname(config_path)
     result: Dict[str, Dict] = {}
@@ -440,7 +459,7 @@ def _resolve_definitions(
 
 def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
     result: Dict[str, Dict] = {}
-    top_plots = repo.index._top_plots  # pylint: disable=protected-access
+    top_plots = repo.index._plots  # pylint: disable=protected-access
     for dvcfile, plots_def in top_plots.items():
         dvcfile_path = _relpath(repo.dvcfs, dvcfile)
         dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
@@ -474,7 +493,7 @@ def _collect_definitions(
     repo: "Repo",
     targets=None,
     config_files: Optional[Set[str]] = None,
-    props: Dict = None,
+    props: Optional[Dict] = None,
     onerror: Optional[Callable] = None,
     **kwargs,
 ) -> Dict:
@@ -586,7 +605,7 @@ def _load_sv(path, fs, delimiter=",", header=True):
             fieldnames=[str(i) for i in range(len(first_row))],
         )
 
-    fieldnames = reader.fieldnames
+    fieldnames = reader.fieldnames or []
     data = list(reader)
 
     return [

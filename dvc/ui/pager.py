@@ -73,7 +73,7 @@ def find_pager():
         # `-R` is required to render ansi escape sequences for exp show
         # and, `-S` is required for horizontal scrolling.
         less_env = bool(os.getenv(LESS))
-        pager = prepare_default_pager(
+        return prepare_default_pager(
             ansi_escapes=True,
             chop_long_lines=True,
             quit_if_one_screen=not less_env,
