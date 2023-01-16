@@ -128,12 +128,16 @@ def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
         PipelineStage,
         dvc,
         PROJECT_FILE,
-        deps=["s3://dvc-temp/foo"],
+        deps=["s3://dvc-temp/foo", "s3://dvc-temp/foodir"],
         outs=["bar"],
     )
-    lock_data["deps"] = [{"path": "s3://dvc-temp/foo", "etag": "e-tag"}]
+    lock_data["deps"] = [
+        {"path": "s3://dvc-temp/foo", "etag": "e-tag"},
+        {"path": "s3://dvc-temp/foodir", "md5": "foodir_md5", "nfiles": 2},
+    ]
     StageLoader.fill_from_lock(stage, lock_data)
     assert stage.deps[0].hash_info == HashInfo("etag", "e-tag")
+    assert stage.deps[1].hash_info == HashInfo("md5", "foodir_md5")
     assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 

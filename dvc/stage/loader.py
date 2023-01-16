@@ -75,6 +75,10 @@ class StageLoader(Mapping):
             info = info.copy()
             info.pop("path", None)
             item.meta = Meta.from_dict(info)
+
+            if item.meta.nfiles and item.hash_name != "md5":
+                item.hash_name = "md5"
+
             hash_value = getattr(item.meta, item.hash_name, None)
             item.hash_info = HashInfo(item.hash_name, hash_value)
             if item.hash_info and item.hash_info.isdir:
