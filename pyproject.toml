@@ -259,7 +259,6 @@ module = [
     "pytest_docker.plugin",
     "ruamel.*",
     "ruamel.yaml.*",
-    "scmrepo.*",
     "tpi.*",
     "viztracer",
     "voluptuous",
