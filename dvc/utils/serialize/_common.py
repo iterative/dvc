@@ -101,7 +101,9 @@ def _modify_data(
     dumper: DumpersFn,
     fs: Optional["FileSystem"] = None,
 ):
-    exists_fn = fs.exists if fs else os.path.exists
+    exists_fn = cast(
+        Callable[["StrPath"], bool], fs.exists if fs else os.path.exists
+    )
     file_exists = exists_fn(cast(str, path))
     data = _load_data(path, parser=parser, fs=fs) if file_exists else {}
     yield data
