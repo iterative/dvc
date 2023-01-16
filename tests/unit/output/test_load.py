@@ -1,5 +1,3 @@
-# pylint: disable=unsubscriptable-object
-
 import pytest
 from dvc_s3 import S3FileSystem
 

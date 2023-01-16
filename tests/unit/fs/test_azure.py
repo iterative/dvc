@@ -33,7 +33,7 @@ def test_init(dvc):
 def test_azure_login_methods():
     def get_login_method(config):
         fs = AzureFileSystem(**config)
-        # pylint: disable=pointless-statement
+
         return fs.login_method
 
     with pytest.raises(AzureAuthError):

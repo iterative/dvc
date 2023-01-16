@@ -29,7 +29,6 @@ def dt(mocker):
 
 
 class TestColorFormatter:
-    # pylint: disable=broad-except
     def test_debug(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
@@ -94,8 +93,6 @@ class TestColorFormatter:
             expected = "{red}ERROR{nc}: message - description".format(**colors)
 
             assert expected == formatter.format(caplog.records[0])
-
-    # pylint: disable=used-before-assignment
 
     def test_exception_under_verbose(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
@@ -192,8 +189,6 @@ class TestColorFormatter:
             assert expected == formatter.format(caplog.records[0])
             assert "Exception: first" in stack_trace
             assert "dvc.exceptions.DvcException: second" in stack_trace
-
-    # pylint: enable=used-before-assignment
 
     def test_progress_awareness(self, mocker, capsys, caplog):
         from dvc.progress import Tqdm
