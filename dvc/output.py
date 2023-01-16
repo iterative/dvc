@@ -903,7 +903,7 @@ class Output:
         return added, False if added else modified
 
     def remove(self, ignore_remove=False):
-        self.fs.remove(self.fs_path)
+        self.fs.remove(self.fs_path, recursive=True)
         if self.protocol != Schemes.LOCAL:
             return
 
