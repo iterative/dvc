@@ -13,7 +13,6 @@ from tests.func.utils.test_hydra import hydra_setup
 )
 def test_modify_params(params_repo, dvc, changes, expected):
     dvc.experiments.run(params=changes)
-
     with open("params.yaml") as fobj:
         assert fobj.read().strip() == expected
 

@@ -94,7 +94,6 @@ def test_stage_run_ignore_sigint(dvc, mocker):
     assert popen.called_once()
     assert communicate.called_once_with()
     signal_mock.assert_any_call(signal.SIGINT, signal.SIG_IGN)
-
     assert signal.getsignal(signal.SIGINT) == signal.default_int_handler
 
 

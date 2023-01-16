@@ -308,7 +308,6 @@ def test_checkout_hook(mocker, tmp_dir, dvc):
 
 
 def test_checkout_suggest_git(tmp_dir, dvc, scm):
-
     with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="gitbranch")
     assert isinstance(e.value.__cause__, NoOutputOrStageError)

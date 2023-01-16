@@ -555,7 +555,6 @@ def temporary_windows_drive(tmp_path_factory):
     from ctypes import windll
 
     try:
-
         import win32api
         from win32con import DDD_REMOVE_DEFINITION
     except ImportError:
