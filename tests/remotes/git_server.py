@@ -4,7 +4,7 @@ from dvc_ssh.tests.cloud import SSH, TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 class GitSSH(SSH):
     @staticmethod
-    def get_url(host, port):  # pylint: disable=arguments-differ
+    def get_url(host, port):
         return f"ssh://{host}:{port}/tmp/data/git"
 
 

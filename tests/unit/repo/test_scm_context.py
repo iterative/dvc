@@ -135,7 +135,7 @@ def test_scm_context_decorator(scm_context, mocker):
 
     repo = mocker.MagicMock(scm_context=scm_context)
 
-    def test_method(repo, *args, **kwargs):  # pylint: disable=unused-argument
+    def test_method(repo, *args, **kwargs):
         scm_context.track_file("foo")
 
     method = mocker.MagicMock(wraps=test_method)

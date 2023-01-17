@@ -848,7 +848,7 @@ def test_repro_no_commit(tmp_dir, dvc, copy_script, run_stage):
 
 
 class TestReproAlreadyCached:
-    def test(self, dvc, run_stage):  # pylint: disable=redefined-outer-name
+    def test(self, dvc, run_stage):
         stage = run_stage(
             always_changed=True,
             deps=[],

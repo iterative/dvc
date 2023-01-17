@@ -6,8 +6,6 @@ from rich.console import Console as RichConsole
 
 from dvc.ui.prompt import Confirm, InvalidResponse, Prompt
 
-# pylint: disable=no-member
-
 
 @pytest.mark.parametrize("side_effect", [EOFError, KeyboardInterrupt])
 @pytest.mark.parametrize("prompt_cls", [Prompt, Confirm])

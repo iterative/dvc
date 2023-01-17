@@ -138,7 +138,7 @@ def test_remove_files_when_checkout(tmp_dir, dvc, scm):
 
 
 class TestCheckoutCleanWorkingDir:
-    def test(self, mocker, tmp_dir, dvc):  # pylint: disable=unused-argument
+    def test(self, mocker, tmp_dir, dvc):
         mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=True)
         (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
@@ -308,7 +308,6 @@ def test_checkout_hook(mocker, tmp_dir, dvc):
 
 
 def test_checkout_suggest_git(tmp_dir, dvc, scm):
-    # pylint: disable=no-member
     with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="gitbranch")
     assert isinstance(e.value.__cause__, NoOutputOrStageError)

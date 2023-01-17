@@ -73,6 +73,7 @@ repos:
     - id: pylint
       name: pylint
       entry: pylint
+      files: ^dvc/
       language: system
       types: [python]
       require_serial: true

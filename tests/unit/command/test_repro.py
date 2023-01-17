@@ -25,7 +25,6 @@ def test_default_arguments(dvc, mocker):
     cmd = CmdRepro(parse_args(["repro"]))
     mocker.patch.object(cmd.repo, "reproduce")
     cmd.run()
-    # pylint: disable=no-member
     cmd.repo.reproduce.assert_called_with(
         **common_arguments, **repro_arguments
     )
@@ -38,5 +37,4 @@ def test_downstream(dvc, mocker):
     arguments = common_arguments.copy()
     arguments.update(repro_arguments)
     arguments.update({"downstream": True})
-    # pylint: disable=no-member
     cmd.repo.reproduce.assert_called_with(**arguments)
