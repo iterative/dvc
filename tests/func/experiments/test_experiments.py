@@ -748,3 +748,9 @@ def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing)
 
     assert len(dvc.experiments.ls()["master"]) == 2
+
+
+def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
+    dvc.experiments.run(exp_stage.addressing, dry=True)
+
+    assert len(dvc.experiments.ls()["master"]) == 0
