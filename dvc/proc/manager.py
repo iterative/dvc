@@ -118,7 +118,7 @@ class ProcessManager:
         if sys.platform == "win32":
             self.send_signal(name, signal.SIGTERM)
         else:
-            self.send_signal(name, signal.SIGKILL)
+            self.send_signal(name, signal.SIGKILL)  # pylint: disable=no-member
 
     def remove(self, name: str, force: bool = False):
         """Remove the specified named process from this manager.
