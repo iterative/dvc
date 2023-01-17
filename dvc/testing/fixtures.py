@@ -204,6 +204,8 @@ def docker_services(
     # only launch docker images once.
 
     from filelock import FileLock
+
+    # pylint: disable-next=import-error
     from pytest_docker.plugin import DockerComposeExecutor, Services
 
     executor = DockerComposeExecutor(

@@ -139,8 +139,11 @@ def _sigshow(_, frame: Optional["FrameType"]) -> None:
 def show_stack():
     r"""Show stack trace on SIGQUIT (Ctrl-\) or SIGINFO (Ctrl-T on macOS)."""
     import signal
+    import sys
 
-    signal.signal(signal.SIGQUIT, _sigshow)
+    if sys.platform != "win32":
+        signal.signal(signal.SIGQUIT, _sigshow)
+
     try:
         signal.signal(signal.SIGINFO, _sigshow)  # only available on macOS
     except AttributeError:
