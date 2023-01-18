@@ -13,7 +13,7 @@ from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.scm import resolve_rev
+from dvc.scm import SCMError, resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.scripts import COPY_SCRIPT
@@ -646,3 +646,15 @@ def test_clean(tmp_dir, scm, dvc, mocker):
     clean = mocker.spy(dvc.experiments.celery_queue.celery, "clean")
     dvc.experiments.clean()
     clean.assert_called_once_with()
+
+
+def test_experiment_no_commit(tmp_dir):
+    from scmrepo.git import Git
+
+    from dvc.repo import Repo
+
+    git = Git.init(tmp_dir.fs_path)
+    assert git.no_commits
+
+    with pytest.raises(SCMError):  # noqa: PT011
+        Repo.init().experiments.ls()
