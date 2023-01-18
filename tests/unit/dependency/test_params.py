@@ -207,6 +207,22 @@ def test_read_params_py(tmp_dir, dvc):
     assert dep.read_params() == {"x": 4, "Klass.a": "val1"}
 
 
+def test_params_py_tuple_status(tmp_dir, dvc):
+    """https://github.com/iterative/dvc/issues/8803"""
+    parameters_file = "parameters.py"
+    tmp_dir.gen(parameters_file, "TUPLE = (10, 100)\n")
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["TUPLE"])
+    # lock file uses YAML so the tuple will be loaded as a list
+    dep.fill_values({"TUPLE": [10, 100]})
+    assert dep.status() == {}
+    dep.fill_values({"TUPLE": [11, 100]})
+    assert dep.status() == {"parameters.py": {"TUPLE": "modified"}}
+    dep.fill_values({"TUPLE": [10]})
+    assert dep.status() == {"parameters.py": {"TUPLE": "modified"}}
+    dep.fill_values({"TUPLE": {10: "foo", 100: "bar"}})
+    assert dep.status() == {"parameters.py": {"TUPLE": "modified"}}
+
+
 def test_get_hash_missing_config(dvc):
     dep = ParamsDependency(Stage(dvc), None, ["foo"])
     with pytest.raises(MissingParamsError):
