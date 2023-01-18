@@ -218,12 +218,21 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
         LocalFileSystem, "remove", autospec=True
     )
     dvc.gc(workspace=True, cloud=True)
-    assert len(mocked_remove.mock_calls) == 8
-    # dir (and unpacked dir) should be first 4 checksums removed from
-    # the remote
-    for args in mocked_remove.call_args_list[:4]:
+    assert len(mocked_remove.mock_calls) == 4
+    # Unpacked dir should be the first removed
+    for args in mocked_remove.call_args_list[:2]:
         checksum = str(args[0][1])
-        assert checksum.endswith(".dir") or checksum.endswith(".dir.unpacked")
+        assert checksum.endswith(".dir.unpacked")
+    # Then, bulk remove should be applied
+
+    # First to `.dir`
+    checksums = mocked_remove.call_args_list[2][0][1]
+    assert isinstance(checksums, list)
+    assert all(x.endswith(".dir") for x in checksums)
+    # And later to individual files
+    checksums = mocked_remove.call_args_list[3][0][1]
+    assert isinstance(checksums, list)
+    assert not any(x.endswith(".dir") for x in checksums)
 
 
 def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
