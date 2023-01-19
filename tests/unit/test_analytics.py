@@ -49,6 +49,7 @@ def test_runtime_info(tmp_global_dir):
             "scm_class": Any("Git", None),
             "user_id": str,
             "system_info": dict,
+            "group_id": Any(str, None),
         },
         required=True,
     )
