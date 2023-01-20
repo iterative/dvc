@@ -9,7 +9,9 @@ if TYPE_CHECKING:
 
 @contextmanager
 def viztracer_profile(
-    path: Union[Callable[[], str], str], depth: int = -1, log_async=False
+    path: Union[Callable[[], str], str],
+    depth: int = -1,
+    log_async: bool = False,
 ):
     try:
         import viztracer  # pylint: disable=import-error
