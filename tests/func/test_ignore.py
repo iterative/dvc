@@ -64,25 +64,25 @@ def test_walk(tmp_dir, dvc):
     assert result == [
         (
             str(tmp_dir),
-            {"dir": dvc.fs.info(tmp_dir / "dir")},
+            {"dir": dvc.fs.info(str(tmp_dir / "dir"))},
             {
-                "bar": dvc.fs.info(tmp_dir / "bar"),
-                ".dvcignore": dvc.fs.info(tmp_dir / ".dvcignore"),
+                "bar": dvc.fs.info(str(tmp_dir / "bar")),
+                ".dvcignore": dvc.fs.info(str(tmp_dir / ".dvcignore")),
             },
         ),
         (
             str(tmp_dir / "dir"),
             {
-                "subdir": dvc.fs.info(tmp_dir / "dir" / "subdir"),
+                "subdir": dvc.fs.info(str(tmp_dir / "dir" / "subdir")),
             },
             {
-                "baz": dvc.fs.info(tmp_dir / "dir" / "baz"),
+                "baz": dvc.fs.info(str(tmp_dir / "dir" / "baz")),
             },
         ),
         (
             str(tmp_dir / "dir" / "subdir"),
             {},
-            {"qux": dvc.fs.info(tmp_dir / "dir" / "subdir" / "qux")},
+            {"qux": dvc.fs.info(str(tmp_dir / "dir" / "subdir" / "qux"))},
         ),
     ]
 

@@ -14,18 +14,18 @@ def test_state(tmp_dir, dvc):
 
     state = State(dvc.root_dir, dvc.tmp_dir, dvc.dvcignore)
 
-    state.save(path, dvc.fs, hash_info)
-    assert state.get(path, dvc.fs)[1] == hash_info
+    state.save(str(path), dvc.fs, hash_info)
+    assert state.get(str(path), dvc.fs)[1] == hash_info
 
     path.unlink()
     path.write_text("1")
 
-    assert state.get(path, dvc.fs) == (None, None)
+    assert state.get(str(path), dvc.fs) == (None, None)
 
     hash_info = HashInfo("md5", file_md5(path, dvc.fs))
-    state.save(path, dvc.fs, hash_info)
+    state.save(str(path), dvc.fs, hash_info)
 
-    assert state.get(path, dvc.fs)[1] == hash_info
+    assert state.get(str(path), dvc.fs)[1] == hash_info
 
 
 def test_state_overflow(tmp_dir, dvc):
