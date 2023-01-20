@@ -158,18 +158,16 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     def _dumpd(item):
         meta_d = item.meta.to_dict()
         meta_d.pop("isdir", None)
-        ret = [
-            (item.PARAM_PATH, item.def_path),
-            *item.hash_info.to_dict().items(),
-            *meta_d.items(),
-        ]
 
         if item.hash_info.isdir and kwargs.get("with_files"):
             if item.obj:
                 obj = item.obj
             else:
                 obj = item.get_obj()
-            ret.append((item.PARAM_FILES, obj.as_list(with_meta=True)))
+            ret = [((item.PARAM_FILES, obj.as_list(with_meta=True)))]
+        else:
+            ret = [*item.hash_info.to_dict().items(), *meta_d.items()]
+        ret.insert(0, (item.PARAM_PATH, item.def_path))
 
         return OrderedDict(ret)
 

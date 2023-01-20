@@ -255,3 +255,28 @@ def test_to_lockfile(dvc):
             ]
         )
     }
+
+
+def test_to_single_stage_lockfile_cloud_versioning_dir(dvc):
+    stage = create_stage(PipelineStage, dvc, outs=["dir"], **kwargs)
+    stage.outs[0].hash_info = HashInfo("md5", "md-five.dir")
+    files = [
+        {
+            "size": 3,
+            "version_id": "WYRG4BglP7pD.gEoJP6a4AqOhl.FRA.h",
+            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "relpath": "bar",
+        },
+        {
+            "size": 3,
+            "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "relpath": "foo",
+        },
+    ]
+    stage.outs[0].files = files
+    e = _to_single_stage_lockfile(stage, with_files=True)
+    assert Schema(e)
+    assert e["outs"][0] == {"path": "dir", "files": files}

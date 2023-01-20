@@ -121,3 +121,58 @@ def test_remote_missing_dependency_on_dir_pull(tmp_dir, scm, dvc, mocker):
     )
     with pytest.raises(RemoteMissingDepsError):
         dvc.pull()
+
+
+def test_hash_info_cloud_versioning_dir(mocker):
+    stage = mocker.MagicMock()
+    stage.repo.fs.version_aware = False
+    stage.repo.fs.PARAM_CHECKSUM = "etag"
+    files = [
+        {
+            "size": 3,
+            "version_id": "WYRG4BglP7pD.gEoJP6a4AqOhl.FRA.h",
+            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "relpath": "bar",
+        },
+        {
+            "size": 3,
+            "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "relpath": "foo",
+        },
+    ]
+    out = Output(stage, "path", files=files)
+    # `hash_info`` and `meta`` constructed from `files``
+    assert out.hash_info.name == "md5"
+    assert out.hash_info.value == "77e8000f532886eef8ee1feba82e9bad.dir"
+    assert out.meta.isdir
+    assert out.meta.nfiles == 2
+    assert out.meta.size == 6
+
+
+def test_dumpd_cloud_versioning_dir(mocker):
+    stage = mocker.MagicMock()
+    stage.repo.fs.version_aware = False
+    stage.repo.fs.PARAM_CHECKSUM = "md5"
+    files = [
+        {
+            "size": 3,
+            "version_id": "WYRG4BglP7pD.gEoJP6a4AqOhl.FRA.h",
+            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "relpath": "bar",
+        },
+        {
+            "size": 3,
+            "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "relpath": "foo",
+        },
+    ]
+    out = Output(stage, "path", files=files)
+
+    dumpd = out.dumpd()
+    assert dumpd == {"path": "path", "files": files}
