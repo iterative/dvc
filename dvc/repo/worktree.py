@@ -1,6 +1,18 @@
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
+
+from funcy import first
 
 from dvc.fs.callbacks import Callback
 
@@ -28,11 +40,44 @@ def _meta_checksum(fs: "FileSystem", meta: "Meta") -> Any:
     return getattr(meta, cast(str, fs.PARAM_CHECKSUM))
 
 
+def worktree_view_by_remotes(
+    index: "Index",
+    targets: Optional["TargetType"] = None,
+    push: bool = False,
+    **kwargs: Any,
+) -> Iterable[Tuple[Optional[str], "IndexView"]]:
+    # pylint: disable=protected-access
+
+    from dvc.repo.index import IndexView
+
+    def outs_filter(view: "IndexView", remote: Optional[str]):
+        def _filter(out: "Output") -> bool:
+            if out.remote != remote:
+                return False
+            if view._outs_filter:
+                return view._outs_filter(out)
+            return True
+
+        return _filter
+
+    view = worktree_view(index, targets=targets, push=push, **kwargs)
+    remotes = {out.remote for out in view.outs}
+
+    if len(remotes) <= 1:
+        yield first(remotes), view
+        return
+
+    for remote in remotes:
+        yield remote, IndexView(
+            index, view._stage_infos, outs_filter(view, remote)
+        )
+
+
 def worktree_view(
     index: "Index",
     targets: Optional["TargetType"] = None,
     push: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> "IndexView":
     """Return view of data that can be stored in worktree remotes.
 
@@ -65,29 +110,44 @@ def worktree_view(
     )
 
 
+def _get_remote(
+    repo: "Repo", name: Optional[str], default: "Remote", command: str
+) -> "Remote":
+    if name in (None, default.name):
+        return default
+    return repo.cloud.get_remote(name, command)
+
+
 def fetch_worktree(
     repo: "Repo",
     remote: "Remote",
     targets: Optional["TargetType"] = None,
     jobs: Optional[int] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> int:
     from dvc_data.index import save
 
-    view = worktree_view(repo.index, targets=targets, **kwargs)
-    index = view.data["repo"]
-    for key, entry in index.iteritems():
-        entry.fs = remote.fs
-        entry.path = remote.fs.path.join(
-            remote.path,
-            *key,
-        )
-    total = len(index)
-    with Callback.as_tqdm_callback(
-        unit="file", desc="Fetch", disable=total == 0
-    ) as cb:
-        cb.set_size(total)
-        return save(index, callback=cb, jobs=jobs)
+    transferred = 0
+    for remote_name, view in worktree_view_by_remotes(
+        repo.index, push=True, targets=targets, **kwargs
+    ):
+        remote_obj = _get_remote(repo, remote_name, remote, "fetch")
+        index = view.data["repo"]
+        for key, entry in index.iteritems():
+            entry.fs = remote_obj.fs
+            entry.path = remote_obj.fs.path.join(
+                remote_obj.path,
+                *key,
+            )
+        total = len(index)
+        with Callback.as_tqdm_callback(
+            unit="file",
+            desc=f"Fetching from remote {remote_obj.name!r}",
+            disable=total == 0,
+        ) as cb:
+            cb.set_size(total)
+            transferred += save(index, callback=cb, jobs=jobs)
+    return transferred
 
 
 def push_worktree(
@@ -95,61 +155,70 @@ def push_worktree(
     remote: "Remote",
     targets: Optional["TargetType"] = None,
     jobs: Optional[int] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> int:
     from dvc.repo.index import build_data_index
     from dvc_data.index import checkout
 
-    view = worktree_view(
-        repo.index,
-        push=True,
-        targets=targets,
-        **kwargs,
-    )
-    new_index = view.data["repo"]
-    if remote.worktree:
-        logger.debug("indexing latest worktree for '%s'", remote.path)
-        old_index = build_data_index(view, remote.path, remote.fs)
-        logger.debug("Pushing worktree changes to '%s'", remote.path)
-    else:
-        old_index = None
-        logger.debug("Pushing version-aware files to '%s'", remote.path)
+    pushed = 0
+    stages: Set["Stage"] = set()
 
-    if remote.worktree:
-        diff_kwargs: Dict[str, Any] = {
-            "meta_only": True,
-            "meta_cmp_key": partial(_meta_checksum, remote.fs),
-        }
-    else:
-        diff_kwargs = {}
+    for remote_name, view in worktree_view_by_remotes(
+        repo.index, push=True, targets=targets, **kwargs
+    ):
+        remote_obj = _get_remote(repo, remote_name, remote, "push")
+        new_index = view.data["repo"]
+        if remote_obj.worktree:
+            logger.debug("indexing latest worktree for '%s'", remote_obj.path)
+            old_index = build_data_index(view, remote_obj.path, remote_obj.fs)
+            logger.debug("Pushing worktree changes to '%s'", remote_obj.path)
+        else:
+            old_index = None
+            logger.debug(
+                "Pushing version-aware files to '%s'", remote_obj.path
+            )
 
-    total = len(new_index)
-    with Callback.as_tqdm_callback(
-        unit="file", desc="Push", disable=total == 0
-    ) as cb:
-        cb.set_size(total)
-        pushed = checkout(
-            new_index,
-            remote.path,
-            remote.fs,
-            old=old_index,
-            delete=remote.worktree,
-            callback=cb,
-            latest_only=remote.worktree,
-            jobs=jobs,
-            **diff_kwargs,
-        )
-    if pushed:
-        for stage in view.stages:
-            for out in stage.outs:
-                workspace, _key = out.index_key
-                _update_out_meta(out, repo.index.data[workspace])
-            stage.dump(with_files=True, update_pipeline=False)
+        if remote_obj.worktree:
+            diff_kwargs: Dict[str, Any] = {
+                "meta_only": True,
+                "meta_cmp_key": partial(_meta_checksum, remote_obj.fs),
+            }
+        else:
+            diff_kwargs = {}
+
+        total = len(new_index)
+        with Callback.as_tqdm_callback(
+            unit="file",
+            desc=f"Pushing to remote {remote_obj.name!r}",
+            disable=total == 0,
+        ) as cb:
+            cb.set_size(total)
+            pushed += checkout(
+                new_index,
+                remote_obj.path,
+                remote_obj.fs,
+                old=old_index,
+                delete=remote_obj.worktree,
+                callback=cb,
+                latest_only=remote_obj.worktree,
+                jobs=jobs,
+                **diff_kwargs,
+            )
+
+        for out in view.outs:
+            workspace, _key = out.index_key
+            _update_out_meta(out, repo.index.data[workspace], remote_obj.name)
+            stages.add(out.stage)
+
+    for stage in stages:
+        stage.dump(with_files=True, update_pipeline=False)
     return pushed
 
 
 def _update_out_meta(
-    out: "Output", index: Union["DataIndex", "DataIndexView"]
+    out: "Output",
+    index: Union["DataIndex", "DataIndexView"],
+    remote: Optional[str] = None,
 ):
     from dvc_data.index.save import build_tree
 
@@ -168,6 +237,8 @@ def _update_out_meta(
                 repo.fs.path.relparts(fs_path, out.fs_path)
             ) or (None, None)
             entry.hash_info = hash_info
+            if entry.meta:
+                entry.meta.remote = remote
             if meta is not None and meta.version_id is not None:
                 # preserve existing version IDs for unchanged files in
                 # this dir (entry will have the latest remote version
@@ -182,6 +253,8 @@ def _update_out_meta(
             out.hash_info = entry.hash_info
         if out.meta.version_id is None:
             out.meta = entry.meta
+    if out.meta:
+        out.meta.remote = remote
 
 
 def update_worktree_stages(
