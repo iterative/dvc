@@ -77,7 +77,7 @@ hdfs = ["dvc-hdfs==2.19.0"]
 oss = ["dvc-oss==2.19.0"]
 s3 = ["dvc-s3==2.21.0"]
 ssh = ["dvc-ssh==2.21.0"]
-ssh_gssapi = ["dvc-ssh[gssapi]==2.20.0"]
+ssh_gssapi = ["dvc-ssh[gssapi]==2.21.0"]
 webdav = ["dvc-webdav==2.19.0"]
 webhdfs = ["dvc-webhdfs==2.19.0"]
 webhdfs_kerberos = ["dvc-webhdfs[kerberos]==2.19.0"]
@@ -85,7 +85,7 @@ terraform = ["tpi[ssh]>=2.1.0"]
 testing = ["pytest-test-utils==0.0.8"]
 tests = [
     "tpi[ssh]>=2.1.0",
-    "dvc-ssh==2.20.0",
+    "dvc-ssh==2.21.0",
     "pytest-test-utils==0.0.8",
     # Test requirements
     "pytest==7.2.1",
