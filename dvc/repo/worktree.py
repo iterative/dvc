@@ -28,6 +28,10 @@ def _meta_checksum(fs: "FileSystem", meta: "Meta") -> Any:
     return getattr(meta, cast(str, fs.PARAM_CHECKSUM))
 
 
+def _worktree_outs_filter(out: "Output") -> bool:
+    return out.is_in_repo and out.use_cache and out.can_push
+
+
 def worktree_view(
     index: "Index",
     targets: Optional["TargetType"] = None,
@@ -48,19 +52,9 @@ def worktree_view(
             return False
         return True
 
-    def outs_filter(out: "Output") -> bool:
-        if (
-            not out.is_in_repo
-            or not out.use_cache
-            or (push and not out.can_push)
-        ):
-            return False
-        return True
-
     return index.targets_view(
         targets,
         stage_filter=stage_filter,
-        outs_filter=outs_filter,
         **kwargs,
     )
 
@@ -141,7 +135,7 @@ def push_worktree(
         )
     if pushed:
         for stage in view.stages:
-            for out in stage.outs:
+            for out in filter(_worktree_outs_filter, stage.outs):
                 workspace, _key = out.index_key
                 _update_out_meta(out, repo.index.data[workspace])
             stage.dump(with_files=True, update_pipeline=False)
@@ -192,19 +186,15 @@ def update_worktree_stages(
     from dvc.repo.index import IndexView
     from dvc_data.index import build
 
-    def outs_filter(out: "Output") -> bool:
-        return out.is_in_repo and out.use_cache and out.can_push
-
     view = IndexView(
         repo.index,
         stage_infos,
-        outs_filter=outs_filter,
     )
     local_index = view.data["repo"]
     logger.debug("indexing latest worktree for '%s'", remote.path)
     remote_index = build(remote.path, remote.fs)
     for stage in view.stages:
-        for out in stage.outs:
+        for out in filter(_worktree_outs_filter, stage.outs):
             _workspace, key = out.index_key
             if key not in remote_index:
                 logger.warning(
@@ -229,7 +219,7 @@ def update_worktree_stages(
                 continue
             _fetch_out_changes(out, local_index, remote_index, remote)
         stage.save(merge_versioned=True)
-        for out in stage.outs:
+        for out in filter(_worktree_outs_filter, stage.outs):
             _update_out_meta(out, remote_index)
         stage.dump(with_files=True, update_pipeline=False)
 

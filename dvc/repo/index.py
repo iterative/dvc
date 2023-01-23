@@ -386,7 +386,7 @@ class IndexView:
         self,
         index: Index,
         stage_infos: Iterable["StageInfo"],
-        outs_filter: Optional[Callable[["Output"], bool]],
+        outs_filter: Optional[Callable[["Output"], bool]] = None,
     ):
         self._index = index
         self._stage_infos = stage_infos
