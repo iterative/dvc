@@ -169,7 +169,8 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
                 obj = item.obj
             else:
                 obj = item.get_obj()
-            ret.append((item.PARAM_FILES, obj.as_list(with_meta=True)))
+            if obj:
+                ret.append((item.PARAM_FILES, obj.as_list(with_meta=True)))
 
         return OrderedDict(ret)
 
