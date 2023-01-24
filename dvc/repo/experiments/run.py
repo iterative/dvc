@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def run(
+def run(  # noqa: C901
     repo,
     targets: Optional[Iterable[str]] = None,
     params: Optional[Iterable[str]] = None,

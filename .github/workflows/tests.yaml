@@ -12,44 +12,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-permissions:  # added using https://github.com/step-security/secure-workflows
+permissions:
   contents: read
 
 jobs:
-  lint:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.8
-        cache: pip
-        cache-dependency-path: pyproject.toml
-    - name: Install requirements
-      run: |
-        pip install --upgrade pip wheel
-        pip install ".[dev]"
-    - uses: pre-commit/action@v3.0.0
   tests:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest]
+        os: [ubuntu-20.04, windows-latest, macos-latest]
         pyv: ["3.8", "3.9", "3.10", "3.11"]
-        pytest-filter:
-        - "import or plot or live or experiment"
-        - "not (import or plot or live or experiment)"
-        include:
-        - {os: macos-latest, pyv: "3.8"}
-        - {os: macos-latest, pyv: "3.9"}
-        - {os: macos-latest, pyv: "3.10"}
-        - {os: macos-latest, pyv: "3.11"}
 
     steps:
     - uses: actions/checkout@v3
@@ -65,12 +39,12 @@ jobs:
       run: |
         pip install --upgrade pip wheel
         pip install -e ".[dev]"
+    - uses: pre-commit/action@v3.0.0
     - name: run tests
       timeout-minutes: 30
       run: >
         pytest -nauto --timeout=300 --durations=100
         --cov --cov-report=xml --cov-report=term
-        -k "${{ matrix.pytest-filter }}"
     - name: upload coverage report
       uses: codecov/codecov-action@v3
       with:
@@ -78,7 +52,7 @@ jobs:
         fail_ci_if_error: false
   check:
     if: always()
-    needs: [lint, tests]
+    needs: [tests]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@release/v1
@@ -86,7 +60,7 @@ jobs:
           jobs: ${{ toJSON(needs) }}
   notify:
     if: github.ref == 'refs/heads/main' && failure()
-    needs: [lint, tests]
+    needs: [tests]
     runs-on: ubuntu-latest
     steps:
     - name: Slack Notification

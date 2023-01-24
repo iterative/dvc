@@ -3,9 +3,8 @@
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from funcy import cached_property
-
 from dvc.config import NoRemoteError, RemoteConfigError
+from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
 
 if TYPE_CHECKING:
@@ -34,7 +33,7 @@ class Remote:
                 self.fs.version_aware = True
 
     @cached_property
-    def odb(self):
+    def odb(self) -> "HashFileDB":
         from dvc_data.hashfile.db import get_odb
 
         path = self.path
@@ -184,7 +183,6 @@ class DataCloud:
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
         odb: Optional["HashFileDB"] = None,
-        log_missing: bool = True,
     ):
         """Check status of data items in a cloud-agnostic way.
 
@@ -195,8 +193,6 @@ class DataCloud:
                 cache to. By default remote from core.remote config option
                 is used.
             odb: optional ODB to check status from. Overrides remote.
-            log_missing: log warning messages if file doesn't exist
-                neither in cache, neither in cloud.
         """
         from dvc_data.hashfile.status import compare_status
 
@@ -207,7 +203,6 @@ class DataCloud:
             odb,
             objs,
             jobs=jobs,
-            log_missing=log_missing,
             dest_index=get_index(odb),
             cache_odb=self.repo.odb.local,
         )

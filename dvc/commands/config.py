@@ -37,13 +37,12 @@ class CmdConfig(CmdBaseNoRepo):
         self.config = Config(validate=False)
 
     def run(self):
-        if self.args.show_origin:
-            if any((self.args.value, self.args.unset)):
-                logger.error(
-                    "--show-origin can't be used together with any of these "
-                    "options: -u/--unset, value"
-                )
-                return 1
+        if self.args.show_origin and (self.args.value or self.args.unset):
+            logger.error(
+                "--show-origin can't be used together with any of these "
+                "options: -u/--unset, value"
+            )
+            return 1
 
         if self.args.list:
             return self._list()

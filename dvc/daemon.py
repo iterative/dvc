@@ -25,21 +25,24 @@ def _popen(cmd, **kwargs):
 
 
 def _spawn_windows(cmd, env):
-    from subprocess import (
-        CREATE_NEW_PROCESS_GROUP,
-        CREATE_NO_WINDOW,
-        STARTF_USESHOWWINDOW,
-        STARTUPINFO,
-    )
+    if sys.platform == "win32":
+        from subprocess import (
+            CREATE_NEW_PROCESS_GROUP,
+            CREATE_NO_WINDOW,
+            STARTF_USESHOWWINDOW,
+            STARTUPINFO,
+        )
 
-    # https://stackoverflow.com/a/7006424
-    # https://bugs.python.org/issue41619
-    creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
+        # https://stackoverflow.com/a/7006424
+        # https://bugs.python.org/issue41619
+        creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
 
-    startupinfo = STARTUPINFO()
-    startupinfo.dwFlags |= STARTF_USESHOWWINDOW
+        startupinfo = STARTUPINFO()
+        startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-    _popen(cmd, env=env, creationflags=creationflags, startupinfo=startupinfo)
+        _popen(
+            cmd, env=env, creationflags=creationflags, startupinfo=startupinfo
+        )
 
 
 def _spawn_posix(cmd, env):
@@ -49,17 +52,19 @@ def _spawn_posix(cmd, env):
     # with PyInstaller has trouble with SystemExit exception and throws
     # errors such as "[26338] Failed to execute script __main__"
     try:
-        pid = os.fork()  # pylint: disable=no-member
+        # pylint: disable-next=no-member
+        pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
             return
     except OSError:
         logger.exception("failed at first fork")
         os._exit(1)  # pylint: disable=protected-access
 
-    os.setsid()  # pylint: disable=no-member
+    os.setsid()  # type: ignore[attr-defined]  # pylint: disable=no-member
 
     try:
-        pid = os.fork()  # pylint: disable=no-member
+        # pylint: disable-next=no-member
+        pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
             os._exit(0)  # pylint: disable=protected-access
     except OSError:

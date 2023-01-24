@@ -3,6 +3,7 @@ import os
 import re
 from collections import namedtuple
 from itertools import chain, groupby, takewhile
+from typing import List, Optional
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
@@ -10,7 +11,6 @@ from pygtrie import Trie
 
 from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
-from dvc.types import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,20 +24,27 @@ class DvcIgnore:
 
 class DvcIgnorePatterns(DvcIgnore):
     def __init__(self, pattern_list, dirname, sep):
-        if pattern_list:
-            if isinstance(pattern_list[0], str):
-                pattern_list = [
-                    PatternInfo(pattern, "") for pattern in pattern_list
-                ]
+        from pathspec.patterns.gitwildmatch import _DIR_MARK
+
+        if pattern_list and isinstance(pattern_list[0], str):
+            pattern_list = [
+                PatternInfo(pattern, "") for pattern in pattern_list
+            ]
 
         self.sep = sep
         self.pattern_list = pattern_list
         self.dirname = dirname
 
-        self.regex_pattern_list = [
-            GitWildMatchPattern.pattern_to_regex(pattern_info.patterns)
-            for pattern_info in pattern_list
-        ]
+        self.regex_pattern_list = []
+        for count, pattern in enumerate(pattern_list):
+            pattern, group = GitWildMatchPattern.pattern_to_regex(
+                pattern.patterns
+            )
+            if pattern:
+                pattern = pattern.replace(
+                    f"<{_DIR_MARK}>", f"<{_DIR_MARK}{count}>"
+                )
+                self.regex_pattern_list.append((pattern, group))
 
         self.ignore_spec = [
             (ignore, re.compile("|".join(item[0] for item in group)))
@@ -84,7 +91,7 @@ class DvcIgnorePatterns(DvcIgnore):
             return False
 
         if os.name == "nt":
-            path = normalize_file(path)
+            return normalize_file(path)
         return path
 
     def matches(self, dirname, basename, is_dir=False, details: bool = False):
@@ -195,8 +202,8 @@ class DvcIgnoreFilter:
 
     def _get_key(self, path):
         parts = self.fs.path.relparts(path, self.root_dir)
-        if parts == (".",):
-            parts = ()
+        if parts == (os.curdir,):
+            return ()
         return parts
 
     def _update_trie(self, dirname: str, trie: Trie) -> None:
@@ -379,7 +386,7 @@ class DvcIgnoreFilter:
         return False
 
     def is_ignored_dir(self, path: str, ignore_subrepos: bool = True) -> bool:
-        "Only used in LocalFileSystem"
+        # only used in LocalFileSystem
         path = self.fs.path.abspath(path)
         if path == self.root_dir:
             return False
@@ -387,7 +394,7 @@ class DvcIgnoreFilter:
         return self._is_ignored(path, True, ignore_subrepos=ignore_subrepos)
 
     def is_ignored_file(self, path: str, ignore_subrepos: bool = True) -> bool:
-        "Only used in LocalFileSystem"
+        # only used in LocalFileSystem
         path = self.fs.path.abspath(path)
         return self._is_ignored(path, False, ignore_subrepos=ignore_subrepos)
 

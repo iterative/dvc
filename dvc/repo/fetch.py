@@ -9,17 +9,17 @@ from dvc.fs import Schemes
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc.cloud import Remote
+    from dvc.data_cloud import Remote
     from dvc.repo import Repo
     from dvc.types import TargetType
+    from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.transfer import TransferResult
-    from dvc_objects.db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
 
 @locked
-def fetch(
+def fetch(  # noqa: C901
     self,
     targets=None,
     jobs=None,
@@ -31,7 +31,7 @@ def fetch(
     all_commits=False,
     run_cache=False,
     revs=None,
-    odb: Optional["ObjectDB"] = None,
+    odb: Optional["HashFileDB"] = None,
 ) -> int:
     """Download data items from a cloud and imported repositories
 
@@ -133,7 +133,7 @@ def _fetch(
     targets: "TargetType",
     remote: Optional[str] = None,
     jobs: Optional[int] = None,
-    odb: Optional["ObjectDB"] = None,
+    odb: Optional["HashFileDB"] = None,
     **kwargs,
 ) -> "TransferResult":
     from dvc_data.hashfile.transfer import TransferResult

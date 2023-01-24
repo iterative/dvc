@@ -109,7 +109,7 @@ class CmdDiff(CmdBase):
             ui.write()
 
         if not sum(summary.values()):
-            return None
+            return
 
         states_summary = ", ".join(
             f"{summary[state]} {state}"

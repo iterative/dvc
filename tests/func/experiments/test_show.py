@@ -22,7 +22,6 @@ from dvc.repo.experiments.utils import (
     exp_refs_by_rev,
 )
 from dvc.utils import relpath
-from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
 
 LOCK_CONTENTS = {
@@ -447,7 +446,7 @@ def test_show_running_workspace(
         "workspace",
         f"workspace{BaseExecutor.INFOFILE_EXT}",
     )
-    makedirs(os.path.dirname(pidfile), True)
+    os.makedirs(os.path.dirname(pidfile), exist_ok=True)
     (tmp_dir / pidfile).dump_json(info.asdict())
     (tmp_dir / lock_file).dump_json(LOCK_CONTENTS)
 
@@ -524,7 +523,7 @@ def test_show_running_tempdir(tmp_dir, scm, dvc, exp_stage, mocker):
     )
     info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
     pidfile = queue.get_infofile_path(stash_rev)
-    makedirs(os.path.dirname(pidfile), True)
+    os.makedirs(os.path.dirname(pidfile), exist_ok=True)
     (tmp_dir / pidfile).dump_json(info.asdict())
     mock_fetch = mocker.patch.object(
         dvc.experiments.tempdir_queue,
@@ -557,7 +556,7 @@ def test_show_running_celery(tmp_dir, scm, dvc, exp_stage, mocker):
     )
     info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
     pidfile = queue.get_infofile_path(entries[0].stash_rev)
-    makedirs(os.path.dirname(pidfile), True)
+    os.makedirs(os.path.dirname(pidfile), exist_ok=True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
     results = dvc.experiments.show()
@@ -599,7 +598,7 @@ def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
         location=TempDirExecutor.DEFAULT_LOCATION,
         status=TaskStatus.RUNNING,
     )
-    makedirs(os.path.dirname(pidfile), True)
+    os.makedirs(os.path.dirname(pidfile), exist_ok=True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
     mocker.patch.object(
@@ -998,8 +997,7 @@ def test_show_queued_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == exp_rev_3:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,
@@ -1027,8 +1025,7 @@ def test_show_completed_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == exp_rev_3:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,
@@ -1088,8 +1085,7 @@ def test_show_baseline_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == baseline_rev:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,

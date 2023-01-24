@@ -1,4 +1,5 @@
 import argparse
+from typing import Dict, List
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
@@ -6,7 +7,6 @@ from dvc.commands.config import CmdConfig
 from dvc.compare import TabularData
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
-from dvc.types import Dict, List
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -177,6 +177,7 @@ class CmdMachineRename(CmdBase):
             self._check_exists(conf)
             conf["machine"][self.args.new] = conf["machine"][self.args.name]
             try:
+                assert self.repo.machine
                 self.repo.machine.rename(self.args.name, self.args.new)
             except DvcException as error:
                 del conf["machine"][self.args.new]
@@ -199,7 +200,7 @@ class CmdMachineDefault(CmdMachineConfig):
         if self.args.name is None and not self.args.unset:
             conf = self.config.read(self.args.level)
             try:
-                print(conf["core"]["machine"])
+                ui.write(conf["core"]["machine"])
             except KeyError:
                 ui.write("No default machine set")
                 return 1
@@ -324,7 +325,7 @@ def add_parser(subparsers, parent_parser):
 
     machine_subparsers = machine_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc machine CMD --help` for " "command-specific help.",
+        help="Use `dvc machine CMD --help` for command-specific help.",
     )
 
     fix_subparsers(machine_subparsers)

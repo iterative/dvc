@@ -26,7 +26,7 @@ def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
     for stage in [stage1, stage2, stage3]:
         dvc.remove(stage.addressing, outs=remove_outs)
         out_exists = (out.exists for out in stage.outs)
-        assert stage not in dvc.stage.collect_repo()
+        assert stage not in dvc.index.stages
         if remove_outs:
             assert not any(out_exists)
         else:

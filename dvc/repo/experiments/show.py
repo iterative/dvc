@@ -43,8 +43,7 @@ class ExpStatus(Enum):
 
 def _is_scm_error(collected_exp: Dict[str, Any]) -> bool:
     if "error" in collected_exp and (
-        isinstance(collected_exp["error"], SCMError)
-        or isinstance(collected_exp["error"], InnerScmError)
+        isinstance(collected_exp["error"], (SCMError, InnerScmError))
     ):
         return True
     return False
@@ -78,7 +77,7 @@ def collect_experiment_commit(
             result["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
         params = _gather_params(
-            repo, rev=rev, targets=None, deps=param_deps, onerror=onerror
+            repo, targets=None, deps=param_deps, onerror=onerror
         )
         if params:
             result["params"] = params
@@ -135,7 +134,7 @@ def _collect_complete_experiment(
 ) -> Dict[str, Dict[str, Any]]:
     results: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
 
-    checkpoint: bool = True if len(revs) > 1 else False
+    checkpoint = len(revs) > 1
     prev = ""
 
     for rev in revs:
@@ -238,7 +237,7 @@ def get_branch_names(
     return names
 
 
-def update_names(
+def update_names(  # noqa: C901
     repo: "Repo",
     branch_names: Dict[str, Optional[str]],
     result: Dict[str, Dict[str, Any]],

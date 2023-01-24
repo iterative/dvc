@@ -3,19 +3,20 @@ import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Generator, Optional
 
-from funcy import cached_property, first
+from funcy import first
 
 from dvc.exceptions import DvcException
-
-from ..exceptions import ExpQueueEmptyError
-from ..executor.base import (
+from dvc.repo.experiments.exceptions import ExpQueueEmptyError
+from dvc.repo.experiments.executor.base import (
     BaseExecutor,
     ExecutorInfo,
     ExecutorResult,
     TaskStatus,
 )
-from ..executor.local import TempDirExecutor
-from ..utils import EXEC_PID_DIR, EXEC_TMP_DIR
+from dvc.repo.experiments.executor.local import TempDirExecutor
+from dvc.repo.experiments.utils import EXEC_PID_DIR, EXEC_TMP_DIR
+from dvc.utils.objects import cached_property
+
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
 from .utils import fetch_running_exp_from_temp_dir
 from .workspace import WorkspaceQueue
@@ -37,6 +38,7 @@ class TempDirQueue(WorkspaceQueue):
 
     @cached_property
     def _standalone_tmp_dir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, _STANDALONE_TMP_DIR)
 
     @cached_property
@@ -130,7 +132,7 @@ class TempDirQueue(WorkspaceQueue):
             return results
         except DvcException:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             raise DvcException(
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc

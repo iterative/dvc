@@ -64,15 +64,15 @@ class CmdPrePush(CmdHookBase):
 
 class CmdMergeDriver(CmdHookBase):
     def _run(self):
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import load_file
         from dvc.repo import Repo
 
         dvc = Repo()
 
         try:
-            ancestor = Dvcfile(dvc, self.args.ancestor, verify=False)
-            our = Dvcfile(dvc, self.args.our, verify=False)
-            their = Dvcfile(dvc, self.args.their, verify=False)
+            ancestor = load_file(dvc, self.args.ancestor, verify=False)
+            our = load_file(dvc, self.args.our, verify=False)
+            their = load_file(dvc, self.args.their, verify=False)
 
             our.merge(ancestor, their, allowed=["add", "remove", "change"])
 

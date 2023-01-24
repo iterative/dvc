@@ -1,10 +1,10 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
 from urllib.parse import urlparse
 
-from funcy import cached_property, collecting, project
+from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
@@ -17,6 +17,7 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
+from dvc.utils.objects import cached_property
 from dvc_data.hashfile import Tree
 from dvc_data.hashfile import check as ocheck
 from dvc_data.hashfile import load as oload
@@ -31,7 +32,7 @@ from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
-from .fs.callbacks import DEFAULT_CALLBACK
+from .fs.callbacks import DEFAULT_CALLBACK, Callback
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -40,7 +41,7 @@ if TYPE_CHECKING:
     from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
 
-    from .fs.callbacks import Callback
+    from .ignore import DvcIgnoreFilter
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ def _split_dict(d, keys):
 
 
 def _merge_data(s_list):
-    d = defaultdict(dict)
+    d: Dict[str, Dict] = defaultdict(dict)
     for key in s_list:
         if isinstance(key, str):
             d[key].update({})
@@ -267,10 +268,10 @@ class Output:
         },
     )
 
-    DoesNotExistError = OutputDoesNotExistError  # type: Type[DvcException]
-    IsNotFileOrDirError = OutputIsNotFileOrDirError  # type: Type[DvcException]
-    IsStageFileError = OutputIsStageFileError  # type: Type[DvcException]
-    IsIgnoredError = OutputIsIgnoredError  # type: Type[DvcException]
+    DoesNotExistError: Type[DvcException] = OutputDoesNotExistError
+    IsNotFileOrDirError: Type[DvcException] = OutputIsNotFileOrDirError
+    IsStageFileError: Type[DvcException] = OutputIsStageFileError
+    IsIgnoredError: Type[DvcException] = OutputIsIgnoredError
 
     def __init__(
         self,
@@ -283,13 +284,13 @@ class Output:
         persist=False,
         checkpoint=False,
         desc=None,
-        type=None,  # pylint: disable=redefined-builtin
+        type=None,  # noqa: A002, pylint: disable=redefined-builtin
         labels=None,
         meta=None,
         remote=None,
         repo=None,
         fs_config=None,
-        files: List[Dict[str, Any]] = None,
+        files: Optional[List[Dict[str, Any]]] = None,
         push: bool = True,
     ):
         self.annot = Annotation(
@@ -315,7 +316,7 @@ class Output:
             and isinstance(stage.repo.fs, LocalFileSystem)
             and path_isin(path, stage.repo.root_dir)
         ):
-            self.def_path = relpath(path, stage.wdir)
+            self.def_path: str = relpath(path, stage.wdir)
             self.fs = stage.repo.fs
         else:
             self.def_path = path
@@ -486,10 +487,9 @@ class Output:
         return self.hash_info.isdir
 
     def _is_path_dvcignore(self, path) -> bool:
-        if not self.IS_DEPENDENCY and self.dvcignore:
-            if self.dvcignore.is_ignored(self.fs, path, ignore_subrepos=False):
-                return True
-        return False
+        if self.IS_DEPENDENCY or not self.dvcignore:
+            return False
+        return self.dvcignore.is_ignored(self.fs, path, ignore_subrepos=False)
 
     @property
     def exists(self):
@@ -561,7 +561,7 @@ class Output:
             return self.meta.version_id != self.get_meta().version_id
         return False
 
-    def workspace_status(self):
+    def workspace_status(self) -> Dict[str, str]:
         if not self.exists:
             return {str(self): "deleted"}
 
@@ -573,40 +573,40 @@ class Output:
 
         return {}
 
-    def status(self):
+    def status(self) -> Dict[str, str]:
         if self.hash_info and self.use_cache and self.changed_cache():
             return {str(self): "not in cache"}
 
         return self.workspace_status()
 
-    def changed(self):
+    def changed(self) -> bool:
         status = self.status()
         logger.debug(str(status))
         return bool(status)
 
     @property
-    def dvcignore(self):
+    def dvcignore(self) -> Optional["DvcIgnoreFilter"]:
         if self.fs.protocol == "local":
             return self.repo.dvcignore
         return None
 
     @property
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return self.fs.is_empty(self.fs_path)
 
-    def isdir(self):
+    def isdir(self) -> bool:
         if self._is_path_dvcignore(self.fs_path):
             return False
         return self.fs.isdir(self.fs_path)
 
-    def isfile(self):
+    def isfile(self) -> bool:
         if self._is_path_dvcignore(self.fs_path):
             return False
         return self.fs.isfile(self.fs_path)
 
     # pylint: disable=no-member
 
-    def ignore(self):
+    def ignore(self) -> None:
         if not self.use_scm_ignore:
             return
 
@@ -615,7 +615,7 @@ class Output:
 
         self.repo.scm_context.ignore(self.fspath)
 
-    def ignore_remove(self):
+    def ignore_remove(self) -> None:
         if not self.use_scm_ignore:
             return
 
@@ -623,11 +623,11 @@ class Output:
 
     # pylint: enable=no-member
 
-    def save(self):
+    def save(self) -> None:
         if not self.exists:
             raise self.DoesNotExistError(self)
 
-        if not self.isfile and not self.isdir:
+        if not self.isfile() and not self.isdir():
             raise self.IsNotFileOrDirError(self)
 
         if self.is_empty:
@@ -663,11 +663,11 @@ class Output:
         self.hash_info = self.obj.hash_info
         self.files = None
 
-    def set_exec(self):
+    def set_exec(self) -> None:
         if self.isfile() and self.meta.isexec:
             self.odb.set_exec(self.fs_path)
 
-    def _checkout(self, *args, **kwargs):
+    def _checkout(self, *args, **kwargs) -> Optional[bool]:
         from dvc_data.hashfile.checkout import CheckoutError as _CheckoutError
         from dvc_data.hashfile.checkout import LinkError, PromptError
 
@@ -675,13 +675,13 @@ class Output:
         try:
             return checkout(*args, **kwargs)
         except PromptError as exc:
-            raise ConfirmRemoveError(exc.path)
+            raise ConfirmRemoveError(exc.path)  # noqa: B904
         except LinkError as exc:
-            raise CacheLinkError([exc.path])
+            raise CacheLinkError([exc.path])  # noqa: B904
         except _CheckoutError as exc:
-            raise CheckoutError(exc.paths)
+            raise CheckoutError(exc.paths, {})  # noqa: B904
 
-    def commit(self, filter_info=None):
+    def commit(self, filter_info=None) -> None:
         if not self.exists:
             raise self.DoesNotExistError(self)
 
@@ -721,7 +721,7 @@ class Output:
             )
             self.set_exec()
 
-    def _commit_granular_dir(self, filter_info):
+    def _commit_granular_dir(self, filter_info) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(
             self.fs.path.relpath(filter_info, self.fs_path)
         )
@@ -732,7 +732,8 @@ class Output:
             self.hash_name,
             ignore=self.dvcignore,
         )
-        save_obj = save_obj.filter(prefix)
+        save_obj = cast(Tree, save_obj)
+        save_obj = cast(Tree, save_obj.filter(prefix))
         checkout_obj = save_obj.get_obj(self.odb, prefix)
         otransfer(
             staging,
@@ -743,10 +744,10 @@ class Output:
         )
         return checkout_obj
 
-    def dumpd(self, **kwargs):
+    def dumpd(self, **kwargs):  # noqa: C901
         meta = self.meta.to_dict()
         meta.pop("isdir", None)
-        ret = {**self.hash_info.to_dict(), **meta}
+        ret: Dict[str, Any] = {**self.hash_info.to_dict(), **meta}
 
         if self.is_in_repo:
             path = self.fs.path.as_posix(
@@ -762,12 +763,12 @@ class Output:
             if not self.use_cache:
                 ret[self.PARAM_CACHE] = self.use_cache
 
-            if isinstance(self.metric, dict):
-                if (
-                    self.PARAM_METRIC_XPATH in self.metric
-                    and not self.metric[self.PARAM_METRIC_XPATH]
-                ):
-                    del self.metric[self.PARAM_METRIC_XPATH]
+            if (
+                isinstance(self.metric, dict)
+                and self.PARAM_METRIC_XPATH in self.metric
+                and not self.metric[self.PARAM_METRIC_XPATH]
+            ):
+                del self.metric[self.PARAM_METRIC_XPATH]
 
             if self.metric:
                 ret[self.PARAM_METRIC] = self.metric
@@ -792,11 +793,14 @@ class Output:
             and self.hash_info.isdir
             and (kwargs.get("with_files") or self.files is not None)
         ):
+            obj: Optional["HashFile"]
             if self.obj:
                 obj = self.obj
             else:
                 obj = self.get_obj()
-            ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
+            if obj:
+                obj = cast(Tree, obj)
+                ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
 
         return ret
 
@@ -844,20 +848,21 @@ class Output:
         fs_path = self.fs.path
         if filter_info and filter_info != self.fs_path:
             prefix = fs_path.relparts(filter_info, self.fs_path)
+            obj = cast(Tree, obj)
             obj = obj.get_obj(self.odb, prefix)
 
         return obj
 
     def checkout(
         self,
-        force=False,
+        force: bool = False,
         progress_callback: "Callback" = DEFAULT_CALLBACK,
-        relink=False,
-        filter_info=None,
-        allow_missing=False,
-        checkpoint_reset=False,
+        relink: bool = False,
+        filter_info: Optional[str] = None,
+        allow_missing: bool = False,
+        checkpoint_reset: bool = False,
         **kwargs,
-    ):
+    ) -> Optional[Tuple[bool, Optional[bool]]]:
         if not self.use_cache:
             if progress_callback != DEFAULT_CALLBACK:
                 progress_callback.relative_update(
@@ -898,7 +903,7 @@ class Output:
         return added, False if added else modified
 
     def remove(self, ignore_remove=False):
-        self.fs.remove(self.fs_path)
+        self.fs.remove(self.fs_path, recursive=True)
         if self.protocol != Schemes.LOCAL:
             return
 
@@ -1020,7 +1025,7 @@ class Output:
                 "Would you like to continue? Use '-f' to force."
             )
             if not force and not prompt.confirm(msg.format(self.fs_path)):
-                raise CollectCacheError(
+                raise CollectCacheError(  # noqa: B904
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
@@ -1032,10 +1037,11 @@ class Output:
             prefix = self.fs.path.parts(
                 self.fs.path.relpath(filter_info, self.fs_path)
             )
-            obj = obj.filter(prefix)
-        return obj
+            obj = cast(Tree, obj)
+            return obj.filter(prefix)
+        return cast(Tree, obj)
 
-    def get_used_objs(
+    def get_used_objs(  # noqa: C901
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""
@@ -1071,6 +1077,7 @@ class Output:
             logger.warning(msg)
             return {}
 
+        obj: Optional["HashFile"]
         if self.is_dir_checksum:
             obj = self._collect_used_dir_cache(**kwargs)
         else:

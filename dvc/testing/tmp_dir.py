@@ -52,7 +52,6 @@ from contextlib import contextmanager
 from functools import partialmethod
 
 from dvc.utils import serialize
-from dvc.utils.fs import makedirs
 
 
 class TmpDir(pathlib.Path):
@@ -77,9 +76,8 @@ class TmpDir(pathlib.Path):
             )
         # init parameter and `_init` method has been removed in Python 3.10.
         kw = {"init": False} if sys.version_info < (3, 10) else {}
-        self = cls._from_parts(  # pylint: disable=unexpected-keyword-arg
-            args, **kw
-        )
+        # pylint: disable-next=unexpected-keyword-arg
+        self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
         if not self._flavour.is_supported:
             raise NotImplementedError(
                 f"cannot instantiate {cls.__name__!r} on your system"
@@ -138,11 +136,11 @@ class TmpDir(pathlib.Path):
 
             if isinstance(contents, dict):
                 if not contents:
-                    makedirs(path, exist_ok=True)
+                    os.makedirs(path, exist_ok=True)
                 else:
                     self._gen(contents, prefix=path)
             else:
-                makedirs(path.parent, exist_ok=True)
+                os.makedirs(path.parent, exist_ok=True)
                 if isinstance(contents, bytes):
                     path.write_bytes(contents)
                 else:
@@ -237,7 +235,8 @@ class TmpDir(pathlib.Path):
                 path.name: path.read_text(*args, **kwargs)
                 for path in self.iterdir()
             }
-        return super().read_text(*args, encoding="utf-8", **kwargs)
+        kwargs.setdefault("encoding", "utf-8")  # type: ignore[call-overload]
+        return super().read_text(*args, **kwargs)
 
     def oid_to_path(self, hash_):
         return str(self / hash_[0:2] / hash_[2:])

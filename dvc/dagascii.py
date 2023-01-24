@@ -59,8 +59,7 @@ class AsciiCanvas:
     def draw(self):
         """Draws ASCII canvas on the screen."""
         lines = map("".join, self.canvas)
-        joined_lines = os.linesep.join(lines)
-        return joined_lines
+        return os.linesep.join(lines)
 
     def point(self, x, y, char):
         """Create a point on ASCII canvas.
@@ -81,7 +80,7 @@ class AsciiCanvas:
 
         self.canvas[y][x] = char
 
-    def line(self, x0, y0, x1, y1, char):
+    def line(self, x0, y0, x1, y1, char):  # noqa: C901
         """Create a line on ASCII canvas.
 
         Args:

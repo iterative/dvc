@@ -4,7 +4,7 @@ import os
 import re
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Set
 
 from funcy import lmap
 
@@ -37,9 +37,9 @@ def _update_names(names, items):
 
 
 def _collect_names(all_experiments, **kwargs):
-    metric_names = defaultdict(dict)
-    param_names = defaultdict(dict)
-    deps_names = set()
+    metric_names: Dict[str, Dict[str, Any]] = defaultdict(dict)
+    param_names: Dict[str, Dict[str, Any]] = defaultdict(dict)
+    deps_names: Set[str] = set()
 
     for _, experiments in all_experiments.items():
         for exp_data in experiments.values():
@@ -62,7 +62,7 @@ experiment_types = {
 }
 
 
-def _collect_rows(
+def _collect_rows(  # noqa: C901
     base_rev,
     experiments,
     all_headers,
@@ -314,7 +314,7 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(
+def show_experiments(  # noqa: C901
     all_experiments,
     keep=None,
     drop=None,
@@ -328,7 +328,7 @@ def show_experiments(
 
     metric_names, param_names, deps_names = _collect_names(all_experiments)
 
-    headers = [
+    headers_list = [
         "Experiment",
         "rev",
         "typ",
@@ -340,13 +340,13 @@ def show_experiments(
 
     names = {**metric_names, **param_names}
     counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
-    counter.update(headers)
+    counter.update(headers_list)
     metric_headers = _normalize_headers(metric_names, counter)
     param_headers = _normalize_headers(param_names, counter)
 
     td = experiments_table(
         all_experiments,
-        headers,
+        headers_list,
         metric_headers,
         metric_names,
         param_headers,
@@ -359,7 +359,7 @@ def show_experiments(
         kwargs.get("iso"),
     )
     if keep:
-        for col in td.keys():
+        for col in td.keys():  # noqa: SIM118
             if re.match(keep, col):
                 td.protect(col)
 
@@ -410,13 +410,15 @@ def show_experiments(
 
     cols_to_drop = set()
     if drop is not None:
-        cols_to_drop = {col for col in td.keys() if re.match(drop, col)}
+        cols_to_drop = {
+            col for col in td.keys() if re.match(drop, col)  # noqa: SIM118
+        }
     if pcp:
         cols_to_drop.add("Created")
     td.drop(*cols_to_drop)
 
     if pcp:
-        subset = {x for x in td.keys() if x != "Experiment"}
+        subset = {x for x in td.keys() if x != "Experiment"}  # noqa: SIM118
         td.dropna(
             "rows",
             how="all",
@@ -494,7 +496,7 @@ class CmdExperimentsShow(CmdBase):
                 else DEFAULT_PRECISION
             )
             fill_value = "" if self.args.csv else FILL_VALUE
-            iso = True if self.args.csv else False
+            iso = self.args.csv
 
             show_experiments(
                 all_experiments,

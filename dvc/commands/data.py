@@ -72,7 +72,7 @@ class CmdDataStatus(CmdBase):
             yield stage, items
 
     @classmethod
-    def _show_status(cls, status: "DataStatus") -> int:
+    def _show_status(cls, status: "DataStatus") -> int:  # noqa: C901
         git_info = status.pop("git")  # type: ignore[misc]
         result = dict(cls._process_status(status))
         if not result:
@@ -114,7 +114,9 @@ class CmdDataStatus(CmdBase):
         return 0
 
     def run(self) -> int:
-        with log_durations(logger.trace, "in data_status"):  # type: ignore
+        with log_durations(
+            logger.trace, "in data_status"  # type: ignore[attr-defined]
+        ):
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,

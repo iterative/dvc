@@ -4,10 +4,17 @@ import os
 import re
 from contextlib import contextmanager
 from functools import partial
+from typing import TYPE_CHECKING, Dict, Optional
 
-from funcy import cached_property, compact, memoize, re_find
+from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.types import DictStrAny, StrPath
+
+from .utils.objects import cached_property
+
+if TYPE_CHECKING:
+    from dvc.fs import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +91,11 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self, dvc_dir=None, validate=True, fs=None, config=None
+        self,
+        dvc_dir: Optional[StrPath] = None,
+        validate: bool = True,
+        fs: Optional["FileSystem"] = None,
+        config: Optional[DictStrAny] = None,
     ):  # pylint: disable=super-init-not-called
         from dvc.fs import LocalFileSystem
 
@@ -116,7 +127,7 @@ class Config(dict):
             return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
 
     @cached_property
-    def files(self):
+    def files(self) -> Dict[str, str]:
         files = {
             level: os.path.join(self.get_dir(level), self.CONFIG)
             for level in ("system", "global")
@@ -139,10 +150,10 @@ class Config(dict):
             dvc.config.Config: config object.
         """
         config_file = os.path.join(dvc_dir, Config.CONFIG)
-        open(config_file, "w+", encoding="utf-8").close()
-        return Config(dvc_dir)
+        with open(config_file, "w+", encoding="utf-8"):
+            return Config(dvc_dir)
 
-    def load(self, validate=True, config=None):
+    def load(self, validate: bool = True, config: Optional[DictStrAny] = None):
         """Loads config from all the config files.
 
         Raises:
@@ -169,7 +180,7 @@ class Config(dict):
         return self.fs if level == "repo" else self.wfs
 
     def _load_config(self, level):
-        from configobj import ConfigObj
+        from configobj import ConfigObj, ConfigObjError
 
         filename = self.files[level]
         fs = self._get_fs(level)
@@ -179,6 +190,8 @@ class Config(dict):
                 try:
                     conf_obj = ConfigObj(fobj)
                 except UnicodeDecodeError as exc:
+                    raise ConfigError(str(exc)) from exc
+                except ConfigObjError as exc:
                     raise ConfigError(str(exc)) from exc
         else:
             conf_obj = ConfigObj()
@@ -278,7 +291,7 @@ class Config(dict):
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
     def load_config_to_level(self, level=None):
-        merged_conf = {}
+        merged_conf: Dict = {}
         for merge_level in self.LEVELS:
             if merge_level == level:
                 break
@@ -324,7 +337,7 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result = {"remote": {}, "machine": {}}
+    result: Dict[str, Dict] = {"remote": {}, "machine": {}}
 
     for section, val in conf.items():
         match = re_find(r'^\s*(remote|machine)\s*"(.*)"\s*$', section)

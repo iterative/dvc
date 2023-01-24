@@ -35,7 +35,7 @@ def gc(
     all_commits: bool = False,
     all_experiments: bool = False,
     force: bool = False,
-    jobs: int = None,
+    jobs: Optional[int] = None,
     repos: Optional[List[str]] = None,
     workspace: bool = False,
     commit_date: Optional[str] = None,

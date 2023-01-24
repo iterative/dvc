@@ -19,7 +19,7 @@ def branch(repo, exp_rev, branch_name, *args, **kwargs):
     try:
         rev = resolve_rev(repo.scm, exp_rev)
     except RevError:
-        raise InvalidArgumentError(exp_rev)
+        raise InvalidArgumentError(exp_rev)  # noqa: B904
     ref_info = None
 
     ref_infos = list(exp_refs_by_rev(repo.scm, rev))

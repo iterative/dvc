@@ -116,7 +116,7 @@ class Lock(LockBase):
                 self._lock = zc.lockfile.LockFile(self._lockfile)
         except zc.lockfile.LockError:
             self._lock_failed = True
-            raise LockError(FAILED_TO_LOCK_MESSAGE)
+            raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
     def lock(self):
         retries = 6
@@ -131,6 +131,7 @@ class Lock(LockBase):
 
         if not self.is_locked:
             raise DvcException("Unlock called on an unlocked lock")
+        assert self._lock
         self._lock.close()
         self._lock = None
 
@@ -185,14 +186,15 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         try:
             super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:
-            raise LockError(FAILED_TO_LOCK_MESSAGE)
+            raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
     def _set_claimfile(self):
         super()._set_claimfile()
 
         if self._tmp_dir is not None:
             # Under Windows file path length is limited so we hash it
-            filename = hashlib.md5(self._claimfile.encode()).hexdigest()
+            hasher = hashlib.md5(self._claimfile.encode())  # noqa: S324
+            filename = hasher.hexdigest()
             self._claimfile = os.path.join(self._tmp_dir, filename + ".lock")
 
 

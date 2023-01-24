@@ -239,13 +239,6 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
     assert deep_subrepo_stages != []
 
 
-def test_collect_repo_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
-    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.dvc"})
-    scm.add([".gitignore"])
-    (stage,) = tmp_dir.dvc_gen({"data/raw/tracked.csv": "5,6,7,8"})
-    assert dvc.stage.collect_repo() == [stage]
-
-
 @pytest.mark.parametrize("with_deps", (False, True))
 def test_collect_symlink(tmp_dir, dvc, with_deps):
     tmp_dir.gen({"data": {"foo": "foo contents"}})

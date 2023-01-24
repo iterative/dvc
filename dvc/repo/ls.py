@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 def ls(
     url: str,
     path: Optional[str] = None,
-    rev: str = None,
-    recursive: bool = None,
+    rev: Optional[str] = None,
+    recursive: Optional[bool] = None,
     dvc_only: bool = False,
 ):
     """Methods for getting files and outputs for the repo.
@@ -53,7 +53,10 @@ def ls(
 
 
 def _ls(
-    repo: "Repo", path: str, recursive: bool = None, dvc_only: bool = False
+    repo: "Repo",
+    path: str,
+    recursive: Optional[bool] = None,
+    dvc_only: bool = False,
 ):
     fs: "DVCFileSystem" = repo.dvcfs
     fs_path = fs.from_os_path(path)
@@ -61,7 +64,7 @@ def _ls(
     try:
         fs_path = fs.info(fs_path)["name"]
     except FileNotFoundError:
-        raise PathMissingError(path, repo, dvc_only=dvc_only)
+        raise PathMissingError(path, repo, dvc_only=dvc_only)  # noqa: B904
 
     infos = {}
     for root, dirs, files in fs.walk(

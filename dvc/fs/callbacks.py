@@ -1,9 +1,8 @@
 # pylint: disable=unused-import
 from contextlib import ExitStack
-from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union, cast
 
-from funcy import cached_property
-
+from dvc.utils.objects import cached_property
 from dvc_objects.fs.callbacks import (  # noqa: F401
     DEFAULT_CALLBACK,
     Callback,
@@ -11,6 +10,8 @@ from dvc_objects.fs.callbacks import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from rich.progress import TaskID
+
     from dvc.ui._rich_progress import RichTransferProgress
 
 
@@ -19,10 +20,10 @@ class RichCallback(Callback):
         self,
         size: Optional[int] = None,
         value: int = 0,
-        progress: "RichTransferProgress" = None,
-        desc: str = None,
-        bytes: bool = False,  # pylint: disable=redefined-builtin
-        unit: str = None,
+        progress: Optional["RichTransferProgress"] = None,
+        desc: Optional[str] = None,
+        bytes: bool = False,  # noqa: A002, pylint: disable=redefined-builtin
+        unit: Optional[str] = None,
         disable: bool = False,
         transient: bool = True,
     ) -> None:
@@ -41,7 +42,7 @@ class RichCallback(Callback):
         super().__init__(size=size, value=value)
 
     @cached_property
-    def progress(self):
+    def progress(self) -> "RichTransferProgress":
         from dvc.ui import ui
         from dvc.ui._rich_progress import RichTransferProgress
 
@@ -53,11 +54,13 @@ class RichCallback(Callback):
             disable=self.disable,
             console=ui.error_console,
         )
-        return self._stack.enter_context(progress)
+        return cast(RichTransferProgress, self._stack.enter_context(progress))
 
     @cached_property
-    def task(self):
-        return self.progress.add_task(**self._task_kwargs)
+    def task(self) -> "TaskID":
+        return self.progress.add_task(
+            **self._task_kwargs  # type: ignore[arg-type]
+        )
 
     def __enter__(self):
         return self
@@ -80,7 +83,7 @@ class RichCallback(Callback):
         path_1: Union[str, BinaryIO],
         path_2: str,
         kwargs: Dict[str, Any],
-        child: "Callback" = None,
+        child: Optional["Callback"] = None,
     ):
         child = child or RichCallback(
             progress=self.progress,

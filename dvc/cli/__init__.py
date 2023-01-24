@@ -45,7 +45,6 @@ def _log_unknown_exceptions() -> None:
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Version info for developers:\n%s", get_dvc_info())
     logger.info(FOOTER)
-    return None
 
 
 def _log_exceptions(exc: Exception) -> Optional[int]:
@@ -168,12 +167,12 @@ def main(argv=None):  # noqa: C901
         elif args.verbose == 1:
             level = logging.DEBUG
         elif args.verbose > 1:
-            level = logging.TRACE
+            level = logging.TRACE  # type: ignore[attr-defined]
 
         if level is not None:
             set_loggers_level(level)
 
-        logger.trace(args)
+        logger.trace(args)  # type: ignore[attr-defined]
 
         if not sys.stdout.closed and not args.quiet:
             from dvc.ui import ui

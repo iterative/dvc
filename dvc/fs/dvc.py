@@ -1,15 +1,26 @@
 import errno
+import functools
 import logging
 import ntpath
 import os
 import posixpath
 import threading
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from fsspec.spec import AbstractFileSystem
-from funcy import cached_property, wrap_prop, wrap_with
+from funcy import wrap_with
 
+from dvc.types import StrPath
 from dvc_objects.fs.base import FileSystem
 from dvc_objects.fs.path import Path
 
@@ -20,7 +31,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
+RepoFactory = Union[Callable[..., "Repo"], Type["Repo"]]
 Key = Tuple[str, ...]
 
 
@@ -118,7 +129,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             repo = self._make_repo(
                 url=url, rev=rev, subrepos=subrepos, **repo_kwargs
             )
-            assert repo
+            assert repo is not None
             # pylint: disable=protected-access
             repo_factory = repo._fs_conf["repo_factory"]
 
@@ -131,6 +142,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         def _getcwd():
             relparts = ()
+            assert repo is not None
             if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
                 relparts = repo.fs.path.relparts(
                     repo.fs.path.getcwd(), repo.root_dir
@@ -154,16 +166,16 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
-    def _get_key(self, path) -> Key:
+    def _get_key(self, path: StrPath) -> Key:
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
-        if parts == (".",):
-            parts = ()
+        if parts == (os.curdir,):
+            return ()
         return parts
 
     def _get_key_from_relative(self, path) -> Key:
         parts = self.path.relparts(path, self.root_marker)
         if parts and parts[0] == os.curdir:
-            parts = parts[1:]
+            return parts[1:]
         return parts
 
     def _from_key(self, parts: Key) -> str:
@@ -171,8 +183,6 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     @property
     def repo_url(self):
-        if self.repo is None:
-            return None
         return self.repo.url
 
     @classmethod
@@ -321,7 +331,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
         return self._info(key, path, ignore_subrepos=ignore_subrepos)
 
-    def _info(self, key, path, ignore_subrepos=True, check_ignored=True):
+    def _info(  # noqa: C901
+        self, key, path, ignore_subrepos=True, check_ignored=True
+    ):
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
         dvc_info = None
@@ -369,30 +381,30 @@ class DVCFileSystem(FileSystem):
     protocol = "local"
     PARAM_CHECKSUM = "md5"
 
-    def _prepare_credentials(self, **config):
+    def _prepare_credentials(self, **config) -> Dict[str, Any]:
         return config
 
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def fs(self):
+    @functools.cached_property
+    # pylint: disable-next=invalid-overridden-method
+    def fs(self) -> "DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
 
-    def isdvc(self, path, **kwargs):
+    def isdvc(self, path, **kwargs) -> bool:
         return self.fs.isdvc(path, **kwargs)
 
     @property
-    def path(self):  # pylint: disable=invalid-overridden-method
+    def path(self) -> Path:  # pylint: disable=invalid-overridden-method
         return self.fs.path
 
     @property
-    def repo(self):
+    def repo(self) -> "Repo":
         return self.fs.repo
 
     @property
-    def repo_url(self):
+    def repo_url(self) -> str:
         return self.fs.repo_url
 
-    def from_os_path(self, path):
+    def from_os_path(self, path: str) -> str:
         if os.path.isabs(path):
             path = os.path.relpath(path, self.repo.root_dir)
 

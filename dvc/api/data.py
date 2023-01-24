@@ -27,7 +27,7 @@ def get_url(path, repo=None, rev=None, remote=None):
         if not dvc_info:
             raise OutputNotFoundError(path, repo)
 
-        dvc_repo = info["repo"]
+        dvc_repo = info["repo"]  # pylint: disable=unsubscriptable-object
         md5 = dvc_info["md5"]
 
         return dvc_repo.cloud.get_url_for(remote, checksum=md5)
@@ -38,7 +38,11 @@ class _OpenContextManager(GCM):
         self, func, args, kwds
     ):  # pylint: disable=super-init-not-called
         self.gen = func(*args, **kwds)
-        self.func, self.args, self.kwds = func, args, kwds
+        self.func, self.args, self.kwds = (  # type: ignore[assignment]
+            func,
+            args,
+            kwds,
+        )
 
     def __getattr__(self, name):
         raise AttributeError(

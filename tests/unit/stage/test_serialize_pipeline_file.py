@@ -4,12 +4,12 @@ import pytest
 from voluptuous import Schema as _Schema
 
 from dvc import output
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.schema import SINGLE_PIPELINE_STAGE_SCHEMA
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import to_pipeline_file as _to_pipeline_file
 
-kwargs = {"name": "something", "cmd": "command", "path": PIPELINE_FILE}
+kwargs = {"name": "something", "cmd": "command", "path": PROJECT_FILE}
 Schema = _Schema(SINGLE_PIPELINE_STAGE_SCHEMA)
 
 

@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 from dvc.dependency.base import DependencyDoesNotExistError
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
 
@@ -234,8 +234,8 @@ def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):
 
     # just to confirm different variants work
     assert dvc.commit(f":{stage.addressing}") == [stage]
-    assert dvc.commit(f"{PIPELINE_FILE}:{stage.addressing}") == [stage]
-    assert dvc.commit(PIPELINE_FILE) == [stage]
+    assert dvc.commit(f"{PROJECT_FILE}:{stage.addressing}") == [stage]
+    assert dvc.commit(PROJECT_FILE) == [stage]
 
 
 def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):

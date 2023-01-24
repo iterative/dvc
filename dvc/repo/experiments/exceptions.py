@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Collection, Iterable
+from typing import TYPE_CHECKING, Collection, Iterable, Optional
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 
@@ -102,7 +102,10 @@ class UnresolvedExpNamesError(InvalidArgumentError):
     NAME = "experiment name"
 
     def __init__(
-        self, unresolved_list: Collection[str], *args, git_remote: str = None
+        self,
+        unresolved_list: Collection[str],
+        *args,
+        git_remote: Optional[str] = None,
     ):
         unresolved_names = "; ".join(unresolved_list)
         if not git_remote:

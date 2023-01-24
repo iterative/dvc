@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, Dict, List, Set
 
 from dvc.exceptions import (
     CheckoutError,
@@ -81,7 +81,12 @@ def checkout(
 ):
     from dvc.fs.callbacks import Callback
 
-    stats = {"added": [], "deleted": [], "modified": [], "failed": []}
+    stats: Dict[str, List[str]] = {
+        "added": [],
+        "deleted": [],
+        "modified": [],
+        "failed": [],
+    }
     if not targets:
         targets = [None]
         stats["deleted"] = _remove_unused_links(self)

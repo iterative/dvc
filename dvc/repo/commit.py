@@ -45,8 +45,6 @@ def commit(
     allow_missing=False,
     data_only=False,
 ):
-    from dvc.dvcfile import Dvcfile
-
     stages_info = [
         info
         for info in self.stage.collect_granular(
@@ -66,6 +64,5 @@ def commit(
         stage.commit(
             filter_info=stage_info.filter_info, allow_missing=allow_missing
         )
-
-        Dvcfile(self, stage.path).dump(stage, update_pipeline=False)
+        stage.dump(update_pipeline=False)
     return [s.stage for s in stages_info]

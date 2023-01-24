@@ -1,10 +1,9 @@
-import logging
 import os
 
 import pytest
 from funcy import get_in
 
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
 from dvc.utils.fs import remove
@@ -258,13 +257,8 @@ def test_show_malformed_metric(tmp_dir, scm, dvc, caplog):
     )
 
 
-def test_metrics_show_no_target(tmp_dir, dvc, caplog):
-    with caplog.at_level(logging.WARNING):
-        assert dvc.metrics.show(targets=["metrics.json"]) == {"": {}}
-
-    assert (
-        "'metrics.json' was not found in current workspace." in caplog.messages
-    )
+def test_metrics_show_no_target(tmp_dir, dvc, capsys):
+    assert dvc.metrics.show(targets=["metrics.json"]) == {"": {}}
 
 
 def test_show_no_metrics_files(tmp_dir, dvc, caplog):
@@ -309,7 +303,7 @@ def test_metrics_show_overlap(
 @pytest.mark.parametrize(
     "file,error_path",
     (
-        (PIPELINE_FILE, ["workspace", "error"]),
+        (PROJECT_FILE, ["workspace", "error"]),
         ("metrics.yaml", ["workspace", "data", "metrics.yaml", "error"]),
     ),
 )

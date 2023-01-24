@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import DVC_FILE, Dvcfile
+from dvc.dvcfile import DVC_FILE, load_file
 from dvc.exceptions import (
     CyclicGraphError,
     ReproductionError,
@@ -170,7 +170,7 @@ class TestReproWorkingDirectoryAsOutput:
         dvc.index = dvc.index.update(
             [
                 nested_stage,
-                Dvcfile(dvc, error_stage_path).stage,
+                load_file(dvc, error_stage_path).stage,
             ]
         )
 
@@ -848,7 +848,7 @@ def test_repro_no_commit(tmp_dir, dvc, copy_script, run_stage):
 
 
 class TestReproAlreadyCached:
-    def test(self, dvc, run_stage):  # pylint: disable=redefined-outer-name
+    def test(self, dvc, run_stage):
         stage = run_stage(
             always_changed=True,
             deps=[],

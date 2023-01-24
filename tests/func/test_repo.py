@@ -1,4 +1,4 @@
-from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.fs import system
 from dvc.odbmgr import ODBManager
 
@@ -23,8 +23,8 @@ def test_destroy(tmp_dir, dvc, run_copy):
         "file.dvc",
         "file2.dvc",
         "dir.dvc",
-        PIPELINE_FILE,
-        PIPELINE_LOCK,
+        PROJECT_FILE,
+        LOCK_FILE,
     ]:
         assert not (tmp_dir / path).exists()
 

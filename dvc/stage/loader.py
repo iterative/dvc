@@ -2,12 +2,14 @@ import logging
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from funcy import cached_property, get_in, lcat, once, project
+from funcy import get_in, lcat, once, project
 
 from dvc import dependency, output
 from dvc.parsing import FOREACH_KWD, JOIN, EntryNotFound
 from dvc.parsing.versions import LOCKFILE_VERSION
+from dvc.utils.objects import cached_property
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 
@@ -16,13 +18,16 @@ from .exceptions import StageNameUnspecified, StageNotFound
 from .params import StageParams
 from .utils import fill_stage_dependencies, resolve_paths
 
+if TYPE_CHECKING:
+    from dvc.dvcfile import ProjectFile, SingleStageFile
+
 logger = logging.getLogger(__name__)
 
 
 class StageLoader(Mapping):
     def __init__(
         self,
-        dvcfile,
+        dvcfile: "ProjectFile",
         data,
         lockfile_data=None,
     ):
@@ -40,7 +45,7 @@ class StageLoader(Mapping):
             self._lockfile_data = lockfile_data.get("stages", {})
 
     @cached_property
-    def lockfile_data(self):
+    def lockfile_data(self) -> Dict[str, Any]:
         if not self._lockfile_data:
             logger.debug("Lockfile for '%s' not found", self.dvcfile.relpath)
         return self._lockfile_data
@@ -77,7 +82,9 @@ class StageLoader(Mapping):
             item.files = get_in(checksums, [key, path, item.PARAM_FILES])
 
     @classmethod
-    def load_stage(cls, dvcfile, name, stage_data, lock_data=None):
+    def load_stage(
+        cls, dvcfile: "ProjectFile", name, stage_data, lock_data=None
+    ):
         assert all([name, dvcfile, dvcfile.repo, dvcfile.path])
         assert stage_data and isinstance(stage_data, dict)
 
@@ -126,7 +133,7 @@ class StageLoader(Mapping):
         try:
             resolved_data = self.resolver.resolve_one(name)
         except EntryNotFound:
-            raise StageNotFound(self.dvcfile, name)
+            raise StageNotFound(self.dvcfile, name)  # noqa: B904
 
         if self.lockfile_data and name not in self.lockfile_data:
             self.lockfile_needs_update()
@@ -168,7 +175,12 @@ class StageLoader(Mapping):
 
 
 class SingleStageLoader(Mapping):
-    def __init__(self, dvcfile, stage_data, stage_text=None):
+    def __init__(
+        self,
+        dvcfile: "SingleStageFile",
+        stage_data: Dict[Any, str],
+        stage_text: Optional[str] = None,
+    ):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
@@ -187,12 +199,17 @@ class SingleStageLoader(Mapping):
         )
 
     @classmethod
-    def load_stage(cls, dvcfile, d, stage_text):
+    def load_stage(
+        cls,
+        dvcfile: "SingleStageFile",
+        d: Dict[str, Any],
+        stage_text: Optional[str],
+    ) -> Stage:
         path, wdir = resolve_paths(
             dvcfile.repo.fs, dvcfile.path, d.get(Stage.PARAM_WDIR)
         )
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
-        stage._stage_text = stage_text  # noqa, pylint:disable=protected-access
+        stage._stage_text = stage_text  # pylint: disable=protected-access
         stage.deps = dependency.loadd_from(
             stage, d.get(Stage.PARAM_DEPS) or []
         )

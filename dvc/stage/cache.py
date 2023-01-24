@@ -2,9 +2,9 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
-from funcy import cached_property, first
+from funcy import first
 
 from dvc import fs
 from dvc.exceptions import DvcException
@@ -61,10 +61,7 @@ def _get_stage_hash(stage):
 class StageCache:
     def __init__(self, repo):
         self.repo = repo
-
-    @cached_property
-    def cache_dir(self):
-        return os.path.join(self.repo.odb.local.path, "runs")
+        self.cache_dir = os.path.join(self.repo.odb.local.path, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
@@ -239,7 +236,7 @@ class StageCache:
             message = f"run-cache is not supported for http filesystem: {path}"
             raise RunCacheNotSupported(message)
 
-        ret = []
+        ret: List[Tuple[str, str]] = []
         if not from_fs.exists(runs):
             return ret
 

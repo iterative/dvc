@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def push(
+def push(  # noqa: C901
     repo,
     git_remote: str,
     exp_names: Union[Iterable[str], str],
@@ -82,7 +82,7 @@ def _push(
 ) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
     from scmrepo.exceptions import AuthError
 
-    from ...scm import GitAuthError
+    from dvc.scm import GitAuthError
 
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
     logger.debug("git push experiment '%s' -> '%s'", refspec_list, git_remote)
@@ -96,7 +96,7 @@ def _push(
                 progress=pbar.update_git,
             )
         except AuthError as exc:
-            raise GitAuthError(str(exc))
+            raise GitAuthError(str(exc))  # noqa: B904
 
     def group_result(refspec):
         return results[str(refspec)]

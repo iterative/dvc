@@ -1,8 +1,7 @@
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
-
-from ..utils.test_hydra import hydra_setup
+from tests.func.utils.test_hydra import hydra_setup
 
 
 @pytest.mark.parametrize(
@@ -14,7 +13,6 @@ from ..utils.test_hydra import hydra_setup
 )
 def test_modify_params(params_repo, dvc, changes, expected):
     dvc.experiments.run(params=changes)
-    # pylint: disable=unspecified-encoding
     with open("params.yaml") as fobj:
         assert fobj.read().strip() == expected
 

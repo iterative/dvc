@@ -2,22 +2,27 @@ import logging
 import os
 from contextlib import contextmanager
 from itertools import tee
-from typing import TYPE_CHECKING, Any, Iterator, List
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional
 
 import colorama
 
-from dvc.ui import ui
-
-from ..exceptions import (
+from dvc.exceptions import (
     CacheLinkError,
     InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from ..repo.scm_context import scm_context
-from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
-from ..utils.collections import ensure_list, validate
+from dvc.repo.scm_context import scm_context
+from dvc.ui import ui
+from dvc.utils import (
+    LARGE_DIR_SIZE,
+    glob_targets,
+    resolve_output,
+    resolve_paths,
+)
+from dvc.utils.collections import ensure_list, validate
+
 from . import locked
 
 if TYPE_CHECKING:
@@ -91,9 +96,11 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
             parent=exc.parent.fs_path,
             parent_stage=exc.parent.stage.addressing,
         )
-        raise OverlappingOutputPathsError(exc.parent, exc.overlapping_out, msg)
+        raise OverlappingOutputPathsError(  # noqa: B904
+            exc.parent, exc.overlapping_out, msg
+        )
     except OutputDuplicationError as exc:
-        raise OutputDuplicationError(
+        raise OutputDuplicationError(  # noqa: B904
             exc.output, list(set(exc.stages) - set(stages))
         )
 
@@ -153,7 +160,7 @@ def add(  # noqa: C901
     targets: "TargetType",
     recursive: bool = False,
     no_commit: bool = False,
-    fname: str = None,
+    fname: Optional[str] = None,
     to_remote: bool = False,
     **kwargs: Any,
 ):
@@ -173,9 +180,9 @@ def add(  # noqa: C901
     with translate_graph_error(stages), ui.status(msg) as status:
         # remove existing stages that are to-be replaced with these
         # new stages for the graph checks.
-        new_index = repo.index.update(stages)
-        status.update("Checking graph")
-        new_index.check_graph()
+        repo.check_graph(
+            stages=stages, callback=lambda: status.update("Checking graph")
+        )
 
     odb = None
     if to_remote:
@@ -244,7 +251,7 @@ def _find_all_targets(
 def create_stages(
     repo: "Repo",
     targets: Iterator[str],
-    fname: str = None,
+    fname: Optional[str] = None,
     transfer: bool = False,
     external: bool = False,
     **kwargs: Any,

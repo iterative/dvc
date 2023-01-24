@@ -9,7 +9,7 @@ import dulwich.file
 import pytest
 from funcy import first
 
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import ReproductionError
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
@@ -505,7 +505,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
         scm.commit("init")
 
         results = dvc.experiments.run(
-            PIPELINE_FILE, params=["foo=2"], tmp_dir=not workspace
+            PROJECT_FILE, params=["foo=2"], tmp_dir=not workspace
         )
         assert results
 
@@ -549,7 +549,7 @@ def test_subrepo(tmp_dir, scm, workspace):
         scm.commit("init")
 
         results = subrepo.dvc.experiments.run(
-            PIPELINE_FILE, params=["foo=2"], tmp_dir=not workspace
+            PROJECT_FILE, params=["foo=2"], tmp_dir=not workspace
         )
         assert results
 
@@ -748,3 +748,9 @@ def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing)
 
     assert len(dvc.experiments.ls()["master"]) == 2
+
+
+def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
+    dvc.experiments.run(exp_stage.addressing, dry=True)
+
+    assert len(dvc.experiments.ls()["master"]) == 0

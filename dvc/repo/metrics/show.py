@@ -7,7 +7,7 @@ from scmrepo.exceptions import SCMError
 from dvc.fs.dvc import DVCFileSystem
 from dvc.output import Output
 from dvc.repo import locked
-from dvc.repo.collect import StrPaths, collect
+from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.utils import (
     as_posix,
@@ -25,7 +25,7 @@ def _is_metric(out: Output) -> bool:
     return bool(out.metric)
 
 
-def _to_fs_paths(metrics: List[Output]) -> StrPaths:
+def _to_fs_paths(metrics: List[Output]) -> List["str"]:
     result = []
     for out in metrics:
         if out.metric:
@@ -34,7 +34,7 @@ def _to_fs_paths(metrics: List[Output]) -> StrPaths:
 
 
 def _collect_top_level_metrics(repo):
-    top_metrics = repo.index._top_metrics  # pylint: disable=protected-access
+    top_metrics = repo.index._metrics  # pylint: disable=protected-access
     for dvcfile, metrics in top_metrics.items():
         wdir = repo.fs.path.relpath(
             repo.fs.path.parent(dvcfile), repo.root_dir
@@ -44,13 +44,9 @@ def _collect_top_level_metrics(repo):
             yield repo.fs.path.normpath(path)
 
 
-def _collect_metrics(repo, targets, revision, recursive):
+def _collect_metrics(repo, targets, recursive):
     metrics, fs_paths = collect(
-        repo,
-        targets=targets,
-        output_filter=_is_metric,
-        recursive=recursive,
-        rev=revision,
+        repo, targets=targets, output_filter=_is_metric, recursive=recursive
     )
     return _to_fs_paths(metrics) + list(fs_paths)
 
@@ -109,7 +105,7 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
 
 def _gather_metrics(repo, targets, rev, recursive, onerror=None):
-    metrics = _collect_metrics(repo, targets, rev, recursive)
+    metrics = _collect_metrics(repo, targets, recursive)
     metrics.extend(_collect_top_level_metrics(repo))
     return _read_metrics(repo, metrics, rev, onerror=onerror)
 

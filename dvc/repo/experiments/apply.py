@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
+def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):  # noqa: C901
     from scmrepo.exceptions import SCMError as _SCMError
 
     from dvc.repo.checkout import checkout as dvc_checkout
@@ -47,7 +47,7 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
         baseline_sha = repo.scm.get_rev()
         if exp_ref_info:
             if baseline_sha != exp_ref_info.baseline_sha:
-                raise InvalidExpRevError(rev)
+                raise InvalidExpRevError(rev)  # noqa: B904
             exp_rev = repo.scm.get_ref(str(exp_ref_info))
         elif queue_entry:
             if queue_entry.baseline_rev != baseline_sha:
@@ -65,11 +65,12 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
         try:
             repo.scm.merge(exp_rev, commit=False, squash=True)
         except _SCMError as exc:
-            raise GitMergeError(str(exc), scm=repo.scm)
+            raise GitMergeError(str(exc), scm=repo.scm)  # noqa: B904
 
     repo.scm.reset()
 
     if is_stash:
+        assert repo.tmp_dir is not None
         args_path = os.path.join(repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
         if os.path.exists(args_path):
             remove(args_path)

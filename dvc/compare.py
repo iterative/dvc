@@ -58,7 +58,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return self._columns[name]
 
     def items(self) -> ItemsView[str, Column]:
-        projection = {k: self.column(k) for k in self.keys()}
+        projection = {k: self.column(k) for k in self.keys()}  # noqa: SIM118
         return projection.items()
 
     def keys(self) -> List[str]:
@@ -167,7 +167,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return buff.getvalue()
 
     def to_parallel_coordinates(
-        self, output_path: "StrPath", color_by: str = None
+        self, output_path: "StrPath", color_by: Optional[str] = None
     ) -> "StrPath":
         from dvc_render.html import render_html
         from dvc_render.plotly import ParallelCoordinatesRenderer
@@ -195,7 +195,8 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 self.add_column(key)
 
         row: List["CellT"] = [
-            with_value(d.get(key), self._fill_value) for key in self.keys()
+            with_value(d.get(key), self._fill_value)
+            for key in self.keys()  # noqa: SIM118
         ]
         self.append(row)
 
@@ -208,14 +209,14 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             ui.table(self, headers=self.keys(), **kwargs)
 
     def as_dict(
-        self, cols: Iterable[str] = None
+        self, cols: Optional[Iterable[str]] = None
     ) -> Iterable[Dict[str, "CellT"]]:
         keys = self.keys() if cols is None else set(cols)
         return [
             {k: self._columns[k][i] for k in keys} for i in range(len(self))
         ]
 
-    def dropna(
+    def dropna(  # noqa: C901
         self,
         axis: str = "rows",
         how="any",
@@ -228,7 +229,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             )
         if how not in ["any", "all"]:
             raise ValueError(
-                f"Invalid 'how' value {how}." "Choose one of ['any', 'all']"
+                f"Invalid 'how' value {how}. Choose one of ['any', 'all']"
             )
 
         match_line: Set = set()
@@ -244,8 +245,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                     if axis == "rows":
                         match_line.add(n_row)
                         break
-                    else:
-                        match_line.add(self.keys()[n_col])
+                    match_line.add(self.keys()[n_col])
 
         to_drop = match_line
         if how == "all":
@@ -256,7 +256,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             to_drop -= match_line
 
         if axis == "rows":
-            for name in self.keys():
+            for name in self.keys():  # noqa: SIM118
                 self._columns[name] = Column(
                     [
                         x
@@ -267,7 +267,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         else:
             self.drop(*to_drop)
 
-    def drop_duplicates(
+    def drop_duplicates(  # noqa: C901
         self,
         axis: str = "rows",
         subset: Optional[Iterable[str]] = None,
@@ -309,7 +309,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 else:
                     unique_rows.append(tuple_row)
 
-            for name in self.keys():
+            for name in self.keys():  # noqa: SIM118
                 self._columns[name] = Column(
                     [
                         x
@@ -324,12 +324,13 @@ def _normalize_float(val: float, precision: int):
 
 
 def _format_field(
-    val: Any, precision: int = None, round_digits: bool = False
+    val: Any, precision: Optional[int] = None, round_digits: bool = False
 ) -> str:
     def _format(_val):
         if isinstance(_val, float) and precision:
-            func = round if round_digits else _normalize_float
-            return func(_val, precision)
+            if round_digits:
+                return round(val, precision)
+            return _normalize_float(val, precision)
         if isinstance(_val, abc.Mapping):
             return {k: _format(v) for k, v in _val.items()}
         if isinstance(_val, list):
@@ -345,11 +346,11 @@ def diff_table(
     old: bool = True,
     no_path: bool = False,
     show_changes: bool = True,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
-    on_empty_diff: str = None,
-    a_rev: str = None,
-    b_rev: str = None,
+    on_empty_diff: Optional[str] = None,
+    a_rev: Optional[str] = None,
+    b_rev: Optional[str] = None,
 ) -> TabularData:
     a_rev = a_rev or "HEAD"
     b_rev = b_rev or "workspace"
@@ -393,12 +394,12 @@ def show_diff(
     old: bool = True,
     no_path: bool = False,
     show_changes: bool = True,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
-    on_empty_diff: str = None,
+    on_empty_diff: Optional[str] = None,
     markdown: bool = False,
-    a_rev: str = None,
-    b_rev: str = None,
+    a_rev: Optional[str] = None,
+    b_rev: Optional[str] = None,
 ) -> None:
     td = diff_table(
         diff,
@@ -420,7 +421,7 @@ def metrics_table(
     all_branches: bool = False,
     all_tags: bool = False,
     all_commits: bool = False,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
 ):
     from dvc.utils.diff import format_dict
@@ -460,7 +461,7 @@ def show_metrics(
     all_branches: bool = False,
     all_tags: bool = False,
     all_commits: bool = False,
-    precision: int = None,
+    precision: Optional[int] = None,
     round_digits: bool = False,
 ) -> None:
     td = metrics_table(

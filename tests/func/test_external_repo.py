@@ -6,7 +6,7 @@ from scmrepo.git import Git
 from dvc.external_repo import CLONES, external_repo
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils import relpath
-from dvc.utils.fs import makedirs, remove
+from dvc.utils.fs import remove
 from dvc_data.hashfile.build import build
 from dvc_data.hashfile.transfer import transfer
 
@@ -200,7 +200,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         # clear cache to test saving to cache
         cache_dir = tmp_dir / repo.odb.local.path
         remove(cache_dir)
-        makedirs(cache_dir)
+        os.makedirs(cache_dir)
 
         staging, _, obj = build(
             repo.odb.local,

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 @locked
-def update(
+def update(  # noqa: C901
     self,
     targets=None,
     rev=None,
@@ -20,7 +20,6 @@ def update(
     remote=None,
     jobs=None,
 ):
-    from ..dvcfile import Dvcfile
     from .worktree import update_worktree_stages
 
     if not targets:
@@ -34,11 +33,14 @@ def update(
             "--to-remote can't be used with --no-download"
         )
 
-    if not to_remote and remote:
-        if not self.cloud.get_remote(name=remote).worktree:
-            raise InvalidArgumentError(
-                "--remote can't be used without --to-remote"
-            )
+    if (
+        not to_remote
+        and remote
+        and not self.cloud.get_remote(name=remote).worktree
+    ):
+        raise InvalidArgumentError(
+            "--remote can't be used without --to-remote"
+        )
 
     import_stages = set()
     other_stage_infos: List["StageInfo"] = []
@@ -57,8 +59,7 @@ def update(
             no_download=no_download,
             jobs=jobs,
         )
-        dvcfile = Dvcfile(self, stage.path)
-        dvcfile.dump(stage)
+        stage.dump()
 
     if other_stage_infos:
         remote_obj = self.cloud.get_remote(name=remote)

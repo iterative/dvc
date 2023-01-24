@@ -5,21 +5,21 @@ import posixpath
 from typing import Callable
 from urllib.parse import urlparse
 
-from funcy import cached_property
-
 from dvc.utils import relpath
+from dvc.utils.objects import cached_property
 
 
 class _BasePath:
     def overlaps(self, other):
         if isinstance(other, (str, bytes)):
-            other = self.__class__(other)
+            other = self.__class__(other)  # type: ignore[call-arg]
         elif self.__class__ != other.__class__:
             return False
         return self.isin_or_eq(other) or other.isin(self)
 
     def isin_or_eq(self, other):
-        return self == other or self.isin(other)  # pylint: disable=no-member
+        # pylint: disable-next=no-member
+        return self == other or self.isin(other)  # type: ignore[attr-defined]
 
 
 class PathInfo(pathlib.PurePath, _BasePath):
@@ -36,10 +36,11 @@ class PathInfo(pathlib.PurePath, _BasePath):
                 WindowsPathInfo if os.name == "nt" else PosixPathInfo
             )
 
-        return cls._from_parts(args)
+        return cls._from_parts(args)  # type: ignore[attr-defined]
 
     def as_posix(self):
-        f = self._flavour  # pylint: disable=no-member
+        # pylint: disable-next=no-member
+        f = self._flavour  # type: ignore[attr-defined]
         # Unlike original implementation [1] that uses `str()` we actually need
         # to use `fspath`, because we've overridden `__str__` method to return
         # relative paths, which will break original `as_posix`.
@@ -76,7 +77,10 @@ class PathInfo(pathlib.PurePath, _BasePath):
             return False
         # Use cached casefolded parts to compare paths
         n = len(other._cparts)
-        return len(self._cparts) > n and self._cparts[:n] == other._cparts
+        return (
+            len(self._cparts) > n  # type: ignore[attr-defined]
+            and self._cparts[:n] == other._cparts  # type: ignore[attr-defined]
+        )
 
     def relative_to(self, other):  # pylint: disable=arguments-differ
         # pathlib relative_to raises exception when one path is not a direct
@@ -154,7 +158,7 @@ class URLInfo(_BasePath):
             self._path = path
         else:
             if path and path[0] != "/":
-                path = "/" + path
+                path = "/" + path  # type: ignore[operator]
             self._spath = path
 
     @property
@@ -166,10 +170,12 @@ class URLInfo(_BasePath):
         return self._base_parts + self._path.parts
 
     def replace(self, path=None):
-        return self.from_parts(*self._base_parts, path=path)
+        return self.from_parts(  # type: ignore[misc]
+            *self._base_parts, path=path
+        )
 
     @cached_property
-    def url(self):
+    def url(self) -> str:
         return f"{self.scheme}://{self.netloc}{self._spath}"
 
     def __str__(self):
@@ -203,15 +209,17 @@ class URLInfo(_BasePath):
         return self._spath
 
     @cached_property
-    def _path(self):  # false-positive, pylint: disable=method-hidden
+    def _path(  # pylint: disable=method-hidden
+        self,
+    ) -> "_URLPathInfo":
         return _URLPathInfo(self._spath)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._path.name
 
     @cached_property
-    def netloc(self):
+    def netloc(self) -> str:
         netloc = self.host
         if self.user:
             netloc = self.user + "@" + netloc
@@ -220,7 +228,7 @@ class URLInfo(_BasePath):
         return netloc
 
     @property
-    def bucket(self):
+    def bucket(self) -> str:
         return self.netloc
 
     @property
@@ -270,7 +278,7 @@ class HTTPURLInfo(URLInfo):
         self.fragment = p.fragment
 
     def replace(self, path=None):
-        return self.from_parts(
+        return self.from_parts(  # type: ignore[misc]
             *self._base_parts,
             params=self.params,
             query=self.query,
@@ -321,7 +329,7 @@ class HTTPURLInfo(URLInfo):
         return self._base_parts + self._path.parts + self._extra_parts
 
     @cached_property
-    def url(self):
+    def url(self) -> str:
         return "{}://{}{}{}{}{}".format(
             self.scheme,
             self.netloc,
@@ -344,7 +352,7 @@ class HTTPURLInfo(URLInfo):
 
 class WebDAVURLInfo(URLInfo):
     @cached_property
-    def url(self):
+    def url(self) -> str:
         return "{}://{}{}".format(
             self.scheme.replace("webdav", "http"), self.netloc, self._spath
         )

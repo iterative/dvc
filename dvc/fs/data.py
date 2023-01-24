@@ -1,12 +1,14 @@
+import functools
 import logging
 import os
-import threading
-
-from funcy import cached_property, wrap_prop
+from typing import TYPE_CHECKING
 
 from dvc.utils import as_posix
-from dvc_data.fs import DataFileSystem as _DataFileSystem
 from dvc_objects.fs.base import FileSystem
+
+if TYPE_CHECKING:
+    from dvc_data.fs import DataFileSystem as _DataFileSystem
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +21,12 @@ class DataFileSystem(FileSystem):
     def _prepare_credentials(self, **config):
         return config
 
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def fs(self):
+    @functools.cached_property
+    def fs(  # pylint: disable=invalid-overridden-method
+        self,
+    ) -> "_DataFileSystem":
+        from dvc_data.fs import DataFileSystem as _DataFileSystem
+
         return _DataFileSystem(**self.fs_args)
 
     def isdvc(self, path, **kwargs):

@@ -64,25 +64,25 @@ def test_walk(tmp_dir, dvc):
     assert result == [
         (
             str(tmp_dir),
-            {"dir": dvc.fs.info(tmp_dir / "dir")},
+            {"dir": dvc.fs.info(str(tmp_dir / "dir"))},
             {
-                "bar": dvc.fs.info(tmp_dir / "bar"),
-                ".dvcignore": dvc.fs.info(tmp_dir / ".dvcignore"),
+                "bar": dvc.fs.info(str(tmp_dir / "bar")),
+                ".dvcignore": dvc.fs.info(str(tmp_dir / ".dvcignore")),
             },
         ),
         (
             str(tmp_dir / "dir"),
             {
-                "subdir": dvc.fs.info(tmp_dir / "dir" / "subdir"),
+                "subdir": dvc.fs.info(str(tmp_dir / "dir" / "subdir")),
             },
             {
-                "baz": dvc.fs.info(tmp_dir / "dir" / "baz"),
+                "baz": dvc.fs.info(str(tmp_dir / "dir" / "baz")),
             },
         ),
         (
             str(tmp_dir / "dir" / "subdir"),
             {},
-            {"qux": dvc.fs.info(tmp_dir / "dir" / "subdir" / "qux")},
+            {"qux": dvc.fs.info(str(tmp_dir / "dir" / "subdir" / "qux"))},
         ),
     ]
 
@@ -264,7 +264,7 @@ def test_ignore_blank_line(tmp_dir, dvc):
 
 # It is not possible to re-include a file if a parent directory of
 # that file is excluded.
-# Git doesn’t list excluded directories for performance reasons,
+# Git doesn't list excluded directories for performance reasons,
 # so any patterns on contained files have no effect,
 # no matter where they are defined.
 @pytest.mark.parametrize(

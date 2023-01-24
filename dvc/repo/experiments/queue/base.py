@@ -17,26 +17,30 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property, retry
+from funcy import retry
 
 from dvc.dependency import ParamsDependency
 from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
-from dvc.ui import ui
-
-from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..executor.base import BaseExecutor, ExecutorResult
-from ..executor.local import WorkspaceExecutor
-from ..refs import ExpRefInfo
-from ..stash import ExpStash, ExpStashEntry
-from ..utils import (
+from dvc.repo.experiments.exceptions import (
+    CheckpointExistsError,
+    ExperimentExistsError,
+)
+from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorResult
+from dvc.repo.experiments.executor.local import WorkspaceExecutor
+from dvc.repo.experiments.refs import ExpRefInfo
+from dvc.repo.experiments.stash import ExpStash, ExpStashEntry
+from dvc.repo.experiments.utils import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
     exp_refs_by_rev,
     get_exp_rwlock,
     get_random_exp_name,
 )
+from dvc.ui import ui
+from dvc.utils.objects import cached_property
+
 from .utils import get_remote_executor_refs
 
 if TYPE_CHECKING:
@@ -108,6 +112,7 @@ class BaseStashQueue(ABC):
             failed_ref: Failed run Git stash ref for this queue.
         """
         self.repo = repo
+        assert self.repo.tmp_dir
         self.ref = ref
         self.failed_ref = failed_ref
 
@@ -125,10 +130,12 @@ class BaseStashQueue(ABC):
 
     @cached_property
     def pid_dir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
 
     @cached_property
-    def args_file(self):
+    def args_file(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @abstractmethod
@@ -508,7 +515,7 @@ class BaseStashQueue(ABC):
             with open(self.args_file, "rb") as fobj:
                 try:
                     data = pickle.load(fobj)
-                except Exception:  # pylint: disable=broad-except
+                except Exception:  # noqa: BLE001, pylint: disable=broad-except
                     data = {}
             extra = int(data.get("extra", 0)) + 1
         else:

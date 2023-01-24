@@ -7,12 +7,11 @@ import textwrap
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+from dvc.dvcfile import PROJECT_FILE, load_file
 from dvc.exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
     ConfirmRemoveError,
-    DvcException,
     NoOutputOrStageError,
 )
 from dvc.fs import LocalFileSystem, system
@@ -139,7 +138,7 @@ def test_remove_files_when_checkout(tmp_dir, dvc, scm):
 
 
 class TestCheckoutCleanWorkingDir:
-    def test(self, mocker, tmp_dir, dvc):  # pylint: disable=unused-argument
+    def test(self, mocker, tmp_dir, dvc):
         mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=True)
         (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
@@ -309,28 +308,20 @@ def test_checkout_hook(mocker, tmp_dir, dvc):
 
 
 def test_checkout_suggest_git(tmp_dir, dvc, scm):
-    # pylint: disable=no-member
-    tmp_dir.dvc_gen("foo", "foo")
-    try:
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="gitbranch")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, NoOutputOrStageError)
-        assert isinstance(exc.__cause__.__cause__, StageFileDoesNotExistError)
+    assert isinstance(e.value.__cause__, NoOutputOrStageError)
+    assert isinstance(e.value.__cause__.__cause__, StageFileDoesNotExistError)
 
-    try:
-        dvc.checkout(targets="foo")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, NoOutputOrStageError)
-        assert exc.__cause__.__cause__ is None
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
+        dvc.checkout(targets="foobar")
+    assert isinstance(e.value.__cause__, NoOutputOrStageError)
+    assert isinstance(e.value.__cause__.__cause__, StageFileDoesNotExistError)
 
-    try:
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="looks-like-dvcfile.dvc")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, StageFileDoesNotExistError)
-        assert exc.__cause__.__cause__ is None
+    assert isinstance(e.value.__cause__, StageFileDoesNotExistError)
+    assert e.value.__cause__.__cause__ is None
 
 
 def test_checkout_target_recursive_should_not_remove_other_used_files(
@@ -347,7 +338,7 @@ def test_checkout_recursive_not_directory(tmp_dir, dvc):
     ret = main(["add", "foo"])
     assert ret == 0
 
-    stats = dvc.checkout(targets=["foo" + ".dvc"], recursive=True)
+    stats = dvc.checkout(targets=["foo.dvc"], recursive=True)
     assert stats == {"added": [], "modified": [], "deleted": []}
 
 
@@ -504,7 +495,7 @@ def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
-    stage = Dvcfile(dvc, "foo.dvc").stage
+    stage = load_file(dvc, "foo.dvc").stage
     tmp_dir.dvc_gen({"foo": "foobar", "other": "other other"}, commit="second")
 
     # corrupt cache
@@ -603,7 +594,7 @@ def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, capsys):
     assert main(["checkout", "--summary"]) == 0
 
     out, _ = capsys.readouterr()
-    assert "2 files deleted" == out.rstrip()
+    assert out.rstrip() == "2 files deleted"
 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
@@ -681,7 +672,7 @@ def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
-    assert set(dvc.checkout(PIPELINE_FILE)["added"]) == {"bar", "ipsum"}
+    assert set(dvc.checkout(PROJECT_FILE)["added"]) == {"bar", "ipsum"}
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
@@ -729,7 +720,7 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     assert dvc.checkout(["bar"])["added"] == ["bar"]
 
     (tmp_dir / "bar").unlink()
-    assert set(dvc.checkout([PIPELINE_FILE])["added"]) == {"bar", "ipsum"}
+    assert set(dvc.checkout([PROJECT_FILE])["added"]) == {"bar", "ipsum"}
 
     for out in ["bar", "ipsum"]:
         (tmp_dir / out).unlink()

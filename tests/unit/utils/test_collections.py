@@ -1,4 +1,3 @@
-# pylint: disable=unidiomatic-typecheck
 import json
 
 import pytest
@@ -24,7 +23,7 @@ class MyInt(int):
 
 def test_apply_diff_is_inplace():
     dest = MyDict()
-    dest.attr = 42  # pylint: disable=attribute-defined-outside-init
+    dest.attr = 42
     apply_diff({}, dest)
 
     assert type(dest) is MyDict, "Preserves class"
@@ -70,9 +69,6 @@ def test_chunk_dict():
     assert chunk_dict(d, 2) == [{"a": 1, "b": 2}, {"c": 3}]
     assert chunk_dict(d, 3) == [d]
     assert chunk_dict(d, 4) == [d]
-
-
-# pylint: disable=unused-argument
 
 
 def _test_func(x, y, *args, j=3, k=5, **kwargs):

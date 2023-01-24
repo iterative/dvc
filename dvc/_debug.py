@@ -8,15 +8,21 @@ if TYPE_CHECKING:
 
 
 @contextmanager
-def viztracer_profile(path: Union[Callable[[], str], str], depth: int = -1):
+def viztracer_profile(
+    path: Union[Callable[[], str], str],
+    depth: int = -1,
+    log_async: bool = False,
+):
     try:
         import viztracer  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, viztracer is not installed")
+        print(  # noqa: T201
+            "Failed to run profiler, viztracer is not installed"
+        )
         yield
         return
 
-    tracer = viztracer.VizTracer(max_stack_depth=depth)
+    tracer = viztracer.VizTracer(max_stack_depth=depth, log_async=log_async)
 
     tracer.start()
     yield
@@ -27,14 +33,14 @@ def viztracer_profile(path: Union[Callable[[], str], str], depth: int = -1):
 
 @contextmanager
 def yappi_profile(
-    path: Union[Callable[[], str], str] = None,
+    path: Optional[Union[Callable[[], str], str]] = None,
     wall_clock: Optional[bool] = True,
     separate_threads: Optional[bool] = False,
 ):
     try:
         import yappi  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, yappi is not installed")
+        print("Failed to run profiler, yappi is not installed")  # noqa: T201
         yield
         return
 
@@ -60,7 +66,7 @@ def yappi_profile(
             st.save(out, type="callgrind")
         else:
             if ctx_id is not None:
-                print(f"\nThread {ctx_id}")
+                print(f"\nThread {ctx_id}")  # noqa: T201
             st.print_all()  # pylint:disable=no-member
             if ctx_id is None:
                 threads.print_all()  # pylint:disable=no-member
@@ -74,7 +80,9 @@ def instrument(html_output=False):
     try:
         from pyinstrument import Profiler  # pylint: disable=import-error
     except ImportError:
-        print("Failed to run profiler, pyinstrument is not installed")
+        print(  # noqa: T201
+            "Failed to run profiler, pyinstrument is not installed"
+        )
         yield
         return
 
@@ -87,11 +95,11 @@ def instrument(html_output=False):
     if html_output:
         profiler.open_in_browser()
         return
-    print(profiler.output_text(unicode=True, color=True))
+    print(profiler.output_text(unicode=True, color=True))  # noqa: T201
 
 
 @contextmanager
-def profile(dump_path: str = None):
+def profile(dump_path: Optional[str] = None):
     """Run a cprofile"""
     import cProfile
 
@@ -115,28 +123,31 @@ def debug():
         try:
             import ipdb as pdb  # noqa: T100, pylint: disable=import-error
         except ImportError:
-            import pdb  # noqa: T100
+            import pdb  # type: ignore[no-redef]  # noqa: T100
         pdb.post_mortem()
 
         raise  # prevent from jumping ahead
 
 
 def _sigshow(_, frame: Optional["FrameType"]) -> None:
+    import sys
     from shutil import get_terminal_size
     from traceback import format_stack
 
-    from dvc.ui import ui
-
     lines = "\u2015" * get_terminal_size().columns
-    ui.error_write(lines, "\n", *format_stack(frame), lines, sep="")
+    stack = format_stack(frame)
+    print(lines, "\n", *stack, lines, sep="", file=sys.stderr)  # noqa: T201
 
 
 @contextmanager
 def show_stack():
     r"""Show stack trace on SIGQUIT (Ctrl-\) or SIGINFO (Ctrl-T on macOS)."""
     import signal
+    import sys
 
-    signal.signal(signal.SIGQUIT, _sigshow)
+    if sys.platform != "win32":
+        signal.signal(signal.SIGQUIT, _sigshow)
+
     try:
         signal.signal(signal.SIGINFO, _sigshow)  # only available on macOS
     except AttributeError:
@@ -154,7 +165,7 @@ def _get_path_func(tool: str, ext: str):
 
 
 @contextmanager
-def debugtools(args: "Namespace" = None, **kwargs):
+def debugtools(args: Optional["Namespace"] = None, **kwargs):
     kw = vars(args) if args else {}
     kw.update(kwargs)
 
@@ -175,10 +186,17 @@ def debugtools(args: "Namespace" = None, **kwargs):
                     separate_threads=kw.get("yappi_separate_threads"),
                 )
             )
-        if kw.get("viztracer") or kw.get("viztracer_depth"):
+        if (
+            kw.get("viztracer")
+            or kw.get("viztracer_depth")
+            or kw.get("viztracer_async")
+        ):
             path_func = _get_path_func("viztracer", "json")
             depth = kw.get("viztracer_depth") or -1
-            prof = viztracer_profile(path=path_func, depth=depth)
+            log_async = kw.get("viztracer_async") or False
+            prof = viztracer_profile(
+                path=path_func, depth=depth, log_async=log_async
+            )
             stack.enter_context(prof)
         yield
 
@@ -202,6 +220,9 @@ def add_debugging_flags(parser):
         "--viztracer", action="store_true", default=False, help=SUPPRESS
     )
     parser.add_argument("--viztracer-depth", type=int, help=SUPPRESS)
+    parser.add_argument(
+        "--viztracer-async", action="store_true", default=False, help=SUPPRESS
+    )
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
         "--pdb", action="store_true", default=False, help=SUPPRESS

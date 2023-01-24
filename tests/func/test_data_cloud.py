@@ -312,7 +312,6 @@ def clean(outs, dvc=None):
     if dvc:
         dvc.odb.local.clear()
     for path in outs:
-        print(path)
         remove(path)
     if dvc:
         clean_repos()

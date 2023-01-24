@@ -79,10 +79,8 @@ class CmdPlots(CmdBase):
         return {k: v for k, v in props.items() if v is not None}
 
     def _config_files(self):
-        config_files = None
         if self.args.from_config:
-            config_files = {self.args.from_config}
-        return config_files
+            return {self.args.from_config}
 
     def _html_template_path(self):
         html_template_path = self.args.html_template
@@ -91,12 +89,13 @@ class CmdPlots(CmdBase):
                 "html_template", None
             )
             if html_template_path and not os.path.isabs(html_template_path):
+                assert self.repo.dvc_dir
                 html_template_path = os.path.join(
                     self.repo.dvc_dir, html_template_path
                 )
         return html_template_path
 
-    def run(self):
+    def run(self) -> int:  # noqa: C901
         from pathlib import Path
 
         from dvc.render.match import match_defs_renderers
@@ -223,9 +222,8 @@ class CmdPlotsTemplates(CmdBase):
                         return 0
                 raise InvalidArgumentError(f"Unexpected template: {target}.")
 
-            else:
-                for template in TEMPLATES:
-                    ui.write(template.DEFAULT_NAME)
+            for template in TEMPLATES:
+                ui.write(template.DEFAULT_NAME)
 
             return 0
         except DvcException:

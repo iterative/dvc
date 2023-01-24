@@ -17,7 +17,7 @@ def test_shutdown_no_tasks(test_queue, mocker):
 
 
 @shared_task
-def _foo(arg=None):  # pylint: disable=unused-argument
+def _foo(arg=None):
     return "foo"
 
 

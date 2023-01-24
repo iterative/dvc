@@ -2,17 +2,14 @@ import logging
 import os
 from contextlib import ExitStack
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
-from funcy import cached_property, retry
+from funcy import retry
 from scmrepo.exceptions import SCMError as _SCMError
 from shortuuid import uuid
 
 from dvc.lock import LockError
-from dvc.scm import SCM, GitMergeError
-from dvc.utils.fs import makedirs, remove
-
-from ..refs import (
+from dvc.repo.experiments.refs import (
     EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -23,15 +20,19 @@ from ..refs import (
     EXPS_TEMP,
     ExpRefInfo,
 )
-from ..utils import EXEC_TMP_DIR, get_exp_rwlock
+from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
+from dvc.scm import SCM, GitMergeError
+from dvc.utils.fs import remove
+from dvc.utils.objects import cached_property
+
 from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
-
-    from ..stash import ExpStashEntry
+    from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import NoSCM
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ class BaseLocalExecutor(BaseExecutor):
         return f"file://{root_dir}"
 
     @cached_property
-    def scm(self):
+    def scm(self) -> Union["Git", "NoSCM"]:
         return SCM(self.root_dir)
 
     def cleanup(self, infofile: str):
@@ -83,7 +84,7 @@ class TempDirExecutor(BaseLocalExecutor):
     ):
         from dulwich.repo import Repo as DulwichRepo
 
-        from ..utils import push_refspec
+        from dvc.repo.experiments.utils import push_refspec
 
         DulwichRepo.init(os.fspath(self.root_dir))
 
@@ -137,7 +138,7 @@ class TempDirExecutor(BaseLocalExecutor):
         try:
             self.scm.merge(merge_rev, squash=True, commit=False)
         except _SCMError as exc:
-            raise GitMergeError(str(exc), scm=self.scm)
+            raise GitMergeError(str(exc), scm=self.scm)  # noqa: B904
 
     def _config(self, cache_dir):
         local_config = os.path.join(
@@ -166,8 +167,9 @@ class TempDirExecutor(BaseLocalExecutor):
         wdir: Optional[str] = None,
         **kwargs,
     ):
+        assert repo.tmp_dir
         parent_dir: str = wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
-        makedirs(parent_dir, exist_ok=True)
+        os.makedirs(parent_dir, exist_ok=True)
         tmp_dir = mkdtemp(dir=parent_dir)
         try:
             executor = cls._from_stash_entry(repo, entry, tmp_dir, **kwargs)
@@ -227,7 +229,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
             try:
                 self.scm.merge(merge_rev, squash=True, commit=False)
             except _SCMError as exc:
-                raise GitMergeError(str(exc), scm=self.scm)
+                raise GitMergeError(str(exc), scm=self.scm)  # noqa: B904
             if branch:
                 self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
             elif scm.get_ref(EXEC_BRANCH):

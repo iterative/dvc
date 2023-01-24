@@ -1,7 +1,15 @@
 import os
 from collections import defaultdict
 from copy import copy
-from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    ContextManager,
+    Dict,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from voluptuous import Required
 
@@ -11,8 +19,11 @@ from dvc_data.hashfile.meta import Meta
 from .base import Dependency
 
 if TYPE_CHECKING:
-    from dvc_data.hashfile.file import HashFile
+    from dvc.output import Output
+    from dvc.repo import Repo
+    from dvc.stage import Stage
     from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.obj import HashFile
     from dvc_objects.db import ObjectDB
 
 
@@ -30,7 +41,9 @@ class RepoDependency(Dependency):
         }
     }
 
-    def __init__(self, def_repo, stage, *args, **kwargs):
+    def __init__(
+        self, def_repo: Dict[str, str], stage: "Stage", *args, **kwargs
+    ):
         self.def_repo = def_repo
         self._objs: Dict[str, "HashFile"] = {}
         self._meta: Dict[str, Meta] = {}
@@ -61,10 +74,10 @@ class RepoDependency(Dependency):
     def save(self):
         pass
 
-    def dumpd(self, **kwargs):
+    def dumpd(self, **kwargs) -> Dict[str, Union[str, Dict[str, str]]]:
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
-    def download(self, to, jobs=None):
+    def download(self, to: "Output", jobs: Optional[int] = None):
         from dvc_data.hashfile.checkout import checkout
 
         for odb, objs in self.get_used_objs().items():
@@ -81,13 +94,13 @@ class RepoDependency(Dependency):
             prompt=confirm,
         )
 
-    def update(self, rev=None):
+    def update(self, rev: Optional[str] = None):
         if rev:
             self.def_repo[self.PARAM_REV] = rev
         with self._make_repo(locked=False) as repo:
             self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
 
-    def changed_checksum(self):
+    def changed_checksum(self) -> bool:
         # From current repo point of view what describes RepoDependency is its
         # origin project url and rev_lock, and it makes RepoDependency
         # immutable, hence its impossible for checksum to change.
@@ -100,7 +113,7 @@ class RepoDependency(Dependency):
         return used
 
     def _get_used_and_obj(
-        self, obj_only=False, **kwargs
+        self, obj_only: bool = False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], Meta, "HashFile"]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
@@ -154,7 +167,9 @@ class RepoDependency(Dependency):
                 used_obj_ids[object_store].update(oid for _, _, oid in obj)
             return used_obj_ids, meta, obj
 
-    def _check_circular_import(self, odb, obj_ids):
+    def _check_circular_import(
+        self, odb: "ObjectDB", obj_ids: Set["HashInfo"]
+    ) -> None:
         from dvc.exceptions import CircularImportError
         from dvc.fs.dvc import DVCFileSystem
         from dvc_data.hashfile.db.reference import ReferenceHashFileDB
@@ -169,6 +184,7 @@ class RepoDependency(Dependency):
                     tree = Tree.load(odb, hash_info)
                     yield from (odb.get(hi.value) for _, _, hi in tree)
                 else:
+                    assert hash_info.value
                     yield odb.get(hash_info.value)
 
         checked_urls = set()
@@ -209,14 +225,16 @@ class RepoDependency(Dependency):
         )
         return meta
 
-    def _make_repo(self, locked=True, **kwargs):
+    def _make_repo(
+        self, locked: bool = True, **kwargs
+    ) -> "ContextManager[Repo]":
         from dvc.external_repo import external_repo
 
         d = self.def_repo
         rev = self._get_rev(locked=locked)
         return external_repo(d[self.PARAM_URL], rev=rev, **kwargs)
 
-    def _get_rev(self, locked=True):
+    def _get_rev(self, locked: bool = True):
         d = self.def_repo
         return (d.get(self.PARAM_REV_LOCK) if locked else None) or d.get(
             self.PARAM_REV

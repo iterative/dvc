@@ -92,7 +92,7 @@ def _(obj: bool):
 
 
 @to_str.register(dict)
-def _(obj: dict):
+def _(obj: dict):  # noqa: C901
     from dvc.config import Config
 
     config = Config().get("parsing", {})
@@ -186,7 +186,7 @@ def parse_expr(s: str):
         result = get_parser().parseString(s, parseAll=True)
     except ParseException as exc:
         format_and_raise_parse_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable")  # noqa: B904
 
     joined = result.asList()
     assert len(joined) == 1
@@ -204,9 +204,8 @@ def validate_value(value, key):
     not_primitive = value is not None and not isinstance(value, PRIMITIVES)
     not_foreach = key is not None and "foreach" not in key
     if not_primitive and not_foreach:
-        if isinstance(value, dict):
-            if key == "cmd":
-                return True
+        if isinstance(value, dict) and key == "cmd":
+            return True
         raise ParseError(
             f"Cannot interpolate data of type '{type(value).__name__}'"
         )

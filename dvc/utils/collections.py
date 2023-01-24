@@ -1,10 +1,19 @@
 import inspect
 from collections.abc import Mapping
 from functools import wraps
-from typing import Callable, Dict, Iterable, List, TypeVar, Union
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    TypeVar,
+    Union,
+    no_type_check,
+)
 
 
-def apply_diff(src, dest):
+@no_type_check
+def apply_diff(src, dest):  # noqa: C901
     """Recursively apply changes from src to dest.
 
     Preserves dest type and hidden info in dest structure,
@@ -58,9 +67,9 @@ def to_omegaconf(item):
     Cast the custom classes to Python primitives.
     """
     if isinstance(item, dict):
-        item = {k: to_omegaconf(v) for k, v in item.items()}
-    elif isinstance(item, list):
-        item = [to_omegaconf(x) for x in item]
+        return {k: to_omegaconf(v) for k, v in item.items()}
+    if isinstance(item, list):
+        return [to_omegaconf(x) for x in item]
     return item
 
 
@@ -155,7 +164,9 @@ def validate(*validators: Callable, post: bool = False):
         def inner(*args, **kwargs):
             ba = sig.bind(*args, **kwargs)
             ba.apply_defaults()
-            ba.arguments = _NamespacedDict(ba.arguments)
+            ba.arguments = _NamespacedDict(  # type: ignore[assignment]
+                ba.arguments
+            )
 
             if not post:
                 for validator in validators:
@@ -177,7 +188,6 @@ def nested_contains(dictionary: Dict, phrase: str) -> bool:
         if key == phrase and val:
             return True
 
-        if isinstance(val, dict):
-            if nested_contains(val, phrase):
-                return True
+        if isinstance(val, dict) and nested_contains(val, phrase):
+            return True
     return False

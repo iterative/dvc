@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING, Any, Dict
 from celery import shared_task
 from celery.utils.log import get_task_logger
 
-from ..executor.base import ExecutorInfo
-from ..executor.local import TempDirExecutor
+from dvc.repo.experiments.executor.base import ExecutorInfo
+from dvc.repo.experiments.executor.local import TempDirExecutor
+
 from .base import BaseStashQueue, QueueEntry
 
 if TYPE_CHECKING:
-    from ..executor.base import BaseExecutor
+    from dvc.repo.experiments.executor.base import BaseExecutor
 
 
 logger = get_task_logger(__name__)
@@ -43,7 +44,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> "BaseExecutor":
 
 @shared_task
 def collect_exp(
-    proc_dict: Dict[str, Any],  # pylint: disable=unused-argument
+    proc_dict: Dict[str, Any],  # noqa: ARG001, pylint: disable=unused-argument
     entry_dict: Dict[str, Any],
 ) -> str:
     """Collect results for an experiment.
@@ -73,7 +74,7 @@ def collect_exp(
         else:
             logger.debug("Experiment failed (Exec result was None)")
             celery_queue.stash_failed(entry)
-    except Exception:  # pylint: disable=broad-except
+    except Exception:  # noqa: BLE001, pylint: disable=broad-except
         # Log exceptions but do not re-raise so that task chain execution
         # continues
         logger.exception("Failed to collect experiment")

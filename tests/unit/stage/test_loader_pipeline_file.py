@@ -4,7 +4,7 @@ from itertools import chain
 
 import pytest
 
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+from dvc.dvcfile import PROJECT_FILE, load_file
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.loader import StageLoader
 from dvc.stage.serialize import split_params_deps
@@ -27,7 +27,7 @@ def lock_data():
 
 def test_fill_from_lock_deps_outs(dvc, lock_data):
     stage = create_stage(
-        PipelineStage, dvc, PIPELINE_FILE, deps=["foo"], outs=["bar"]
+        PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"]
     )
 
     for item in chain(stage.deps, stage.outs):
@@ -40,7 +40,7 @@ def test_fill_from_lock_deps_outs(dvc, lock_data):
 
 
 def test_fill_from_lock_outs_isexec(dvc):
-    stage = create_stage(PipelineStage, dvc, PIPELINE_FILE, outs=["foo"])
+    stage = create_stage(PipelineStage, dvc, PROJECT_FILE, outs=["foo"])
 
     assert not stage.outs[0].meta.isexec
 
@@ -61,7 +61,7 @@ def test_fill_from_lock_params(dvc, lock_data):
     stage = create_stage(
         PipelineStage,
         dvc,
-        PIPELINE_FILE,
+        PROJECT_FILE,
         deps=["foo"],
         outs=["bar"],
         params=[
@@ -97,7 +97,7 @@ def test_fill_from_lock_missing_params_section(dvc, lock_data):
     stage = create_stage(
         PipelineStage,
         dvc,
-        PIPELINE_FILE,
+        PROJECT_FILE,
         deps=["foo"],
         outs=["bar"],
         params=["lorem", "lorem.ipsum", {"myparams.yaml": ["ipsum"]}],
@@ -111,7 +111,7 @@ def test_fill_from_lock_missing_checksums(dvc, lock_data):
     stage = create_stage(
         PipelineStage,
         dvc,
-        PIPELINE_FILE,
+        PROJECT_FILE,
         deps=["foo", "foo1"],
         outs=["bar", "bar1"],
     )
@@ -127,7 +127,7 @@ def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
     stage = create_stage(
         PipelineStage,
         dvc,
-        PIPELINE_FILE,
+        PROJECT_FILE,
         deps=["s3://dvc-temp/foo"],
         outs=["bar"],
     )
@@ -139,7 +139,7 @@ def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
 
 def test_fill_from_lock_with_missing_sections(dvc, lock_data):
     stage = create_stage(
-        PipelineStage, dvc, PIPELINE_FILE, deps=["foo"], outs=["bar"]
+        PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"]
     )
     lock = deepcopy(lock_data)
     del lock["deps"]
@@ -156,7 +156,7 @@ def test_fill_from_lock_with_missing_sections(dvc, lock_data):
 
 def test_fill_from_lock_empty_data(dvc):
     stage = create_stage(
-        PipelineStage, dvc, PIPELINE_FILE, deps=["foo"], outs=["bar"]
+        PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"]
     )
     StageLoader.fill_from_lock(stage, None)
     assert not stage.deps[0].hash_info and not stage.outs[0].hash_info
@@ -165,13 +165,13 @@ def test_fill_from_lock_empty_data(dvc):
 
 
 def test_load_stage(dvc, stage_data, lock_data):
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
 
     assert stage.wdir == os.path.abspath(os.curdir)
     assert stage.name == "stage-1"
     assert stage.cmd == "command"
-    assert stage.path == os.path.abspath(PIPELINE_FILE)
+    assert stage.path == os.path.abspath(PROJECT_FILE)
     assert stage.deps[0].def_path == "foo"
     assert stage.deps[0].hash_info == HashInfo("md5", "foo_checksum")
     assert stage.outs[0].def_path == "bar"
@@ -180,20 +180,20 @@ def test_load_stage(dvc, stage_data, lock_data):
 
 def test_load_stage_cmd_with_list(dvc, stage_data, lock_data):
     stage_data["cmd"] = ["cmd-0", "cmd-1"]
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
     assert stage.cmd == ["cmd-0", "cmd-1"]
 
 
 def test_load_stage_outs_with_flags(dvc, stage_data, lock_data):
     stage_data["outs"] = [{"foo": {"cache": False}}]
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
     assert stage.outs[0].use_cache is False
 
 
 def test_load_stage_no_lock(dvc, stage_data):
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data)
     assert stage.deps[0].def_path == "foo" and stage.outs[0].def_path == "bar"
     assert not stage.deps[0].hash_info
@@ -203,7 +203,7 @@ def test_load_stage_no_lock(dvc, stage_data):
 def test_load_stage_with_params(dvc, stage_data, lock_data):
     lock_data["params"] = {"params.yaml": {"lorem": "ipsum"}}
     stage_data["params"] = ["lorem"]
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
 
     params, deps = split_params_deps(stage)
@@ -217,7 +217,7 @@ def test_load_stage_with_params(dvc, stage_data, lock_data):
 @pytest.mark.parametrize("typ", ["metrics", "plots"])
 def test_load_stage_with_metrics_and_plots(dvc, stage_data, lock_data, typ):
     stage_data[typ] = stage_data.pop("outs")
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
 
     assert stage.outs[0].def_path == "bar"
@@ -225,7 +225,7 @@ def test_load_stage_with_metrics_and_plots(dvc, stage_data, lock_data, typ):
 
 
 def test_load_changed_command(dvc, stage_data, lock_data):
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data)
     assert not stage.cmd_changed
     assert stage.cmd == "command"
@@ -238,15 +238,15 @@ def test_load_changed_command(dvc, stage_data, lock_data):
 
 def test_load_stage_wdir_and_path_correctly(dvc, stage_data, lock_data):
     stage_data["wdir"] = "dir"
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
 
     assert stage.wdir == os.path.abspath("dir")
-    assert stage.path == os.path.abspath(PIPELINE_FILE)
+    assert stage.path == os.path.abspath(PROJECT_FILE)
 
 
 def test_load_stage_mapping(dvc, stage_data, lock_data):
-    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    dvcfile = load_file(dvc, PROJECT_FILE)
     dvcfile.contents = {"stages": {"stage": stage_data}}
     dvcfile.lockfile_contents = {"stage": lock_data}
 

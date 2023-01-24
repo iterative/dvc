@@ -3,13 +3,13 @@ import os
 # Increasing fd ulimit for tests
 if os.name == "nt":
     try:
-        import win32file  # pylint: disable=import-error
+        import win32file
     except ImportError:
         pass
     else:
         win32file._setmaxstdio(4096)
 else:
-    import resource  # pylint: disable=import-error
+    import resource
 
     resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
 

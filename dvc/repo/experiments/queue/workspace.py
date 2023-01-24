@@ -9,20 +9,20 @@ from voluptuous import Invalid
 
 from dvc.exceptions import DvcException
 from dvc.lock import make_lock
-from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
-from dvc.utils import relpath
-from dvc.utils.fs import remove
-
-from ..exceptions import ExpQueueEmptyError
-from ..executor.base import (
+from dvc.repo.experiments.exceptions import ExpQueueEmptyError
+from dvc.repo.experiments.executor.base import (
     BaseExecutor,
     ExecutorInfo,
     ExecutorResult,
     TaskStatus,
 )
-from ..executor.local import WorkspaceExecutor
-from ..refs import EXEC_BRANCH, WORKSPACE_STASH
-from ..utils import get_exp_rwlock, to_studio_params
+from dvc.repo.experiments.executor.local import WorkspaceExecutor
+from dvc.repo.experiments.refs import EXEC_BRANCH, WORKSPACE_STASH
+from dvc.repo.experiments.utils import get_exp_rwlock, to_studio_params
+from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
+from dvc.utils import relpath
+from dvc.utils.fs import remove
+
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ class WorkspaceQueue(BaseStashQueue):
         return QueueGetResult(entry, executor)
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
-        for rev, entry in self.stash.stash_revs:
+        for rev, entry in self.stash.stash_revs.items():
             yield QueueEntry(
                 self.repo.root_dir,
                 self.scm.root_dir,
@@ -134,7 +134,7 @@ class WorkspaceQueue(BaseStashQueue):
             return {}
         except DvcException:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             raise DvcException(
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
@@ -152,7 +152,7 @@ class WorkspaceQueue(BaseStashQueue):
     @staticmethod
     def collect_executor(  # pylint: disable=unused-argument
         exp: "Experiments",
-        executor: BaseExecutor,
+        executor: BaseExecutor,  # noqa: ARG004
         exec_result: ExecutorResult,
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}

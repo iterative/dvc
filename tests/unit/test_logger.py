@@ -29,7 +29,6 @@ def dt(mocker):
 
 
 class TestColorFormatter:
-    # pylint: disable=broad-except
     def test_debug(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
@@ -44,7 +43,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             logger.info("message")
 
-            assert "message" == formatter.format(caplog.records[0])
+            assert formatter.format(caplog.records[0]) == "message"
 
     def test_warning(self, caplog):
         with caplog.at_level(logging.INFO, logger="dvc"):
@@ -66,7 +65,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             try:
                 raise ValueError
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.exception("message")
 
             expected = "{red}ERROR{nc}: message".format(**colors)
@@ -77,7 +76,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.exception("")
 
             expected = "{red}ERROR{nc}: description".format(**colors)
@@ -88,20 +87,18 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.exception("message")
 
             expected = "{red}ERROR{nc}: message - description".format(**colors)
 
             assert expected == formatter.format(caplog.records[0])
 
-    # pylint: disable=used-before-assignment
-
     def test_exception_under_verbose(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 stack_trace = traceback.format_exc()
                 logger.exception("")
 
@@ -124,7 +121,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 stack_trace = traceback.format_exc()
                 logger.debug("", exc_info=True)
 
@@ -147,7 +144,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 stack_trace = traceback.format_exc()
                 logger.exception("something", extra={"tb_only": True})
 
@@ -170,7 +167,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("first")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 try:
                     raise DvcException("second") from exc
                 except DvcException:
@@ -192,8 +189,6 @@ class TestColorFormatter:
             assert expected == formatter.format(caplog.records[0])
             assert "Exception: first" in stack_trace
             assert "dvc.exceptions.DvcException: second" in stack_trace
-
-    # pylint: enable=used-before-assignment
 
     def test_progress_awareness(self, mocker, capsys, caplog):
         from dvc.progress import Tqdm
@@ -251,7 +246,7 @@ def test_info_with_debug_loglevel_shows_no_datetime(caplog, dt):
     with caplog.at_level(logging.DEBUG, logger="dvc"):
         logger.info("message")
 
-        assert "message" == formatter.format(caplog.records[0])
+        assert formatter.format(caplog.records[0]) == "message"
 
 
 def test_add_existing_level(caplog, dt):

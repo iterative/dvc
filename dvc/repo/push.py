@@ -1,19 +1,19 @@
 from typing import TYPE_CHECKING, Optional, Sequence
 
 from dvc.exceptions import InvalidArgumentError, UploadError
+from dvc.utils import glob_targets
 
-from ..utils import glob_targets
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc.cloud import Remote
+    from dvc.data_cloud import Remote
     from dvc.repo import Repo
     from dvc.types import TargetType
-    from dvc_objects.db.base import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 
 @locked
-def push(
+def push(  # noqa: C901
     self,
     targets=None,
     jobs=None,

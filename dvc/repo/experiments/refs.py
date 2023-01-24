@@ -55,7 +55,7 @@ class ExpRefInfo:
             ):
                 raise InvalidExpRefError(ref)
         except ValueError:
-            raise InvalidExpRefError(ref)
+            raise InvalidExpRefError(ref)  # noqa: B904
         baseline_sha = parts[2] + parts[3]
         name = parts[4] if len(parts) == 5 else None
         return cls(baseline_sha, name)

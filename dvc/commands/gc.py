@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdGC(CmdBase):
-    def run(self):
+    def run(self):  # noqa: C901
         from dvc.repo.gc import _validate_args
 
         _validate_args(
