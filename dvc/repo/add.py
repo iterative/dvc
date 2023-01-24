@@ -194,7 +194,7 @@ def add(  # noqa: C901
                 stage.transfer(source, to_remote=to_remote, odb=odb, **kwargs)
             else:
                 try:
-                    stage.save(merge_versioned=True)
+                    stage.save()
                     if not no_commit:
                         stage.commit()
                 except CacheLinkError:
