@@ -228,7 +228,7 @@ def update_worktree_stages(
                 )
                 continue
             _fetch_out_changes(out, local_index, remote_index, remote)
-        stage.save(merge_versioned=True)
+        stage.save()
         for out in stage.outs:
             _update_out_meta(out, remote_index)
         stage.dump(with_files=True, update_pipeline=False)

@@ -486,17 +486,11 @@ class Stage(params.StageParams):
         logger.debug("Computed %s md5: '%s'", self, m)
         return m
 
-    def save(
-        self,
-        allow_missing: bool = False,
-        merge_versioned: bool = False,
-        run_cache: bool = True,
-    ):
+    def save(self, allow_missing: bool = False, run_cache: bool = True):
         self.save_deps(allow_missing=allow_missing)
 
-        self.save_outs(
-            allow_missing=allow_missing, merge_versioned=merge_versioned
-        )
+        self.save_outs(allow_missing=allow_missing)
+
         self.md5 = self.compute_md5()
 
         if run_cache:
@@ -512,29 +506,26 @@ class Stage(params.StageParams):
                 if not allow_missing:
                     raise
 
-    def save_outs(
-        self, allow_missing: bool = False, merge_versioned: bool = False
-    ):
+    def save_outs(self, allow_missing: bool = False):
         from dvc.output import OutputDoesNotExistError
 
         from .exceptions import StageFileDoesNotExistError, StageNotFound
 
-        if merge_versioned:
-            try:
-                old = self.reload()
-                old_outs = {out.def_path: out for out in old.outs}
-                merge_versioned = any(
-                    (
-                        out.files is not None
-                        or (
-                            out.meta is not None
-                            and out.meta.version_id is not None
-                        )
+        try:
+            old = self.reload()
+            old_outs = {out.def_path: out for out in old.outs}
+            merge_versioned = any(
+                (
+                    out.files is not None
+                    or (
+                        out.meta is not None
+                        and out.meta.version_id is not None
                     )
-                    for out in old_outs.values()
                 )
-            except (StageFileDoesNotExistError, StageNotFound):
-                merge_versioned = False
+                for out in old_outs.values()
+            )
+        except (StageFileDoesNotExistError, StageNotFound):
+            merge_versioned = False
 
         for out in self.outs:
             try:
