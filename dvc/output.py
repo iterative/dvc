@@ -368,7 +368,14 @@ class Output:
             name=self.hash_name,
             value=getattr(self.meta, self.hash_name, None),
         )
-        if self.meta.nfiles or self.hash_info and self.hash_info.isdir:
+        if self.files:
+            tree = Tree.from_list(self.files, hash_name=self.hash_name)
+            tree.digest()
+            self.hash_info = tree.hash_info
+            self.meta.isdir = True
+            self.meta.nfiles = len(self.files)
+            self.meta.size = sum(file.get("size") for file in self.files)
+        elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
             if not self.hash_info and self.hash_name != "md5":
                 md5 = getattr(self.meta, "md5", None)
@@ -747,7 +754,22 @@ class Output:
     def dumpd(self, **kwargs):  # noqa: C901
         meta = self.meta.to_dict()
         meta.pop("isdir", None)
-        ret: Dict[str, Any] = {**self.hash_info.to_dict(), **meta}
+        ret: Dict[str, Any] = {}
+        if (
+            (not self.IS_DEPENDENCY or self.stage.is_import)
+            and self.hash_info.isdir
+            and (kwargs.get("with_files") or self.files is not None)
+        ):
+            obj: Optional["HashFile"]
+            if self.obj:
+                obj = self.obj
+            else:
+                obj = self.get_obj()
+            if obj:
+                obj = cast(Tree, obj)
+                ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
+        else:
+            ret = {**self.hash_info.to_dict(), **meta}
 
         if self.is_in_repo:
             path = self.fs.path.as_posix(
@@ -787,20 +809,6 @@ class Output:
 
             if not self.can_push:
                 ret[self.PARAM_PUSH] = self.can_push
-
-        if (
-            (not self.IS_DEPENDENCY or self.stage.is_import)
-            and self.hash_info.isdir
-            and (kwargs.get("with_files") or self.files is not None)
-        ):
-            obj: Optional["HashFile"]
-            if self.obj:
-                obj = self.obj
-            else:
-                obj = self.get_obj()
-            if obj:
-                obj = cast(Tree, obj)
-                ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
 
         return ret
 
