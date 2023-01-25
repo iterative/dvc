@@ -327,7 +327,9 @@ class Output:
         meta = Meta.from_dict(info or {})
         # NOTE: when version_aware is not passed into get_cloud_fs, it will be
         # set based on whether or not path is versioned
-        fs_kwargs = {"version_aware": True} if meta.version_id else {}
+        fs_kwargs = {}
+        if meta.version_id or files:
+            fs_kwargs["version_aware"] = True
 
         if fs_config is not None:
             fs_kwargs.update(**fs_config)
