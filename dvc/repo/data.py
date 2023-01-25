@@ -93,6 +93,7 @@ def _diff(
         if (
             with_missing
             and change.old
+            and change.old.hash_info
             and not change.old.odb.exists(change.old.hash_info.value)
         ):
             # NOTE: emulating previous behaviour

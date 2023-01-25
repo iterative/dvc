@@ -176,10 +176,32 @@ def test_skip_uncached_pipeline_outputs(tmp_dir, dvc, run_copy_metrics):
     )
 
 
-def test_output_with_newly_added_stage(tmp_dir, dvc):
+def test_outs_with_no_hashes(M, tmp_dir, dvc, scm):
+    dvc.stage.add(single_stage=True, outs=["bar"])
     dvc.stage.add(deps=["bar"], outs=["foo"], name="copy", cmd="cp foo bar")
-    assert dvc.data_status() == EMPTY_STATUS
-    assert dvc.data_status(granular=True) == EMPTY_STATUS
+
+    expected_output = {
+        **EMPTY_STATUS,
+        "committed": {"added": M.unordered("bar", "foo")},
+        "git": M.dict(),
+    }
+    assert dvc.data_status() == expected_output
+    assert dvc.data_status(granular=True) == expected_output
+
+
+def test_outs_with_no_hashes_and_with_uncommitted_files(M, tmp_dir, dvc, scm):
+    tmp_dir.gen({"bar": "bar", "foo": "foo"})
+    dvc.stage.add(single_stage=True, outs=["bar"])
+    dvc.stage.add(deps=["bar"], outs=["foo"], name="copy", cmd="cp foo bar")
+
+    expected_output = {
+        **EMPTY_STATUS,
+        "uncommitted": {"added": M.unordered("bar", "foo")},
+        "committed": {"added": M.unordered("bar", "foo")},
+        "git": M.dict(),
+    }
+    assert dvc.data_status() == expected_output
+    assert dvc.data_status(granular=True) == expected_output
 
 
 def test_subdir(M, tmp_dir, scm):
