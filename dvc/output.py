@@ -781,19 +781,13 @@ class Output:
 
     def dumpd(self, **kwargs):  # noqa: C901
         ret: Dict[str, Any] = {}
-        if (
+        with_files = (
             (not self.IS_DEPENDENCY or self.stage.is_import)
             and self.hash_info.isdir
             and (kwargs.get("with_files") or self.files is not None)
-        ):
-            obj = self.obj or self.get_obj()
-            if obj:
-                obj = cast("Tree", obj)
-                ret[self.PARAM_FILES] = [
-                    split_file_meta_from_cloud(f)
-                    for f in obj.as_list(with_meta=True)
-                ]
-        else:
+        )
+
+        if not with_files:
             meta_d = self.meta.to_dict()
             meta_d.pop("isdir", None)
             ret.update(self.hash_info.to_dict())
@@ -838,6 +832,14 @@ class Output:
             if not self.can_push:
                 ret[self.PARAM_PUSH] = self.can_push
 
+        if with_files:
+            obj = self.obj or self.get_obj()
+            if obj:
+                obj = cast("Tree", obj)
+                ret[self.PARAM_FILES] = [
+                    split_file_meta_from_cloud(f)
+                    for f in obj.as_list(with_meta=True)
+                ]
         return ret
 
     def verify_metric(self):
