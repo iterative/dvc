@@ -128,5 +128,9 @@ class UnresolvedQueueExpNamesError(UnresolvedExpNamesError):
     NAME = "queued experiment name"
 
 
+class UnresolvedRunningExpNamesError(UnresolvedExpNamesError):
+    NAME = "running experiment name"
+
+
 class ExpQueueEmptyError(DvcException):
     pass
