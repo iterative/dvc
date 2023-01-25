@@ -245,3 +245,61 @@ def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):
     stage = dvc.imp(os.fspath(erepo_dir), "file")
 
     assert stage.changed_entries() == ([], [], None)
+
+
+def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
+    data_dvc = tmp_dir / "data.dvc"
+    data_dvc.dump(
+        {
+            "outs": [
+                {
+                    "path": "data",
+                    "files": [
+                        {
+                            "size": 3,
+                            "version_id": "WYRG4BglP7pD.gEoJP6a4AqOhl.FRA.h",
+                            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "relpath": "bar",
+                        },
+                        {
+                            "size": 3,
+                            "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+                            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "relpath": "foo",
+                        },
+                    ],
+                }
+            ]
+        }
+    )
+
+    data = tmp_dir / "data"
+    data.mkdir()
+    (data / "foo").write_text("foo")
+    (data / "bar").write_text("bar2")
+
+    dvc.commit("data", force=True)
+
+    assert (tmp_dir / "data.dvc").parse() == {
+        "outs": [
+            {
+                "path": "data",
+                "files": [
+                    {
+                        "size": 4,
+                        "md5": "224e2539f52203eb33728acd228b4432",
+                        "relpath": "bar",
+                    },
+                    {
+                        "size": 3,
+                        "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+                        "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                        "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                        "relpath": "foo",
+                    },
+                ],
+            }
+        ]
+    }

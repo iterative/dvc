@@ -2,11 +2,13 @@ from collections import OrderedDict
 from operator import attrgetter
 from typing import (
     TYPE_CHECKING,
+    Any,
     Dict,
     Iterable,
     List,
     Optional,
     Union,
+    cast,
     no_type_check,
 )
 
@@ -22,6 +24,7 @@ from .utils import resolve_wdir, split_params_deps
 
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage
+    from dvc_data.hashfile.tree import Tree
 
 PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
 PARAM_PATH = ParamsDependency.PARAM_PATH
@@ -153,25 +156,26 @@ def to_pipeline_file(stage: "PipelineStage"):
 
 
 def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
+    from dvc.output import split_file_meta_from_cloud
+
     assert stage.cmd
 
-    def _dumpd(item):
-        meta_d = item.meta.to_dict()
-        meta_d.pop("isdir", None)
-        ret = [
-            (item.PARAM_PATH, item.def_path),
-            *item.hash_info.to_dict().items(),
-            *meta_d.items(),
-        ]
-
+    def _dumpd(item: "Output"):
+        ret: Dict[str, Any] = {item.PARAM_PATH: item.def_path}
         if item.hash_info.isdir and kwargs.get("with_files"):
-            if item.obj:
-                obj = item.obj
-            else:
-                obj = item.get_obj()
-            ret.append((item.PARAM_FILES, obj.as_list(with_meta=True)))
-
-        return OrderedDict(ret)
+            obj = item.obj or item.get_obj()
+            if obj:
+                obj = cast("Tree", obj)
+                ret[item.PARAM_FILES] = [
+                    split_file_meta_from_cloud(f)
+                    for f in obj.as_list(with_meta=True)
+                ]
+        else:
+            meta_d = item.meta.to_dict()
+            meta_d.pop("isdir", None)
+            ret.update(item.hash_info.to_dict())
+            ret.update(split_file_meta_from_cloud(meta_d))
+        return ret
 
     res = OrderedDict([("cmd", stage.cmd)])
     params, deps = split_params_deps(stage)

@@ -93,14 +93,6 @@ def test_celery_queue_kill(test_queue, mocker, force):
     mocker.patch.object(
         test_queue,
         "match_queue_entry_by_name",
-        return_value={"bar": None},
-    )
-    with pytest.raises(UnresolvedExpNamesError):
-        test_queue.kill("bar")
-
-    mocker.patch.object(
-        test_queue,
-        "match_queue_entry_by_name",
         return_value={
             "bar": mock_entry_bar,
             "foo": mock_entry_foo,
@@ -149,6 +141,31 @@ def test_celery_queue_kill(test_queue, mocker, force):
     assert kill_mock.called_once_with(mock_entry_bar.stash_rev)
     assert kill_mock.called_once_with(mock_entry_foobar.stash_rev)
     mark_mocker.assert_called_once_with("bar", None)
+
+
+@pytest.mark.parametrize("force", [True, False])
+def test_celery_queue_kill_invalid(test_queue, mocker, force):
+
+    mock_entry_foo = mocker.Mock(stash_rev="foo")
+    mock_entry_bar = mocker.Mock(stash_rev="bar")
+
+    mocker.patch.object(
+        test_queue,
+        "match_queue_entry_by_name",
+        return_value={
+            "bar": mock_entry_bar,
+            "foo": mock_entry_foo,
+            "foobar": None,
+        },
+    )
+
+    kill_mock = mocker.patch.object(test_queue, "_kill_entries")
+
+    with pytest.raises(UnresolvedExpNamesError):
+        test_queue.kill(["bar", "foo", "foobar"], force=force)
+    assert kill_mock.called_once_with(
+        {mock_entry_foo: "foo", mock_entry_bar: "bar"}, force
+    )
 
 
 @pytest.mark.parametrize("status", ["FAILURE", "SUCCESS"])

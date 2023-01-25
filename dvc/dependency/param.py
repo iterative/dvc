@@ -125,9 +125,14 @@ class ParamsDependency(Dependency):
             elif param not in info:
                 st = "new"
             elif actual[param] != info[param]:
-                st = "modified"
+                if (
+                    isinstance(actual[param], tuple)
+                    and list(actual[param]) == info[param]
+                ):
+                    continue
+                else:
+                    st = "modified"
             else:
-                assert actual[param] == info[param]
                 continue
 
             status[str(self)][param] = st

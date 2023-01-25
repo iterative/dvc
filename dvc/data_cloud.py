@@ -8,6 +8,7 @@ from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
 
 if TYPE_CHECKING:
+    from dvc.fs import FileSystem
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.status import CompareStatusResult
@@ -17,11 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 class Remote:
-    def __init__(self, path, fs, **config):
+    def __init__(self, name: str, path: str, fs: "FileSystem", **config):
         self.path = path
         self.fs = fs
+        self.name = name
 
-        self.worktree = config.pop("worktree", False)
+        self.worktree: bool = config.pop("worktree", False)
         self.config = config
         if self.worktree:
             version_aware = self.config.get("version_aware")
@@ -71,7 +73,7 @@ class DataCloud:
             cls, config, fs_path = get_cloud_fs(self.repo, name=name)
             fs = cls(**config)
             config["tmp_dir"] = self.repo.index_db_dir
-            return Remote(fs_path, fs, **config)
+            return Remote(name, fs_path, fs, **config)
 
         if bool(self.repo.config["remote"]):
             error_msg = (

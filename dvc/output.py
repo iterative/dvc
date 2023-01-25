@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
 from urllib.parse import urlparse
 
-from funcy import collecting, project
+from funcy import collecting, first, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
@@ -204,6 +204,30 @@ def load_from_pipeline(stage, data, typ="outs"):
         )
 
 
+def split_file_meta_from_cloud(entry: Dict) -> Dict:
+    if remote_name := entry.pop(Meta.PARAM_REMOTE, None):
+        remote_meta = {}
+        for key in (
+            S3_PARAM_CHECKSUM,
+            HDFS_PARAM_CHECKSUM,
+            Meta.PARAM_VERSION_ID,
+        ):
+            if value := entry.pop(key, None):
+                remote_meta[key] = value
+
+        if remote_meta:
+            entry[Output.PARAM_CLOUD] = {remote_name: remote_meta}
+    return entry
+
+
+def merge_file_meta_from_cloud(entry: Dict) -> Dict:
+    cloud_meta = entry.pop(Output.PARAM_CLOUD, {})
+    if remote_name := first(cloud_meta):
+        entry.update(cloud_meta[remote_name])
+        entry[Meta.PARAM_REMOTE] = remote_name
+    return entry
+
+
 class OutputDoesNotExistError(DvcException):
     def __init__(self, path):
         msg = f"output '{path}' does not exist"
@@ -258,6 +282,7 @@ class Output:
     PARAM_PERSIST = "persist"
     PARAM_REMOTE = "remote"
     PARAM_PUSH = "push"
+    PARAM_CLOUD = "cloud"
 
     METRIC_SCHEMA = Any(
         None,
@@ -273,7 +298,7 @@ class Output:
     IsStageFileError: Type[DvcException] = OutputIsStageFileError
     IsIgnoredError: Type[DvcException] = OutputIsIgnoredError
 
-    def __init__(
+    def __init__(  # noqa: C901
         self,
         stage,
         path,
@@ -340,6 +365,9 @@ class Output:
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
         self.meta = meta
+
+        if files is not None:
+            files = [merge_file_meta_from_cloud(f) for f in files]
         self.files = files
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
@@ -368,7 +396,14 @@ class Output:
             name=self.hash_name,
             value=getattr(self.meta, self.hash_name, None),
         )
-        if self.meta.nfiles or self.hash_info and self.hash_info.isdir:
+        if self.files:
+            tree = Tree.from_list(self.files, hash_name=self.hash_name)
+            tree.digest()
+            self.hash_info = tree.hash_info
+            self.meta.isdir = True
+            self.meta.nfiles = len(self.files)
+            self.meta.size = sum(file.get("size") for file in self.files)
+        elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
             if not self.hash_info and self.hash_name != "md5":
                 md5 = getattr(self.meta, "md5", None)
@@ -745,9 +780,18 @@ class Output:
         return checkout_obj
 
     def dumpd(self, **kwargs):  # noqa: C901
-        meta = self.meta.to_dict()
-        meta.pop("isdir", None)
-        ret: Dict[str, Any] = {**self.hash_info.to_dict(), **meta}
+        ret: Dict[str, Any] = {}
+        with_files = (
+            (not self.IS_DEPENDENCY or self.stage.is_import)
+            and self.hash_info.isdir
+            and (kwargs.get("with_files") or self.files is not None)
+        )
+
+        if not with_files:
+            meta_d = self.meta.to_dict()
+            meta_d.pop("isdir", None)
+            ret.update(self.hash_info.to_dict())
+            ret.update(split_file_meta_from_cloud(meta_d))
 
         if self.is_in_repo:
             path = self.fs.path.as_posix(
@@ -788,20 +832,14 @@ class Output:
             if not self.can_push:
                 ret[self.PARAM_PUSH] = self.can_push
 
-        if (
-            (not self.IS_DEPENDENCY or self.stage.is_import)
-            and self.hash_info.isdir
-            and (kwargs.get("with_files") or self.files is not None)
-        ):
-            obj: Optional["HashFile"]
-            if self.obj:
-                obj = self.obj
-            else:
-                obj = self.get_obj()
+        if with_files:
+            obj = self.obj or self.get_obj()
             if obj:
-                obj = cast(Tree, obj)
-                ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
-
+                obj = cast("Tree", obj)
+                ret[self.PARAM_FILES] = [
+                    split_file_meta_from_cloud(f)
+                    for f in obj.as_list(with_meta=True)
+                ]
         return ret
 
     def verify_metric(self):
@@ -1253,6 +1291,7 @@ DIR_FILES_SCHEMA: Dict[str, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     Required(Tree.PARAM_RELPATH): str,
+    Output.PARAM_CLOUD: {str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}},
 }
 
 SCHEMA = {

@@ -212,7 +212,7 @@ class Repo:
         # used by DVCFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
-        self.cloud = DataCloud(self)
+        self.cloud: "DataCloud" = DataCloud(self)
         self.stage: "StageLoad" = StageLoad(self)
 
         self.lock: "LockBase"

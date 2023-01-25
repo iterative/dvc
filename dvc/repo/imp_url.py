@@ -33,9 +33,6 @@ def imp_url(  # noqa: C901
     fs_config=None,
     version_aware: bool = False,
 ):
-    from dvc.dvcfile import load_file
-    from dvc.stage import Stage, create_stage, restore_fields
-
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(
         self, out, always_local=to_remote and not out
@@ -64,22 +61,19 @@ def imp_url(  # noqa: C901
             fs_config = {}
         fs_config["version_aware"] = True
 
-    stage = create_stage(
-        Stage,
-        self,
-        fname or path,
+    stage = self.stage.create(
+        single_stage=True,
+        validate=False,
+        fname=fname or path,
         wdir=wdir,
         deps=[url],
         outs=[out],
         erepo=erepo,
         fs_config=fs_config,
     )
-    restore_fields(stage)
 
     out_obj = stage.outs[0]
     out_obj.annot.update(desc=desc, type=type, labels=labels, meta=meta)
-    dvcfile = load_file(self, stage.path)
-    dvcfile.remove()
 
     try:
         self.check_graph(stages={stage})
@@ -102,7 +96,5 @@ def imp_url(  # noqa: C901
         stage.outs[0].can_push = False
 
     stage.frozen = frozen
-
-    dvcfile.dump(stage)
-
+    stage.dump()
     return stage

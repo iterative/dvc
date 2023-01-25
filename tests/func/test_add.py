@@ -1142,3 +1142,61 @@ def test_add_with_annotations(M, tmp_dir, dvc):
     (stage,) = dvc.add("foo", type="t2")
     assert stage.outs[0].annot == Annotation(**annot)
     assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+
+def test_add_updates_to_cloud_versioning_dir(tmp_dir, dvc):
+    data_dvc = tmp_dir / "data.dvc"
+    data_dvc.dump(
+        {
+            "outs": [
+                {
+                    "path": "data",
+                    "files": [
+                        {
+                            "size": 3,
+                            "version_id": "WYRG4BglP7pD.gEoJP6a4AqOhl.FRA.h",
+                            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "relpath": "bar",
+                        },
+                        {
+                            "size": 3,
+                            "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+                            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "relpath": "foo",
+                        },
+                    ],
+                }
+            ]
+        }
+    )
+
+    data = tmp_dir / "data"
+    data.mkdir()
+    (data / "foo").write_text("foo")
+    (data / "bar").write_text("bar2")
+
+    dvc.add("data")
+
+    assert (tmp_dir / "data.dvc").parse() == {
+        "outs": [
+            {
+                "path": "data",
+                "files": [
+                    {
+                        "size": 4,
+                        "md5": "224e2539f52203eb33728acd228b4432",
+                        "relpath": "bar",
+                    },
+                    {
+                        "size": 3,
+                        "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+                        "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                        "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                        "relpath": "foo",
+                    },
+                ],
+            }
+        ]
+    }
