@@ -150,11 +150,13 @@ def _merge_data(s_list):
             d[key].update({})
             continue
         if not isinstance(key, dict):
-            raise ValueError(f"'{type(key).__name__}' not supported.")
+            raise ValueError(  # noqa: TRY004
+                f"'{type(key).__name__}' not supported."
+            )
 
         for k, flags in key.items():
             if not isinstance(flags, dict):
-                raise ValueError(
+                raise ValueError(  # noqa: TRY004
                     f"Expected dict for '{k}', got: '{type(flags).__name__}'"
                 )
             d[k].update(flags)

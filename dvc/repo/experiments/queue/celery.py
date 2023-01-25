@@ -146,7 +146,7 @@ class LocalCeleryQueue(BaseStashQueue):
         if os.name == "nt":
             daemonize(cmd)
         else:
-            ManagedProcess.spawn(["dvc"] + cmd, wdir=self.wdir, name=name)
+            ManagedProcess.spawn(["dvc", *cmd], wdir=self.wdir, name=name)
 
     def start_workers(self, count: int) -> int:
         """start some workers to process the queued tasks.
