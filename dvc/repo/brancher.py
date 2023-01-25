@@ -32,7 +32,16 @@ def brancher(  # noqa: E302
             - empty string it there is no branches to iterate over
             - "workspace" if there are uncommitted changes in the SCM repo
     """
-    if not any([revs, all_branches, all_tags, all_commits, all_experiments]):
+    if not any(
+        [
+            revs,
+            all_branches,
+            all_tags,
+            all_commits,
+            all_experiments,
+            commit_date,
+        ]
+    ):
         yield ""
         return
 
