@@ -182,7 +182,6 @@ def test_outs_with_no_hashes(M, tmp_dir, dvc, scm):
 
     expected_output = {
         **EMPTY_STATUS,
-        "committed": {"added": M.unordered("bar", "foo")},
         "git": M.dict(),
     }
     assert dvc.data_status() == expected_output
@@ -197,7 +196,6 @@ def test_outs_with_no_hashes_and_with_uncommitted_files(M, tmp_dir, dvc, scm):
     expected_output = {
         **EMPTY_STATUS,
         "uncommitted": {"added": M.unordered("bar", "foo")},
-        "committed": {"added": M.unordered("bar", "foo")},
         "git": M.dict(),
     }
     assert dvc.data_status() == expected_output
