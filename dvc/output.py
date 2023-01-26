@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
 from urllib.parse import urlparse
 
 from funcy import collecting, first, project
-from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
+from voluptuous import All, And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
 from dvc.exceptions import (
@@ -300,7 +300,7 @@ class Output:
     IsStageFileError: Type[DvcException] = OutputIsStageFileError
     IsIgnoredError: Type[DvcException] = OutputIsIgnoredError
 
-    def __init__(  # noqa: C901
+    def __init__(
         self,
         stage,
         path,
@@ -324,7 +324,8 @@ class Output:
             desc=desc, type=type, labels=labels or [], meta=meta or {}
         )
         self.repo = stage.repo if not repo and stage else repo
-        meta = Meta.from_dict(info or {})
+        meta_d = merge_file_meta_from_cloud(info or {})
+        meta = Meta.from_dict(meta_d)
         # NOTE: when version_aware is not passed into get_cloud_fs, it will be
         # set based on whether or not path is versioned
         fs_kwargs = {"version_aware": True} if meta.version_id else {}
@@ -398,13 +399,17 @@ class Output:
             name=self.hash_name,
             value=getattr(self.meta, self.hash_name, None),
         )
+        self._compute_meta_hash_info_from_files()
+
+    def _compute_meta_hash_info_from_files(self) -> None:
         if self.files:
             tree = Tree.from_list(self.files, hash_name=self.hash_name)
             tree.digest()
             self.hash_info = tree.hash_info
             self.meta.isdir = True
             self.meta.nfiles = len(self.files)
-            self.meta.size = sum(file.get("size") for file in self.files)
+            self.meta.size = sum(f.get("size") for f in self.files)
+            self.meta.remote = first(f.get("remote") for f in self.files)
         elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
             if not self.hash_info and self.hash_name != "md5":
@@ -1280,6 +1285,8 @@ META_SCHEMA = {
     Meta.PARAM_VERSION_ID: str,
 }
 
+CLOUD_SCHEMA = All({str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}}, Length(max=1))
+
 ARTIFACT_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
@@ -1287,13 +1294,14 @@ ARTIFACT_SCHEMA = {
     Output.PARAM_PLOT: bool,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CHECKPOINT: bool,
+    Output.PARAM_CLOUD: CLOUD_SCHEMA,
 }
 
 DIR_FILES_SCHEMA: Dict[str, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     Required(Tree.PARAM_RELPATH): str,
-    Output.PARAM_CLOUD: {str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}},
+    Output.PARAM_CLOUD: CLOUD_SCHEMA,
 }
 
 SCHEMA = {
