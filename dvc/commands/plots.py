@@ -25,7 +25,7 @@ def _show_json(renderers, split=False):
 
 
 def _adjust_vega_renderers(renderers):
-    from dvc.render import REVISION_FIELD, VERSION_FIELD
+    from dvc.render import FIELD_PREFIX, REVISION_FIELD
     from dvc_render import VegaRenderer
 
     for r in renderers:
@@ -33,7 +33,11 @@ def _adjust_vega_renderers(renderers):
             if _data_versions_count(r) > 1:
                 summary = _summarize_version_infos(r)
                 for dp in r.datapoints:
-                    vi = dp.pop(VERSION_FIELD, {})
+                    vi = {
+                        field: dp[field]
+                        for field in dp
+                        if field.startswith("_dvc_")
+                    }
                     keys = list(vi.keys())
                     for key in keys:
                         if not (len(summary.get(key, set())) > 1):
@@ -42,28 +46,33 @@ def _adjust_vega_renderers(renderers):
                         dp["rev"] = "::".join(vi.values())
             else:
                 for dp in r.datapoints:
-                    dp[REVISION_FIELD] = dp[VERSION_FIELD]["revision"]
-                    dp.pop(VERSION_FIELD, {})
+                    dp[REVISION_FIELD] = dp[f"{FIELD_PREFIX}revision"]
 
 
 def _summarize_version_infos(renderer):
     from collections import defaultdict
 
-    from dvc.render import VERSION_FIELD
+    from dvc.render import FIELD_PREFIX
 
     result = defaultdict(set)
 
     for dp in renderer.datapoints:
-        for key, value in dp.get(VERSION_FIELD, {}).items():
-            result[key].add(value)
+        for key, value in dp.items():
+            if key.startswith(FIELD_PREFIX):
+                result[key].add(value)
     return dict(result)
 
 
 def _data_versions_count(renderer):
     from itertools import product
 
+    from dvc.render import FIELD_PREFIX
+
     summary = _summarize_version_infos(renderer)
-    x = product(summary.get("filename", {None}), summary.get("field", {None}))
+    x = product(
+        summary.get(f"{FIELD_PREFIX}filename", {None}),
+        summary.get(f"{FIELD_PREFIX}field", {None}),
+    )
     return len(set(x))
 
 
