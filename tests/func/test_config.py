@@ -129,7 +129,7 @@ def test_config_get(tmp_dir, dvc, capsys, caplog, args, ret, msg):
         )
     )
 
-    assert main(["config"] + args) == ret
+    assert main(["config", *args]) == ret
     text = caplog.text if ret else capsys.readouterr()[0]
     assert msg in text
 
@@ -143,7 +143,7 @@ def test_config_get(tmp_dir, dvc, capsys, caplog, args, ret, msg):
     ],
 )
 def test_config_get_in_non_dvc_repo(tmp_dir, caplog, args, ret):
-    assert main(["config"] + args) == ret
+    assert main(["config", *args]) == ret
     if ret != 0:
         out = caplog.text
         assert "Not inside a DVC repo" in out
@@ -199,7 +199,7 @@ def test_config_list(tmp_dir, dvc, capsys):
     ],
 )
 def test_config_list_in_non_dvc_repo(tmp_dir, caplog, args, ret):
-    assert main(["config"] + args) == ret
+    assert main(["config", *args]) == ret
     if ret != 0:
         out = caplog.text
         assert "Not inside a DVC repo" in out
@@ -210,7 +210,7 @@ def test_config_list_in_non_dvc_repo(tmp_dir, caplog, args, ret):
 )
 def test_list_bad_args(tmp_dir, dvc, caplog, args):
     caplog.clear()
-    assert main(["config", "--list"] + args) == 1
+    assert main(["config", "--list", *args]) == 1
     assert (
         "-l/--list can't be used together with any of these options: "
         "-u/--unset, name, value"

@@ -629,7 +629,7 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
 
     extras = {".gitignore"}  # these files are always there
     expected = {}
-    for repo_dir in subrepos + [tmp_dir]:
+    for repo_dir in [*subrepos, tmp_dir]:
         base = os.path.basename(repo_dir)
         scm_files = fs_structure(base)
         dvc_files = dvc_structure(base)

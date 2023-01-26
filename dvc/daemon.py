@@ -105,7 +105,7 @@ def daemon(args):
     Args:
         args (list): list of arguments to append to `dvc daemon` command.
     """
-    daemonize(["daemon", "-q"] + args)
+    daemonize(["daemon", "-q", *args])
 
 
 def daemonize(cmd: List[str]):

@@ -228,7 +228,7 @@ class Container(Node, ABC):  # noqa: B024
 
         rem = rems[0]
         if not isinstance(d, Container):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 f"{index} is a primitive value, cannot get '{rem}'"
             )
         return d.select(rem)

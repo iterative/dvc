@@ -12,11 +12,16 @@ __all__ = [
     "scm",
     "dvc",
     "make_cloud",
+    "make_cloud_version_aware",
     "make_local",
     "cloud",
     "local_cloud",
     "make_remote",
+    "make_remote_version_aware",
+    "make_remote_worktree",
     "remote",
+    "remote_version_aware",
+    "remote_worktree",
     "local_remote",
     "workspace",
     "make_workspace",
@@ -105,6 +110,14 @@ def make_cloud(request):
 
 
 @pytest.fixture
+def make_cloud_version_aware(request):
+    def _make_cloud(typ):
+        return request.getfixturevalue(f"make_{typ}_version_aware")()
+
+    return _make_cloud
+
+
+@pytest.fixture
 def cloud(make_cloud, request):
     typ = getattr(request, "param", "local")
     return make_cloud(typ)
@@ -126,9 +139,49 @@ def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
 
 
 @pytest.fixture
+def make_remote_version_aware(
+    tmp_dir, dvc, make_cloud_version_aware  # noqa: ARG001
+):
+    def _make_remote(name, typ="local", **kwargs):
+        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        config = dict(cloud.config)
+        config["version_aware"] = True
+        tmp_dir.add_remote(name=name, config=config, **kwargs)
+        return cloud
+
+    return _make_remote
+
+
+@pytest.fixture
+def make_remote_worktree(
+    tmp_dir, dvc, make_cloud_version_aware  # noqa: ARG001
+):
+    def _make_remote(name, typ="local", **kwargs):
+        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        config = dict(cloud.config)
+        config["worktree"] = True
+        tmp_dir.add_remote(name=name, config=config, **kwargs)
+        return cloud
+
+    return _make_remote
+
+
+@pytest.fixture
 def remote(make_remote, request):
     typ = getattr(request, "param", "local")
     return make_remote("upstream", typ=typ)
+
+
+@pytest.fixture
+def remote_version_aware(make_remote_version_aware, request):
+    typ = getattr(request, "param", "local")
+    return make_remote_version_aware("upstream", typ=typ)
+
+
+@pytest.fixture
+def remote_worktree(make_remote_worktree, request):
+    typ = getattr(request, "param", "local")
+    return make_remote_worktree("upstream", typ=typ)
 
 
 @pytest.fixture

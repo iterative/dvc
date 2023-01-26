@@ -43,10 +43,9 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.223'
+    rev: 'v0.0.235'
     hooks:
       - id: ruff
-        args: ["--force-exclude"]
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.2
     hooks:
