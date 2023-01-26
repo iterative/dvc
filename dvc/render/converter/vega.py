@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
@@ -223,13 +224,19 @@ class VegaConverter(Converter):
             )
 
         all_datapoints = []
-        all_y_fields = {y_field for _, y_field in ys}
+        all_y_files, all_y_fields = list(zip(*ys))
+        all_y_fields = set(all_y_fields)
+        all_y_files = set(all_y_files)
 
         # override to unified y field name if there are different y fields
         if len(all_y_fields) > 1:
             props_update["y"] = "dvc_inferred_y_value"
         else:
             props_update["y"] = first(all_y_fields)
+
+        # get common prefixes
+        common_file_prefix = os.path.commonpath(all_y_files)
+        common_field_prefix = os.path.commonpath(all_y_fields)
 
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
@@ -260,13 +267,17 @@ class VegaConverter(Converter):
                         "They have to have same length."
                     )
 
+            y_file_short = y_file.removeprefix(common_file_prefix).strip("/")
+            y_field_short = y_field.removeprefix(common_field_prefix).strip(
+                "/"
+            )
             _update_all(
                 datapoints,
                 update_dict={
                     VERSION_FIELD: {
                         "revision": revision,
-                        FILENAME_FIELD: y_file,
-                        "field": y_field,
+                        FILENAME_FIELD: y_file_short,
+                        "field": y_field_short,
                     }
                 },
             )
