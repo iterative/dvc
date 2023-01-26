@@ -74,7 +74,7 @@ def _merge_params(s_list):
         if not isinstance(key, dict):
             msg = "Only list of str/dict is supported. Got: "
             msg += f"'{type(key).__name__}'."
-            raise ValueError(msg)
+            raise ValueError(msg)  # noqa: TRY004
 
         for k, params in key.items():
             if k in wholly_tracked:
@@ -83,7 +83,7 @@ def _merge_params(s_list):
             if not isinstance(params, list):
                 msg = "Expected list of params for custom params file "
                 msg += f"'{k}', got '{type(params).__name__}'."
-                raise ValueError(msg)
+                raise ValueError(msg)  # noqa: TRY004
             d[k].extend(params)
     return d
 

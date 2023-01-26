@@ -22,7 +22,7 @@ def _make_cmd(executable, cmd):
         return cmd
     opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
     name = os.path.basename(executable).lower()
-    return [executable] + opts.get(name, []) + ["-c", cmd]
+    return [executable, *opts.get(name, []), "-c", cmd]
 
 
 def warn_if_fish(executable):
