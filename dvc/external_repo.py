@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
     from dvc.types import StrPath
 
-
 logger = logging.getLogger(__name__)
 
 
