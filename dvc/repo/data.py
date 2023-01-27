@@ -58,7 +58,7 @@ def _diff(
     new: "DataIndex",
     *,
     granular: bool = False,
-    with_missing: bool = False,
+    not_in_cache: bool = False,
 ) -> Dict[str, List[str]]:
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
 
@@ -94,7 +94,7 @@ def _diff(
             continue
 
         if (
-            with_missing
+            not_in_cache
             and change.old
             and change.old.hash_info
             and not old.storage_map.cache_exists(change.old)
@@ -155,7 +155,7 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
         return _diff(
             repo.index.data["repo"],
             workspace,
-            with_missing=True,
+            not_in_cache=True,
             **kwargs,
         )
 
