@@ -37,7 +37,6 @@ if TYPE_CHECKING:
     from .queue.base import BaseStashQueue, QueueEntry
     from .stash import ExpStashEntry
 
-
 logger = logging.getLogger(__name__)
 
 
