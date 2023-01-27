@@ -162,7 +162,7 @@ line-length = 79
 target-version = "py38"
 show-source = true
 ignore = ["S101", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "PLR2004", "RUF005"]
-select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT003", "PT008", "PT009", "PT010", "PT015", "PT016", "PT017", "PT020", "PT021", "PT024", "PT025", "PT026", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "PIE", "TRY002", "TRY004", "TRY201", "TRY400", "RUF"]
+select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT003", "PT008", "PT009", "PT010", "PT015", "PT016", "PT017", "PT020", "PT021", "PT024", "PT025", "PT026", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY002", "TRY004", "TRY201", "TRY400", "RUF"]
 # external flake8 codes that should be preserved
 external = ["B301", "B024", "C901", "E302", "F401", "W601"]
 
