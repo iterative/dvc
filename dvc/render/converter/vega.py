@@ -224,19 +224,28 @@ class VegaConverter(Converter):
             )
 
         all_datapoints = []
-        all_y_files, all_y_fields = list(zip(*ys))
-        all_y_fields = set(all_y_fields)
-        all_y_files = set(all_y_files)
+        if len(ys) > 1:
+            all_y_files, all_y_fields = list(zip(*ys))
+            all_y_fields = set(all_y_fields)
+            all_y_files = set(all_y_files)
+        else:
+            all_y_files = set()
+            all_y_fields = set()
 
         # override to unified y field name if there are different y fields
+        # also get common prefix to drop from field names
         if len(all_y_fields) > 1:
             props_update["y"] = "dvc_inferred_y_value"
+            common_field_prefix = os.path.commonpath(all_y_fields)
         else:
             props_update["y"] = first(all_y_fields)
+            common_field_prefix = ""
 
-        # get common prefixes
-        common_file_prefix = os.path.commonpath(all_y_files)
-        common_field_prefix = os.path.commonpath(all_y_fields)
+        # get common prefix to drop from file names
+        if len(all_y_files) > 1:
+            common_file_prefix = os.path.commonpath(all_y_files)
+        else:
+            common_file_prefix = ""
 
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
