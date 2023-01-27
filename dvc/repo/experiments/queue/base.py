@@ -50,7 +50,6 @@ if TYPE_CHECKING:
     from dvc.repo.experiments import Experiments
     from dvc.repo.experiments.executor.base import ExecutorResult
 
-
 logger = logging.getLogger(__name__)
 
 
