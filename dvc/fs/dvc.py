@@ -20,7 +20,6 @@ from typing import (
 from fsspec.spec import AbstractFileSystem
 from funcy import wrap_with
 
-from dvc.types import StrPath
 from dvc_objects.fs.base import FileSystem
 from dvc_objects.fs.path import Path
 
@@ -28,6 +27,7 @@ from .data import DataFileSystem
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.types import StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +166,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
-    def _get_key(self, path: StrPath) -> Key:
+    def _get_key(self, path: "StrPath") -> Key:
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
         if parts == (os.curdir,):
             return ()

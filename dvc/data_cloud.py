@@ -112,7 +112,8 @@ class DataCloud:
             )
             logger.warning(
                 "Some of the cache files do not exist neither locally "
-                f"nor on remote. Missing cache files:\n{missing_desc}"
+                "nor on remote. Missing cache files:\n%s",
+                missing_desc,
             )
 
     def transfer(

@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import time
-from typing import Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import chain, first
 
@@ -18,7 +18,6 @@ from .exceptions import (
     MultipleBranchError,
 )
 from .executor.base import BaseExecutor
-from .queue.base import BaseStashQueue, QueueEntry
 from .queue.celery import LocalCeleryQueue
 from .queue.tempdir import TempDirQueue
 from .queue.workspace import WorkspaceQueue
@@ -32,8 +31,11 @@ from .refs import (
     WORKSPACE_STASH,
     ExpRefInfo,
 )
-from .stash import ExpStashEntry
 from .utils import check_ref_format, exp_refs_by_rev, unlocked_repo
+
+if TYPE_CHECKING:
+    from .queue.base import BaseStashQueue, QueueEntry
+    from .stash import ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +87,7 @@ class Experiments:
         return LocalCeleryQueue(self.repo, CELERY_STASH, CELERY_FAILED_STASH)
 
     @property
-    def stash_revs(self) -> Dict[str, ExpStashEntry]:
+    def stash_revs(self) -> Dict[str, "ExpStashEntry"]:
         revs = {}
         for queue in (self.workspace_queue, self.celery_queue):
             revs.update(queue.stash.stash_revs)
@@ -107,7 +109,7 @@ class Experiments:
                 )
                 self.scm.reset()
 
-        exp_queue: BaseStashQueue = (
+        exp_queue: "BaseStashQueue" = (
             self.tempdir_queue if tmp_dir else self.workspace_queue
         )
         self.queue_one(exp_queue, **kwargs)
@@ -119,11 +121,11 @@ class Experiments:
 
     def queue_one(
         self,
-        queue: BaseStashQueue,
+        queue: "BaseStashQueue",
         checkpoint_resume: Optional[str] = None,
         reset: bool = False,
         **kwargs,
-    ) -> QueueEntry:
+    ) -> "QueueEntry":
         """Queue a single experiment."""
         if reset:
             self.reset_checkpoints()
@@ -162,7 +164,7 @@ class Experiments:
         return None
 
     def reproduce_celery(  # noqa: C901
-        self, entries: Optional[Iterable[QueueEntry]] = None, **kwargs
+        self, entries: Optional[Iterable["QueueEntry"]] = None, **kwargs
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}
         if entries is None:
@@ -238,11 +240,11 @@ class Experiments:
 
     def new(
         self,
-        queue: BaseStashQueue,
+        queue: "BaseStashQueue",
         *args,
         checkpoint_resume: Optional[str] = None,
         **kwargs,
-    ) -> QueueEntry:
+    ) -> "QueueEntry":
         """Create and enqueue a new experiment.
 
         Experiment will be derived from the current workspace.
@@ -266,11 +268,11 @@ class Experiments:
 
     def _resume_checkpoint(
         self,
-        queue: BaseStashQueue,
+        queue: "BaseStashQueue",
         *args,
         resume_rev: Optional[str] = None,
         **kwargs,
-    ) -> QueueEntry:
+    ) -> "QueueEntry":
         """Create and queue a resumed checkpoint experiment."""
         assert resume_rev
 
@@ -340,7 +342,7 @@ class Experiments:
 
     @unlocked_repo
     def _reproduce_queue(
-        self, queue: BaseStashQueue, **kwargs
+        self, queue: "BaseStashQueue", **kwargs
     ) -> Dict[str, str]:
         """Reproduce queued experiments.
 

@@ -92,7 +92,7 @@ class ProcessManager:
 
         def handle_closed_process():
             logging.warning(
-                f"Process {name} had already aborted unexpectedly."
+                "Process %s had already aborted unexpectedly.", name
             )
             process_info.returncode = -1
             self[name] = process_info

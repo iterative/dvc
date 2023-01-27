@@ -57,8 +57,8 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
         if exc.errno == errno.EMFILE:
             logger.exception(
                 "too many open files, please visit "
-                "{} to see how to handle this "
-                "problem".format(error_link("many-files")),
+                "%s to see how to handle this problem",
+                error_link("many-files"),
                 extra={"tb_only": True},
             )
         else:
@@ -91,8 +91,11 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
             hint = f"\nPlease report this bug to {link}. Thank you!"
 
         logger.exception(
-            f"URL '{exc.url}' is supported but requires these missing "
-            f"dependencies: {exc.missing_deps}. {hint}",
+            "URL '%s' is supported but requires these missing "
+            "dependencies: %s. %s",
+            exc.url,
+            exc.missing_deps,
+            hint,
             extra={"tb_only": True},
         )
         return None
@@ -101,7 +104,9 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
         link = format_link("https://man.dvc.org/remote/modify")
         logger.exception("configuration error")
         logger.exception(
-            f"{exc!s}\nLearn more about configuration settings at {link}.",
+            "%s\nLearn more about configuration settings at %s.",
+            exc,
+            link,
             extra={"tb_only": True},
         )
         return 251
@@ -113,9 +118,12 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
 
         directory = relpath(exc.directory)
         logger.exception(
-            f"Could not open pickled '{exc.type}' cache.\n"
-            f"Remove the '{directory}' directory and then retry this command."
-            f"\nSee {error_link('pickle')} for more information.",
+            "Could not open pickled '%s' cache.\n"
+            "Remove the '%s' directory and then retry this command."
+            "\nSee %s for more information.",
+            exc.type,
+            directory,
+            error_link("pickle"),
             extra={"tb_only": True},
         )
         return None

@@ -1,6 +1,5 @@
 import pytest
 from funcy import first
-from scmrepo.git import Git
 
 from dvc.repo.experiments.show import (
     ExpStatus,
@@ -10,7 +9,7 @@ from dvc.repo.experiments.show import (
 )
 
 
-def test_get_show_branch(tmp_dir, scm: "Git", dvc, exp_stage):
+def test_get_show_branch(tmp_dir, scm, dvc, exp_stage):
     new_branch = "new"
 
     baseline = scm.get_rev()
