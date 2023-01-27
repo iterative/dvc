@@ -17,7 +17,6 @@ from typing import (
 
 from celery.result import AsyncResult
 from funcy import first
-from kombu.message import Message
 
 from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
@@ -25,7 +24,7 @@ from dvc.repo.experiments.exceptions import (
     UnresolvedQueueExpNamesError,
     UnresolvedRunningExpNamesError,
 )
-from dvc.repo.experiments.executor.base import ExecutorInfo, ExecutorResult
+from dvc.repo.experiments.executor.base import ExecutorInfo
 from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.ui import ui
@@ -36,23 +35,27 @@ from .base import (
     ExpRefAndQueueEntry,
     QueueDoneResult,
     QueueEntry,
-    QueueGetResult,
 )
 from .exceptions import CannotKillTasksError
 from .tasks import run_exp
 from .utils import fetch_running_exp_from_temp_dir
 
 if TYPE_CHECKING:
+    from kombu.message import Message
+
+    from dvc.repo.experiments.executor.base import ExecutorResult
     from dvc.repo.experiments.refs import ExpRefInfo
     from dvc_task.app import FSApp
     from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
 
+    from .base import QueueGetResult
+
 logger = logging.getLogger(__name__)
 
 
 class _MessageEntry(NamedTuple):
-    msg: Message
+    msg: "Message"
     entry: QueueEntry
 
 
@@ -142,7 +145,7 @@ class LocalCeleryQueue(BaseStashQueue):
         cmd = ["exp", "queue-worker", node_name]
         name = f"dvc-exp-worker-{num}"
 
-        logger.debug(f"start a new worker: {name}, node: {node_name}")
+        logger.debug("start a new worker: %s, node: %s", name, node_name)
         if os.name == "nt":
             daemonize(cmd)
         else:
@@ -158,7 +161,7 @@ class LocalCeleryQueue(BaseStashQueue):
             newly spawned worker number.
         """
 
-        logger.debug(f"Spawning {count} exp queue workers")
+        logger.debug("Spawning %s exp queue workers", count)
         active_worker: Dict = self.worker_status()
 
         started = 0
@@ -168,7 +171,7 @@ class LocalCeleryQueue(BaseStashQueue):
             ]
             node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
             if node_name in active_worker:
-                logger.debug(f"Exp queue worker {node_name} already exist")
+                logger.debug("Exp queue worker %s already exist", node_name)
                 continue
             self._spawn_worker(num)
             started += 1
@@ -184,7 +187,7 @@ class LocalCeleryQueue(BaseStashQueue):
 
     # NOTE: Queue consumption should not be done directly. Celery worker(s)
     # will automatically consume available experiments.
-    def get(self) -> QueueGetResult:
+    def get(self) -> "QueueGetResult":
         raise NotImplementedError
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
@@ -330,7 +333,7 @@ class LocalCeleryQueue(BaseStashQueue):
     ) -> None:
         remained_revs: List[str] = []
         running_ids = self._get_running_task_ids()
-        logger.debug(f"Current running tasks ids: {running_ids}.")
+        logger.debug("Current running tasks ids: %s.", running_ids)
         for msg, entry in self._iter_processed():
             if entry not in remained_entries:
                 continue
@@ -341,8 +344,9 @@ class LocalCeleryQueue(BaseStashQueue):
                 result: AsyncResult = AsyncResult(task_id)
                 if not result.ready():
                     logger.debug(
-                        f"Task id {task_id} rev {remained_entries[entry]} "
-                        "marked as failure."
+                        "Task id %s rev %s marked as failure.",
+                        task_id,
+                        remained_entries[entry],
                     )
                     self.celery.backend.mark_as_failure(task_id, None)
 
@@ -441,8 +445,7 @@ class LocalCeleryQueue(BaseStashQueue):
     def worker_status(self) -> Dict[str, List[Dict]]:
         """Return the current active celery worker"""
         status = self.celery.control.inspect().active() or {}
-        logger.debug(f"Worker status: {status}")
-
+        logger.debug("Worker status: %s", status)
         return status
 
     def clear(self, *args, **kwargs):

@@ -27,7 +27,7 @@ from dvc.repo.experiments.exceptions import (
     CheckpointExistsError,
     ExperimentExistsError,
 )
-from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorResult
+from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
 from dvc.repo.experiments.refs import ExpRefInfo
 from dvc.repo.experiments.stash import ExpStash, ExpStashEntry
@@ -48,6 +48,8 @@ if TYPE_CHECKING:
 
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
+    from dvc.repo.experiments.executor.base import ExecutorResult
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +89,7 @@ class QueueGetResult(NamedTuple):
 
 class QueueDoneResult(NamedTuple):
     entry: QueueEntry
-    result: Optional[ExecutorResult]
+    result: Optional["ExecutorResult"]
 
 
 class ExpRefAndQueueEntry(NamedTuple):
@@ -200,7 +202,7 @@ class BaseStashQueue(ABC):
 
         def _format_entry(
             entry: QueueEntry,
-            exp_result: Optional[ExecutorResult] = None,
+            exp_result: Optional["ExecutorResult"] = None,
             status: str = "Unknown",
         ) -> Dict[str, Any]:
             name = entry.name
@@ -258,7 +260,7 @@ class BaseStashQueue(ABC):
         """Reproduce queued experiments sequentially."""
 
     @abstractmethod
-    def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+    def get_result(self, entry: QueueEntry) -> Optional["ExecutorResult"]:
         """Return result of the specified item.
 
         This method blocks until the specified item has been collected.
@@ -632,7 +634,7 @@ class BaseStashQueue(ABC):
     def collect_git(
         exp: "Experiments",
         executor: BaseExecutor,
-        exec_result: ExecutorResult,
+        exec_result: "ExecutorResult",
     ) -> Dict[str, str]:
         results = {}
 
@@ -664,7 +666,7 @@ class BaseStashQueue(ABC):
         cls,
         exp: "Experiments",
         executor: BaseExecutor,
-        exec_result: ExecutorResult,
+        exec_result: "ExecutorResult",
     ) -> Dict[str, str]:
         results = cls.collect_git(exp, executor, exec_result)
 

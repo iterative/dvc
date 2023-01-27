@@ -25,8 +25,7 @@ def ask(prompt: str, limited_to: Optional[Collection[str]] = None):
             return answer
 
         logger.info(
-            "Your response must be one of: {options}. "
-            "Please try again.".format(options=limited_to)
+            "Your response must be one of: %s. Please try again.", limited_to
         )
 
 

@@ -32,7 +32,7 @@ from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
-from .fs.callbacks import DEFAULT_CALLBACK, Callback
+from .fs.callbacks import DEFAULT_CALLBACK
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
 
+    from .fs.callbacks import Callback
     from .ignore import DvcIgnoreFilter
 
 logger = logging.getLogger(__name__)

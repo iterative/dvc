@@ -17,11 +17,13 @@ from dvc.exceptions import (
 )
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
-from dvc.types import StrPath
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
     from scmrepo import Git
+
+    from dvc.types import StrPath
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ def external_repo(
     url,
     rev: Optional[str] = None,
     for_write: bool = False,
-    cache_dir: Optional[StrPath] = None,
+    cache_dir: Optional["StrPath"] = None,
     cache_types: Optional[Collection[str]] = None,
     **kwargs,
 ) -> Iterator["Repo"]:

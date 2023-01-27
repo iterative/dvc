@@ -161,25 +161,30 @@ line_length = 79
 line-length = 79
 target-version = "py38"
 show-source = true
-ignore = ["S101", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "A003", "ARG002", "PLR2004", "RUF005"]
-select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "T20", "PT003", "PT008", "PT009", "PT010", "PT015", "PT016", "PT017", "PT020", "PT021", "PT024", "PT025", "PT026", "Q", "RET501", "RET504", "SIM", "ARG", "TID", "PGH", "PLC", "PLE", "PLR", "PLW", "PIE", "INP", "TRY004", "TRY201", "RUF"]
+ignore = ["S101", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "PLR2004", "RUF005"]
+select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT003", "PT008", "PT009", "PT010", "PT015", "PT016", "PT017", "PT020", "PT021", "PT024", "PT025", "PT026", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "PIE", "TRY002", "TRY004", "TRY201", "TRY400", "RUF"]
 # external flake8 codes that should be preserved
 external = ["B301", "B024", "C901", "E302", "F401", "W601"]
 
 [tool.ruff.per-file-ignores]
-"scripts/**/*.py" = ["T201", "INP001"]
+"dvc/testing/*.py" = ["ARG002"]
+"scripts/**/*.py" = ["T201", "INP001", "TRY002"]
 
 [tool.ruff.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
 parametrize-names-type = "csv"
 
-[tool.ruff.flake8-unused-arguments]
-ignore-variadic-names = true
-
 [tool.ruff.flake8-tidy-imports]
 [tool.ruff.flake8-tidy-imports.banned-api]
 "funcy.cached_property".msg = "use `from dvc.utils.objects import cached_property` instead."
+
+[tool.ruff.flake8-type-checking]
+exempt-modules = ["typing"]
+strict = true
+
+[tool.ruff.flake8-unused-arguments]
+ignore-variadic-names = true
 
 [tool.pytest.ini_options]
 log_level = "debug"
@@ -264,11 +269,9 @@ ignore_missing_imports = true
 
 [tool.pylint.message_control]
 disable = [
-    "format", "refactoring", "spelling", "design",
-    "invalid-name", "duplicate-code", "fixme",
-    "unused-wildcard-import", "cyclic-import", "wrong-import-order",
+    "format", "refactoring", "spelling", "design", "invalid-name", "fixme",
+    "duplicate-code", "unused-wildcard-import", "cyclic-import", "wrong-import-order",
     "wrong-import-position", "ungrouped-imports", "multiple-imports",
-    "logging-format-interpolation", "logging-fstring-interpolation",
     "missing-function-docstring", "missing-module-docstring",
     "missing-class-docstring", "raise-missing-from", "import-outside-toplevel",
 ]

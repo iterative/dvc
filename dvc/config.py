@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING, Dict, Optional
 from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
-from dvc.types import DictStrAny, StrPath
 
 from .utils.objects import cached_property
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
+    from dvc.types import DictStrAny, StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +92,10 @@ class Config(dict):
 
     def __init__(
         self,
-        dvc_dir: Optional[StrPath] = None,
+        dvc_dir: Optional["StrPath"] = None,
         validate: bool = True,
         fs: Optional["FileSystem"] = None,
-        config: Optional[DictStrAny] = None,
+        config: Optional["DictStrAny"] = None,
     ):  # pylint: disable=super-init-not-called
         from dvc.fs import LocalFileSystem
 
@@ -153,7 +153,9 @@ class Config(dict):
         with open(config_file, "w+", encoding="utf-8"):
             return Config(dvc_dir)
 
-    def load(self, validate: bool = True, config: Optional[DictStrAny] = None):
+    def load(
+        self, validate: bool = True, config: Optional["DictStrAny"] = None
+    ):
         """Loads config from all the config files.
 
         Raises:

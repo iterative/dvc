@@ -12,7 +12,7 @@ class Annotation:
     PARAM_META: ClassVar[str] = "meta"
 
     desc: Optional[str] = None
-    type: Optional[str] = None
+    type: Optional[str] = None  # noqa: A003
     labels: List[str] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
 

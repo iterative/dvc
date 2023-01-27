@@ -275,7 +275,7 @@ class Repo:
             new.check_graph()
 
     @staticmethod
-    def open(url, *args, **kwargs):
+    def open(url, *args, **kwargs):  # noqa: A003
         if url is None:
             url = os.getcwd()
 

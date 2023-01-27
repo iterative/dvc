@@ -65,7 +65,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             try:
                 raise ValueError
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("message")
 
             expected = "{red}ERROR{nc}: message".format(**colors)
@@ -76,7 +76,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("")
 
             expected = "{red}ERROR{nc}: description".format(**colors)
@@ -87,7 +87,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("message")
 
             expected = "{red}ERROR{nc}: message - description".format(**colors)
@@ -98,7 +98,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 stack_trace = traceback.format_exc()
                 logger.exception("")
 
@@ -144,7 +144,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 stack_trace = traceback.format_exc()
                 logger.exception("something", extra={"tb_only": True})
 

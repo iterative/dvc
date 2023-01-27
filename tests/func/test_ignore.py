@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -9,7 +10,6 @@ from dvc.output import OutputIsIgnoredError
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.testing.tmp_dir import TmpDir
-from dvc.types import List
 from dvc_data.hashfile.build import IgnoreInCollectedDirError
 from dvc_data.hashfile.utils import get_mtime_and_size
 

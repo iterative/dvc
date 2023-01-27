@@ -13,10 +13,10 @@ from typing import (
 )
 
 from dvc.exceptions import DvcException
-from dvc.types import StrPath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.types import StrPath
 
     from .backend.base import BaseMachineBackend
 
@@ -76,7 +76,7 @@ class MachineBackends(Mapping):
     def __init__(
         self,
         selected: Optional[Iterable[str]],
-        tmp_dir: StrPath,
+        tmp_dir: "StrPath",
         **kwargs,
     ) -> None:
         selected = selected or list(self.DEFAULT)

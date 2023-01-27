@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.output import Output
     from dvc.repo import Repo
-    from dvc.types import DictAny, DictStrAny, StrPath
+    from dvc.types import DictStrAny, StrPath
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
@@ -424,7 +424,7 @@ def _adjust_sources(fs, plot_props, config_dir):
 def _resolve_definitions(
     fs: "FileSystem",
     targets: List[str],
-    props: "DictAny",
+    props: Dict[str, Any],
     config_path: "StrPath",
     definitions: "DictStrAny",
     onerror: Optional[Callable[[Any], Any]] = None,

@@ -25,9 +25,7 @@ class CmdCommit(CmdBase):
                 )
             except DvcException:
                 logger.exception(
-                    "failed to commit{}".format(
-                        (" " + target) if target else ""
-                    )
+                    "failed to commit%s", (" " + target) if target else ""
                 )
                 return 1
         return 0

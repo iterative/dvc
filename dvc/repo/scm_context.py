@@ -133,7 +133,7 @@ class SCMContext:
             and logger.isEnabledFor(logging.INFO)
         ):
             add_cmd = self._make_git_add_cmd(self.files_to_track)
-            logger.info(f"\nTo track the changes with git, run:\n\n{add_cmd}")
+            logger.info("\nTo track the changes with git, run:\n\n%s", add_cmd)
             logger.info(
                 "\nTo enable auto staging, run:\n\n"
                 "\tdvc config core.autostage true"
