@@ -224,7 +224,7 @@ class VegaConverter(Converter):
             )
 
         all_datapoints = []
-        if len(ys) > 1:
+        if ys:
             all_y_files, all_y_fields = list(zip(*ys))
             all_y_fields = set(all_y_fields)
             all_y_files = set(all_y_files)
