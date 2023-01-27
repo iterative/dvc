@@ -59,7 +59,9 @@ def _diff(
     *,
     granular: bool = False,
     not_in_cache: bool = False,
+    not_in_remote: bool = False,
 ) -> Dict[str, List[str]]:
+    from dvc_data.index import StorageError
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
 
     ret: Dict[str, List[str]] = {}
@@ -101,6 +103,17 @@ def _diff(
         ):
             # NOTE: emulating previous behaviour
             _add_change("not_in_cache", change)
+
+        try:
+            if (
+                not_in_remote
+                and change.old
+                and change.old.hash_info
+                and not old.storage_map.remote_exists(change.old)
+            ):
+                _add_change("not_in_remote", change)
+        except StorageError:
+            pass
 
         _add_change(change.typ, change)
 
@@ -177,6 +190,7 @@ def _diff_head_to_index(
 
 class Status(TypedDict):
     not_in_cache: List[str]
+    not_in_remote: List[str]
     committed: Dict[str, List[str]]
     uncommitted: Dict[str, List[str]]
     untracked: List[str]
@@ -203,12 +217,20 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> List[str]
     return [repo.fs.path.relpath(file, start) for file in files]
 
 
-def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
+def status(
+    repo: "Repo",
+    untracked_files: str = "no",
+    not_in_remote: bool = False,
+    **kwargs: Any,
+) -> Status:
     from dvc.scm import NoSCMError, SCMError
 
     head = kwargs.pop("head", "HEAD")
-    uncommitted_diff = _diff_index_to_wtree(repo, **kwargs)
-    not_in_cache = uncommitted_diff.pop("not_in_cache", [])
+    uncommitted_diff = _diff_index_to_wtree(
+        repo,
+        not_in_remote=not_in_remote,
+        **kwargs,
+    )
     unchanged = set(uncommitted_diff.pop("unchanged", []))
 
     try:
@@ -223,7 +245,8 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
     untracked = _transform_git_paths_to_dvc(repo, untracked)
     # order matters here
     return Status(
-        not_in_cache=not_in_cache,
+        not_in_cache=uncommitted_diff.pop("not_in_cache", []),
+        not_in_remote=uncommitted_diff.pop("not_in_remote", []),
         committed=committed_diff,
         uncommitted=uncommitted_diff,
         untracked=untracked,

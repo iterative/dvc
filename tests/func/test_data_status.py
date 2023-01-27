@@ -13,6 +13,7 @@ EMPTY_STATUS = {
     "uncommitted": {},
     "git": {},
     "not_in_cache": [],
+    "not_in_remote": [],
     "unchanged": [],
     "untracked": [],
 }
@@ -81,6 +82,7 @@ def test_directory(M, tmp_dir, dvc, scm):
     }
 
     assert dvc.data_status(granular=True, untracked_files="all") == {
+        **EMPTY_STATUS,
         "committed": {
             "added": M.unordered(
                 join("dir", "bar"),
@@ -392,6 +394,42 @@ def test_missing_dir_object_from_index(M, tmp_dir, dvc, scm):
         },
         "uncommitted": {"unknown": [join("dir", "foobar")]},
         "not_in_cache": [join("dir", "")],
+        "git": M.dict(),
+    }
+
+
+def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    tmp_dir.dvc_gen("foobar", "foobar")
+
+    assert dvc.data_status(untracked_files="all", not_in_remote=True) == {
+        **EMPTY_STATUS,
+        "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
+        "committed": {"added": M.unordered("foobar", join("dir", ""))},
+        "not_in_remote": M.unordered("foobar", join("dir", "")),
+        "git": M.dict(),
+    }
+
+    assert dvc.data_status(
+        granular=True, untracked_files="all", not_in_remote=True
+    ) == {
+        **EMPTY_STATUS,
+        "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
+        "committed": {
+            "added": M.unordered(
+                "foobar",
+                join("dir", ""),
+                join("dir", "foo"),
+                join("dir", "bar"),
+            )
+        },
+        "uncommitted": {},
+        "not_in_remote": M.unordered(
+            "foobar",
+            join("dir", ""),
+            join("dir", "foo"),
+            join("dir", "bar"),
+        ),
         "git": M.dict(),
     }
 

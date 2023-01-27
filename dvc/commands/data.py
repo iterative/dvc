@@ -21,12 +21,14 @@ logger = logging.getLogger(__name__)
 
 class CmdDataStatus(CmdBase):
     COLORS = {
+        "not_in_remote": "red",
         "not_in_cache": "red",
         "committed": "green",
         "uncommitted": "yellow",
         "untracked": "cyan",
     }
     LABELS = {
+        "not_in_remote": "Not in remote",
         "not_in_cache": "Not in cache",
         "committed": "DVC committed changes",
         "uncommitted": "DVC uncommitted changes",
@@ -34,6 +36,7 @@ class CmdDataStatus(CmdBase):
         "unchanged": "DVC unchanged files",
     }
     HINTS = {
+        "not_in_remote": ('use "dvc push <file>..." to upload files',),
         "not_in_cache": ('use "dvc fetch <file>..." to download files',),
         "committed": ("git commit the corresponding dvc files to update the repo",),
         "uncommitted": (
@@ -114,6 +117,7 @@ class CmdDataStatus(CmdBase):
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
+                not_in_remote=self.args.not_in_remote,
             )
 
         if not self.args.unchanged:
@@ -238,6 +242,12 @@ def add_parser(subparsers, parent_parser):
         const="all",
         nargs="?",
         help="Show untracked files.",
+    )
+    data_status_parser.add_argument(
+        "--not-in-remote",
+        action="store_true",
+        default=False,
+        help="Show files missing from remote.",
     )
     data_status_parser.set_defaults(func=CmdDataStatus)
 
