@@ -1,10 +1,10 @@
 import logging
 from collections import defaultdict
+from typing import Optional
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
-from dvc.types import Optional
 
 from .utils import exp_refs_by_baseline
 

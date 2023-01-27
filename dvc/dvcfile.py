@@ -21,7 +21,6 @@ from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileIsNotDvcFileError,
 )
-from dvc.types import StrOrBytesPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.objects import cached_property
@@ -29,6 +28,7 @@ from dvc.utils.serialize import dump_yaml, modify_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.types import StrOrBytesPath
 
     from .parsing import DataResolver
     from .stage import Stage
@@ -179,7 +179,8 @@ class FileMixin:
             **kwargs,
         )
 
-    def remove(self, force=False):  # pylint: disable=unused-argument
+    # pylint: disable-next=unused-argument
+    def remove(self, force=False):  # noqa: ARG002
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self.path)
 
@@ -219,7 +220,8 @@ class SingleStageFile(FileMixin):
         dump_yaml(self.path, serialize.to_single_stage_file(stage, **kwargs))
         self.repo.scm_context.track_file(self.relpath)
 
-    def remove_stage(self, stage):  # pylint: disable=unused-argument
+    # pylint: disable-next=unused-argument
+    def remove_stage(self, stage):  # noqa: ARG002
         self.remove()
 
     def merge(self, ancestor, other, allowed=None):
@@ -465,7 +467,7 @@ class Lockfile(FileMixin):
 
 
 def load_file(
-    repo: "Repo", path: StrOrBytesPath, **kwargs: Any
+    repo: "Repo", path: "StrOrBytesPath", **kwargs: Any
 ) -> Union[ProjectFile, SingleStageFile]:
     _, ext = os.path.splitext(path)
     if ext in (".yaml", ".yml"):

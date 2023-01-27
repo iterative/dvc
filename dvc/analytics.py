@@ -102,17 +102,24 @@ def _runtime_info():
     """
     Gather information from the environment where DVC runs to fill a report.
     """
-    from iterative_telemetry import find_or_create_user_id
+    from iterative_telemetry import _generate_ci_id, find_or_create_user_id
 
     from dvc import __version__
     from dvc.utils import is_binary
+
+    ci_id = _generate_ci_id()
+    if ci_id:
+        group_id, user_id = ci_id
+    else:
+        group_id, user_id = None, find_or_create_user_id()
 
     return {
         "dvc_version": __version__,
         "is_binary": is_binary(),
         "scm_class": _scm_in_use(),
         "system_info": _system_info(),
-        "user_id": find_or_create_user_id(),
+        "user_id": user_id,
+        "group_id": group_id,
     }
 
 

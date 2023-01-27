@@ -93,7 +93,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         exc = self.exc.__cause__
 
         if not isinstance(exc, MarkedYAMLError):
-            raise ValueError("nothing to pretty-print here. :)")
+            raise ValueError("nothing to pretty-print here.")  # noqa: TRY004
 
         source = self.yaml_text.splitlines()
 

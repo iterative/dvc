@@ -18,7 +18,6 @@ from dvc.repo.experiments.refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
     EXPS_TEMP,
-    ExpRefInfo,
 )
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.scm import SCM, GitMergeError
@@ -31,6 +30,7 @@ if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
+    from dvc.repo.experiments.refs import ExpRefInfo
     from dvc.repo.experiments.stash import ExpStashEntry
     from dvc.scm import NoSCM
 
@@ -150,7 +150,9 @@ class TempDirExecutor(BaseLocalExecutor):
         with open(local_config, "w", encoding="utf-8") as fobj:
             fobj.write(f"[cache]\n    dir = {cache_dir}")
 
-    def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
+    def init_cache(
+        self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
+    ):
         """Initialize DVC cache."""
         self._config(repo.odb.repo.path)
 

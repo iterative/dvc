@@ -176,3 +176,30 @@ def test_dumpd_cloud_versioning_dir(mocker):
 
     dumpd = out.dumpd()
     assert dumpd == {"path": "path", "files": files}
+
+
+def test_version_aware_is_set_based_on_files(mocker):
+    import dvc.fs as dvc_fs
+
+    get_fs_config = mocker.spy(dvc_fs, "get_fs_config")
+
+    stage = mocker.MagicMock()
+    stage.repo.fs.version_aware = False
+    stage.repo.fs.PARAM_CHECKSUM = "etag"
+    files = [
+        {
+            "size": 3,
+            "version_id": "WYRG4BglP7pD.gEoJP6a4AqOhl.FRA.h",
+            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+            "relpath": "bar",
+        }
+    ]
+    Output(stage, "path", files=files)
+    # version_aware is passed as `True` if `files` is present`.
+    # This will be intentionally ignored in filesystems that don't handle it
+    # in `_prepare_credentials`.
+    assert get_fs_config.call_args_list[0][1] == {
+        "url": "path",
+        "version_aware": True,
+    }

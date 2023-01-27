@@ -19,7 +19,6 @@ from funcy import compact, lremove, lsplit
 
 from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
-from dvc.types import OptStr
 
 if TYPE_CHECKING:
     from dvc.dvcfile import ProjectFile, SingleStageFile
@@ -47,7 +46,7 @@ def _prompts(
     ] = None,
     allow_omission: bool = True,
     stream: Optional[TextIO] = None,
-) -> Dict[str, OptStr]:
+) -> Dict[str, Optional[str]]:
     from dvc.ui.prompt import Prompt
 
     defaults = defaults or {}

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, AnyStr, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, AnyStr, Dict, List, Union
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -8,7 +8,5 @@ BytesPath = Union[bytes, "PathLike[bytes]"]
 GenericPath = Union[AnyStr, "PathLike[AnyStr]"]
 StrOrBytesPath = Union[str, bytes, "PathLike[str]", "PathLike[bytes]"]
 
-OptStr = Optional[str]
 TargetType = Union[List[str], str]
 DictStrAny = Dict[str, Any]
-DictAny = Dict[Any, Any]
