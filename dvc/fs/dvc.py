@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.types import StrPath
 
-
 logger = logging.getLogger(__name__)
 
 RepoFactory = Union[Callable[..., "Repo"], Type["Repo"]]
