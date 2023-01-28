@@ -142,9 +142,9 @@ def test_parse_target(inp, out, default):
 
 
 def test_hint_on_lockfile():
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="Did you mean: `dvc.yaml:name`?") as e:
         assert parse_target("dvc.lock:name")
-    assert "dvc.yaml:name" in str(exc.value)
+    assert "dvc.yaml:name" in str(e.value)
 
 
 @pytest.mark.parametrize(

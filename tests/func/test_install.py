@@ -40,7 +40,7 @@ class TestInstall:
     def test_fail_if_hook_exists(self, scm, dvc):
         self._hook("post-checkout").write_text("hook content")
 
-        with pytest.raises(DvcException) as exc_info:
+        with pytest.raises(DvcException) as exc_info:  # noqa: PT011
             dvc.install()
 
         assert escape_ansi(str(exc_info.value)) == (

@@ -187,7 +187,7 @@ def test_queue_iter_done_task(test_queue, mocker, status):
         ]
 
     elif status == "SUCCESS":
-        with pytest.raises(DvcException):
+        with pytest.raises(DvcException, match="Invalid experiment"):
             assert list(test_queue.iter_success())
 
 

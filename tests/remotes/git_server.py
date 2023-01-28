@@ -44,7 +44,7 @@ def git_server(test_config, docker_compose, docker_services):
 def git_ssh_connection(git_server):
     from sshfs import SSHFileSystem
 
-    yield SSHFileSystem(
+    return SSHFileSystem(
         host=git_server["host"],
         port=git_server["port"],
         username=TEST_SSH_USER,

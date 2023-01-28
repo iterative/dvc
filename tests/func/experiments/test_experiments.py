@@ -32,7 +32,8 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
     )
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
-    assert ref_info and ref_info.baseline_sha == baseline
+    assert ref_info
+    assert ref_info.baseline_sha == baseline
 
     new_mock.assert_called_once()
     fs = scm.get_fs(exp)
@@ -131,8 +132,8 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     with pytest.raises(ApplyConflictError):
         dvc.experiments.apply(exp_b, force=False)
         # failed apply should revert everything to prior state
-        assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-        assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
     dvc.experiments.apply("foo")
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"

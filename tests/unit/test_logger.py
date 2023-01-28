@@ -20,12 +20,12 @@ colors = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def dt(mocker):
     mocker.patch(
         "time.time", return_value=time.mktime(datetime(2020, 2, 2).timetuple())
     )
-    yield "2020-02-02 00:00:00,000"
+    return "2020-02-02 00:00:00,000"
 
 
 class TestColorFormatter:

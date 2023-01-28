@@ -16,8 +16,8 @@ def test_prompt_interrupt_message_not_interleaved(
     prompt = "should print exception in the next line"
     console = RichConsole(file=io.StringIO())
 
+    mocker.patch.object(console, "input", side_effect=side_effect)
     with pytest.raises(side_effect):
-        mocker.patch.object(console, "input", side_effect=side_effect)
         prompt_cls.ask(prompt=prompt, console=console)
     # as we are raising side_effect on the input, unfortunately we cannot
     # assert for the prompt string, only the newline.

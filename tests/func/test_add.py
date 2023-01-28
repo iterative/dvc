@@ -13,6 +13,7 @@ import dvc as dvc_module
 import dvc_data
 from dvc.annotations import Annotation
 from dvc.cli import main
+from dvc.config import ConfigError
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
@@ -97,7 +98,7 @@ def test_add_unicode(tmp_dir, dvc):
 
 
 def test_add_unsupported_file(dvc):
-    with pytest.raises(DvcException):
+    with pytest.raises(ConfigError, match="Unsupported URL type"):
         dvc.add("unsupported://unsupported")
 
 
@@ -810,7 +811,8 @@ def test_add_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
 
     (tmp_dir / "dir").symlink_to(target)
 
-    with pytest.raises(DvcException):
+    msg = "Cannot add files inside symlinked directories to DVC"
+    with pytest.raises(DvcException, match=msg):
         dvc.add("dir")
 
 
@@ -826,7 +828,8 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
 
     (tmp_dir / "dir").symlink_to(target)
 
-    with pytest.raises(DvcException):
+    msg = "Cannot add files inside symlinked directories to DVC"
+    with pytest.raises(DvcException, match=msg):
         dvc.add(os.path.join("dir", "foo"))
 
 
@@ -895,7 +898,7 @@ def test_add_long_fname(tmp_dir, dvc):
 
     # nothing we can do in this case, as the resulting dvcfile
     # will definitely exceed NAME_MAX
-    with pytest.raises(OSError) as info:
+    with pytest.raises(OSError, match=f"File name too long: .*{name}") as info:
         dvc.add(os.path.join("data", name))
     assert info.value.errno == errno.ENAMETOOLONG
 
@@ -939,8 +942,8 @@ def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, remote):
     assert not os.path.exists(tmp_foo)
     assert foo.read_text() == "foo"
 
+    tmp_bar = tmp_abs_dir / "bar"
     with pytest.raises(StageExternalOutputsError):
-        tmp_bar = tmp_abs_dir / "bar"
         dvc.add(str(tmp_foo), out=str(tmp_bar), to_remote=True)
 
 
@@ -1108,9 +1111,8 @@ def test_add_does_not_remove_stage_file_on_failure(
         side_effect=DvcException(exc_msg),
     )
 
-    with pytest.raises(DvcException) as exc_info:
+    with pytest.raises(DvcException, match=exc_msg):
         dvc.add("foo")
-    assert str(exc_info.value) == exc_msg
     assert (tmp_dir / "foo.dvc").exists()
     assert (tmp_dir / stage.path).read_text() == dvcfile_contents
 

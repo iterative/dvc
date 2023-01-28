@@ -12,7 +12,7 @@ from tests.func.parsing.test_errors import escape_ansi
 
 @pytest.fixture
 def mocked_status():
-    yield Status(
+    return Status(
         not_in_cache=["notincache"],
         committed={
             "added": ["dir/bar", "dir/foo"],
