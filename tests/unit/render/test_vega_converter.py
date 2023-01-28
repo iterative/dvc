@@ -379,6 +379,104 @@ def test_finding_lists(dictionary, expected_result):
             },
             id="multi_source_y_single_x",
         ),
+        pytest.param(
+            {
+                "dir/f": {"metric": [{"v": 1, "v2": 0.1}]},
+                "dir/f2": {"metric": [{"v": 1, "v2": 0.1}]},
+            },
+            {"y": {"dir/f": ["v2"], "dir/f2": ["v2"]}, "x": "v"},
+            [
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f2",
+                        "field": "v2",
+                    },
+                },
+            ],
+            {
+                "x": "v",
+                "y": "v2",
+                "x_label": "v",
+                "y_label": "v2",
+            },
+            id="multi_file_y_same_prefix",
+        ),
+        pytest.param(
+            {
+                "f": {
+                    "metric": [
+                        {"prefix/v": 1, "prefix/v2": 0.1},
+                        {"prefix/v": 2, "prefix/v2": 0.2},
+                    ]
+                }
+            },
+            {"y": {"f": ["prefix/v", "prefix/v2"]}},
+            [
+                {
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                    "dvc_inferred_y_value": 1,
+                    "prefix/v": 1,
+                    "prefix/v2": 0.1,
+                    "step": 0,
+                },
+                {
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                    "dvc_inferred_y_value": 2,
+                    "prefix/v": 2,
+                    "prefix/v2": 0.2,
+                    "step": 1,
+                },
+                {
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "dvc_inferred_y_value": 0.1,
+                    "prefix/v2": 0.1,
+                    "prefix/v": 1,
+                    "step": 0,
+                },
+                {
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "prefix/v": 2,
+                    "prefix/v2": 0.2,
+                    "dvc_inferred_y_value": 0.2,
+                    "step": 1,
+                },
+            ],
+            {
+                "x": "step",
+                "y": "dvc_inferred_y_value",
+                "y_label": "y",
+                "x_label": "step",
+            },
+            id="multi_field_y_same_prefix",
+        ),
     ],
 )
 def test_convert(
