@@ -124,7 +124,7 @@ Definition = Union["ForeachDefinition", "EntryDefinition"]
 
 
 def make_definition(
-    resolver: "DataResolver", name: str, definition: "DictStrAny", **kwargs
+    resolver: "DataResolver", name: str, definition: dict, **kwargs
 ) -> Definition:
     args = resolver, resolver.context, name, definition
     if FOREACH_KWD in definition:
@@ -318,7 +318,7 @@ class ForeachDefinition:
         resolver: DataResolver,
         context: Context,
         name: str,
-        definition: "DictStrAny",
+        definition: dict,
         where: str = STAGES_KWD,
     ):
         self.resolver = resolver
@@ -392,7 +392,7 @@ class ForeachDefinition:
         """Convert sequence to Mapping with keys normalized."""
         iterable = self.resolved_iterable
         if isinstance(iterable, Mapping):
-            return iterable
+            return {str(k): v for k, v in iterable.items()}
 
         assert isinstance(iterable, Sequence)
         if any(map(is_map_or_seq, iterable)):
