@@ -276,10 +276,8 @@ class VegaConverter(Converter):
                         "They have to have same length."
                     )
 
-            y_file_short = y_file[len(common_file_prefix) :].strip(os.path.sep)
-            y_field_short = y_field[len(common_field_prefix) :].strip(
-                os.path.sep
-            )
+            y_file_short = y_file[len(common_file_prefix) :].strip("/\\")
+            y_field_short = y_field[len(common_field_prefix) :].strip("/\\")
             _update_all(
                 datapoints,
                 update_dict={
