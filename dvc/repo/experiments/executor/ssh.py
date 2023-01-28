@@ -22,11 +22,10 @@ from .base import BaseExecutor, ExecutorInfo, ExecutorResult, TaskStatus
 if TYPE_CHECKING:
     from queue import Queue
 
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments.refs import ExpRefInfo
     from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
 

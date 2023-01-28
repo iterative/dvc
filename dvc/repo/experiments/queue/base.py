@@ -44,11 +44,10 @@ from dvc.utils.objects import cached_property
 from .utils import get_remote_executor_refs
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
     from dvc.repo.experiments.executor.base import ExecutorResult
+    from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +118,9 @@ class BaseStashQueue(ABC):
 
     @property
     def scm(self) -> "Git":
+        from dvc.scm import Git
+
+        assert isinstance(self.repo.scm, Git)
         return self.repo.scm
 
     @cached_property
@@ -433,6 +435,7 @@ class BaseStashQueue(ABC):
                         name=name,
                     )
                     stash_rev = self.stash.push(message=msg)
+                    assert stash_rev
                     logger.debug(
                         (
                             "Stashed experiment '%s' with baseline '%s' "

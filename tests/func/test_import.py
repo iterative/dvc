@@ -3,7 +3,6 @@ import os
 
 import pytest
 from funcy import first
-from scmrepo.git import Git
 
 from dvc.annotations import Annotation
 from dvc.config import NoRemoteError
@@ -11,6 +10,7 @@ from dvc.dvcfile import load_file
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.fs import system
 from dvc.odbmgr import ODBManager
+from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove

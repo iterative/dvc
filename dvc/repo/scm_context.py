@@ -18,9 +18,8 @@ from dvc.utils import relpath
 from dvc.utils.collections import ensure_list
 
 if TYPE_CHECKING:
-    from scmrepo.base import Base
-
     from dvc.repo import Repo
+    from dvc.scm import Base
 
 
 logger = logging.getLogger(__name__)

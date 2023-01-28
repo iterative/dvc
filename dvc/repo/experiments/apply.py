@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
+from dvc.scm import Git
 from dvc.utils.fs import remove
 
 from .exceptions import (
@@ -16,8 +17,6 @@ from .executor.base import BaseExecutor
 from .refs import EXEC_APPLY
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
 
@@ -36,6 +35,7 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):  # noqa: C901
 
     is_stash: bool = False
 
+    assert isinstance(repo.scm, Git)
     try:
         exp_rev = resolve_rev(repo.scm, rev)
         exps.check_baseline(exp_rev)
@@ -90,6 +90,7 @@ def _apply_workspace(repo: "Repo", rev: str, force: bool):
     from scmrepo.exceptions import MergeConflictError
     from scmrepo.exceptions import SCMError as _SCMError
 
+    assert isinstance(repo.scm, Git)
     if repo.scm.is_dirty(untracked_files=True):
         logger.debug("Stashing workspace")
         stash_rev: Optional[str] = repo.scm.stash.push(include_untracked=True)

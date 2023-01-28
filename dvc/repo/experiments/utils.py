@@ -17,11 +17,10 @@ from typing import (
     Union,
 )
 
-from scmrepo.git import Git
-
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
 from dvc.rwlock import rwlock
+from dvc.scm import Git
 
 from .refs import (
     EXEC_APPLY,

@@ -1,9 +1,8 @@
 import os
 from unittest.mock import ANY
 
-from scmrepo.git import Git
-
 from dvc.external_repo import CLONES, external_repo
+from dvc.scm import Git
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils import relpath
 from dvc.utils.fs import remove

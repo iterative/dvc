@@ -77,7 +77,7 @@ def _collect_rows(  # noqa: C901
     fill_value=FILL_VALUE,
     iso=False,
 ):
-    from scmrepo.git import Git
+    from dvc.scm import Git
 
     if sort_by:
         sort_path, sort_name, sort_type = _sort_column(

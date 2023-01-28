@@ -5,8 +5,9 @@ from . import FileSystem
 
 if TYPE_CHECKING:
     from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
-    from scmrepo.git import Git
     from scmrepo.git.objects import GitTrie
+
+    from dvc.scm import Git
 
 
 class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
