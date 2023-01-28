@@ -130,8 +130,7 @@ class ParamsDependency(Dependency):
                     and list(actual[param]) == info[param]
                 ):
                     continue
-                else:
-                    st = "modified"
+                st = "modified"
             else:
                 continue
 

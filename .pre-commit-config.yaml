@@ -60,6 +60,7 @@ repos:
           - flake8-comprehensions
           - flake8-debugger
           - flake8-string-format
+          - flake8-typing-imports
   - repo: local
     hooks:
     - id: mypy

@@ -504,9 +504,8 @@ def build_data_index(
                 # NOTE: whether the root will be returned by build_entries
                 # depends on the filesystem (e.g. local doesn't, but s3 does).
                 continue
-            else:
-                entry.key = key + entry.key
 
+            entry.key = key + entry.key
             data.add(entry)
 
         if compute_hash:
