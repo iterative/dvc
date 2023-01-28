@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 
 from funcy import get_in, lcat, once, project
 
@@ -20,6 +20,7 @@ from .utils import fill_stage_dependencies, resolve_paths
 
 if TYPE_CHECKING:
     from dvc.dvcfile import ProjectFile, SingleStageFile
+    from dvc.output import Output
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,10 @@ class StageLoader(Mapping):
         if not lock_data:
             return
 
+        from dvc.output import merge_file_meta_from_cloud
+
         assert isinstance(lock_data, dict)
-        items = chain(
+        items: Iterable[Tuple[str, "Output"]] = chain(
             ((StageParams.PARAM_DEPS, dep) for dep in stage.deps),
             ((StageParams.PARAM_OUTS, out) for out in stage.outs),
         )
@@ -74,12 +77,15 @@ class StageLoader(Mapping):
             info = get_in(checksums, [key, path], {})
             info = info.copy()
             info.pop("path", None)
-            item.meta = Meta.from_dict(info)
+
+            item.meta = Meta.from_dict(merge_file_meta_from_cloud(info))
             hash_value = getattr(item.meta, item.hash_name, None)
             item.hash_info = HashInfo(item.hash_name, hash_value)
-            if item.hash_info and item.hash_info.isdir:
-                item.meta.isdir = True
-            item.files = get_in(checksums, [key, path, item.PARAM_FILES])
+            files = get_in(checksums, [key, path, item.PARAM_FILES], None)
+            if files:
+                item.files = [merge_file_meta_from_cloud(f) for f in files]
+            # pylint: disable-next=protected-access
+            item._compute_meta_hash_info_from_files()
 
     @classmethod
     def load_stage(

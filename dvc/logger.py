@@ -68,7 +68,7 @@ class LoggingException(Exception):
 
 def excludeFilter(level):
     class ExcludeLevelFilter(logging.Filter):
-        def filter(self, record):
+        def filter(self, record):  # noqa: A003
             return record.levelno < level
 
     return ExcludeLevelFilter
@@ -94,7 +94,7 @@ class ColorFormatter(logging.Formatter):
         "CRITICAL": colorama.Fore.RED,
     }
 
-    def format(self, record):
+    def format(self, record):  # noqa: A003
         record.message = record.getMessage()
         msg = self.formatMessage(record)
 

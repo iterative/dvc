@@ -70,7 +70,7 @@ class RichCallback(Callback):
             self.progress.clear_task(self.task)
         self._stack.close()
 
-    def call(self, hook_name=None, **kwargs):
+    def call(self, hook_name=None, **kwargs):  # noqa: ARG002
         self.progress.update(
             self.task,
             completed=self.value,

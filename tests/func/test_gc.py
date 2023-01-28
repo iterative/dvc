@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import shutil
@@ -327,3 +328,29 @@ def test_gc_rev_num(tmp_dir, scm, dvc):
             assert not cache.exists()
         else:
             assert cache.read_text() == str(i)
+
+
+def test_date(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("testfile", "content", commit="add testfile")
+
+    now = datetime.datetime.now()
+    datestamp = now.date().replace(day=now.day + 1).isoformat()
+
+    tmp_dir.dvc_gen("testfile", "modified", commit="modified")
+
+    dvc.gc(commit_date=datestamp)
+
+    assert _count_files(dvc.odb.local.path) == 1
+    assert dvc.odb.local.exists(
+        "9ae73c65f418e6f79ceb4f0e4a4b98d5"  # "modified"
+    )
+
+    tmp_dir.dvc_gen("testfile", "modified, again", commit="modify")
+
+    datestamp = now.date().replace(day=now.day - 1).isoformat()
+    dvc.gc(commit_date=datestamp)
+    assert _count_files(dvc.odb.local.path) == 2
+    assert dvc.odb.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")
+    assert dvc.odb.local.exists(
+        "3bcf3b1be3e794a97a5a6b93a005784c"  # "modified, again"
+    )

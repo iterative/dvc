@@ -20,7 +20,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
     for repo in subrepos:
         make_subrepo(repo, erepo_dir.scm)
 
-    for repo in subrepos + [erepo_dir]:
+    for repo in [*subrepos, erepo_dir]:
         with repo.chdir():
             repo.scm_gen("foo", "foo", commit=f"git add {repo}/foo")
             repo.dvc_gen("bar", "bar", commit=f"dvc add {repo}/bar")

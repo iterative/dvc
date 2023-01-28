@@ -1,11 +1,10 @@
 import logging
 import os
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from scmrepo.exceptions import SCMError
 
 from dvc.fs.dvc import DVCFileSystem
-from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
@@ -18,14 +17,17 @@ from dvc.utils import (
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
+if TYPE_CHECKING:
+    from dvc.output import Output
+
 logger = logging.getLogger(__name__)
 
 
-def _is_metric(out: Output) -> bool:
+def _is_metric(out: "Output") -> bool:
     return bool(out.metric)
 
 
-def _to_fs_paths(metrics: List[Output]) -> List["str"]:
+def _to_fs_paths(metrics: List["Output"]) -> List["str"]:
     result = []
     for out in metrics:
         if out.metric:

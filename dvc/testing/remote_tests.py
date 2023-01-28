@@ -112,3 +112,134 @@ class TestRemote:
 
         dvc.pull(run_cache=True)
         assert list(stage_cache_dir.rglob("*")) == expected
+
+
+class TestRemoteVersionAware:
+    def test_file(
+        self, tmp_dir, dvc, remote_version_aware  # pylint: disable=W0613
+    ):
+        (stage,) = tmp_dir.dvc_gen("foo", "foo")
+
+        dvc.push()
+        assert "version_id" in (tmp_dir / "foo.dvc").read_text()
+        stage = stage.reload()
+        out = stage.outs[0]
+        assert out.meta.version_id
+
+        remove(dvc.odb.local.path)
+        remove(tmp_dir / "foo")
+
+        dvc.pull()
+        assert (tmp_dir / "foo").read_text() == "foo"
+
+    def test_dir(
+        self, tmp_dir, dvc, remote_version_aware  # pylint: disable=W0613
+    ):
+        (stage,) = tmp_dir.dvc_gen(
+            {
+                "data_dir": {
+                    "data_sub_dir": {"data_sub": "data_sub"},
+                    "data": "data",
+                    "empty": "",
+                }
+            }
+        )
+
+        dvc.push()
+        assert "files" in (tmp_dir / "data_dir.dvc").read_text()
+        assert "version_id" in (tmp_dir / "data_dir.dvc").read_text()
+        stage = stage.reload()
+        out = stage.outs[0]
+        assert out.files
+        for file in out.files:
+            assert file["version_id"]
+            assert file["remote"] == "upstream"
+
+        remove(dvc.odb.local.path)
+        remove(tmp_dir / "data_dir")
+
+        dvc.pull()
+        assert (tmp_dir / "data_dir" / "data").read_text() == "data"
+        assert (
+            tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
+        ).read_text() == "data_sub"
+
+
+class TestRemoteWorktree:
+    def test_file(
+        self, tmp_dir, dvc, remote_worktree  # pylint: disable=W0613
+    ):
+        (stage,) = tmp_dir.dvc_gen("foo", "foo")
+
+        dvc.push()
+        assert "version_id" in (tmp_dir / "foo.dvc").read_text()
+        stage = stage.reload()
+        out = stage.outs[0]
+        assert out.meta.version_id
+
+        remove(dvc.odb.local.path)
+        remove(tmp_dir / "foo")
+
+        dvc.pull()
+        assert (tmp_dir / "foo").read_text() == "foo"
+
+    def test_dir(self, tmp_dir, dvc, remote_worktree):  # pylint: disable=W0613
+        (stage,) = tmp_dir.dvc_gen(
+            {
+                "data_dir": {
+                    "data_sub_dir": {"data_sub": "data_sub"},
+                    "data": "data",
+                    "empty": "",
+                }
+            }
+        )
+
+        dvc.push()
+        assert "files" in (tmp_dir / "data_dir.dvc").read_text()
+        assert "version_id" in (tmp_dir / "data_dir.dvc").read_text()
+        stage = stage.reload()
+        out = stage.outs[0]
+        assert out.files
+        for file in out.files:
+            assert file["version_id"]
+            assert file["remote"] == "upstream"
+
+        remove(dvc.odb.local.path)
+        remove(tmp_dir / "data_dir")
+
+        dvc.pull()
+        assert (tmp_dir / "data_dir" / "data").read_text() == "data"
+        assert (
+            tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
+        ).read_text() == "data_sub"
+
+    def test_deletion(
+        self, tmp_dir, dvc, scm, remote_worktree  # pylint: disable=W0613
+    ):
+        tmp_dir.dvc_gen(
+            {
+                "data_dir": {
+                    "data_sub_dir": {"data_sub": "data_sub"},
+                    "data": "data",
+                    "empty": "",
+                }
+            }
+        )
+        dvc.push()
+        assert (remote_worktree / "data_dir" / "data").exists()
+        tmp_dir.scm_add([tmp_dir / "data_dir.dvc"], commit="v1")
+        v1 = scm.get_rev()
+        remove(tmp_dir / "data_dir" / "data")
+        dvc.add(str(tmp_dir / "data_dir"))
+
+        # data_dir/data should show as deleted in the remote
+        dvc.push()
+        tmp_dir.scm_add([tmp_dir / "data_dir.dvc"], commit="v2")
+        assert not (remote_worktree / "data_dir" / "data").exists()
+
+        remove(dvc.odb.local.path)
+        remove(tmp_dir / "data_dir")
+        # pulling the original pushed version should still succeed
+        scm.checkout(v1)
+        dvc.pull()
+        assert (tmp_dir / "data_dir" / "data").read_text() == "data"

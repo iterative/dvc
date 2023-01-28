@@ -45,13 +45,11 @@ class CmdGet(CmdBaseNoRepo):
             )
             return 0
         except CloneError:
-            logger.exception(f"failed to get '{self.args.path}'")
+            logger.exception("failed to get '%s'", self.args.path)
             return 1
         except DvcException:
             logger.exception(
-                "failed to get '{}' from '{}'".format(
-                    self.args.path, self.args.url
-                )
+                "failed to get '%s' from '%s'", self.args.path, self.args.url
             )
             return 1
 

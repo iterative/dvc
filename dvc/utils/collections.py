@@ -53,7 +53,7 @@ def apply_diff(src, dest):  # noqa: C901
                 elif value != dest[i]:
                     dest[i] = value
     else:
-        raise AssertionError(
+        raise AssertionError(  # noqa: TRY004
             "Can't apply diff from {} to {}".format(
                 src.__class__.__name__, dest.__class__.__name__
             )

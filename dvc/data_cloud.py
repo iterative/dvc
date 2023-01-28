@@ -25,14 +25,6 @@ class Remote:
 
         self.worktree: bool = config.pop("worktree", False)
         self.config = config
-        if self.worktree:
-            version_aware = self.config.get("version_aware")
-            if version_aware is False:
-                raise RemoteConfigError(
-                    "worktree remotes require version_aware cloud"
-                )
-            if version_aware is None:
-                self.fs.version_aware = True
 
     @cached_property
     def odb(self) -> "HashFileDB":
@@ -71,6 +63,16 @@ class DataCloud:
             from dvc.fs import get_cloud_fs
 
             cls, config, fs_path = get_cloud_fs(self.repo, name=name)
+
+            if config.get("worktree"):
+                version_aware = config.get("version_aware")
+                if version_aware is False:
+                    raise RemoteConfigError(
+                        "worktree remotes require version_aware cloud"
+                    )
+                if version_aware is None:
+                    config["version_aware"] = True
+
             fs = cls(**config)
             config["tmp_dir"] = self.repo.index_db_dir
             return Remote(name, fs_path, fs, **config)
@@ -110,7 +112,8 @@ class DataCloud:
             )
             logger.warning(
                 "Some of the cache files do not exist neither locally "
-                f"nor on remote. Missing cache files:\n{missing_desc}"
+                "nor on remote. Missing cache files:\n%s",
+                missing_desc,
             )
 
     def transfer(

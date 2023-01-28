@@ -242,9 +242,9 @@ def iter_revs(  # noqa: C901
 
             def _time_filter(rev):
                 try:
-                    if scm.resolve_commit(rev).commit_date >= commit_datestamp:
-                        return True
-                    return False
+                    return (
+                        scm.resolve_commit(rev).commit_time >= commit_datestamp
+                    )
                 except _SCMError:
                     return True
 
