@@ -42,13 +42,11 @@ def create_dvc_pipeline(tmp_dir, dvc):
     tmp_dir.scm_gen({"script.py": script}, commit="init")
     tmp_dir.dvc_gen({"dep": "content"}, commit="init dvc")
     dvc.run(
-        **{
-            "cmd": "python script.py {}".format(os.path.join("out", "file")),
-            "outs": [os.path.join("out", "file")],
-            "deps": ["dep"],
-            "fname": "out.dvc",
-            "single_stage": True,
-        }
+        cmd="python script.py {}".format(os.path.join("out", "file")),
+        outs=[os.path.join("out", "file")],
+        deps=["dep"],
+        fname="out.dvc",
+        single_stage=True,
     )
     tmp_dir.scm_add(["out.dvc"], commit="run")
     shutil.rmtree("out")

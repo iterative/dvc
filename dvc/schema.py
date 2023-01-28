@@ -4,7 +4,13 @@ from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.annotations import ANNOTATION_SCHEMA
-from dvc.output import CHECKSUMS_SCHEMA, DIR_FILES_SCHEMA, META_SCHEMA, Output
+from dvc.output import (
+    CHECKSUMS_SCHEMA,
+    CLOUD_SCHEMA,
+    DIR_FILES_SCHEMA,
+    META_SCHEMA,
+    Output,
+)
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
 from dvc.stage.params import StageParams
@@ -27,6 +33,7 @@ DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     Required("path"): str,
+    Output.PARAM_CLOUD: CLOUD_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
 LOCK_FILE_STAGE_SCHEMA = {

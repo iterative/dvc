@@ -10,12 +10,7 @@ from voluptuous import Invalid
 from dvc.exceptions import DvcException
 from dvc.lock import make_lock
 from dvc.repo.experiments.exceptions import ExpQueueEmptyError
-from dvc.repo.experiments.executor.base import (
-    BaseExecutor,
-    ExecutorInfo,
-    ExecutorResult,
-    TaskStatus,
-)
+from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
 from dvc.repo.experiments.refs import EXEC_BRANCH, WORKSPACE_STASH
 from dvc.repo.experiments.utils import get_exp_rwlock, to_studio_params
@@ -23,10 +18,13 @@ from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 
-from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
+from .base import BaseStashQueue, QueueEntry, QueueGetResult
 
 if TYPE_CHECKING:
     from dvc.repo.experiments import Experiments
+    from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorResult
+
+    from .base import QueueDoneResult
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +72,13 @@ class WorkspaceQueue(BaseStashQueue):
         # need to be handled via the queue
         raise NotImplementedError
 
-    def iter_done(self) -> Generator[QueueDoneResult, None, None]:
+    def iter_done(self) -> Generator["QueueDoneResult", None, None]:
         raise NotImplementedError
 
-    def iter_failed(self) -> Generator[QueueDoneResult, None, None]:
+    def iter_failed(self) -> Generator["QueueDoneResult", None, None]:
         raise NotImplementedError
 
-    def iter_success(self) -> Generator[QueueDoneResult, None, None]:
+    def iter_success(self) -> Generator["QueueDoneResult", None, None]:
         raise NotImplementedError
 
     def reproduce(self) -> Dict[str, Dict[str, str]]:
@@ -94,7 +92,7 @@ class WorkspaceQueue(BaseStashQueue):
         return results
 
     def _reproduce_entry(
-        self, entry: QueueEntry, executor: BaseExecutor
+        self, entry: QueueEntry, executor: "BaseExecutor"
     ) -> Dict[str, Dict[str, str]]:
         from dvc_studio_client.post_live_metrics import post_live_metrics
 
@@ -152,8 +150,8 @@ class WorkspaceQueue(BaseStashQueue):
     @staticmethod
     def collect_executor(  # pylint: disable=unused-argument
         exp: "Experiments",
-        executor: BaseExecutor,  # noqa: ARG004
-        exec_result: ExecutorResult,
+        executor: "BaseExecutor",  # noqa: ARG004
+        exec_result: "ExecutorResult",
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}
         exp_rev = exp.scm.get_ref(EXEC_BRANCH)
@@ -164,7 +162,7 @@ class WorkspaceQueue(BaseStashQueue):
 
         return results
 
-    def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+    def get_result(self, entry: QueueEntry) -> Optional["ExecutorResult"]:
         raise NotImplementedError
 
     def kill(self, revs: Collection[str]) -> None:
@@ -239,7 +237,10 @@ class WorkspaceQueue(BaseStashQueue):
                 remove(path)
             return False
 
-    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+    def get_running_exps(
+        self,
+        fetch_refs: bool = True,  # noqa: ARG002
+    ) -> Dict[str, Dict]:
         from dvc.utils.serialize import load_json
 
         assert self._EXEC_NAME

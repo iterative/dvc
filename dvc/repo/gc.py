@@ -72,7 +72,7 @@ def gc(
         for repo in all_repos:
             stack.enter_context(repo.lock)
 
-        for repo in all_repos + [self]:
+        for repo in [*all_repos, self]:
             for obj_ids in repo.used_objs(
                 all_branches=all_branches,
                 with_deps=with_deps,

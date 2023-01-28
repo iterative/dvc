@@ -121,7 +121,7 @@ class SSHExecutor(BaseExecutor):
 
     def init_git(
         self,
-        repo: "Repo",
+        repo: "Repo",  # noqa: ARG002
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",

@@ -28,13 +28,13 @@ class CmdImport(CmdBase):
                 jobs=self.args.jobs,
             )
         except CloneError:
-            logger.exception(f"failed to import '{self.args.path}'")
+            logger.exception("failed to import '%s'", self.args.path)
             return 1
         except DvcException:
             logger.exception(
-                "failed to import '{}' from '{}'.".format(
-                    self.args.path, self.args.url
-                )
+                "failed to import '%s' from '%s'.",
+                self.args.path,
+                self.args.url,
             )
             return 1
         return 0

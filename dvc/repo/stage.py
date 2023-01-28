@@ -18,7 +18,6 @@ if typing.TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.stage import PipelineStage, Stage
     from dvc.stage.loader import StageLoader
-    from dvc.types import OptStr
 
 PROJECT_FILE = "dvc.yaml"
 
@@ -61,7 +60,7 @@ def _collect_specific_target(
     target: str,
     with_deps: bool,
     recursive: bool,
-) -> Tuple[StageIter, "OptStr", "OptStr"]:
+) -> Tuple[StageIter, Optional[str], Optional[str]]:
     from dvc.dvcfile import is_valid_filename
 
     # Optimization: do not collect the graph for a specific target

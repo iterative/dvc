@@ -29,10 +29,9 @@ class CmdImportUrl(CmdBase):
             )
         except DvcException:
             logger.exception(
-                "failed to import {}. You could also try downloading "
-                "it manually, and adding it with `dvc add`.".format(
-                    self.args.url
-                )
+                "failed to import %s. You could also try downloading "
+                "it manually, and adding it with `dvc add`.",
+                self.args.url,
             )
             return 1
         return 0

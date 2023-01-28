@@ -39,7 +39,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     # FIXME check status output
     oids_exist = mocker.spy(LocalHashFileDB, "oids_exist")
 
-    assert main(["push"] + args) == 0
+    assert main(["push", *args]) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
@@ -52,7 +52,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     dvc.odb.local.clear()
     oids_exist.reset_mock()
 
-    assert main(["fetch"] + args) == 0
+    assert main(["fetch", *args]) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
@@ -64,7 +64,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
 
     oids_exist.reset_mock()
 
-    assert main(["pull"] + args) == 0
+    assert main(["pull", *args]) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
@@ -88,14 +88,14 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
 
     _list_oids_traverse = mocker.spy(HashFileDB, "_list_oids_traverse")
     # NOTE: check if remote gc works correctly on directories
-    assert main(["gc", "-cw", "-f"] + args) == 0
+    assert main(["gc", "-cw", "-f", *args]) == 0
     assert _list_oids_traverse.called
     assert all(
         _kwargs["jobs"] == 2 for (_args, _kwargs) in oids_exist.call_args_list
     )
     shutil.move(dvc.odb.local.path, dvc.odb.local.path + ".back")
 
-    assert main(["fetch"] + args) == 0
+    assert main(["fetch", *args]) == 0
 
     assert oids_exist.called
     assert all(
@@ -104,7 +104,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     )
 
     oids_exist.reset_mock()
-    assert main(["pull", "-f"] + args) == 0
+    assert main(["pull", "-f", *args]) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)

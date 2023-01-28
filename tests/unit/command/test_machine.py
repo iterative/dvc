@@ -118,7 +118,7 @@ def test_list(tmp_dir, mocker, show_origin):
     from dvc.ui import ui
 
     tmp_dir.gen(DATA)
-    cli_args = parse_args(["machine", "list"] + show_origin + ["foo"])
+    cli_args = parse_args(["machine", "list", *show_origin, "foo"])
     assert cli_args.func == CmdMachineList
     cmd = cli_args.func(cli_args)
     if show_origin:

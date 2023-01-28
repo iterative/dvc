@@ -3,8 +3,6 @@ from textwrap import dedent
 
 import pytest
 
-from dvc.repo.experiments.queue.celery import LocalCeleryQueue
-
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
     """\
@@ -156,7 +154,7 @@ def _thread_worker(app, **kwargs):
 
 
 @pytest.fixture
-def test_queue(tmp_dir, dvc, scm, mocker) -> LocalCeleryQueue:
+def test_queue(tmp_dir, dvc, scm, mocker):
     """Patches experiments celery queue for pytest testing.
 
     Test queue worker runs for the duration of the test in separate thread(s).

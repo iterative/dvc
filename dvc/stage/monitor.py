@@ -110,7 +110,7 @@ class Monitor:
                     try:
                         task.execute()
                         task.updated.set()
-                    except Exception:  # noqa: BLE001, pylint: disable=W0703
+                    except Exception:  # pylint: disable=broad-except
                         logger.exception(
                             "Error running '%s' task, '%s' will be aborted",
                             task.name,

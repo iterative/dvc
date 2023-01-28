@@ -1,28 +1,22 @@
 import os
 from collections import defaultdict
 from copy import copy
-from typing import (
-    TYPE_CHECKING,
-    ContextManager,
-    Dict,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple, Union
 
 from voluptuous import Required
 
 from dvc.prompt import confirm
-from dvc_data.hashfile.meta import Meta
 
 from .base import Dependency
 
 if TYPE_CHECKING:
+    from typing import ContextManager
+
     from dvc.output import Output
     from dvc.repo import Repo
     from dvc.stage import Stage
     from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.meta import Meta
     from dvc_data.hashfile.obj import HashFile
     from dvc_objects.db import ObjectDB
 
@@ -46,10 +40,10 @@ class RepoDependency(Dependency):
     ):
         self.def_repo = def_repo
         self._objs: Dict[str, "HashFile"] = {}
-        self._meta: Dict[str, Meta] = {}
+        self._meta: Dict[str, "Meta"] = {}
         super().__init__(stage, *args, **kwargs)
 
-    def _parse_path(self, fs, fs_path):
+    def _parse_path(self, fs, fs_path):  # noqa: ARG002
         return None
 
     @property
@@ -114,7 +108,9 @@ class RepoDependency(Dependency):
 
     def _get_used_and_obj(
         self, obj_only: bool = False, **kwargs
-    ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], Meta, "HashFile"]:
+    ) -> Tuple[
+        Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"
+    ]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.utils import as_posix

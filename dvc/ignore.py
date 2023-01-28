@@ -3,14 +3,17 @@ import os
 import re
 from collections import namedtuple
 from itertools import chain, groupby, takewhile
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import Trie
 
-from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
+from dvc.fs import Schemes, localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
+
+if TYPE_CHECKING:
+    from dvc.fs import AnyFSPath, FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -306,7 +309,7 @@ class DvcIgnoreFilter:
 
         return [fs_dict[name] for name in chain(dirs, nondirs)]
 
-    def walk(self, fs: FileSystem, path: AnyFSPath, **kwargs):
+    def walk(self, fs: "FileSystem", path: "AnyFSPath", **kwargs):
         detail = kwargs.get("detail", False)
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)
         if fs.protocol == Schemes.LOCAL:
@@ -330,7 +333,7 @@ class DvcIgnoreFilter:
         else:
             yield from fs.walk(path, **kwargs)
 
-    def find(self, fs: FileSystem, path: AnyFSPath, **kwargs):
+    def find(self, fs: "FileSystem", path: "AnyFSPath", **kwargs):
         if fs.protocol == Schemes.LOCAL:
             for root, _, files in self.walk(fs, path, **kwargs):
                 for file in files:
@@ -420,7 +423,7 @@ class DvcIgnoreFilter:
         return _no_match(target)
 
     def is_ignored(
-        self, fs: FileSystem, path: str, ignore_subrepos: bool = True
+        self, fs: "FileSystem", path: str, ignore_subrepos: bool = True
     ) -> bool:
         # NOTE: can't use self.check_ignore(path).match for now, see
         # https://github.com/iterative/dvc/issues/4555
