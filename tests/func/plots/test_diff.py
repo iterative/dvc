@@ -52,9 +52,8 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
 
 @pytest.mark.vscode
 def test_no_commits(tmp_dir):
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
+    from dvc.scm import Git
 
     git = Git.init(tmp_dir.fs_path)
     assert git.no_commits

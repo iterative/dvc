@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
     from dvc.machine import MachineManager
-    from dvc.scm import Base, Git, NoSCM
+    from dvc.scm import Git, NoSCM
     from dvc.stage import Stage
     from dvc.types import DictStrAny
     from dvc_data.hashfile.state import StateBase
@@ -171,7 +171,7 @@ class Repo:
         config: Optional["DictStrAny"] = None,
         url: Optional[str] = None,
         repo_factory: Optional[Callable] = None,
-        scm: Optional["Base"] = None,
+        scm: Optional[Union["Git", "NoSCM"]] = None,
     ):
         from dvc.config import Config
         from dvc.data_cloud import DataCloud

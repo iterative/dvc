@@ -87,9 +87,8 @@ class TmpDir(pathlib.Path):
         return self
 
     def init(self, *, scm=False, dvc=False, subdir=False):
-        from scmrepo.git import Git
-
         from dvc.repo import Repo
+        from dvc.scm import Git
 
         assert not scm or not hasattr(self, "scm")
         assert not dvc or not hasattr(self, "dvc")
@@ -158,7 +157,7 @@ class TmpDir(pathlib.Path):
 
     def commit(self, output_paths, msg):
         def to_gitignore(stage_path):
-            from scmrepo.git import Git
+            from dvc.scm import Git
 
             return os.path.join(os.path.dirname(stage_path), Git.GITIGNORE)
 

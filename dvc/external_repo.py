@@ -20,9 +20,9 @@ from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
-    from scmrepo import Git
-
     from dvc.types import StrPath
+
+    from .scm import Git
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +37,9 @@ def external_repo(
     cache_types: Optional[Collection[str]] = None,
     **kwargs,
 ) -> Iterator["Repo"]:
-    from scmrepo.git import Git
-
     from dvc.config import NoRemoteError
     from dvc.fs import GitFileSystem
+    from dvc.scm import Git
 
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
@@ -197,7 +196,7 @@ def _clone_default_branch(url, rev, for_write=False):  # noqa: C901
 
     The cloned is reactualized with git pull unless rev is a known sha.
     """
-    from scmrepo.git import Git
+    from dvc.scm import Git
 
     clone_path, shallow = CLONES.get(url) or (None, False)
 
@@ -274,7 +273,7 @@ def _merge_upstream(git: "Git"):
 
 
 def _git_checkout(repo_path, rev):
-    from scmrepo.git import Git
+    from dvc.scm import Git
 
     logger.debug("erepo: git checkout %s@%s", repo_path, rev)
     git = Git(repo_path)

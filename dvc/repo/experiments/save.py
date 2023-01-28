@@ -2,6 +2,8 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
+from dvc.scm import Git
+
 from .exceptions import ExperimentExistsError
 from .refs import ExpRefInfo
 from .utils import check_ref_format, get_random_exp_name
@@ -29,6 +31,8 @@ def _save_experiment(
     if repo.scm.get_ref(ref) and not force:
         raise ExperimentExistsError(ref_info.name, command="save")
 
+    assert isinstance(repo.scm, Git)
+
     repo.scm.add([], update=True)
     if include_untracked:
         repo.scm.add(include_untracked)
@@ -50,6 +54,8 @@ def save(
     Returns the saved experiment's SHAs.
     """
     logger.debug("Saving workspace in %s", os.getcwd())
+
+    assert isinstance(repo.scm, Git)
 
     _, _, untracked = repo.scm.status()
     if include_untracked:

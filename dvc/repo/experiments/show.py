@@ -20,13 +20,12 @@ from scmrepo.exceptions import SCMError as InnerScmError
 
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
-from dvc.scm import SCMError, iter_revs, resolve_rev
+from dvc.scm import Git, SCMError, iter_revs, resolve_rev
 from dvc.utils import error_handler, onerror_collect, relpath
 
 from .refs import ExpRefInfo
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
     from scmrepo.git.objects import GitCommit
 
     from dvc.repo import Repo
@@ -190,6 +189,7 @@ def _collect_branch(
     ref_info = ExpRefInfo(baseline_sha=baseline)
     commits: List[Tuple[str, "GitCommit", str, List[str]]] = []
 
+    assert isinstance(repo.scm, Git)
     for ref in repo.scm.iter_refs(base=str(ref_info)):
         try:
             commit = repo.scm.resolve_commit(ref)
@@ -413,6 +413,8 @@ def show(
         revs = ["HEAD"]
     if isinstance(revs, str):
         revs = [revs]
+
+    assert isinstance(repo.scm, Git)
 
     found_revs: Dict[str, List[str]] = {"workspace": []}
     found_revs.update(

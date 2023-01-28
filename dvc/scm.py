@@ -2,7 +2,16 @@
 import os
 from contextlib import contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, Iterator, List, Mapping, Optional
+from typing import (
+    TYPE_CHECKING,
+    Iterator,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Union,
+    overload,
+)
 
 from funcy import group_by
 from scmrepo.base import Base  # noqa: F401, pylint: disable=unused-import
@@ -81,8 +90,38 @@ def map_scm_exception(with_cause: bool = False) -> Iterator[None]:
         raise into
 
 
+@overload
 def SCM(
-    root_dir, search_parent_directories=True, no_scm=False
+    root_dir: str,
+    *,
+    search_parent_directories: bool = ...,
+    no_scm: Literal[False] = ...,
+) -> "Git":
+    ...
+
+
+@overload
+def SCM(
+    root_dir: str,
+    *,
+    search_parent_directories: bool = ...,
+    no_scm: Literal[True],
+) -> "NoSCM":
+    ...
+
+
+@overload
+def SCM(
+    root_dir: str,
+    *,
+    search_parent_directories: bool = ...,
+    no_scm: bool = ...,
+) -> Union["Git", "NoSCM"]:
+    ...
+
+
+def SCM(
+    root_dir, *, search_parent_directories=True, no_scm=False
 ):  # pylint: disable=invalid-name
     """Returns SCM instance that corresponds to a repo at the specified
     path.
