@@ -5,7 +5,12 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from funcy import first, last
 
 from dvc.exceptions import DvcException
-from dvc.render import FIELD_PREFIX, FILENAME_FIELD, INDEX_FIELD
+from dvc.render import (
+    FIELD_PREFIX,
+    FILENAME_FIELD,
+    INDEX_FIELD,
+    REVISION_FIELD,
+)
 
 from . import Converter
 
@@ -282,12 +287,25 @@ class VegaConverter(Converter):
 
             y_file_short = y_file[len(common_file_prefix) :].strip("/\\")
             y_field_short = y_field[len(common_field_prefix) :].strip("/\\")
+            all_fields = []
+            source_fields = []
+            for i, f in enumerate([revision, y_file_short, y_field_short]):
+                if f:
+                    all_fields.append(f)
+                    if i > 0:
+                        source_fields.append(f)
+            joined_all = "::".join(all_fields)
+            joined_source = "::".join(source_fields)
+
             _update_all(
                 datapoints,
                 update_dict={
-                    f"{FIELD_PREFIX}revision": revision,
+                    REVISION_FIELD: joined_all,
+                    f"{FIELD_PREFIX}id": joined_all,
+                    f"{FIELD_PREFIX}rev": revision,
                     f"{FIELD_PREFIX}{FILENAME_FIELD}": y_file_short,
                     f"{FIELD_PREFIX}field": y_field_short,
+                    f"{FIELD_PREFIX}source": joined_source,
                 },
             )
 

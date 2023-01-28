@@ -29,7 +29,7 @@ def _get_converter(
 def _group_by_rev(datapoints):
     grouped = defaultdict(list)
     for datapoint in datapoints:
-        rev = datapoint.get(f"{FIELD_PREFIX}revision")
+        rev = datapoint.get(f"{FIELD_PREFIX}rev")
         grouped[rev].append(datapoint)
     return dict(grouped)
 
