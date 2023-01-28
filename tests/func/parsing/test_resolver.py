@@ -163,10 +163,9 @@ def test_vars_already_loaded_message(tmp_dir, dvc, local, vars_):
     else:
         d["stages"]["build"]["vars"] = vars_
 
-    with pytest.raises(ResolveError) as exc_info:
+    with pytest.raises(ResolveError) as exc_info:  # noqa: PT012
         resolver = DataResolver(dvc, tmp_dir.fs_path, d)
         resolver.resolve()
-
     assert "partially" in str(exc_info.value)
 
 

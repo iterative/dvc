@@ -80,7 +80,7 @@ def test_scm_context_clears_ignores_on_error(scm_context):
     class CustomException(Exception):
         pass
 
-    with pytest.raises(CustomException), scm_context():
+    with pytest.raises(CustomException), scm_context():  # noqa: PT012
         scm_context.ignore("foo")
         assert scm_context.ignored_paths == ["foo"]
         raise CustomException
@@ -113,7 +113,8 @@ def test_scm_context_remind_to_track(caplog, scm_context):
     else:
         assert "To track the changes with git, run:" in caplog.text
         match = re.search(r"git add(?: (('.*?')|(\S+)))*", caplog.text)
-        assert match and set(match.groups()) == {"'lorem ipsum'", "foo"}
+        assert match
+        assert set(match.groups()) == {"'lorem ipsum'", "foo"}
 
 
 def test_scm_context_remind_disable(caplog, scm_context):

@@ -13,7 +13,7 @@ from dvc.commands.remove import CmdRemove
 from dvc.commands.repro import CmdRepro
 from dvc.commands.run import CmdRun
 from dvc.commands.status import CmdDataStatus
-from dvc.exceptions import DvcException
+from dvc.exceptions import NotDvcRepoError
 
 
 def test_argparse(dvc):
@@ -176,7 +176,7 @@ def test_find_root(dvc):
         cd = os.path.pardir
 
     args = A()
-    with pytest.raises(DvcException):
+    with pytest.raises(NotDvcRepoError):
         Cmd(args)
 
 
@@ -192,7 +192,7 @@ def test_cd(dvc):
 
     parent_dir = os.path.realpath(os.path.pardir)
     args = A()
-    with pytest.raises(DvcException):
+    with pytest.raises(NotDvcRepoError):
         Cmd(args)
     current_dir = os.path.realpath(os.path.curdir)
     assert parent_dir == current_dir

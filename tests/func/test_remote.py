@@ -243,9 +243,9 @@ def test_raise_on_too_many_open_files(
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
-    with pytest.raises(OSError) as e:
+    with pytest.raises(OSError, match="Too many open files") as e:
         dvc.push()
-        assert e.errno == errno.EMFILE
+    assert e.value.errno == errno.EMFILE
 
 
 def test_modify_missing_remote(tmp_dir, dvc):

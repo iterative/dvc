@@ -1274,7 +1274,8 @@ class Output:
         if not self.obj or not other.hash_info.isdir:
             return
         other_obj = other.obj if other.obj is not None else other.get_obj()
-        assert isinstance(self.obj, Tree) and isinstance(other_obj, Tree)
+        assert isinstance(self.obj, Tree)
+        assert isinstance(other_obj, Tree)
         updated = update_meta(self.obj, other_obj)
         assert updated.hash_info == self.obj.hash_info
         self.obj = updated

@@ -98,7 +98,8 @@ def test_rename_ignored_file(tmp_dir, dvc):
     shutil.move("dir/ignored", "dir/ignored_new")
     new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
-    assert new_mtime == mtime and new_size == size
+    assert new_mtime == mtime
+    assert new_size == size
 
 
 def test_rename_file(tmp_dir, dvc):
@@ -108,7 +109,8 @@ def test_rename_file(tmp_dir, dvc):
     shutil.move("dir/foo", "dir/foo_new")
     new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
-    assert new_mtime != mtime and new_size == size
+    assert new_mtime != mtime
+    assert new_size == size
 
 
 def test_remove_ignored_file(tmp_dir, dvc):
@@ -119,9 +121,7 @@ def test_remove_ignored_file(tmp_dir, dvc):
     mtime, size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
     os.remove("dir/ignored")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
-
-    assert new_mtime == mtime and new_size == size
+    assert get_mtime_and_size("dir", dvc.fs, dvc.dvcignore) == (mtime, size)
 
 
 def test_remove_file(tmp_dir, dvc):
@@ -131,7 +131,8 @@ def test_remove_file(tmp_dir, dvc):
     os.remove("dir/foo")
     new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
-    assert new_mtime != mtime and new_size != size
+    assert new_mtime != mtime
+    assert new_size != size
 
 
 def test_dvcignore_in_out_dir(tmp_dir, dvc):

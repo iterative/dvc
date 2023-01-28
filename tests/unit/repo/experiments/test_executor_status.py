@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import ReproductionError
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.queue.tasks import (
     cleanup_exp,
@@ -100,7 +100,7 @@ def test_workspace_executor_failed_status(
     infofile = queue.get_infofile_path(name)
     rev = entry.stash_rev
 
-    with pytest.raises(DvcException):
+    with pytest.raises(ReproductionError):
         executor.reproduce(
             info=executor.info,
             rev=rev,

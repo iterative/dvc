@@ -543,17 +543,23 @@ def test_repro_frozen(tmp_dir, dvc, copy_script, run_stage):
     assert len(stages) == 3
 
 
-def test_freeze_non_existing(dvc):
+@pytest.mark.parametrize(
+    "target",
+    [
+        "Dvcfile",
+        "pipelines.yaml",
+        "pipelines.yaml:name",
+        "Dvcfile:name",
+        "stage.dvc",
+        "stage.dvc:name",
+        "not-existing-stage.json",
+    ],
+)
+def test_freeze_non_existing(dvc, target):
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.freeze("Dvcfile")
-        dvc.freeze("pipelines.yaml")
-        dvc.freeze("pipelines.yaml:name")
-        dvc.freeze("Dvcfile:name")
-        dvc.freeze("stage.dvc")
-        dvc.freeze("stage.dvc:name")
-        dvc.freeze("not-existing-stage.json")
+        dvc.freeze(target)
 
-    ret = main(["freeze", "non-existing-stage"])
+    ret = main(["freeze", target])
     assert ret != 0
 
 
@@ -998,7 +1004,7 @@ def repro_dir(tmp_dir, dvc, run_copy):
         is not None
     )
 
-    yield stages
+    return stages
 
 
 def _rewrite_file(path_elements, new_content):

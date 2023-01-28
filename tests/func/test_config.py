@@ -218,7 +218,9 @@ def test_list_bad_args(tmp_dir, dvc, caplog, args):
 
 
 def test_set_invalid_key(dvc):
-    with pytest.raises(ConfigError, match=r"extra keys not allowed"):
+    with pytest.raises(  # noqa: PT012
+        ConfigError, match=r"extra keys not allowed"
+    ):
         with dvc.config.edit() as conf:
             conf["core"]["invalid_key"] = "value"
 
@@ -227,7 +229,7 @@ def test_merging_two_levels(dvc):
     with dvc.config.edit() as conf:
         conf["remote"]["test"] = {"url": "ssh://example.com"}
 
-    with pytest.raises(
+    with pytest.raises(  # noqa: PT012
         ConfigError, match=r"expected 'url' for dictionary value"
     ):
         with dvc.config.edit("global") as conf:

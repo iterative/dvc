@@ -10,7 +10,7 @@ from dvc.repo.experiments.exceptions import MultipleBranchError
 from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.refs import EXEC_APPLY, EXEC_CHECKPOINT
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.scm import InvalidRemoteSCMRepo
+from dvc.scm import InvalidRemoteSCMRepo, RevError
 
 
 @pytest.mark.parametrize("links", ["reflink,copy", "hardlink,symlink"])
@@ -54,7 +54,7 @@ def test_resume_checkpoint(
         checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
 
-    with pytest.raises(DvcException):
+    with pytest.raises(RevError, match="unknown Git revision 'abc1234'"):
         dvc.experiments.run(
             checkpoint_stage.addressing,
             checkpoint_resume="abc1234",
@@ -177,7 +177,9 @@ def test_resume_non_head_checkpoint(
     rev = list(scm.branch_revs(checkpoint_head, orig_head))[-1]
     dvc.experiments.apply(rev)
 
-    with pytest.raises(DvcException):
+    with pytest.raises(
+        DvcException, match="Nothing to do for unchanged checkpoint"
+    ):
         dvc.experiments.run(checkpoint_stage.addressing, tmp_dir=not workspace)
 
     results = dvc.experiments.run(

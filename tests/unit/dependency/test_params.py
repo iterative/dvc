@@ -71,9 +71,21 @@ def test_loads_params_without_any_specific_targets(dvc):
     assert not deps[2].hash_info
 
 
-@pytest.mark.parametrize("params", [[3], [{"b_file": "cat"}]])
-def test_params_error(dvc, params):
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    "params, errmsg",
+    [
+        ([3], "Only list of str/dict is supported. Got: 'int'"),
+        (
+            [{"b_file": "cat"}],
+            (
+                "Expected list of params for custom params file "
+                "'b_file', got 'str'."
+            ),
+        ),
+    ],
+)
+def test_params_error(dvc, params, errmsg):
+    with pytest.raises(ValueError, match=errmsg):
         loads_params(Stage(dvc), params)
 
 

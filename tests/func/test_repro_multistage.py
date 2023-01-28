@@ -9,15 +9,14 @@ from dvc.cli import main
 from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.stage import PipelineStage
+from dvc.stage.exceptions import StageNotFound
 
 
 def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
-    from dvc.exceptions import DvcException
-
     tmp_dir.gen("file1", "file1")
     run_copy("file1", "file2", name="copy-file1-file2")
 
-    with pytest.raises(DvcException):
+    with pytest.raises(StageNotFound):
         dvc.freeze(":copy-file1-file3")
 
     assert main(["freeze", ":copy-file1-file3"]) != 0
@@ -90,20 +89,16 @@ def test_downstream(tmp_dir, dvc):
     )
 
     assert len(evaluation) == 3
-    assert (
-        isinstance(evaluation[0], PipelineStage)
-        and evaluation[0].relpath == PROJECT_FILE
-        and evaluation[0].name == "B-gen"
-    )
-    assert (
-        isinstance(evaluation[1], PipelineStage)
-        and evaluation[1].relpath == PROJECT_FILE
-        and evaluation[1].name == "D-gen"
-    )
-    assert (
-        not isinstance(evaluation[2], PipelineStage)
-        and evaluation[2].relpath == "E.dvc"
-    )
+    assert isinstance(evaluation[0], PipelineStage)
+    assert evaluation[0].relpath == PROJECT_FILE
+    assert evaluation[0].name == "B-gen"
+
+    assert isinstance(evaluation[1], PipelineStage)
+    assert evaluation[1].relpath == PROJECT_FILE
+    assert evaluation[1].name == "D-gen"
+
+    assert not isinstance(evaluation[2], PipelineStage)
+    assert evaluation[2].relpath == "E.dvc"
 
     # B, C should be run (in any order) before D
     # See https://github.com/iterative/dvc/issues/3602
@@ -112,11 +107,10 @@ def test_downstream(tmp_dir, dvc):
     )
 
     assert len(evaluation) == 5
-    assert (
-        isinstance(evaluation[0], PipelineStage)
-        and evaluation[0].relpath == PROJECT_FILE
-        and evaluation[0].name == "A-gen"
-    )
+    assert isinstance(evaluation[0], PipelineStage)
+    assert evaluation[0].relpath == PROJECT_FILE
+    assert evaluation[0].name == "A-gen"
+
     names = set()
     for stage in evaluation[1:3]:
         if isinstance(stage, PipelineStage):
@@ -125,15 +119,13 @@ def test_downstream(tmp_dir, dvc):
         else:
             names.add(stage.relpath)
     assert names == {"B-gen", "C.dvc"}
-    assert (
-        isinstance(evaluation[3], PipelineStage)
-        and evaluation[3].relpath == PROJECT_FILE
-        and evaluation[3].name == "D-gen"
-    )
-    assert (
-        not isinstance(evaluation[4], PipelineStage)
-        and evaluation[4].relpath == "E.dvc"
-    )
+
+    assert isinstance(evaluation[3], PipelineStage)
+    assert evaluation[3].relpath == PROJECT_FILE
+    assert evaluation[3].name == "D-gen"
+
+    assert not isinstance(evaluation[4], PipelineStage)
+    assert evaluation[4].relpath == "E.dvc"
 
 
 def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
@@ -308,11 +300,9 @@ def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc, copy_script):
     assert not dvc.reproduce(":run-copy")
     os.unlink(LOCK_FILE)
     stages = dvc.reproduce(":run-copy")
-    assert (
-        stages
-        and stages[0].relpath == PROJECT_FILE
-        and stages[0].name == "run-copy"
-    )
+    assert stages
+    assert stages[0].relpath == PROJECT_FILE
+    assert stages[0].name == "run-copy"
 
 
 def test_cyclic_graph_error(tmp_dir, dvc, run_copy):

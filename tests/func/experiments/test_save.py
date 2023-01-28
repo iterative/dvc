@@ -13,7 +13,6 @@ from dvc.scm import resolve_rev
 def modified_exp_stage(exp_stage, tmp_dir):
     with open(tmp_dir / "copy.py", "a", encoding="utf-8") as fh:
         fh.write("\n# dummy change")
-    yield
 
 
 def test_exp_save_unchanged(tmp_dir, dvc, scm, exp_stage):
@@ -26,7 +25,8 @@ def test_exp_save(tmp_dir, dvc, scm, exp_stage, name, modified_exp_stage):
 
     exp = dvc.experiments.save(name=name)
     ref_info = first(exp_refs_by_rev(scm, exp))
-    assert ref_info and ref_info.baseline_sha == baseline
+    assert ref_info
+    assert ref_info.baseline_sha == baseline
 
     exp_name = name if name else ref_info.name
     assert dvc.experiments.get_exact_name([exp])[exp] == exp_name
