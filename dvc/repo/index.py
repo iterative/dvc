@@ -128,10 +128,14 @@ class Index:
         self._params = params or {}
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
 
-    def __repr__(self) -> str:
-        rev = "workspace"
+    @cached_property
+    def rev(self) -> Optional[str]:
         if not isinstance(self.repo.fs, LocalFileSystem):
-            rev = self.repo.get_rev()[:7]
+            return self.repo.get_rev()[:7]
+        return None
+
+    def __repr__(self) -> str:
+        rev = self.rev or "workspace"
         return f"Index({self.repo}, fs@{rev})"
 
     @classmethod
