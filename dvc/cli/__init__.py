@@ -180,6 +180,21 @@ def main(argv=None):  # noqa: C901
         if level is not None:
             set_loggers_level(level)
 
+        if level and level <= logging.DEBUG:
+            from platform import (
+                platform,
+                python_implementation,
+                python_version,
+            )
+
+            from dvc import __version__
+            from dvc.utils.pkg import PKG
+
+            pyv = " ".join([python_implementation(), python_version()])
+            pkg = f" ({PKG})" if PKG else ""
+            logger.debug("v%s%s, %s on %s", __version__, pkg, pyv, platform())
+            logger.debug("command: %s", " ".join(argv or sys.argv))
+
         logger.trace(args)  # type: ignore[attr-defined]
 
         if not sys.stdout.closed and not args.quiet:
