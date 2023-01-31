@@ -243,3 +243,26 @@ class TestRemoteWorktree:
         scm.checkout(v1)
         dvc.pull()
         assert (tmp_dir / "data_dir" / "data").read_text() == "data"
+
+    def test_update(
+        self, tmp_dir, dvc, remote_worktree  # pylint: disable=W0613
+    ):
+        tmp_dir.dvc_gen("foo", "foo")
+        tmp_dir.dvc_gen(
+            {
+                "data_dir": {
+                    "data_sub_dir": {"data_sub": "data_sub"},
+                    "data": "data",
+                    "empty": "",
+                }
+            }
+        )
+        dvc.push()
+        (remote_worktree / "foo").write_text("bar")
+        (remote_worktree / "data_dir" / "data").write_text("modified")
+        (remote_worktree / "data_dir" / "new_data").write_text("new data")
+
+        dvc.update([str(tmp_dir / "foo.dvc"), str(tmp_dir / "data_dir.dvc")])
+        assert (tmp_dir / "foo").read_text() == "bar"
+        assert (tmp_dir / "data_dir" / "data").read_text() == "modified"
+        assert (tmp_dir / "data_dir" / "new_data").read_text() == "new data"
