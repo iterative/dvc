@@ -304,7 +304,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 ):
                     fs_infos[fs.path.name(info["name"])] = info
             except (FileNotFoundError, NotADirectoryError):
-                pass
+                pass  # noqa: S110
 
         dvcfiles = kwargs.get("dvcfiles", False)
 
