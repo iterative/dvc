@@ -90,10 +90,9 @@ def imp_url(  # noqa: C901
         stage.save_deps()
         stage.md5 = stage.compute_md5()
     else:
+        if stage.deps[0].fs.version_aware:
+            stage.outs[0].can_push = False
         stage.run(jobs=jobs, no_download=no_download)
-
-    if not no_exec and stage.deps[0].fs.version_aware:
-        stage.outs[0].can_push = False
 
     stage.frozen = frozen
     stage.dump()
