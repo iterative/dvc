@@ -334,7 +334,7 @@ def test_date(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "content", commit="add testfile")
 
     now = datetime.datetime.now()
-    datestamp = now.date().replace(day=now.day + 1).isoformat()
+    datestamp = (now.date() + datetime.timedelta(days=1)).isoformat()
 
     tmp_dir.dvc_gen("testfile", "modified", commit="modified")
 
