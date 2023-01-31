@@ -22,13 +22,14 @@ SUBPROJECTS = (
     "dvclive",
     "scmrepo",
 )
-package = "" if PKG is None else f"({PKG})"
+package = "" if PKG is None else f" ({PKG})"
 
 
 def get_dvc_info():
+    dvc_version = f"DVC version: {__version__}{package}"
     info = [
-        f"DVC version: {__version__} {package}",
-        "---------------------------------",
+        dvc_version,
+        "-" * len(dvc_version),
         f"Platform: Python {platform.python_version()} on "
         f"{platform.platform()}",
         f"Subprojects:{_get_subprojects()}",
