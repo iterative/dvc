@@ -161,14 +161,10 @@ line_length = 79
 line-length = 79
 target-version = "py38"
 show-source = true
-ignore = ["S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR2004", "RUF005"]
+ignore = ["S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR0913", "PLR2004", "RUF005"]
 select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "RUF"]
 # external flake8 codes that should be preserved
 external = ["B301", "B024", "C901", "E302", "F401", "W601"]
-
-[tool.ruff.per-file-ignores]
-"dvc/testing/*.py" = ["ARG002"]
-"scripts/**/*.py" = ["T201", "INP001", "TRY002"]
 
 [tool.ruff.flake8-pytest-style]
 fixture-parentheses = false
@@ -186,6 +182,10 @@ strict = true
 
 [tool.ruff.flake8-unused-arguments]
 ignore-variadic-names = true
+
+[tool.ruff.per-file-ignores]
+"dvc/testing/*.py" = ["ARG002"]
+"scripts/**/*.py" = ["T201", "INP001", "TRY002"]
 
 [tool.pytest.ini_options]
 log_level = "debug"
