@@ -212,6 +212,31 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
     ) not in data_index
 
 
+def test_view_onerror(tmp_dir, scm, dvc):
+    from dvc.exceptions import NoOutputOrStageError
+
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    with pytest.raises(NoOutputOrStageError):
+        index.targets_view(["foo", "missing"])
+
+    failed = []
+
+    def onerror(target, exc):
+        failed.append((target, exc))
+
+    view = index.targets_view(["foo", "missing"], onerror=onerror)
+    data = view.data["repo"]
+
+    assert len(failed) == 1
+    target, exc = failed[0]
+    assert target == "missing"
+    assert isinstance(exc, NoOutputOrStageError)
+    assert len(data) == 1
+    assert data[("foo",)]
+
+
 def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
