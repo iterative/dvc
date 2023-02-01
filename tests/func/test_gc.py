@@ -347,7 +347,7 @@ def test_date(tmp_dir, scm, dvc):
 
     tmp_dir.dvc_gen("testfile", "modified, again", commit="modify")
 
-    datestamp = now.date().replace(day=now.day - 1).isoformat()
+    datestamp = (now.date() - datetime.timedelta(days=1)).isoformat()
     dvc.gc(commit_date=datestamp)
     assert _count_files(dvc.odb.local.path) == 2
     assert dvc.odb.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")
