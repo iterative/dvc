@@ -78,7 +78,12 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
                 "hash": {"old": digest("first"), "new": digest("second")},
             }
         ],
-        "not in cache": [],
+        "not in cache": [
+            {
+                "path": "file",
+                "hash": digest("first"),
+            }
+        ],
         "renamed": [],
     }
 
@@ -265,7 +270,12 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     remove(str(tmp_dir / "dir"))
     diff = dvc.diff()
     assert diff["added"] == []
-    assert diff["deleted"] == []
+    assert diff["deleted"] == [
+        {
+            "path": os.path.join("dir", ""),
+            "hash": "f0f7a307d223921557c929f944bf5303.dir",
+        }
+    ]
     assert diff["renamed"] == []
     assert diff["modified"] == []
     assert diff["not in cache"] == [
@@ -460,8 +470,10 @@ def test_targets_single_dir_with_file(tmp_dir, scm, dvc):
         "renamed": [],
     }
 
-    assert dvc.diff(targets=["dir_with"]) == expected_result
-    assert dvc.diff(targets=["dir_with" + os.path.sep]) == expected_result
+    assert dvc.diff(targets=["dir_with"], recursive=True) == expected_result
+    assert (
+        dvc.diff(targets=["dir_with" + os.path.sep], recursive=True) == expected_result
+    )
 
 
 def test_targets_single_file_in_dir_with_file(tmp_dir, scm, dvc):
