@@ -178,7 +178,7 @@ def v1_repo_lock(tmp_dir, dvc):
     dvc.run(cmd="echo foo", name="foo", no_exec=True)
     dvc.run(cmd="echo bar>bar.txt", outs=["bar.txt"], name="bar", no_exec=True)
     (tmp_dir / "dvc.lock").dump(v1_lockdata)
-    yield v1_lockdata
+    return v1_lockdata
 
 
 def test_can_read_v1_lockfile(tmp_dir, dvc, v1_repo_lock):

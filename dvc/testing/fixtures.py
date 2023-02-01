@@ -42,9 +42,8 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
     ):  # pylint: disable=W0621
         from shutil import copytree, ignore_patterns
 
-        from scmrepo.git import Git
-
         from dvc.repo import Repo
+        from dvc.scm import Git
 
         from .tmp_dir import TmpDir
 

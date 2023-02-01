@@ -2,6 +2,7 @@ import os
 from typing import Dict, Union
 
 import pytest
+from funcy import first
 
 from dvc.exceptions import URLMissingError
 from dvc.repo import Repo
@@ -86,6 +87,42 @@ class TestImport:
         empty_dir = tmp_dir / "empty_dir"
         assert empty_dir.is_dir()
         assert tuple(empty_dir.iterdir()) == ()
+
+
+class TestImportURLVersionAware:
+    def test_import_file(self, tmp_dir, dvc, remote_version_aware):
+        remote_version_aware.gen("file", "file")
+        dvc.imp_url("remote://upstream/file", version_aware=True)
+        stage = first(dvc.index.stages)
+        assert not stage.outs[0].can_push
+        assert (tmp_dir / "file").read_text() == "file"
+        assert dvc.status() == {}
+
+        (remote_version_aware / "file").write_text("modified")
+        assert dvc.status().get("file.dvc") == [
+            {"changed deps": {"remote://upstream/file": "update available"}},
+        ]
+        dvc.update(str(tmp_dir / "file.dvc"))
+        assert (tmp_dir / "file").read_text() == "modified"
+        assert dvc.status() == {}
+
+    def test_import_dir(self, tmp_dir, dvc, remote_version_aware):
+        remote_version_aware.gen({"data_dir": {"file": "file"}})
+        dvc.imp_url("remote://upstream/data_dir", version_aware=True)
+        stage = first(dvc.index.stages)
+        assert not stage.outs[0].can_push
+        assert (tmp_dir / "data_dir" / "file").read_text() == "file"
+        assert dvc.status() == {}
+
+        (remote_version_aware / "data_dir" / "file").write_text("modified")
+        (remote_version_aware / "data_dir" / "new_file").write_text("new")
+        assert dvc.status().get("data_dir.dvc") == [
+            {"changed deps": {"remote://upstream/data_dir": "modified"}},
+        ]
+        dvc.update(str(tmp_dir / "data_dir.dvc"))
+        assert (tmp_dir / "data_dir" / "file").read_text() == "modified"
+        assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
+        assert dvc.status() == {}
 
 
 class TestAdd:

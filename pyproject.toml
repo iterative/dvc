@@ -49,7 +49,7 @@ dependencies = [
     "rich>=10.13.0",
     "pyparsing>=2.4.7",
     "typing-extensions>=3.7.4",
-    "scmrepo==0.1.6",
+    "scmrepo==0.1.7",
     "dvc-render==0.0.17",
     "dvc-task==0.1.11",
     "dvclive>=1.2.2",
@@ -72,7 +72,7 @@ classifiers = [
 [project.optional-dependencies]
 azure = ["dvc-azure==2.21.0"]
 gdrive = ["dvc-gdrive==2.19.1"]
-gs = ["dvc-gs==2.21.0"]
+gs = ["dvc-gs==2.21.1"]
 hdfs = ["dvc-hdfs==2.19.0"]
 oss = ["dvc-oss==2.19.0"]
 s3 = ["dvc-s3==2.21.0"]
@@ -98,7 +98,7 @@ tests = [
     "flaky==3.7.0",
     "pytest-timeout==2.1.0",
     "filelock==3.9.0",
-    "beautifulsoup4==4.11.1",
+    "beautifulsoup4==4.11.2",
     "pywin32>=225; sys_platform == 'win32'",  # optional dependency
     "pylint==2.15.10",
     # type-checking
@@ -161,19 +161,16 @@ line_length = 79
 line-length = 79
 target-version = "py38"
 show-source = true
-ignore = ["S101", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "PLR2004", "RUF005"]
-select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT003", "PT008", "PT009", "PT010", "PT015", "PT016", "PT017", "PT020", "PT021", "PT024", "PT025", "PT026", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY002", "TRY004", "TRY201", "TRY400", "RUF"]
+ignore = ["S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR0913", "PLR2004", "RUF005"]
+select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "RUF"]
 # external flake8 codes that should be preserved
 external = ["B301", "B024", "C901", "E302", "F401", "W601"]
-
-[tool.ruff.per-file-ignores]
-"dvc/testing/*.py" = ["ARG002"]
-"scripts/**/*.py" = ["T201", "INP001", "TRY002"]
 
 [tool.ruff.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
 parametrize-names-type = "csv"
+raises-extend-require-match-for = ["dvc.exceptions.DvcException", "dvc.scm.SCMError", "scmrepo.exceptions.SCMError"]
 
 [tool.ruff.flake8-tidy-imports]
 [tool.ruff.flake8-tidy-imports.banned-api]
@@ -185,6 +182,10 @@ strict = true
 
 [tool.ruff.flake8-unused-arguments]
 ignore-variadic-names = true
+
+[tool.ruff.per-file-ignores]
+"dvc/testing/*.py" = ["ARG002"]
+"scripts/**/*.py" = ["T201", "INP001", "TRY002"]
 
 [tool.pytest.ini_options]
 log_level = "debug"
@@ -241,16 +242,11 @@ module = [
     "celery.*",
     "configobj.*",
     "dpath.*",
-    "dvc_http.*",
-    "dvc_render.*",
-    "dvc_ssh",
-    "dvc_studio_client.*",
     "flatten_dict",
     "fsspec.*",
     "funcy.*",  # https://github.com/Suor/funcy/issues/106,
     "grandalf.*",
     "ipdb",
-    "iterative_telemetry",
     "kombu.*",
     "networkx.*",  # https://github.com/networkx/networkx/issues/3988
     "pygtrie.*",
@@ -258,7 +254,6 @@ module = [
     "pytest_docker.plugin",
     "ruamel.*",
     "ruamel.yaml.*",
-    "scmrepo.*",
     "tpi.*",
     "viztracer",
     "voluptuous",

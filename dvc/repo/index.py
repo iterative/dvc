@@ -128,10 +128,14 @@ class Index:
         self._params = params or {}
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
 
-    def __repr__(self) -> str:
-        rev = "workspace"
+    @cached_property
+    def rev(self) -> Optional[str]:
         if not isinstance(self.repo.fs, LocalFileSystem):
-            rev = self.repo.get_rev()[:7]
+            return self.repo.get_rev()[:7]
+        return None
+
+    def __repr__(self) -> str:
+        rev = self.rev or "workspace"
         return f"Index({self.repo}, fs@{rev})"
 
     @classmethod
@@ -297,24 +301,32 @@ class Index:
         )
 
     def collect_targets(
-        self, targets: Optional["TargetType"], **kwargs: Any
+        self, targets: Optional["TargetType"], *, onerror=None, **kwargs: Any
     ) -> List["StageInfo"]:
-        from itertools import chain
-
+        from dvc.exceptions import DvcException
         from dvc.repo.stage import StageInfo
         from dvc.utils.collections import ensure_list
+
+        if not onerror:
+
+            def onerror(_target, _exc):
+                raise  # pylint: disable=misplaced-bare-raise
 
         targets = ensure_list(targets)
         if not targets:
             return [StageInfo(stage) for stage in self.stages]
         targets_hash = self._hash_targets(targets, **kwargs)
         if targets_hash not in self._collected_targets:
-            self._collected_targets[targets_hash] = list(
-                chain.from_iterable(
-                    self.repo.stage.collect_granular(target, **kwargs)
-                    for target in targets
-                )
-            )
+            collected = []
+            for target in targets:
+                try:
+                    collected.extend(
+                        self.repo.stage.collect_granular(target, **kwargs)
+                    )
+                except DvcException as exc:
+                    onerror(target, exc)
+            self._collected_targets[targets_hash] = collected
+
         return self._collected_targets[targets_hash]
 
     def used_objs(
@@ -504,9 +516,8 @@ def build_data_index(
                 # NOTE: whether the root will be returned by build_entries
                 # depends on the filesystem (e.g. local doesn't, but s3 does).
                 continue
-            else:
-                entry.key = key + entry.key
 
+            entry.key = key + entry.key
             data.add(entry)
 
         if compute_hash:

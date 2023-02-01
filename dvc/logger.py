@@ -156,7 +156,7 @@ class LoggerHandler(logging.StreamHandler):
                         if not _is_verbose():
                             return
                     except Exception:  # noqa, pylint: disable=broad-except
-                        pass
+                        pass  # noqa: S110
 
             msg = self.format(record)
             Tqdm.write(

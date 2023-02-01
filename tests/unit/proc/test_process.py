@@ -31,11 +31,11 @@ def test_init_args(tmp_dir, args, mocker):
 
 def test_run(tmp_dir, mocker):
     proc = ManagedProcess("/bin/foo")
-    assert TEST_PID == proc.pid
+    assert proc.pid == TEST_PID
 
     with open(proc.info_path, encoding="utf-8") as fobj:
         info = ProcessInfo.from_dict(json.load(fobj))
-        assert TEST_PID == info.pid
+        assert info.pid == TEST_PID
 
 
 def test_wait(tmp_dir, mocker):

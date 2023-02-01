@@ -92,7 +92,8 @@ class StageLoader(Mapping):
         cls, dvcfile: "ProjectFile", name, stage_data, lock_data=None
     ):
         assert all([name, dvcfile, dvcfile.repo, dvcfile.path])
-        assert stage_data and isinstance(stage_data, dict)
+        assert stage_data
+        assert isinstance(stage_data, dict)
 
         path, wdir = resolve_paths(
             dvcfile.repo.fs, dvcfile.path, stage_data.get(Stage.PARAM_WDIR)

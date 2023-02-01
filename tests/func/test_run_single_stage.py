@@ -238,9 +238,9 @@ class TestRunBadCwd:
             dvc.run(cmd="command", wdir=make_tmp_dir("tmp"), single_stage=True)
 
     def test_same_prefix(self, tmp_dir, dvc):
+        path = f"{tmp_dir}-{uuid.uuid4()}"
+        os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            path = f"{tmp_dir}-{uuid.uuid4()}"
-            os.mkdir(path)
             dvc.run(cmd="command", wdir=path, single_stage=True)
 
 
@@ -250,22 +250,22 @@ class TestRunBadWdir:
             dvc.run(cmd="command", wdir=make_tmp_dir("tmp"), single_stage=True)
 
     def test_same_prefix(self, tmp_dir, dvc):
+        path = f"{tmp_dir}-{uuid.uuid4()}"
+        os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            path = f"{tmp_dir}-{uuid.uuid4()}"
-            os.mkdir(path)
             dvc.run(cmd="command", wdir=path, single_stage=True)
 
     def test_not_found(self, tmp_dir, dvc):
+        path = os.path.join(tmp_dir, str(uuid.uuid4()))
         with pytest.raises(StagePathNotFoundError):
-            path = os.path.join(tmp_dir, str(uuid.uuid4()))
             dvc.run(cmd="command", wdir=path, single_stage=True)
 
     def test_not_dir(self, tmp_dir, dvc):
+        path = tmp_dir / str(uuid.uuid4())
+        path.mkdir()
+        path = path / str(uuid.uuid4())
+        path.touch()
         with pytest.raises(StagePathNotDirectoryError):
-            path = tmp_dir / str(uuid.uuid4())
-            path.mkdir()
-            path = path / str(uuid.uuid4())
-            path.touch()
             dvc.run(cmd="command", wdir=os.fspath(path), single_stage=True)
 
 
@@ -279,9 +279,9 @@ class TestRunBadName:
             )
 
     def test_same_prefix(self, tmp_dir, dvc):
+        path = f"{tmp_dir}-{uuid.uuid4()}"
+        os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            path = f"{tmp_dir}-{uuid.uuid4()}"
-            os.mkdir(path)
             dvc.run(
                 cmd="command",
                 fname=os.path.join(path, "foo.dvc"),
@@ -289,8 +289,8 @@ class TestRunBadName:
             )
 
     def test_not_found(self, tmp_dir, dvc):
+        path = os.path.join(tmp_dir, str(uuid.uuid4()))
         with pytest.raises(StagePathNotFoundError):
-            path = os.path.join(tmp_dir, str(uuid.uuid4()))
             dvc.run(
                 cmd="command",
                 fname=os.path.join(path, "foo.dvc"),

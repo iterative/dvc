@@ -139,7 +139,7 @@ class RepoDependency(Dependency):
                         self._check_circular_import(odb, obj_ids)
                         used_obj_ids[odb].update(obj_ids)
                 except (NoRemoteError, NoOutputOrStageError):
-                    pass
+                    pass  # noqa: S110
 
             try:
                 object_store, meta, obj = build(

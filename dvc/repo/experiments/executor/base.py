@@ -43,10 +43,9 @@ from dvc.utils.fs import remove
 if TYPE_CHECKING:
     from queue import Queue
 
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import Git
     from dvc.stage import PipelineStage
 
 logger = logging.getLogger(__name__)

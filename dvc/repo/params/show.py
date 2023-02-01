@@ -171,7 +171,7 @@ def show(
         except (SCMError, NoSCMError):
             # SCMError - detached head
             # NoSCMError - no repo case
-            pass
+            pass  # noqa: S110
         else:
             if res.get("workspace") == res.get(active_branch):
                 res.pop("workspace", None)

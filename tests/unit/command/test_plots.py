@@ -11,7 +11,7 @@ from dvc.commands.plots import CmdPlotsDiff, CmdPlotsShow, CmdPlotsTemplates
 
 @pytest.fixture
 def plots_data():
-    yield {
+    return {
         "revision": {
             "sources": {
                 "data": {

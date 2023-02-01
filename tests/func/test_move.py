@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 from dvc.cli import main
-from dvc.exceptions import DvcException, MoveNotDataSourceError
+from dvc.exceptions import MoveNotDataSourceError, OutputNotFoundError
 
 
 def test_move(tmp_dir, dvc):
@@ -16,7 +16,7 @@ def test_move(tmp_dir, dvc):
 
 
 def test_move_non_existent_file(dvc):
-    with pytest.raises(DvcException):
+    with pytest.raises(OutputNotFoundError):
         dvc.move("non_existent_file", "dst")
 
 

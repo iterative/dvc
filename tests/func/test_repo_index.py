@@ -212,6 +212,31 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
     ) not in data_index
 
 
+def test_view_onerror(tmp_dir, scm, dvc):
+    from dvc.exceptions import NoOutputOrStageError
+
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    with pytest.raises(NoOutputOrStageError):
+        index.targets_view(["foo", "missing"])
+
+    failed = []
+
+    def onerror(target, exc):
+        failed.append((target, exc))
+
+    view = index.targets_view(["foo", "missing"], onerror=onerror)
+    data = view.data["repo"]
+
+    assert len(failed) == 1
+    target, exc = failed[0]
+    assert target == "missing"
+    assert isinstance(exc, NoOutputOrStageError)
+    assert len(data) == 1
+    assert data[("foo",)]
+
+
 def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
@@ -269,6 +294,16 @@ def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
     assert {out.fs_path for out in view.outs} == {
         out.fs_path for out in stage2.outs
     }
+
+
+def test_view_brancher(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    for _ in dvc.brancher(revs=["HEAD"]):
+        view = index.targets_view("foo")
+        data = view.data["repo"]
+        assert data[("foo",)]
 
 
 def test_with_gitignore(tmp_dir, dvc, scm):
