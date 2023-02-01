@@ -301,24 +301,32 @@ class Index:
         )
 
     def collect_targets(
-        self, targets: Optional["TargetType"], **kwargs: Any
+        self, targets: Optional["TargetType"], *, onerror=None, **kwargs: Any
     ) -> List["StageInfo"]:
-        from itertools import chain
-
+        from dvc.exceptions import DvcException
         from dvc.repo.stage import StageInfo
         from dvc.utils.collections import ensure_list
+
+        if not onerror:
+
+            def onerror(_target, _exc):
+                raise  # pylint: disable=misplaced-bare-raise
 
         targets = ensure_list(targets)
         if not targets:
             return [StageInfo(stage) for stage in self.stages]
         targets_hash = self._hash_targets(targets, **kwargs)
         if targets_hash not in self._collected_targets:
-            self._collected_targets[targets_hash] = list(
-                chain.from_iterable(
-                    self.repo.stage.collect_granular(target, **kwargs)
-                    for target in targets
-                )
-            )
+            collected = []
+            for target in targets:
+                try:
+                    collected.extend(
+                        self.repo.stage.collect_granular(target, **kwargs)
+                    )
+                except DvcException as exc:
+                    onerror(target, exc)
+            self._collected_targets[targets_hash] = collected
+
         return self._collected_targets[targets_hash]
 
     def used_objs(
