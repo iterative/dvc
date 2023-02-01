@@ -296,6 +296,16 @@ def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
     }
 
 
+def test_view_brancher(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    for _ in dvc.brancher(revs=["HEAD"]):
+        view = index.targets_view("foo")
+        data = view.data["repo"]
+        assert data[("foo",)]
+
+
 def test_with_gitignore(tmp_dir, dvc, scm):
     (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
 
