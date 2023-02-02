@@ -229,7 +229,7 @@ def _filter_missing(dvcfs: "DVCFileSystem", paths: Set[str]) -> Iterator[str]:
             if (
                 entry
                 and info["type"] == "directory"
-                and not entry.odb.exists(entry.hash_info.value)
+                and not dvcfs.repo.odb.local.exists(entry.hash_info.value)
             ):
                 yield path
         except FileNotFoundError:

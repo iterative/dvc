@@ -267,6 +267,7 @@ class Index:
     def data(self) -> "Dict[str, DataIndex]":
         from collections import defaultdict
 
+        from dvc.config import NoRemoteError
         from dvc_data.index import DataIndex
 
         by_workspace: dict = defaultdict(DataIndex)
@@ -284,6 +285,14 @@ class Index:
             entry = out.get_entry()
             entry.key = key
             data_index.add(entry)
+
+            data_index.odb_map[key] = out.odb
+            try:
+                data_index.remote_map[key] = self.repo.cloud.get_remote_odb(
+                    out.remote
+                )
+            except NoRemoteError:
+                pass
 
         return dict(by_workspace)
 

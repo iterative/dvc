@@ -555,13 +555,6 @@ class Output:
         return workspace, key
 
     def get_entry(self) -> "DataIndexEntry":
-        from dvc.config import NoRemoteError
-
-        try:
-            remote = self.repo.cloud.get_remote_odb(self.remote)
-        except NoRemoteError:
-            remote = None
-
         if self.files and not self.obj:
             self.obj = self.get_obj()
 
@@ -569,9 +562,6 @@ class Output:
             meta=self.meta,
             obj=self.obj,
             hash_info=self.hash_info,
-            odb=self.odb,
-            cache=self.odb,
-            remote=remote,
         )
         if self.stage.is_import and not self.stage.is_repo_import:
             dep = self.stage.deps[0]
