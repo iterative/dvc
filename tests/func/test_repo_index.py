@@ -199,6 +199,13 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
     # view should include the specific target, parent dirs, and children
     # view should exclude any siblings of the target
     view = index.targets_view("dir/subdir")
+
+    assert view.data_keys == {
+        "repo": {
+            ("dir", "subdir"),
+        }
+    }
+
     data_index = view.data["repo"]
     assert ("dir",) in data_index
     assert (
