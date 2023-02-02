@@ -50,7 +50,7 @@ dependencies = [
     "pyparsing>=2.4.7",
     "typing-extensions>=3.7.4",
     "scmrepo==0.1.7",
-    "dvc-render==0.0.17",
+    "dvc-render==0.1.0",
     "dvc-task==0.1.11",
     "dvclive>=1.2.2",
     "dvc-data==0.37.3",
