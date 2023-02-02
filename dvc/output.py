@@ -869,16 +869,15 @@ class Output:
         obj: Optional["HashFile"] = None
         if self.obj:
             obj = self.obj
+        elif self.files:
+            tree = Tree.from_list(self.files, hash_name=self.hash_name)
+            tree.digest()
+            obj = tree
         elif self.hash_info:
-            if self.files:
-                tree = Tree.from_list(self.files, hash_name=self.hash_name)
-                tree.digest()
-                obj = tree
-            else:
-                try:
-                    obj = oload(self.odb, self.hash_info)
-                except (FileNotFoundError, ObjectFormatError):
-                    return None
+            try:
+                obj = oload(self.odb, self.hash_info)
+            except (FileNotFoundError, ObjectFormatError):
+                return None
         else:
             return None
 
