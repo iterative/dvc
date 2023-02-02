@@ -264,6 +264,24 @@ class Index:
         return sources
 
     @cached_property
+    def data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        by_workspace["repo"] = set()
+        by_workspace["local"] = set()
+
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            workspace, key = out.index_key
+            by_workspace[workspace].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
     def data(self) -> "Dict[str, DataIndex]":
         from collections import defaultdict
 
@@ -455,6 +473,20 @@ class IndexView:
         return prefixes
 
     @cached_property
+    def data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        ret: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        for out, filter_info in self._filtered_outs:
+            workspace, key = out.index_key
+            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
+                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            ret[workspace].add(key)
+
+        return dict(ret)
+
+    @cached_property
     def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
         from dvc_data.index import DataIndex, view
 
@@ -483,7 +515,7 @@ def build_data_index(
     index: Union["Index", "IndexView"],
     path: str,
     fs: "FileSystem",
-    workspace: Optional[str] = "repo",
+    workspace: str = "repo",
     compute_hash: Optional[bool] = False,
 ) -> "DataIndex":
     from dvc_data.index import DataIndex, DataIndexEntry
@@ -491,16 +523,8 @@ def build_data_index(
     from dvc_data.index.save import build_tree
 
     data = DataIndex()
-    for out in index.outs:
-        if not out.use_cache:
-            continue
-
-        ws, key = out.index_key
-        if ws != workspace:
-            continue
-
-        parts = out.fs.path.relparts(out.fs_path, out.repo.root_dir)
-        out_path = fs.path.join(path, *parts)
+    for key in index.data_keys.get(workspace, set()):
+        out_path = fs.path.join(path, *key)
 
         try:
             out_entry = build_entry(
