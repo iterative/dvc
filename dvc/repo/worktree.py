@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Set, Tuple, Uni
 
 from funcy import first
 
+from dvc.exceptions import DvcException
 from dvc.fs.callbacks import Callback
 from dvc.stage.exceptions import StageUpdateError
 
@@ -144,6 +145,7 @@ def push_worktree(
 ) -> int:
     from dvc.repo.index import build_data_index
     from dvc_data.index import checkout
+    from dvc_data.index.checkout import VersioningNotSupported
 
     pushed = 0
     stages: Set["Stage"] = set()
@@ -176,17 +178,23 @@ def push_worktree(
             disable=total == 0,
         ) as cb:
             cb.set_size(total)
-            pushed += checkout(
-                new_index,
-                remote_obj.path,
-                remote_obj.fs,
-                old=old_index,
-                delete=remote_obj.worktree,
-                callback=cb,
-                latest_only=remote_obj.worktree,
-                jobs=jobs,
-                **diff_kwargs,
-            )
+            try:
+                pushed += checkout(
+                    new_index,
+                    remote_obj.path,
+                    remote_obj.fs,
+                    old=old_index,
+                    delete=remote_obj.worktree,
+                    callback=cb,
+                    latest_only=remote_obj.worktree,
+                    jobs=jobs,
+                    **diff_kwargs,
+                )
+            except VersioningNotSupported:
+                logger.exception("")
+                raise DvcException(
+                    f"remote {remote_obj.name!r} does not support versioning"
+                ) from None
 
         for out in view.outs:
             workspace, _key = out.index_key
