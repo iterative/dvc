@@ -13,7 +13,7 @@ from dvc.repo.experiments.exceptions import ExpQueueEmptyError
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
 from dvc.repo.experiments.refs import EXEC_BRANCH, WORKSPACE_STASH
-from dvc.repo.experiments.utils import get_exp_rwlock, to_studio_params
+from dvc.repo.experiments.utils import get_exp_rwlock
 from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
 from dvc.utils import relpath
 from dvc.utils.fs import remove
@@ -94,8 +94,6 @@ class WorkspaceQueue(BaseStashQueue):
     def _reproduce_entry(
         self, entry: QueueEntry, executor: "BaseExecutor"
     ) -> Dict[str, Dict[str, str]]:
-        from dvc_studio_client.post_live_metrics import post_live_metrics
-
         from dvc.stage.monitor import CheckpointKilledError
 
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
@@ -103,13 +101,6 @@ class WorkspaceQueue(BaseStashQueue):
         infofile = self.get_infofile_path(exec_name)
         try:
             rev = entry.stash_rev
-            post_live_metrics(
-                "start",
-                executor.info.baseline_rev,
-                executor.info.name,
-                "dvc",
-                params=to_studio_params(self.repo.params.show()),
-            )
             exec_result = executor.reproduce(
                 info=executor.info,
                 rev=rev,
@@ -131,13 +122,6 @@ class WorkspaceQueue(BaseStashQueue):
         except Exception as exc:  # noqa: BLE001
             raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'") from exc
         finally:
-            post_live_metrics(
-                "done",
-                executor.info.baseline_rev,
-                executor.info.name,
-                "dvc",
-                experiment_rev=first(results.get(rev, {})),
-            )
             executor.cleanup(infofile)
         return results
 
