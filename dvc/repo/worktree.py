@@ -16,6 +16,7 @@ from funcy import first
 
 from dvc.fs.callbacks import Callback
 from dvc.stage.exceptions import StageUpdateError
+from dvc.ui import ui
 
 if TYPE_CHECKING:
     from dvc.data_cloud import Remote
@@ -281,8 +282,15 @@ def update_worktree_stages(
     local_index = view.data["repo"]
     remote_indexes: Dict[str, Tuple["Remote", "DataIndex"]] = {}
     for stage in view.stages:
+        transferred: int = 0
         for out in stage.outs:
-            _update_worktree_out(repo, out, local_index, remote_indexes)
+            transferred += _update_worktree_out(
+                repo, out, local_index, remote_indexes
+            )
+
+        if not transferred:
+            ui.write(f"'{stage.addressing}' didn't change, skipping")
+            continue
         stage.dump(with_files=True, update_pipeline=False)
 
 
@@ -291,7 +299,7 @@ def _update_worktree_out(
     out: "Output",
     local_index: Union["DataIndex", "DataIndexView"],
     remote_indexes: Dict[str, Tuple["Remote", "DataIndex"]],
-):
+) -> int:
     from dvc_data.index import build
 
     remote_name = out.remote or out.meta.remote
@@ -300,7 +308,7 @@ def _update_worktree_out(
             "Could not update '%s', it was never pushed to a remote",
             out,
         )
-        return
+        return 0
 
     if remote_name in remote_indexes:
         remote, remote_index = remote_indexes[remote_name]
@@ -317,7 +325,7 @@ def _update_worktree_out(
             "Could not update '%s', it does not exist in the remote",
             out,
         )
-        return
+        return 0
 
     entry = remote_index[key]
     if (
@@ -332,16 +340,24 @@ def _update_worktree_out(
             "Could not update '%s', directory is empty in the remote",
             out,
         )
-        return
+        return 0
 
-    _fetch_out_changes(out, local_index, remote_index, remote)
-    _update_out_meta(
-        repo,
+    transferred = _fetch_out_changes(out, local_index, remote_index, remote)
+    logger.debug(
+        "Update %s files to out '%s' from worktree of '%s'",
+        transferred,
         out,
-        local_index,
-        remote_index,
-        remote,
+        remote.path,
     )
+    if transferred:
+        _update_out_meta(
+            repo,
+            out,
+            local_index,
+            remote_index,
+            remote,
+        )
+    return transferred
 
 
 def _fetch_out_changes(
@@ -349,7 +365,7 @@ def _fetch_out_changes(
     local_index: Union["DataIndex", "DataIndexView"],
     remote_index: Union["DataIndex", "DataIndexView"],
     remote: "Remote",
-):
+) -> int:
     from dvc_data.index import checkout
 
     old, new = _get_diff_indexes(out, local_index, remote_index)
@@ -358,7 +374,7 @@ def _fetch_out_changes(
         unit="file", desc=f"Updating '{out}'", disable=total == 0
     ) as cb:
         cb.set_size(total)
-        checkout(
+        transferred = checkout(
             new,
             out.repo.root_dir,
             out.fs,
@@ -370,6 +386,7 @@ def _fetch_out_changes(
             callback=cb,
         )
         out.save()
+        return transferred
 
 
 def _get_diff_indexes(
