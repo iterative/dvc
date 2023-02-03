@@ -1,6 +1,8 @@
 import logging
 import os
+import posixpath
 from collections import defaultdict
+from operator import itemgetter
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
 from urllib.parse import urlparse
 
@@ -227,6 +229,17 @@ def merge_file_meta_from_cloud(entry: Dict) -> Dict:
         entry.update(cloud_meta[remote_name])
         entry[Meta.PARAM_REMOTE] = remote_name
     return entry
+
+
+def _serialize_tree_obj_to_files(obj: "Tree") -> List[Dict[str, Any]]:
+    key = obj.PARAM_RELPATH
+    return sorted(
+        (
+            {key: posixpath.sep.join(parts), **hi.to_dict(), **meta.to_dict()}
+            for parts, meta, hi in obj
+        ),
+        key=itemgetter(key),
+    )
 
 
 class OutputDoesNotExistError(DvcException):
@@ -823,7 +836,8 @@ class Output:
             if obj:
                 obj = cast("Tree", obj)
                 ret[self.PARAM_FILES] = [
-                    split_file_meta_from_cloud(f) for f in obj.as_list(with_meta=True)
+                    split_file_meta_from_cloud(f)
+                    for f in _serialize_tree_obj_to_files(obj)
                 ]
         return ret
 
