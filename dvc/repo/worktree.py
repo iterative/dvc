@@ -15,6 +15,7 @@ from typing import (
 from funcy import first
 
 from dvc.fs.callbacks import Callback
+from dvc.stage.exceptions import StageUpdateError
 
 if TYPE_CHECKING:
     from dvc.data_cloud import Remote
@@ -207,7 +208,7 @@ def push_worktree(
 
         for out in view.outs:
             workspace, _key = out.index_key
-            _update_out_meta(out, repo.index.data[workspace], remote_obj.name)
+            _merge_push_meta(out, repo.index.data[workspace], remote_obj.name)
             stages.add(out.stage)
 
     for stage in stages:
@@ -215,11 +216,17 @@ def push_worktree(
     return pushed
 
 
-def _update_out_meta(
+def _merge_push_meta(
     out: "Output",
     index: Union["DataIndex", "DataIndexView"],
     remote: Optional[str] = None,
 ):
+    """Merge existing output meta with newly pushed meta.
+
+    Existing version IDs for unchanged files will be preserved to reduce merge
+    conflicts (i.e. the DVC output's version ID may not match the pushed/latest
+    version ID as long when the file content of both versions is the same).
+    """
     from dvc_data.index.save import build_tree
 
     _, key = out.index_key
@@ -260,10 +267,8 @@ def _update_out_meta(
 def update_worktree_stages(
     repo: "Repo",
     stage_infos: Iterable["StageInfo"],
-    remote: "Remote",
 ):
     from dvc.repo.index import IndexView
-    from dvc_data.index import build
 
     def outs_filter(out: "Output") -> bool:
         return out.is_in_repo and out.use_cache and out.can_push
@@ -274,37 +279,69 @@ def update_worktree_stages(
         outs_filter=outs_filter,
     )
     local_index = view.data["repo"]
-    logger.debug("indexing latest worktree for '%s'", remote.path)
-    remote_index = build(remote.path, remote.fs)
+    remote_indexes: Dict[str, Tuple["Remote", "DataIndex"]] = {}
     for stage in view.stages:
         for out in stage.outs:
-            _workspace, key = out.index_key
-            if key not in remote_index:
-                logger.warning(
-                    "Could not update '%s', it does not exist in the remote",
-                    out,
-                )
-                continue
-            entry = remote_index[key]
-            if (
-                entry.meta
-                and entry.meta.isdir
-                and not any(
-                    subkey != key and subentry.meta and not subentry.meta.isdir
-                    for subkey, subentry in remote_index.iteritems(key)
-                )
-            ):
-                logger.warning(
-                    "Could not update '%s', directory is empty in the "
-                    "remote",
-                    out,
-                )
-                continue
-            _fetch_out_changes(out, local_index, remote_index, remote)
-        stage.save()
-        for out in stage.outs:
-            _update_out_meta(out, remote_index)
+            _update_worktree_out(repo, out, local_index, remote_indexes)
         stage.dump(with_files=True, update_pipeline=False)
+
+
+def _update_worktree_out(
+    repo: "Repo",
+    out: "Output",
+    local_index: Union["DataIndex", "DataIndexView"],
+    remote_indexes: Dict[str, Tuple["Remote", "DataIndex"]],
+):
+    from dvc_data.index import build
+
+    remote_name = out.remote or out.meta.remote
+    if not remote_name:
+        logger.warning(
+            "Could not update '%s', it was never pushed to a remote",
+            out,
+        )
+        return
+
+    if remote_name in remote_indexes:
+        remote, remote_index = remote_indexes[remote_name]
+    else:
+        remote = repo.cloud.get_remote(remote_name, "update")
+        if not remote.worktree:
+            raise StageUpdateError(out.stage.relpath)
+        logger.debug("indexing latest worktree for '%s'", remote.path)
+        remote_index = build(remote.path, remote.fs)
+        remote_indexes[remote_name] = remote, remote_index
+    _workspace, key = out.index_key
+    if key not in remote_index:
+        logger.warning(
+            "Could not update '%s', it does not exist in the remote",
+            out,
+        )
+        return
+
+    entry = remote_index[key]
+    if (
+        entry.meta
+        and entry.meta.isdir
+        and not any(
+            subkey != key and subentry.meta and not subentry.meta.isdir
+            for subkey, subentry in remote_index.iteritems(key)
+        )
+    ):
+        logger.warning(
+            "Could not update '%s', directory is empty in the remote",
+            out,
+        )
+        return
+
+    _fetch_out_changes(out, local_index, remote_index, remote)
+    _update_out_meta(
+        repo,
+        out,
+        local_index,
+        remote_index,
+        remote,
+    )
 
 
 def _fetch_out_changes(
@@ -313,15 +350,9 @@ def _fetch_out_changes(
     remote_index: Union["DataIndex", "DataIndexView"],
     remote: "Remote",
 ):
-    from dvc_data.index import DataIndex, checkout
+    from dvc_data.index import checkout
 
-    _, key = out.index_key
-    old = DataIndex()
-    new = DataIndex()
-    for _, entry in local_index.iteritems(key):
-        old.add(entry)
-    for _, entry in remote_index.iteritems(key):
-        new.add(entry)
+    old, new = _get_diff_indexes(out, local_index, remote_index)
     total = len(new)
     with Callback.as_tqdm_callback(
         unit="file", desc=f"Updating '{out}'", disable=total == 0
@@ -338,3 +369,87 @@ def _fetch_out_changes(
             meta_cmp_key=partial(_meta_checksum, remote.fs),
             callback=cb,
         )
+        out.save()
+
+
+def _get_diff_indexes(
+    out: "Output",
+    local_index: Union["DataIndex", "DataIndexView"],
+    remote_index: Union["DataIndex", "DataIndexView"],
+) -> Tuple["DataIndex", "DataIndex"]:
+    from dvc_data.index import DataIndex
+
+    _, key = out.index_key
+    old = DataIndex()
+    new = DataIndex()
+    for _, entry in local_index.iteritems(key):
+        old.add(entry)
+    for _, entry in remote_index.iteritems(key):
+        new.add(entry)
+    return old, new
+
+
+def _update_out_meta(
+    repo: "Repo",
+    out: "Output",
+    local_index: Union["DataIndex", "DataIndexView"],
+    remote_index: Union["DataIndex", "DataIndexView"],
+    remote: "Remote",
+):
+    from dvc_data.index.save import build_tree
+
+    index = _get_update_diff_index(
+        repo, out, local_index, remote_index, remote
+    )
+
+    _, key = out.index_key
+    entry = index[key]
+    if out.isdir():
+        tree_meta, new_tree = build_tree(index, key)
+        out.obj = new_tree
+        out.hash_info = new_tree.hash_info
+        out.meta = tree_meta
+    else:
+        if entry.hash_info:
+            out.hash_info = entry.hash_info
+        out.meta = entry.meta
+    if out.meta:
+        out.meta.remote = remote.name
+
+
+def _get_update_diff_index(
+    repo: "Repo",
+    out: "Output",
+    local_index: Union["DataIndex", "DataIndexView"],
+    remote_index: Union["DataIndex", "DataIndexView"],
+    remote: "Remote",
+) -> "DataIndex":
+    from dvc_data.index import DataIndex
+    from dvc_data.index.diff import ADD, MODIFY, UNCHANGED, diff
+
+    old, new = _get_diff_indexes(out, local_index, remote_index)
+    index = DataIndex()
+    for change in diff(
+        old,
+        new,
+        meta_only=True,
+        meta_cmp_key=partial(_meta_checksum, remote.fs),
+        with_unchanged=True,
+    ):
+        if change.typ == ADD or change.typ == MODIFY:
+            entry = change.new
+            # preserve md5's which were calculated in out.save() after
+            # downloading
+            if out.isdir():
+                if not entry.meta.isdir:
+                    fs_path = repo.fs.path.join(repo.root_dir, *entry.key)
+                    tree = cast("Tree", out.obj)
+                    _, entry.hash_info = tree.get(  # type: ignore[misc]
+                        repo.fs.path.relparts(fs_path, out.fs_path)
+                    )
+            else:
+                entry.hash_info = out.hash_info
+            index[change.new.key] = change.new
+        elif change.typ == UNCHANGED:
+            index[change.old.key] = change.old
+    return index
