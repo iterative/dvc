@@ -7,6 +7,7 @@ from funcy import first
 from dvc.exceptions import URLMissingError
 from dvc.repo import Repo
 from dvc.repo.ls_url import ls_url, parse_external_url
+from dvc.utils.fs import remove
 
 
 class TestImport:
@@ -98,6 +99,11 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "file").read_text() == "file"
         assert dvc.status() == {}
 
+        dvc.odb.local.clear()
+        remove(tmp_dir / "file")
+        dvc.pull()
+        assert (tmp_dir / "file").read_text() == "file"
+
         (remote_version_aware / "file").write_text("modified")
         assert dvc.status().get("file.dvc") == [
             {"changed deps": {"remote://upstream/file": "update available"}},
@@ -106,23 +112,45 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "file").read_text() == "modified"
         assert dvc.status() == {}
 
+        dvc.odb.local.clear()
+        remove(tmp_dir / "file")
+        dvc.pull()
+        assert (tmp_dir / "file").read_text() == "modified"
+
     def test_import_dir(self, tmp_dir, dvc, remote_version_aware):
-        remote_version_aware.gen({"data_dir": {"file": "file"}})
+        remote_version_aware.gen({"data_dir": {"subdir": {"file": "file"}}})
         dvc.imp_url("remote://upstream/data_dir", version_aware=True)
         stage = first(dvc.index.stages)
         assert not stage.outs[0].can_push
-        assert (tmp_dir / "data_dir" / "file").read_text() == "file"
+        assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
         assert dvc.status() == {}
 
-        (remote_version_aware / "data_dir" / "file").write_text("modified")
+        dvc.odb.local.clear()
+        remove(tmp_dir / "data_dir")
+        dvc.pull()
+        assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
+
+        (remote_version_aware / "data_dir" / "subdir" / "file").write_text(
+            "modified"
+        )
         (remote_version_aware / "data_dir" / "new_file").write_text("new")
         assert dvc.status().get("data_dir.dvc") == [
             {"changed deps": {"remote://upstream/data_dir": "modified"}},
         ]
         dvc.update(str(tmp_dir / "data_dir.dvc"))
-        assert (tmp_dir / "data_dir" / "file").read_text() == "modified"
+        assert (
+            tmp_dir / "data_dir" / "subdir" / "file"
+        ).read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
         assert dvc.status() == {}
+
+        dvc.odb.local.clear()
+        remove(tmp_dir / "data_dir")
+        dvc.pull()
+        assert (
+            tmp_dir / "data_dir" / "subdir" / "file"
+        ).read_text() == "modified"
+        assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
 
 
 class TestAdd:
