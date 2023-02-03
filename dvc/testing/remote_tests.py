@@ -5,6 +5,7 @@ import pytest
 
 from dvc.stage.cache import RunCacheNotSupported
 from dvc.utils.fs import remove
+from dvc_data.hashfile.tree import Tree
 
 # pylint: disable=unused-argument
 
@@ -247,8 +248,8 @@ class TestRemoteWorktree:
     def test_update(
         self, tmp_dir, dvc, remote_worktree  # pylint: disable=W0613
     ):
-        tmp_dir.dvc_gen("foo", "foo")
-        tmp_dir.dvc_gen(
+        (foo_stage,) = tmp_dir.dvc_gen("foo", "foo")
+        (data_dir_stage,) = tmp_dir.dvc_gen(
             {
                 "data_dir": {
                     "data_sub_dir": {"data_sub": "data_sub"},
@@ -258,11 +259,41 @@ class TestRemoteWorktree:
             }
         )
         dvc.push()
+        orig_foo = foo_stage.reload().outs[0]
+        orig_data_dir = data_dir_stage.reload().outs[0]
         (remote_worktree / "foo").write_text("bar")
         (remote_worktree / "data_dir" / "data").write_text("modified")
         (remote_worktree / "data_dir" / "new_data").write_text("new data")
 
         dvc.update([str(tmp_dir / "foo.dvc"), str(tmp_dir / "data_dir.dvc")])
+        updated_foo = foo_stage.reload().outs[0]
+        updated_data_dir = data_dir_stage.reload().outs[0]
+
+        assert updated_foo.meta.version_id
+        assert updated_foo.meta.version_id != orig_foo.meta.version_id
+        updated_data_dir = data_dir_stage.reload().outs[0]
+        orig_tree = orig_data_dir.get_obj()
+        updated_tree = Tree.from_list(updated_data_dir.files, hash_name="md5")
+        assert orig_tree.get(("data_sub_dir", "data_sub")) == updated_tree.get(
+            ("data_sub_dir", "data_sub")
+        )
+        orig_meta, _ = orig_tree.get(("data",))
+        updated_meta, _ = updated_tree.get(("data",))
+        assert orig_meta.version_id
+        assert updated_meta.version_id
+        assert orig_meta.version_id != updated_meta.version_id
+        meta, hash_info = updated_tree.get(("new_data",))
+        assert meta
+        assert hash_info
+
+        assert (tmp_dir / "foo").read_text() == "bar"
+        assert (tmp_dir / "data_dir" / "data").read_text() == "modified"
+        assert (tmp_dir / "data_dir" / "new_data").read_text() == "new data"
+
+        remove(dvc.odb.local.path)
+        remove(tmp_dir / "foo")
+        remove(tmp_dir / "data_dir")
+        dvc.pull()
         assert (tmp_dir / "foo").read_text() == "bar"
         assert (tmp_dir / "data_dir" / "data").read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_data").read_text() == "new data"
