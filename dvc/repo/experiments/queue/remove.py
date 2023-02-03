@@ -40,7 +40,7 @@ def remove_tasks(  # noqa: C901
             msg,
             queue_entry,
         ) in celery_queue._iter_queued():  # pylint: disable=protected-access
-            if queue_entry.stash_rev in stash_revs:
+            if queue_entry.stash_rev in stash_revs and msg.delivery_tag:
                 celery_queue.celery.reject(msg.delivery_tag)
     finally:
         celery_queue.stash.remove_revs(list(stash_revs.values()))
@@ -56,7 +56,8 @@ def remove_tasks(  # noqa: C901
             result: AsyncResult = AsyncResult(task_id)
             if result is not None:
                 result.forget()
-            celery_queue.celery.purge(msg.delivery_tag)
+            if msg.delivery_tag:
+                celery_queue.celery.purge(msg.delivery_tag)
     finally:
         if celery_queue.failed_stash:
             celery_queue.failed_stash.remove_revs(failed_stash_revs)
