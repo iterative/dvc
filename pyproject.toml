@@ -100,7 +100,7 @@ tests = [
     "filelock==3.9.0",
     "beautifulsoup4==4.11.2",
     "pywin32>=225; sys_platform == 'win32'",  # optional dependency
-    "pylint==2.16.0",
+    "pylint==2.16.1",
     # type-checking
     "mypy==0.991",
     "types-requests",
