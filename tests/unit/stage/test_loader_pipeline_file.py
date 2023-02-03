@@ -26,9 +26,7 @@ def lock_data():
 
 
 def test_fill_from_lock_deps_outs(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"]
-    )
+    stage = create_stage(PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"])
 
     for item in chain(stage.deps, stage.outs):
         assert not item.hash_info
@@ -88,9 +86,7 @@ def test_fill_from_lock_params(dvc, lock_data):
 
     StageLoader.fill_from_lock(stage, lock_data)
     assert params_deps[0].hash_info.value == lock_data["params"]["params.yaml"]
-    assert (
-        params_deps[1].hash_info.value == lock_data["params"]["myparams.yaml"]
-    )
+    assert params_deps[1].hash_info.value == lock_data["params"]["myparams.yaml"]
 
 
 def test_fill_from_lock_missing_params_section(dvc, lock_data):
@@ -140,9 +136,7 @@ def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
 
 
 def test_fill_from_lock_with_missing_sections(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"]
-    )
+    stage = create_stage(PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"])
     lock = deepcopy(lock_data)
     del lock["deps"]
     StageLoader.fill_from_lock(stage, lock)
@@ -157,9 +151,7 @@ def test_fill_from_lock_with_missing_sections(dvc, lock_data):
 
 
 def test_fill_from_lock_empty_data(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"]
-    )
+    stage = create_stage(PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"])
     StageLoader.fill_from_lock(stage, None)
     assert not stage.deps[0].hash_info
     assert not stage.outs[0].hash_info

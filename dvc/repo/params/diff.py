@@ -18,6 +18,4 @@ def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
     old = params.get(a_rev, {}).get("data", {})
     new = params.get(b_rev, {}).get("data", {})
 
-    return _diff(
-        format_dict(old), format_dict(new), with_unchanged=with_unchanged
-    )
+    return _diff(format_dict(old), format_dict(new), with_unchanged=with_unchanged)

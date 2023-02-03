@@ -41,10 +41,7 @@ class CmdExperimentsGC(CmdBase):
                 msg += " and all git tags"
 
             if self.args.commit_date:
-                msg += (
-                    " and all git commits before date "
-                    f"{self.args.commit_date}"
-                )
+                msg += f" and all git commits before date {self.args.commit_date}"
         msg += " of the current repo."
 
         if self.args.queued:
@@ -79,11 +76,9 @@ class CmdExperimentsGC(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-
     EXPERIMENTS_GC_HELP = "Garbage collect unneeded experiments."
     EXPERIMENTS_GC_DESCRIPTION = (
-        "Removes all experiments which are not derived from the specified"
-        "Git revisions."
+        "Removes all experiments which are not derived from the specifiedGit revisions."
     )
     experiments_gc_parser = experiments_subparsers.add_parser(
         "gc",

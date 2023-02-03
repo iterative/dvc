@@ -7,9 +7,7 @@ def join(words):
         return ""
 
     return (
-        "{before} and {after}".format(
-            before=", ".join(words[:-1]), after=words[-1]
-        )
+        "{before} and {after}".format(before=", ".join(words[:-1]), after=words[-1])
         if len(words) > 1
         else words[0]
     )
@@ -17,9 +15,7 @@ def join(words):
 
 def get_summary(stats):
     status = (
-        (state, len(data) if is_seq(data) else data)
-        for state, data in stats
-        if data
+        (state, len(data) if is_seq(data) else data) for state, data in stats if data
     )
     return join(
         "{} file{} {}".format(num, "s" if num > 1 else "", state)
@@ -30,9 +26,7 @@ def get_summary(stats):
 ELLIPSIS = "…"
 
 
-def truncate_text(
-    text: str, max_length: int, with_ellipsis: bool = True
-) -> str:
+def truncate_text(text: str, max_length: int, with_ellipsis: bool = True) -> str:
     if with_ellipsis and len(text) > max_length:
         return text[: max_length - 1] + ELLIPSIS
 

@@ -10,9 +10,7 @@ from ._yaml import *  # noqa, pylint: disable=wildcard-import
 LOADERS: DefaultDict[str, LoaderFn] = defaultdict(  # noqa: F405
     lambda: load_yaml  # noqa: F405
 )
-LOADERS.update(
-    {".toml": load_toml, ".json": load_json, ".py": load_py}  # noqa: F405
-)
+LOADERS.update({".toml": load_toml, ".json": load_json, ".py": load_py})  # noqa: F405
 
 
 def load_path(fs_path, fs):
@@ -24,9 +22,7 @@ def load_path(fs_path, fs):
 DUMPERS: DefaultDict[str, DumperFn] = defaultdict(  # noqa: F405
     lambda: dump_yaml  # noqa: F405
 )
-DUMPERS.update(
-    {".toml": dump_toml, ".json": dump_json, ".py": dump_py}  # noqa: F405
-)
+DUMPERS.update({".toml": dump_toml, ".json": dump_json, ".py": dump_py})  # noqa: F405
 
 MODIFIERS: DefaultDict[str, ModifierFn] = defaultdict(  # noqa: F405
     lambda: modify_yaml  # noqa: F405

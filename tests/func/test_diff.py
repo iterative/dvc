@@ -247,9 +247,7 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"file": "file content"}}, commit="first")
     scm.tag("v1")
 
-    tmp_dir.dvc_gen(
-        {"dir": {"file": "modified file content"}}, commit="second"
-    )
+    tmp_dir.dvc_gen({"dir": {"file": "modified file content"}}, commit="second")
     scm.tag("v2")
 
     remove(dvc.odb.local.path)
@@ -298,9 +296,7 @@ def test_diff_dirty(tmp_dir, scm, dvc):
             },
             {"hash": "86d049de17c76ac44cdcac146042ec9b", "path": "new_file"},
         ],
-        "deleted": [
-            {"hash": "7f0b6bb0b7e951b7fd2b2a4a326297e1", "path": "file"}
-        ],
+        "deleted": [{"hash": "7f0b6bb0b7e951b7fd2b2a4a326297e1", "path": "file"}],
         "modified": [
             {
                 "hash": {
@@ -413,9 +409,7 @@ def test_targets_single_file_in_dir(tmp_dir, scm, dvc):
 def test_targets_two_files_in_dir(tmp_dir, scm, dvc):
     setup_targets_test(tmp_dir)
 
-    assert dvc.diff(
-        targets=[os.path.join("dir", "1"), os.path.join("dir", "2")]
-    ) == {
+    assert dvc.diff(targets=[os.path.join("dir", "1"), os.path.join("dir", "2")]) == {
         "added": [
             {"path": os.path.join("dir", "1"), "hash": digest("1")},
             {"path": os.path.join("dir", "2"), "hash": digest("2")},
@@ -582,9 +576,7 @@ def test_diff_rename_file(tmp_dir, scm, dvc, commit_last):
         last_commit_msg = None
         a_rev = "HEAD"
 
-    paths = tmp_dir.gen(
-        {"dir": {"file": "text1", "subdir": {"file2": "text2"}}}
-    )
+    paths = tmp_dir.gen({"dir": {"file": "text1", "subdir": {"file2": "text2"}}})
     tmp_dir.dvc_add(paths, commit="commit #1")
     (tmp_dir / "dir" / "file").replace(tmp_dir / "dir" / "subdir" / "file3")
 

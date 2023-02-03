@@ -56,8 +56,10 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
 
         if exc.errno == errno.EMFILE:
             logger.exception(
-                "too many open files, please visit "
-                "%s to see how to handle this problem",
+                (
+                    "too many open files, please visit "
+                    "%s to see how to handle this problem"
+                ),
                 error_link("many-files"),
                 extra={"tb_only": True},
             )
@@ -80,7 +82,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
         if cmd:
             link = format_link("https://dvc.org/doc/install")
             hint = (
-                f"To install dvc with those dependencies, run:\n"
+                "To install dvc with those dependencies, run:\n"
                 "\n"
                 f"\t{cmd}\n"
                 "\n"
@@ -91,8 +93,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
             hint = f"\nPlease report this bug to {link}. Thank you!"
 
         logger.exception(
-            "URL '%s' is supported but requires these missing "
-            "dependencies: %s. %s",
+            "URL '%s' is supported but requires these missing dependencies: %s. %s",
             exc.url,
             exc.missing_deps,
             hint,
@@ -118,9 +119,11 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
 
         directory = relpath(exc.directory)
         logger.exception(
-            "Could not open pickled '%s' cache.\n"
-            "Remove the '%s' directory and then retry this command."
-            "\nSee %s for more information.",
+            (
+                "Could not open pickled '%s' cache.\n"
+                "Remove the '%s' directory and then retry this command."
+                "\nSee %s for more information."
+            ),
             exc.type,
             directory,
             error_link("pickle"),
@@ -181,11 +184,7 @@ def main(argv=None):  # noqa: C901
             set_loggers_level(level)
 
         if level and level <= logging.DEBUG:
-            from platform import (
-                platform,
-                python_implementation,
-                python_version,
-            )
+            from platform import platform, python_implementation, python_version
 
             from dvc import __version__
             from dvc.utils.pkg import PKG

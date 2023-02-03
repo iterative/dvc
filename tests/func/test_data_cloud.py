@@ -9,9 +9,7 @@ import dvc_data
 from dvc.cli import main
 from dvc.external_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
-from dvc.testing.remote_tests import (  # noqa, pylint: disable=unused-import
-    TestRemote,
-)
+from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-import
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
@@ -45,8 +43,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isfile(cache_dir)
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     dvc.odb.local.clear()
@@ -58,8 +55,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isfile(cache_dir)
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     oids_exist.reset_mock()
@@ -72,8 +68,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isdir("data_dir")
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     with open(cache, encoding="utf-8") as fd:
@@ -90,17 +85,14 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     # NOTE: check if remote gc works correctly on directories
     assert main(["gc", "-cw", "-f", *args]) == 0
     assert _list_oids_traverse.called
-    assert all(
-        _kwargs["jobs"] == 2 for (_args, _kwargs) in oids_exist.call_args_list
-    )
+    assert all(_kwargs["jobs"] == 2 for (_args, _kwargs) in oids_exist.call_args_list)
     shutil.move(dvc.odb.local.path, dvc.odb.local.path + ".back")
 
     assert main(["fetch", *args]) == 0
 
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     oids_exist.reset_mock()
@@ -112,8 +104,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isdir("data_dir")
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
 
@@ -195,9 +186,7 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     assert bar not in caplog.text
 
 
-def test_verify_hashes(
-    tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
-):
+def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote):
     tmp_dir.dvc_gen({"file": "file1 content"}, commit="add file")
     tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
     dvc.push()
@@ -276,9 +265,7 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     local_workspace.gen("file", "file content")
     dst = tmp_dir / "file"
-    stage = dvc.imp_url(
-        "remote://workspace/file", os.fspath(dst), no_download=True
-    )
+    stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     result = dvc.pull("file")
     assert result["fetched"] == 1
@@ -287,9 +274,7 @@ def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
 
 
-def test_pull_external_dvc_imports_mixed(
-    tmp_dir, dvc, scm, erepo_dir, local_remote
-):
+def test_pull_external_dvc_imports_mixed(tmp_dir, dvc, scm, erepo_dir, local_remote):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="first")
         os.remove("foo")
@@ -319,9 +304,7 @@ def clean(outs, dvc=None):
 
 def recurse_list_dir(d):
     return [
-        os.path.join(root, f)
-        for root, _, filenames in os.walk(d)
-        for f in filenames
+        os.path.join(root, f) for root, _, filenames in os.walk(d) for f in filenames
     ]
 
 

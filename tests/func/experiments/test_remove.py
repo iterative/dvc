@@ -11,9 +11,7 @@ def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
     ref_name_list = []
 
     for i in range(queue_length):
-        results = dvc.experiments.run(
-            exp_stage.addressing, params=[f"foo={i}"]
-        )
+        results = dvc.experiments.run(exp_stage.addressing, params=[f"foo={i}"])
         ref_info = first(exp_refs_by_rev(scm, first(results)))
         ref_info_list.append(ref_info)
         ref_name_list.append(str(ref_info))
@@ -24,9 +22,7 @@ def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
     assert scm.get_ref(ref_name_list[1]) is not None
     assert scm.get_ref(ref_name_list[2]) is not None
 
-    assert set(dvc.experiments.remove(ref_name_list[:2])) == set(
-        ref_name_list[:2]
-    )
+    assert set(dvc.experiments.remove(ref_name_list[:2])) == set(ref_name_list[:2])
     assert scm.get_ref(ref_name_list[0]) is None
     assert scm.get_ref(ref_name_list[1]) is None
     assert scm.get_ref(ref_name_list[2]) is not None
@@ -35,13 +31,9 @@ def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
 def test_remove_all_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     queue_length = 3
     for i in range(queue_length):
-        dvc.experiments.run(
-            exp_stage.addressing, params=[f"foo={i}"], queue=True
-        )
+        dvc.experiments.run(exp_stage.addressing, params=[f"foo={i}"], queue=True)
 
-    results = dvc.experiments.run(
-        exp_stage.addressing, params=[f"foo={queue_length}"]
-    )
+    results = dvc.experiments.run(exp_stage.addressing, params=[f"foo={queue_length}"])
     ref_info = first(exp_refs_by_rev(scm, first(results)))
 
     assert len(dvc.experiments.stash_revs) == queue_length
@@ -75,9 +67,11 @@ def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(ref_info2)) is not None
 
     rev2 = queue_revs["queue2"]
-    assert set(
-        dvc.experiments.remove(["queue1", rev2[:5], str(ref_info1)])
-    ) == {"queue1", rev2[:5], str(ref_info1)}
+    assert set(dvc.experiments.remove(["queue1", rev2[:5], str(ref_info1)])) == {
+        "queue1",
+        rev2[:5],
+        str(ref_info1),
+    }
     assert len(list(dvc.experiments.celery_queue.iter_queued())) == 1
     assert scm.get_ref(str(ref_info1)) is None
     assert scm.get_ref(str(ref_info2)) is not None
@@ -110,9 +104,7 @@ def test_remove_remote(tmp_dir, scm, dvc, exp_stage, git_upstream, use_url):
     ref_info_list = []
     exp_list = []
     for i in range(3):
-        results = dvc.experiments.run(
-            exp_stage.addressing, params=[f"foo={i}"]
-        )
+        results = dvc.experiments.run(exp_stage.addressing, params=[f"foo={i}"])
         exp = first(results)
         exp_list.append(exp)
         ref_info = first(exp_refs_by_rev(scm, exp))
@@ -127,9 +119,7 @@ def test_remove_remote(tmp_dir, scm, dvc, exp_stage, git_upstream, use_url):
 
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_list[0])) is None
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_list[1])) is None
-    assert (
-        git_upstream.tmp_dir.scm.get_ref(str(ref_info_list[2])) == exp_list[2]
-    )
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_list[2])) == exp_list[2]
 
 
 def test_remove_experiments_by_rev(tmp_dir, scm, dvc, exp_stage):

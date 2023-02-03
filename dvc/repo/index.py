@@ -306,9 +306,7 @@ class Index:
 
             data_index.odb_map[key] = out.odb
             try:
-                data_index.remote_map[key] = self.repo.cloud.get_remote_odb(
-                    out.remote
-                )
+                data_index.remote_map[key] = self.repo.cloud.get_remote_odb(out.remote)
             except NoRemoteError:
                 pass
 
@@ -347,9 +345,7 @@ class Index:
             collected = []
             for target in targets:
                 try:
-                    collected.extend(
-                        self.repo.stage.collect_granular(target, **kwargs)
-                    )
+                    collected.extend(self.repo.stage.collect_granular(target, **kwargs))
                 except DvcException as exc:
                     onerror(target, exc)
             self._collected_targets[targets_hash] = collected
@@ -369,9 +365,7 @@ class Index:
         from collections import defaultdict
 
         used: "ObjectContainer" = defaultdict(set)
-        pairs = self.collect_targets(
-            targets, recursive=recursive, with_deps=with_deps
-        )
+        pairs = self.collect_targets(targets, recursive=recursive, with_deps=with_deps)
         for stage, filter_info in pairs:
             for odb, objs in stage.get_used_objs(
                 remote=remote,
@@ -467,9 +461,7 @@ class IndexView:
                 key = key + out.fs.path.relparts(filter_info, out.fs_path)
             if out.meta.isdir:
                 prefixes[workspace].recursive.add(key)
-            prefixes[workspace].explicit.update(
-                key[:i] for i in range(len(key), 0, -1)
-            )
+            prefixes[workspace].explicit.update(key[:i] for i in range(len(key), 0, -1))
         return prefixes
 
     @cached_property
@@ -494,8 +486,7 @@ class IndexView:
             try:
                 prefixes = self._data_prefixes[workspace]
                 return key in prefixes.explicit or any(
-                    key[: len(prefix)] == prefix
-                    for prefix in prefixes.recursive
+                    key[: len(prefix)] == prefix for prefix in prefixes.recursive
                 )
             except KeyError:
                 return False
@@ -503,9 +494,7 @@ class IndexView:
         data: Dict[str, Union["DataIndex", "DataIndexView"]] = {}
         for workspace, data_index in self._index.data.items():
             if self.stages:
-                data[workspace] = view(
-                    data_index, partial(key_filter, workspace)
-                )
+                data[workspace] = view(data_index, partial(key_filter, workspace))
             else:
                 data[workspace] = DataIndex()
         return data

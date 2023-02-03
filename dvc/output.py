@@ -151,9 +151,7 @@ def _merge_data(s_list):
             d[key].update({})
             continue
         if not isinstance(key, dict):
-            raise ValueError(  # noqa: TRY004
-                f"'{type(key).__name__}' not supported."
-            )
+            raise ValueError(f"'{type(key).__name__}' not supported.")  # noqa: TRY004
 
         for k, flags in key.items():
             if not isinstance(flags, dict):
@@ -336,9 +334,7 @@ class Output:
         if fs_config is not None:
             fs_kwargs.update(**fs_config)
 
-        fs_cls, fs_config, fs_path = get_cloud_fs(
-            self.repo, url=path, **fs_kwargs
-        )
+        fs_cls, fs_config, fs_path = get_cloud_fs(self.repo, url=path, **fs_kwargs)
         self.fs = fs_cls(**fs_config)
 
         if (
@@ -500,9 +496,7 @@ class Output:
 
     @property
     def cache_path(self):
-        return self.odb.fs.unstrip_protocol(
-            self.odb.oid_to_path(self.hash_info.value)
-        )
+        return self.odb.fs.unstrip_protocol(self.odb.oid_to_path(self.hash_info.value))
 
     def get_hash(self):
         _, hash_info = self._get_hash_meta()
@@ -691,9 +685,7 @@ class Output:
                 dry_run=True,
             )
             if not self.IS_DEPENDENCY:
-                logger.debug(
-                    "Output '%s' doesn't use cache. Skipping saving.", self
-                )
+                logger.debug("Output '%s' doesn't use cache. Skipping saving.", self)
 
         self.hash_info = self.obj.hash_info
         self.files = None
@@ -724,9 +716,7 @@ class Output:
 
         if self.use_cache:
             granular = (
-                self.is_dir_checksum
-                and filter_info
-                and filter_info != self.fs_path
+                self.is_dir_checksum and filter_info and filter_info != self.fs_path
             )
             if granular:
                 obj = self._commit_granular_dir(filter_info)
@@ -757,9 +747,7 @@ class Output:
             self.set_exec()
 
     def _commit_granular_dir(self, filter_info) -> Optional["HashFile"]:
-        prefix = self.fs.path.parts(
-            self.fs.path.relpath(filter_info, self.fs_path)
-        )
+        prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
         staging, _, save_obj = build(
             self.odb,
             self.fs_path,
@@ -794,9 +782,7 @@ class Output:
             ret.update(split_file_meta_from_cloud(meta_d))
 
         if self.is_in_repo:
-            path = self.fs.path.as_posix(
-                relpath(self.fs_path, self.stage.wdir)
-            )
+            path = self.fs.path.as_posix(relpath(self.fs_path, self.stage.wdir))
         else:
             path = self.def_path
 
@@ -837,16 +823,13 @@ class Output:
             if obj:
                 obj = cast("Tree", obj)
                 ret[self.PARAM_FILES] = [
-                    split_file_meta_from_cloud(f)
-                    for f in obj.as_list(with_meta=True)
+                    split_file_meta_from_cloud(f) for f in obj.as_list(with_meta=True)
                 ]
         return ret
 
     def verify_metric(self):
         if self.fs.protocol != "local":
-            raise DvcException(
-                f"verify metric is not supported for {self.protocol}"
-            )
+            raise DvcException(f"verify metric is not supported for {self.protocol}")
         if not self.metric:
             return
 
@@ -902,9 +885,7 @@ class Output:
     ) -> Optional[Tuple[bool, Optional[bool]]]:
         if not self.use_cache:
             if progress_callback != DEFAULT_CALLBACK:
-                progress_callback.relative_update(
-                    self.get_files_number(filter_info)
-                )
+                progress_callback.relative_update(self.get_files_number(filter_info))
             return None
 
         obj = self.get_obj(filter_info=filter_info)
@@ -1071,9 +1052,7 @@ class Output:
         obj = self.get_obj()
         if filter_info and filter_info != self.fs_path:
             assert obj
-            prefix = self.fs.path.parts(
-                self.fs.path.relpath(filter_info, self.fs_path)
-            )
+            prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
             obj = cast(Tree, obj)
             return obj.filter(prefix)
         return cast(Tree, obj)
@@ -1181,14 +1160,10 @@ class Output:
             other.pop(opt, None)
 
         if my != other:
-            raise MergeError(
-                "unable to auto-merge outputs with different options"
-            )
+            raise MergeError("unable to auto-merge outputs with different options")
 
         if not out.is_dir_checksum:
-            raise MergeError(
-                "unable to auto-merge outputs that are not directories"
-            )
+            raise MergeError("unable to auto-merge outputs that are not directories")
 
     def merge(self, ancestor, other, allowed=None):
         from dvc_data.hashfile.tree import MergeError as TreeMergeError

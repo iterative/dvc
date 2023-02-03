@@ -70,10 +70,7 @@ class StageExternalOutputsError(DvcException):
 
 class StageUpdateError(DvcException):
     def __init__(self, path):
-        super().__init__(
-            "update is not supported for '{}' that is not an "
-            "import.".format(path)
-        )
+        super().__init__(f"update is not supported for '{path}' that is not an import.")
 
 
 class MissingDataSource(DvcException):
@@ -97,9 +94,7 @@ class StageNotFound(DvcException, KeyError):
     def __init__(self, file, name):
         self.file = file.relpath
         self.name = name
-        super().__init__(
-            f"Stage '{self.name}' not found inside '{self.file}' file"
-        )
+        super().__init__(f"Stage '{self.name}' not found inside '{self.file}' file")
 
     def __str__(self):
         # `KeyError` quotes the message

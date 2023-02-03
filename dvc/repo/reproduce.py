@@ -34,8 +34,7 @@ def _reproduce_stage(stage: "Stage", **kwargs) -> List["Stage"]:
 
     if stage.frozen and not stage.is_import:
         logger.warning(
-            "%s is frozen. Its dependencies are"
-            " not going to be reproduced.",
+            "%s is frozen. Its dependencies are not going to be reproduced.",
             stage,
         )
 
@@ -58,9 +57,7 @@ def _get_stage_files(stage: "Stage") -> Iterator[str]:
         if (
             not dep.use_scm_ignore
             and dep.is_in_repo
-            and not stage.repo.dvcfs.isdvc(
-                stage.repo.dvcfs.from_os_path(str(dep))
-            )
+            and not stage.repo.dvcfs.isdvc(stage.repo.dvcfs.from_os_path(str(dep)))
         ):
             yield dep.fs_path
     for out in stage.outs:
@@ -205,8 +202,10 @@ def _reproduce_stages(  # noqa: C901
         except CheckpointKilledError:
             result.append(stage)
             logger.warning(
-                "Checkpoint stage '%s' was interrupted remaining stages in "
-                "pipeline will not be reproduced.",
+                (
+                    "Checkpoint stage '%s' was interrupted remaining stages in"
+                    " pipeline will not be reproduced."
+                ),
                 stage.addressing,
             )
             logger.warning(

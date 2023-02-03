@@ -172,9 +172,7 @@ class URLInfo(_BasePath):
         return self._base_parts + self._path.parts
 
     def replace(self, path=None):
-        return self.from_parts(  # type: ignore[misc]
-            *self._base_parts, path=path
-        )
+        return self.from_parts(*self._base_parts, path=path)  # type: ignore[misc]
 
     @cached_property
     def url(self) -> str:
@@ -257,9 +255,7 @@ class URLInfo(_BasePath):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        return self._base_parts == other._base_parts and self._path.isin(
-            other._path
-        )
+        return self._base_parts == other._base_parts and self._path.isin(other._path)
 
 
 class CloudURLInfo(URLInfo):

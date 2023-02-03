@@ -2,9 +2,7 @@ from argparse import _AppendAction
 
 
 class CommaSeparatedArgs(_AppendAction):  # pylint: disable=protected-access
-    def __call__(
-        self, parser, namespace, values, option_string=None  # noqa: ARG002
-    ):
+    def __call__(self, parser, namespace, values, option_string=None):  # noqa: ARG002
         from funcy import ldistinct
 
         items = getattr(namespace, self.dest) or []
@@ -13,9 +11,7 @@ class CommaSeparatedArgs(_AppendAction):  # pylint: disable=protected-access
 
 
 class KeyValueArgs(_AppendAction):
-    def __call__(
-        self, parser, namespace, values, option_string=None  # noqa: ARG002
-    ):
+    def __call__(self, parser, namespace, values, option_string=None):  # noqa: ARG002
         items = getattr(namespace, self.dest) or {}
         for value in filter(bool, values):
             key, _, value = value.partition("=")

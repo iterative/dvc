@@ -184,9 +184,7 @@ def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
     assert index.used_objs() == {None: set(expected_objs)}
     assert index.used_objs("dir") == {None: set(expected_objs[1:])}
     assert index.used_objs(".", recursive=True) == {None: set(expected_objs)}
-    assert index.used_objs("copy-foo-bar", with_deps=True) == {
-        None: {expected_objs[0]}
-    }
+    assert index.used_objs("copy-foo-bar", with_deps=True) == {None: {expected_objs[0]}}
 
 
 def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
@@ -260,9 +258,7 @@ def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
         None, stage_filter=lambda s: getattr(s, "name", "").startswith("copy")
     )
     assert set(view.stages) == {stage2}
-    assert {out.fs_path for out in view.outs} == {
-        out.fs_path for out in stage2.outs
-    }
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage2.outs}
 
 
 def test_view_outs_filter(tmp_dir, scm, dvc, run_copy):
@@ -273,9 +269,7 @@ def test_view_outs_filter(tmp_dir, scm, dvc, run_copy):
 
     view = index.targets_view(None, outs_filter=lambda o: o.def_path == "foo")
     assert set(view.stages) == {stage1, stage2}
-    assert {out.fs_path for out in view.outs} == {
-        out.fs_path for out in stage1.outs
-    }
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage1.outs}
 
 
 def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
@@ -298,9 +292,7 @@ def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
         outs_filter=lambda o: o.def_path == "bar",
     )
     assert set(view.stages) == {stage2}
-    assert {out.fs_path for out in view.outs} == {
-        out.fs_path for out in stage2.outs
-    }
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage2.outs}
 
 
 def test_view_brancher(tmp_dir, scm, dvc):

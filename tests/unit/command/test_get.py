@@ -23,15 +23,11 @@ def test_get(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(
-        "repo_url", path="src", out="out", rev="version", jobs=4
-    )
+    m.assert_called_once_with("repo_url", path="src", out="out", rev="version", jobs=4)
 
 
 def test_get_url(mocker, capsys):
-    cli_args = parse_args(
-        ["get", "repo_url", "src", "--rev", "version", "--show-url"]
-    )
+    cli_args = parse_args(["get", "repo_url", "src", "--rev", "version", "--show-url"])
     assert cli_args.func == CmdGet
 
     cmd = cli_args.func(cli_args)

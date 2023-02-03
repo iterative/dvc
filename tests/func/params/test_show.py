@@ -25,22 +25,14 @@ def test_show_targets(tmp_dir, dvc):
     dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
     expected = {"": {"data": {"params.yaml": {"data": {"foo": "bar"}}}}}
     assert dvc.params.show(targets=["params.yaml"]) == expected
-    assert (
-        dvc.params.show(targets=(tmp_dir / "params.yaml").fs_path) == expected
-    )
+    assert dvc.params.show(targets=(tmp_dir / "params.yaml").fs_path) == expected
 
 
 def test_show_toml(tmp_dir, dvc):
     tmp_dir.gen("params.toml", "[foo]\nbar = 42\nbaz = [1, 2]\n")
-    dvc.run(
-        cmd="echo params.toml", params=["params.toml:foo"], single_stage=True
-    )
+    dvc.run(cmd="echo params.toml", params=["params.toml:foo"], single_stage=True)
     assert dvc.params.show() == {
-        "": {
-            "data": {
-                "params.toml": {"data": {"foo": {"bar": 42, "baz": [1, 2]}}}
-            }
-        }
+        "": {"data": {"params.toml": {"data": {"foo": {"bar": 42, "baz": [1, 2]}}}}}
     }
 
 
@@ -108,31 +100,21 @@ def test_show_branch(tmp_dir, scm, dvc):
 
 
 def test_pipeline_params(tmp_dir, scm, dvc, run_copy):
-    tmp_dir.gen(
-        {"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"}
-    )
+    tmp_dir.gen({"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"})
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo,xyz"])
     scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
-    tmp_dir.scm_gen(
-        "params.yaml", "foo: baz\nxyz: val\nabc: ignore", commit="baz"
-    )
-    tmp_dir.scm_gen(
-        "params.yaml", "foo: qux\nxyz: val\nabc: ignore", commit="qux"
-    )
+    tmp_dir.scm_gen("params.yaml", "foo: baz\nxyz: val\nabc: ignore", commit="baz")
+    tmp_dir.scm_gen("params.yaml", "foo: qux\nxyz: val\nabc: ignore", commit="qux")
 
     assert dvc.params.show(revs=["master"], deps=True) == {
-        "master": {
-            "data": {"params.yaml": {"data": {"foo": "qux", "xyz": "val"}}}
-        }
+        "master": {"data": {"params.yaml": {"data": {"foo": "qux", "xyz": "val"}}}}
     }
     assert dvc.params.show(revs=["master"]) == {
         "master": {
             "data": {
-                "params.yaml": {
-                    "data": {"abc": "ignore", "foo": "qux", "xyz": "val"}
-                }
+                "params.yaml": {"data": {"abc": "ignore", "foo": "qux", "xyz": "val"}}
             }
         }
     }
@@ -144,11 +126,7 @@ def test_show_no_repo(tmp_dir):
     dvc = Repo(uninitialized=True)
 
     assert dvc.params.show(targets=["params_file.yaml"]) == {
-        "": {
-            "data": {
-                "params_file.yaml": {"data": {"foo": "bar", "xyz": "val"}}
-            }
-        }
+        "": {"data": {"params_file.yaml": {"data": {"foo": "bar", "xyz": "val"}}}}
     }
 
 
@@ -184,10 +162,7 @@ def test_log_errors(tmp_dir, scm, dvc, capsys, file, error_path):
     assert isinstance(
         reduce(operator.getitem, error_path, result), YAMLFileCorruptedError
     )
-    assert (
-        "DVC failed to load some parameters for following revisions: 'v1'."
-        in error
-    )
+    assert "DVC failed to load some parameters for following revisions: 'v1'." in error
 
 
 @pytest.mark.parametrize("file", ["params.yaml", "other_params.yaml"])
@@ -205,9 +180,7 @@ def test_show_without_targets_specified(tmp_dir, dvc, scm, file):
 
 
 def test_deps_multi_stage(tmp_dir, scm, dvc, run_copy):
-    tmp_dir.gen(
-        {"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"}
-    )
+    tmp_dir.gen({"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"})
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
     run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
 
@@ -215,16 +188,12 @@ def test_deps_multi_stage(tmp_dir, scm, dvc, run_copy):
     scm.commit("add stage")
 
     assert dvc.params.show(revs=["master"], deps=True) == {
-        "master": {
-            "data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}
-        }
+        "master": {"data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}}
     }
 
 
 def test_deps_with_targets(tmp_dir, scm, dvc, run_copy):
-    tmp_dir.gen(
-        {"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"}
-    )
+    tmp_dir.gen({"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"})
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
     run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
 

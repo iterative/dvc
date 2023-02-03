@@ -32,9 +32,7 @@ def dict_filter(d, exclude=()):
     if isinstance(d, list):
         return [dict_filter(e, exclude) for e in d]
 
-    return {
-        k: dict_filter(v, exclude) for k, v in d.items() if k not in exclude
-    }
+    return {k: dict_filter(v, exclude) for k, v in d.items() if k not in exclude}
 
 
 def dict_hash(d, typ, exclude=()):
@@ -303,9 +301,7 @@ def resolve_paths(repo, out, always_local=False):
             "Cannot add files inside symlinked directories to DVC. "
             "See {} for more information."
         ).format(
-            format_link(
-                "https://dvc.org/doc/user-guide/troubleshooting#add-symlink"
-            )
+            format_link("https://dvc.org/doc/user-guide/troubleshooting#add-symlink")
         )
         raise DvcException(msg)
     else:
@@ -362,18 +358,14 @@ def parse_target(
     if path:
         if os.path.basename(path) == LOCK_FILE:
             raise DvcException(
-                "Did you mean: `{}`?".format(
-                    target.replace(".lock", ".yaml", 1)
-                )
+                "Did you mean: `{}`?".format(target.replace(".lock", ".yaml", 1))
             )
         if not name:
             ret = (target, None)
             return ret if is_valid_filename(target) else ret[::-1]
 
     if not path:
-        logger.trace(  # type: ignore[attr-defined]
-            "Assuming file to be '%s'", default
-        )
+        logger.trace("Assuming file to be '%s'", default)  # type: ignore[attr-defined]
 
     return path or default, name
 

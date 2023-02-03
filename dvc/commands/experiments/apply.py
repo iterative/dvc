@@ -10,19 +10,13 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsApply(CmdBase):
     def run(self):
-
-        self.repo.experiments.apply(
-            self.args.experiment, force=self.args.force
-        )
+        self.repo.experiments.apply(self.args.experiment, force=self.args.force)
 
         return 0
 
 
 def add_parser(experiments_subparsers, parent_parser):
-
-    EXPERIMENTS_APPLY_HELP = (
-        "Apply the changes from an experiment to your workspace."
-    )
+    EXPERIMENTS_APPLY_HELP = "Apply the changes from an experiment to your workspace."
     experiments_apply_parser = experiments_subparsers.add_parser(
         "apply",
         parents=[parent_parser],

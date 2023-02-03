@@ -171,9 +171,7 @@ def test_skip_uncached_pipeline_outputs(tmp_dir, dvc, run_copy_metrics):
         name="copy-metrics",
     )
     assert dvc.data_status() == EMPTY_STATUS
-    assert (
-        dvc.data_status(granular=True, untracked_files="all") == EMPTY_STATUS
-    )
+    assert dvc.data_status(granular=True, untracked_files="all") == EMPTY_STATUS
 
 
 def test_outs_with_no_hashes(M, tmp_dir, dvc, scm):
@@ -215,9 +213,7 @@ def test_subdir(M, tmp_dir, scm):
         assert dvc.data_status(granular=True, untracked_files="all") == {
             **EMPTY_STATUS,
             "git": M.dict(),
-            "unchanged": M.unordered(
-                "bar", join("dir", ""), join("dir", "foo")
-            ),
+            "unchanged": M.unordered("bar", join("dir", ""), join("dir", "foo")),
             "untracked": ["untracked"],
         }
 
@@ -228,9 +224,7 @@ def test_untracked_newly_added_files(M, tmp_dir, dvc, scm):
 
     expected = {
         **EMPTY_STATUS,
-        "untracked": M.unordered(
-            join("dir", "foo"), join("dir", "bar"), "foobar"
-        ),
+        "untracked": M.unordered(join("dir", "foo"), join("dir", "bar"), "foobar"),
         "git": M.dict(),
     }
     assert dvc.data_status(untracked_files="all") == expected
@@ -254,9 +248,7 @@ def test_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
         **EMPTY_STATUS,
         "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
         "committed": {"added": M.unordered("foobar", join("dir", ""))},
-        "uncommitted": {
-            "unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))
-        },
+        "uncommitted": {"unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))},
         "not_in_cache": M.unordered(
             "foobar",
             join("dir", ""),
@@ -307,9 +299,7 @@ def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
             "foobar",
             join("dir", ""),
         ),
-        "uncommitted": {
-            "unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))
-        },
+        "uncommitted": {"unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))},
         "git": M.dict(),
         "unchanged": M.unordered("foobar", join("dir", "")),
     }
@@ -361,9 +351,7 @@ def test_partial_missing_cache(M, tmp_dir, dvc, scm):
 
 
 def test_missing_dir_object_from_head(M, tmp_dir, dvc, scm):
-    (stage,) = tmp_dir.dvc_gen(
-        {"dir": {"foo": "foo", "bar": "bar"}}, commit="add dir"
-    )
+    (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="add dir")
     remove("dir")
     tmp_dir.dvc_gen({"dir": {"foobar": "foobar"}})
     odb = dvc.odb.repo

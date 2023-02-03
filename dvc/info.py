@@ -30,8 +30,7 @@ def get_dvc_info():
     info = [
         dvc_version,
         "-" * len(dvc_version),
-        f"Platform: Python {platform.python_version()} on "
-        f"{platform.platform()}",
+        f"Platform: Python {platform.python_version()} on {platform.platform()}",
         f"Subprojects:{_get_subprojects()}",
         f"Supports:{_get_supported_remotes()}",
     ]
@@ -125,8 +124,7 @@ def _get_supported_remotes():
             dependencies = []
             for requirement in fs_cls.REQUIRES:
                 dependencies.append(
-                    f"{requirement} = "
-                    f"{importlib_metadata.version(requirement)}"
+                    f"{requirement} = {importlib_metadata.version(requirement)}"
                 )
 
             remote_info = scheme

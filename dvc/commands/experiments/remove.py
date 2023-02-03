@@ -24,7 +24,6 @@ class CmdExperimentsRemove(CmdBase):
             )
 
     def run(self):
-
         self.check_arguments()
 
         removed_list = self.repo.experiments.remove(

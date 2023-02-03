@@ -56,9 +56,7 @@ def test_machine_modify_startup_script(tmp_dir, dvc, machine_config):
         ("instance_hdd_size", "BIG", "expected int"),
     ],
 )
-def test_machine_modify_fail(
-    tmp_dir, dvc, machine_config, caplog, slot, value, msg
-):
+def test_machine_modify_fail(tmp_dir, dvc, machine_config, caplog, slot, value, msg):
     assert main(["machine", "modify", "foo", slot, value]) == 251
     assert (tmp_dir / ".dvc" / "config").read_text() == machine_config
     assert msg in caplog.text
@@ -110,9 +108,7 @@ def test_machine_list(tmp_dir, dvc, capsys):
     assert "bar     azure" in out
 
 
-def test_machine_rename_success(
-    tmp_dir, scm, dvc, machine_config, capsys, mocker
-):
+def test_machine_rename_success(tmp_dir, scm, dvc, machine_config, capsys, mocker):
     config_file = tmp_dir / ".dvc" / "config"
 
     mocker.patch.object(
@@ -128,12 +124,8 @@ def test_machine_rename_success(
     cap = capsys.readouterr()
     assert "Rename machine 'foo' to 'bar'." in cap.out
     assert config_file.read_text() == machine_config.replace("foo", "bar")
-    assert not (
-        tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo"
-    ).exists()
-    assert (
-        tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "bar"
-    ).exists()
+    assert not (tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo").exists()
+    assert (tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "bar").exists()
 
 
 def test_machine_rename_none_exist(tmp_dir, scm, dvc, caplog):
@@ -154,9 +146,7 @@ def test_machine_rename_exist(tmp_dir, scm, dvc, caplog):
     assert "Machine 'bar' already exists." in caplog.text
 
 
-def test_machine_rename_error(
-    tmp_dir, scm, dvc, machine_config, caplog, mocker
-):
+def test_machine_rename_error(tmp_dir, scm, dvc, machine_config, caplog, mocker):
     config_file = tmp_dir / ".dvc" / "config"
     os.makedirs(tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo")
 

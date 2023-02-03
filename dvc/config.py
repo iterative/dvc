@@ -153,9 +153,7 @@ class Config(dict):
         with open(config_file, "w+", encoding="utf-8"):
             return Config(dvc_dir)
 
-    def load(
-        self, validate: bool = True, config: Optional["DictStrAny"] = None
-    ):
+    def load(self, validate: bool = True, config: Optional["DictStrAny"] = None):
         """Loads config from all the config files.
 
         Raises:
@@ -376,6 +374,5 @@ def merge(into, update):
 
 def _lower_keys(data):
     return {
-        k.lower(): _lower_keys(v) if isinstance(v, dict) else v
-        for k, v in data.items()
+        k.lower(): _lower_keys(v) if isinstance(v, dict) else v for k, v in data.items()
     }

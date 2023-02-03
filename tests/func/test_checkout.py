@@ -324,9 +324,7 @@ def test_checkout_suggest_git(tmp_dir, dvc, scm):
     assert e.value.__cause__.__cause__ is None
 
 
-def test_checkout_target_recursive_should_not_remove_other_used_files(
-    tmp_dir, dvc
-):
+def test_checkout_target_recursive_should_not_remove_other_used_files(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar", "data": {"file": "file"}})
     assert main(["checkout", "-R", "data"]) == 0
     assert (tmp_dir / "foo").exists()
@@ -375,9 +373,7 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
     assert system.is_symlink(os.path.join("data", "file"))
     new_data_link = os.path.realpath(os.path.join("data", "file"))
 
-    assert relpath(old_foo_link, old_cache_dir) == relpath(
-        new_foo_link, new_cache_dir
-    )
+    assert relpath(old_foo_link, old_cache_dir) == relpath(new_foo_link, new_cache_dir)
 
     assert relpath(old_data_link, old_cache_dir) == relpath(
         new_data_link, new_cache_dir
@@ -386,9 +382,7 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
 
 def test_checkout_no_checksum(tmp_dir, dvc):
     tmp_dir.gen("file", "file content")
-    stage = dvc.run(
-        outs=["file"], no_exec=True, cmd="somecmd", single_stage=True
-    )
+    stage = dvc.run(outs=["file"], no_exec=True, cmd="somecmd", single_stage=True)
 
     with pytest.raises(CheckoutError):
         dvc.checkout([stage.path], force=True)
@@ -566,9 +560,7 @@ def test_stats_on_removed_file_from_tracked_dir(tmp_dir, dvc, scm):
     assert dvc.checkout() == empty_checkout
 
 
-def test_stats_on_show_changes_does_not_show_summary(
-    tmp_dir, dvc, scm, capsys
-):
+def test_stats_on_show_changes_does_not_show_summary(tmp_dir, dvc, scm, capsys):
     tmp_dir.dvc_gen(
         {"dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
@@ -767,9 +759,7 @@ def test_checkout_executable(tmp_dir, dvc):
 
 
 def test_checkout_partial(tmp_dir, dvc):
-    tmp_dir.dvc_gen(
-        {"data": {"foo": "foo", "bar": "bar", "sub_dir": {"baz": "baz"}}}
-    )
+    tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar", "sub_dir": {"baz": "baz"}}})
 
     data_dir = tmp_dir / "data"
     shutil.rmtree(data_dir)
@@ -837,9 +827,7 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
 
 
 def test_checkout_partial_subdir(tmp_dir, dvc):
-    tmp_dir.dvc_gen(
-        {"data": {"foo": "foo", "sub_dir": {"bar": "bar", "baz": "baz"}}}
-    )
+    tmp_dir.dvc_gen({"data": {"foo": "foo", "sub_dir": {"bar": "bar", "baz": "baz"}}})
 
     data_dir = tmp_dir / "data"
     sub_dir = data_dir / "sub_dir"

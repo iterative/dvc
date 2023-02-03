@@ -1,9 +1,5 @@
 from dvc.render import VERSION_FIELD
-from dvc.render.match import (
-    PlotsData,
-    _squash_plots_properties,
-    match_defs_renderers,
-)
+from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_renderers
 
 
 def test_group_definitions():
@@ -12,9 +8,7 @@ def test_group_definitions():
         "v1": {
             "definitions": {
                 "data": {
-                    "config_file_1": {
-                        "data": {"plot_id_1": {}, "plot_id_2": {}}
-                    },
+                    "config_file_1": {"data": {"plot_id_1": {}, "plot_id_2": {}}},
                     "config_file_2": {"data": {"plot_id_3": {}}},
                 }
             }
@@ -57,9 +51,7 @@ def test_match_renderers(mocker):
                 },
             },
             "sources": {
-                "data": {
-                    "file.json": {"data": [{"x": 1, "y": 1}, {"x": 2, "y": 2}]}
-                }
+                "data": {"file.json": {"data": [{"x": 1, "y": 1}, {"x": 2, "y": 2}]}}
             },
         },
         "errored_revision": {

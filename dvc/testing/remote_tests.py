@@ -116,9 +116,7 @@ class TestRemote:
 
 
 class TestRemoteVersionAware:
-    def test_file(
-        self, tmp_dir, dvc, remote_version_aware  # pylint: disable=W0613
-    ):
+    def test_file(self, tmp_dir, dvc, remote_version_aware):  # pylint: disable=W0613
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
 
         dvc.push()
@@ -133,9 +131,7 @@ class TestRemoteVersionAware:
         dvc.pull()
         assert (tmp_dir / "foo").read_text() == "foo"
 
-    def test_dir(
-        self, tmp_dir, dvc, remote_version_aware  # pylint: disable=W0613
-    ):
+    def test_dir(self, tmp_dir, dvc, remote_version_aware):  # pylint: disable=W0613
         (stage,) = tmp_dir.dvc_gen(
             {
                 "data_dir": {
@@ -167,9 +163,7 @@ class TestRemoteVersionAware:
 
 
 class TestRemoteWorktree:
-    def test_file(
-        self, tmp_dir, dvc, remote_worktree  # pylint: disable=W0613
-    ):
+    def test_file(self, tmp_dir, dvc, remote_worktree):  # pylint: disable=W0613
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
 
         dvc.push()
@@ -245,9 +239,7 @@ class TestRemoteWorktree:
         dvc.pull()
         assert (tmp_dir / "data_dir" / "data").read_text() == "data"
 
-    def test_update(
-        self, tmp_dir, dvc, remote_worktree  # pylint: disable=W0613
-    ):
+    def test_update(self, tmp_dir, dvc, remote_worktree):  # pylint: disable=W0613
         (foo_stage,) = tmp_dir.dvc_gen("foo", "foo")
         (data_dir_stage,) = tmp_dir.dvc_gen(
             {

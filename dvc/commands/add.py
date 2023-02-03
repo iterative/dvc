@@ -41,10 +41,7 @@ def _add_annotating_args(parser: argparse.ArgumentParser) -> None:
 
 class CmdAdd(CmdBase):
     def run(self):
-        from dvc.exceptions import (
-            DvcException,
-            RecursiveAddingWhileUsingFilename,
-        )
+        from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 
         try:
             if len(self.args.targets) > 1 and self.args.file:

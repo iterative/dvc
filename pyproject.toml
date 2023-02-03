@@ -135,7 +135,6 @@ find = {namespaces = false, exclude=["tests", "tests.*"]}
 write_to = "dvc/_dvc_version.py"
 
 [tool.black]
-line-length = 79
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -155,10 +154,9 @@ exclude = '''
 [tool.isort]
 profile = "black"
 known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
-line_length = 79
+line_length = 88
 
 [tool.ruff]
-line-length = 79
 target-version = "py38"
 show-source = true
 ignore = ["S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR0913", "PLR2004", "RUF005"]

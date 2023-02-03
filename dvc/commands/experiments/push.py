@@ -12,16 +12,13 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsPush(CmdBase):
     def raise_error_if_all_disabled(self):
-        if not any(
-            [self.args.experiment, self.args.all_commits, self.args.rev]
-        ):
+        if not any([self.args.experiment, self.args.all_commits, self.args.rev]):
             raise InvalidArgumentError(
                 "Either provide an `experiment` argument, or use the "
                 "`--rev` or `--all-commits` flag."
             )
 
     def run(self):
-
         self.raise_error_if_all_disabled()
 
         pushed_exps = self.repo.experiments.push(
@@ -47,8 +44,10 @@ class CmdExperimentsPush(CmdBase):
         if not self.args.push_cache:
             ui.write(
                 "To push cached outputs",
-                "for this experiment to DVC remote storage,"
-                "re-run this command without '--no-cache'.",
+                (
+                    "for this experiment to DVC remote storage,"
+                    "re-run this command without '--no-cache'."
+                ),
             )
 
         return 0
@@ -76,10 +75,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "--no-cache",
         action="store_false",
         dest="push_cache",
-        help=(
-            "Do not push cached outputs for this experiment to DVC remote "
-            "storage."
-        ),
+        help="Do not push cached outputs for this experiment to DVC remote storage.",
     )
     experiments_push_parser.add_argument(
         "-r",
@@ -93,10 +89,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "--jobs",
         type=int,
         metavar="<number>",
-        help=(
-            "Number of jobs to run simultaneously when pushing to DVC remote "
-            "storage."
-        ),
+        help="Number of jobs to run simultaneously when pushing to DVC remote storage.",
     )
     experiments_push_parser.add_argument(
         "--run-cache",

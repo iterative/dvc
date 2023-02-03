@@ -25,10 +25,7 @@ from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
-from dvc.repo.experiments.exceptions import (
-    CheckpointExistsError,
-    ExperimentExistsError,
-)
+from dvc.repo.experiments.exceptions import CheckpointExistsError, ExperimentExistsError
 from dvc.repo.experiments.refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -214,11 +211,7 @@ class BaseExecutor(ABC):
         if info.result_hash:
             result: Optional["ExecutorResult"] = ExecutorResult(
                 info.result_hash,
-                (
-                    ExpRefInfo.from_ref(info.result_ref)
-                    if info.result_ref
-                    else None
-                ),
+                (ExpRefInfo.from_ref(info.result_ref) if info.result_ref else None),
                 info.result_force,
             )
         else:
@@ -286,7 +279,6 @@ class BaseExecutor(ABC):
             open_func = fs.open
             fs.makedirs(dpath)
         else:
-
             open_func = open
             os.makedirs(dpath, exist_ok=True)
 
@@ -336,9 +328,7 @@ class BaseExecutor(ABC):
             if on_diverged:
                 return on_diverged(orig_ref, has_checkpoint)
 
-            self._raise_ref_conflict(
-                dest_scm, orig_ref, new_rev, has_checkpoint
-            )
+            self._raise_ref_conflict(dest_scm, orig_ref, new_rev, has_checkpoint)
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
@@ -372,10 +362,12 @@ class BaseExecutor(ABC):
 
         if git_remote == dvc.root_dir:
             logger.warning(
-                "'%s' points to the current Git repo, experiment "
-                "Git refs will not be pushed. But DVC cache and run cache "
-                "will automatically be pushed to the default DVC remote "
-                "(if any) on each experiment commit.",
+                (
+                    "'%s' points to the current Git repo, experiment "
+                    "Git refs will not be pushed. But DVC cache and run cache "
+                    "will automatically be pushed to the default DVC remote "
+                    "(if any) on each experiment commit."
+                ),
                 git_remote,
             )
         try:
@@ -529,17 +521,17 @@ class BaseExecutor(ABC):
         if auto_push:
             cls._auto_push(dvc, dvc.scm, git_remote)
         ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-        exp_ref: Optional["ExpRefInfo"] = (
-            ExpRefInfo.from_ref(ref) if ref else None
-        )
+        exp_ref: Optional["ExpRefInfo"] = ExpRefInfo.from_ref(ref) if ref else None
         if cls.WARN_UNTRACKED:
             untracked = dvc.scm.untracked_files()
             if untracked:
                 logger.warning(
-                    "The following untracked files were present in "
-                    "the experiment directory after reproduction but "
-                    "will not be included in experiment commits:\n"
-                    "\t%s",
+                    (
+                        "The following untracked files were present in "
+                        "the experiment directory after reproduction but "
+                        "will not be included in experiment commits:\n"
+                        "\t%s"
+                    ),
                     ", ".join(untracked),
                 )
         return ref, exp_ref, repro_force
@@ -622,8 +614,10 @@ class BaseExecutor(ABC):
             )
         except BaseException as exc:  # noqa: BLE001, pylint: disable=W0703
             logger.warning(
-                "Something went wrong while auto pushing experiment "
-                "to the remote '%s': %s",
+                (
+                    "Something went wrong while auto pushing experiment "
+                    "to the remote '%s': %s"
+                ),
                 git_remote,
                 exc,
             )
@@ -639,9 +633,7 @@ class BaseExecutor(ABC):
         stages: Iterable["PipelineStage"],
     ):
         exp_hash = cls.hash_exp(list(stages) + list(unchanged))
-        exp_rev = cls.commit(
-            scm, exp_hash, exp_name=name, force=force, checkpoint=True
-        )
+        exp_rev = cls.commit(scm, exp_hash, exp_name=name, force=force, checkpoint=True)
 
         if env2bool(DVC_EXP_AUTO_PUSH):
             git_remote = os.getenv(DVC_EXP_GIT_REMOTE)

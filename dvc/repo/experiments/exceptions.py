@@ -40,7 +40,7 @@ class CheckpointExistsError(DvcException):
             "\tdvc exp run -f ...\n\n"
             "To resume the existing experiment, run:\n\n"
             f"\tdvc exp apply {name}\n"
-            f"\tdvc exp run\n"
+            "\tdvc exp run\n"
         )
         super().__init__(msg)
         self.name = name
@@ -54,16 +54,13 @@ class InvalidExpRefError(DvcException):
 
 class InvalidExpRevError(InvalidArgumentError):
     def __init__(self, rev):
-        super().__init__(
-            f"'{rev}' does not appear to be an experiment commit."
-        )
+        super().__init__(f"'{rev}' does not appear to be an experiment commit.")
 
 
 class MultipleBranchError(DvcException):
     def __init__(self, rev, ref_infos):
         super().__init__(
-            f"Ambiguous commit '{rev[:7]}' belongs to multiple experiment "
-            "branches."
+            f"Ambiguous commit '{rev[:7]}' belongs to multiple experiment branches."
         )
         self.rev = rev
         self.ref_infos = ref_infos
@@ -110,17 +107,12 @@ class UnresolvedExpNamesError(InvalidArgumentError):
         unresolved_names = "; ".join(unresolved_list)
         if not git_remote:
             if len(unresolved_list) > 1:
-                super().__init__(
-                    f"'{unresolved_names}' are not valid {self.NAME}s"
-                )
+                super().__init__(f"'{unresolved_names}' are not valid {self.NAME}s")
             else:
-                super().__init__(
-                    f"'{unresolved_names}' is not a valid {self.NAME}"
-                )
+                super().__init__(f"'{unresolved_names}' is not a valid {self.NAME}")
         else:
             super().__init__(
-                f"Experiment '{unresolved_names}' does not exist "
-                f"in '{git_remote}'"
+                f"Experiment '{unresolved_names}' does not exist in '{git_remote}'"
             )
 
 

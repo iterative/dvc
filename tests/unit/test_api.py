@@ -7,9 +7,7 @@ def test_open_raises_error_if_no_context(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo-text")
 
     fd = api.open("foo")
-    with pytest.raises(
-        AttributeError, match="should be used in a with statement."
-    ):
+    with pytest.raises(AttributeError, match="should be used in a with statement."):
         fd.read()
 
 

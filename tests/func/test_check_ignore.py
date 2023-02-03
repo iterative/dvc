@@ -87,15 +87,11 @@ def test_check_ignore_out_side_repo(tmp_dir, dvc):
 
 
 def test_check_ignore_sub_repo(tmp_dir, dvc, capsys):
-    tmp_dir.gen(
-        {DvcIgnore.DVCIGNORE_FILE: "other", "dir": {".dvc": {}, "foo": "bar"}}
-    )
+    tmp_dir.gen({DvcIgnore.DVCIGNORE_FILE: "other", "dir": {".dvc": {}, "foo": "bar"}})
 
     assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 0
     out, _ = capsys.readouterr()
-    assert (
-        "in sub_repo:{}\t{}".format("dir", os.path.join("dir", "foo")) in out
-    )
+    assert "in sub_repo:{}\t{}".format("dir", os.path.join("dir", "foo")) in out
 
 
 def test_check_sub_dir_ignore_file(tmp_dir, dvc, capsys):
@@ -136,9 +132,7 @@ def test_check_ignore_details_all(tmp_dir, dvc, capsys):
 @pytest.mark.parametrize(
     "file,ret,output", [("ignored", 0, True), ("not_ignored", 1, False)]
 )
-def test_check_ignore_stdin_mode(
-    tmp_dir, dvc, file, ret, output, capsys, mocker
-):
+def test_check_ignore_stdin_mode(tmp_dir, dvc, file, ret, output, capsys, mocker):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored")
     mocker.patch("builtins.input", side_effect=[file, ""])
 

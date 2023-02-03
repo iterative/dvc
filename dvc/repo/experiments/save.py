@@ -59,15 +59,15 @@ def save(
 
     _, _, untracked = repo.scm.status()
     if include_untracked:
-        untracked = [
-            file for file in untracked if file not in include_untracked
-        ]
+        untracked = [file for file in untracked if file not in include_untracked]
     if untracked:
         logger.warning(
-            "The following untracked files were present in "
-            "the workspace before saving but "
-            "will not be included in the experiment commit:\n"
-            "\t%s",
+            (
+                "The following untracked files were present in "
+                "the workspace before saving but "
+                "will not be included in the experiment commit:\n"
+                "\t%s"
+            ),
             ", ".join(untracked),
         )
 

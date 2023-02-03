@@ -23,10 +23,7 @@ from dvc.dependency import ParamsDependency
 from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
-from dvc.repo.experiments.exceptions import (
-    CheckpointExistsError,
-    ExperimentExistsError,
-)
+from dvc.repo.experiments.exceptions import CheckpointExistsError, ExperimentExistsError
 from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
 from dvc.repo.experiments.refs import ExpRefInfo
@@ -101,9 +98,7 @@ class BaseStashQueue(ABC):
     Maps queued experiments to (Git) stash reflog entries.
     """
 
-    def __init__(
-        self, repo: "Repo", ref: str, failed_ref: Optional[str] = None
-    ):
+    def __init__(self, repo: "Repo", ref: str, failed_ref: Optional[str] = None):
         """Construct a queue.
 
         Arguments:
@@ -172,9 +167,7 @@ class BaseStashQueue(ABC):
 
         name_to_remove: List[str] = []
         entry_to_remove: List[ExpStashEntry] = []
-        queue_entries = self.match_queue_entry_by_name(
-            revs, self.iter_queued()
-        )
+        queue_entries = self.match_queue_entry_by_name(revs, self.iter_queued())
         for name, entry in queue_entries.items():
             if entry:
                 entry_to_remove.append(self.stash.stash_revs[entry.stash_rev])
@@ -366,19 +359,16 @@ class BaseStashQueue(ABC):
                             branch_name = f"{resume_rev[:7]}"
                         if self.scm.is_dirty(untracked_files=False):
                             ui.write(
-                                "Modified checkpoint experiment based on "
-                                f"'{branch_name}' will be created",
+                                (
+                                    "Modified checkpoint experiment based on "
+                                    f"'{branch_name}' will be created"
+                                ),
                             )
                             branch = None
-                        elif (
-                            not branch
-                            or self.scm.get_ref(branch) != resume_rev
-                        ):
+                        elif not branch or self.scm.get_ref(branch) != resume_rev:
                             err_msg = [
-                                (
-                                    "Nothing to do for unchanged checkpoint "
-                                    f"'{resume_rev[:7]}'. "
-                                )
+                                "Nothing to do for unchanged checkpoint "
+                                f"'{resume_rev[:7]}'. "
                             ]
                             if branch:
                                 err_msg.append(
@@ -394,9 +384,7 @@ class BaseStashQueue(ABC):
                                     )
                                 ]
                                 if len(names) > 3:
-                                    names[3:] = [
-                                        f"... ({len(names) - 3} more)"
-                                    ]
+                                    names[3:] = [f"... ({len(names) - 3} more)"]
                                 err_msg.append(
                                     "To resume an experiment containing this "
                                     "checkpoint, apply one of these heads:\n"
@@ -410,9 +398,11 @@ class BaseStashQueue(ABC):
                             )
                         if name:
                             logger.warning(
-                                "Ignoring option '--name %s' for resumed "
-                                "experiment. Existing experiment name will"
-                                "be preserved instead.",
+                                (
+                                    "Ignoring option '--name %s' for resumed "
+                                    "experiment. Existing experiment name will"
+                                    "be preserved instead."
+                                ),
                                 name,
                             )
 
@@ -449,9 +439,7 @@ class BaseStashQueue(ABC):
                         # NOTE: this set_ref + reset() is equivalent to
                         # `git reset orig_head` (our SCM reset() only operates
                         # on HEAD rather than any arbitrary commit)
-                        self.scm.set_ref(
-                            "HEAD", orig_head, message="dvc: restore HEAD"
-                        )
+                        self.scm.set_ref("HEAD", orig_head, message="dvc: restore HEAD")
                         self.scm.reset()
                     # Revert any of our changes before prior unstashing
                     self.scm.reset(hard=True)
@@ -503,9 +491,7 @@ class BaseStashQueue(ABC):
     def _pack_args(self, *args, **kwargs) -> None:
         import pickle
 
-        if os.path.exists(self.args_file) and self.scm.is_tracked(
-            self.args_file
-        ):
+        if os.path.exists(self.args_file) and self.scm.is_tracked(self.args_file):
             logger.warning(
                 (
                     "Temporary DVC file '.dvc/tmp/%s' exists and was "
@@ -524,9 +510,7 @@ class BaseStashQueue(ABC):
             extra = int(data.get("extra", 0)) + 1
         else:
             extra = None
-        BaseExecutor.pack_repro_args(
-            self.args_file, *args, extra=extra, **kwargs
-        )
+        BaseExecutor.pack_repro_args(self.args_file, *args, extra=extra, **kwargs)
         self.scm.add(self.args_file)
 
     @staticmethod
@@ -605,9 +589,7 @@ class BaseStashQueue(ABC):
     ) -> BaseExecutor:
         stash_entry = cls.get_stash_entry(exp, queue_entry)
 
-        executor = executor_cls.from_stash_entry(
-            exp.repo, stash_entry, **kwargs
-        )
+        executor = executor_cls.from_stash_entry(exp.repo, stash_entry, **kwargs)
 
         stash_rev = queue_entry.stash_rev
         infofile = exp.celery_queue.get_infofile_path(stash_rev)
@@ -689,10 +671,7 @@ class BaseStashQueue(ABC):
         for entry in concat(*entries):
             if isinstance(entry, QueueDoneResult):
                 queue_entry: QueueEntry = entry.entry
-                if (
-                    entry.result is not None
-                    and entry.result.ref_info is not None
-                ):
+                if entry.result is not None and entry.result.ref_info is not None:
                     name: Optional[str] = entry.result.ref_info.name
                 else:
                     name = queue_entry.name

@@ -2,15 +2,7 @@ import logging
 import os
 from collections import defaultdict
 from copy import copy
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Optional, Tuple
 
 from scmrepo.exceptions import SCMError
 
@@ -20,12 +12,7 @@ from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
-from dvc.utils import (
-    as_posix,
-    error_handler,
-    errored_revisions,
-    onerror_collect,
-)
+from dvc.utils import as_posix, error_handler, errored_revisions, onerror_collect
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
@@ -43,9 +30,7 @@ def _is_params(dep: "Output"):
 def _collect_top_level_params(repo):
     top_params = repo.index._params  # pylint: disable=protected-access
     for dvcfile, params in top_params.items():
-        wdir = repo.fs.path.relpath(
-            repo.fs.path.parent(dvcfile), repo.root_dir
-        )
+        wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
         for file in params:
             path = repo.fs.path.join(wdir, as_posix(file))
             yield repo.fs.path.normpath(path)
@@ -54,7 +39,6 @@ def _collect_top_level_params(repo):
 def _collect_configs(
     repo: "Repo", targets=None, deps=False, stages=None
 ) -> Tuple[List["Output"], List[str]]:
-
     params, fs_paths = collect(
         repo,
         targets=targets or [],
@@ -67,9 +51,7 @@ def _collect_configs(
         default_params = repo.fs.path.join(
             repo.root_dir, ParamsDependency.DEFAULT_PARAMS_FILE
         )
-        if default_params not in all_fs_paths and repo.fs.exists(
-            default_params
-        ):
+        if default_params not in all_fs_paths and repo.fs.exists(default_params):
             fs_paths.append(default_params)
     if targets and (deps or stages) and not params:
         # A target has been provided but it is not used in the stages

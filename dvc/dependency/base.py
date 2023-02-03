@@ -47,9 +47,7 @@ class Dependency(Output):
             self.def_path = self.fs.path.version_path(
                 self.def_path, self.meta.version_id
             )
-            self.fs_path = self.fs.path.version_path(
-                self.fs_path, self.meta.version_id
-            )
+            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
 
     def download(self, to, jobs=None):
         fs_download(self.fs, self.fs_path, to, jobs=jobs)
@@ -57,9 +55,7 @@ class Dependency(Output):
     def save(self):
         super().save()
         if self.fs.version_aware:
-            self.fs_path = self.fs.path.version_path(
-                self.fs_path, self.meta.version_id
-            )
+            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
 
     def dumpd(self, **kwargs):
         if self.fs.version_aware:

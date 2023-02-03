@@ -279,20 +279,15 @@ class Experiments:
         branch: Optional[str] = None
         try:
             allow_multiple = bool(kwargs.get("params", None))
-            branch = self.get_branch_by_rev(
-                resume_rev, allow_multiple=allow_multiple
-            )
+            branch = self.get_branch_by_rev(resume_rev, allow_multiple=allow_multiple)
             if not branch:
                 raise DvcException(
-                    "Could not find checkpoint experiment "
-                    f"'{resume_rev[:7]}'"
+                    f"Could not find checkpoint experiment '{resume_rev[:7]}'"
                 )
             baseline_rev = self._get_baseline(branch)
         except MultipleBranchError as exc:
             baselines = {
-                info.baseline_sha
-                for info in exc.ref_infos
-                if info.baseline_sha
+                info.baseline_sha for info in exc.ref_infos if info.baseline_sha
             }
             if len(baselines) == 1:
                 baseline_rev = baselines.pop()
@@ -341,9 +336,7 @@ class Experiments:
         self.scm.remove_ref(EXEC_APPLY)
 
     @unlocked_repo
-    def _reproduce_queue(
-        self, queue: "BaseStashQueue", **kwargs
-    ) -> Dict[str, str]:
+    def _reproduce_queue(self, queue: "BaseStashQueue", **kwargs) -> Dict[str, str]:
         """Reproduce queued experiments.
 
         Arguments:
@@ -416,9 +409,7 @@ class Experiments:
         """
         result: Dict[str, Optional[str]] = {}
         exclude = f"{EXEC_NAMESPACE}/*"
-        ref_dict = self.scm.describe(
-            revs, base=EXPS_NAMESPACE, exclude=exclude
-        )
+        ref_dict = self.scm.describe(revs, base=EXPS_NAMESPACE, exclude=exclude)
         for rev in revs:
             name: Optional[str] = None
             ref = ref_dict[rev]

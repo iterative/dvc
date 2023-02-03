@@ -159,9 +159,7 @@ class LoggerHandler(logging.StreamHandler):
                         pass  # noqa: S110
 
             msg = self.format(record)
-            Tqdm.write(
-                msg, file=self.stream, end=getattr(self, "terminator", "\n")
-            )
+            Tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
@@ -171,9 +169,7 @@ class LoggerHandler(logging.StreamHandler):
 
 def _is_verbose():
     return (
-        logging.NOTSET
-        < logging.getLogger("dvc").getEffectiveLevel()
-        <= logging.DEBUG
+        logging.NOTSET < logging.getLogger("dvc").getEffectiveLevel() <= logging.DEBUG
     )
 
 
@@ -186,16 +182,11 @@ def _iter_causes(exc):
 def _stack_trace(exc_info):
     import traceback
 
-    return (
-        "\n"
-        "{red}{line}{nc}\n"
-        "{trace}"
-        "{red}{line}{nc}".format(
-            red=colorama.Fore.RED,
-            line="-" * 60,
-            trace="".join(traceback.format_exception(*exc_info)),
-            nc=colorama.Fore.RESET,
-        )
+    return "\n{red}{line}{nc}\n{trace}{red}{line}{nc}".format(
+        red=colorama.Fore.RED,
+        line="-" * 60,
+        trace="".join(traceback.format_exception(*exc_info)),
+        nc=colorama.Fore.RESET,
     )
 
 

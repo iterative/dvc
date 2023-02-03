@@ -31,9 +31,9 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
         diff_result, "workspace", "definitions", file="", endkey="data"
     ) == {"metric.json": props}
     assert get_plot(diff_result, "HEAD", file="metric.json") == metric_head
-    assert get_plot(
-        diff_result, "HEAD", "definitions", file="", endkey="data"
-    ) == {"metric.json": props}
+    assert get_plot(diff_result, "HEAD", "definitions", file="", endkey="data") == {
+        "metric.json": props
+    }
 
     metric_2 = [{"y": 7}, {"y": 8}]
     (tmp_dir / "metric.json").dump_json(metric_2, sort_keys=True)

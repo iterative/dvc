@@ -21,7 +21,7 @@ def scm_context(request, mocker):
             **{
                 "ignore_remove.return_value": ".gitignore",
                 "ignore.return_value": ".gitignore",
-            }
+            },
         )
     )
 
@@ -92,9 +92,7 @@ def test_scm_context_clears_ignores_on_error(scm_context):
 
 @pytest.mark.parametrize("autostage", [True, False])
 @pytest.mark.parametrize("quiet", [True, False])
-def test_scm_context_on_no_files_to_track(
-    caplog, scm_context, autostage, quiet
-):
+def test_scm_context_on_no_files_to_track(caplog, scm_context, autostage, quiet):
     with scm_context(autostage=autostage, quiet=quiet):
         pass
 

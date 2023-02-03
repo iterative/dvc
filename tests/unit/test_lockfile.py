@@ -69,9 +69,7 @@ def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
         {
             "s1": {
                 "cmd": "command",
-                "outs": [
-                    {"md5": "checksum", "path": "path", "random": "value"}
-                ],
+                "outs": [{"md5": "checksum", "path": "path", "random": "value"}],
             }
         },
         {"s1": {"cmd": "command", "deps": [{"md5": "checksum"}]}},

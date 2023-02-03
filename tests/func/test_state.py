@@ -78,9 +78,7 @@ def test_state_dir_config(make_tmp_dir, dvc):
 
     index_dir = str(make_tmp_dir("tmp_index"))
     repo = Repo(config={"state": {"dir": index_dir}})
-    assert os.path.dirname(repo.state.tmp_dir) == os.path.join(
-        index_dir, ".dvc"
-    )
+    assert os.path.dirname(repo.state.tmp_dir) == os.path.join(index_dir, ".dvc")
     assert re.match(
         r"^test_state_dir_config0-([0-9a-f]+)$",
         os.path.basename(repo.state.tmp_dir),

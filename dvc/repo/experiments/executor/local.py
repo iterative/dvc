@@ -27,7 +27,6 @@ from dvc.utils.objects import cached_property
 from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
-
     from dvc.repo import Repo
     from dvc.repo.experiments.refs import ExpRefInfo
     from dvc.repo.experiments.stash import ExpStashEntry

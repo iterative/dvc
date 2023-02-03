@@ -226,9 +226,7 @@ def test_get_hash_file(tmp_dir, dvc):
 
 
 def test_get_hash_dir(tmp_dir, dvc, mocker):
-    tmp_dir.dvc_gen(
-        {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
-    )
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}})
     fs = DataFileSystem(index=dvc.index.data["repo"])
     hash_file_spy = mocker.spy(dvc_data.hashfile.hash, "hash_file")
     assert fs.info("dir")["md5"] == "8761c4e9acad696bee718615e23e22db.dir"
@@ -236,16 +234,12 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
 
 
 def test_get_hash_granular(tmp_dir, dvc):
-    tmp_dir.dvc_gen(
-        {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
-    )
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}})
     fs = DataFileSystem(index=dvc.index.data["repo"])
     subdir = "dir/subdir"
     assert fs.info(subdir).get("md5") is None
     _, _, obj = build(dvc.odb.local, subdir, fs, "md5", dry_run=True)
-    assert obj.hash_info == HashInfo(
-        "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
-    )
+    assert obj.hash_info == HashInfo("md5", "af314506f1622d107e0ed3f14ec1a3b5.dir")
     data = posixpath.join(subdir, "data")
     assert fs.info(data)["md5"] == "8d777f385d3dfec8815d20f7496026dc"
     _, _, obj = build(dvc.odb.local, data, fs, "md5", dry_run=True)

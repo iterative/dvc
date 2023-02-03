@@ -86,9 +86,7 @@ def _collect_targets(repo, target, outs):
             targets.extend([str(out) for out in stage.outs])
             continue
 
-        for out in outs_trie.itervalues(  # noqa: B301
-            prefix=repo.fs.path.parts(path)
-        ):
+        for out in outs_trie.itervalues(prefix=repo.fs.path.parts(path)):  # noqa: B301
             targets.extend(str(out))
 
     return targets
@@ -204,7 +202,9 @@ def add_parser(subparsers, parent_parser):
     dag_parser.add_argument(
         "target",
         nargs="?",
-        help="Stage name or output to show pipeline for. "
-        "Finds all stages in the workspace by default.",
+        help=(
+            "Stage name or output to show pipeline for. "
+            "Finds all stages in the workspace by default."
+        ),
     )
     dag_parser.set_defaults(func=CmdDAG)

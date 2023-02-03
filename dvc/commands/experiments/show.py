@@ -84,9 +84,7 @@ def _collect_rows(  # noqa: C901
             sort_by, metric_names, param_names
         )
         reverse = sort_order == "desc"
-        experiments = _sort_exp(
-            experiments, sort_path, sort_name, sort_type, reverse
-        )
+        experiments = _sort_exp(experiments, sort_path, sort_name, sort_type, reverse)
 
     new_checkpoint = True
     for i, (rev, results) in enumerate(experiments.items()):
@@ -116,9 +114,7 @@ def _collect_rows(  # noqa: C901
             typ = "baseline"
         elif tip:
             if tip == parent_tip:
-                typ = (
-                    "checkpoint_tip" if new_checkpoint else "checkpoint_commit"
-                )
+                typ = "checkpoint_tip" if new_checkpoint else "checkpoint_commit"
             elif parent_rev == base_rev:
                 typ = "checkpoint_base"
             else:
@@ -135,9 +131,7 @@ def _collect_rows(  # noqa: C901
         row_dict["Experiment"] = exp.get("name", "")
         row_dict["rev"] = name_rev
         row_dict["typ"] = typ
-        row_dict["Created"] = format_time(
-            exp.get("timestamp"), fill_value, iso
-        )
+        row_dict["Created"] = format_time(exp.get("timestamp"), fill_value, iso)
         row_dict["parent"] = parent
         row_dict["State"] = state
         row_dict["Executor"] = exp.get("executor", fill_value)
@@ -371,9 +365,7 @@ def show_experiments(  # noqa: C901
 
     if not csv:
         merge_headers = ["Experiment", "rev", "typ", "parent"]
-        td.column("Experiment")[:] = map(
-            prepare_exp_id, td.as_dict(merge_headers)
-        )
+        td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
         td.drop(*merge_headers[1:])
 
     headers = {
@@ -410,9 +402,7 @@ def show_experiments(  # noqa: C901
 
     cols_to_drop = set()
     if drop is not None:
-        cols_to_drop = {
-            col for col in td.keys() if re.match(drop, col)  # noqa: SIM118
-        }
+        cols_to_drop = {col for col in td.keys() if re.match(drop, col)}  # noqa: SIM118
     if pcp:
         cols_to_drop.add("Created")
     td.drop(*cols_to_drop)
@@ -491,9 +481,7 @@ class CmdExperimentsShow(CmdBase):
             ui.write_json(all_experiments, default=_format_json)
         else:
             precision = (
-                self.args.precision or None
-                if self.args.csv
-                else DEFAULT_PRECISION
+                self.args.precision or None if self.args.csv else DEFAULT_PRECISION
             )
             fill_value = "" if self.args.csv else FILL_VALUE
             iso = self.args.csv
@@ -582,10 +570,7 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_show_parser.add_argument(
         "--sort-order",
-        help=(
-            "Sort order to use with --sort-by."
-            " Defaults to ascending ('asc')."
-        ),
+        help="Sort order to use with --sort-by. Defaults to ascending ('asc').",
         choices=("asc", "desc"),
         default="asc",
     )

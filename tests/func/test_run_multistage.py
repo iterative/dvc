@@ -198,9 +198,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
     }
 
 
-@pytest.mark.parametrize(
-    "char", ["@:", "#", "$", ":", "/", "\\", ".", ";", ","]
-)
+@pytest.mark.parametrize("char", ["@:", "#", "$", ":", "/", "\\", ".", ";", ","])
 def test_run_with_invalid_stage_name(run_copy, char):
     with pytest.raises(InvalidStageName):
         run_copy("foo", "bar", name=f"copy_name-{char}")
@@ -246,9 +244,7 @@ def test_run_params_default(tmp_dir, dvc):
     }
 
     data, _ = stage.dvcfile._load()
-    assert data["stages"]["read_params"]["params"] == [
-        "nested.nested1.nested2"
-    ]
+    assert data["stages"]["read_params"]["params"] == ["nested.nested1.nested2"]
 
 
 def test_run_params_custom_file(tmp_dir, dvc):
@@ -269,9 +265,7 @@ def test_run_params_custom_file(tmp_dir, dvc):
     }
 
     data, _ = stage.dvcfile._load()
-    assert data["stages"]["read_params"]["params"] == [
-        {"params2.yaml": ["lists"]}
-    ]
+    assert data["stages"]["read_params"]["params"] == [{"params2.yaml": ["lists"]}]
 
 
 def test_run_params_no_exec(tmp_dir, dvc):
@@ -290,9 +284,7 @@ def test_run_params_no_exec(tmp_dir, dvc):
     assert not stage.dvcfile._lockfile.exists()
 
     data, _ = stage.dvcfile._load()
-    assert data["stages"]["read_params"]["params"] == [
-        {"params2.yaml": ["lists"]}
-    ]
+    assert data["stages"]["read_params"]["params"] == [{"params2.yaml": ["lists"]}]
 
 
 @pytest.mark.parametrize(
@@ -345,9 +337,7 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
 
     assert run_copy("foo1", "bar1", name="copy-foo-bar", force=True)
 
-    assert (tmp_dir / PROJECT_FILE).read_text() == text.format(
-        src="foo1", dest="bar1"
-    )
+    assert (tmp_dir / PROJECT_FILE).read_text() == text.format(src="foo1", dest="bar1")
 
 
 def test_run_external_outputs(

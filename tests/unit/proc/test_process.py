@@ -42,9 +42,7 @@ def test_wait(tmp_dir, mocker):
     from dvc.proc.exceptions import TimeoutExpired
 
     proc = ManagedProcess("/bin/foo")
-    proc._proc.wait = mocker.Mock(
-        side_effect=subprocess.TimeoutExpired("/bin/foo", 5)
-    )
+    proc._proc.wait = mocker.Mock(side_effect=subprocess.TimeoutExpired("/bin/foo", 5))
     with pytest.raises(TimeoutExpired):
         proc.wait(5)
 

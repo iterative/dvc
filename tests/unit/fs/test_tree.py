@@ -7,9 +7,7 @@ from dvc.fs import get_cloud_fs
 def test_get_cloud_fs(tmp_dir, dvc):
     tmp_dir.add_remote(name="base", url="s3://bucket/path", default=False)
     tmp_dir.add_remote(name="first", url="remote://base/first", default=False)
-    tmp_dir.add_remote(
-        name="second", url="remote://first/second", default=False
-    )
+    tmp_dir.add_remote(name="second", url="remote://first/second", default=False)
 
     base = "bucket/path"
     first = f"{base}/first"
@@ -24,9 +22,7 @@ def test_get_cloud_fs(tmp_dir, dvc):
 
 
 def test_get_cloud_fs_validate(tmp_dir, dvc):
-    tmp_dir.add_remote(
-        name="base", url="ssh://example.com/path", default=False
-    )
+    tmp_dir.add_remote(name="base", url="ssh://example.com/path", default=False)
     tmp_dir.add_remote(
         name="first",
         config={"url": "remote://base/first", "type": "symlink"},

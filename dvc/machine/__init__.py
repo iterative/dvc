@@ -67,9 +67,7 @@ class MachineBackends(Mapping):
         initialized = self.initialized.get(key)
         if not initialized:
             backend = self.backends[key]
-            initialized = backend(
-                os.path.join(self.tmp_dir, key), **self.kwargs
-            )
+            initialized = backend(os.path.join(self.tmp_dir, key), **self.kwargs)
             self.initialized[key] = initialized
         return initialized
 

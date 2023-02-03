@@ -8,12 +8,7 @@ from dvc.fs.dvc import DVCFileSystem
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
-from dvc.utils import (
-    as_posix,
-    error_handler,
-    errored_revisions,
-    onerror_collect,
-)
+from dvc.utils import as_posix, error_handler, errored_revisions, onerror_collect
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
@@ -38,9 +33,7 @@ def _to_fs_paths(metrics: List["Output"]) -> List["str"]:
 def _collect_top_level_metrics(repo):
     top_metrics = repo.index._metrics  # pylint: disable=protected-access
     for dvcfile, metrics in top_metrics.items():
-        wdir = repo.fs.path.relpath(
-            repo.fs.path.parent(dvcfile), repo.root_dir
-        )
+        wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
         for file in metrics:
             path = repo.fs.path.join(wdir, as_posix(file))
             yield repo.fs.path.normpath(path)
@@ -67,8 +60,10 @@ def _extract_metrics(metrics, path, rev):
             ret[key] = m
         else:
             logger.debug(
-                "Could not parse '%s' metric from '%s' at '%s' "
-                "due to its unsupported type: '%s'",
+                (
+                    "Could not parse '%s' metric from '%s' at '%s' "
+                    "due to its unsupported type: '%s'"
+                ),
                 key,
                 path,
                 rev,

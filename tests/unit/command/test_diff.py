@@ -81,13 +81,13 @@ def test_show_hash(mocker, capsys):
 
     out, _ = capsys.readouterr()
     assert (
-        "Deleted:\n"
-        "    XXXXXXXX  " + os.path.join("data", "") + "\n"
-        "    00000000  " + os.path.join("data", "bar") + "\n"
-        "    11111111  " + os.path.join("data", "foo") + "\n"
-        "\n"
-        "Renamed:\n"
-        "    11111111  "
+        "Deleted:\n    XXXXXXXX  "
+        + os.path.join("data", "")
+        + "\n    00000000  "
+        + os.path.join("data", "bar")
+        + "\n    11111111  "
+        + os.path.join("data", "foo")
+        + "\n\nRenamed:\n    11111111  "
         + os.path.join("data", "file_old")
         + " -> "
         + os.path.join("data", "file_new")
@@ -270,9 +270,7 @@ def test_show_markdown_with_hash(capsys):
             {"path": os.path.join("data", "foo"), "hash": "11111111"},
             {"path": os.path.join("data", "bar"), "hash": "00000000"},
         ],
-        "modified": [
-            {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
-        ],
+        "modified": [{"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}],
         "added": [{"path": "file", "hash": "00000000"}],
         "renamed": [
             {
@@ -358,6 +356,6 @@ def test_hide_missing(mocker, capsys):
         "Renamed:\n"
         "    file_old -> file_new\n"
         "\n"
-        "files summary: 1 added, 1 renamed"
-    ) in out
+        "files summary: 1 added, 1 renamed" in out
+    )
     assert "not in cache" not in out

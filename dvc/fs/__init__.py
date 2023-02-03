@@ -72,9 +72,7 @@ def get_fs_config(config, **kwargs):
         except KeyError:
             from dvc.config import RemoteNotFoundError
 
-            raise RemoteNotFoundError(  # noqa: B904
-                f"remote '{name}' doesn't exist"
-            )
+            raise RemoteNotFoundError(f"remote '{name}' doesn't exist")  # noqa: B904
     else:
         remote_conf = kwargs
     return _resolve_remote_refs(config, remote_conf)

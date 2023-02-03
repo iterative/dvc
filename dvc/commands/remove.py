@@ -22,8 +22,7 @@ class CmdRemove(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     REMOVE_HELP = (
-        "Remove stages from dvc.yaml and/or"
-        " stop tracking files or directories."
+        "Remove stages from dvc.yaml and/or stop tracking files or directories."
     )
     remove_parser = subparsers.add_parser(
         "remove",

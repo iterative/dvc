@@ -66,9 +66,7 @@ def test_is_protected(tmp_dir, dvc, link_name):
 def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
 
-    mock_chmod = mocker.patch(
-        "os.chmod", side_effect=OSError(err, "something")
-    )
+    mock_chmod = mocker.patch("os.chmod", side_effect=OSError(err, "something"))
     dvc.odb.local.protect("foo")
     assert mock_chmod.called
 
@@ -77,9 +75,7 @@ def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
 def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
 
-    mock_chmod = mocker.patch(
-        "os.chmod", side_effect=OSError(err, "something")
-    )
+    mock_chmod = mocker.patch("os.chmod", side_effect=OSError(err, "something"))
     dvc.odb.local.set_exec("foo")
     assert mock_chmod.called
 
@@ -93,9 +89,7 @@ def test_staging_file(tmp_dir, dvc):
     fs = LocalFileSystem()
 
     local_odb = dvc.odb.local
-    staging_odb, _, obj = build(
-        local_odb, (tmp_dir / "foo").fs_path, fs, "md5"
-    )
+    staging_odb, _, obj = build(local_odb, (tmp_dir / "foo").fs_path, fs, "md5")
 
     assert not local_odb.exists(obj.hash_info.value)
     assert staging_odb.exists(obj.hash_info.value)
@@ -121,9 +115,7 @@ def test_staging_dir(tmp_dir, dvc):
     fs = LocalFileSystem()
     local_odb = dvc.odb.local
 
-    staging_odb, _, obj = build(
-        local_odb, (tmp_dir / "dir").fs_path, fs, "md5"
-    )
+    staging_odb, _, obj = build(local_odb, (tmp_dir / "dir").fs_path, fs, "md5")
 
     assert not local_odb.exists(obj.hash_info.value)
     assert staging_odb.exists(obj.hash_info.value)
@@ -132,9 +124,7 @@ def test_staging_dir(tmp_dir, dvc):
         check(local_odb, obj)
     check(staging_odb, obj)
 
-    transfer(
-        staging_odb, local_odb, {obj.hash_info}, shallow=False, hardlink=True
-    )
+    transfer(staging_odb, local_odb, {obj.hash_info}, shallow=False, hardlink=True)
     check(local_odb, obj)
     check(staging_odb, obj)
 

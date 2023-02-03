@@ -26,7 +26,6 @@ class CmdQueueStop(CmdBase):
 
 
 def add_parser(queue_subparsers, parent_parser):
-
     QUEUE_STOP_HELP = "Stop all experiments task queue workers."
     queue_stop_parser = queue_subparsers.add_parser(
         "stop",

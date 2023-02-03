@@ -102,9 +102,7 @@ class TmpDir(pathlib.Path):
                 subdir=subdir,
             )
         if scm:
-            self.scm = (
-                self.dvc.scm if hasattr(self, "dvc") else Git(self.fs_path)
-            )
+            self.scm = self.dvc.scm if hasattr(self, "dvc") else Git(self.fs_path)
         if dvc and hasattr(self, "scm"):
             self.scm.commit("init dvc")
 
@@ -162,9 +160,7 @@ class TmpDir(pathlib.Path):
             return os.path.join(os.path.dirname(stage_path), Git.GITIGNORE)
 
         gitignores = [
-            to_gitignore(s)
-            for s in output_paths
-            if os.path.exists(to_gitignore(s))
+            to_gitignore(s) for s in output_paths if os.path.exists(to_gitignore(s))
         ]
         return self.scm_add(output_paths + gitignores, commit=msg)
 
@@ -184,9 +180,7 @@ class TmpDir(pathlib.Path):
         if commit:
             self.scm.commit(commit)
 
-    def add_remote(
-        self, *, url=None, config=None, name="upstream", default=True
-    ):
+    def add_remote(self, *, url=None, config=None, name="upstream", default=True):
         self._require("dvc")
 
         assert bool(url) ^ bool(config)
@@ -231,8 +225,7 @@ class TmpDir(pathlib.Path):
         # rely on exception flow control
         if self.is_dir():
             return {
-                path.name: path.read_text(*args, **kwargs)
-                for path in self.iterdir()
+                path.name: path.read_text(*args, **kwargs) for path in self.iterdir()
             }
         kwargs.setdefault("encoding", "utf-8")  # type: ignore[call-overload]
         return super().read_text(*args, **kwargs)

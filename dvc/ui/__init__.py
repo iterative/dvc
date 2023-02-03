@@ -54,9 +54,7 @@ class Console:
 
         self.formatter: Formatter = formatter or Formatter()
         self._enabled: bool = enable
-        self._paginate: ContextVar[bool] = ContextVar(
-            "_paginate", default=False
-        )
+        self._paginate: ContextVar[bool] = ContextVar("_paginate", default=False)
 
     def enable(self) -> None:
         self._enabled = True
@@ -196,10 +194,7 @@ class Console:
             if answer in choices:
                 return answer
 
-            self.write(
-                f"Your response must be one of: {choices}. "
-                "Please try again."
-            )
+            self.write(f"Your response must be one of: {choices}. Please try again.")
 
     def confirm(self, statement: str) -> bool:
         """Ask the user for confirmation about the specified statement.
@@ -234,9 +229,7 @@ class Console:
         rich_table: bool = False,
         force: bool = True,
         pager: bool = False,
-        header_styles: Optional[
-            Union[Dict[str, "Styles"], Sequence["Styles"]]
-        ] = None,
+        header_styles: Optional[Union[Dict[str, "Styles"], Sequence["Styles"]]] = None,
         row_styles: Optional[Sequence["Styles"]] = None,
         borders: Union[bool, str] = False,
     ) -> None:
@@ -279,18 +272,12 @@ class Console:
         from dvc.utils import relpath
 
         path = Path(file).resolve()
-        url = (
-            relpath(path)
-            if "microsoft" in uname().release.lower()
-            else path.as_uri()
-        )
+        url = relpath(path) if "microsoft" in uname().release.lower() else path.as_uri()
 
         opened = webbrowser.open(url)
 
         if not opened:
-            ui.error_write(
-                f"Failed to open {url}. Please try opening it manually."
-            )
+            ui.error_write(f"Failed to open {url}. Please try opening it manually.")
             return 1
 
         return 0
@@ -308,6 +295,4 @@ if __name__ == "__main__":
     ui.error("too few arguments.")
 
     ui.table([("scores.json", "0.5674")], headers=["Path", "auc"])
-    ui.table(
-        [("scores.json", "0.5674")], headers=["Path", "auc"], markdown=True
-    )
+    ui.table([("scores.json", "0.5674")], headers=["Path", "auc"], markdown=True)

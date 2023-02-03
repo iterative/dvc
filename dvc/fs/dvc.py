@@ -6,16 +6,7 @@ import os
 import posixpath
 import threading
 from contextlib import suppress
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
 from funcy import wrap_with
@@ -126,9 +117,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         super().__init__()
         if repo is None:
-            repo = self._make_repo(
-                url=url, rev=rev, subrepos=subrepos, **repo_kwargs
-            )
+            repo = self._make_repo(url=url, rev=rev, subrepos=subrepos, **repo_kwargs)
             assert repo is not None
             # pylint: disable=protected-access
             repo_factory = repo._fs_conf["repo_factory"]
@@ -144,9 +133,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             relparts = ()
             assert repo is not None
             if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
-                relparts = repo.fs.path.relparts(
-                    repo.fs.path.getcwd(), repo.root_dir
-                )
+                relparts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.root_dir)
             return self.root_marker + self.sep.join(relparts)
 
         self.path = Path(self.sep, getcwd=_getcwd)
@@ -222,9 +209,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                     scm=self.repo.scm,
                     repo_factory=self.repo_factory,
                 )
-                self._datafss[key] = DataFileSystem(
-                    index=repo.index.data["repo"]
-                )
+                self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
             self._subrepos_trie[key] = repo
 
     def _is_dvc_repo(self, dir_path):
@@ -331,9 +316,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
         return self._info(key, path, ignore_subrepos=ignore_subrepos)
 
-    def _info(  # noqa: C901
-        self, key, path, ignore_subrepos=True, check_ignored=True
-    ):
+    def _info(self, key, path, ignore_subrepos=True, check_ignored=True):  # noqa: C901
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
         dvc_info = None

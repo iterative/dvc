@@ -133,9 +133,7 @@ class StageCache:
         # outputs.
         cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
-        outs_no_cache = [
-            out.def_path for out in stage.outs if not out.use_cache
-        ]
+        outs_no_cache = [out.def_path for out in stage.outs if not out.use_cache]
 
         # NOTE: using copy link to make it look like a git-tracked file
         with self._cache_type_copy():
@@ -224,11 +222,7 @@ class StageCache:
         runs = from_fs.path.join(from_odb.path, "runs")
 
         http_odb = next(
-            (
-                odb
-                for odb in (from_odb, to_odb)
-                if isinstance(odb.fs, HTTPFileSystem)
-            ),
+            (odb for odb in (from_odb, to_odb) if isinstance(odb.fs, HTTPFileSystem)),
             None,
         )
         if http_odb:
@@ -264,15 +258,11 @@ class StageCache:
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        dest_odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "push --run-cache"
-        )
+        dest_odb = odb or self.repo.cloud.get_remote_odb(remote, "push --run-cache")
         return self.transfer(self.repo.odb.local, dest_odb)
 
     def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "fetch --run-cache"
-        )
+        odb = odb or self.repo.cloud.get_remote_odb(remote, "fetch --run-cache")
         return self.transfer(odb, self.repo.odb.local)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):

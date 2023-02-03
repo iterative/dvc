@@ -47,7 +47,6 @@ def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
     ],
 )
 def test_run_check_ref_format(scm, name, result):
-
     ref = ExpRefInfo("abc123", name)
     if result:
         check_ref_format(scm, ref)

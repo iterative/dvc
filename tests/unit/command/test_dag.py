@@ -2,13 +2,7 @@ import networkx as nx
 import pytest
 
 from dvc.cli import main, parse_args
-from dvc.commands.dag import (
-    CmdDAG,
-    _build,
-    _show_ascii,
-    _show_dot,
-    _show_mermaid,
-)
+from dvc.commands.dag import CmdDAG, _build, _show_ascii, _show_dot, _show_mermaid
 
 
 @pytest.mark.parametrize(
@@ -47,12 +41,8 @@ def repo(tmp_dir, dvc):
     tmp_dir.dvc_gen("a", "a")
     tmp_dir.dvc_gen("b", "b")
 
-    dvc.run(
-        no_exec=True, deps=["a", "c"], outs=["d", "e"], cmd="cmd1", name="1"
-    )
-    dvc.run(
-        no_exec=True, deps=["b", "c"], outs=["f", "g"], cmd="cmd2", name="2"
-    )
+    dvc.run(no_exec=True, deps=["a", "c"], outs=["d", "e"], cmd="cmd1", name="1")
+    dvc.run(no_exec=True, deps=["b", "c"], outs=["f", "g"], cmd="cmd2", name="2")
     dvc.run(
         no_exec=True,
         deps=["a", "b", "c"],
@@ -113,9 +103,7 @@ def test_build_full_outs(repo, granular):
 
 
 def test_show_ascii(repo):
-    assert [
-        line.rstrip() for line in _show_ascii(repo.index.graph).splitlines()
-    ] == [
+    assert [line.rstrip() for line in _show_ascii(repo.index.graph).splitlines()] == [
         "                        +----------------+                          +----------------+",  # noqa: E501
         "                        | stage: 'a.dvc' |                          | stage: 'b.dvc' |",  # noqa: E501
         "                       *+----------------+****                      +----------------+",  # noqa: E501
@@ -154,9 +142,7 @@ def test_show_dot(repo):
         "strict digraph  {",
         "}",
     ]
-    actual = sorted(
-        line.rstrip() for line in _show_dot(repo.index.graph).splitlines()
-    )
+    actual = sorted(line.rstrip() for line in _show_dot(repo.index.graph).splitlines())
     assert actual == expected
 
 
@@ -195,9 +181,7 @@ def test_show_dot_properly_escapes():
 
 
 def test_show_mermaid(repo):
-    assert [
-        line.rstrip() for line in _show_mermaid(repo.index.graph).splitlines()
-    ] == [
+    assert [line.rstrip() for line in _show_mermaid(repo.index.graph).splitlines()] == [
         "flowchart TD",
         "\tnode1[\"stage: '1'\"]",
         "\tnode2[\"stage: '2'\"]",
@@ -219,9 +203,7 @@ def test_show_mermaid_markdown(repo, dvc, capsys, mocker):
 
     capsys.readouterr()
     assert main(["dag", "--md"]) == 0
-    assert [
-        line.rstrip() for line in capsys.readouterr().out.splitlines()
-    ] == [
+    assert [line.rstrip() for line in capsys.readouterr().out.splitlines()] == [
         "```mermaid",
         "flowchart TD",
         "\tnode1[\"stage: '1'\"]",

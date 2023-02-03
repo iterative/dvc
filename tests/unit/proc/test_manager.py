@@ -5,10 +5,7 @@ import sys
 
 import pytest
 
-from dvc.proc.exceptions import (
-    ProcessNotTerminatedError,
-    UnsupportedSignalError,
-)
+from dvc.proc.exceptions import ProcessNotTerminatedError, UnsupportedSignalError
 from dvc.proc.manager import ProcessManager
 from dvc.proc.process import ProcessInfo
 

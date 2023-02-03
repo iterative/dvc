@@ -127,9 +127,7 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
     dvc.status()
 
     os.remove("dir.dvc")
-    unpackeddir = (
-        dir_stages[0].outs[0].cache_path + LocalHashFileDB.UNPACKED_DIR_SUFFIX
-    )
+    unpackeddir = dir_stages[0].outs[0].cache_path + LocalHashFileDB.UNPACKED_DIR_SUFFIX
 
     # older (pre 1.0) versions of dvc used to generate this dir
     shutil.copytree("dir", unpackeddir)
@@ -183,8 +181,8 @@ def test_gc_without_workspace(tmp_dir, dvc, caplog, cloud):
     assert (
         "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
         "`--all-experiments`, `--all-commits`, `--date` or `--rev` "
-        "needs to be set."
-    ) in caplog.text
+        "needs to be set." in caplog.text
+    )
 
 
 def test_gc_with_possible_args_positive(tmp_dir, dvc):
@@ -215,9 +213,7 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     dvc.remove(dir2.relpath)
     dvc.gc(workspace=True)
 
-    mocked_remove = mocker.patch.object(
-        LocalFileSystem, "remove", autospec=True
-    )
+    mocked_remove = mocker.patch.object(LocalFileSystem, "remove", autospec=True)
     dvc.gc(workspace=True, cloud=True)
     assert len(mocked_remove.mock_calls) == 4
     # Unpacked dir should be the first removed
@@ -263,21 +259,15 @@ def test_gc_external_output(tmp_dir, dvc, workspace):
     foo_hash = foo_stage.outs[0].hash_info.value
     bar_hash = bar_stage.outs[0].hash_info.value
 
-    assert (
-        workspace / "cache" / foo_hash[:2] / foo_hash[2:]
-    ).read_text() == "foo"
-    assert (
-        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
-    ).read_text() == "bar"
+    assert (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).read_text() == "foo"
+    assert (workspace / "cache" / bar_hash[:2] / bar_hash[2:]).read_text() == "bar"
 
     (tmp_dir / "foo.dvc").unlink()
 
     dvc.gc(workspace=True)
 
     assert not (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
-    assert (
-        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
-    ).read_text() == "bar"
+    assert (workspace / "cache" / bar_hash[:2] / bar_hash[2:]).read_text() == "bar"
 
 
 def test_gc_all_experiments(tmp_dir, scm, dvc):
@@ -300,9 +290,7 @@ def test_gc_all_experiments(tmp_dir, scm, dvc):
 
     # all_experiments will include the experiment commit (baz) plus baseline
     # commit (bar)
-    assert not (
-        tmp_dir / ".dvc" / "cache" / foo_hash[:2] / foo_hash[2:]
-    ).exists()
+    assert not (tmp_dir / ".dvc" / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
     assert (
         tmp_dir / ".dvc" / "cache" / bar_hash[:2] / bar_hash[2:]
     ).read_text() == "bar"
@@ -341,9 +329,7 @@ def test_date(tmp_dir, scm, dvc):
     dvc.gc(commit_date=datestamp)
 
     assert _count_files(dvc.odb.local.path) == 1
-    assert dvc.odb.local.exists(
-        "9ae73c65f418e6f79ceb4f0e4a4b98d5"  # "modified"
-    )
+    assert dvc.odb.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")  # "modified"
 
     tmp_dir.dvc_gen("testfile", "modified, again", commit="modify")
 
@@ -351,6 +337,4 @@ def test_date(tmp_dir, scm, dvc):
     dvc.gc(commit_date=datestamp)
     assert _count_files(dvc.odb.local.path) == 2
     assert dvc.odb.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")
-    assert dvc.odb.local.exists(
-        "3bcf3b1be3e794a97a5a6b93a005784c"  # "modified, again"
-    )
+    assert dvc.odb.local.exists("3bcf3b1be3e794a97a5a6b93a005784c")  # "modified, again"
