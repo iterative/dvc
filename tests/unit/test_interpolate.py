@@ -96,6 +96,4 @@ def test_resolve_collection():
 def test_resolve_unicode():
     context = Context({"नेपाली": {"चिया": ["चि", "या"]}})
     assert context.resolve_str("${नेपाली.चिया[0]}${नेपाली.चिया[1]}") == "चिया"
-    assert (
-        context.resolve_str("${नेपाली[चिया][0]}${नेपाली[चिया][1]}") == "चिया"
-    )
+    assert context.resolve_str("${नेपाली[चिया][0]}${नेपाली[चिया][1]}") == "चिया"

@@ -111,8 +111,10 @@ class DataCloud:
                 for hash_info in status.missing
             )
             logger.warning(
-                "Some of the cache files do not exist neither locally "
-                "nor on remote. Missing cache files:\n%s",
+                (
+                    "Some of the cache files do not exist neither locally "
+                    "nor on remote. Missing cache files:\n%s"
+                ),
                 missing_desc,
             )
 

@@ -40,9 +40,7 @@ def test_post_to_studio(tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch):
     monkeypatch.setenv(env.STUDIO_TOKEN, "STUDIO_TOKEN")
 
     baseline_sha = scm.get_rev()
-    exp_rev = first(
-        dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
-    )
+    exp_rev = first(dvc.experiments.run(exp_stage.addressing, params=["foo=1"]))
     name = dvc.experiments.get_exact_name([exp_rev])[exp_rev]
     assert mocked_post.call_count == 2
 

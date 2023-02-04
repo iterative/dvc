@@ -49,9 +49,7 @@ def unfetched_view(
     return unfetched, changed_deps
 
 
-def partial_view(
-    index: "Index", targets: "TargetType", **kwargs
-) -> "IndexView":
+def partial_view(index: "Index", targets: "TargetType", **kwargs) -> "IndexView":
     return index.targets_view(
         targets,
         stage_filter=lambda s: s.is_partial_import,

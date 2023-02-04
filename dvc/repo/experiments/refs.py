@@ -21,7 +21,6 @@ STASHES = {WORKSPACE_STASH, CELERY_STASH}
 
 
 class ExpRefInfo:
-
     namespace = EXPS_NAMESPACE
 
     def __init__(self, baseline_sha: str, name: Optional[str] = None):

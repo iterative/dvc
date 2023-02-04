@@ -46,9 +46,7 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
         "foobar",
         "foo",
     }
-    assert collect_outs("dvc.yaml:copy-foo-foobar", recursive=True) == {
-        "foobar"
-    }
+    assert collect_outs("dvc.yaml:copy-foo-foobar", recursive=True) == {"foobar"}
     assert collect_outs("copy-foo-foobar") == {"foobar"}
     assert collect_outs("copy-foo-foobar", with_deps=True) == {"foobar", "foo"}
     assert collect_outs("copy-foo-foobar", recursive=True) == {"foobar"}
@@ -71,9 +69,7 @@ def test_collect_dir_recursive(tmp_dir, dvc, run_head):
     }
 
 
-def test_collect_with_not_existing_output_or_stage_name(
-    tmp_dir, dvc, run_copy
-):
+def test_collect_with_not_existing_output_or_stage_name(tmp_dir, dvc, run_copy):
     with pytest.raises(StageFileDoesNotExistError):
         dvc.stage.collect("some_file")
     tmp_dir.dvc_gen("foo", "foo")
@@ -84,9 +80,7 @@ def test_collect_with_not_existing_output_or_stage_name(
 
 def test_stages(tmp_dir, dvc):
     def collect_stages():
-        return {
-            stage.relpath for stage in Repo(os.fspath(tmp_dir)).index.stages
-        }
+        return {stage.relpath for stage in Repo(os.fspath(tmp_dir)).index.stages}
 
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 
@@ -109,16 +103,12 @@ def stages(tmp_dir, run_copy):
         "lorem-generate": stage2,
         "copy-foo-bar": run_copy("foo", "bar", single_stage=True),
         "copy-bar-foobar": run_copy("bar", "foobar", name="copy-bar-foobar"),
-        "copy-lorem-ipsum": run_copy(
-            "lorem", "ipsum", name="copy-lorem-ipsum"
-        ),
+        "copy-lorem-ipsum": run_copy("lorem", "ipsum", name="copy-lorem-ipsum"),
     }
 
 
 def test_collect_not_a_group_stage_with_group_flag(tmp_dir, dvc, stages):
-    assert set(dvc.stage.collect("copy-bar-foobar")) == {
-        stages["copy-bar-foobar"]
-    }
+    assert set(dvc.stage.collect("copy-bar-foobar")) == {stages["copy-bar-foobar"]}
     assert set(dvc.stage.collect("copy-bar-foobar", with_deps=True)) == {
         stages["copy-bar-foobar"],
         stages["copy-foo-bar"],
@@ -127,9 +117,7 @@ def test_collect_not_a_group_stage_with_group_flag(tmp_dir, dvc, stages):
     assert set(dvc.stage.collect_granular("copy-bar-foobar")) == {
         (stages["copy-bar-foobar"], None)
     }
-    assert set(
-        dvc.stage.collect_granular("copy-bar-foobar", with_deps=True)
-    ) == {
+    assert set(dvc.stage.collect_granular("copy-bar-foobar", with_deps=True)) == {
         (stages["copy-bar-foobar"], None),
         (stages["copy-foo-bar"], None),
         (stages["foo-generate"], None),
@@ -139,9 +127,7 @@ def test_collect_not_a_group_stage_with_group_flag(tmp_dir, dvc, stages):
 def test_collect_generated(tmp_dir, dvc):
     d = {
         "vars": [{"vars": [1, 2, 3, 4, 5]}],
-        "stages": {
-            "build": {"foreach": "${vars}", "do": {"cmd": "echo ${item}"}}
-        },
+        "stages": {"build": {"foreach": "${vars}", "do": {"cmd": "echo ${item}"}}},
     }
     (tmp_dir / "dvc.yaml").dump(d)
 
@@ -152,40 +138,31 @@ def test_collect_generated(tmp_dir, dvc):
     assert set(dvc.stage.collect("build")) == all_stages
     assert set(dvc.stage.collect("build", with_deps=True)) == all_stages
     assert set(dvc.stage.collect("build*", glob=True)) == all_stages
-    assert (
-        set(dvc.stage.collect("build*", glob=True, with_deps=True))
-        == all_stages
-    )
+    assert set(dvc.stage.collect("build*", glob=True, with_deps=True)) == all_stages
 
     stages_info = {(stage, None) for stage in all_stages}
     assert set(dvc.stage.collect_granular("build")) == stages_info
-    assert (
-        set(dvc.stage.collect_granular("build", with_deps=True)) == stages_info
-    )
+    assert set(dvc.stage.collect_granular("build", with_deps=True)) == stages_info
 
 
 def test_collect_glob(tmp_dir, dvc, stages):
     assert set(dvc.stage.collect("copy*", glob=True)) == {
         stages[key] for key in ["copy-bar-foobar", "copy-lorem-ipsum"]
     }
-    assert set(
-        dvc.stage.collect("copy-lorem*", glob=True, with_deps=True)
-    ) == {stages[key] for key in ["copy-lorem-ipsum", "lorem-generate"]}
+    assert set(dvc.stage.collect("copy-lorem*", glob=True, with_deps=True)) == {
+        stages[key] for key in ["copy-lorem-ipsum", "lorem-generate"]
+    }
 
 
 def test_collect_granular_with_no_target(tmp_dir, dvc, stages):
-    assert set(map(itemgetter(0), dvc.stage.collect_granular())) == set(
-        stages.values()
+    assert set(map(itemgetter(0), dvc.stage.collect_granular())) == set(stages.values())
+    assert list(map(itemgetter(1), dvc.stage.collect_granular())) == [None] * len(
+        stages
     )
-    assert list(map(itemgetter(1), dvc.stage.collect_granular())) == [
-        None
-    ] * len(stages)
 
 
 def test_collect_granular_with_target(tmp_dir, dvc, stages):
-    assert dvc.stage.collect_granular("bar.dvc") == [
-        (stages["copy-foo-bar"], None)
-    ]
+    assert dvc.stage.collect_granular("bar.dvc") == [(stages["copy-foo-bar"], None)]
     assert dvc.stage.collect_granular(PROJECT_FILE) == [
         (stages["copy-bar-foobar"], None),
         (stages["copy-lorem-ipsum"], None),
@@ -287,21 +264,15 @@ def test_collect_granular_priority_on_collision(tmp_dir, dvc, run_copy):
     stage2 = run_copy("foo", "bar", name="dir")
 
     assert dvc.stage.collect_granular("dir") == [(stage2, None)]
-    assert dvc.stage.collect_granular("dir", recursive=True) == [
-        (stage1, None)
-    ]
+    assert dvc.stage.collect_granular("dir", recursive=True) == [(stage1, None)]
 
     remove(tmp_dir / "dir")
 
     assert dvc.stage.collect_granular("dir") == [(stage2, None)]
-    assert dvc.stage.collect_granular("dir", recursive=True) == [
-        (stage2, None)
-    ]
+    assert dvc.stage.collect_granular("dir", recursive=True) == [(stage2, None)]
 
 
-def test_collect_granular_collision_output_dir_stage_name(
-    tmp_dir, dvc, run_copy
-):
+def test_collect_granular_collision_output_dir_stage_name(tmp_dir, dvc, run_copy):
     stage1, *_ = tmp_dir.dvc_gen({"dir": {"foo": "foo"}, "foo": "foo"})
     stage3 = run_copy("foo", "bar", name="dir")
 
@@ -317,9 +288,9 @@ def test_collect_granular_not_existing_stage_name(tmp_dir, dvc, run_copy):
     (stage,) = tmp_dir.dvc_gen("copy-foo-bar", "copy-foo-bar")
     run_copy("foo", "bar", name="copy-foo-bar")
 
-    assert dvc.stage.collect_granular(
-        "copy-foo-bar.dvc:stage_name_not_needed"
-    ) == [(stage, None)]
+    assert dvc.stage.collect_granular("copy-foo-bar.dvc:stage_name_not_needed") == [
+        (stage, None)
+    ]
     with pytest.raises(StageNotFound):
         dvc.stage.collect_granular("dvc.yaml:does-not-exist")
 
@@ -335,9 +306,9 @@ def test_get_stages(tmp_dir, dvc, run_copy):
     assert set(dvc.stage.load_all()) == {stage1, stage2}
     assert set(dvc.stage.load_all(path=PROJECT_FILE)) == {stage1, stage2}
     assert set(dvc.stage.load_all(name="copy-bar-foobar")) == {stage2}
-    assert set(
-        dvc.stage.load_all(path=PROJECT_FILE, name="copy-bar-foobar")
-    ) == {stage2}
+    assert set(dvc.stage.load_all(path=PROJECT_FILE, name="copy-bar-foobar")) == {
+        stage2
+    }
 
     with pytest.raises(StageFileDoesNotExistError):
         dvc.stage.load_all(path=relpath(tmp_dir / ".." / PROJECT_FILE))
@@ -429,15 +400,11 @@ def test_collect_repo_callback(tmp_dir, dvc, mocker):
     assert isinstance(exc, YAMLValidationError)
 
 
-def test_gitignored_file_try_collect_granular_for_data_files(
-    tmp_dir, dvc, scm
-):
+def test_gitignored_file_try_collect_granular_for_data_files(tmp_dir, dvc, scm):
     (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
     path = os.path.join("data", "foo")
 
-    assert dvc.stage.collect_granular(path) == [
-        (stage, os.path.join(tmp_dir, path))
-    ]
+    assert dvc.stage.collect_granular(path) == [(stage, os.path.join(tmp_dir, path))]
 
     scm.ignore(stage.path)
     dvc._reset()

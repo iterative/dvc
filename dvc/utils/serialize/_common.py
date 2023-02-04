@@ -43,9 +43,7 @@ class ModifierFn(Protocol):
 
 
 class LoaderFn(Protocol):
-    def __call__(
-        self, path: "StrPath", fs: Optional["FileSystem"] = None
-    ) -> Any:
+    def __call__(self, path: "StrPath", fs: Optional["FileSystem"] = None) -> Any:
         ...
 
 
@@ -72,9 +70,7 @@ class EncodingError(ParseError):
         super().__init__(path, f"is not valid {encoding}")
 
 
-def _load_data(
-    path: "StrPath", parser: ParserFn, fs: Optional["FileSystem"] = None
-):
+def _load_data(path: "StrPath", parser: ParserFn, fs: Optional["FileSystem"] = None):
     open_fn = fs.open if fs else open
     encoding = "utf-8"
     with open_fn(path, encoding=encoding) as fd:  # type: ignore[operator]
@@ -101,9 +97,7 @@ def _modify_data(
     dumper: DumpersFn,
     fs: Optional["FileSystem"] = None,
 ):
-    exists_fn = cast(
-        Callable[["StrPath"], bool], fs.exists if fs else os.path.exists
-    )
+    exists_fn = cast(Callable[["StrPath"], bool], fs.exists if fs else os.path.exists)
     file_exists = exists_fn(cast(str, path))
     data = _load_data(path, parser=parser, fs=fs) if file_exists else {}
     yield data

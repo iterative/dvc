@@ -14,7 +14,7 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
         self,
         max_workers: Optional[int] = None,
         cancel_on_error: bool = False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(max_workers=max_workers, **kwargs)
         self._cancel_on_error = cancel_on_error
@@ -37,9 +37,7 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
         it = zip(*iterables)
         tasks = create_taskset(self.max_workers * 5)
         while tasks:
-            done, tasks = futures.wait(
-                tasks, return_when=futures.FIRST_COMPLETED
-            )
+            done, tasks = futures.wait(tasks, return_when=futures.FIRST_COMPLETED)
             for fut in done:
                 yield fut.result()
             tasks.update(create_taskset(len(done)))

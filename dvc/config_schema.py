@@ -2,16 +2,7 @@ import os
 from urllib.parse import urlparse
 
 from funcy import walk_values
-from voluptuous import (
-    All,
-    Any,
-    Coerce,
-    Invalid,
-    Lower,
-    Optional,
-    Range,
-    Schema,
-)
+from voluptuous import All, Any, Coerce, Invalid, Lower, Optional, Range, Schema
 
 Bool = All(
     Lower,
@@ -34,9 +25,7 @@ def supported_cache_type(types):
 
     unsupported = set(types) - {"reflink", "hardlink", "symlink", "copy"}
     if unsupported:
-        raise Invalid(
-            "Unsupported cache type(s): {}".format(", ".join(unsupported))
-        )
+        raise Invalid("Unsupported cache type(s): {}".format(", ".join(unsupported)))
 
     return types
 
@@ -258,9 +247,7 @@ SCHEMA = {
     "machine": {
         str: {
             "cloud": All(Lower, Choices("aws", "azure")),
-            "region": All(
-                Lower, Choices("us-west", "us-east", "eu-west", "eu-north")
-            ),
+            "region": All(Lower, Choices("us-west", "us-east", "eu-west", "eu-north")),
             "image": str,
             "spot": Bool,
             "spot_price": Coerce(float),

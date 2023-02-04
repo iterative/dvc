@@ -56,9 +56,7 @@ def move(self, from_path, to_path):
             os.path.dirname(to_path),
             os.path.basename(to_path) + DVC_FILE_SUFFIX,
         )
-        new_wdir = os.path.abspath(
-            os.path.join(os.curdir, os.path.dirname(to_path))
-        )
+        new_wdir = os.path.abspath(os.path.join(os.curdir, os.path.dirname(to_path)))
         to_path = os.path.relpath(to_path, new_wdir)
         new_stage = self.stage.create(
             single_stage=True,

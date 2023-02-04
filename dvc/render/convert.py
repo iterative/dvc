@@ -2,13 +2,7 @@ import json
 from collections import defaultdict
 from typing import Dict, List, Union
 
-from dvc.render import (
-    REVISION_FIELD,
-    REVISIONS_KEY,
-    SRC_FIELD,
-    TYPE_KEY,
-    VERSION_FIELD,
-)
+from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY, VERSION_FIELD
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 

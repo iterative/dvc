@@ -49,9 +49,7 @@ def remove_tasks(  # noqa: C901
         for (
             msg,
             queue_entry,
-        ) in (
-            celery_queue._iter_processed()  # pylint: disable=protected-access
-        ):
+        ) in celery_queue._iter_processed():  # pylint: disable=protected-access
             if queue_entry not in done_entry_set:
                 continue
             task_id = msg.headers["id"]

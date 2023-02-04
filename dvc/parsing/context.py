@@ -48,9 +48,7 @@ class MergeError(ContextError):
         self.key = key
         to_node = into[key]
         if not isinstance(to_node, Node) or not isinstance(new, Node):
-            super().__init__(
-                f"cannot merge '{key}' as it already exists in {into}"
-            )
+            super().__init__(f"cannot merge '{key}' as it already exists in {into}")
             return
 
         assert isinstance(to_node, Node)
@@ -138,9 +136,7 @@ class Node:
 @dataclass
 class Value(Node):
     _value: Any
-    meta: Meta = field(
-        compare=False, default_factory=_default_meta, repr=False
-    )
+    meta: Meta = field(compare=False, default_factory=_default_meta, repr=False)
 
     def __repr__(self):
         return repr(self._value)
@@ -182,10 +178,7 @@ class Container(Node, ABC):  # noqa: B024
             assert meta
             container = CtxDict if isinstance(value, dict) else CtxList
             return container(value, meta=meta)
-        msg = (
-            "Unsupported value of type "
-            f"'{type(value).__name__}' in '{meta}'"
-        )
+        msg = f"Unsupported value of type '{type(value).__name__}' in '{meta}'"
         raise TypeError(msg)
 
     def __repr__(self):
@@ -219,9 +212,7 @@ class Container(Node, ABC):  # noqa: B024
         try:
             d = self[index]
         except LookupError as exc:
-            raise ValueError(
-                f"Could not find '{index}' in {self.data}"
-            ) from exc
+            raise ValueError(f"Could not find '{index}' in {self.data}") from exc
 
         if not rems:
             return d
@@ -380,9 +371,7 @@ class Context(CtxDict):
                 data = {key: data[key] for key in select_keys}
             except KeyError as exc:
                 key, *_ = exc.args
-                raise ParamsLoadError(
-                    f"could not find '{key}' in '{path}'"
-                ) from exc
+                raise ParamsLoadError(f"could not find '{key}' in '{path}'") from exc
 
         meta = Meta(source=path, local=False)
         ctx = cls(data, meta=meta)
@@ -480,9 +469,7 @@ class Context(CtxDict):
         But for now, just `item` and `key`, this should do.
         """
         # using dict to make the error messages ordered
-        new = dict.fromkeys(
-            [key for key in keys if key not in self._reserved_keys]
-        )
+        new = dict.fromkeys([key for key in keys if key not in self._reserved_keys])
         self._reserved_keys.update(new)
         try:
             yield
@@ -542,9 +529,7 @@ class Context(CtxDict):
         if is_exact_string(src, matches):
             # replace "${enabled}", if `enabled` is a boolean, with it's actual
             # value rather than it's string counterparts.
-            expr = get_expression(
-                matches[0], skip_checks=skip_interpolation_checks
-            )
+            expr = get_expression(matches[0], skip_checks=skip_interpolation_checks)
             value = self.select(expr, unwrap=unwrap)
             validate_value(value, key)
             return value

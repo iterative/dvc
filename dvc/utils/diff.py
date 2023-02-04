@@ -17,11 +17,7 @@ def _parse(raw):
 
 
 def _diff_vals(old, new, with_unchanged):
-    if (
-        isinstance(new, list)
-        and isinstance(old, list)
-        and len(old) == len(new) == 1
-    ):
+    if isinstance(new, list) and isinstance(old, list) and len(old) == len(new) == 1:
         return _diff_vals(old[0], new[0], with_unchanged)
 
     if not with_unchanged and old == new:

@@ -63,17 +63,13 @@ def diff(
         targets_paths = None
         if targets:
             # convert targets to paths, and capture any missing targets
-            targets_paths, missing_targets[rev] = _targets_to_paths(
-                dvcfs, targets
-            )
+            targets_paths, missing_targets[rev] = _targets_to_paths(dvcfs, targets)
 
         results[rev] = _paths_checksums(self, targets_paths)
 
     if targets:
         # check for overlapping missing targets between a_rev and b_rev
-        for target in set(missing_targets[a_rev]) & set(
-            missing_targets[b_rev]
-        ):
+        for target in set(missing_targets[a_rev]) & set(missing_targets[b_rev]):
             raise PathMissingError(target, self)
 
     old = results[a_rev]
@@ -112,9 +108,7 @@ def diff(
             if old[path] != new[path]
         ],
         "renamed": renamed,
-        "not in cache": [
-            {"path": path, "hash": old[path]} for path in missing
-        ],
+        "not in cache": [{"path": path, "hash": old[path]} for path in missing],
     }
 
     return ret if any(ret.values()) else {}
@@ -162,8 +156,7 @@ def _output_paths(  # noqa: C901
             continue
 
         yield_output = targets is None or any(
-            output.fs.path.isin_or_eq(output.fs_path, target)
-            for target in targets
+            output.fs.path.isin_or_eq(output.fs_path, target) for target in targets
         )
 
         obj: Optional["HashFile"]
@@ -192,15 +185,12 @@ def _output_paths(  # noqa: C901
             or (
                 isinstance(targets, list)
                 and any(
-                    output.fs.path.isin(target, output.fs_path)
-                    for target in targets
+                    output.fs.path.isin(target, output.fs_path) for target in targets
                 )
             )
         ):
             obj = cast("Tree", obj)
-            yield from _dir_output_paths(
-                output.fs, output.fs_path, obj, targets
-            )
+            yield from _dir_output_paths(output.fs, output.fs_path, obj, targets)
 
 
 def _dir_output_paths(
@@ -277,8 +267,6 @@ def _calculate_renamed(
             continue
 
         old_path = old_paths.pop(index)
-        renamed.append(
-            {"path": {"old": old_path, "new": path}, "hash": path_hash}
-        )
+        renamed.append({"path": {"old": old_path, "new": path}, "hash": path_hash})
 
     return renamed

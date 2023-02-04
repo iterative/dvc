@@ -53,9 +53,7 @@ def _prepare_cause(cause: str) -> "RichText":
     return ui.rich_text(cause, style="bold")
 
 
-def _prepare_code_snippets(
-    code: str, start_line: int = 1, **kwargs: Any
-) -> "Syntax":
+def _prepare_code_snippets(code: str, start_line: int = 1, **kwargs: Any) -> "Syntax":
     from rich.syntax import Syntax
 
     kwargs.setdefault("start_line", start_line)
@@ -116,9 +114,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         lines: List[object] = []
         if hasattr(exc, "context"):
             if exc.context_mark is not None:
-                lines.append(
-                    prepare_message(str(exc.context), exc.context_mark)
-                )
+                lines.append(prepare_message(str(exc.context), exc.context_mark))
             if exc.context_mark is not None and (
                 exc.problem is None
                 or exc.problem_mark is None
@@ -128,9 +124,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             ):
                 lines.extend([prepare_code(exc.context_mark), ""])
             if exc.problem is not None:
-                lines.append(
-                    prepare_message(str(exc.problem), exc.problem_mark)
-                )
+                lines.append(prepare_message(str(exc.problem), exc.problem_mark))
             if exc.problem_mark is not None:
                 lines.append(prepare_code(exc.problem_mark))
 

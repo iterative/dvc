@@ -62,9 +62,7 @@ class CmdCheckIgnore(CmdBase):
             raise DvcException("cannot have both `targets` and `--stdin`")
 
         if self.args.non_matching and not self.args.details:
-            raise DvcException(
-                "`--non-matching` is only valid with `--details`"
-            )
+            raise DvcException("`--non-matching` is only valid with `--details`")
 
         if self.args.all and not self.args.details:
             raise DvcException("`--all` is only valid with `--details`")
@@ -80,9 +78,7 @@ class CmdCheckIgnore(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = (
-        "Check whether files or directories are excluded due to `.dvcignore`."
-    )
+    ADD_HELP = "Check whether files or directories are excluded due to `.dvcignore`."
 
     parser = subparsers.add_parser(
         "check-ignore",
@@ -103,16 +99,20 @@ def add_parser(subparsers, parent_parser):
         "--all",
         action="store_true",
         default=False,
-        help="Include the target paths which don't match any pattern "
-        "in the `--details` list.",
+        help=(
+            "Include the target paths which don't match any pattern "
+            "in the `--details` list."
+        ),
     )
     parser.add_argument(
         "-n",
         "--non-matching",
         action="store_true",
         default=False,
-        help="Include the target paths which don't match any pattern "
-        "in the `--details` list.",
+        help=(
+            "Include the target paths which don't match any pattern "
+            "in the `--details` list."
+        ),
     )
     parser.add_argument(
         "--stdin",

@@ -81,9 +81,9 @@ def _is_datapoints(lst: List[Dict]):
     to unexpected behavior
     """
 
-    return all(isinstance(item, dict) for item in lst) and set(
-        first(lst).keys()
-    ) == {key for keys in lst for key in keys}
+    return all(isinstance(item, dict) for item in lst) and set(first(lst).keys()) == {
+        key for keys in lst for key in keys
+    }
 
 
 def get_datapoints(file_content: Dict):
@@ -195,7 +195,6 @@ class VegaConverter(Converter):
         return "x"
 
     def flat_datapoints(self, revision):  # noqa: C901
-
         file2datapoints, properties = self.convert()
 
         props_update = {}
@@ -218,7 +217,7 @@ class VegaConverter(Converter):
         num_ys = len(ys)
         if num_xs > 1 and num_xs != num_ys:
             raise DvcException(
-                f"Cannot have different number of x and y data sources. Found "
+                "Cannot have different number of x and y data sources. Found "
                 f"{num_xs} x and {num_ys} y data sources."
             )
 
@@ -316,9 +315,7 @@ def _update_from_field(
         source_field = field
 
     if len(source_datapoints) != len(target_datapoints):
-        raise IndexError(
-            "Source and target datapoints must have the same length"
-        )
+        raise IndexError("Source and target datapoints must have the same length")
 
     for index, datapoint in enumerate(target_datapoints):
         source_datapoint = source_datapoints[index]
@@ -332,6 +329,5 @@ def _update_from_index(datapoints: List[Dict], new_field: str):
 
 
 def _update_all(datapoints: List[Dict], update_dict: Dict):
-
     for datapoint in datapoints:
         datapoint.update(update_dict)

@@ -79,10 +79,7 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
     tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
-        cmd=(
-            f"python checkpoint.py foo {DEFAULT_ITERATIONS} "
-            "params.yaml metrics.yaml"
-        ),
+        cmd=f"python checkpoint.py foo {DEFAULT_ITERATIONS} params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
         checkpoints=["foo"],
@@ -103,10 +100,7 @@ def failed_checkpoint_stage(tmp_dir, scm, dvc, mocker):
     tmp_dir.gen("checkpoint.py", FAILED_CHECKPOINT_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
-        cmd=(
-            f"python checkpoint.py foo {DEFAULT_ITERATIONS+2} "
-            "params.yaml metrics.yaml"
-        ),
+        cmd=f"python checkpoint.py foo {DEFAULT_ITERATIONS+2} params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
         checkpoints=["foo"],

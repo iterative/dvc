@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsDiff(CmdBase):
     def run(self):
-
         try:
             diff = self.repo.experiments.diff(
                 a_rev=self.args.a_rev,
@@ -53,10 +52,7 @@ class CmdExperimentsDiff(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-
-    EXPERIMENTS_DIFF_HELP = (
-        "Show changes between experiments in the DVC repository."
-    )
+    EXPERIMENTS_DIFF_HELP = "Show changes between experiments in the DVC repository."
 
     experiments_diff_parser = experiments_subparsers.add_parser(
         "diff",

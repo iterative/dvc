@@ -3,9 +3,7 @@ from dvc.commands.checkout import CmdCheckout, log_changes
 
 
 def test_checkout(tmp_dir, dvc, mocker):
-    cli_args = parse_args(
-        ["checkout", "foo.dvc", "bar.dvc", "--relink", "--with-deps"]
-    )
+    cli_args = parse_args(["checkout", "foo.dvc", "bar.dvc", "--relink", "--with-deps"])
     assert cli_args.func == CmdCheckout
 
     cmd = cli_args.func(cli_args)

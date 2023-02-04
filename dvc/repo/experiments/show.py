@@ -75,9 +75,7 @@ def collect_experiment_commit(
             commit = repo.scm.resolve_commit(rev)
             result["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
-        params = _gather_params(
-            repo, targets=None, deps=param_deps, onerror=onerror
-        )
+        params = _gather_params(repo, targets=None, deps=param_deps, onerror=onerror)
         if params:
             result["params"] = params
 
@@ -223,8 +221,7 @@ def get_branch_names(
 ) -> Dict[str, Optional[str]]:
     names: Dict[str, Optional[str]] = {}
     for base in [
-        f"refs/exps/{baseline[:2]}/{baseline[2:]}/"
-        for baseline in baseline_set
+        f"refs/exps/{baseline[:2]}/{baseline[2:]}/" for baseline in baseline_set
     ] + ["refs/heads/", "refs/tags/"]:
         for ref in scm.iter_refs(base=base):
             if ref:
@@ -242,7 +239,6 @@ def update_names(  # noqa: C901
     branch_names: Dict[str, Optional[str]],
     result: Dict[str, Dict[str, Any]],
 ):
-
     rev_set = set()
     for baseline in result:
         for rev in result[baseline]:
@@ -401,7 +397,6 @@ def show(
     onerror: Optional[Callable] = None,
     fetch_running: bool = True,
 ):
-
     if repo.scm.no_commits:
         return {}
 

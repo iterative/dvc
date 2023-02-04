@@ -139,9 +139,7 @@ def test_shallow_clone_branch(erepo_dir, mocker):
         with repo.open_by_relpath("file") as fd:
             assert fd.read() == "branch"
 
-    clone_spy.assert_called_with(
-        url, ANY, shallow_branch="branch", progress=ANY
-    )
+    clone_spy.assert_called_with(url, ANY, shallow_branch="branch", progress=ANY)
 
     path, _ = CLONES[url]
     CLONES[url] = (path, True)

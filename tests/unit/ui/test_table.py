@@ -80,19 +80,22 @@ def test_rich_simple(capsys):
     )
     # not able to test the actual style for now
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == ["first  second", "foo    bar", "foo1   bar1", "foo2   bar2"]
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
+        "first  second",
+        "foo    bar",
+        "foo1   bar1",
+        "foo2   bar2",
+    ]
 
 
 def test_rich_headerless(capsys):
-    ui.table(
-        [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")], rich_table=True
-    )
+    ui.table([("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")], rich_table=True)
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == ["foo   bar", "foo1  bar1", "foo2  bar2"]
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
+        "foo   bar",
+        "foo1  bar1",
+        "foo2  bar2",
+    ]
 
 
 def test_rich_border(capsys):
@@ -103,9 +106,7 @@ def test_rich_border(capsys):
         borders="simple",
     )
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == [
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
         "first   second",
         "────────────────",
         "foo     bar",
@@ -127,13 +128,16 @@ def test_rich_styles(capsys, extra_opts):
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
         headers=["first", "second"],
         rich_table=True,
-        **extra_opts
+        **extra_opts,
     )
     # not able to test the actual style for now
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == ["first  second", "foo    bar", "foo1   bar1", "foo2   bar2"]
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
+        "first  second",
+        "foo    bar",
+        "foo1   bar1",
+        "foo2   bar2",
+    ]
 
 
 def test_rich_pager(mocker):
@@ -146,9 +150,12 @@ def test_rich_pager(mocker):
         pager=True,
     )
     received_text = pager_mock.call_args[0][0]
-    assert [
-        row.strip() for row in received_text.splitlines() if row.strip()
-    ] == ["first  second", "foo    bar", "foo1   bar1", "foo2   bar2"]
+    assert [row.strip() for row in received_text.splitlines() if row.strip()] == [
+        "first  second",
+        "foo    bar",
+        "foo1   bar1",
+        "foo2   bar2",
+    ]
 
 
 @pytest.mark.parametrize("rich_table", [True, False])

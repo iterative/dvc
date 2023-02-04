@@ -9,9 +9,7 @@ from dvc.ui.prompt import Confirm, InvalidResponse, Prompt
 
 @pytest.mark.parametrize("side_effect", [EOFError, KeyboardInterrupt])
 @pytest.mark.parametrize("prompt_cls", [Prompt, Confirm])
-def test_prompt_interrupt_message_not_interleaved(
-    prompt_cls, side_effect, mocker
-):
+def test_prompt_interrupt_message_not_interleaved(prompt_cls, side_effect, mocker):
     """Test that the interrupt message is not interleaved with the prompt."""
     prompt = "should print exception in the next line"
     console = RichConsole(file=io.StringIO())
@@ -27,9 +25,7 @@ def test_prompt_interrupt_message_not_interleaved(
 def test_prompt_str():
     console = RichConsole(file=io.StringIO())
     assert (
-        Prompt.ask(
-            "What is your name?", console=console, stream=io.StringIO("foo")
-        )
+        Prompt.ask("What is your name?", console=console, stream=io.StringIO("foo"))
         == "foo"
     )
     assert console.file.getvalue() == "What is your name?: "
@@ -43,8 +39,7 @@ def test_prompt_disallows_empty_response(mocker):
         stream=io.StringIO("\nfoo"),
     )
     expected = (
-        "What is your name?: Response required. Please try again.\n"
-        "What is your name?: "
+        "What is your name?: Response required. Please try again.\nWhat is your name?: "
     )
     assert console.file.getvalue() == expected
 

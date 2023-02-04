@@ -32,9 +32,7 @@ class TestAPI:
         with api.open("dir/bar") as fobj:
             assert fobj.read() == "bar-text"
 
-    @pytest.mark.parametrize(
-        "clear_cache", [True, False], ids=["cache", "no_cache"]
-    )
+    @pytest.mark.parametrize("clear_cache", [True, False], ids=["cache", "no_cache"])
     @pytest.mark.parametrize(
         "fs_kwargs",
         [
@@ -67,9 +65,7 @@ class TestAPI:
             remove(dvc.odb.repo.path)
 
         if url := fs_kwargs.get("url"):
-            fs_kwargs["url"] = url.format(
-                path=tmp_dir, posixpath=tmp_dir.as_posix()
-            )
+            fs_kwargs["url"] = url.format(path=tmp_dir, posixpath=tmp_dir.as_posix())
 
         fs = DVCFileSystem(**fs_kwargs)
 
@@ -77,9 +73,7 @@ class TestAPI:
             "/.gitignore", "/scripts", "/data"
         )
         assert fs.ls("scripts", detail=False) == ["scripts/script1"]
-        assert fs.ls("data", detail=False) == M.unordered(
-            "data/foo", "data/bar"
-        )
+        assert fs.ls("data", detail=False) == M.unordered("data/foo", "data/bar")
 
         data_info = M.dict(
             name="/data",

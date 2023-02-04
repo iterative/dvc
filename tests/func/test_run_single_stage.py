@@ -629,9 +629,7 @@ def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy, mocker):
 
 def test_rerun_callback(dvc):
     def run_callback(force=False):
-        return dvc.run(
-            cmd="echo content > out", force=force, single_stage=True
-        )
+        return dvc.run(cmd="echo content > out", force=force, single_stage=True)
 
     assert run_callback() is not None
     with pytest.raises(StageFileAlreadyExistsError):
@@ -723,9 +721,7 @@ def test_run_persist(tmp_dir, dvc, outs_command):
     assert not (tmp_dir / "file").exists()
 
 
-def test_should_raise_on_overlapping_output_paths(
-    tmp_dir, dvc, append_foo_script
-):
+def test_should_raise_on_overlapping_output_paths(tmp_dir, dvc, append_foo_script):
     tmp_dir.gen("data", {"foo": "foo", "bar": "bar"})
     ret = main(["add", "data"])
     assert ret == 0
@@ -847,9 +843,7 @@ def test_metrics_dir(tmp_dir, dvc, caplog, run_copy_metrics, metrics_type):
     tmp_dir.gen({"dir": {"file": "content"}})
     with caplog.at_level(logging.DEBUG, "dvc"):
         run_copy_metrics("dir", "dir_metric", **copyargs)
-    assert (
-        "directory 'dir_metric' cannot be used as metrics." in caplog.messages
-    )
+    assert "directory 'dir_metric' cannot be used as metrics." in caplog.messages
 
 
 def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):

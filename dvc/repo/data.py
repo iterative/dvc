@@ -112,9 +112,7 @@ class GitInfo(TypedDict, total=False):
     is_dirty: bool
 
 
-def _git_info(
-    scm: Union["Git", "NoSCM"], untracked_files: str = "all"
-) -> GitInfo:
+def _git_info(scm: Union["Git", "NoSCM"], untracked_files: str = "all") -> GitInfo:
     from scmrepo.exceptions import SCMError
 
     from dvc.scm import NoSCM
@@ -145,9 +143,7 @@ def _git_info(
 def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
     from .index import build_data_index
 
-    workspace = build_data_index(
-        repo.index, repo.root_dir, repo.fs, compute_hash=True
-    )
+    workspace = build_data_index(repo.index, repo.root_dir, repo.fs, compute_hash=True)
 
     return _diff(
         repo.index.data["repo"],
@@ -180,9 +176,7 @@ class Status(TypedDict):
     git: GitInfo
 
 
-def _transform_git_paths_to_dvc(
-    repo: "Repo", files: Iterable[str]
-) -> List[str]:
+def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> List[str]:
     """Transform files rel. to Git root to DVC root, and drop outside files."""
     rel = repo.fs.path.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
 
@@ -237,8 +231,7 @@ def ls(
 ) -> Iterator[Dict[str, Any]]:
     targets = targets or [None]
     pairs = chain.from_iterable(
-        repo.stage.collect_granular(target, recursive=recursive)
-        for target in targets
+        repo.stage.collect_granular(target, recursive=recursive) for target in targets
     )
     for stage, filter_info in pairs:
         for out in stage.filter_outs(filter_info):

@@ -67,9 +67,7 @@ def test_token():
 
 
 def test_ask_password(mocker):
-    ask_password_mocked = mocker.patch(
-        "dvc_webdav.ask_password", return_value="pass"
-    )
+    ask_password_mocked = mocker.patch("dvc_webdav.ask_password", return_value="pass")
     host = "host"
 
     # it should not ask for password as password is set
@@ -103,9 +101,7 @@ def test_custom_auth_header():
 
 
 def test_ask_password_custom_auth_header(mocker):
-    ask_password_mocked = mocker.patch(
-        "dvc_webdav.ask_password", return_value="pass"
-    )
+    ask_password_mocked = mocker.patch("dvc_webdav.ask_password", return_value="pass")
     host = "host"
 
     # it should not ask for password as password is set
@@ -123,9 +119,7 @@ def test_ask_password_custom_auth_header(mocker):
 
     config.pop("password")
     fs = WebDAVFileSystem(**config)
-    assert issubset(
-        {"headers": {custom_auth_header: "pass"}, "auth": None}, fs.fs_args
-    )
+    assert issubset({"headers": {custom_auth_header: "pass"}, "auth": None}, fs.fs_args)
     ask_password_mocked.assert_called_once_with(host, custom_auth_header)
 
 

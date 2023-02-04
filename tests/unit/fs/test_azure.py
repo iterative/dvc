@@ -19,8 +19,7 @@ def test_strip_protocol_env_var(monkeypatch, dvc):
 
 def test_strip_protocol(dvc):
     assert (
-        AzureFileSystem._strip_protocol(f"azure://{container_name}")
-        == container_name
+        AzureFileSystem._strip_protocol(f"azure://{container_name}") == container_name
     )
 
 
@@ -38,16 +37,10 @@ def test_azure_login_methods():
     with pytest.raises(AzureAuthError):
         get_login_method({})
 
+    assert get_login_method({"connection_string": "test"}) == "connection string"
+    assert get_login_method({"account_name": "test"}).startswith("default credentials")
     assert (
-        get_login_method({"connection_string": "test"}) == "connection string"
-    )
-    assert get_login_method({"account_name": "test"}).startswith(
-        "default credentials"
-    )
-    assert (
-        get_login_method(
-            {"account_name": "test", "allow_anonymous_login": True}
-        )
+        get_login_method({"account_name": "test", "allow_anonymous_login": True})
         == "anonymous login"
     )
 
@@ -73,8 +66,7 @@ def test_azure_login_methods():
         == "account key"
     )
     assert (
-        get_login_method({"account_name": "test", "sas_token": "test"})
-        == "SAS token"
+        get_login_method({"account_name": "test", "sas_token": "test"}) == "SAS token"
     )
     assert (
         get_login_method(

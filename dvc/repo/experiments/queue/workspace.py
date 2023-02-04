@@ -118,14 +118,10 @@ class WorkspaceQueue(BaseStashQueue):
                 log_errors=not isinstance(executor, WorkspaceExecutor),
             )
             if not exec_result.exp_hash:
-                raise DvcException(
-                    f"Failed to reproduce experiment '{rev[:7]}'"
-                )
+                raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'")
             if exec_result.ref_info:
                 results[rev].update(
-                    self.collect_executor(
-                        self.repo.experiments, executor, exec_result
-                    )
+                    self.collect_executor(self.repo.experiments, executor, exec_result)
                 )
         except CheckpointKilledError:
             # Checkpoint errors have already been logged
@@ -133,9 +129,7 @@ class WorkspaceQueue(BaseStashQueue):
         except DvcException:
             raise
         except Exception as exc:  # noqa: BLE001
-            raise DvcException(
-                f"Failed to reproduce experiment '{rev[:7]}'"
-            ) from exc
+            raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'") from exc
         finally:
             post_live_metrics(
                 "done",
@@ -214,8 +208,7 @@ class WorkspaceQueue(BaseStashQueue):
                     return True
                 cmd = lock_info["cmd"]
                 logger.warning(
-                    "Process '%s' with (Pid %s), in RWLock-file '%s'"
-                    " had been killed.",
+                    "Process '%s' with (Pid %s), in RWLock-file '%s' had been killed.",
                     cmd,
                     pid,
                     relpath(path),
@@ -224,16 +217,13 @@ class WorkspaceQueue(BaseStashQueue):
                 return False
             except json.JSONDecodeError:
                 logger.warning(
-                    "Unable to read RWLock-file '%s'. JSON structure is"
-                    " corrupted",
+                    "Unable to read RWLock-file '%s'. JSON structure is corrupted",
                     relpath(path),
                 )
             except Invalid:
                 logger.warning("RWLock-file '%s' format error.", relpath(path))
             if autocorrect:
-                logger.warning(
-                    "Delete corrupted RWLock-file '%s'", relpath(path)
-                )
+                logger.warning("Delete corrupted RWLock-file '%s'", relpath(path))
                 remove(path)
             return False
 

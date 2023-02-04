@@ -61,8 +61,7 @@ def find_pager():
     if not pager:
         if os.system(f"({DEFAULT_PAGER}) 2>{os.devnull}") != 0:
             logger.warning(
-                "Unable to find `less` in the PATH. Check out "
-                "%s for more info.",
+                "Unable to find `less` in the PATH. Check out %s for more info.",
                 format_link("https://man.dvc.org/pipeline/show"),
             )
         else:

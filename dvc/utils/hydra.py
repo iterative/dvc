@@ -106,8 +106,7 @@ def get_hydra_sweeps(path_overrides):
         for override in overrides:
             if override.value_type == ValueType.GLOB_CHOICE_SWEEP:
                 raise InvalidArgumentError(
-                    f"Glob override '{override.input_line}' "
-                    "is not supported."
+                    f"Glob override '{override.input_line}' is not supported."
                 )
         path_sweeps[path] = BasicSweeper.split_arguments(overrides, None)[0]
     return dict_product(path_sweeps)

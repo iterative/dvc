@@ -138,7 +138,5 @@ def test_env(dvc, mocker):
         return {"foo": str(out)}
 
     mocker.patch.object(stage, "_read_env", mock_read_env)
-    with pytest.raises(
-        DvcException, match="Conflicting values for env variable"
-    ):
+    with pytest.raises(DvcException, match="Conflicting values for env variable"):
         _ = stage.env()

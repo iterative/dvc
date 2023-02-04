@@ -94,10 +94,8 @@ def test_check_updates(mocker, capsys, updater, current, latest, notify):
     updater.check()
     out, err = capsys.readouterr()
     expected_message = (
-        (
-            f"You are using dvc version {current}; "
-            f"however, version {latest} is available.\n"
-        )
+        f"You are using dvc version {current}; "
+        f"however, version {latest} is available.\n"
         if notify
         else ""
     )
@@ -123,9 +121,7 @@ def test_check_refetches_each_day(mock_tty, updater, caplog, mocker):
     mock_time.assert_called()
 
 
-def test_check_fetches_on_invalid_data_format(
-    mock_tty, updater, caplog, mocker
-):
+def test_check_fetches_on_invalid_data_format(mock_tty, updater, caplog, mocker):
     updater.current = "0.0.5"
     with open(updater.updater_file, "w+", encoding="utf-8") as f:
         f.write('"{"version: "0.0.6"')
@@ -169,13 +165,17 @@ def test_check(mocker, updater):
         ),
         (
             None,
-            "Find the latest release at "
-            "https://github.com/iterative/dvc/releases/latest.",
+            (
+                "Find the latest release at "
+                "https://github.com/iterative/dvc/releases/latest."
+            ),
         ),
         (
             "unknown",
-            "Find the latest release at "
-            "https://github.com/iterative/dvc/releases/latest.",
+            (
+                "Find the latest release at "
+                "https://github.com/iterative/dvc/releases/latest."
+            ),
         ),
     ],
 )

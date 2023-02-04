@@ -88,9 +88,7 @@ def test_show_non_plot(tmp_dir, scm, use_dvc):
     assert get_plot(plots, "workspace", file="metric.json") == metric
 
 
-def test_show_non_plot_and_plot_with_params(
-    tmp_dir, scm, dvc, run_copy_metrics
-):
+def test_show_non_plot_and_plot_with_params(tmp_dir, scm, dvc, run_copy_metrics):
     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     (tmp_dir / "metric.json").dump_json(metric, sort_keys=True)
     run_copy_metrics(
@@ -106,10 +104,7 @@ def test_show_non_plot_and_plot_with_params(
 
     assert get_plot(result, "workspace", file="metric.json") == metric
     assert get_plot(result, "workspace", file="metric2.json") == metric
-    assert (
-        get_plot(result, "workspace", file="metric2.json", endkey="props")
-        == props
-    )
+    assert get_plot(result, "workspace", file="metric2.json", endkey="props") == props
 
 
 def test_show_from_subdir(tmp_dir, dvc, capsys):
@@ -137,8 +132,7 @@ def test_plots_show_non_existing(tmp_dir, dvc, capsys):
 
     cap = capsys.readouterr()
     assert (
-        "DVC failed to load some plots for following revisions: 'workspace'"
-        in cap.err
+        "DVC failed to load some plots for following revisions: 'workspace'" in cap.err
     )
 
 
@@ -234,9 +228,7 @@ def test_ignore_parsing_error(tmp_dir, dvc, run_copy_metrics):
         ),
     ),
 )
-def test_log_errors(
-    tmp_dir, scm, dvc, run_copy_metrics, file, path_kwargs, capsys
-):
+def test_log_errors(tmp_dir, scm, dvc, run_copy_metrics, file, path_kwargs, capsys):
     metric = [{"val": 2}, {"val": 3}]
     (tmp_dir / "metric_t.yaml").dump(metric)
     run_copy_metrics(
@@ -256,15 +248,12 @@ def test_log_errors(
 
     assert isinstance(get_plot(result, **path_kwargs), YAMLFileCorruptedError)
     assert (
-        "DVC failed to load some plots for following revisions: 'workspace'."
-        in error
+        "DVC failed to load some plots for following revisions: 'workspace'." in error
     )
 
 
 @pytest.mark.parametrize("ext", ["jpg", "svg"])
-def test_plots_binary(
-    tmp_dir, scm, dvc, run_copy_metrics, custom_template, ext
-):
+def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template, ext):
     file1 = f"image.{ext}"
     file2 = f"plot.{ext}"
     with open(file1, "wb") as fd:
@@ -330,9 +319,7 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
     remove(subdir_stage.outs[0].fs_path)
 
     result = dvc.plots.show()
-    assert get_plot(
-        result, "workspace", typ="definitions", file="", endkey="error"
-    )
+    assert get_plot(result, "workspace", typ="definitions", file="", endkey="error")
     # make sure others gets loaded
     assert get_plot(result, "workspace", file="plot.json") == metric
 

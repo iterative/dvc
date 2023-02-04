@@ -88,9 +88,7 @@ def external_repo(
         raise NoRemoteInExternalRepoError(url) from exc
     except OutputNotFoundError as exc:
         if exc.repo is repo:
-            raise NoOutputInExternalRepoError(
-                exc.output, repo.root_dir, url
-            ) from exc
+            raise NoOutputInExternalRepoError(exc.output, repo.root_dir, url) from exc
         raise
     except FileMissingError as exc:
         raise PathMissingError(exc.path, url) from exc
@@ -234,9 +232,7 @@ def _clone_default_branch(url, rev, for_write=False):  # noqa: C901
                         os.path.join(clone_path, Git.GIT_DIR, "shallow")
                     )
                     if shallow:
-                        logger.debug(
-                            "erepo: using shallow clone for branch '%s'", rev
-                        )
+                        logger.debug("erepo: using shallow clone for branch '%s'", rev)
                 except CloneError:
                     git_dir = os.path.join(clone_path, ".git")
                     if os.path.exists(git_dir):
@@ -292,8 +288,6 @@ def _remove(path):
         try:
             os_retry(remove)(path)
         except PermissionError:
-            logger.warning(
-                "Failed to remove '%s'", relpath(path), exc_info=True
-            )
+            logger.warning("Failed to remove '%s'", relpath(path), exc_info=True)
     else:
         remove(path)

@@ -2,9 +2,7 @@ from dvc_data.hashfile.hash_info import HashInfo
 
 
 def test_as_raw():
-    hash_info = HashInfo(
-        "md5", "a1d0c6e83f027327d8461063f4ac58a6.dir", "objname"
-    )
+    hash_info = HashInfo("md5", "a1d0c6e83f027327d8461063f4ac58a6.dir", "objname")
 
     raw = hash_info.as_raw()
 

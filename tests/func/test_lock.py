@@ -34,9 +34,7 @@ def test_unlock_lock_failed(tmp_dir, dvc, mocker):
 
 def test_unlock_unlocked_raises():
     lock = Lock("lock")
-    with pytest.raises(
-        DvcException, match="Unlock called on an unlocked lock"
-    ):
+    with pytest.raises(DvcException, match="Unlock called on an unlocked lock"):
         lock.unlock()
 
 

@@ -1,15 +1,7 @@
 import inspect
 from collections.abc import Mapping
 from functools import wraps
-from typing import (
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    TypeVar,
-    Union,
-    no_type_check,
-)
+from typing import Callable, Dict, Iterable, List, TypeVar, Union, no_type_check
 
 
 @no_type_check
@@ -27,15 +19,12 @@ def apply_diff(src, dest):  # noqa: C901
 
     def is_same_type(a, b):
         return any(
-            isinstance(a, t) and isinstance(b, t)
-            for t in [str, Mapping, Seq, bool]
+            isinstance(a, t) and isinstance(b, t) for t in [str, Mapping, Seq, bool]
         )
 
     if isinstance(src, Mapping) and isinstance(dest, Mapping):
         for key, value in src.items():
-            if isinstance(value, Container) and is_same_type(
-                value, dest.get(key)
-            ):
+            if isinstance(value, Container) and is_same_type(value, dest.get(key)):
                 apply_diff(value, dest[key])
             elif key not in dest or value != dest[key]:
                 dest[key] = value
@@ -46,9 +35,7 @@ def apply_diff(src, dest):  # noqa: C901
             dest[:] = src
         else:
             for i, value in enumerate(src):
-                if isinstance(value, Container) and is_same_type(
-                    value, dest[i]
-                ):
+                if isinstance(value, Container) and is_same_type(value, dest[i]):
                     apply_diff(value, dest[i])
                 elif value != dest[i]:
                     dest[i] = value
@@ -164,9 +151,7 @@ def validate(*validators: Callable, post: bool = False):
         def inner(*args, **kwargs):
             ba = sig.bind(*args, **kwargs)
             ba.apply_defaults()
-            ba.arguments = _NamespacedDict(  # type: ignore[assignment]
-                ba.arguments
-            )
+            ba.arguments = _NamespacedDict(ba.arguments)  # type: ignore[assignment]
 
             if not post:
                 for validator in validators:

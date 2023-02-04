@@ -152,18 +152,9 @@ class StageLoad:
             stage_data: Stage data to create from
                 (see create_stage and loads_from for more information)
         """
-        from dvc.stage import (
-            PipelineStage,
-            Stage,
-            create_stage,
-            restore_fields,
-        )
+        from dvc.stage import PipelineStage, Stage, create_stage, restore_fields
         from dvc.stage.exceptions import InvalidStageName
-        from dvc.stage.utils import (
-            is_valid_name,
-            prepare_file_path,
-            validate_kwargs,
-        )
+        from dvc.stage.utils import is_valid_name, prepare_file_path, validate_kwargs
 
         stage_data = validate_kwargs(
             single_stage=single_stage, fname=fname, **stage_data
@@ -178,9 +169,7 @@ class StageLoad:
             if not (stage_name and is_valid_name(stage_name)):
                 raise InvalidStageName
 
-        stage = create_stage(
-            stage_cls, repo=self.repo, path=path, **stage_data
-        )
+        stage = create_stage(stage_cls, repo=self.repo, path=path, **stage_data)
         if validate:
             if not force:
                 from dvc.stage.utils import check_stage_exists
@@ -200,9 +189,7 @@ class StageLoad:
         (see load method below for further details)
         """
         path, name = parse_target(target, isa_glob=glob)
-        return self.load_all(
-            path=path, name=name, accept_group=accept_group, glob=glob
-        )
+        return self.load_all(path=path, name=name, accept_group=accept_group, glob=glob)
 
     def get_target(self, target: str) -> "Stage":
         """
@@ -238,7 +225,6 @@ class StageLoad:
         accept_group: bool = True,
         glob: bool = False,
     ) -> Iterable[str]:
-
         if not name:
             return stages.keys()
         if accept_group and stages.is_foreach_generated(name):
@@ -386,9 +372,7 @@ class StageLoad:
 
         target = as_posix(target)
 
-        stages, file, _ = _collect_specific_target(
-            self, target, with_deps, recursive
-        )
+        stages, file, _ = _collect_specific_target(self, target, with_deps, recursive)
         if not stages:
             if not (recursive and self.fs.isdir(target)):
                 try:
@@ -398,10 +382,7 @@ class StageLoad:
                     pass
 
             from dvc.dvcfile import is_valid_filename
-            from dvc.stage.exceptions import (
-                StageFileDoesNotExistError,
-                StageNotFound,
-            )
+            from dvc.stage.exceptions import StageFileDoesNotExistError, StageNotFound
 
             try:
                 stages = self.collect(

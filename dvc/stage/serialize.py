@@ -150,9 +150,7 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
         (stage.PARAM_META, stage.meta),
     ]
-    return {
-        stage.name: OrderedDict([(key, value) for key, value in res if value])
-    }
+    return {stage.name: OrderedDict([(key, value) for key, value in res if value])}
 
 
 def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
@@ -167,8 +165,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
             if obj:
                 obj = cast("Tree", obj)
                 ret[item.PARAM_FILES] = [
-                    split_file_meta_from_cloud(f)
-                    for f in obj.as_list(with_meta=True)
+                    split_file_meta_from_cloud(f) for f in obj.as_list(with_meta=True)
                 ]
         else:
             meta_d = item.meta.to_dict()

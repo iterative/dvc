@@ -30,10 +30,7 @@ from dvc.output import (
     OutputIsStageFileError,
 )
 from dvc.stage import Stage
-from dvc.stage.exceptions import (
-    StageExternalOutputsError,
-    StagePathNotFoundError,
-)
+from dvc.stage.exceptions import StageExternalOutputsError, StagePathNotFoundError
 from dvc.testing.workspace_tests import TestAdd
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.utils.fs import path_isin
@@ -140,9 +137,7 @@ def test_warn_about_large_directories_recursive_add(tmp_dir, dvc, capsys):
         nc=colorama.Style.RESET_ALL,
     )
 
-    tmp_dir.gen(
-        "large-dir", {f"{i}": f"{i}" for i in range(LARGE_DIR_SIZE + 1)}
-    )
+    tmp_dir.gen("large-dir", {f"{i}": f"{i}" for i in range(LARGE_DIR_SIZE + 1)})
     assert main(["add", "--recursive", "large-dir"]) == 0
     assert warning in capsys.readouterr()[1]
 
@@ -376,9 +371,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
     assert file_md5_counter.mock.call_count == 1
 
 
-def test_should_update_state_entry_for_directory_after_add(
-    mocker, dvc, tmp_dir
-):
+def test_should_update_state_entry_for_directory_after_add(mocker, dvc, tmp_dir):
     file_md5_counter = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
@@ -395,9 +388,7 @@ def test_should_update_state_entry_for_directory_after_add(
     assert file_md5_counter.mock.call_count == 6
 
     ls = "dir" if os.name == "nt" else "ls"
-    ret = main(
-        ["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")]
-    )
+    ret = main(["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")])
     assert ret == 0
     assert file_md5_counter.mock.call_count == 8
 
@@ -457,9 +448,7 @@ def test_should_place_stage_in_data_dir_if_repository_below_symlink(
     assert (tmp_dir / "data" / "foo.dvc").exists()
 
 
-def test_should_throw_proper_exception_on_corrupted_stage_file(
-    caplog, tmp_dir, dvc
-):
+def test_should_throw_proper_exception_on_corrupted_stage_file(caplog, tmp_dir, dvc):
     tmp_dir.gen({"foo": "foo", "bar": " bar"})
     assert main(["add", "foo"]) == 0
 
@@ -468,9 +457,7 @@ def test_should_throw_proper_exception_on_corrupted_stage_file(
 
     caplog.clear()
     assert main(["add", "bar"]) == 1
-    expected_error = (
-        "unable to read: 'foo.dvc', YAML file structure is corrupted"
-    )
+    expected_error = "unable to read: 'foo.dvc', YAML file structure is corrupted"
     assert expected_error in caplog.text
 
 
@@ -644,9 +631,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
         ("copy", "symlink", system.is_symlink),
     ],
 )
-def test_should_relink_on_repeated_add(
-    link, new_link, link_test_func, tmp_dir, dvc
-):
+def test_should_relink_on_repeated_add(link, new_link, link_test_func, tmp_dir, dvc):
     dvc.config["cache"]["type"] = link
 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
@@ -1098,9 +1083,7 @@ def test_add_on_not_existing_file_should_not_remove_stage_file(tmp_dir, dvc):
         "dvc.stage.Stage.commit",
     ],
 )
-def test_add_does_not_remove_stage_file_on_failure(
-    tmp_dir, dvc, mocker, target
-):
+def test_add_does_not_remove_stage_file_on_failure(tmp_dir, dvc, mocker, target):
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
     tmp_dir.gen("foo", "foobar")  # update file
     dvcfile_contents = (tmp_dir / stage.path).read_text()

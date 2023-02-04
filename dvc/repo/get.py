@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 class GetDVCFileError(DvcException):
     def __init__(self):
         super().__init__(
-            "the given path is a DVC file, you must specify a data file "
-            "or a directory"
+            "the given path is a DVC file, you must specify a data file or a directory"
         )
 
 
@@ -59,7 +58,6 @@ def get(url, path, out=None, rev=None, jobs=None):
 
             fs: Union[DataFileSystem, "DVCFileSystem"]
             if os.path.isabs(path):
-
                 fs = DataFileSystem(index=repo.index.data["local"])
                 fs_path = fs.from_os_path(path)
             else:

@@ -8,11 +8,7 @@ from funcy import chunks, compact, log_durations
 from dvc.cli import completion
 from dvc.cli.actions import CommaSeparatedArgs
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import (
-    append_doc_link,
-    fix_subparsers,
-    hide_subparsers_from_help,
-)
+from dvc.cli.utils import append_doc_link, fix_subparsers, hide_subparsers_from_help
 from dvc.ui import ui
 from dvc.utils import colorize
 
@@ -39,20 +35,19 @@ class CmdDataStatus(CmdBase):
     }
     HINTS = {
         "not_in_cache": ('use "dvc fetch <file>..." to download files',),
-        "committed": (
-            "git commit the corresponding dvc files to update the repo",
-        ),
+        "committed": ("git commit the corresponding dvc files to update the repo",),
         "uncommitted": (
             'use "dvc commit <file>..." to track changes',
             'use "dvc checkout <file>..." to discard changes',
         ),
         "untracked": (
-            'use "git add <file> ..." or '
-            '"dvc add <file>..." to commit to git or to dvc',
+            (
+                'use "git add <file> ..." or '
+                '"dvc add <file>..." to commit to git or to dvc'
+            ),
         ),
         "git_dirty": (
-            "there are {}changes not tracked by dvc, "
-            'use "git status" to see',
+            'there are {}changes not tracked by dvc, use "git status" to see',
         ),
     }
 
@@ -96,8 +91,7 @@ class CmdDataStatus(CmdBase):
 
             if isinstance(stage_status, dict):
                 items = [
-                    ": ".join([state, file])
-                    for file, state in stage_status.items()
+                    ": ".join([state, file]) for file, state in stage_status.items()
                 ]
             else:
                 items = stage_status
@@ -180,9 +174,7 @@ class CmdDataLs(CmdBase):
 
         filter_labels = set(self.args.labels)
         filter_types = set(self.args.type)
-        d = ls(
-            self.repo, targets=self.args.targets, recursive=self.args.recursive
-        )
+        d = ls(self.repo, targets=self.args.targets, recursive=self.args.recursive)
         self._show_table(
             d,
             filter_labels=filter_labels,
@@ -205,8 +197,7 @@ def add_parser(subparsers, parent_parser):
     fix_subparsers(data_subparsers)
 
     DATA_STATUS_HELP = (
-        "Show changes between the last git commit, "
-        "the dvcfiles and the workspace."
+        "Show changes between the last git commit, the dvcfiles and the workspace."
     )
     data_status_parser = data_subparsers.add_parser(
         "status",

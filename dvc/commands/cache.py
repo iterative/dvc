@@ -68,10 +68,12 @@ def add_parser(subparsers, parent_parser):
     )
     cache_dir_parser.add_argument(
         "value",
-        help="Path to cache directory. Relative paths are resolved relative "
-        "to the current directory and saved to config relative to the "
-        "config file location. If no path is provided, it returns the "
-        "current cache directory.",
+        help=(
+            "Path to cache directory. Relative paths are resolved relative "
+            "to the current directory and saved to config relative to the "
+            "config file location. If no path is provided, it returns the "
+            "current cache directory."
+        ),
         nargs="?",
     ).complete = completion.DIR
     cache_dir_parser.set_defaults(func=CmdCacheDir)

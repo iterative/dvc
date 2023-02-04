@@ -24,9 +24,7 @@ def test_get_repo_file(tmp_dir, erepo_dir):
 def test_get_repo_file_replace_without_confirmation(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "contents", commit="create file")
-        erepo_dir.dvc_gen(
-            "file2", "something different", commit="create file2"
-        )
+        erepo_dir.dvc_gen("file2", "something different", commit="create file2")
 
     Repo.get(os.fspath(erepo_dir), "file", "file_imported")
     # getting another file with a name that already exists in Repo.
@@ -67,9 +65,7 @@ def test_get_git_dir(tmp_dir, erepo):
     src = "some_directory"
     dst = "some_directory_imported"
 
-    erepo.scm_gen(
-        {src: {"dir": {"file.txt": "hello"}}}, commit="add a regular dir"
-    )
+    erepo.scm_gen({src: {"dir": {"file.txt": "hello"}}}, commit="add a regular dir")
 
     Repo.get(os.fspath(erepo), src, dst)
 
@@ -123,9 +119,7 @@ def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory):
         erepo_dir.dvc.add(os.fspath(external_data), external=True)
         erepo_dir.scm_add("ext_data.dvc", commit="add external data")
 
-    Repo.get(
-        os.fspath(erepo_dir), os.fspath(external_data), "ext_data_imported"
-    )
+    Repo.get(os.fspath(erepo_dir), os.fspath(external_data), "ext_data_imported")
     assert (tmp_dir / "ext_data_imported").read_text() == "ext_data"
 
 
@@ -210,9 +204,7 @@ def test_get_file_from_dir(tmp_dir, erepo_dir):
     assert (tmp_dir / "subdir" / "foo").read_text() == "foo"
     assert (tmp_dir / "subdir" / "bar").read_text() == "bar"
 
-    Repo.get(
-        os.fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X"
-    )
+    Repo.get(os.fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X")
     assert (tmp_dir / "X").read_text() == "foo"
 
 
@@ -252,9 +244,7 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
         assert "failed to show URL" in caplog.text
 
 
-def test_get_pipeline_tracked_outs(
-    tmp_dir, dvc, scm, git_dir, run_copy, local_remote
-):
+def test_get_pipeline_tracked_outs(tmp_dir, dvc, scm, git_dir, run_copy, local_remote):
     from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")

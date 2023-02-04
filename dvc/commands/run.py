@@ -39,7 +39,7 @@ class CmdRun(CmdBase):
             {
                 "cmd": parse_cmd(self.args.command),
                 "fname": kwargs.pop("file"),
-                "no_exec": (self.args.no_exec or bool(self.args.checkpoints)),
+                "no_exec": self.args.no_exec or bool(self.args.checkpoints),
                 "run_cache": not kwargs.pop("no_run_cache"),
             }
         )
@@ -55,9 +55,7 @@ class CmdRun(CmdBase):
 def add_parser(subparsers, parent_parser):
     from dvc.commands.stage import _add_common_args
 
-    RUN_HELP = (
-        "Generate a dvc.yaml file from a command and execute the command."
-    )
+    RUN_HELP = "Generate a dvc.yaml file from a command and execute the command."
     run_parser = subparsers.add_parser(
         "run",
         parents=[parent_parser],
@@ -66,9 +64,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     run_parser.add_argument("-n", "--name", help="Stage name.")
-    run_parser.add_argument(
-        "--file", metavar="<filename>", help=argparse.SUPPRESS
-    )
+    run_parser.add_argument("--file", metavar="<filename>", help=argparse.SUPPRESS)
     run_parser.add_argument(
         "--single-stage",
         action="store_true",

@@ -34,9 +34,7 @@ def imp_url(  # noqa: C901
     version_aware: bool = False,
 ):
     out = resolve_output(url, out)
-    path, wdir, out = resolve_paths(
-        self, out, always_local=to_remote and not out
-    )
+    path, wdir, out = resolve_paths(self, out, always_local=to_remote and not out)
 
     if to_remote and (no_exec or no_download):
         raise InvalidArgumentError(
@@ -44,9 +42,7 @@ def imp_url(  # noqa: C901
         )
 
     if not to_remote and remote:
-        raise InvalidArgumentError(
-            "--remote can't be used without --to-remote"
-        )
+        raise InvalidArgumentError("--remote can't be used without --to-remote")
 
     # NOTE: when user is importing something from within their own repository
     if (

@@ -49,15 +49,11 @@ def brancher(  # noqa: E302
 
     repo_root_parts = ()
     if self.fs.path.isin(self.root_dir, self.scm.root_dir):
-        repo_root_parts = self.fs.path.relparts(
-            self.root_dir, self.scm.root_dir
-        )
+        repo_root_parts = self.fs.path.relparts(self.root_dir, self.scm.root_dir)
 
     cwd_parts = ()
     if self.fs.path.isin(self.fs.path.getcwd(), self.scm.root_dir):
-        cwd_parts = self.fs.path.relparts(
-            self.fs.path.getcwd(), self.scm.root_dir
-        )
+        cwd_parts = self.fs.path.relparts(self.fs.path.getcwd(), self.scm.root_dir)
 
     saved_fs = self.fs
     saved_root = self.root_dir
@@ -91,9 +87,7 @@ def brancher(  # noqa: E302
             self.root_dir = self.fs.path.join("/", *repo_root_parts)
 
             if cwd_parts:
-                cwd = self.fs.path.join(  # type: ignore[unreachable]
-                    "/", *cwd_parts
-                )
+                cwd = self.fs.path.join("/", *cwd_parts)  # type: ignore[unreachable]
                 self.fs.path.chdir(cwd)
 
             # ignore revs that don't contain repo root

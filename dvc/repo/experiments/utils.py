@@ -112,9 +112,7 @@ def exp_refs_by_baseline(
     return result
 
 
-def iter_remote_refs(
-    scm: "Git", url: str, base: Optional[str] = None, **kwargs
-):
+def iter_remote_refs(scm: "Git", url: str, base: Optional[str] = None, **kwargs):
     from scmrepo.exceptions import AuthError, InvalidRemote
 
     from dvc.scm import GitAuthError, InvalidRemoteSCMRepo
@@ -160,14 +158,10 @@ def push_refspec(
         results = scm.push_refspecs(
             url, refspecs, force=force, on_diverged=on_diverged, **kwargs
         )
-        diverged = [
-            ref for ref in results if results[ref] == SyncStatus.DIVERGED
-        ]
+        diverged = [ref for ref in results if results[ref] == SyncStatus.DIVERGED]
 
         if diverged:
-            raise SCMError(
-                f"local ref '{diverged}' diverged from remote '{url}'"
-            )
+            raise SCMError(f"local ref '{diverged}' diverged from remote '{url}'")
     except AuthError as exc:
         raise GitAuthError(str(exc))  # noqa: B904
 

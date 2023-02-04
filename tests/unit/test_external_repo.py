@@ -79,12 +79,9 @@ def test_subrepo_is_constructed_properly(
         assert repo.odb.local.cache_types == ["symlink"]
         assert subrepo.odb.local.cache_types == ["symlink"]
 
-        assert (
-            subrepo.config["remote"]["auto-generated-upstream"]["url"]
-            == local_cache
-        )
+        assert subrepo.config["remote"]["auto-generated-upstream"]["url"] == local_cache
         if root_is_dvc:
             main_cache = tmp_dir.dvc.odb.local.path
-            assert repo.config["remote"]["auto-generated-upstream"][
-                "url"
-            ] == str(main_cache)
+            assert repo.config["remote"]["auto-generated-upstream"]["url"] == str(
+                main_cache
+            )

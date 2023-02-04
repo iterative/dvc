@@ -17,9 +17,7 @@ def test_annotation_to_dict(kwargs):
 
 def test_annotation_update():
     annot = Annotation(desc="desc", labels=["label1", "label2"])
-    annot.update(
-        labels=["label"], type="type", new="new", meta={"key": "value"}
-    )
+    annot.update(labels=["label"], type="type", new="new", meta={"key": "value"})
 
     assert vars(annot) == {
         "desc": "desc",

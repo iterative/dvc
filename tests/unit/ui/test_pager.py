@@ -1,14 +1,7 @@
 import pytest
 
 from dvc.env import DVC_PAGER
-from dvc.ui.pager import (
-    DEFAULT_PAGER,
-    LESS,
-    PAGER_ENV,
-    find_pager,
-    make_pager,
-    pager,
-)
+from dvc.ui.pager import DEFAULT_PAGER, LESS, PAGER_ENV, find_pager, make_pager, pager
 
 
 @pytest.fixture(autouse=True)
@@ -32,9 +25,7 @@ def test_find_pager_uses_custom_pager_when_dvc_pager_env_var_is_defined(
     assert find_pager() == "my-pager"
 
 
-def test_find_pager_uses_custom_pager_when_pager_env_is_defined(
-    mocker, monkeypatch
-):
+def test_find_pager_uses_custom_pager_when_pager_env_is_defined(mocker, monkeypatch):
     monkeypatch.setenv(PAGER_ENV, "my-pager")
     mocker.patch("sys.stdout.isatty", return_value=True)
 
@@ -56,24 +47,20 @@ def test_find_pager_fails_to_find_any_pager(mocker):
 
 
 @pytest.mark.parametrize("env", [DVC_PAGER, PAGER_ENV, None])
-def test_dvc_sets_default_options_on_less_without_less_env(
-    mocker, monkeypatch, env
-):
+def test_dvc_sets_default_options_on_less_without_less_env(mocker, monkeypatch, env):
     if env:
         monkeypatch.setenv(env, "less")
     mocker.patch("sys.stdout.isatty", return_value=True)
     mocker.patch("os.system", return_value=0)
 
-    assert find_pager() == (
-        "less --quit-if-one-screen --RAW-CONTROL-CHARS"
-        " --chop-long-lines --no-init"
+    assert (
+        find_pager()
+        == "less --quit-if-one-screen --RAW-CONTROL-CHARS --chop-long-lines --no-init"
     )
 
 
 @pytest.mark.parametrize("env", [DVC_PAGER, PAGER_ENV, None])
-def test_dvc_sets_some_options_on_less_if_less_env_defined(
-    mocker, monkeypatch, env
-):
+def test_dvc_sets_some_options_on_less_if_less_env_defined(mocker, monkeypatch, env):
     if env:
         monkeypatch.setenv(env, "less")
     mocker.patch("sys.stdout.isatty", return_value=True)

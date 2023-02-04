@@ -33,9 +33,7 @@ def mocked_status():
 
 
 def test_cli(dvc, mocker, mocked_status):
-    status = mocker.patch(
-        "dvc.repo.Repo.data_status", return_value=mocked_status
-    )
+    status = mocker.patch("dvc.repo.Repo.data_status", return_value=mocked_status)
 
     cli_args = parse_args(
         [

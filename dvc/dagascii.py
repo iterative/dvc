@@ -272,8 +272,6 @@ def draw(vertices, edges):
             vertex.view.h,
         )
 
-        canvas.text(
-            int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data
-        )
+        canvas.text(int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data)
 
     return canvas.draw()

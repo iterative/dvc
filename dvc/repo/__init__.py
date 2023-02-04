@@ -3,16 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple, Union, cast
 
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
@@ -148,9 +139,7 @@ class Repo:
 
         import hashlib
 
-        root_dir_hash = hashlib.sha224(
-            self.root_dir.encode("utf-8")
-        ).hexdigest()
+        root_dir_hash = hashlib.sha224(self.root_dir.encode("utf-8")).hexdigest()
 
         db_dir = self.fs.path.join(
             base_db_dir,
@@ -230,9 +219,7 @@ class Repo:
                 self.lock = make_lock(
                     self.fs.path.join(self.tmp_dir, "lock"),
                     tmp_dir=self.tmp_dir,
-                    hardlink_lock=self.config["core"].get(
-                        "hardlink_lock", False
-                    ),
+                    hardlink_lock=self.config["core"].get("hardlink_lock", False),
                     friendly=True,
                 )
                 state_db_dir = self._get_database_dir("state")
@@ -338,8 +325,7 @@ class Repo:
         from dvc.machine import MachineManager
 
         if self.tmp_dir and (
-            self.config["feature"].get("machine", False)
-            or env2bool("DVC_TEST")
+            self.config["feature"].get("machine", False) or env2bool("DVC_TEST")
         ):
             return MachineManager(self)
         return None
@@ -393,14 +379,10 @@ class Repo:
         return os.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
-    def init(
-        root_dir=os.curdir, no_scm=False, force=False, subdir=False
-    ) -> "Repo":
+    def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False) -> "Repo":
         from dvc.repo.init import init
 
-        return init(
-            root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir
-        )
+        return init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
 
     def unprotect(self, target):
         return self.odb.repo.unprotect(target)
@@ -530,9 +512,7 @@ class Repo:
     def dvcfs(self) -> "DVCFileSystem":
         from dvc.fs.dvc import DVCFileSystem
 
-        return DVCFileSystem(
-            repo=self, subrepos=self.subrepos, **self._fs_conf
-        )
+        return DVCFileSystem(repo=self, subrepos=self.subrepos, **self._fs_conf)
 
     @cached_property
     def index_db_dir(self):

@@ -23,9 +23,7 @@ def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):
         rev = resolve_rev(repo.scm, b_rev)
         new = collect_experiment_commit(repo, rev, param_deps=param_deps)
     else:
-        new = collect_experiment_commit(
-            repo, "workspace", param_deps=param_deps
-        )
+        new = collect_experiment_commit(repo, "workspace", param_deps=param_deps)
 
     with_unchanged = kwargs.pop("all", False)
 

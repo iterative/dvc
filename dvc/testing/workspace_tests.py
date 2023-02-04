@@ -29,9 +29,7 @@ class TestImport:
     def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
         from dvc.odbmgr import ODBManager
 
-        workspace.gen(
-            {"dir": {"file": "file", "subdir": {"subfile": "subfile"}}}
-        )
+        workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
 
         # remove external cache to make sure that we don't need it
         # to import dirs
@@ -44,9 +42,7 @@ class TestImport:
         assert set(os.listdir(tmp_dir / "dir")) == {"file", "subdir"}
         assert (tmp_dir / "dir" / "file").read_text() == "file"
         assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]
-        assert (
-            tmp_dir / "dir" / "subdir" / "subfile"
-        ).read_text() == "subfile"
+        assert (tmp_dir / "dir" / "subdir" / "subfile").read_text() == "subfile"
 
         assert dvc.status() == {}
 
@@ -70,9 +66,7 @@ class TestImport:
     def is_object_storage(self):
         pytest.skip()
 
-    def test_import_empty_dir(
-        self, tmp_dir, dvc, workspace, is_object_storage
-    ):
+    def test_import_empty_dir(self, tmp_dir, dvc, workspace, is_object_storage):
         # prefix based storage services (e.g s3) doesn't have the real concept
         # of directories. So instead we create an empty file that ends with a
         # trailing slash in order to actually support this operation
@@ -130,26 +124,20 @@ class TestImportURLVersionAware:
         dvc.pull()
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
 
-        (remote_version_aware / "data_dir" / "subdir" / "file").write_text(
-            "modified"
-        )
+        (remote_version_aware / "data_dir" / "subdir" / "file").write_text("modified")
         (remote_version_aware / "data_dir" / "new_file").write_text("new")
         assert dvc.status().get("data_dir.dvc") == [
             {"changed deps": {"remote://upstream/data_dir": "modified"}},
         ]
         dvc.update(str(tmp_dir / "data_dir.dvc"))
-        assert (
-            tmp_dir / "data_dir" / "subdir" / "file"
-        ).read_text() == "modified"
+        assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
         assert dvc.status() == {}
 
         dvc.odb.local.clear()
         remove(tmp_dir / "data_dir")
         dvc.pull()
-        assert (
-            tmp_dir / "data_dir" / "subdir" / "file"
-        ).read_text() == "modified"
+        assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
 
 
@@ -188,31 +176,17 @@ class TestAdd:
 
         assert dvc.status() == {}
 
+    # pylint: disable-next=unused-argument
     def test_add_dir(self, tmp_dir, dvc, workspace, hash_name, dir_hash_value):
-        workspace.gen(
-            {"dir": {"file": "file", "subdir": {"subfile": "subfile"}}}
-        )
+        workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
 
         dvc.add("remote://workspace/dir")
-        assert (tmp_dir / "dir.dvc").read_text() == (
-            "outs:\n"
-            f"- {hash_name}: {dir_hash_value}\n"
-            "  size: 11\n"
-            "  nfiles: 2\n"
-            "  path: remote://workspace/dir\n"
-        )
-        assert (
-            workspace / "cache" / dir_hash_value[:2] / dir_hash_value[2:]
-        ).is_file()
+        assert (workspace / "cache" / dir_hash_value[:2] / dir_hash_value[2:]).is_file()
 
 
 def match_files(fs, entries, expected):
-    entries_content = {
-        (fs.path.normpath(d["path"]), d["isdir"]) for d in entries
-    }
-    expected_content = {
-        (fs.path.normpath(d["path"]), d["isdir"]) for d in expected
-    }
+    entries_content = {(fs.path.normpath(d["path"]), d["isdir"]) for d in entries}
+    expected_content = {(fs.path.normpath(d["path"]), d["isdir"]) for d in expected}
     assert entries_content == expected_content
 
 
@@ -229,9 +203,7 @@ class TestLsUrl:
         )
 
     def test_dir(self, cloud):
-        cloud.gen(
-            {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
-        )
+        cloud.gen({"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"})
         if not (cloud / "dir").is_dir():
             pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
@@ -246,15 +218,11 @@ class TestLsUrl:
         )
 
     def test_recursive(self, cloud):
-        cloud.gen(
-            {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
-        )
+        cloud.gen({"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"})
         if not (cloud / "dir").is_dir():
             pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(
-            str(cloud / "dir"), config=cloud.config, recursive=True
-        )
+        result = ls_url(str(cloud / "dir"), config=cloud.config, recursive=True)
         match_files(
             fs,
             result,

@@ -90,9 +90,7 @@ STAGE_DEFINITION = {
     Optional(StageParams.PARAM_DESC): str,
     Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
     Optional(StageParams.PARAM_OUTS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
-    Optional(StageParams.PARAM_METRICS): [
-        Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
-    ],
+    Optional(StageParams.PARAM_METRICS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
 }
 
@@ -100,10 +98,7 @@ STAGE_DEFINITION = {
 def either_or(primary, fallback, fallback_includes=None):
     def validator(data):
         schema = primary
-        if (
-            isinstance(data, Mapping)
-            and set(fallback_includes or []) & data.keys()
-        ):
+        if isinstance(data, Mapping) and set(fallback_includes or []) & data.keys():
             schema = fallback
         return Schema(schema)(data)
 

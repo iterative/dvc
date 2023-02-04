@@ -23,9 +23,7 @@ def test_config_formatter():
     )
 
 
-@pytest.mark.parametrize(
-    "name", ["way.too.long", "no_option", "remote.way.too.long"]
-)
+@pytest.mark.parametrize("name", ["way.too.long", "no_option", "remote.way.too.long"])
 def test_config_bad_name(name):
     with pytest.raises(DvcParserError):
         parse_args(["config", name])

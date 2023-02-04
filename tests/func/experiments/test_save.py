@@ -1,10 +1,7 @@
 import pytest
 from funcy import first
 
-from dvc.repo.experiments.exceptions import (
-    ExperimentExistsError,
-    InvalidArgumentError,
-)
+from dvc.repo.experiments.exceptions import ExperimentExistsError, InvalidArgumentError
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
 

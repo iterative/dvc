@@ -8,11 +8,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm import Git
 from dvc.utils.fs import remove
 
-from .exceptions import (
-    ApplyConflictError,
-    BaselineMismatchError,
-    InvalidExpRevError,
-)
+from .exceptions import ApplyConflictError, BaselineMismatchError, InvalidExpRevError
 from .executor.base import BaseExecutor
 from .refs import EXEC_APPLY
 
@@ -43,7 +39,9 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):  # noqa: C901
         (
             exp_ref_info,
             queue_entry,
-        ) = exps.celery_queue.get_ref_and_entry_by_names(rev)[rev]
+        ) = exps.celery_queue.get_ref_and_entry_by_names(
+            rev
+        )[rev]
         baseline_sha = repo.scm.get_rev()
         if exp_ref_info:
             if baseline_sha != exp_ref_info.baseline_sha:
@@ -79,8 +77,7 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):  # noqa: C901
 
     repo.scm.set_ref(EXEC_APPLY, exp_rev)
     logger.info(
-        "Changes for experiment '%s' have been applied to your current "
-        "workspace.",
+        "Changes for experiment '%s' have been applied to your current workspace.",
         rev,
     )
 

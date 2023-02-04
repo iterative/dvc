@@ -34,9 +34,7 @@ def add_parser(queue_subparsers, parent_parser):
     queue_logs_parser.add_argument(
         "-e",
         "--encoding",
-        help=(
-            "Text encoding for log output. Defaults to system locale encoding."
-        ),
+        help="Text encoding for log output. Defaults to system locale encoding.",
         metavar="<encoding>",
     )
     queue_logs_parser.add_argument(

@@ -138,16 +138,12 @@ def SCM(
     with map_scm_exception():
         if no_scm:
             return NoSCM(root_dir, _raise_not_implemented_as=NoSCMError)
-        return Git(
-            root_dir, search_parent_directories=search_parent_directories
-        )
+        return Git(root_dir, search_parent_directories=search_parent_directories)
 
 
 class TqdmGit(Tqdm):
     BAR_FMT = (
-        "{desc}|{bar}|"
-        "{postfix[info]}{n_fmt}/{total_fmt}"
-        " [{elapsed}, {rate_fmt:>11}]"
+        "{desc}|{bar}|{postfix[info]}{n_fmt}/{total_fmt} [{elapsed}, {rate_fmt:>11}]"
     )
 
     def __init__(self, *args, **kwargs):
@@ -200,10 +196,7 @@ def resolve_rev(scm: "Git", rev: str) -> str:
         # `scm` will only resolve git branch and tag names,
         # if rev is not a sha it may be an abbreviated experiment name
         if not (rev == "HEAD" or rev.startswith("refs/")):
-            from dvc.repo.experiments.utils import (
-                AmbiguousExpRefInfo,
-                resolve_name,
-            )
+            from dvc.repo.experiments.utils import AmbiguousExpRefInfo, resolve_name
 
             try:
                 ref_infos = resolve_name(scm, rev).get(rev)
@@ -275,15 +268,11 @@ def iter_revs(  # noqa: C901
         if commit_date:
             from datetime import datetime
 
-            commit_datestamp = datetime.strptime(
-                commit_date, "%Y-%m-%d"
-            ).timestamp()
+            commit_datestamp = datetime.strptime(commit_date, "%Y-%m-%d").timestamp()
 
             def _time_filter(rev):
                 try:
-                    return (
-                        scm.resolve_commit(rev).commit_time >= commit_datestamp
-                    )
+                    return scm.resolve_commit(rev).commit_time >= commit_datestamp
                 except _SCMError:
                     return True
 

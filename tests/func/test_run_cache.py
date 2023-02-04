@@ -82,14 +82,12 @@ def test_outs_no_cache_deactivate_run_cache(tmp_dir, dvc, out_type, run_cache):
         cmd="cp foo bar && cp foo goo",
         outs=["goo"],
         name="copy-foo-bar",
-        **{out_type: ["bar"]}
+        **{out_type: ["bar"]},
     )
     assert os.path.isdir(dvc.stage_cache.cache_dir) == run_cache
 
 
-def test_memory_for_multiple_runs_of_same_stage(
-    tmp_dir, dvc, run_copy, mocker
-):
+def test_memory_for_multiple_runs_of_same_stage(tmp_dir, dvc, run_copy, mocker):
     tmp_dir.gen("foo", "foo")
     assert not os.path.exists(dvc.stage_cache.cache_dir)
     run_copy("foo", "bar", name="copy-foo-bar")

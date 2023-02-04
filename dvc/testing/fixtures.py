@@ -37,9 +37,7 @@ CACHE: Dict[Tuple[bool, bool, bool], str] = {}
 
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request, worker_id):
-    def make(
-        name, *, scm=False, dvc=False, subdir=False
-    ):  # pylint: disable=W0621
+    def make(name, *, scm=False, dvc=False, subdir=False):  # pylint: disable=W0621
         from shutil import copytree, ignore_patterns
 
         from dvc.repo import Repo
@@ -65,9 +63,7 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
         if dvc:
             new_dir.dvc = Repo(str_path)
         if scm:
-            new_dir.scm = (
-                new_dir.dvc.scm if hasattr(new_dir, "dvc") else Git(str_path)
-            )
+            new_dir.scm = new_dir.dvc.scm if hasattr(new_dir, "dvc") else Git(str_path)
         request.addfinalizer(new_dir.close)
         return new_dir
 
@@ -138,9 +134,7 @@ def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
 
 
 @pytest.fixture
-def make_remote_version_aware(
-    tmp_dir, dvc, make_cloud_version_aware  # noqa: ARG001
-):
+def make_remote_version_aware(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
         cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
         config = dict(cloud.config)
@@ -152,9 +146,7 @@ def make_remote_version_aware(
 
 
 @pytest.fixture
-def make_remote_worktree(
-    tmp_dir, dvc, make_cloud_version_aware  # noqa: ARG001
-):
+def make_remote_worktree(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
         cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
         config = dict(cloud.config)
@@ -249,9 +241,7 @@ def docker_compose_project_name():
 
 
 @pytest.fixture(scope="session")
-def docker_services(
-    docker_compose_file, docker_compose_project_name, tmp_path_factory
-):
+def docker_services(docker_compose_file, docker_compose_project_name, tmp_path_factory):
     # overriding `docker_services` fixture from `pytest_docker` plugin to
     # only launch docker images once.
 
@@ -260,9 +250,7 @@ def docker_services(
     # pylint: disable-next=import-error
     from pytest_docker.plugin import DockerComposeExecutor, Services
 
-    executor = DockerComposeExecutor(
-        docker_compose_file, docker_compose_project_name
-    )
+    executor = DockerComposeExecutor(docker_compose_file, docker_compose_project_name)
 
     # making sure we don't accidentally launch docker-compose in parallel,
     # as it might result in network conflicts. Inspired by:

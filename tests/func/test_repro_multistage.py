@@ -48,14 +48,9 @@ def test_downstream(tmp_dir, dvc):
     #
     assert main(["run", "-n", "A-gen", "-o", "A", "echo A>A"]) == 0
     assert main(["run", "-n", "B-gen", "-d", "A", "-o", "B", "echo B>B"]) == 0
+    assert main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
     assert (
-        main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
-    )
-    assert (
-        main(
-            ["run", "-n", "D-gen", "-d", "B", "-d", "C", "-o", "D", "echo D>D"]
-        )
-        == 0
+        main(["run", "-n", "D-gen", "-d", "B", "-d", "C", "-o", "D", "echo D>D"]) == 0
     )
     assert main(["run", "--single-stage", "-o", "G", "echo G>G"]) == 0
     assert main(["run", "-n", "F-gen", "-d", "G", "-o", "F", "echo F>F"]) == 0
@@ -84,9 +79,7 @@ def test_downstream(tmp_dir, dvc):
     #    /
     #   B
     #
-    evaluation = dvc.reproduce(
-        PROJECT_FILE + ":B-gen", downstream=True, force=True
-    )
+    evaluation = dvc.reproduce(PROJECT_FILE + ":B-gen", downstream=True, force=True)
 
     assert len(evaluation) == 3
     assert isinstance(evaluation[0], PipelineStage)
@@ -102,9 +95,7 @@ def test_downstream(tmp_dir, dvc):
 
     # B, C should be run (in any order) before D
     # See https://github.com/iterative/dvc/issues/3602
-    evaluation = dvc.reproduce(
-        PROJECT_FILE + ":A-gen", downstream=True, force=True
-    )
+    evaluation = dvc.reproduce(PROJECT_FILE + ":A-gen", downstream=True, force=True)
 
     assert len(evaluation) == 5
     assert isinstance(evaluation[0], PipelineStage)
@@ -144,14 +135,10 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
 
     assert dvc.status([target]) == {target: ["changed command"]}
     assert dvc.reproduce(target)[0] == stage
-    m.assert_called_once_with(
-        stage, checkpoint_func=None, dry=False, run_env=None
-    )
+    m.assert_called_once_with(stage, checkpoint_func=None, dry=False, run_env=None)
 
 
-def test_repro_when_new_deps_is_added_in_dvcfile(
-    tmp_dir, dvc, run_copy, copy_script
-):
+def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy, copy_script):
     from dvc.dvcfile import load_file
 
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
@@ -399,9 +386,7 @@ def test_repro_list_of_commands_in_order(tmp_dir, dvc, multiline):
 
 
 @pytest.mark.parametrize("multiline", [True, False])
-def test_repro_list_of_commands_raise_and_stops_after_failure(
-    tmp_dir, dvc, multiline
-):
+def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc, multiline):
     cmd = ["echo foo>foo", "failed_command", "echo baz>bar"]
     if multiline:
         cmd = "\n".join(cmd)

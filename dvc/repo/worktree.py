@@ -1,16 +1,6 @@
 import logging
 from functools import partial
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Set, Tuple, Union, cast
 
 from funcy import first
 
@@ -69,9 +59,7 @@ def worktree_view_by_remotes(
         return
 
     for remote in remotes:
-        yield remote, IndexView(
-            index, view._stage_infos, outs_filter(view, remote)
-        )
+        yield remote, IndexView(index, view._stage_infos, outs_filter(view, remote))
 
 
 def worktree_view(
@@ -95,11 +83,7 @@ def worktree_view(
         return True
 
     def outs_filter(out: "Output") -> bool:
-        if (
-            not out.is_in_repo
-            or not out.use_cache
-            or (push and not out.can_push)
-        ):
+        if not out.is_in_repo or not out.use_cache or (push and not out.can_push):
             return False
         return True
 
@@ -175,9 +159,7 @@ def push_worktree(
             logger.debug("Pushing worktree changes to '%s'", remote_obj.path)
         else:
             old_index = None
-            logger.debug(
-                "Pushing version-aware files to '%s'", remote_obj.path
-            )
+            logger.debug("Pushing version-aware files to '%s'", remote_obj.path)
 
         if remote_obj.worktree:
             diff_kwargs: Dict[str, Any] = {
@@ -398,9 +380,7 @@ def _update_out_meta(
 ):
     from dvc_data.index.save import build_tree
 
-    index = _get_update_diff_index(
-        repo, out, local_index, remote_index, remote
-    )
+    index = _get_update_diff_index(repo, out, local_index, remote_index, remote)
 
     _, key = out.index_key
     entry = index[key]

@@ -225,9 +225,7 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
         (ext_dir / "tmp" / "file").fs_path,
     }
     assert dvc.dvcignore.is_ignored_dir(os.fspath(ext_dir / "tmp")) is False
-    assert (
-        dvc.dvcignore.is_ignored_file(os.fspath(ext_dir / "y.backup")) is False
-    )
+    assert dvc.dvcignore.is_ignored_file(os.fspath(ext_dir / "y.backup")) is False
 
 
 def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
@@ -295,9 +293,7 @@ def test_ignore_file_in_parent_path(
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "\n".join(pattern_list))
     dvc._reset()
     result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
-    assert set(result) == {
-        (tmp_dir / relpath).fs_path for relpath in result_set
-    }
+    assert set(result) == {(tmp_dir / relpath).fs_path for relpath in result_set}
 
 
 # If there is a separator at the end of the pattern then the pattern
@@ -330,9 +326,7 @@ def test_ignore_directory(tmp_dir, dvc):
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "fortz"}})
     dvc._reset()
     result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
-    assert set(result) == {
-        (tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE).fs_path
-    }
+    assert set(result) == {(tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE).fs_path}
 
 
 def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
@@ -367,12 +361,8 @@ def test_pattern_trie_fs(tmp_dir, dvc):
     dvc._reset()
     dvcignore = dvc.dvcignore
 
-    ignore_pattern_top = dvcignore._get_trie_pattern(
-        os.fspath(tmp_dir / "top")
-    )
-    ignore_pattern_other = dvcignore._get_trie_pattern(
-        os.fspath(tmp_dir / "other")
-    )
+    ignore_pattern_top = dvcignore._get_trie_pattern(os.fspath(tmp_dir / "top"))
+    ignore_pattern_other = dvcignore._get_trie_pattern(os.fspath(tmp_dir / "other"))
     ignore_pattern_first = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "top" / "first")
     )
