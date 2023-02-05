@@ -442,3 +442,18 @@ def test_root_from_file_to_dir(M, tmp_dir, dvc, scm):
         },
         "git": M.dict(),
     }
+
+
+def test_empty_dir(tmp_dir, scm, dvc, M):
+    # regression testing for https://github.com/iterative/dvc/issues/8958
+    tmp_dir.dvc_gen({"data": {"foo": "foo"}})
+    remove("data")
+
+    (tmp_dir / "data").mkdir()
+
+    assert dvc.data_status() == {
+        **EMPTY_STATUS,
+        "committed": {"added": [join("data", "")]},
+        "uncommitted": {"modified": [join("data", "")]},
+        "git": M.dict(),
+    }

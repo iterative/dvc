@@ -526,9 +526,9 @@ def build_data_index(
             out_entry = DataIndexEntry(path=out_path, fs=fs)
 
         out_entry.key = key
+        data.add(out_entry)
 
         if not out_entry.meta or not out_entry.meta.isdir:
-            data.add(out_entry)
             continue
 
         for entry in build_entries(
@@ -546,8 +546,7 @@ def build_data_index(
             tree_meta, tree = build_tree(data, key)
             out_entry.meta = tree_meta
             out_entry.hash_info = tree.hash_info
-
-        out_entry.loaded = True
-        data.add(out_entry)
+            out_entry.loaded = True
+            data.add(out_entry)
 
     return data
