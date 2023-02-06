@@ -10,6 +10,12 @@ from dvc_data.hashfile.tree import Tree
 # pylint: disable=unused-argument
 
 
+def _check_status(status, **kwargs):
+    for key in ("ok", "missing", "new", "deleted"):
+        expected = kwargs.get(key, set())
+        assert expected == set(getattr(status, key))
+
+
 class TestRemote:
     def test(self, tmp_dir, dvc, remote):  # pylint: disable=W0613
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
@@ -32,11 +38,6 @@ class TestRemote:
         cache_dir = out_dir.cache_path
         dir_hash = out_dir.hash_info
         dir_hashes = {dir_hash} | {oid for _, _, oid in out_dir.obj}
-
-        def _check_status(status, **kwargs):
-            for key in ("ok", "missing", "new", "deleted"):
-                expected = kwargs.get(key, set())
-                assert expected == set(getattr(status, key))
 
         # Check status
         status = dvc.cloud.status(foo_hashes)
@@ -113,6 +114,56 @@ class TestRemote:
 
         dvc.pull(run_cache=True)
         assert list(stage_cache_dir.rglob("*")) == expected
+
+    def test_pull_00_prefix(self, tmp_dir, dvc, remote, monkeypatch):
+        # Related: https://github.com/iterative/dvc/issues/6089
+
+        fs_type = type(dvc.cloud.get_remote_odb("upstream").fs)
+        monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
+        monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
+
+        # foo's md5 checksum is 00411460f7c92d2124a67ea0f4cb5f85
+        # bar's md5 checksum is 0000000018e6137ac2caab16074784a6
+        foo_out = tmp_dir.dvc_gen("foo", "363")[0].outs[0]
+        bar_out = tmp_dir.dvc_gen("bar", "jk8ssl")[0].outs[0]
+        expected_hashes = {foo_out.hash_info, bar_out.hash_info}
+
+        dvc.push()
+        status = dvc.cloud.status(expected_hashes)
+        _check_status(status, ok=expected_hashes)
+
+        dvc.odb.local.clear()
+        remove(tmp_dir / "foo")
+        remove(tmp_dir / "bar")
+
+        stats = dvc.pull()
+        assert stats["fetched"] == 2
+        assert set(stats["added"]) == {"foo", "bar"}
+
+    def test_pull_no_00_prefix(self, tmp_dir, dvc, remote, monkeypatch):
+        # Related: https://github.com/iterative/dvc/issues/6244
+
+        fs_type = type(dvc.cloud.get_remote_odb("upstream").fs)
+        monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
+        monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
+
+        # foo's md5 checksum is 14ffd92a6cbf5f2f657067df0d5881a6
+        # bar's md5 checksum is 64020400f00960c0ef04052547b134b3
+        foo_out = tmp_dir.dvc_gen("foo", "dvc")[0].outs[0]
+        bar_out = tmp_dir.dvc_gen("bar", "cml")[0].outs[0]
+        expected_hashes = {foo_out.hash_info, bar_out.hash_info}
+
+        dvc.push()
+        status = dvc.cloud.status(expected_hashes)
+        _check_status(status, ok=expected_hashes)
+
+        dvc.odb.local.clear()
+        remove(tmp_dir / "foo")
+        remove(tmp_dir / "bar")
+
+        stats = dvc.pull()
+        assert stats["fetched"] == 2
+        assert set(stats["added"]) == {"foo", "bar"}
 
 
 class TestRemoteVersionAware:
