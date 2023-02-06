@@ -335,21 +335,17 @@ class BaseExecutor(ABC):
 
         # fetch experiments
         try:
-            dest_scm.fetch_refspecs(
-                self.git_url,
-                [f"{ref}:{ref}" for ref in refs],
-                on_diverged=on_diverged_ref,
-                force=force,
-                **kwargs,
-            )
+            refspecs = [f"{ref}:{ref}" for ref in refs]
             # update last run checkpoint (if it exists)
             if has_checkpoint:
-                dest_scm.fetch_refspecs(
-                    self.git_url,
-                    [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
-                    force=True,
-                    **kwargs,
-                )
+                refspecs.append(f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}")
+            dest_scm.fetch_refspecs(
+                self.git_url,
+                refspecs,
+                on_diverged=on_diverged_ref,
+                force=force or has_checkpoint,
+                **kwargs,
+            )
         except SCMError:
             pass
 
