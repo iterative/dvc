@@ -4,9 +4,7 @@ from funcy import first
 
 
 @pytest.mark.parametrize("tmp", [True, False])
-def test_post_to_studio(
-    tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp
-):
+def test_post_to_studio(tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp):
     valid_response = mocker.MagicMock()
     valid_response.status_code = 200
     mocked_post = mocker.patch("requests.post", return_value=valid_response)
@@ -17,9 +15,7 @@ def test_post_to_studio(
 
     baseline_sha = scm.get_rev()
     exp_rev = first(
-        dvc.experiments.run(
-            exp_stage.addressing, params=["foo=1"], tmp_dir=tmp
-        )
+        dvc.experiments.run(exp_stage.addressing, params=["foo=1"], tmp_dir=tmp)
     )
     name = dvc.experiments.get_exact_name([exp_rev])[exp_rev]
     assert mocked_post.call_count == 2
