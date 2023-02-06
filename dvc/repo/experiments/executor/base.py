@@ -32,6 +32,7 @@ from dvc.repo.experiments.refs import (
     EXEC_CHECKPOINT,
     ExpRefInfo,
 )
+from dvc.repo.experiments.utils import to_studio_params
 from dvc.stage.serialize import to_lockfile
 from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
@@ -545,6 +546,8 @@ class BaseExecutor(ABC):
         log_errors: bool = True,
         **kwargs,
     ):
+        from dvc_studio_client.post_live_metrics import post_live_metrics
+
         from dvc.repo import Repo
         from dvc.stage.monitor import CheckpointKilledError
 
@@ -561,6 +564,13 @@ class BaseExecutor(ABC):
             os.chdir(dvc.root_dir)
 
         try:
+            post_live_metrics(
+                "start",
+                info.baseline_rev,
+                info.name,
+                "dvc",
+                params=to_studio_params(dvc.params.show()),
+            )
             logger.debug("Running repro in '%s'", os.getcwd())
             yield dvc
             info.status = TaskStatus.SUCCESS
@@ -578,6 +588,14 @@ class BaseExecutor(ABC):
             info.status = TaskStatus.FAILED
             raise
         finally:
+            post_live_metrics(
+                "done",
+                info.baseline_rev,
+                info.name,
+                "dvc",
+                experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
+            )
+
             if infofile is not None:
                 info.dump_json(infofile)
             dvc.close()

@@ -327,7 +327,9 @@ def to_studio_params(dvc_params):
         "params.yaml": {"foo": 1}
     }
     """
-    result = {}
+    result: Dict = {}
+    if not dvc_params:
+        return result
     for rev_data in dvc_params.values():
         for file_name, file_data in rev_data["data"].items():
             result[file_name] = file_data["data"]
