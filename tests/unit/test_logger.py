@@ -33,7 +33,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
 
-            expected = "{green}{datetime}{nc} {blue}DEBUG{nc}: message".format(
+            expected = "{blue}{datetime}{nc} {blue}DEBUG{nc}: message".format(
                 **colors, datetime=dt
             )
 
@@ -103,12 +103,9 @@ class TestColorFormatter:
                 logger.exception("")
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: description\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -126,12 +123,9 @@ class TestColorFormatter:
                 logger.debug("", exc_info=True)
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{blue}{datetime}{nc} "
                 "{blue}DEBUG{nc}: description\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     datetime=dt,
                     **colors,
@@ -149,12 +143,9 @@ class TestColorFormatter:
                 logger.exception("something", extra={"tb_only": True})
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: something\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -175,12 +166,9 @@ class TestColorFormatter:
                     logger.exception("message")
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: message - second: first\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
