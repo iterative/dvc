@@ -327,7 +327,7 @@ def to_studio_params(dvc_params):
         "params.yaml": {"foo": 1}
     }
     """
-    result: dict = {}
+    result: Dict = {}
     if not dvc_params:
         return result
     for rev_data in dvc_params.values():
