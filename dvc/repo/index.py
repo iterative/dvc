@@ -286,7 +286,7 @@ class Index:
         from collections import defaultdict
 
         from dvc.config import NoRemoteError
-        from dvc_data.index import DataIndex
+        from dvc_data.index import DataIndex, Storage
 
         by_workspace: dict = defaultdict(DataIndex)
 
@@ -304,11 +304,18 @@ class Index:
             entry.key = key
             data_index.add(entry)
 
-            data_index.odb_map[key] = out.odb
+            storage = Storage(odb=out.odb)
             try:
-                data_index.remote_map[key] = self.repo.cloud.get_remote_odb(out.remote)
+                storage.remote = self.repo.cloud.get_remote_odb(out.remote)
             except NoRemoteError:
                 pass
+
+            if out.stage.is_import and not out.stage.is_repo_import:
+                dep = out.stage.deps[0]
+                storage.fs = dep.fs
+                storage.path = dep.fs_path
+
+            data_index.storage_map[key] = storage
 
         return dict(by_workspace)
 
@@ -523,7 +530,7 @@ def build_data_index(
                 state=index.repo.state,
             )
         except FileNotFoundError:
-            out_entry = DataIndexEntry(path=out_path, fs=fs)
+            out_entry = DataIndexEntry()
 
         out_entry.key = key
         data.add(out_entry)

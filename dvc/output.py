@@ -572,8 +572,6 @@ class Output:
         )
         if self.stage.is_import and not self.stage.is_repo_import:
             dep = self.stage.deps[0]
-            entry.fs = dep.fs
-            entry.path = dep.fs_path
             entry.meta = dep.meta
             if not entry.obj:
                 if not dep.obj and dep.files:
