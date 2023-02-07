@@ -154,7 +154,7 @@ def to_pipeline_file(stage: "PipelineStage"):
 
 
 def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
-    from dvc.output import split_file_meta_from_cloud
+    from dvc.output import _serialize_tree_obj_to_files, split_file_meta_from_cloud
 
     assert stage.cmd
 
@@ -165,7 +165,8 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
             if obj:
                 obj = cast("Tree", obj)
                 ret[item.PARAM_FILES] = [
-                    split_file_meta_from_cloud(f) for f in obj.as_list(with_meta=True)
+                    split_file_meta_from_cloud(f)
+                    for f in _serialize_tree_obj_to_files(obj)
                 ]
         else:
             meta_d = item.meta.to_dict()
