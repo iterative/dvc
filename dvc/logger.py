@@ -203,7 +203,22 @@ def set_loggers_level(level: int = logging.INFO) -> None:
         logging.getLogger(name).setLevel(level)
 
 
+def _is_jupyter() -> bool:
+    try:
+        ipython = get_ipython()  # type: ignore[name-defined]
+    except (NameError, TypeError):
+        return False
+
+    shell = ipython.__class__.__name__
+    return shell == "ZMQInteractiveShell" or "google.colab" in str(ipython.__class__)
+
+
 def setup(level: int = logging.INFO) -> None:
+    is_jupyter = _is_jupyter()
+    if not is_jupyter:
+        # initialize colorama, so that tty detection works if we are not inside jupyter
+        colorama.init()
+
     if level >= logging.DEBUG:
         # Unclosed session errors for asyncio/aiohttp are only available
         # on the tracing mode for extensive debug purposes. They are really
@@ -287,7 +302,8 @@ def setup(level: int = logging.INFO) -> None:
         }
     )
 
-    # NOTE: colorama init needs to go after logging config to avoid potential
-    # conflicts with libs that modify logging (like tensorflow/abseil)
-    # https://github.com/iterative/dvc/issues/8387
-    colorama.init()
+    if is_jupyter:
+        # NOTE: colorama init needs to go after logging config to avoid potential
+        # conflicts with libs that modify logging (like tensorflow/abseil)
+        # https://github.com/iterative/dvc/issues/8387
+        colorama.init()
