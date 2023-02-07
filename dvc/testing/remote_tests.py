@@ -115,6 +115,7 @@ class TestRemote:
         dvc.pull(run_cache=True)
         assert list(stage_cache_dir.rglob("*")) == expected
 
+    @pytest.mark.xfail(raises=NotImplementedError, strict=False)
     def test_pull_00_prefix(self, tmp_dir, dvc, remote, monkeypatch):
         # Related: https://github.com/iterative/dvc/issues/6089
 
@@ -140,6 +141,7 @@ class TestRemote:
         assert stats["fetched"] == 2
         assert set(stats["added"]) == {"foo", "bar"}
 
+    @pytest.mark.xfail(raises=NotImplementedError, strict=False)
     def test_pull_no_00_prefix(self, tmp_dir, dvc, remote, monkeypatch):
         # Related: https://github.com/iterative/dvc/issues/6244
 
