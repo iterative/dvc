@@ -58,6 +58,7 @@ dependencies = [
     "dvc-http==2.27.2",
     "hydra-core>=1.1.0",
     "iterative-telemetry==0.0.6",
+    "fsspec==2022.11.0",  # I1IMG-675
 ]
 dynamic = ["version"]
 classifiers = [
