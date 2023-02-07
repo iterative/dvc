@@ -118,12 +118,12 @@ def fetch_worktree(
     ):
         remote_obj = _get_remote(repo, remote_name, remote, "fetch")
         index = view.data["repo"]
-        for key, entry in index.iteritems():
-            entry.fs = remote_obj.fs
-            entry.path = remote_obj.fs.path.join(
-                remote_obj.path,
-                *key,
-            )
+        for key in index.storage_map:
+            storage = index.storage_map[key]
+            storage.fs = remote_obj.fs
+            storage.path = remote_obj.fs.path.join(remote_obj.path, *key)
+            index.storage_map[key] = storage
+
         total = len(index)
         with Callback.as_tqdm_callback(
             unit="file",
@@ -368,6 +368,13 @@ def _get_diff_indexes(
         old.add(entry)
     for _, entry in remote_index.iteritems(key):
         new.add(entry)
+
+    for prefix, storage in local_index.storage_map.items():
+        old.storage_map[prefix] = storage
+
+    for prefix, storage in remote_index.storage_map.items():
+        new.storage_map[prefix] = storage
+
     return old, new
 
 
