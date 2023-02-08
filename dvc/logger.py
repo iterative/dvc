@@ -1,7 +1,9 @@
 """Manages logging configuration for DVC repo."""
 
+import logging
 import logging.config
 import logging.handlers
+import sys
 
 import colorama
 
@@ -66,12 +68,11 @@ class LoggingException(Exception):
         super().__init__(msg)
 
 
-def excludeFilter(level):
-    class ExcludeLevelFilter(logging.Filter):
-        def filter(self, record):  # noqa: A003
-            return record.levelno < level
+def exclude_filter(level: int):
+    def filter_fn(record: "logging.LogRecord") -> bool:
+        return record.levelno < level
 
-    return ExcludeLevelFilter
+    return filter_fn
 
 
 class ColorFormatter(logging.Formatter):
@@ -203,21 +204,36 @@ def set_loggers_level(level: int = logging.INFO) -> None:
         logging.getLogger(name).setLevel(level)
 
 
-def _is_jupyter() -> bool:
-    try:
-        ipython = get_ipython()  # type: ignore[name-defined]
-    except (NameError, TypeError):
-        return False
-
-    shell = ipython.__class__.__name__
-    return shell == "ZMQInteractiveShell" or "google.colab" in str(ipython.__class__)
-
-
 def setup(level: int = logging.INFO) -> None:
-    is_jupyter = _is_jupyter()
-    if not is_jupyter:
-        # initialize colorama, so that tty detection works if we are not inside jupyter
-        colorama.init()
+    colorama.init()
+    formatter = ColorFormatter()
+
+    console_info = LoggerHandler(sys.stdout)
+    console_info.setLevel(logging.INFO)
+    console_info.setFormatter(formatter)
+    console_info.addFilter(exclude_filter(logging.WARNING))
+
+    console_debug = LoggerHandler(sys.stdout)
+    console_debug.setLevel(logging.DEBUG)
+    console_debug.setFormatter(formatter)
+    console_debug.addFilter(exclude_filter(logging.INFO))
+
+    addLoggingLevel("TRACE", logging.DEBUG - 5)
+
+    console_trace = LoggerHandler(sys.stdout)
+    console_trace.setLevel(logging.TRACE)  # type: ignore[attr-defined]
+    console_trace.setFormatter(formatter)
+    console_trace.addFilter(exclude_filter(logging.DEBUG))
+
+    console_errors = LoggerHandler(sys.stderr)
+    console_errors.setLevel(logging.WARNING)
+    console_errors.setFormatter(formatter)
+
+    for name in ["dvc", "dvc_objects", "dvc_data"]:
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+        for handler in [console_info, console_debug, console_trace, console_errors]:
+            logger.addHandler(handler)
 
     if level >= logging.DEBUG:
         # Unclosed session errors for asyncio/aiohttp are only available
@@ -229,81 +245,3 @@ def setup(level: int = logging.INFO) -> None:
         # action.
         logging.getLogger("asyncio").setLevel(logging.CRITICAL)
         logging.getLogger("aiohttp").setLevel(logging.CRITICAL)
-
-    addLoggingLevel("TRACE", logging.DEBUG - 5)
-    logging.config.dictConfig(
-        {
-            "version": 1,
-            "filters": {
-                "exclude_errors": {"()": excludeFilter(logging.WARNING)},
-                "exclude_info": {"()": excludeFilter(logging.INFO)},
-                "exclude_debug": {"()": excludeFilter(logging.DEBUG)},
-            },
-            "formatters": {"color": {"()": ColorFormatter}},
-            "handlers": {
-                "console_info": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "INFO",
-                    "formatter": "color",
-                    "stream": "ext://sys.stdout",
-                    "filters": ["exclude_errors"],
-                },
-                "console_debug": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "DEBUG",
-                    "formatter": "color",
-                    "stream": "ext://sys.stdout",
-                    "filters": ["exclude_info"],
-                },
-                "console_trace": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "TRACE",
-                    "formatter": "color",
-                    "stream": "ext://sys.stdout",
-                    "filters": ["exclude_debug"],
-                },
-                "console_errors": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "WARNING",
-                    "formatter": "color",
-                    "stream": "ext://sys.stderr",
-                },
-            },
-            "loggers": {
-                "dvc": {
-                    "level": level,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_trace",
-                        "console_errors",
-                    ],
-                },
-                "dvc_objects": {
-                    "level": level,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_trace",
-                        "console_errors",
-                    ],
-                },
-                "dvc_data": {
-                    "level": level,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_trace",
-                        "console_errors",
-                    ],
-                },
-            },
-            "disable_existing_loggers": False,
-        }
-    )
-
-    if is_jupyter:
-        # NOTE: colorama init needs to go after logging config to avoid potential
-        # conflicts with libs that modify logging (like tensorflow/abseil)
-        # https://github.com/iterative/dvc/issues/8387
-        colorama.init()
