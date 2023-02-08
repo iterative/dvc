@@ -466,7 +466,7 @@ class IndexView:
             workspace, key = out.index_key
             if filter_info and out.fs.path.isin(filter_info, out.fs_path):
                 key = key + out.fs.path.relparts(filter_info, out.fs_path)
-            if out.meta.isdir:
+            if out.meta.isdir or out.stage.is_import and out.stage.deps[0].meta.isdir:
                 prefixes[workspace].recursive.add(key)
             prefixes[workspace].explicit.update(key[:i] for i in range(len(key), 0, -1))
         return prefixes
