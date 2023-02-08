@@ -500,7 +500,7 @@ class Output:
         return self.use_cache or self.stage.is_repo_import
 
     @property
-    def odb(self):
+    def cache(self):
         odb_name = "repo" if self.is_in_repo else self.protocol
         odb = getattr(self.repo.cache, odb_name)
         if self.use_cache and odb is None:
@@ -509,7 +509,9 @@ class Output:
 
     @property
     def cache_path(self):
-        return self.odb.fs.unstrip_protocol(self.odb.oid_to_path(self.hash_info.value))
+        return self.cache.fs.unstrip_protocol(
+            self.cache.oid_to_path(self.hash_info.value)
+        )
 
     def get_hash(self):
         _, hash_info = self._get_hash_meta()
@@ -517,7 +519,7 @@ class Output:
 
     def _get_hash_meta(self):
         if self.use_cache:
-            odb = self.odb
+            odb = self.cache
         else:
             odb = self.repo.cache.local
         _, meta, obj = build(
@@ -593,7 +595,7 @@ class Output:
             return True
 
         try:
-            ocheck(self.odb, obj)
+            ocheck(self.cache, obj)
             return False
         except (FileNotFoundError, ObjectFormatError):
             return True
@@ -682,7 +684,7 @@ class Output:
 
         if self.use_cache:
             _, self.meta, self.obj = build(
-                self.odb,
+                self.cache,
                 self.fs_path,
                 self.fs,
                 self.hash_name,
@@ -705,7 +707,7 @@ class Output:
 
     def set_exec(self) -> None:
         if self.isfile() and self.meta.isexec:
-            self.odb.set_exec(self.fs_path)
+            self.cache.set_exec(self.fs_path)
 
     def _checkout(self, *args, **kwargs) -> Optional[bool]:
         from dvc_data.hashfile.checkout import CheckoutError as _CheckoutError
@@ -735,7 +737,7 @@ class Output:
                 obj = self._commit_granular_dir(filter_info)
             else:
                 staging, _, obj = build(
-                    self.odb,
+                    self.cache,
                     filter_info or self.fs_path,
                     self.fs,
                     self.hash_name,
@@ -743,7 +745,7 @@ class Output:
                 )
                 otransfer(
                     staging,
-                    self.odb,
+                    self.cache,
                     {obj.hash_info},
                     shallow=False,
                     hardlink=True,
@@ -752,7 +754,7 @@ class Output:
                 filter_info or self.fs_path,
                 self.fs,
                 obj,
-                self.odb,
+                self.cache,
                 relink=True,
                 state=self.repo.state,
                 prompt=prompt.confirm,
@@ -762,7 +764,7 @@ class Output:
     def _commit_granular_dir(self, filter_info) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
         staging, _, save_obj = build(
-            self.odb,
+            self.cache,
             self.fs_path,
             self.fs,
             self.hash_name,
@@ -770,10 +772,10 @@ class Output:
         )
         save_obj = cast(Tree, save_obj)
         save_obj = cast(Tree, save_obj.filter(prefix))
-        checkout_obj = save_obj.get_obj(self.odb, prefix)
+        checkout_obj = save_obj.get_obj(self.cache, prefix)
         otransfer(
             staging,
-            self.odb,
+            self.cache,
             {save_obj.hash_info} | {oid for _, _, oid in save_obj},
             shallow=True,
             hardlink=True,
@@ -872,7 +874,7 @@ class Output:
             obj = tree
         elif self.hash_info:
             try:
-                obj = oload(self.odb, self.hash_info)
+                obj = oload(self.cache, self.hash_info)
             except (FileNotFoundError, ObjectFormatError):
                 return None
         else:
@@ -883,7 +885,7 @@ class Output:
         if filter_info and filter_info != self.fs_path:
             prefix = fs_path.relparts(filter_info, self.fs_path)
             obj = cast(Tree, obj)
-            obj = obj.get_obj(self.odb, prefix)
+            obj = obj.get_obj(self.cache, prefix)
 
         return obj
 
@@ -919,7 +921,7 @@ class Output:
                 filter_info or self.fs_path,
                 self.fs,
                 obj,
-                self.odb,
+                self.cache,
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,
@@ -960,7 +962,7 @@ class Output:
         self, source, odb=None, jobs=None, update=False, no_progress_bar=False
     ):
         if odb is None:
-            odb = self.odb
+            odb = self.cache
 
         cls, config, from_info = get_cloud_fs(self.repo, url=source)
         from_fs = cls(**config)
@@ -1012,15 +1014,15 @@ class Output:
 
     def unprotect(self):
         if self.exists:
-            self.odb.unprotect(self.fs_path)
+            self.cache.unprotect(self.fs_path)
 
     def get_dir_cache(self, **kwargs):
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
 
-        obj = self.odb.get(self.hash_info.value)
+        obj = self.cache.get(self.hash_info.value)
         try:
-            ocheck(self.odb, obj)
+            ocheck(self.cache, obj)
         except FileNotFoundError:
             if self.remote:
                 kwargs["remote"] = self.remote
@@ -1030,7 +1032,7 @@ class Output:
             return self.obj
 
         try:
-            self.obj = oload(self.odb, self.hash_info)
+            self.obj = oload(self.cache, self.hash_info)
         except (FileNotFoundError, ObjectFormatError):
             self.obj = None
 
@@ -1049,7 +1051,7 @@ class Output:
             logger.debug("failed to pull cache for '%s'", self)
 
         try:
-            ocheck(self.odb, self.odb.get(self.hash_info.value))
+            ocheck(self.cache, self.cache.get(self.hash_info.value))
         except FileNotFoundError:
             msg = (
                 "Missing cache for directory '{}'. "
@@ -1113,7 +1115,7 @@ class Output:
         else:
             obj = self.get_obj(filter_info=kwargs.get("filter_info"))
             if not obj:
-                obj = self.odb.get(self.hash_info.value)
+                obj = self.cache.get(self.hash_info.value)
 
         if not obj:
             return {}
@@ -1196,7 +1198,7 @@ class Output:
 
         try:
             merged = merge(
-                self.odb,
+                self.cache,
                 ancestor_info,
                 self.hash_info,
                 other.hash_info,
@@ -1205,12 +1207,12 @@ class Output:
         except TreeMergeError as exc:
             raise MergeError(str(exc)) from exc
 
-        self.odb.add(merged.path, merged.fs, merged.oid)
+        self.cache.add(merged.path, merged.fs, merged.oid)
 
         self.hash_info = merged.hash_info
         self.files = None
         self.meta = Meta(
-            size=du(self.odb, merged),
+            size=du(self.cache, merged),
             nfiles=len(merged),
         )
 
