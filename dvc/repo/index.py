@@ -304,7 +304,7 @@ class Index:
             entry.key = key
             data_index.add(entry)
 
-            storage = Storage(odb=out.odb)
+            storage = Storage(odb=out.cache)
             try:
                 storage.remote = self.repo.cloud.get_remote_odb(out.remote)
             except NoRemoteError:
