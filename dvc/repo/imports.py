@@ -77,6 +77,7 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
             else:
                 out.hash_info = cast("HashInfo", entry.hash_info)
                 out.meta = entry.meta
+            out.stage.md5 = out.stage.compute_md5()
             out.stage.dump()
             updated += out.meta.nfiles if out.meta.nfiles is not None else 1
     return updated
