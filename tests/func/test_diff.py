@@ -250,10 +250,10 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"file": "modified file content"}}, commit="second")
     scm.tag("v2")
 
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     # invalidate_dir_info to force cache loading
-    dvc.odb.local._dir_info = {}
+    dvc.cache.local._dir_info = {}
 
     diff = dvc.diff("v1", "v2")
     assert diff["added"] == []

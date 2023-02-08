@@ -139,16 +139,16 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tree = Tree.from_list([{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}])
     tree.digest()
     with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
-        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
         hash1 = obj.hash_info
 
     # remove the raw dir obj to force building the tree on the next build call
-    dvc.odb.local.fs.remove(dvc.odb.local.oid_to_path(hash1.as_raw().value))
+    dvc.cache.local.fs.remove(dvc.cache.local.oid_to_path(hash1.as_raw().value))
 
     tree = Tree.from_list([{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}])
     tree.digest()
     with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
-        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
         hash2 = obj.hash_info
 
     assert hash1 == hash2
@@ -201,7 +201,7 @@ def test_partial_push_n_pull(  # noqa: C901
 
     # Push everything and delete local cache
     dvc.push()
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
 
     baz._collect_used_dir_cache()
 
@@ -263,7 +263,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     external_dir = tmp_path_factory.mktemp("external_dir")
     file = external_dir / "file"
 
-    dvc.odb.local = None
+    dvc.cache.local = None
     with pytest.raises(RemoteCacheRequiredError):
         dvc.run(
             cmd=f"echo content > {file}",
@@ -426,7 +426,7 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     remote_odb = dvc.cloud.get_remote_odb("upstream")
 
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     out = stage.outs[0]
     file_objs = [entry_obj for _, _, entry_obj in out.obj]
 

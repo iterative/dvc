@@ -44,7 +44,7 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
     erepo_dir.dvc.push(all_branches=True)
 
     # Remove cache to force download
-    remove(erepo_dir.dvc.odb.local.path)
+    remove(erepo_dir.dvc.cache.local.path)
 
     # Using file url to force clone to tmp repo
     repo_url = f"file://{erepo_dir.as_posix()}"
@@ -59,7 +59,7 @@ def test_open_granular(tmp_dir, dvc, remote):
     dvc.push()
 
     # Remove cache to force download
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     with api.open("dir/foo") as fd:
         assert fd.read() == "foo-text"
@@ -69,7 +69,7 @@ def test_missing(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 
     # Remove cache to make foo missing
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     api.read("foo")
 
@@ -129,7 +129,7 @@ def test_api_missing_local_cache_exists_on_remote(
     dvc.push()
 
     # Remove cache to make foo missing
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
     remove(first(files))
 
     repo_url = f"file://{tmp_dir.as_posix()}" if as_external else None
@@ -202,7 +202,7 @@ def test_open_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
     erepo_dir.add_remote(config=local_cloud.config, default=True)
     erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create file")
     erepo_dir.dvc.push(remote="other")
-    remove(erepo_dir.dvc.odb.local.path)
+    remove(erepo_dir.dvc.cache.local.path)
 
     with api.open(
         os.path.join("dir", "foo"),

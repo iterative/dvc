@@ -837,11 +837,11 @@ def test_repro_no_commit(tmp_dir, dvc, copy_script, run_stage):
         cmd="python copy.py foo file1",
         name="run1",
     )
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
     ret = main(["repro", stage.addressing, "--no-commit"])
     assert ret == 0
     # run-cache should be skipped if `-no-commit`.
-    assert not os.path.isdir(dvc.odb.local.path)
+    assert not os.path.isdir(dvc.cache.local.path)
 
 
 class TestReproAlreadyCached:

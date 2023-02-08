@@ -12,6 +12,7 @@ import pytest
 import dvc as dvc_module
 import dvc_data
 from dvc.annotations import Annotation
+from dvc.cachemgr import CacheManager
 from dvc.cli import main
 from dvc.config import ConfigError
 from dvc.dvcfile import DVC_FILE_SUFFIX
@@ -23,7 +24,6 @@ from dvc.exceptions import (
     RecursiveAddingWhileUsingFilename,
 )
 from dvc.fs import LocalFileSystem, system
-from dvc.odbmgr import ODBManager
 from dvc.output import (
     OutputAlreadyTrackedError,
     OutputDoesNotExistError,
@@ -110,7 +110,7 @@ def test_add_directory(tmp_dir, dvc):
 
     hash_info = stage.outs[0].hash_info
 
-    obj = load(dvc.odb.local, hash_info)
+    obj = load(dvc.cache.local, hash_info)
     for key, _, _ in obj:
         for part in key:
             assert "\\" not in part
@@ -407,12 +407,12 @@ def test_add_commit(tmp_dir, dvc):
     ret = main(["add", "foo", "--no-commit"])
     assert ret == 0
     assert os.path.isfile("foo")
-    assert not os.path.exists(dvc.odb.local.path)
+    assert not os.path.exists(dvc.cache.local.path)
 
     ret = main(["commit", "foo.dvc"])
     assert ret == 0
     assert os.path.isfile("foo")
-    assert dvc.odb.local.exists("acbd18db4cc2f85cedef654fccc4a4d8")
+    assert dvc.cache.local.exists("acbd18db4cc2f85cedef654fccc4a4d8")
 
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
@@ -583,7 +583,7 @@ def test_windows_should_add_when_cache_on_different_drive(
     tmp_dir, dvc, temporary_windows_drive
 ):
     dvc.config["cache"]["dir"] = temporary_windows_drive
-    dvc.odb = ODBManager(dvc)
+    dvc.cache = CacheManager(dvc)
 
     (stage,) = tmp_dir.dvc_gen({"file": "file"})
     cache_path = stage.outs[0].cache_path
@@ -596,12 +596,12 @@ def test_windows_should_add_when_cache_on_different_drive(
 def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     tmp_dir.gen("dir/data", "data")
 
-    dvc.odb.local.cache_types = ["symlink"]
+    dvc.cache.local.cache_types = ["symlink"]
 
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(dvc.odb.local, "unprotect")
+    unprotect_spy = mocker.spy(dvc.cache.local, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -609,13 +609,13 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
 
 
 def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
-    dvc.odb.local.cache_types = ["copy"]
+    dvc.cache.local.cache_types = ["copy"]
 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     shutil.copy("bar", "foo")
 
-    copy_spy = mocker.spy(dvc.odb.local.fs, "copy")
+    copy_spy = mocker.spy(dvc.cache.local.fs, "copy")
 
     dvc.add("foo")
 
@@ -637,11 +637,11 @@ def test_should_relink_on_repeated_add(link, new_link, link_test_func, tmp_dir, 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     os.remove("foo")
-    getattr(dvc.odb.local.fs, link)(
+    getattr(dvc.cache.local.fs, link)(
         (tmp_dir / "bar").fs_path, (tmp_dir / "foo").fs_path
     )
 
-    dvc.odb.local.cache_types = [new_link]
+    dvc.cache.local.cache_types = [new_link]
 
     dvc.add("foo")
 
@@ -650,7 +650,7 @@ def test_should_relink_on_repeated_add(link, new_link, link_test_func, tmp_dir, 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_should_protect_on_repeated_add(link, tmp_dir, dvc):
-    dvc.odb.local.cache_types = [link]
+    dvc.cache.local.cache_types = [link]
 
     tmp_dir.dvc_gen({"foo": "foo"})
 
@@ -709,7 +709,7 @@ def test_not_raises_on_re_add(tmp_dir, dvc):
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_add_empty_files(tmp_dir, dvc, link):
     file = "foo"
-    dvc.odb.local.cache_types = [link]
+    dvc.cache.local.cache_types = [link]
     stages = tmp_dir.dvc_gen(file, "")
 
     assert (tmp_dir / file).exists()
@@ -718,7 +718,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
 
 
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
-    dvc.odb.local.cache_types = ["hardlink"]
+    dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
     m = mocker.spy(LocalFileSystem, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])

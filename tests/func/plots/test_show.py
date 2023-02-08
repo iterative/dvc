@@ -161,7 +161,7 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     # so as it works even for optimized cases
     if clear_before_run:
         remove(data_dir)
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
 
     dvc._reset()
 

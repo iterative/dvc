@@ -107,7 +107,7 @@ def save_imports(
 
     data_view = unfetched.data["repo"]
     if len(data_view):
-        cache = repo.odb.local
+        cache = repo.cache.local
         if not cache.fs.exists(cache.path):
             os.makedirs(cache.path)
         with TemporaryDirectory(dir=cache.path) as tmpdir:

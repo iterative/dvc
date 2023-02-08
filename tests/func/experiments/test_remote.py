@@ -303,12 +303,12 @@ def test_push_pull_cache(
         with open(path, encoding="utf-8") as f:
             assert f.read() == str(x)
 
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     dvc.experiments.pull(remote, [ref_info.name], pull_cache=True)
     for x in range(2, checkpoint_stage.iterations + 1):
         hash_ = digest(str(x))
-        path = os.path.join(dvc.odb.local.path, hash_[:2], hash_[2:])
+        path = os.path.join(dvc.cache.local.path, hash_[:2], hash_[2:])
         assert os.path.exists(path)
         with open(path, encoding="utf-8") as f:
             assert f.read() == str(x)

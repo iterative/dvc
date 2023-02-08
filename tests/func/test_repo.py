@@ -1,11 +1,11 @@
+from dvc.cachemgr import CacheManager
 from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.fs import system
-from dvc.odbmgr import ODBManager
 
 
 def test_destroy(tmp_dir, dvc, run_copy):
     dvc.config["cache"]["type"] = ["symlink"]
-    dvc.odb = ODBManager(dvc)
+    dvc.cache = CacheManager(dvc)
 
     tmp_dir.dvc_gen("file", "text")
     tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})

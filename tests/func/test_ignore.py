@@ -477,7 +477,7 @@ def test_pull_ignore(tmp_dir, dvc, local_cloud):
     foo_path.unlink()
     assert not foo_path.exists()
 
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
     dvc.pull()
 
     assert foo_path.exists()

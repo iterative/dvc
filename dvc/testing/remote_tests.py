@@ -48,8 +48,8 @@ class TestRemote:
 
         # Move cache and check status
         # See issue https://github.com/iterative/dvc/issues/4383 for details
-        backup_dir = dvc.odb.local.path + ".backup"
-        shutil.move(dvc.odb.local.path, backup_dir)
+        backup_dir = dvc.cache.local.path + ".backup"
+        shutil.move(dvc.cache.local.path, backup_dir)
         status = dvc.cloud.status(foo_hashes)
         _check_status(status, missing={foo_hash})
 
@@ -57,8 +57,8 @@ class TestRemote:
         _check_status(status_dir, missing=dir_hashes)
 
         # Restore original cache:
-        remove(dvc.odb.local.path)
-        shutil.move(backup_dir, dvc.odb.local.path)
+        remove(dvc.cache.local.path)
+        shutil.move(backup_dir, dvc.cache.local.path)
 
         # Push and check status
         dvc.cloud.push(foo_hashes)
@@ -75,7 +75,7 @@ class TestRemote:
         _check_status(status_dir, ok=dir_hashes)
 
         # Remove and check status
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
 
         status = dvc.cloud.status(foo_hashes)
         _check_status(status, deleted={foo_hash})
@@ -133,7 +133,7 @@ class TestRemote:
         status = dvc.cloud.status(expected_hashes)
         _check_status(status, ok=expected_hashes)
 
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
         remove(tmp_dir / "foo")
         remove(tmp_dir / "bar")
 
@@ -159,7 +159,7 @@ class TestRemote:
         status = dvc.cloud.status(expected_hashes)
         _check_status(status, ok=expected_hashes)
 
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
         remove(tmp_dir / "foo")
         remove(tmp_dir / "bar")
 
@@ -178,7 +178,7 @@ class TestRemoteVersionAware:
         out = stage.outs[0]
         assert out.meta.version_id
 
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
         remove(tmp_dir / "foo")
 
         dvc.pull()
@@ -205,7 +205,7 @@ class TestRemoteVersionAware:
             assert file["version_id"]
             assert file["remote"] == "upstream"
 
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
         remove(tmp_dir / "data_dir")
 
         dvc.pull()
@@ -225,7 +225,7 @@ class TestRemoteWorktree:
         out = stage.outs[0]
         assert out.meta.version_id
 
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
         remove(tmp_dir / "foo")
 
         dvc.pull()
@@ -252,7 +252,7 @@ class TestRemoteWorktree:
             assert file["version_id"]
             assert file["remote"] == "upstream"
 
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
         remove(tmp_dir / "data_dir")
 
         dvc.pull()
@@ -285,7 +285,7 @@ class TestRemoteWorktree:
         tmp_dir.scm_add([tmp_dir / "data_dir.dvc"], commit="v2")
         assert not (remote_worktree / "data_dir" / "data").exists()
 
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
         remove(tmp_dir / "data_dir")
         # pulling the original pushed version should still succeed
         scm.checkout(v1)
@@ -335,7 +335,7 @@ class TestRemoteWorktree:
         assert (tmp_dir / "data_dir" / "data").read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_data").read_text() == "new data"
 
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
         remove(tmp_dir / "foo")
         remove(tmp_dir / "data_dir")
         dvc.pull()

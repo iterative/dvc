@@ -183,7 +183,7 @@ def local_remote(make_remote):
 @pytest.fixture
 def make_workspace(tmp_dir, dvc, make_cloud):
     def _make_workspace(name, typ="local"):
-        from dvc.odbmgr import ODBManager
+        from dvc.cachemgr import CacheManager
 
         cloud = make_cloud(typ)  # pylint: disable=W0621
 
@@ -197,7 +197,7 @@ def make_workspace(tmp_dir, dvc, make_cloud):
             with dvc.config.edit() as conf:
                 conf["cache"][scheme] = f"{name}-cache"
 
-            dvc.odb = ODBManager(dvc)
+            dvc.cache = CacheManager(dvc)
 
         return cloud
 

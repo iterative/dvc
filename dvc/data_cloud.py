@@ -147,12 +147,12 @@ class DataCloud:
         """
         odb = odb or self.get_remote_odb(remote, "push")
         return self.transfer(
-            self.repo.odb.local,
+            self.repo.cache.local,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
-            cache_odb=self.repo.odb.local,
+            cache_odb=self.repo.cache.local,
             validate_status=self._log_missing,
         )
 
@@ -175,11 +175,11 @@ class DataCloud:
         odb = odb or self.get_remote_odb(remote, "pull")
         return self.transfer(
             odb,
-            self.repo.odb.local,
+            self.repo.cache.local,
             objs,
             jobs=jobs,
             src_index=get_index(odb),
-            cache_odb=self.repo.odb.local,
+            cache_odb=self.repo.cache.local,
             verify=odb.verify,
             validate_status=self._log_missing,
         )
@@ -206,12 +206,12 @@ class DataCloud:
         if not odb:
             odb = self.get_remote_odb(remote, "status")
         return compare_status(
-            self.repo.odb.local,
+            self.repo.cache.local,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
-            cache_odb=self.repo.odb.local,
+            cache_odb=self.repo.cache.local,
         )
 
     def get_url_for(self, remote, checksum):

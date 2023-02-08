@@ -20,7 +20,7 @@ def good_and_bad_cache(tmp_dir, dvc):
         {"sub": {"data_sub": "data_sub", "data": "data", "тест": "проверка"}},
     )
     raw_dir_hash = stage.outs[0].hash_info.as_raw().value
-    odb = dvc.odb.local
+    odb = dvc.cache.local
 
     bad_cache = {raw_dir_hash}
     for i in ["123", "234", "345"]:
@@ -33,14 +33,14 @@ def good_and_bad_cache(tmp_dir, dvc):
 
 def test_gc_api(dvc, good_and_bad_cache):
     dvc.gc(workspace=True)
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     good_cache, bad_cache = good_and_bad_cache
     assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
 
 
 def test_gc_cli(dvc, good_and_bad_cache):
     assert main(["gc", "-wf"]) == 0
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     good_cache, bad_cache = good_and_bad_cache
     assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
 
@@ -59,7 +59,7 @@ def test_gc_branches_tags(tmp_dir, dvc, scm):
     dvc.remove("file.dvc")
     tmp_dir.dvc_gen("file", "master", commit="trash")
 
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     assert len(list(odb.all())) == 4
 
     dvc.gc(all_tags=True, all_branches=True)
@@ -76,12 +76,12 @@ def test_gc_multiple_dvc_repos(tmp_dir, scm, dvc, erepo_dir):
     tmp_dir.dvc_gen("only_in_first", "only in main repo")
     tmp_dir.dvc_gen("in_both", "in both repos")
 
-    erepo_dir.dvc.odb.local.path = dvc.odb.local.path
+    erepo_dir.dvc.cache.local.path = dvc.cache.local.path
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("in_both", "in both repos")
         erepo_dir.dvc_gen("only_in_second", "only in additional repo")
 
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     assert len(list(odb.all())) == 3
 
     dvc.gc(repos=[erepo_dir], workspace=True)
@@ -97,11 +97,11 @@ def test_all_commits(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "modified", commit="modified")
     tmp_dir.dvc_gen("testfile", "workspace")
 
-    n = _count_files(dvc.odb.local.path)
+    n = _count_files(dvc.cache.local.path)
     dvc.gc(all_commits=True)
 
     # Only one uncommitted file should go away
-    assert _count_files(dvc.odb.local.path) == n - 1
+    assert _count_files(dvc.cache.local.path) == n - 1
 
 
 def test_gc_no_dir_cache(tmp_dir, dvc):
@@ -113,9 +113,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
 
-    assert _count_files(dvc.odb.local.path) == 4
+    assert _count_files(dvc.cache.local.path) == 4
     dvc.gc(force=True, workspace=True)
-    assert _count_files(dvc.odb.local.path) == 2
+    assert _count_files(dvc.cache.local.path) == 2
 
 
 def _count_files(path):
@@ -240,14 +240,14 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
 
     run_copy("foo", "foo2", name="copy")
     shutil.rmtree(dvc.stage_cache.cache_dir)
-    assert _count_files(dvc.odb.local.path) == 1
+    assert _count_files(dvc.cache.local.path) == 1
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.odb.local.path) == 1
+    assert _count_files(dvc.cache.local.path) == 1
 
     # remove pipeline file and lockfile and check
     load_file(dvc, PROJECT_FILE).remove(force=True)
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.odb.local.path) == 0
+    assert _count_files(dvc.cache.local.path) == 0
 
 
 def test_gc_external_output(tmp_dir, dvc, workspace):
@@ -328,13 +328,15 @@ def test_date(tmp_dir, scm, dvc):
 
     dvc.gc(commit_date=datestamp)
 
-    assert _count_files(dvc.odb.local.path) == 1
-    assert dvc.odb.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")  # "modified"
+    assert _count_files(dvc.cache.local.path) == 1
+    assert dvc.cache.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")  # "modified"
 
     tmp_dir.dvc_gen("testfile", "modified, again", commit="modify")
 
     datestamp = (now.date() - datetime.timedelta(days=1)).isoformat()
     dvc.gc(commit_date=datestamp)
-    assert _count_files(dvc.odb.local.path) == 2
-    assert dvc.odb.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")
-    assert dvc.odb.local.exists("3bcf3b1be3e794a97a5a6b93a005784c")  # "modified, again"
+    assert _count_files(dvc.cache.local.path) == 2
+    assert dvc.cache.local.exists("9ae73c65f418e6f79ceb4f0e4a4b98d5")
+    assert dvc.cache.local.exists(
+        "3bcf3b1be3e794a97a5a6b93a005784c"
+    )  # "modified, again"
