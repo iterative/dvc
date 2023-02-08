@@ -140,6 +140,16 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
 
+    def test_import_no_download(self, tmp_dir, dvc, remote_version_aware):
+        remote_version_aware.gen({"data_dir": {"subdir": {"file": "file"}}})
+        dvc.imp_url("remote://upstream/data_dir", version_aware=True, no_download=True)
+        stage = first(dvc.index.stages)
+        assert not stage.outs[0].can_push
+
+        dvc.pull()
+        assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
+        assert dvc.status() == {}
+
 
 class TestAdd:
     @pytest.fixture
