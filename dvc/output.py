@@ -29,7 +29,6 @@ from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer as otransfer
-from dvc_data.index import DataIndexEntry
 from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
@@ -39,6 +38,7 @@ from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
+    from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.obj import HashFile
     from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
@@ -394,6 +394,7 @@ class Output:
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj: Optional["HashFile"] = None
 
+        self.odb: Optional["HashFileDB"] = None
         self.remote = remote
 
         if self.fs.version_aware:
@@ -415,8 +416,13 @@ class Output:
 
     def _compute_meta_hash_info_from_files(self) -> None:
         if self.files:
+            from dvc_data.hashfile.db import HashFileDB
+
             tree = Tree.from_list(self.files, hash_name=self.hash_name)
-            tree.digest()
+            tree.digest(with_meta=True)
+            self.odb = HashFileDB(tree.fs, tree.path + ".odb")
+            self.odb.add(tree.path, tree.fs, tree.hash_info.value)
+
             self.hash_info = tree.hash_info
             self.meta.isdir = True
             self.meta.nfiles = len(self.files)
@@ -562,26 +568,6 @@ class Output:
             no_drive = self.fs.path.flavour.splitdrive(self.fs_path)[1]
             key = self.fs.path.parts(no_drive)[1:]
         return workspace, key
-
-    def get_entry(self) -> "DataIndexEntry":
-        if self.files and not self.obj:
-            self.obj = self.get_obj()
-
-        entry = DataIndexEntry(
-            meta=self.meta,
-            obj=self.obj,
-            hash_info=self.hash_info,
-        )
-        if self.stage.is_import and not self.stage.is_repo_import:
-            dep = self.stage.deps[0]
-            entry.meta = dep.meta
-            if not entry.obj:
-                if not dep.obj and dep.files:
-                    dep.obj = dep.get_obj()
-                entry.obj = dep.obj
-                if not entry.hash_info and dep.obj:
-                    entry.hash_info = dep.obj.hash_info
-        return entry
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()

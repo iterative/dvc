@@ -94,7 +94,7 @@ def _diff(
             with_missing
             and change.old
             and change.old.hash_info
-            and not old.storage_map[change.key].odb.exists(change.old.hash_info.value)
+            and not old.storage_map[change.key].cache.exists(change.old.hash_info.value)
         ):
             # NOTE: emulating previous behaviour
             _add_change("not_in_cache", change)
