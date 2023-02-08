@@ -577,6 +577,8 @@ class Output:
                 if not dep.obj and dep.files:
                     dep.obj = dep.get_obj()
                 entry.obj = dep.obj
+                if not entry.hash_info and dep.obj:
+                    entry.hash_info = dep.obj.hash_info
         return entry
 
     def changed_checksum(self):
