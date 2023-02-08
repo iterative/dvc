@@ -349,9 +349,7 @@ class LocalCeleryQueue(BaseStashQueue):
                         remained_entries[entry],
                     )
                     backend = self.celery.backend
-                    backend.mark_as_failure(  # type: ignore[attr-defined]
-                        task_id, None
-                    )
+                    backend.mark_as_failure(task_id, None)  # type: ignore[attr-defined]
 
         if remained_revs:
             raise CannotKillTasksError(remained_revs)

@@ -284,9 +284,7 @@ def update_worktree_stages(
     for stage in view.stages:
         transferred: int = 0
         for out in stage.outs:
-            transferred += _update_worktree_out(
-                repo, out, local_index, remote_indexes
-            )
+            transferred += _update_worktree_out(repo, out, local_index, remote_indexes)
 
         if not transferred:
             ui.write(f"'{stage.addressing}' didn't change, skipping")
