@@ -344,7 +344,7 @@ def _update_worktree_out(
 
     transferred = _fetch_out_changes(out, local_index, remote_index, remote)
     logger.debug(
-        "Update %s files to out '%s' from worktree of '%s'",
+        "Updated %s files in '%s' from worktree '%s'",
         transferred,
         out,
         remote.path,
