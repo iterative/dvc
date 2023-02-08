@@ -80,7 +80,7 @@ class RepoDependency(Dependency):
             to.fs_path,
             to.fs,
             obj,
-            self.repo.odb.local,
+            self.repo.cache.local,
             ignore=None,
             state=self.repo.state,
             prompt=confirm,
@@ -111,7 +111,7 @@ class RepoDependency(Dependency):
         from dvc_data.hashfile.build import build
         from dvc_data.hashfile.tree import Tree, TreeError
 
-        local_odb = self.repo.odb.local
+        local_odb = self.repo.cache.local
         locked = kwargs.pop("locked", True)
         with self._make_repo(locked=locked, cache_dir=local_odb.path) as repo:
             used_obj_ids = defaultdict(set)

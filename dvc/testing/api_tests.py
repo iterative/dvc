@@ -24,7 +24,7 @@ class TestAPI:
         dvc.push()
 
         # Remove cache to force download
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
 
         with api.open("foo") as fobj:
             assert fobj.read() == "foo-text"
@@ -62,7 +62,7 @@ class TestAPI:
         dvc.push()
 
         if clear_cache:
-            remove(dvc.odb.repo.path)
+            remove(dvc.cache.repo.path)
 
         if url := fs_kwargs.get("url"):
             fs_kwargs["url"] = url.format(path=tmp_dir, posixpath=tmp_dir.as_posix())

@@ -502,7 +502,7 @@ class Output:
     @property
     def odb(self):
         odb_name = "repo" if self.is_in_repo else self.protocol
-        odb = getattr(self.repo.odb, odb_name)
+        odb = getattr(self.repo.cache, odb_name)
         if self.use_cache and odb is None:
             raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
         return odb
@@ -519,7 +519,7 @@ class Output:
         if self.use_cache:
             odb = self.odb
         else:
-            odb = self.repo.odb.local
+            odb = self.repo.cache.local
         _, meta, obj = build(
             odb,
             self.fs_path,
@@ -690,7 +690,7 @@ class Output:
             )
         else:
             _, self.meta, self.obj = build(
-                self.repo.odb.local,
+                self.repo.cache.local,
                 self.fs_path,
                 self.fs,
                 self.hash_name,

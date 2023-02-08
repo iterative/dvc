@@ -217,12 +217,12 @@ class SSHExecutor(BaseExecutor):
 
     @contextmanager
     def get_odb(self):
-        from dvc.odbmgr import ODBManager, get_odb
+        from dvc.cachemgr import CacheManager, get_odb
 
         cache_path = posixpath.join(
             self._repo_abspath,
             self.dvc_dir,
-            ODBManager.CACHE_DIR,
+            CacheManager.CACHE_DIR,
         )
 
         with self.sshfs() as fs:

@@ -162,11 +162,11 @@ class Repo:
         repo_factory: Optional[Callable] = None,
         scm: Optional[Union["Git", "NoSCM"]] = None,
     ):
+        from dvc.cachemgr import CacheManager
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
-        from dvc.odbmgr import ODBManager
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -205,12 +205,12 @@ class Repo:
         self.stage: "StageLoad" = StageLoad(self)
 
         self.lock: "LockBase"
-        self.odb: ODBManager
+        self.cache: CacheManager
         self.state: "StateBase"
         if isinstance(self.fs, GitFileSystem) or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()
-            self.odb = ODBManager(self)
+            self.cache = CacheManager(self)
             self.tmp_dir = None
         else:
             self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
@@ -228,7 +228,7 @@ class Repo:
                 self.lock = LockNoop()
                 self.state = StateNoop()
 
-            self.odb = ODBManager(self)
+            self.cache = CacheManager(self)
 
             self.stage_cache = StageCache(self)
 
@@ -385,14 +385,14 @@ class Repo:
         return init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
 
     def unprotect(self, target):
-        return self.odb.repo.unprotect(target)
+        return self.cache.repo.unprotect(target)
 
     def _ignore(self):
         flist = [self.config.files["local"]]
         if tmp_dir := self.tmp_dir:
             flist.append(tmp_dir)
-        if path_isin(self.odb.repo.path, self.root_dir):
-            flist.append(self.odb.repo.path)
+        if path_isin(self.cache.repo.path, self.root_dir):
+            flist.append(self.cache.repo.path)
 
         for file in flist:
             self.scm_context.ignore(file)

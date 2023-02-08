@@ -85,7 +85,7 @@ def gc(
             ).values():
                 used_obj_ids.update(obj_ids)
 
-    for scheme, odb in self.odb.by_scheme():
+    for scheme, odb in self.cache.by_scheme():
         if not odb:
             continue
 

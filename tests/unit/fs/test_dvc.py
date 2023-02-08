@@ -493,7 +493,7 @@ def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     fs = DVCFileSystem(repo=dvc)
     expected = "acbd18db4cc2f85cedef654fccc4a4d8"
     assert fs.info("foo").get("md5") is None
-    _, _, obj = build(dvc.odb.local, "foo", fs, "md5")
+    _, _, obj = build(dvc.cache.local, "foo", fs, "md5")
     assert obj.hash_info == HashInfo("md5", expected)
     (tmp_dir / "foo").unlink()
     assert fs.info("foo")["md5"] == expected
@@ -504,12 +504,12 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     fs = DVCFileSystem(repo=dvc)
     expected = "8761c4e9acad696bee718615e23e22db.dir"
     assert fs.info("dir").get("md5") is None
-    _, _, obj = build(dvc.odb.local, "dir", fs, "md5")
+    _, _, obj = build(dvc.cache.local, "dir", fs, "md5")
     assert obj.hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir")
 
     shutil.rmtree(tmp_dir / "dir")
     assert fs.info("dir")["md5"] == expected
-    _, _, obj = build(dvc.odb.local, "dir", fs, "md5")
+    _, _, obj = build(dvc.cache.local, "dir", fs, "md5")
     assert obj.hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir")
 
 
@@ -518,10 +518,10 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     fs = DVCFileSystem(repo=dvc)
     subdir = "dir/subdir"
     assert fs.info(subdir).get("md5") is None
-    _, _, obj = build(dvc.odb.local, subdir, fs, "md5")
+    _, _, obj = build(dvc.cache.local, subdir, fs, "md5")
     assert obj.hash_info == HashInfo("md5", "af314506f1622d107e0ed3f14ec1a3b5.dir")
     assert fs.info(posixpath.join(subdir, "data")).get("md5") is None
-    _, _, obj = build(dvc.odb.local, posixpath.join(subdir, "data"), fs, "md5")
+    _, _, obj = build(dvc.cache.local, posixpath.join(subdir, "data"), fs, "md5")
     assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
     (tmp_dir / "dir" / "subdir" / "data").unlink()
     assert (
@@ -543,7 +543,7 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
     tmp_dir.scm.commit("add dir")
 
     fs = DVCFileSystem(repo=dvc)
-    _, _, obj = build(dvc.odb.local, "dir", fs, "md5")
+    _, _, obj = build(dvc.cache.local, "dir", fs, "md5")
     assert obj.hash_info == HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
 
 
@@ -561,7 +561,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     # hash_file(file) should return workspace hash, not DVC cached hash
     fs = DVCFileSystem(repo=dvc)
     assert fs.info("file").get("md5") is None
-    staging, _, obj = build(dvc.odb.local, "file", fs, "md5")
+    staging, _, obj = build(dvc.cache.local, "file", fs, "md5")
     assert obj.hash_info == something_hash_info
     check(staging, obj)
 
@@ -573,7 +573,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
 
     # tmp_dir/file can be built even though it is missing in workspace since
     # repofs will use the DVC cached hash (and refer to the local cache object)
-    _, _, obj = build(dvc.odb.local, "file", fs, "md5")
+    _, _, obj = build(dvc.cache.local, "file", fs, "md5")
     assert obj.hash_info == file_hash_info
 
 
@@ -582,7 +582,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     (tmp_dir / "dir" / "baz").write_text("baz")
 
     fs = DVCFileSystem(repo=dvc)
-    _, meta, obj = build(dvc.odb.local, "dir", fs, "md5")
+    _, meta, obj = build(dvc.cache.local, "dir", fs, "md5")
     assert obj.hash_info == HashInfo("md5", "ba75a2162ca9c29acecb7957105a0bc2.dir")
     assert meta.nfiles == 3
 

@@ -682,12 +682,12 @@ def test_run_commit(dvc):
     )
     assert ret == 0
     assert os.path.isfile(fname)
-    assert not os.path.exists(dvc.odb.local.path)
+    assert not os.path.exists(dvc.cache.local.path)
 
     ret = main(["commit", fname + ".dvc"])
     assert ret == 0
     assert os.path.isfile(fname)
-    assert len(list(dvc.odb.local.all())) == 1
+    assert len(list(dvc.cache.local.all())) == 1
 
 
 @pytest.mark.parametrize(
@@ -789,7 +789,7 @@ def test_should_not_checkout_upon_corrupted_local_hardlink_cache(
     mocker, tmp_dir, dvc, copy_script
 ):
     tmp_dir.gen("foo", "foo")
-    dvc.odb.local.cache_types = ["hardlink"]
+    dvc.cache.local.cache_types = ["hardlink"]
 
     stage = dvc.run(
         deps=["foo"],

@@ -234,7 +234,7 @@ def test_untracked_newly_added_files(M, tmp_dir, dvc, scm):
 def test_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     tmp_dir.dvc_gen("foobar", "foobar")
-    remove(dvc.odb.repo.path)
+    remove(dvc.cache.repo.path)
 
     assert dvc.data_status(untracked_files="all") == {
         **EMPTY_STATUS,
@@ -260,7 +260,7 @@ def test_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
 def test_missing_cache_missing_workspace(M, tmp_dir, dvc, scm):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     tmp_dir.dvc_gen("foobar", "foobar")
-    for path in [dvc.odb.repo.path, "dir", "foobar"]:
+    for path in [dvc.cache.repo.path, "dir", "foobar"]:
         remove(path)
 
     assert dvc.data_status(untracked_files="all") == {
@@ -285,7 +285,7 @@ def test_missing_cache_missing_workspace(M, tmp_dir, dvc, scm):
 def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="add dir")
     tmp_dir.dvc_gen("foobar", "foobar", commit="add foobar")
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     assert dvc.data_status(untracked_files="all") == {
         **EMPTY_STATUS,
@@ -308,7 +308,7 @@ def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
 def test_git_committed_missing_cache_missing_workspace(M, tmp_dir, dvc, scm):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="add dir")
     tmp_dir.dvc_gen("foobar", "foobar", commit="add foobar")
-    for path in [dvc.odb.repo.path, "dir", "foobar"]:
+    for path in [dvc.cache.repo.path, "dir", "foobar"]:
         remove(path)
 
     assert dvc.data_status(untracked_files="all") == {
@@ -330,7 +330,7 @@ def test_partial_missing_cache(M, tmp_dir, dvc, scm):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
 
     # remove "foo" from cache
-    odb = dvc.odb.repo
+    odb = dvc.cache.repo
     odb.fs.rm(odb.oid_to_path("acbd18db4cc2f85cedef654fccc4a4d8"))
 
     assert dvc.data_status() == {
@@ -354,7 +354,7 @@ def test_missing_dir_object_from_head(M, tmp_dir, dvc, scm):
     (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="add dir")
     remove("dir")
     tmp_dir.dvc_gen({"dir": {"foobar": "foobar"}})
-    odb = dvc.odb.repo
+    odb = dvc.cache.repo
     odb.fs.rm(odb.oid_to_path(stage.outs[0].hash_info.value))
 
     assert dvc.data_status() == {
@@ -376,7 +376,7 @@ def test_missing_dir_object_from_index(M, tmp_dir, dvc, scm):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="add dir")
     remove("dir")
     (stage,) = tmp_dir.dvc_gen({"dir": {"foobar": "foobar"}})
-    odb = dvc.odb.repo
+    odb = dvc.cache.repo
     odb.fs.rm(odb.oid_to_path(stage.outs[0].hash_info.value))
 
     assert dvc.data_status() == {

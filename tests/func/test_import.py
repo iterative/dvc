@@ -5,11 +5,11 @@ import pytest
 from funcy import first
 
 from dvc.annotations import Annotation
+from dvc.cachemgr import CacheManager
 from dvc.config import NoRemoteError
 from dvc.dvcfile import load_file
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.fs import system
-from dvc.odbmgr import ODBManager
 from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
@@ -272,7 +272,7 @@ def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
         with erepo_dir.dvc.config.edit() as conf:
             conf["cache"]["type"] = "symlink"
-        erepo_dir.dvc.odb = ODBManager(erepo_dir.dvc)
+        erepo_dir.dvc.cache = CacheManager(erepo_dir.dvc)
         erepo_dir.scm_add(
             [erepo_dir.dvc.config.files["repo"]],
             "set source repo cache type to symlink",
@@ -294,7 +294,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     remove("dir_imported")
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
 
     dvc.pull(["dir_imported.dvc"])
 
@@ -308,7 +308,7 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
 
     remove("dir_imported123")
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
 
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
@@ -536,7 +536,7 @@ def test_pull_imported_stage_from_subrepos(tmp_dir, dvc, erepo_dir, is_dvc, file
     dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     # clean everything
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
     remove("out")
 
     stats = dvc.pull(["out.dvc"])
@@ -606,7 +606,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
     erepo_dir.dvc.push()
-    remove(erepo_dir.dvc.odb.local.path)
+    remove(erepo_dir.dvc.cache.local.path)
     remove(os.fspath(erepo_dir / "dir"))
 
     erepo2 = make_tmp_dir("erepo2", scm=True, dvc=True)
@@ -614,7 +614,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
         erepo2.dvc.imp(os.fspath(erepo_dir), "dir")
         erepo2.scm.add("dir.dvc")
         erepo2.scm.commit("import")
-    remove(erepo2.dvc.odb.local.path)
+    remove(erepo2.dvc.cache.local.path)
     remove(os.fspath(erepo2 / "dir"))
 
     dvc.imp(os.fspath(erepo2), "dir", "dir_imported")
@@ -622,14 +622,14 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
     remove("dir_imported")
 
     # pulled objects should come from the original upstream repo's remote,
     # no cache or remote should be needed from the intermediate repo
     dvc.pull(["dir_imported.dvc"])
-    assert not os.path.exists(erepo_dir.dvc.odb.local.path)
-    assert not os.path.exists(erepo2.dvc.odb.local.path)
+    assert not os.path.exists(erepo_dir.dvc.cache.local.path)
+    assert not os.path.exists(erepo2.dvc.cache.local.path)
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 

@@ -3,9 +3,9 @@ import os
 
 import pytest
 
+from dvc.cachemgr import CacheManager
 from dvc.cli import main
 from dvc.fs import system
-from dvc.odbmgr import ODBManager
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.testing.tmp_dir import make_subrepo
@@ -76,7 +76,7 @@ def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
         with erepo_dir.dvc.config.edit() as conf:
             conf["cache"]["type"] = "symlink"
-        erepo_dir.dvc.odb = ODBManager(erepo_dir.dvc)
+        erepo_dir.dvc.cache = CacheManager(erepo_dir.dvc)
         erepo_dir.scm_add(
             [erepo_dir.dvc.config.files["repo"]], "set cache type to symlinks"
         )

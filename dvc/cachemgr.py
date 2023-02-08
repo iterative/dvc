@@ -14,7 +14,7 @@ def _get_odb(repo, settings, fs=None):
     return get_odb(fs, fs_path, state=repo.state, **config)
 
 
-class ODBManager:
+class CacheManager:
     CACHE_DIR = "cache"
     CLOUD_SCHEMES = [
         Schemes.S3,

@@ -162,9 +162,9 @@ def _output_paths(  # noqa: C901
         obj: Optional["HashFile"]
         if on_working_fs:
             _, _, obj = build(
-                repo.odb.repo,
+                repo.cache.repo,
                 output.fs_path,
-                repo.odb.repo.fs,
+                repo.cache.repo.fs,
                 "md5",
                 dry_run=True,
                 ignore=output.dvcignore,
@@ -219,7 +219,7 @@ def _filter_missing(dvcfs: "DVCFileSystem", paths: Set[str]) -> Iterator[str]:
             if (
                 entry
                 and info["type"] == "directory"
-                and not dvcfs.repo.odb.local.exists(entry.hash_info.value)
+                and not dvcfs.repo.cache.local.exists(entry.hash_info.value)
             ):
                 yield path
         except FileNotFoundError:

@@ -27,7 +27,7 @@ class TestImport:
         pytest.skip()
 
     def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
-        from dvc.odbmgr import ODBManager
+        from dvc.cachemgr import CacheManager
 
         workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
 
@@ -35,7 +35,7 @@ class TestImport:
         # to import dirs
         with dvc.config.edit() as conf:
             del conf["cache"]
-        dvc.odb = ODBManager(dvc)
+        dvc.cache = CacheManager(dvc)
 
         assert not (tmp_dir / "dir").exists()  # sanity check
         dvc.imp_url("remote://workspace/dir")
@@ -93,7 +93,7 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "file").read_text() == "file"
         assert dvc.status() == {}
 
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
         remove(tmp_dir / "file")
         dvc.pull()
         assert (tmp_dir / "file").read_text() == "file"
@@ -106,7 +106,7 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "file").read_text() == "modified"
         assert dvc.status() == {}
 
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
         remove(tmp_dir / "file")
         dvc.pull()
         assert (tmp_dir / "file").read_text() == "modified"
@@ -119,7 +119,7 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
         assert dvc.status() == {}
 
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
         remove(tmp_dir / "data_dir")
         dvc.pull()
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
@@ -134,7 +134,7 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
         assert dvc.status() == {}
 
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
         remove(tmp_dir / "data_dir")
         dvc.pull()
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"
