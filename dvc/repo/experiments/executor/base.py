@@ -716,13 +716,10 @@ class BaseExecutor(ABC):
 
     @staticmethod
     def _set_log_level(level):
-        from dvc.logger import disable_other_loggers
-
         # When executor.reproduce is run in a multiprocessing child process,
         # dvc.cli.main will not be called for that child process so we need to
         # setup logging ourselves
         dvc_logger = logging.getLogger("dvc")
-        disable_other_loggers()
         if level is not None:
             dvc_logger.setLevel(level)
 

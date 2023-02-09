@@ -49,8 +49,6 @@ import pathlib
 
 import pytest
 
-from dvc.logger import disable_other_loggers
-
 __all__ = [
     "run_copy",
     "run_head",
@@ -59,9 +57,6 @@ __all__ = [
     "git_upstream",
     "git_downstream",
 ]
-
-# see https://github.com/iterative/dvc/issues/3167
-disable_other_loggers()
 
 
 @pytest.fixture
