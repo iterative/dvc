@@ -22,6 +22,7 @@ from .queue.celery import LocalCeleryQueue
 from .queue.tempdir import TempDirQueue
 from .queue.workspace import WorkspaceQueue
 from .refs import (
+    APPLY_STASH,
     CELERY_FAILED_STASH,
     CELERY_STASH,
     EXEC_APPLY,
@@ -31,6 +32,7 @@ from .refs import (
     WORKSPACE_STASH,
     ExpRefInfo,
 )
+from .stash import ApplyStash
 from .utils import check_ref_format, exp_refs_by_rev, unlocked_repo
 
 if TYPE_CHECKING:
@@ -85,6 +87,10 @@ class Experiments:
     @cached_property
     def celery_queue(self) -> LocalCeleryQueue:
         return LocalCeleryQueue(self.repo, CELERY_STASH, CELERY_FAILED_STASH)
+
+    @cached_property
+    def apply_stash(self) -> ApplyStash:
+        return ApplyStash(self.scm, APPLY_STASH)
 
     @property
     def stash_revs(self) -> Dict[str, "ExpStashEntry"]:
