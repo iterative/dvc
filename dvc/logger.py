@@ -87,7 +87,8 @@ class ColorFormatter(logging.Formatter):
     exception cause, just the message and the traceback.
     """
 
-    color_code = {
+    reset = colorama.Fore.RESET
+    color_codes = {
         "TRACE": colorama.Fore.GREEN,
         "DEBUG": colorama.Fore.BLUE,
         "WARNING": colorama.Fore.YELLOW,
@@ -95,47 +96,46 @@ class ColorFormatter(logging.Formatter):
         "CRITICAL": colorama.Fore.RED,
     }
 
-    def format(self, record):  # noqa: A003
+    def __init__(self, log_colors: bool = True) -> None:
+        super().__init__()
+        self.log_colors = log_colors
+
+    def format(self, record) -> str:  # noqa: A003, C901
         record.message = record.getMessage()
         msg = self.formatMessage(record)
 
-        if record.levelname == "INFO":
+        if record.levelno == logging.INFO:
             return msg
 
-        if record.exc_info:
-            if getattr(record, "tb_only", False):
-                cause = ""
-            else:
-                cause = ": ".join(_iter_causes(record.exc_info[1]))
+        ei = record.exc_info
+        if ei:
+            cause = ""
+            if not getattr(record, "tb_only", False):
+                cause = ": ".join(_iter_causes(ei[1]))
+            sep = " - " if msg and cause else ""
+            msg = msg + sep + cause
 
-            msg = "{message}{separator}{cause}".format(
-                message=msg or "",
-                separator=" - " if msg and cause else "",
-                cause=cause,
-            )
+        asctime = ""
+        if _is_verbose():
+            asctime = self.formatTime(record, self.datefmt)
+            if ei and not record.exc_text:
+                record.exc_text = self.formatException(ei)
+            if record.exc_text:
+                if msg[-1:] != "\n":
+                    msg = msg + "\n"
+                msg = msg + record.exc_text + "\n"
+            if record.stack_info:
+                if msg[-1:] != "\n":
+                    msg = msg + "\n"
+                msg = msg + self.formatStack(record.stack_info) + "\n"
 
-            if _is_verbose():
-                msg += _stack_trace(record.exc_info)
-
-        return "{asctime}{color}{levelname}{nc}: {msg}".format(
-            asctime=self.formatTime(record, self.datefmt),
-            color=self.color_code[record.levelname],
-            nc=colorama.Fore.RESET,
-            levelname=record.levelname,
-            msg=msg,
-        )
-
-    def formatTime(self, record, datefmt=None):
-        # only show if current level is set to DEBUG
-        # also, skip INFO as it is used for UI
-        if not _is_verbose() or record.levelno == logging.INFO:
-            return ""
-
-        return "{green}{date}{nc} ".format(
-            green=colorama.Fore.GREEN,
-            date=super().formatTime(record, datefmt),
-            nc=colorama.Fore.RESET,
-        )
+        level = record.levelname
+        if self.log_colors:
+            color = self.color_codes[level]
+            if asctime:
+                asctime = color + asctime + self.reset
+            level = color + level + self.reset
+        return asctime + (" " if asctime else "") + level + ": " + msg
 
 
 class LoggerHandler(logging.StreamHandler):
@@ -180,17 +180,6 @@ def _iter_causes(exc):
         exc = exc.__cause__
 
 
-def _stack_trace(exc_info):
-    import traceback
-
-    return "\n{red}{line}{nc}\n{trace}{red}{line}{nc}".format(
-        red=colorama.Fore.RED,
-        line="-" * 60,
-        trace="".join(traceback.format_exception(*exc_info)),
-        nc=colorama.Fore.RESET,
-    )
-
-
 def disable_other_loggers():
     logging.captureWarnings(True)
     loggerDict = logging.root.manager.loggerDict  # pylint: disable=no-member
@@ -204,9 +193,10 @@ def set_loggers_level(level: int = logging.INFO) -> None:
         logging.getLogger(name).setLevel(level)
 
 
-def setup(level: int = logging.INFO) -> None:
+def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     colorama.init()
-    formatter = ColorFormatter()
+
+    formatter = ColorFormatter(log_colors=log_colors and sys.stdout.isatty())
 
     console_info = LoggerHandler(sys.stdout)
     console_info.setLevel(logging.INFO)
@@ -225,9 +215,10 @@ def setup(level: int = logging.INFO) -> None:
     console_trace.setFormatter(formatter)
     console_trace.addFilter(exclude_filter(logging.DEBUG))
 
+    err_formatter = ColorFormatter(log_colors=log_colors and sys.stderr.isatty())
     console_errors = LoggerHandler(sys.stderr)
     console_errors.setLevel(logging.WARNING)
-    console_errors.setFormatter(formatter)
+    console_errors.setFormatter(err_formatter)
 
     for name in ["dvc", "dvc_objects", "dvc_data"]:
         logger = logging.getLogger(name)
