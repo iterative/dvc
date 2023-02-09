@@ -180,14 +180,6 @@ def _iter_causes(exc):
         exc = exc.__cause__
 
 
-def disable_other_loggers():
-    logging.captureWarnings(True)
-    loggerDict = logging.root.manager.loggerDict  # pylint: disable=no-member
-    for logger_name, logger in loggerDict.items():
-        if logger_name != "dvc" and not logger_name.startswith("dvc."):
-            logger.disabled = True  # type: ignore[union-attr]
-
-
 def set_loggers_level(level: int = logging.INFO) -> None:
     for name in ["dvc", "dvc_objects", "dvc_data"]:
         logging.getLogger(name).setLevel(level)
