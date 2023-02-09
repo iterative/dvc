@@ -70,7 +70,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-azure = ["dvc-azure==2.21.0"]
+azure = ["dvc-azure==2.21.1"]
 gdrive = ["dvc-gdrive==2.19.1"]
 gs = ["dvc-gs==2.21.1"]
 hdfs = ["dvc-hdfs==2.19.0"]
