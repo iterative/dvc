@@ -5,7 +5,6 @@ from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
-from dvc.scm import CloneError
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +31,7 @@ class CmdGet(CmdBaseNoRepo):
 
     def _get_file_from_repo(self):
         from dvc.repo import Repo
+        from dvc.scm import CloneError
 
         try:
             Repo.get(
