@@ -285,7 +285,7 @@ def test_should_call_render(tmp_dir, mocker, capsys, plots_data, output):
     render_mock.assert_called_once_with(
         renderers=renderers,
         output_file=Path(tmp_dir / output / "index.html"),
-        template_path=None,
+        html_template=None,
     )
 
 
