@@ -115,7 +115,7 @@ def save_imports(
                 desc="Downloading imports from source",
                 unit="files",
             ) as cb:
-                checkout(data_view, tmpdir, cache.fs, callback=cb)
+                checkout(data_view, tmpdir, cache.fs, callback=cb, storage="data")
             md5(data_view)
             save(data_view, odb=cache, hardlink=True)
 

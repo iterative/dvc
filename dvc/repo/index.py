@@ -286,7 +286,7 @@ class Index:
         from collections import defaultdict
 
         from dvc.config import NoRemoteError
-        from dvc_data.index import DataIndex, DataIndexEntry, Storage
+        from dvc_data.index import DataIndex, DataIndexEntry, FileStorage, ObjectStorage
 
         by_workspace: dict = defaultdict(DataIndex)
 
@@ -306,9 +306,22 @@ class Index:
                 hash_info=out.hash_info,
             )
 
-            storage = Storage(odb=out.odb, cache=out.cache)
+            storage_map = data_index.storage_map
+            if out.odb:
+                storage_map.add_data(ObjectStorage(key, out.odb))
+            storage_map.add_cache(ObjectStorage(key, out.cache))
             try:
-                storage.remote = self.repo.cloud.get_remote_odb(out.remote)
+                remote = self.repo.cloud.get_remote(out.remote)
+                if remote.fs.version_aware:
+                    storage_map.add_remote(
+                        FileStorage(
+                            key=key,
+                            fs=remote.fs,
+                            path=remote.fs.path.join(remote.path, *key),
+                        )
+                    )
+                else:
+                    storage_map.add_remote(ObjectStorage(key, remote.odb))
             except NoRemoteError:
                 pass
 
@@ -318,12 +331,9 @@ class Index:
                 entry.meta = dep.meta
                 entry.hash_info = dep.hash_info
 
-                storage.odb = dep.odb
-                storage.fs = dep.fs
-                storage.path = dep.fs_path
+                storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
 
             data_index.add(entry)
-            data_index.storage_map[key] = storage
 
         return dict(by_workspace)
 
