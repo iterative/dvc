@@ -182,6 +182,13 @@ class Repo:
         self._scm = scm
         self._data_index = None
 
+        self.abs_root_dir, _, _ = self._get_repo_dirs(
+            root_dir=root_dir,
+            fs=self.fs,
+            uninitialized=uninitialized,
+            scm=scm,
+        )
+
         if rev and not fs:
             self._scm = scm = SCM(root_dir or os.curdir)
             root_dir = "/"

@@ -1,4 +1,4 @@
-from dvc.fs import GitFileSystem, Schemes
+from dvc.fs import GitFileSystem, LocalFileSystem, Schemes
 from dvc_data.hashfile.db import get_odb
 
 
@@ -11,6 +11,12 @@ def _get_odb(repo, settings, fs=None):
     cls, config, fs_path = get_cloud_fs(repo, **settings)
     config["tmp_dir"] = repo.tmp_dir
     fs = fs or cls(**config)
+    if (
+        isinstance(repo.fs, GitFileSystem)
+        and isinstance(fs, LocalFileSystem)
+        and fs_path[:-10] == "/"
+    ):
+        fs_path = fs.path.join(repo.abs_root_dir, fs_path[1:])
     return get_odb(fs, fs_path, state=repo.state, **config)
 
 
