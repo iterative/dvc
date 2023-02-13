@@ -358,31 +358,13 @@ class Index:
         prefix: "DataIndexKey"
         loaded = False
 
-        if self.repo.config["feature"].get("data_index_cache"):
-            import os
-
-            from appdirs import user_cache_dir
-            from fsspec.utils import tokenize
-
-            cache_dir = user_cache_dir(
-                self.repo.config.APPNAME, self.repo.config.APPAUTHOR
-            )
-            index_dir = os.path.join(
-                cache_dir,
-                "index",
-                "data",
-                # scm.root_dir and repo.root_dir don't match for subrepos
-                tokenize((self.repo.scm.root_dir, self.repo.root_dir)),
-            )
-            os.makedirs(index_dir, exist_ok=True)
-
-            index = DataIndex.open(os.path.join(index_dir, "db.db"))
-            prefix = (self.data_tree.hash_info.value,)
-            if prefix in index.ls((), detail=False):
-                loaded = True
-        else:
+        index = self.repo.data_index
+        if index is None:
             index = DataIndex()
-            prefix = ()
+
+        prefix = (self.data_tree.hash_info.value,)
+        if prefix in index.ls((), detail=False):
+            loaded = True
 
         try:
             if not loaded:

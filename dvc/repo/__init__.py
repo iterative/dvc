@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from dvc.stage import Stage
     from dvc.types import DictStrAny
     from dvc_data.hashfile.state import StateBase
+    from dvc_data.index import DataIndex
 
     from .experiments import Experiments
     from .index import Index
@@ -179,6 +180,7 @@ class Repo:
         self._fs_conf = {"repo_factory": repo_factory}
         self._fs = fs or localfs
         self._scm = scm
+        self._data_index = None
 
         if rev and not fs:
             self._scm = scm = SCM(root_dir or os.curdir)
@@ -340,6 +342,31 @@ class Repo:
         # Our graph cache is no longer valid, as it was based on the previous
         # fs.
         self._reset()
+
+    @property
+    def data_index(self) -> Optional["DataIndex"]:
+        from appdirs import user_cache_dir
+        from fsspec.utils import tokenize
+
+        from dvc_data.index import DataIndex
+
+        if not self.config["feature"].get("data_index_cache"):
+            return None
+
+        if self._data_index is None:
+            cache_dir = user_cache_dir(self.config.APPNAME, self.config.APPAUTHOR)
+            index_dir = os.path.join(
+                cache_dir,
+                "index",
+                "data",
+                # scm.root_dir and repo.root_dir don't match for subrepos
+                tokenize((self.scm.root_dir, self.root_dir)),
+            )
+            os.makedirs(index_dir, exist_ok=True)
+
+            self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
+
+        return self._data_index
 
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
@@ -553,6 +580,8 @@ class Repo:
     def close(self):
         self.scm.close()
         self.state.close()
+        if self._data_index is not None:
+            self._data_index.close()
 
     def _reset_cached_indecies(self):
         self.__dict__.pop("index", None)
