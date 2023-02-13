@@ -1,3 +1,5 @@
+import os
+
 from dvc.fs import GitFileSystem, LocalFileSystem, Schemes
 from dvc_data.hashfile.db import get_odb
 
@@ -14,9 +16,13 @@ def _get_odb(repo, settings, fs=None):
     if (
         isinstance(repo.fs, GitFileSystem)
         and isinstance(fs, LocalFileSystem)
-        and fs_path[:-10] == "/"
+        and not os.path.isdir(fs_path)
     ):
-        fs_path = fs.path.join(repo.abs_root_dir, fs_path[1:])
+        seps = os.sep + os.altsep if os.altsep else os.sep
+        fs_path = os.path.join(
+            repo.abs_root_dir, os.path.splitdrive(fs_path)[1].lstrip(seps)
+        )
+
     return get_odb(fs, fs_path, state=repo.state, **config)
 
 
