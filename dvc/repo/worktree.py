@@ -190,6 +190,11 @@ def push_worktree(
                     f"remote {remote_obj.name!r} does not support versioning"
                 ) from None
 
+        if remote_obj.index is not None:
+            for key, entry in new_index.iteritems():
+                remote_obj.index[key] = entry
+            remote_obj.index.commit()
+
         for out in view.outs:
             workspace, _key = out.index_key
             _merge_push_meta(out, repo.index.data[workspace], remote_obj.name)
