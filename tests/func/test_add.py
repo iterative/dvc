@@ -342,6 +342,12 @@ def test_double_add_unchanged_dir(tmp_dir, dvc):
     assert ret == 0
 
 
+def test_add_colon_in_filename(tmp_dir, dvc):
+    tmp_dir.gen("fo:o", "foo")
+    ret = main(["add", "fo:o"])
+    assert ret == 0
+
+
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
     file_md5_counter = mocker.spy(dvc_data.hashfile.hash, "file_md5")
     tmp_dir.gen("foo", "foo")
