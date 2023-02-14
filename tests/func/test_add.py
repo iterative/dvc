@@ -342,6 +342,7 @@ def test_double_add_unchanged_dir(tmp_dir, dvc):
     assert ret == 0
 
 
+@pytest.mark.skipif(os.name == "nt", reason="unsupported on Windows")
 def test_add_colon_in_filename(tmp_dir, dvc):
     tmp_dir.gen("fo:o", "foo")
     ret = main(["add", "fo:o"])
