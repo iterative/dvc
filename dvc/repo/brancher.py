@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 
 from dvc.scm import iter_revs
+
+logger = logging.getLogger(__name__)
 
 
 def brancher(  # noqa: E302
@@ -60,6 +63,7 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
+    logger.trace("switching fs to workspace")  # type: ignore[attr-defined]
     self.fs = LocalFileSystem(url=self.root_dir)
     yield "workspace"
 
@@ -82,7 +86,9 @@ def brancher(  # noqa: E302
         from dvc.fs import GitFileSystem
 
         for sha, names in found_revs.items():
-            self._reset_cached_indecies()  # pylint: disable=W0212
+            logger.trace(  # type: ignore[attr-defined]
+                "switching fs to revision %s [%s]", sha[:7], ", ".join(names)
+            )
             self.fs = GitFileSystem(scm=scm, rev=sha)
             self.root_dir = self.fs.path.join("/", *repo_root_parts)
 
