@@ -583,16 +583,13 @@ class Repo:
         if self._data_index is not None:
             self._data_index.close()
 
-    def _reset_cached_indecies(self):
+    def _reset(self):
+        self.scm._reset()  # pylint: disable=protected-access
+        self.state.close()
         self.__dict__.pop("index", None)
         self.__dict__.pop("dvcignore", None)
         self.__dict__.pop("dvcfs", None)
         self.__dict__.pop("datafs", None)
-
-    def _reset(self):
-        self.state.close()
-        self.scm._reset()  # pylint: disable=protected-access
-        self._reset_cached_indecies()
 
     def __enter__(self):
         return self
