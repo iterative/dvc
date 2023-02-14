@@ -51,6 +51,8 @@ def ByUrl(mapping):
         # Windows absolute paths should really have scheme == "" (local)
         if os.name == "nt" and len(parsed.scheme) == 1 and parsed.netloc == "":
             return schemas[""](data)
+        if parsed.netloc == "":
+            return schemas[""](data)
         if parsed.scheme not in schemas:
             raise Invalid(f"Unsupported URL type {parsed.scheme}://")
 
