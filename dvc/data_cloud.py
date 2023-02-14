@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class Remote:
-    def __init__(self, name: str, path: str, fs: "FileSystem", **config):
+    def __init__(self, name: str, path: str, fs: "FileSystem", *, index=None, **config):
         self.path = path
         self.fs = fs
         self.name = name
+        self.index = index
 
         self.worktree: bool = config.pop("worktree", False)
         self.config = config
@@ -75,7 +76,11 @@ class DataCloud:
 
             fs = cls(**config)
             config["tmp_dir"] = self.repo.index_db_dir
-            return Remote(name, fs_path, fs, **config)
+            if self.repo.data_index is not None:
+                index = self.repo.data_index.view(("remotes", name))
+            else:
+                index = None
+            return Remote(name, fs_path, fs, index=index, **config)
 
         if bool(self.repo.config["remote"]):
             error_msg = (

@@ -153,10 +153,11 @@ def _load_storage_from_out(storage_map, key, out):
                     key=key,
                     fs=remote.fs,
                     path=remote.fs.path.join(remote.path, *key),
+                    index=remote.index,
                 )
             )
         else:
-            storage_map.add_remote(ObjectStorage(key, remote.odb))
+            storage_map.add_remote(ObjectStorage(key, remote.odb, index=remote.index))
     except NoRemoteError:
         pass
 
