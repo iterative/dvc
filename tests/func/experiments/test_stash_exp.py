@@ -3,11 +3,15 @@ import logging
 import pytest
 from funcy import first
 
+from dvc.exceptions import ReproductionError
 
-@pytest.mark.xfail(reason="TODO: https://github.com/iterative/dvc/issues/6297")
+
 @pytest.mark.parametrize("tmp", [True, False])
 @pytest.mark.parametrize("staged", [True, False])
 def test_deleted(tmp_dir, scm, dvc, caplog, tmp, staged):
+    if not tmp:
+        pytest.xfail("TODO: https://github.com/iterative/dvc/issues/6297")
+
     tmp_dir.scm_gen("file", "file", commit="commit file")
     stage = dvc.stage.add(
         cmd="cat file",
@@ -21,9 +25,9 @@ def test_deleted(tmp_dir, scm, dvc, caplog, tmp, staged):
         scm.add(["file"])
 
     with caplog.at_level(logging.ERROR):
-        results = dvc.experiments.run(stage.addressing, tmp_dir=tmp)
-        assert "Failed to reproduce experiment" in caplog.text
-        assert not results
+        with pytest.raises(ReproductionError):
+            dvc.experiments.run(stage.addressing, tmp_dir=tmp)
+        assert "failed to reproduce 'foo'" in caplog.text
 
     assert not file.exists()
 
@@ -51,8 +55,6 @@ def test_modified(tmp_dir, scm, dvc, caplog, tmp, staged):
 
 @pytest.mark.parametrize("tmp", [True, False])
 def test_staged_new_file(tmp_dir, scm, dvc, tmp):
-    if not tmp:
-        pytest.xfail("TODO: https://github.com/iterative/dvc/issues/8998")
     stage = dvc.stage.add(
         cmd="cat file",
         name="foo",
