@@ -96,19 +96,9 @@ class Experiments:
     def reproduce_one(
         self,
         tmp_dir: bool = False,
-        machine: Optional[str] = None,
         **kwargs,
     ):
         """Reproduce and checkout a single (standalone) experiment."""
-        if not (tmp_dir or machine):
-            staged, _, _ = self.scm.status(untracked_files="no")
-            if staged:
-                logger.warning(
-                    "Your workspace contains staged Git changes which will be "
-                    "unstaged before running this experiment."
-                )
-                self.scm.reset()
-
         exp_queue: "BaseStashQueue" = (
             self.tempdir_queue if tmp_dir else self.workspace_queue
         )
