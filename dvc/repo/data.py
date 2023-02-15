@@ -13,6 +13,8 @@ from typing import (
     Union,
 )
 
+from dvc.ui import ui
+
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
@@ -144,14 +146,18 @@ def _git_info(scm: Union["Git", "NoSCM"], untracked_files: str = "all") -> GitIn
 def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
     from .index import build_data_index
 
-    workspace = build_data_index(repo.index, repo.root_dir, repo.fs, compute_hash=True)
+    with ui.status("Building workspace index"):
+        workspace = build_data_index(
+            repo.index, repo.root_dir, repo.fs, compute_hash=True
+        )
 
-    return _diff(
-        repo.index.data["repo"],
-        workspace,
-        with_missing=True,
-        **kwargs,
-    )
+    with ui.status("Calculating diff for between index/workspace"):
+        return _diff(
+            repo.index.data["repo"],
+            workspace,
+            with_missing=True,
+            **kwargs,
+        )
 
 
 def _diff_head_to_index(
@@ -165,7 +171,8 @@ def _diff_head_to_index(
 
         head_index = repo.index.data["repo"]
 
-    return _diff(head_index, index, **kwargs)
+    with ui.status("Calculating diff between head/index"):
+        return _diff(head_index, index, **kwargs)
 
 
 class Status(TypedDict):
