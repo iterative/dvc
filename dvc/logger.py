@@ -9,16 +9,6 @@ import colorama
 
 from dvc.progress import Tqdm
 
-FOOTER = (
-    "\n{yellow}Having any troubles?{nc}"
-    " Hit us up at {blue}https://dvc.org/support{nc},"
-    " we are always happy to help!"
-).format(
-    blue=colorama.Fore.BLUE,
-    nc=colorama.Fore.RESET,
-    yellow=colorama.Fore.YELLOW,
-)
-
 
 def addLoggingLevel(levelName, levelNum, methodName=None):
     """

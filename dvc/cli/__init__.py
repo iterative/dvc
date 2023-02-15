@@ -39,12 +39,17 @@ def parse_args(argv=None):
 
 def _log_unknown_exceptions() -> None:
     from dvc.info import get_dvc_info
-    from dvc.logger import FOOTER
+    from dvc.ui import ui
+    from dvc.utils import colorize
 
     logger.exception("unexpected error")
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Version info for developers:\n%s", get_dvc_info())
-    logger.info(FOOTER)
+
+    q = colorize("Having any troubles?", "yellow")
+    link = colorize("https://dvc.org/support", "blue")
+    footer = f"\n{q} Hit us up at {link}, we are always happy to help!"
+    ui.error_write(footer)
 
 
 def _log_exceptions(exc: Exception) -> Optional[int]:
