@@ -232,7 +232,6 @@ class VegaConverter(Converter):
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
                 x_file, x_field = xs[i]
-
             datapoints = [d.copy() for d in file2datapoints.get(y_file, [])]
 
             if props_update.get("y", None) == "dvc_inferred_y_value":
