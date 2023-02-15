@@ -151,7 +151,7 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
             repo.index, repo.root_dir, repo.fs, compute_hash=True
         )
 
-    with ui.status("Calculating diff for between index/workspace"):
+    with ui.status("Calculating diff between index/workspace"):
         return _diff(
             repo.index.data["repo"],
             workspace,
