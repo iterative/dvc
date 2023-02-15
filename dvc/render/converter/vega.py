@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from funcy import first, last
@@ -233,7 +232,7 @@ class VegaConverter(Converter):
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
                 x_file, x_field = xs[i]
-            datapoints = deepcopy(file2datapoints.get(y_file, []))
+            datapoints = [d.copy() for d in file2datapoints.get(y_file, [])]
 
             if props_update.get("y", None) == "dvc_inferred_y_value":
                 _update_from_field(

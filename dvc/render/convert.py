@@ -29,10 +29,8 @@ def _group_by_rev(datapoints):
 
 
 def to_json(renderer, split: bool = False) -> List[Dict]:
-    from copy import deepcopy
-
     if renderer.TYPE == "vega":
-        grouped = _group_by_rev(deepcopy(renderer.datapoints))
+        grouped = _group_by_rev(renderer.datapoints)
         if split:
             content = renderer.get_filled_template(skip_anchors=["data"])
         else:
