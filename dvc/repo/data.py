@@ -17,13 +17,14 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
     from dvc_data.index import DataIndex
+    from dvc_data.index.diff import Change
 
 
 def posixpath_to_os_path(path: str) -> str:
     return path.replace(posixpath.sep, os.path.sep)
 
 
-def _adapt_typ(typ):
+def _adapt_typ(typ: str) -> str:
     from dvc_data.index.diff import ADD, DELETE, MODIFY
 
     if typ == MODIFY:
@@ -38,7 +39,7 @@ def _adapt_typ(typ):
     return typ
 
 
-def _adapt_path(change):
+def _adapt_path(change: "Change") -> str:
     isdir = False
     if change.new and change.new.meta:
         isdir = change.new.meta.isdir
@@ -54,8 +55,8 @@ def _diff(
     old: "DataIndex",
     new: "DataIndex",
     *,
-    granular: Optional[bool] = False,
-    with_missing: Optional[bool] = False,
+    granular: bool = False,
+    with_missing: bool = False,
 ) -> Dict[str, List[str]]:
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
 
