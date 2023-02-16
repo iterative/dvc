@@ -1,20 +1,17 @@
-import logging
-
 import pytest
 from funcy import first
 
+from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.exceptions import ReproductionError
 
 
 @pytest.mark.parametrize("tmp", [True, False])
 @pytest.mark.parametrize("staged", [True, False])
-def test_deleted(tmp_dir, scm, dvc, caplog, tmp, staged):
-    if not tmp:
-        pytest.xfail("TODO: https://github.com/iterative/dvc/issues/6297")
-
+def test_deleted(tmp_dir, scm, dvc, tmp, staged):
     tmp_dir.scm_gen("file", "file", commit="commit file")
     stage = dvc.stage.add(
         cmd="cat file",
+        deps=["file"],
         name="foo",
     )
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
@@ -24,11 +21,11 @@ def test_deleted(tmp_dir, scm, dvc, caplog, tmp, staged):
     if staged:
         scm.add(["file"])
 
-    with caplog.at_level(logging.ERROR):
-        with pytest.raises(ReproductionError):
-            dvc.experiments.run(stage.addressing, tmp_dir=tmp)
-        assert "failed to reproduce 'foo'" in caplog.text
+    with pytest.raises(ReproductionError) as exc_info:
+        dvc.experiments.run(stage.addressing, tmp_dir=tmp)
 
+    cause = exc_info._excinfo[1].__cause__
+    assert isinstance(cause, DependencyDoesNotExistError)
     assert not file.exists()
 
 
