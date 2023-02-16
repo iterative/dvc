@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from dvc.cli import completion
 from dvc.cli.utils import append_doc_link, fix_subparsers
@@ -9,13 +10,21 @@ from dvc.ui import ui
 class CmdCacheDir(CmdConfig):
     def run(self):
         if self.args.value is None and not self.args.unset:
+            from dvc.config import ConfigError
+
             if self.args.level:
                 conf = self.config.read(level=self.args.level)
             else:
                 # Use merged config with default values
                 conf = self.config
-            self._check(conf, False, "cache", "dir")
-            ui.write(conf["cache"]["dir"])
+            try:
+                self._check(conf, False, "cache", "dir")
+                path = conf["cache"]["dir"]
+            except ConfigError:
+                if not self.config.dvc_dir or self.args.level:
+                    raise
+                path = os.path.join(self.config.dvc_dir, "cache")
+            ui.write(path)
             return 0
         with self.config.edit(level=self.args.level) as conf:
             if self.args.unset:
