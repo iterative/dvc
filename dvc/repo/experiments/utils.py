@@ -5,7 +5,6 @@ from collections import defaultdict
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
     Dict,
     Generator,
@@ -280,15 +279,17 @@ def check_ref_format(scm: "Git", ref: ExpRefInfo):
         )
 
 
-def fetch_all_exps(
-    scm: "Git", url: str, progress: Optional[Callable] = None, **kwargs: Any
-):
+def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
     refspecs = [
         f"{ref}:{ref}"
-        for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE, **kwargs)
+        for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
         if not (ref.startswith(EXEC_NAMESPACE) or ref in STASHES)
     ]
-    scm.fetch_refspecs(url, refspecs, progress=progress, **kwargs)
+    scm.fetch_refspecs(
+        url,
+        refspecs,
+        progress=progress,
+    )
 
 
 def get_random_exp_name(scm, baseline_rev):
