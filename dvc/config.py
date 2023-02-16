@@ -170,10 +170,6 @@ class Config(dict):
         self.clear()
         self.update(conf)
 
-        # Add resolved default cache.dir
-        if not self["cache"].get("dir") and self.dvc_dir:
-            self["cache"]["dir"] = os.path.join(self.dvc_dir, "cache")
-
     def _get_fs(self, level):
         # NOTE: this might be a Gitfs, which doesn't see things outside of
         # the repo.
