@@ -253,7 +253,7 @@ def _pull(git: "Git", unshallow: bool = False):
 
     git.fetch(unshallow=unshallow)
     _merge_upstream(git)
-    fetch_all_exps(git, "origin", backends=["dulwich"])
+    fetch_all_exps(git, "origin")
 
 
 def _merge_upstream(git: "Git"):
