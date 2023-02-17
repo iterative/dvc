@@ -379,16 +379,23 @@ class Repo:
 
     @property
     def data_index(self) -> Optional["DataIndex"]:
+        from appdirs import user_cache_dir
+        from fsspec.utils import tokenize
+
         from dvc_data.index import DataIndex
 
         if not self.config["feature"].get("data_index_cache"):
             return None
 
-        if not self.index_db_dir:
-            return None
-
         if self._data_index is None:
-            index_dir = os.path.join(self.index_db_dir, "data")
+            cache_dir = user_cache_dir(self.config.APPNAME, self.config.APPAUTHOR)
+            index_dir = os.path.join(
+                cache_dir,
+                "index",
+                "data",
+                # scm.root_dir and repo.root_dir don't match for subrepos
+                tokenize((self.scm.root_dir, self.root_dir)),
+            )
             os.makedirs(index_dir, exist_ok=True)
 
             self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
