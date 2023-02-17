@@ -100,15 +100,17 @@ class Repo:
         fs: Optional["FileSystem"] = None,
         uninitialized: bool = False,
         scm: Optional[Union["Git", "NoSCM"]] = None,
-    ) -> Tuple[str, Optional[str]]:
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         from dvc.fs import localfs
         from dvc.scm import SCM, SCMError
 
         dvc_dir: Optional[str] = None
+        tmp_dir: Optional[str] = None
         try:
             root_dir = self.find_root(root_dir, fs)
             fs = fs or localfs
             dvc_dir = fs.path.join(root_dir, self.DVC_DIR)
+            tmp_dir = fs.path.join(dvc_dir, "tmp")
         except NotDvcRepoError:
             if not uninitialized:
                 raise
@@ -123,7 +125,7 @@ class Repo:
                 root_dir = scm.root_dir
 
         assert root_dir
-        return root_dir, dvc_dir
+        return root_dir, dvc_dir, tmp_dir
 
     def _get_database_dir(self, db_name: str) -> Optional[str]:
         # NOTE: by default, store SQLite-based remote indexes and state's
@@ -187,10 +189,8 @@ class Repo:
 
         self.root_dir: str
         self.dvc_dir: Optional[str]
-        (
-            self.root_dir,
-            self.dvc_dir,
-        ) = self._get_repo_dirs(
+        self.tmp_dir: Optional[str]
+        self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
             root_dir=root_dir,
             fs=self.fs,
             uninitialized=uninitialized,
@@ -213,10 +213,11 @@ class Repo:
             self.lock = LockNoop()
             self.state = StateNoop()
             self.cache = CacheManager(self)
+            self.tmp_dir = None
         else:
-            if isinstance(self.fs, LocalFileSystem):
-                self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
+            self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
 
+            if isinstance(self.fs, LocalFileSystem):
                 self.lock = make_lock(
                     self.fs.path.join(self.tmp_dir, "lock"),
                     tmp_dir=self.tmp_dir,
@@ -246,41 +247,6 @@ class Repo:
 
     def __str__(self):
         return self.url or self.root_dir
-
-    @cached_property
-    def local_dvc_dir(self):
-        from dvc.fs import GitFileSystem, LocalFileSystem
-
-        if not self.dvc_dir:
-            return None
-
-        if isinstance(self.fs, LocalFileSystem):
-            return self.dvc_dir
-
-        if not isinstance(self.fs, GitFileSystem):
-            return None
-
-        relparts = ()
-        if self.root_dir != "/":
-            # subrepo
-            relparts = self.fs.path.relparts(self.root_dir, "/")
-
-        dvc_dir = os.path.join(
-            self.scm.root_dir,
-            *relparts,
-            self.DVC_DIR,
-        )
-        if os.path.exists(dvc_dir):
-            return dvc_dir
-
-        return None
-
-    @cached_property
-    def tmp_dir(self):
-        if self.local_dvc_dir is None:
-            return None
-
-        return os.path.join(self.local_dvc_dir, "tmp")
 
     @cached_property
     def index(self) -> "Index":

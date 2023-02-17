@@ -31,8 +31,21 @@ class CacheManager:
         self._odb = {}
 
         default = None
-        if repo and repo.local_dvc_dir:
-            default = os.path.join(repo.local_dvc_dir, self.CACHE_DIR)
+        if repo and repo.dvc_dir:
+            if isinstance(repo.fs, GitFileSystem):
+                relparts = ()
+                if repo.root_dir != "/":
+                    # subrepo
+                    relparts = repo.fs.path.relparts(repo.root_dir, "/")
+                dvc_dir = os.path.join(
+                    repo.scm.root_dir,
+                    *relparts,
+                    repo.DVC_DIR,
+                )
+                if os.path.exists(dvc_dir):
+                    default = os.path.join(dvc_dir, self.CACHE_DIR)
+            else:
+                default = repo.fs.path.join(repo.dvc_dir, self.CACHE_DIR)
 
         local = config.get("local")
 
