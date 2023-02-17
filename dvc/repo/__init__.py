@@ -381,6 +381,9 @@ class Repo:
     def data_index(self) -> Optional["DataIndex"]:
         from dvc_data.index import DataIndex
 
+        if not self.config["feature"].get("data_index_cache"):
+            return None
+
         if not self.index_db_dir:
             return None
 
