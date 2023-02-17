@@ -264,8 +264,8 @@ SCHEMA = {
     # section for experimental features
     "feature": {
         Optional("machine", default=False): Bool,
-        Optional("data_index_cache", default=False): Bool,
         # enabled by default. It's of no use, kept for backward compatibility.
+        Optional("data_index_cache", default=False): Bool,
         Optional("parametrization", default=True): Bool,
     },
     "plots": {
