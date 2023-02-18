@@ -171,7 +171,7 @@ def test_plots_diff_open(tmp_dir, dvc, mocker, capsys, plots_data, auto_open):
     assert index_path.as_uri() in out
 
 
-def test_plots_diff_open_WSL(tmp_dir, dvc, mocker, plots_data):
+def test_plots_diff_open_wsl(tmp_dir, dvc, mocker, plots_data):
     mocked_open = mocker.patch("webbrowser.open", return_value=True)
     mocked_uname_result = mocker.MagicMock()
     mocked_uname_result.release = "microsoft"

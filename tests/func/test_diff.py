@@ -158,9 +158,9 @@ def test_refs(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "second", commit="second version")
     tmp_dir.dvc_gen("file", "third", commit="third version")
 
-    HEAD_2 = digest("first")
-    HEAD_1 = digest("second")
-    HEAD = digest("third")
+    HEAD_2 = digest("first")  # noqa: N806
+    HEAD_1 = digest("second")  # noqa: N806
+    HEAD = digest("third")  # noqa: N806
 
     assert dvc.diff("HEAD~1") == {
         "added": [],

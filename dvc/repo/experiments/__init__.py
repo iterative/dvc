@@ -407,7 +407,7 @@ class Experiments:
                 try:
                     name = ExpRefInfo.from_ref(ref).name
                 except InvalidExpRefError:
-                    pass  # noqa: S110
+                    pass
             if not name:
                 if rev in self.stash_revs:
                     name = self.stash_revs[rev].name

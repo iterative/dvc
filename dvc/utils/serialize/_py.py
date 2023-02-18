@@ -111,7 +111,7 @@ def _ast_tree_to_dict(tree, only_self_params=False, lineno=False):
     return result
 
 
-def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):
+def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):  # noqa: PLR0912
     result = {}
 
     if isinstance(assign, ast.AnnAssign):

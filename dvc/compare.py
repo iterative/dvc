@@ -209,7 +209,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         keys = self.keys() if cols is None else set(cols)
         return [{k: self._columns[k][i] for k in keys} for i in range(len(self))]
 
-    def dropna(  # noqa: C901
+    def dropna(  # noqa: C901, PLR0912
         self,
         axis: str = "rows",
         how="any",
@@ -371,7 +371,7 @@ def diff_table(
     return td
 
 
-def show_diff(
+def show_diff(  # noqa: PLR0913
     diff,
     title: str,
     old: bool = True,

@@ -10,46 +10,46 @@ import colorama
 from dvc.progress import Tqdm
 
 
-def addLoggingLevel(levelName, levelNum, methodName=None):
+def add_logging_level(level_name, level_num, method_name=None):
     """
     Adds a new logging level to the `logging` module and the
     currently configured logging class.
 
-    Uses the existing numeric levelNum if already defined.
+    Uses the existing numeric level_num if already defined.
 
     Based on https://stackoverflow.com/questions/2183233
     """
-    if methodName is None:
-        methodName = levelName.lower()
+    if method_name is None:
+        method_name = level_name.lower()
 
     # If the level name is already defined as a top-level `logging`
     # constant, then adopt the existing numeric level.
-    if hasattr(logging, levelName):
-        existingLevelNum = getattr(logging, levelName)
-        assert isinstance(existingLevelNum, int)
-        levelNum = existingLevelNum
+    if hasattr(logging, level_name):
+        existing_level_num = getattr(logging, level_name)
+        assert isinstance(existing_level_num, int)
+        level_num = existing_level_num
 
-    def logForLevel(self, message, *args, **kwargs):
-        if self.isEnabledFor(levelNum):
+    def log_for_level(self, message, *args, **kwargs):
+        if self.isEnabledFor(level_num):
             # pylint: disable=protected-access
-            self._log(levelNum, message, args, **kwargs)
+            self._log(level_num, message, args, **kwargs)
 
-    def logToRoot(message, *args, **kwargs):
-        logging.log(levelNum, message, *args, **kwargs)
+    def log_to_root(message, *args, **kwargs):
+        logging.log(level_num, message, *args, **kwargs)
 
     # getLevelName resolves the numeric log level if already defined,
     # otherwise returns a string
-    if not isinstance(logging.getLevelName(levelName), int):
-        logging.addLevelName(levelNum, levelName)
+    if not isinstance(logging.getLevelName(level_name), int):
+        logging.addLevelName(level_num, level_name)
 
-    if not hasattr(logging, levelName):
-        setattr(logging, levelName, levelNum)
+    if not hasattr(logging, level_name):
+        setattr(logging, level_name, level_num)
 
-    if not hasattr(logging.getLoggerClass(), methodName):
-        setattr(logging.getLoggerClass(), methodName, logForLevel)
+    if not hasattr(logging.getLoggerClass(), method_name):
+        setattr(logging.getLoggerClass(), method_name, log_for_level)
 
-    if not hasattr(logging, methodName):
-        setattr(logging, methodName, logToRoot)
+    if not hasattr(logging, method_name):
+        setattr(logging, method_name, log_to_root)
 
 
 class LoggingException(Exception):
@@ -129,7 +129,7 @@ class ColorFormatter(logging.Formatter):
 
 
 class LoggerHandler(logging.StreamHandler):
-    def handleError(self, record):
+    def handleError(self, record):  # noqa: N802
         super().handleError(record)
         raise LoggingException(record)
 
@@ -147,7 +147,7 @@ class LoggerHandler(logging.StreamHandler):
                         if not _is_verbose():
                             return
                     except Exception:  # noqa, pylint: disable=broad-except
-                        pass  # noqa: S110
+                        pass
 
             msg = self.format(record)
             Tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
@@ -190,7 +190,7 @@ def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     console_debug.setFormatter(formatter)
     console_debug.addFilter(exclude_filter(logging.INFO))
 
-    addLoggingLevel("TRACE", logging.DEBUG - 5)
+    add_logging_level("TRACE", logging.DEBUG - 5)
 
     console_trace = LoggerHandler(sys.stdout)
     console_trace.setLevel(logging.TRACE)  # type: ignore[attr-defined]

@@ -29,7 +29,7 @@ class MonitorTask:
         raise NotImplementedError
 
     @property
-    def SIGNAL_FILE(self) -> str:
+    def SIGNAL_FILE(self) -> str:  # noqa: N802
         raise NotImplementedError
 
     @property

@@ -148,7 +148,7 @@ VALIDATORS = (
 @validate(*VALIDATORS)
 @locked
 @scm_context
-def add(  # noqa: C901
+def add(
     repo: "Repo",
     targets: "TargetType",
     recursive: bool = False,

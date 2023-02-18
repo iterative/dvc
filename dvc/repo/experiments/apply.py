@@ -49,7 +49,7 @@ def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):  # noqa: C901
             exp_rev = repo.scm.get_ref(str(exp_ref_info))
         elif queue_entry:
             if queue_entry.baseline_rev != baseline_sha:
-                raise InvalidExpRevError(rev)
+                raise InvalidExpRevError(rev)  # noqa: B904
             exp_rev = queue_entry.stash_rev
             is_stash = True
         else:

@@ -15,7 +15,7 @@ from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
 
 
-def test_cloud_cli(tmp_dir, dvc, remote, mocker):
+def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
     jobs = 2
     args = ["-v", "-j", str(jobs)]
 

@@ -155,7 +155,7 @@ class Value(Node):
 PRIMITIVES = (int, float, str, bytes, bool)
 
 
-class Container(Node, ABC):  # noqa: B024
+class Container(Node, ABC):
     meta: Meta
     data: Union[list, dict]
     _key_transform = staticmethod(identity)

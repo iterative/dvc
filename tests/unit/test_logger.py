@@ -242,11 +242,11 @@ def test_add_existing_level(caplog, dt):
     # eg:
     # https://github.com/bokeh/bokeh/blob/04bb30fef2e72e64baaa8b2f330806d5bfdd3b11/
     # bokeh/util/logconfig.py#L79-L85
-    TRACE2 = 4
+    TRACE2 = 4  # noqa: N806
     logging.addLevelName(TRACE2, "TRACE2")
     logging.TRACE2 = TRACE2
 
-    dvc.logger.addLoggingLevel("TRACE2", 2)
+    dvc.logger.add_logging_level("TRACE2", 2)
 
     # DVC sets all expected entrypoints, but doesn't override the level
     assert logging.TRACE2 == 4

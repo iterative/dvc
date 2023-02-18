@@ -23,7 +23,7 @@ def _validate_args(**kwargs):
 
 
 @locked
-def gc(
+def gc(  # noqa: PLR0913
     self: "Repo",
     all_branches: bool = False,
     cloud: bool = False,

@@ -14,8 +14,8 @@ def apply_diff(src, dest):  # noqa: C901
 
     Used in Stage load/dump cycle to preserve comments and custom formatting.
     """
-    Seq = (list, tuple)
-    Container = (Mapping, list, tuple)
+    Seq = (list, tuple)  # noqa: N806
+    Container = (Mapping, list, tuple)  # noqa: N806
 
     def is_same_type(a, b):
         return any(

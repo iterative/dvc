@@ -312,7 +312,7 @@ class Output:
     IsStageFileError: Type[DvcException] = OutputIsStageFileError
     IsIgnoredError: Type[DvcException] = OutputIsIgnoredError
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         stage,
         path,
@@ -768,7 +768,7 @@ class Output:
         )
         return checkout_obj
 
-    def dumpd(self, **kwargs):  # noqa: C901
+    def dumpd(self, **kwargs):  # noqa: C901, PLR0912
         ret: Dict[str, Any] = {}
         with_files = (
             (not self.IS_DEPENDENCY or self.stage.is_import)
@@ -1059,7 +1059,7 @@ class Output:
             return obj.filter(prefix)
         return cast(Tree, obj)
 
-    def get_used_objs(  # noqa: C901
+    def get_used_objs(  # noqa: C901, PLR0911
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""

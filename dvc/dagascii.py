@@ -80,7 +80,7 @@ class AsciiCanvas:
 
         self.canvas[y][x] = char
 
-    def line(self, x0, y0, x1, y1, char):  # noqa: C901
+    def line(self, x0, y0, x1, y1, char):  # noqa: C901, PLR0912
         """Create a line on ASCII canvas.
 
         Args:
@@ -213,8 +213,8 @@ def draw(vertices, edges):
     # pylint: disable=too-many-locals
     # NOTE: coordinates might me negative, so we need to shift
     # everything to the positive plane before we actually draw it.
-    Xs = []  # pylint: disable=invalid-name
-    Ys = []  # pylint: disable=invalid-name
+    Xs = []  # noqa: N806, pylint: disable=invalid-name
+    Ys = []  # noqa: N806, pylint: disable=invalid-name
 
     sug = _build_sugiyama_layout(vertices, edges)
 

@@ -19,7 +19,7 @@ class VersionEnum(str, enum.Enum):
         return [v.value for v in cls]
 
 
-class LOCKFILE_VERSION(VersionEnum):
+class LOCKFILE_VERSION(VersionEnum):  # noqa: N801
     V1 = "1.0"
     V2 = "2.0"
 

@@ -60,35 +60,35 @@ def test_build(repo):
 
 
 def test_build_target(repo):
-    G = _build(repo, target="3")
-    assert set(G.nodes()) == {"3", "b.dvc", "a.dvc"}
-    assert set(G.edges()) == {("3", "a.dvc"), ("3", "b.dvc")}
+    graph = _build(repo, target="3")
+    assert set(graph.nodes()) == {"3", "b.dvc", "a.dvc"}
+    assert set(graph.edges()) == {("3", "a.dvc"), ("3", "b.dvc")}
 
 
 def test_build_target_with_outs(repo):
-    G = _build(repo, target="3", outs=True)
-    assert set(G.nodes()) == {"a", "b", "h", "i"}
-    assert set(G.edges()) == {("i", "a"), ("i", "b"), ("h", "a"), ("h", "b")}
+    graph = _build(repo, target="3", outs=True)
+    assert set(graph.nodes()) == {"a", "b", "h", "i"}
+    assert set(graph.edges()) == {("i", "a"), ("i", "b"), ("h", "a"), ("h", "b")}
 
 
 def test_build_granular_target_with_outs(repo):
-    G = _build(repo, target="h", outs=True)
-    assert set(G.nodes()) == {"a", "b", "h"}
-    assert set(G.edges()) == {("h", "a"), ("h", "b")}
+    graph = _build(repo, target="h", outs=True)
+    assert set(graph.nodes()) == {"a", "b", "h"}
+    assert set(graph.edges()) == {("h", "a"), ("h", "b")}
 
 
 def test_build_full(repo):
-    G = _build(repo, target="3", full=True)
-    assert nx.is_isomorphic(G, repo.index.graph)
+    graph = _build(repo, target="3", full=True)
+    assert nx.is_isomorphic(graph, repo.index.graph)
 
 
 # NOTE: granular or not, full outs DAG should be the same
 @pytest.mark.parametrize("granular", [True, False])
 def test_build_full_outs(repo, granular):
     target = "h" if granular else "3"
-    G = _build(repo, target=target, outs=True, full=True)
-    assert set(G.nodes()) == {"j", "i", "d", "b", "g", "f", "e", "a", "h"}
-    assert set(G.edges()) == {
+    graph = _build(repo, target=target, outs=True, full=True)
+    assert set(graph.nodes()) == {"j", "i", "d", "b", "g", "f", "e", "a", "h"}
+    assert set(graph.edges()) == {
         ("d", "a"),
         ("e", "a"),
         ("f", "b"),

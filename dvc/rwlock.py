@@ -74,7 +74,7 @@ def _infos_to_str(infos):
     )
 
 
-def _check_blockers(tmp_dir, lock, info, *, mode, waiters):  # noqa: C901
+def _check_blockers(tmp_dir, lock, info, *, mode, waiters):  # noqa: C901, PLR0912
     from .lock import LockError
 
     non_existing_pid = set()

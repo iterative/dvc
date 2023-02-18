@@ -21,9 +21,9 @@ from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
 
 if TYPE_CHECKING:
+    from dvc.dependency import Dependency
     from dvc.dvcfile import ProjectFile, SingleStageFile
     from dvc.repo import Repo
-    from dvc.dependency import Dependency
 
 from dvc.ui import ui
 

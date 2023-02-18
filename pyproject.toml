@@ -159,10 +159,10 @@ line_length = 88
 [tool.ruff]
 target-version = "py38"
 show-source = true
-ignore = ["S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR0913", "PLR2004", "RUF005"]
-select = ["F", "E", "W", "C90", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "RUF"]
+ignore = ["N818", "S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR2004", "RUF005"]
+select = ["F", "E", "W", "C90", "N", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "RUF"]
 # external flake8 codes that should be preserved
-external = ["B301", "B024", "C901", "E302", "F401", "W601"]
+external = ["B301", "C901", "E302", "W601"]
 
 [tool.ruff.flake8-pytest-style]
 fixture-parentheses = false
@@ -181,9 +181,19 @@ strict = true
 [tool.ruff.flake8-unused-arguments]
 ignore-variadic-names = true
 
+[tool.ruff.isort]
+known-first-party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
+
+[tool.ruff.pep8-naming]
+ignore-names = ["M", "SCM"]
+
 [tool.ruff.per-file-ignores]
-"dvc/testing/*.py" = ["ARG002"]
-"scripts/**/*.py" = ["T201", "INP001", "TRY002"]
+"dvc/testing/**" = ["ARG002"]
+"scripts/**" = ["T201", "INP001", "TRY002"]
+"dvc/commands/**" = ["N806"]
+
+[tool.ruff.pylint]
+max-args = 10
 
 [tool.pytest.ini_options]
 log_level = "debug"
