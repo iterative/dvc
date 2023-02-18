@@ -82,37 +82,35 @@ webdav = ["dvc-webdav==2.19.1"]
 webhdfs = ["dvc-webhdfs==2.19.0"]
 webhdfs_kerberos = ["dvc-webhdfs[kerberos]==2.19.0"]
 terraform = ["tpi[ssh]>=2.1.0"]
-testing = ["pytest-test-utils==0.0.8"]
+testing = ["pytest-test-utils"]
 tests = [
-    "tpi[ssh]>=2.1.0",
-    "dvc-ssh==2.21.0",
-    "pytest-test-utils==0.0.8",
-    # Test requirements
-    "pytest==7.2.1",
-    "pytest-cov==4.0.0",
-    "pytest-xdist==3.2.0",
-    "pytest-mock==3.10.0",
-    "pytest-lazy-fixture==0.6.3",
-    # https://github.com/docker/docker-py/issues/2902
-    "pytest-docker==0.11.0; python_version < '3.10' or sys_platform != 'win32'",
-    "flaky==3.7.0",
-    "pytest-timeout==2.1.0",
-    "filelock==3.9.0",
-    "beautifulsoup4==4.11.2",
-    "pywin32>=225; sys_platform == 'win32'",  # optional dependency
-    "pylint==2.16.2",
-    # type-checking
+    "beautifulsoup4>=4.4",
+    "dvc-ssh",
+    "filelock",
+    "flaky",
+    "pytest>=7,<8",
+    "pytest-cov",
+    "pytest-docker",
+    "pytest-lazy-fixture",
+    "pytest-mock",
+    "pytest-test-utils",
+    "pytest-xdist>=3.1",
+    "pytest-timeout>=2",
+    "pywin32>=225; sys_platform == 'win32'",  # optional test dependency
+]
+lint = [
     "mypy==1.0.1",
-    "types-requests",
-    "types-tabulate",
-    "types-toml",
+    "pylint==2.16.2",
     "types-appdirs",
     "types-colorama",
     "types-psutil",
-    "types-tqdm<4.64.7.13",
+    "types-requests",
+    "types-tabulate",
+    "types-toml",
+    "types-tqdm",
 ]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
-dev = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs,tests]"]
+dev = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs,tests,lint,terraform]"]
 
 [project.urls]
 Documentation = "https://dvc.org/doc"
