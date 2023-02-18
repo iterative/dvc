@@ -109,7 +109,7 @@ tests = [
     "types-appdirs",
     "types-colorama",
     "types-psutil",
-    "types-tqdm<4.64.7.13",
+    "types-tqdm<4.64.7.14",
 ]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
 dev = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs,tests]"]
