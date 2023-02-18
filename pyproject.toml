@@ -116,7 +116,7 @@ dev = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs,tests]"]
 
 [project.urls]
 Documentation = "https://dvc.org/doc"
-"Bug Tracker" = "https://github.com/iterative/dvc/issues"
+Issues = "https://github.com/iterative/dvc/issues"
 Source = "https://github.com/iterative/dvc"
 
 [project.scripts]
@@ -154,7 +154,6 @@ exclude = '''
 [tool.isort]
 profile = "black"
 known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
-line_length = 88
 
 [tool.ruff]
 target-version = "py38"
@@ -172,10 +171,9 @@ raises-extend-require-match-for = ["dvc.exceptions.DvcException", "dvc.scm.SCMEr
 
 [tool.ruff.flake8-tidy-imports]
 [tool.ruff.flake8-tidy-imports.banned-api]
-"funcy.cached_property".msg = "use `from dvc.utils.objects import cached_property` instead."
+"funcy.cached_property" = {msg = "use `from dvc.utils.objects import cached_property` instead."}
 
 [tool.ruff.flake8-type-checking]
-exempt-modules = ["typing"]
 strict = true
 
 [tool.ruff.flake8-unused-arguments]
@@ -217,13 +215,13 @@ source = ["dvc"]
 [tool.coverage.report]
 show_missing = true
 exclude_lines = [
-    "pragma: no cover",
     "if __name__ == .__main__.:",
     "if typing.TYPE_CHECKING:",
     "if TYPE_CHECKING:",
+    "@overload",
+    "pragma: no cover",
     "raise NotImplementedError",
     "raise AssertionError",
-    "@overload",
 ]
 
 [tool.mypy]
