@@ -102,7 +102,7 @@ tests = [
     "pywin32>=225; sys_platform == 'win32'",  # optional dependency
     "pylint==2.16.2",
     # type-checking
-    "mypy==0.991",
+    "mypy==1.0.1",
     "types-requests",
     "types-tabulate",
     "types-toml",
