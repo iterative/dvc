@@ -383,7 +383,7 @@ def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
                     checkpoint = True
 
 
-def show(
+def show(  # noqa: PLR0913
     repo: "Repo",
     all_branches=False,
     all_tags=False,

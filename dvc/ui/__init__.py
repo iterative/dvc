@@ -87,7 +87,7 @@ class Console:
             styled=styled,
         )
 
-    def write_json(
+    def write_json(  # noqa: PLR0913
         self,
         data: Any,
         indent: Optional[int] = None,

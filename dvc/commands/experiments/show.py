@@ -62,7 +62,7 @@ experiment_types = {
 }
 
 
-def _collect_rows(  # noqa: C901
+def _collect_rows(  # noqa: C901, PLR0912, PLR0913, PLR0915
     base_rev,
     experiments,
     all_headers,
@@ -244,7 +244,7 @@ def _extend_row(row, names, headers, items, precision, fill_value=FILL_VALUE):
                 row[f"{fname}:{name}"] = value
 
 
-def experiments_table(
+def experiments_table(  # noqa: PLR0913
     all_experiments,
     headers,
     metric_headers,
@@ -308,7 +308,7 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(  # noqa: C901
+def show_experiments(  # noqa: C901, PLR0912
     all_experiments,
     keep=None,
     drop=None,

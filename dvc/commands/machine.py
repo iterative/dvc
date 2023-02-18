@@ -302,7 +302,7 @@ class CmdMachineSsh(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, parent_parser):  # noqa: PLR0915
     from dvc.commands.config import parent_config_parser
 
     machine_HELP = "Set up and manage cloud machines."

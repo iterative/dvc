@@ -295,7 +295,7 @@ class BaseStashQueue(ABC):
                 output.
         """
 
-    def _stash_exp(  # noqa: C901
+    def _stash_exp(  # noqa: PLR0915, C901
         self,
         *args,
         params: Optional[Dict[str, List[str]]] = None,

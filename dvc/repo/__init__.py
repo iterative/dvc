@@ -149,7 +149,7 @@ class Repo:
         self.fs.makedirs(db_dir, exist_ok=True)
         return db_dir
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         root_dir: Optional[str] = None,
         fs: Optional["FileSystem"] = None,
@@ -453,7 +453,7 @@ class Repo:
 
         return brancher(self, *args, **kwargs)
 
-    def used_objs(
+    def used_objs(  # noqa: PLR0913
         self,
         targets=None,
         all_branches=False,

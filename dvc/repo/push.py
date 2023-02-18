@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 @locked
-def push(  # noqa: C901
+def push(  # noqa: C901, PLR0913
     self,
     targets=None,
     jobs=None,

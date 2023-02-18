@@ -140,7 +140,7 @@ class Stage(params.StageParams):
     # pylint:disable=no-value-for-parameter
     # rwlocked() confuses pylint
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         repo,
         path=None,

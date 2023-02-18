@@ -146,7 +146,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
     return None
 
 
-def main(argv=None):  # noqa: C901
+def main(argv=None):  # noqa: C901, PLR0912, PLR0915
     """Main entry point for dvc CLI.
 
     Args:
