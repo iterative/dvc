@@ -4,7 +4,6 @@ from typing import Dict, Iterable, Optional, Union
 
 from funcy import first
 
-from dvc.exceptions import DvcException
 from dvc.repo import Repo
 
 
@@ -73,9 +72,6 @@ def metrics_show(
 
     Returns:
         Dict: See Examples below.
-
-    Raises:
-        DvcException: If no metrics are found in `repo`.
 
     Examples:
 
@@ -150,7 +146,7 @@ def metrics_show(
     metrics = _postprocess(metrics)
 
     if not metrics:
-        raise DvcException("No metrics found")
+        return {}
 
     return metrics[first(metrics)]
 
@@ -202,9 +198,6 @@ def params_show(
 
     Returns:
         Dict: See Examples below.
-
-    Raises:
-        DvcException: If no params are found in `repo`.
 
     Examples:
 
@@ -398,6 +391,6 @@ def params_show(
     params = _postprocess(params)
 
     if not params:
-        raise DvcException("No params found.")
+        return {}
 
     return params[first(params)]

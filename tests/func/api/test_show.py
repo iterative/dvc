@@ -6,7 +6,6 @@ from typing import Dict, List
 import pytest
 
 from dvc import api
-from dvc.exceptions import DvcException
 
 TRAIN_METRICS: List[Dict[str, Dict[str, float]]] = [
     {
@@ -179,8 +178,7 @@ def test_params_show_stages(params_repo):
 
     assert api.params_show("params.json", stages="stage-3") == {"foobar": 3}
 
-    with pytest.raises(DvcException, match="No params found"):
-        api.params_show(stages="stage-0")
+    assert api.params_show(stages="stage-0") == {}
 
 
 def test_params_show_stage_addressing(tmp_dir, dvc):
@@ -253,8 +251,7 @@ def test_params_show_repo(tmp_dir, erepo_dir):
 
 def test_params_show_no_params_found(tmp_dir, dvc):
     # Empty repo
-    with pytest.raises(DvcException, match="No params found"):
-        api.params_show()
+    assert api.params_show() == {}
 
     # params.yaml but no dvc.yaml
     (tmp_dir / "params.yaml").dump({"foo": 1})
@@ -263,8 +260,7 @@ def test_params_show_no_params_found(tmp_dir, dvc):
     # dvc.yaml but no params.yaml
     (tmp_dir / "params.yaml").unlink()
     dvc.stage.add(name="echo", cmd="echo foo")
-    with pytest.raises(DvcException, match="No params found"):
-        api.params_show()
+    assert api.params_show() == {}
 
 
 def test_params_show_stage_without_params(tmp_dir, dvc):
@@ -275,11 +271,9 @@ def test_params_show_stage_without_params(tmp_dir, dvc):
         cmd="echo stage-0",
     )
 
-    with pytest.raises(DvcException, match="No params found"):
-        api.params_show(stages="stage-0")
+    assert api.params_show(stages="stage-0") == {}
 
-    with pytest.raises(DvcException, match="No params found"):
-        api.params_show(deps=True)
+    assert api.params_show(deps=True) == {}
 
 
 def test_params_show_untracked_target(params_repo, tmp_dir):
@@ -287,11 +281,9 @@ def test_params_show_untracked_target(params_repo, tmp_dir):
 
     assert api.params_show("params_foo.yaml") == {"foo": 1}
 
-    with pytest.raises(DvcException, match="No params found"):
-        api.params_show("params_foo.yaml", stages="stage-0")
+    assert api.params_show("params_foo.yaml", stages="stage-0") == {}
 
-    with pytest.raises(DvcException, match="No params found"):
-        api.params_show("params_foo.yaml", deps=True)
+    assert api.params_show("params_foo.yaml", deps=True) == {}
 
 
 def test_metrics_show_no_args(metrics_repo):
@@ -324,18 +316,15 @@ def test_metrics_show_targets(metrics_repo):
 
 def test_metrics_show_no_metrics_found(tmp_dir, dvc):
     # Empty repo
-    with pytest.raises(DvcException, match="No metrics found"):
-        api.metrics_show()
+    assert api.metrics_show() == {}
 
     # dvc.yaml but no metrics
     dvc.stage.add(name="echo", cmd="echo foo")
-    with pytest.raises(DvcException, match="No metrics found"):
-        api.metrics_show()
+    assert api.metrics_show() == {}
 
 
 def test_metrics_show_rev_without_metrics(metrics_repo):
-    with pytest.raises(DvcException, match="No metrics found"):
-        api.metrics_show(rev="HEAD~2")
+    assert api.metrics_show(rev="HEAD~2") == {}
 
 
 def test_metrics_show_rev_with_metrics(metrics_repo):
