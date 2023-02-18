@@ -129,7 +129,7 @@ def reproduce(  # noqa: C901
 
 
 def _reproduce_stages(  # noqa: C901
-    G, stages, downstream=False, single_item=False, on_unchanged=None, **kwargs
+    graph, stages, downstream=False, single_item=False, on_unchanged=None, **kwargs
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
@@ -166,7 +166,7 @@ def _reproduce_stages(  # noqa: C901
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
-    steps = _get_steps(G, stages, downstream, single_item)
+    steps = _get_steps(graph, stages, downstream, single_item)
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
@@ -222,16 +222,16 @@ def _reproduce_stages(  # noqa: C901
     return result
 
 
-def _get_steps(G, stages, downstream, single_item):
+def _get_steps(graph, stages, downstream, single_item):
     import networkx as nx
 
-    active = G.copy()
+    active = graph.copy()
     if not single_item:
         # NOTE: frozen stages don't matter for single_item
-        for stage in G:
+        for stage in graph:
             if stage.frozen:
                 # NOTE: disconnect frozen stage from its dependencies
-                active.remove_edges_from(G.out_edges(stage))
+                active.remove_edges_from(graph.out_edges(stage))
 
     all_pipelines: List["Stage"] = []
     for stage in stages:

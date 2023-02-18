@@ -172,7 +172,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
 
     args = None
 
-    outerLogLevel = logger.level
+    outer_log_level = logger.level
     try:
         args = parse_args(argv)
 
@@ -243,7 +243,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
 
         return ret
     finally:
-        logger.setLevel(outerLogLevel)
+        logger.setLevel(outer_log_level)
 
         from dvc.external_repo import clean_repos
 

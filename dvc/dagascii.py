@@ -213,8 +213,8 @@ def draw(vertices, edges):
     # pylint: disable=too-many-locals
     # NOTE: coordinates might me negative, so we need to shift
     # everything to the positive plane before we actually draw it.
-    Xs = []  # pylint: disable=invalid-name
-    Ys = []  # pylint: disable=invalid-name
+    Xs = []  # noqa: N806, pylint: disable=invalid-name
+    Ys = []  # noqa: N806, pylint: disable=invalid-name
 
     sug = _build_sugiyama_layout(vertices, edges)
 

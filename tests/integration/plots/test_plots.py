@@ -97,11 +97,6 @@ def _remove_blanks(text: str):
     return " ".join(text.replace("\t", "").replace("\n", "").split())
 
 
-class hashabledict(dict):
-    def __hash__(self):
-        return hash(tuple(sorted(self.items())))
-
-
 def verify_vega(
     versions,
     html_result,

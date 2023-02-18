@@ -30,7 +30,7 @@ def supported_cache_type(types):
     return types
 
 
-def Choices(*choices):
+def Choices(*choices):  # noqa: N802
     """Checks that value belongs to the specified set of values
 
     Args:
@@ -40,7 +40,7 @@ def Choices(*choices):
     return Any(*choices, msg="expected one of {}".format(", ".join(choices)))
 
 
-def ByUrl(mapping):
+def ByUrl(mapping):  # noqa: N802
     schemas = walk_values(Schema, mapping)
 
     def validate(data):

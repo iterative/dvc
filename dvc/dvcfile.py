@@ -187,7 +187,7 @@ class FileMixin:
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import SingleStageLoader as LOADER
+    from dvc.stage.loader import SingleStageLoader as LOADER  # noqa: N814
 
     metrics: List[str] = []
     plots: Any = {}
@@ -231,7 +231,7 @@ class ProjectFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import StageLoader as LOADER
+    from dvc.stage.loader import StageLoader as LOADER  # noqa: N814
 
     @property
     def _lockfile(self):
