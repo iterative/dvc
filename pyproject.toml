@@ -46,7 +46,6 @@ dependencies = [
     "funcy>=1.14",
     "grandalf<1,>=0.7",
     "hydra-core>=1.1",
-    'importlib-resources>=5.2.2; python_version < "3.9"',
     "iterative-telemetry==0.0.7",
     "networkx>=2.5",
     "packaging>=19",
@@ -64,7 +63,6 @@ dependencies = [
     "tabulate>=0.8.7",
     "tomlkit>=0.11.1",
     "tqdm<5,>=4.63.1",
-    "typing-extensions>=3.7.4",
     "voluptuous>=0.11.7",
     "zc.lockfile>=1.2.1",
 ]
