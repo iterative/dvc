@@ -364,7 +364,7 @@ class Index:
             index = DataIndex()
 
         prefix = ("tree", self.data_tree.hash_info.value)
-        if prefix in index.ls((), detail=False):
+        if index.has_node(prefix):
             loaded = True
 
         try:
