@@ -77,7 +77,7 @@ class DataCloud:
             fs = cls(**config)
             config["tmp_dir"] = self.repo.index_db_dir
             if self.repo.data_index is not None:
-                index = self.repo.data_index.view(("remotes", name))
+                index = self.repo.data_index.view(("remote", name))
             else:
                 index = None
             return Remote(name, fs_path, fs, index=index, **config)
