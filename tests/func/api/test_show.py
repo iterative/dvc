@@ -137,6 +137,11 @@ def metrics_repo(tmp_dir, scm, dvc, run_copy_metrics):
 
     scm.checkout("master")
 
+    return (
+        os.path.relpath(train_metrics_file, tmp_dir),
+        os.path.relpath(test_metrics_file, tmp_dir),
+    )
+
 
 def test_params_show_no_args(params_repo):
     assert api.params_show() == {
@@ -287,30 +292,24 @@ def test_params_show_untracked_target(params_repo, tmp_dir):
 
 
 def test_metrics_show_no_args(metrics_repo):
+    train_metrics_file, test_metrics_file = metrics_repo
     assert api.metrics_show() == {
-        f"eval{os.sep}train_val_metrics.json:avg_prec": TRAIN_METRICS[0]["avg_prec"],
-        f"eval{os.sep}train_val_metrics.json:roc_auc": TRAIN_METRICS[0]["roc_auc"],
-        f"eval{os.sep}test_metrics.json:avg_prec": TEST_METRICS[0]["avg_prec"],
-        f"eval{os.sep}test_metrics.json:roc_auc": TEST_METRICS[0]["roc_auc"],
+        f"{train_metrics_file}:avg_prec": TRAIN_METRICS[0]["avg_prec"],
+        f"{train_metrics_file}:roc_auc": TRAIN_METRICS[0]["roc_auc"],
+        f"{test_metrics_file}:avg_prec": TEST_METRICS[0]["avg_prec"],
+        f"{test_metrics_file}:roc_auc": TEST_METRICS[0]["roc_auc"],
     }
 
 
 def test_metrics_show_targets(metrics_repo):
-    assert (
-        api.metrics_show(os.path.join("eval", "train_val_metrics.json"))
-        == TRAIN_METRICS[0]
-    )
-    assert (
-        api.metrics_show(os.path.join("eval", "test_metrics.json")) == TEST_METRICS[0]
-    )
-    assert api.metrics_show(
-        os.path.join("eval", "train_val_metrics.json"),
-        os.path.join("eval", "test_metrics.json"),
-    ) == {
-        f"eval{os.sep}train_val_metrics.json:avg_prec": TRAIN_METRICS[0]["avg_prec"],
-        f"eval{os.sep}train_val_metrics.json:roc_auc": TRAIN_METRICS[0]["roc_auc"],
-        f"eval{os.sep}test_metrics.json:avg_prec": TEST_METRICS[0]["avg_prec"],
-        f"eval{os.sep}test_metrics.json:roc_auc": TEST_METRICS[0]["roc_auc"],
+    train_metrics_file, test_metrics_file = metrics_repo
+    assert api.metrics_show(train_metrics_file) == TRAIN_METRICS[0]
+    assert api.metrics_show(test_metrics_file) == TEST_METRICS[0]
+    assert api.metrics_show(train_metrics_file, test_metrics_file) == {
+        f"{train_metrics_file}:avg_prec": TRAIN_METRICS[0]["avg_prec"],
+        f"{train_metrics_file}:roc_auc": TRAIN_METRICS[0]["roc_auc"],
+        f"{test_metrics_file}:avg_prec": TEST_METRICS[0]["avg_prec"],
+        f"{test_metrics_file}:roc_auc": TEST_METRICS[0]["roc_auc"],
     }
 
 
@@ -328,35 +327,37 @@ def test_metrics_show_rev_without_metrics(metrics_repo):
 
 
 def test_metrics_show_rev_with_metrics(metrics_repo):
+    train_metrics_file, test_metrics_file = metrics_repo
     assert api.metrics_show(rev="HEAD~1") == TRAIN_METRICS[0]
     assert api.metrics_show(rev="HEAD") == {
-        f"eval{os.sep}train_val_metrics.json:avg_prec": TRAIN_METRICS[0]["avg_prec"],
-        f"eval{os.sep}train_val_metrics.json:roc_auc": TRAIN_METRICS[0]["roc_auc"],
-        f"eval{os.sep}test_metrics.json:avg_prec": TEST_METRICS[0]["avg_prec"],
-        f"eval{os.sep}test_metrics.json:roc_auc": TEST_METRICS[0]["roc_auc"],
+        f"{train_metrics_file}:avg_prec": TRAIN_METRICS[0]["avg_prec"],
+        f"{train_metrics_file}:roc_auc": TRAIN_METRICS[0]["roc_auc"],
+        f"{test_metrics_file}:avg_prec": TEST_METRICS[0]["avg_prec"],
+        f"{test_metrics_file}:roc_auc": TEST_METRICS[0]["roc_auc"],
     }
     assert api.metrics_show(rev="better-model~1") == {
-        f"eval{os.sep}train_val_metrics.json:avg_prec": TRAIN_METRICS[1]["avg_prec"],
-        f"eval{os.sep}train_val_metrics.json:roc_auc": TRAIN_METRICS[1]["roc_auc"],
-        f"eval{os.sep}test_metrics.json:avg_prec": TEST_METRICS[0]["avg_prec"],
-        f"eval{os.sep}test_metrics.json:roc_auc": TEST_METRICS[0]["roc_auc"],
+        f"{train_metrics_file}:avg_prec": TRAIN_METRICS[1]["avg_prec"],
+        f"{train_metrics_file}:roc_auc": TRAIN_METRICS[1]["roc_auc"],
+        f"{test_metrics_file}:avg_prec": TEST_METRICS[0]["avg_prec"],
+        f"{test_metrics_file}:roc_auc": TEST_METRICS[0]["roc_auc"],
     }
     assert api.metrics_show(rev="better-model") == {
-        f"eval{os.sep}train_val_metrics.json:avg_prec": TRAIN_METRICS[1]["avg_prec"],
-        f"eval{os.sep}train_val_metrics.json:roc_auc": TRAIN_METRICS[1]["roc_auc"],
-        f"eval{os.sep}test_metrics.json:avg_prec": TEST_METRICS[1]["avg_prec"],
-        f"eval{os.sep}test_metrics.json:roc_auc": TEST_METRICS[1]["roc_auc"],
+        f"{train_metrics_file}:avg_prec": TRAIN_METRICS[1]["avg_prec"],
+        f"{train_metrics_file}:roc_auc": TRAIN_METRICS[1]["roc_auc"],
+        f"{test_metrics_file}:avg_prec": TEST_METRICS[1]["avg_prec"],
+        f"{test_metrics_file}:roc_auc": TEST_METRICS[1]["roc_auc"],
     }
 
 
 def test_metrics_show_dirty_working_dir(metrics_repo, tmp_dir):
+    train_metrics_file, test_metrics_file = metrics_repo
     new_metrics = {"acc": 1}
-    (tmp_dir / os.path.join("eval", "train_val_metrics.json")).unlink()
-    tmp_dir.gen(os.path.join("eval", "train_val_metrics.json"), json.dumps(new_metrics))
-    (tmp_dir / os.path.join("eval", "test_metrics.json")).unlink()
-    tmp_dir.gen(os.path.join("eval", "test_metrics.json"), json.dumps(new_metrics))
+    (tmp_dir / train_metrics_file).unlink()
+    (tmp_dir / train_metrics_file).dump(new_metrics)
+    (tmp_dir / test_metrics_file).unlink()
+    (tmp_dir / test_metrics_file).dump(new_metrics)
 
     assert api.metrics_show() == {
-        f"eval{os.sep}train_val_metrics.json:acc": new_metrics["acc"],
-        f"eval{os.sep}test_metrics.json:acc": new_metrics["acc"],
+        f"{train_metrics_file}:acc": new_metrics["acc"],
+        f"{test_metrics_file}:acc": new_metrics["acc"],
     }
