@@ -385,7 +385,7 @@ class Repo:
             return None
 
         if self._data_index is None:
-            index_dir = os.path.join(self.index_db_dir, "data")
+            index_dir = os.path.join(self.index_db_dir, "index", "data")
             os.makedirs(index_dir, exist_ok=True)
 
             self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
