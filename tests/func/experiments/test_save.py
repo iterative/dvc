@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from funcy import first
 
@@ -91,3 +93,15 @@ def test_exp_save_include_untracked(tmp_dir, dvc, scm, exp_stage):
 
     dvc.experiments.apply("exp-0")
     assert new_file.read_text() == "exp-0"
+
+
+def test_exp_save_include_untracked_warning(tmp_dir, dvc, scm, caplog, exp_stage):
+    """Regression test for https://github.com/iterative/dvc/issues/9061"""
+    new_dir = tmp_dir / "new_dir"
+    new_dir.mkdir()
+    (new_dir / "foo").write_text("foo")
+    (new_dir / "bar").write_text("bar")
+
+    with caplog.at_level(logging.WARNING, logger="dvc.repo.experiments.save"):
+        dvc.experiments.save(name="exp", include_untracked=["new_dir"])
+        assert not caplog.records
