@@ -60,6 +60,7 @@ def _diff(
     granular: bool = False,
     not_in_cache: bool = False,
     not_in_remote: bool = False,
+    remote_refresh: bool = False,
 ) -> Dict[str, List[str]]:
     from dvc_data.index import StorageError
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
@@ -109,7 +110,9 @@ def _diff(
                 not_in_remote
                 and change.old
                 and change.old.hash_info
-                and not old.storage_map.remote_exists(change.old)
+                and not old.storage_map.remote_exists(
+                    change.old, refresh=remote_refresh
+                )
             ):
                 _add_change("not_in_remote", change)
         except StorageError:

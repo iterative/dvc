@@ -118,6 +118,7 @@ class CmdDataStatus(CmdBase):
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
                 not_in_remote=self.args.not_in_remote,
+                remote_refresh=self.args.remote_refresh,
             )
 
         if not self.args.unchanged:
@@ -248,6 +249,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show files missing from remote.",
+    )
+    data_status_parser.add_argument(
+        "--remote-refresh",
+        action="store_true",
+        default=False,
+        help="Refresh remote index.",
     )
     data_status_parser.set_defaults(func=CmdDataStatus)
 
