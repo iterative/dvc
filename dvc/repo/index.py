@@ -363,7 +363,7 @@ class Index:
         if index is None:
             index = DataIndex()
 
-        prefix = (self.data_tree.hash_info.value,)
+        prefix = ("tree", self.data_tree.hash_info.value)
         if prefix in index.ls((), detail=False):
             loaded = True
 
