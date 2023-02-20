@@ -361,6 +361,19 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         info["name"] = path
         return info
 
+    def get_file(self, rpath, lpath, **kwargs):  # pylint: disable=arguments-differ
+        key = self._get_key_from_relative(rpath)
+        fs_path = self._from_key(key)
+        try:
+            return self.repo.fs.get_file(fs_path, lpath, **kwargs)
+        except FileNotFoundError:
+            _, dvc_fs, subkey = self._get_subrepo_info(key)
+            if not dvc_fs:
+                raise
+
+        dvc_path = _get_dvc_path(dvc_fs, subkey)
+        return dvc_fs.get_file(dvc_path, lpath, **kwargs)
+
 
 class DVCFileSystem(FileSystem):
     protocol = "local"
