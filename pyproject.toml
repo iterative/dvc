@@ -97,12 +97,12 @@ tests = [
     "flaky",
     "pytest<8,>=7",
     "pytest-cov",
-    "pytest-docker==1.0.1",
+    "pytest-docker",
     "pytest-lazy-fixture",
     "pytest-mock",
     "pytest-test-utils",
     "pytest-timeout>=2",
-    "pytest-xdist>=3.1",
+    "pytest-xdist>=3",
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
 ]
 webdav = ["dvc-webdav==2.19.1"]
