@@ -172,6 +172,7 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
             repo.index.data["repo"],
             workspace,
             not_in_cache=True,
+            not_in_remote=True,
             **kwargs,
         )
 
@@ -223,7 +224,6 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> List[str]
 def status(
     repo: "Repo",
     untracked_files: str = "no",
-    not_in_remote: bool = False,
     **kwargs: Any,
 ) -> Status:
     from dvc.scm import NoSCMError, SCMError
@@ -231,7 +231,6 @@ def status(
     head = kwargs.pop("head", "HEAD")
     uncommitted_diff = _diff_index_to_wtree(
         repo,
-        not_in_remote=not_in_remote,
         **kwargs,
     )
     unchanged = set(uncommitted_diff.pop("unchanged", []))
