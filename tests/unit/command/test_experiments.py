@@ -100,6 +100,7 @@ def test_experiments_show(dvc, scm, mocker):
             "1",
             "--rev",
             "foo",
+            "--force",
         ]
     )
     assert cli_args.func == CmdExperimentsShow
@@ -121,6 +122,7 @@ def test_experiments_show(dvc, scm, mocker):
         sha_only=True,
         param_deps=True,
         fetch_running=True,
+        force=True,
     )
 
 

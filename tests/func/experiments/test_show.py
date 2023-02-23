@@ -12,6 +12,7 @@ from dvc.cli import main
 from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo, TaskStatus
 from dvc.repo.experiments.queue.base import QueueEntry
 from dvc.repo.experiments.refs import CELERY_STASH, ExpRefInfo
+from dvc.repo.experiments.show import _CachedError
 from dvc.repo.experiments.utils import EXEC_PID_DIR, EXEC_TMP_DIR, exp_refs_by_rev
 from dvc.utils import relpath
 from dvc.utils.serialize import YAMLFileCorruptedError
@@ -71,6 +72,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
             "data": {
+                "rev": "workspace",
                 "deps": {
                     "copy.py": {
                         "hash": ANY,
@@ -102,6 +104,7 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
 
     expected_baseline = {
         "data": {
+            "rev": ANY,
             "deps": {
                 "copy.py": {
                     "hash": ANY,
@@ -177,6 +180,7 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
 
     expected_baseline = {
         "data": {
+            "rev": ANY,
             "deps": {
                 "copy.py": {
                     "hash": ANY,
@@ -196,9 +200,11 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
 
     expected_failed = {
         "data": {
+            "rev": ANY,
             "timestamp": ANY,
             "params": {"params.yaml": {"data": {"foo": 2}}},
             "deps": {"copy.py": {"hash": None, "size": None, "nfiles": None}},
+            "metrics": {},
             "outs": {},
             "status": "Failed",
             "executor": None,
@@ -432,6 +438,7 @@ def test_show_running_workspace(
     assert dvc.experiments.show().get("workspace") == {
         "baseline": {
             "data": {
+                "rev": "workspace",
                 "deps": {
                     "copy.py": {
                         "hash": ANY,
@@ -608,7 +615,8 @@ def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):
     assert get_in(baseline[rev2], paths) == {"data": {"foo": 3}}
 
     paths = ["workspace", "baseline", "error"]
-    assert isinstance(get_in(result, paths), YAMLFileCorruptedError)
+    assert isinstance(get_in(result, paths), (_CachedError, YAMLFileCorruptedError))
+    assert "YAML file structure is corrupted" in str(get_in(result, paths))
 
 
 def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
@@ -1040,7 +1048,7 @@ def test_show_checkpoint_error(tmp_dir, scm, dvc, checkpoint_stage, mocker):
         "resolve_commit",
         side_effect=mocker.MagicMock(side_effect=resolve_commit),
     )
-    results = dvc.experiments.show()[baseline_rev]
+    results = dvc.experiments.show(force=True)[baseline_rev]
     assert len(results) == 1
 
 
@@ -1066,4 +1074,4 @@ def test_show_baseline_error(tmp_dir, scm, dvc, exp_stage, mocker):
     experiments = dvc.experiments.show()[baseline_rev]
     assert len(experiments) == 1
     assert experiments["baseline"]["data"] == {"name": branch}
-    assert isinstance(experiments["baseline"]["error"], SCMError)
+    assert isinstance(experiments["baseline"]["error"], (SCMError, _CachedError))
