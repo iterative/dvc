@@ -453,8 +453,12 @@ def _normalize_headers(names, count):
 
 
 def _format_json(item):
+    from dvc.repo.experiments.show import _CachedError
+
     if isinstance(item, (date, datetime)):
         return item.isoformat()
+    if isinstance(item, _CachedError):
+        return {"type": getattr(item, "typ", "_CachedError"), "msg": str(item)}
     return encode_exception(item)
 
 
@@ -472,6 +476,7 @@ class CmdExperimentsShow(CmdBase):
                 sha_only=self.args.sha,
                 param_deps=self.args.param_deps,
                 fetch_running=self.args.fetch_running,
+                force=self.args.force,
             )
         except DvcException:
             logger.exception("failed to show experiments")
@@ -649,5 +654,11 @@ def add_parser(experiments_subparsers, parent_parser):
         dest="fetch_running",
         action="store_false",
         help=argparse.SUPPRESS,
+    )
+    experiments_show_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-collection of experiments instead of loading from exp cache.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
