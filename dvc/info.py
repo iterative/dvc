@@ -22,15 +22,15 @@ SUBPROJECTS = (
     "dvclive",
     "scmrepo",
 )
-package = "" if PKG is None else f"({PKG})"
+package = "" if PKG is None else f" ({PKG})"
 
 
 def get_dvc_info():
+    dvc_version = f"DVC version: {__version__}{package}"
     info = [
-        f"DVC version: {__version__} {package}",
-        "---------------------------------",
-        f"Platform: Python {platform.python_version()} on "
-        f"{platform.platform()}",
+        dvc_version,
+        "-" * len(dvc_version),
+        f"Platform: Python {platform.python_version()} on {platform.platform()}",
         f"Subprojects:{_get_subprojects()}",
         f"Supports:{_get_supported_remotes()}",
     ]
@@ -41,14 +41,14 @@ def get_dvc_info():
             # can't auto-create it, as it might cause issues if the user
             # later decides to enable shared cache mode with
             # `dvc config cache.shared group`.
-            if os.path.exists(repo.odb.local.path):
+            if os.path.exists(repo.cache.local.path):
                 info.append(f"Cache types: {_get_linktype_support_info(repo)}")
-                fs_type = get_fs_type(repo.odb.local.path)
+                fs_type = get_fs_type(repo.cache.local.path)
                 info.append(f"Cache directory: {fs_type}")
             else:
                 info.append("Cache types: " + error_link("no-dvc-cache"))
 
-            info.append(f"Caches: {_get_caches(repo.odb)}")
+            info.append(f"Caches: {_get_caches(repo.cache)}")
             info.append(f"Remotes: {_get_remotes(repo.config)}")
 
             root_directory = repo.root_dir
@@ -84,7 +84,7 @@ def _get_remotes(config):
 
 
 def _get_linktype_support_info(repo):
-    odb = repo.odb.local
+    odb = repo.cache.local
 
     links = generic.test_links(
         ["reflink", "hardlink", "symlink"],
@@ -124,8 +124,7 @@ def _get_supported_remotes():
             dependencies = []
             for requirement in fs_cls.REQUIRES:
                 dependencies.append(
-                    f"{requirement} = "
-                    f"{importlib_metadata.version(requirement)}"
+                    f"{requirement} = {importlib_metadata.version(requirement)}"
                 )
 
             remote_info = scheme

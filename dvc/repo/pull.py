@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def pull(
+def pull(  # noqa: PLR0913
     self,
     targets=None,
     jobs=None,

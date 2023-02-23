@@ -61,9 +61,7 @@ def test_import_filename(tmp_dir, dvc, cloud):
     (tmp_dir / "sub").mkdir()
 
     path = tmp_dir / "sub" / "bar.dvc"
-    ret = main(
-        ["import-url", "--file", path.fs_path, external_source.fs_path, "out"]
-    )
+    ret = main(["import-url", "--file", path.fs_path, external_source.fs_path, "out"])
     assert ret == 0
     assert path.exists()
 
@@ -173,9 +171,7 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
     )
 
 
-def test_import_url_to_remote_single_file(
-    tmp_dir, dvc, workspace, local_remote
-):
+def test_import_url_to_remote_single_file(tmp_dir, dvc, workspace, local_remote):
     workspace.gen("foo", "foo")
 
     url = "remote://workspace/foo"
@@ -190,9 +186,7 @@ def test_import_url_to_remote_single_file(
     assert len(stage.outs) == 1
 
     hash_info = stage.outs[0].hash_info
-    with open(
-        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
-    ) as fobj:
+    with open(local_remote.oid_to_path(hash_info.value), encoding="utf-8") as fobj:
         assert fobj.read() == "foo"
     assert stage.outs[0].meta.size == len("foo")
 
@@ -219,9 +213,7 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
     assert len(stage.outs) == 1
 
     hash_info = stage.outs[0].hash_info
-    with open(
-        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
-    ) as stream:
+    with open(local_remote.oid_to_path(hash_info.value), encoding="utf-8") as stream:
         file_parts = json.load(stream)
 
     assert len(file_parts) == 3
@@ -232,15 +224,11 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
     }
 
     for file_part in file_parts:
-        with open(
-            local_remote.oid_to_path(file_part["md5"]), encoding="utf-8"
-        ) as fobj:
+        with open(local_remote.oid_to_path(file_part["md5"]), encoding="utf-8") as fobj:
             assert fobj.read() == file_part["relpath"]
 
 
-def test_import_url_to_remote_absolute(
-    tmp_dir, make_tmp_dir, dvc, local_remote
-):
+def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
     tmp_abs_dir = make_tmp_dir("abs")
     tmp_foo = tmp_abs_dir / "foo"
     tmp_foo.write_text("foo")
@@ -276,9 +264,7 @@ def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
 def test_import_url_no_download(tmp_dir, scm, dvc, local_workspace):
     local_workspace.gen("file", "file content")
     dst = tmp_dir / "file"
-    stage = dvc.imp_url(
-        "remote://workspace/file", os.fspath(dst), no_download=True
-    )
+    stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     assert stage.deps[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
 

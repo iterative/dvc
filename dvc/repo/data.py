@@ -13,17 +13,20 @@ from typing import (
     Union,
 )
 
+from dvc.ui import ui
+
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
     from dvc_data.index import DataIndex
+    from dvc_data.index.diff import Change
 
 
 def posixpath_to_os_path(path: str) -> str:
     return path.replace(posixpath.sep, os.path.sep)
 
 
-def _adapt_typ(typ):
+def _adapt_typ(typ: str) -> str:
     from dvc_data.index.diff import ADD, DELETE, MODIFY
 
     if typ == MODIFY:
@@ -38,7 +41,7 @@ def _adapt_typ(typ):
     return typ
 
 
-def _adapt_path(change):
+def _adapt_path(change: "Change") -> str:
     isdir = False
     if change.new and change.new.meta:
         isdir = change.new.meta.isdir
@@ -54,9 +57,12 @@ def _diff(
     old: "DataIndex",
     new: "DataIndex",
     *,
-    granular: Optional[bool] = False,
-    with_missing: Optional[bool] = False,
+    granular: bool = False,
+    not_in_cache: bool = False,
+    not_in_remote: bool = False,
+    remote_refresh: bool = False,
 ) -> Dict[str, List[str]]:
+    from dvc_data.index import StorageError
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
 
     ret: Dict[str, List[str]] = {}
@@ -91,13 +97,26 @@ def _diff(
             continue
 
         if (
-            with_missing
+            not_in_cache
             and change.old
             and change.old.hash_info
-            and not change.old.odb.exists(change.old.hash_info.value)
+            and not old.storage_map.cache_exists(change.old)
         ):
             # NOTE: emulating previous behaviour
             _add_change("not_in_cache", change)
+
+        try:
+            if (
+                not_in_remote
+                and change.old
+                and change.old.hash_info
+                and not old.storage_map.remote_exists(
+                    change.old, refresh=remote_refresh
+                )
+            ):
+                _add_change("not_in_remote", change)
+        except StorageError:
+            pass
 
         _add_change(change.typ, change)
 
@@ -112,9 +131,7 @@ class GitInfo(TypedDict, total=False):
     is_dirty: bool
 
 
-def _git_info(
-    scm: Union["Git", "NoSCM"], untracked_files: str = "all"
-) -> GitInfo:
+def _git_info(scm: Union["Git", "NoSCM"], untracked_files: str = "all") -> GitInfo:
     from scmrepo.exceptions import SCMError
 
     from dvc.scm import NoSCM
@@ -145,16 +162,19 @@ def _git_info(
 def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
     from .index import build_data_index
 
-    workspace = build_data_index(
-        repo.index, repo.root_dir, repo.fs, compute_hash=True
-    )
+    with ui.status("Building workspace index"):
+        workspace = build_data_index(
+            repo.index, repo.root_dir, repo.fs, compute_hash=True
+        )
 
-    return _diff(
-        repo.index.data["repo"],
-        workspace,
-        with_missing=True,
-        **kwargs,
-    )
+    with ui.status("Calculating diff between index/workspace"):
+        return _diff(
+            repo.index.data["repo"],
+            workspace,
+            not_in_cache=True,
+            not_in_remote=True,
+            **kwargs,
+        )
 
 
 def _diff_head_to_index(
@@ -168,11 +188,13 @@ def _diff_head_to_index(
 
         head_index = repo.index.data["repo"]
 
-    return _diff(head_index, index, **kwargs)
+    with ui.status("Calculating diff between head/index"):
+        return _diff(head_index, index, **kwargs)
 
 
 class Status(TypedDict):
     not_in_cache: List[str]
+    not_in_remote: List[str]
     committed: Dict[str, List[str]]
     uncommitted: Dict[str, List[str]]
     untracked: List[str]
@@ -180,9 +202,7 @@ class Status(TypedDict):
     git: GitInfo
 
 
-def _transform_git_paths_to_dvc(
-    repo: "Repo", files: Iterable[str]
-) -> List[str]:
+def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> List[str]:
     """Transform files rel. to Git root to DVC root, and drop outside files."""
     rel = repo.fs.path.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
 
@@ -201,12 +221,18 @@ def _transform_git_paths_to_dvc(
     return [repo.fs.path.relpath(file, start) for file in files]
 
 
-def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
+def status(
+    repo: "Repo",
+    untracked_files: str = "no",
+    **kwargs: Any,
+) -> Status:
     from dvc.scm import NoSCMError, SCMError
 
     head = kwargs.pop("head", "HEAD")
-    uncommitted_diff = _diff_index_to_wtree(repo, **kwargs)
-    not_in_cache = uncommitted_diff.pop("not_in_cache", [])
+    uncommitted_diff = _diff_index_to_wtree(
+        repo,
+        **kwargs,
+    )
     unchanged = set(uncommitted_diff.pop("unchanged", []))
 
     try:
@@ -221,7 +247,8 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
     untracked = _transform_git_paths_to_dvc(repo, untracked)
     # order matters here
     return Status(
-        not_in_cache=not_in_cache,
+        not_in_cache=uncommitted_diff.pop("not_in_cache", []),
+        not_in_remote=uncommitted_diff.pop("not_in_remote", []),
         committed=committed_diff,
         uncommitted=uncommitted_diff,
         untracked=untracked,
@@ -237,8 +264,7 @@ def ls(
 ) -> Iterator[Dict[str, Any]]:
     targets = targets or [None]
     pairs = chain.from_iterable(
-        repo.stage.collect_granular(target, recursive=recursive)
-        for target in targets
+        repo.stage.collect_granular(target, recursive=recursive) for target in targets
     )
     for stage, filter_info in pairs:
         for out in stage.filter_outs(filter_info):

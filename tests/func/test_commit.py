@@ -119,9 +119,7 @@ def test_commit_changed_md5(tmp_dir, dvc):
 
 def test_commit_no_exec(tmp_dir, dvc):
     tmp_dir.gen({"dep": "dep", "out": "out"})
-    stage = dvc.run(
-        name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
-    )
+    stage = dvc.run(name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True)
 
     assert dvc.status(stage.path)
     dvc.commit(stage.path, force=True)
@@ -140,9 +138,7 @@ def test_commit_granular_output(tmp_dir, dvc):
     assert not list(cache.glob("*/*"))
 
     dvc.commit("foo")
-    assert list(cache.glob("*/*")) == [
-        cache / "d3" / "b07384d113edec49eaa6238ad5ff00"
-    ]
+    assert list(cache.glob("*/*")) == [cache / "d3" / "b07384d113edec49eaa6238ad5ff00"]
 
 
 def test_commit_granular_output_file(tmp_dir, dvc):
@@ -208,9 +204,7 @@ def test_commit_granular_dir(tmp_dir, dvc):
 
 
 def test_commit_no_exec_missing_dep(tmp_dir, dvc):
-    stage = dvc.run(
-        name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
-    )
+    stage = dvc.run(name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True)
     assert dvc.status(stage.path)
 
     with pytest.raises(DependencyDoesNotExistError):

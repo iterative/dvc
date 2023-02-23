@@ -9,15 +9,13 @@ import dvc_data
 from dvc.cli import main
 from dvc.external_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
-from dvc.testing.remote_tests import (  # noqa, pylint: disable=unused-import
-    TestRemote,
-)
+from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-import
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
 
 
-def test_cloud_cli(tmp_dir, dvc, remote, mocker):
+def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
     jobs = 2
     args = ["-v", "-j", str(jobs)]
 
@@ -45,11 +43,10 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isfile(cache_dir)
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
     oids_exist.reset_mock()
 
     assert main(["fetch", *args]) == 0
@@ -58,8 +55,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isfile(cache_dir)
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     oids_exist.reset_mock()
@@ -72,8 +68,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isdir("data_dir")
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     with open(cache, encoding="utf-8") as fd:
@@ -90,17 +85,14 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     # NOTE: check if remote gc works correctly on directories
     assert main(["gc", "-cw", "-f", *args]) == 0
     assert _list_oids_traverse.called
-    assert all(
-        _kwargs["jobs"] == 2 for (_args, _kwargs) in oids_exist.call_args_list
-    )
-    shutil.move(dvc.odb.local.path, dvc.odb.local.path + ".back")
+    assert all(_kwargs["jobs"] == 2 for (_args, _kwargs) in oids_exist.call_args_list)
+    shutil.move(dvc.cache.local.path, dvc.cache.local.path + ".back")
 
     assert main(["fetch", *args]) == 0
 
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     oids_exist.reset_mock()
@@ -112,8 +104,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isdir("data_dir")
     assert oids_exist.called
     assert all(
-        _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in oids_exist.call_args_list
+        _kwargs["jobs"] == jobs for (_args, _kwargs) in oids_exist.call_args_list
     )
 
 
@@ -164,7 +155,7 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     # purge cache
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
 
     header = (
         "Some of the cache files do not exist "
@@ -195,9 +186,7 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     assert bar not in caplog.text
 
 
-def test_verify_hashes(
-    tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
-):
+def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote):
     tmp_dir.dvc_gen({"file": "file1 content"}, commit="add file")
     tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
     dvc.push()
@@ -205,20 +194,21 @@ def test_verify_hashes(
     # remove artifacts and cache to trigger fetching
     remove("file")
     remove("dir")
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
 
     hash_spy = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
     dvc.pull()
-    assert hash_spy.call_count == 0
+    # NOTE: 1 is for index.data_tree building
+    assert hash_spy.call_count == 1
 
     # Removing cache will invalidate existing state entries
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
 
     dvc.config["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
-    assert hash_spy.call_count == 4
+    assert hash_spy.call_count == 6
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -235,9 +225,9 @@ def test_pull_git_imports(tmp_dir, dvc, scm, erepo):
 
     assert dvc.pull()["fetched"] == 0
 
-    for item in ["foo", "new_dir", dvc.odb.local.path]:
+    for item in ["foo", "new_dir", dvc.cache.local.path]:
         remove(item)
-    os.makedirs(dvc.odb.local.path, exist_ok=True)
+    os.makedirs(dvc.cache.local.path, exist_ok=True)
     clean_repos()
 
     assert dvc.pull(force=True)["fetched"] == 3
@@ -276,9 +266,7 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     local_workspace.gen("file", "file content")
     dst = tmp_dir / "file"
-    stage = dvc.imp_url(
-        "remote://workspace/file", os.fspath(dst), no_download=True
-    )
+    stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     result = dvc.pull("file")
     assert result["fetched"] == 1
@@ -287,9 +275,7 @@ def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
 
 
-def test_pull_external_dvc_imports_mixed(
-    tmp_dir, dvc, scm, erepo_dir, local_remote
-):
+def test_pull_external_dvc_imports_mixed(tmp_dir, dvc, scm, erepo_dir, local_remote):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="first")
         os.remove("foo")
@@ -310,7 +296,7 @@ def test_pull_external_dvc_imports_mixed(
 
 def clean(outs, dvc=None):
     if dvc:
-        dvc.odb.local.clear()
+        dvc.cache.local.clear()
     for path in outs:
         remove(path)
     if dvc:
@@ -319,9 +305,7 @@ def clean(outs, dvc=None):
 
 def recurse_list_dir(d):
     return [
-        os.path.join(root, f)
-        for root, _, filenames in os.walk(d)
-        for f in filenames
+        os.path.join(root, f) for root, _, filenames in os.walk(d) for f in filenames
     ]
 
 
@@ -488,11 +472,11 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
     dvc.pull("copy-foo-bar")
     assert (tmp_dir / "bar").exists()
-    assert len(recurse_list_dir(dvc.odb.local.path)) == 2
+    assert len(recurse_list_dir(dvc.cache.local.path)) == 2
     clean(["bar"], dvc)
 
     dvc.fetch("copy-foo-bar")
-    assert len(recurse_list_dir(dvc.odb.local.path)) == 2
+    assert len(recurse_list_dir(dvc.cache.local.path)) == 2
 
 
 def test_pull_partial(tmp_dir, dvc, local_remote):
@@ -538,7 +522,7 @@ def test_output_remote(tmp_dir, dvc, make_remote):
 
     dvc.pull()
 
-    assert set(dvc.odb.local.all()) == {
+    assert set(dvc.cache.local.all()) == {
         "37b51d194a7513e45b56f6524f2d51f2",
         "acbd18db4cc2f85cedef654fccc4a4d8",
         "f97c5d29941bfb1b2fdab0874906ab82",
@@ -571,7 +555,7 @@ def test_target_remote(tmp_dir, dvc, make_remote):
 
     dvc.pull(remote="myremote")
 
-    assert set(dvc.odb.local.all()) == {
+    assert set(dvc.cache.local.all()) == {
         "acbd18db4cc2f85cedef654fccc4a4d8",
         "f97c5d29941bfb1b2fdab0874906ab82",
         "6b18131dc289fd37006705affe961ef8.dir",

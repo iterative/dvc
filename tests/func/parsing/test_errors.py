@@ -29,8 +29,7 @@ def test_vars_interpolation_errors(tmp_dir, dvc, vars_):
         definition.resolve()
 
     assert (
-        str(exc_info.value)
-        == "failed to parse 'stages.build.vars' in 'dvc.yaml': "
+        str(exc_info.value) == "failed to parse 'stages.build.vars' in 'dvc.yaml': "
         "interpolating is not allowed"
     )
 
@@ -44,8 +43,9 @@ def test_failed_to_interpolate(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve()
 
-    assert escape_ansi(str(exc_info.value)) == (
-        "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
+    assert (
+        escape_ansi(str(exc_info.value))
+        == "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
         "${models.foo.}\n"
         "            ^\n"
         "ParseException: Expected end of text, found '.'"
@@ -64,8 +64,8 @@ def test_local_vars_params_file_not_exist(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve()
 
-    assert str(exc_info.value) == (
-        "failed to parse stage 'build' in 'dvc.yaml': "
+    assert (
+        str(exc_info.value) == "failed to parse stage 'build' in 'dvc.yaml': "
         "'not_existing_params.yaml' does not exist"
     )
     assert not definition.context
@@ -81,8 +81,8 @@ def test_specified_key_does_not_exist(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve()
 
-    assert str(exc_info.value) == (
-        "failed to parse 'stages.build.cmd' in 'dvc.yaml': "
+    assert (
+        str(exc_info.value) == "failed to parse 'stages.build.cmd' in 'dvc.yaml': "
         "Could not find 'models.foobar'"
     )
     assert definition.context == {"models": {"foo": "foo"}}
@@ -94,10 +94,12 @@ def test_specified_key_does_not_exist(tmp_dir, dvc):
         ("${models[foobar]}", " Could not find 'models.foobar'"),
         (
             "${models.foo]}",
-            "\n${models.foo]}\n"
-            "            ^\n"
-            "ParseException: Expected end of text, found ']'"
-            "  (at char 12), (line:1, col:13)",
+            (
+                "\n${models.foo]}\n"
+                "            ^\n"
+                "ParseException: Expected end of text, found ']'"
+                "  (at char 12), (line:1, col:13)"
+            ),
         ),
     ],
 )
@@ -124,8 +126,8 @@ def test_interpolate_non_string(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve()
 
-    assert str(exc_info.value) == (
-        "failed to parse 'stages.build.outs' in 'dvc.yaml':\n"
+    assert (
+        str(exc_info.value) == "failed to parse 'stages.build.outs' in 'dvc.yaml':\n"
         "Cannot interpolate data of type 'dict'"
     )
     assert definition.context == {"models": {}}
@@ -141,8 +143,8 @@ def test_interpolate_nested_iterable(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve()
 
-    assert str(exc_info.value) == (
-        "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
+    assert (
+        str(exc_info.value) == "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
         "Cannot interpolate nested iterable in 'list'"
     )
 
@@ -159,8 +161,8 @@ def test_partial_vars_doesnot_exist(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve()
 
-    assert str(exc_info.value) == (
-        "failed to parse stage 'build' in 'dvc.yaml': "
+    assert (
+        str(exc_info.value) == "failed to parse stage 'build' in 'dvc.yaml': "
         "could not find 'sub3' in 'test_params.yaml'"
     )
     assert not definition.context
@@ -174,8 +176,9 @@ def test_foreach_data_syntax_error(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve_all()
 
-    assert escape_ansi(str(exc_info.value)) == (
-        "failed to parse 'stages.build.foreach' in 'dvc.yaml':\n"
+    assert (
+        escape_ansi(str(exc_info.value))
+        == "failed to parse 'stages.build.foreach' in 'dvc.yaml':\n"
         "${syntax.[error}\n"
         "        ^\n"
         "ParseException: Expected end of text, found '.'"
@@ -188,8 +191,8 @@ def test_foreach_data_key_does_not_exists(tmp_dir, dvc, key):
     definition = make_foreach_def(tmp_dir, "build", embrace(key), {})
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve_all()
-    assert str(exc_info.value) == (
-        "failed to parse 'stages.build.foreach' in 'dvc.yaml': "
+    assert (
+        str(exc_info.value) == "failed to parse 'stages.build.foreach' in 'dvc.yaml': "
         f"Could not find '{key}'"
     )
 
@@ -198,14 +201,13 @@ def test_foreach_data_key_does_not_exists(tmp_dir, dvc, key):
     "foreach_data", ["${foo}", "${dct.model1}", "${lst.0}", "foobar"]
 )
 def test_foreach_data_expects_list_or_dict(tmp_dir, dvc, foreach_data):
-    context = Context(
-        {"foo": "bar", "dct": {"model1": "a-out"}, "lst": ["foo", "bar"]}
-    )
+    context = Context({"foo": "bar", "dct": {"model1": "a-out"}, "lst": ["foo", "bar"]})
     definition = make_foreach_def(tmp_dir, "build", foreach_data, {}, context)
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve_all()
-    assert str(exc_info.value) == (
-        "failed to resolve 'stages.build.foreach' in 'dvc.yaml': "
+    assert (
+        str(exc_info.value)
+        == "failed to resolve 'stages.build.foreach' in 'dvc.yaml': "
         "expected list/dictionary, got str"
     )
 
@@ -218,9 +220,7 @@ def test_foreach_data_expects_list_or_dict(tmp_dir, dvc, foreach_data):
         ({"key": 5}, "key is"),
     ],
 )
-def test_foreach_overwriting_item_in_list(
-    tmp_dir, dvc, caplog, global_data, where
-):
+def test_foreach_overwriting_item_in_list(tmp_dir, dvc, caplog, global_data, where):
     context = Context(global_data)
     definition = make_foreach_def(
         tmp_dir, "build", {"model1": 10, "model2": 5}, {}, context
@@ -242,8 +242,9 @@ def test_foreach_do_syntax_errors(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve_all()
 
-    assert escape_ansi(str(exc_info.value)) == (
-        "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
+    assert (
+        escape_ansi(str(exc_info.value))
+        == "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
         "${syntax.[error}\n"
         "        ^\n"
         "ParseException: Expected end of text, found '.'"
@@ -274,8 +275,9 @@ def test_foreach_do_definition_item_does_not_exist(tmp_dir, dvc, key, loc):
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve_all()
 
-    assert str(exc_info.value) == (
-        f"failed to parse '{loc}' in 'dvc.yaml': Could not find '{key}'"
+    assert (
+        str(exc_info.value)
+        == f"failed to parse '{loc}' in 'dvc.yaml': Could not find '{key}'"
     )
 
     # should have no `item` and `key` even though it failed to resolve.
@@ -313,8 +315,8 @@ def test_item_key_in_generated_stage_vars(tmp_dir, dvc, redefine, from_file):
     message = str(exc_info.value)
     assert (
         "failed to parse stage 'build@model1' in 'dvc.yaml': "
-        "attempted to modify reserved"
-    ) in message
+        "attempted to modify reserved" in message
+    )
 
     key_or_keys = "keys" if len(redefine) > 1 else "key"
     assert f"{key_or_keys} {join(redefine)}" in message
@@ -335,7 +337,6 @@ def test_foreach_wdir_key_does_not_exist(tmp_dir, dvc):
         definition.resolve_all()
     assert (
         str(exc_info.value)
-        == "failed to parse 'stages.build@foo.wdir' in 'dvc.yaml': "
-        "Could not find 'ite'"
+        == "failed to parse 'stages.build@foo.wdir' in 'dvc.yaml': Could not find 'ite'"
     )
     assert definition.context == {"models": ["foo", "bar"]}

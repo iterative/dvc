@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class Remote:
-    def __init__(self, name: str, path: str, fs: "FileSystem", **config):
+    def __init__(self, name: str, path: str, fs: "FileSystem", *, index=None, **config):
         self.path = path
         self.fs = fs
         self.name = name
+        self.index = index
 
         self.worktree: bool = config.pop("worktree", False)
         self.config = config
@@ -75,7 +76,11 @@ class DataCloud:
 
             fs = cls(**config)
             config["tmp_dir"] = self.repo.index_db_dir
-            return Remote(name, fs_path, fs, **config)
+            if self.repo.data_index is not None:
+                index = self.repo.data_index.view(("remote", name))
+            else:
+                index = None
+            return Remote(name, fs_path, fs, index=index, **config)
 
         if bool(self.repo.config["remote"]):
             error_msg = (
@@ -111,8 +116,10 @@ class DataCloud:
                 for hash_info in status.missing
             )
             logger.warning(
-                "Some of the cache files do not exist neither locally "
-                "nor on remote. Missing cache files:\n%s",
+                (
+                    "Some of the cache files do not exist neither locally "
+                    "nor on remote. Missing cache files:\n%s"
+                ),
                 missing_desc,
             )
 
@@ -145,12 +152,12 @@ class DataCloud:
         """
         odb = odb or self.get_remote_odb(remote, "push")
         return self.transfer(
-            self.repo.odb.local,
+            self.repo.cache.local,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
-            cache_odb=self.repo.odb.local,
+            cache_odb=self.repo.cache.local,
             validate_status=self._log_missing,
         )
 
@@ -173,11 +180,11 @@ class DataCloud:
         odb = odb or self.get_remote_odb(remote, "pull")
         return self.transfer(
             odb,
-            self.repo.odb.local,
+            self.repo.cache.local,
             objs,
             jobs=jobs,
             src_index=get_index(odb),
-            cache_odb=self.repo.odb.local,
+            cache_odb=self.repo.cache.local,
             verify=odb.verify,
             validate_status=self._log_missing,
         )
@@ -204,12 +211,12 @@ class DataCloud:
         if not odb:
             odb = self.get_remote_odb(remote, "status")
         return compare_status(
-            self.repo.odb.local,
+            self.repo.cache.local,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
-            cache_odb=self.repo.odb.local,
+            cache_odb=self.repo.cache.local,
         )
 
     def get_url_for(self, remote, checksum):

@@ -119,10 +119,7 @@ def pytest_runtest_setup(item):
     for marker in item.iter_markers():
         item.config.dvc_config.apply_marker(marker)
 
-    if (
-        "CI" in os.environ
-        and item.get_closest_marker("needs_internet") is not None
-    ):
+    if "CI" in os.environ and item.get_closest_marker("needs_internet") is not None:
         # remotes that need internet connection might be flaky,
         # so we rerun them in case it fails.
         item.add_marker(pytest.mark.flaky(max_runs=5, min_passes=1))

@@ -58,9 +58,7 @@ class RichCallback(Callback):
 
     @cached_property
     def task(self) -> "TaskID":
-        return self.progress.add_task(
-            **self._task_kwargs  # type: ignore[arg-type]
-        )
+        return self.progress.add_task(**self._task_kwargs)  # type: ignore[arg-type]
 
     def __enter__(self):
         return self

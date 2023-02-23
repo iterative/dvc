@@ -2,16 +2,7 @@ import os
 from urllib.parse import urlparse
 
 from funcy import walk_values
-from voluptuous import (
-    All,
-    Any,
-    Coerce,
-    Invalid,
-    Lower,
-    Optional,
-    Range,
-    Schema,
-)
+from voluptuous import All, Any, Coerce, Invalid, Lower, Optional, Range, Schema
 
 Bool = All(
     Lower,
@@ -34,14 +25,12 @@ def supported_cache_type(types):
 
     unsupported = set(types) - {"reflink", "hardlink", "symlink", "copy"}
     if unsupported:
-        raise Invalid(
-            "Unsupported cache type(s): {}".format(", ".join(unsupported))
-        )
+        raise Invalid("Unsupported cache type(s): {}".format(", ".join(unsupported)))
 
     return types
 
 
-def Choices(*choices):
+def Choices(*choices):  # noqa: N802
     """Checks that value belongs to the specified set of values
 
     Args:
@@ -51,7 +40,7 @@ def Choices(*choices):
     return Any(*choices, msg="expected one of {}".format(", ".join(choices)))
 
 
-def ByUrl(mapping):
+def ByUrl(mapping):  # noqa: N802
     schemas = walk_values(Schema, mapping)
 
     def validate(data):
@@ -61,6 +50,8 @@ def ByUrl(mapping):
         parsed = urlparse(data["url"])
         # Windows absolute paths should really have scheme == "" (local)
         if os.name == "nt" and len(parsed.scheme) == 1 and parsed.netloc == "":
+            return schemas[""](data)
+        if parsed.netloc == "":
             return schemas[""](data)
         if parsed.scheme not in schemas:
             raise Invalid(f"Unsupported URL type {parsed.scheme}://")
@@ -106,6 +97,7 @@ WEBDAV_COMMON = {
     "password": str,
     "ask_password": Bool,
     "token": str,
+    "custom_auth_header": str,
     "cert_path": str,
     "key_path": str,
     "timeout": Coerce(int),
@@ -257,9 +249,7 @@ SCHEMA = {
     "machine": {
         str: {
             "cloud": All(Lower, Choices("aws", "azure")),
-            "region": All(
-                Lower, Choices("us-west", "us-east", "eu-west", "eu-north")
-            ),
+            "region": All(Lower, Choices("us-west", "us-east", "eu-west", "eu-north")),
             "image": str,
             "spot": Bool,
             "spot_price": Coerce(float),
@@ -275,6 +265,7 @@ SCHEMA = {
     "feature": {
         Optional("machine", default=False): Bool,
         # enabled by default. It's of no use, kept for backward compatibility.
+        Optional("data_index_cache", default=False): Bool,
         Optional("parametrization", default=True): Bool,
     },
     "plots": {

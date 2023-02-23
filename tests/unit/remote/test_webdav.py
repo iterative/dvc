@@ -9,6 +9,7 @@ url = "webdav://example.com/public.php/webdav"
 user = "username"
 password = "password"
 token = "4MgjsNM5aSJjxIKM"
+custom_auth_header = "Custom-Header"
 
 
 def test_common():
@@ -23,6 +24,7 @@ def test_common():
         password=None,
         ask_password=False,
         token=None,
+        custom_auth_header=None,
     )
     assert issubset(
         {
@@ -65,9 +67,7 @@ def test_token():
 
 
 def test_ask_password(mocker):
-    ask_password_mocked = mocker.patch(
-        "dvc_webdav.ask_password", return_value="pass"
-    )
+    ask_password_mocked = mocker.patch("dvc_webdav.ask_password", return_value="pass")
     host = "host"
 
     # it should not ask for password as password is set
@@ -85,6 +85,42 @@ def test_ask_password(mocker):
     fs = WebDAVFileSystem(**config)
     assert issubset({"auth": (user, "pass"), "headers": {}}, fs.fs_args)
     ask_password_mocked.assert_called_once_with(host, user)
+
+
+def test_custom_auth_header():
+    config = {
+        "url": url,
+        "custom_auth_header": custom_auth_header,
+        "password": password,
+    }
+    fs = WebDAVFileSystem(**config)
+    assert issubset(
+        {"headers": {custom_auth_header: password}, "auth": None},
+        fs.fs_args,
+    )
+
+
+def test_ask_password_custom_auth_header(mocker):
+    ask_password_mocked = mocker.patch("dvc_webdav.ask_password", return_value="pass")
+    host = "host"
+
+    # it should not ask for password as password is set
+    config = {
+        "url": url,
+        "custom_auth_header": custom_auth_header,
+        "password": password,
+        "ask_password": True,
+        "host": host,
+    }
+    fs = WebDAVFileSystem(**config)
+    assert issubset(
+        {"headers": {custom_auth_header: password}, "auth": None}, fs.fs_args
+    )
+
+    config.pop("password")
+    fs = WebDAVFileSystem(**config)
+    assert issubset({"headers": {custom_auth_header: "pass"}, "auth": None}, fs.fs_args)
+    ask_password_mocked.assert_called_once_with(host, custom_auth_header)
 
 
 def test_ssl_verify_custom_cert():

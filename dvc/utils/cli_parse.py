@@ -25,7 +25,6 @@ def to_path_overrides(
 
     path_overrides = defaultdict(list)
     for path_param in path_params:
-
         path_and_name = path_param.partition("=")[0]
         if ":" not in path_and_name:
             override = path_param

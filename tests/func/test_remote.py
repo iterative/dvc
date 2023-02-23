@@ -60,9 +60,7 @@ def test_referencing_other_remotes(dvc):
 
 def test_remove_default(tmp_dir, dvc):
     remote = "mys3"
-    assert (
-        main(["remote", "add", "--default", remote, "s3://bucket/name"]) == 0
-    )
+    assert main(["remote", "add", "--default", remote, "s3://bucket/name"]) == 0
     assert main(["remote", "modify", remote, "profile", "default"]) == 0
     assert main(["config", "--local", "core.remote", remote]) == 0
 
@@ -138,27 +136,19 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 
     path = (tmp_dir / "data").fs_path
 
-    tree = Tree.from_list(
-        [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
-    )
+    tree = Tree.from_list([{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}])
     tree.digest()
-    with patch(
-        "dvc_data.hashfile.build._build_tree", return_value=(None, tree)
-    ):
-        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+    with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
+        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
         hash1 = obj.hash_info
 
     # remove the raw dir obj to force building the tree on the next build call
-    dvc.odb.local.fs.remove(dvc.odb.local.oid_to_path(hash1.as_raw().value))
+    dvc.cache.local.fs.remove(dvc.cache.local.oid_to_path(hash1.as_raw().value))
 
-    tree = Tree.from_list(
-        [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
-    )
+    tree = Tree.from_list([{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}])
     tree.digest()
-    with patch(
-        "dvc_data.hashfile.build._build_tree", return_value=(None, tree)
-    ):
-        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+    with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
+        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
         hash2 = obj.hash_info
 
     assert hash1 == hash2
@@ -211,7 +201,7 @@ def test_partial_push_n_pull(  # noqa: C901
 
     # Push everything and delete local cache
     dvc.push()
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
 
     baz._collect_used_dir_cache()
 
@@ -243,9 +233,9 @@ def test_raise_on_too_many_open_files(
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
-    with pytest.raises(OSError) as e:
+    with pytest.raises(OSError, match="Too many open files") as e:
         dvc.push()
-        assert e.errno == errno.EMFILE
+    assert e.value.errno == errno.EMFILE
 
 
 def test_modify_missing_remote(tmp_dir, dvc):
@@ -254,12 +244,8 @@ def test_modify_missing_remote(tmp_dir, dvc):
 
 def test_remote_modify_local_on_repo_config(tmp_dir, dvc):
     assert main(["remote", "add", "myremote", "http://example.com/path"]) == 0
-    assert (
-        main(["remote", "modify", "myremote", "user", "xxx", "--local"]) == 0
-    )
-    assert dvc.config.load_one("local")["remote"]["myremote"] == {
-        "user": "xxx"
-    }
+    assert main(["remote", "modify", "myremote", "user", "xxx", "--local"]) == 0
+    assert dvc.config.load_one("local")["remote"]["myremote"] == {"user": "xxx"}
     assert dvc.config.load_one("repo")["remote"]["myremote"] == {
         "url": "http://example.com/path"
     }
@@ -277,7 +263,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     external_dir = tmp_path_factory.mktemp("external_dir")
     file = external_dir / "file"
 
-    dvc.odb.local = None
+    dvc.cache.local = None
     with pytest.raises(RemoteCacheRequiredError):
         dvc.run(
             cmd=f"echo content > {file}",
@@ -311,14 +297,9 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
 def test_remote_modify_validation(dvc):
     remote_name = "drive"
     unsupported_config = "unsupported_config"
+    assert main(["remote", "add", "-d", remote_name, "gdrive://test/test"]) == 0
     assert (
-        main(["remote", "add", "-d", remote_name, "gdrive://test/test"]) == 0
-    )
-    assert (
-        main(
-            ["remote", "modify", remote_name, unsupported_config, "something"]
-        )
-        == 251
+        main(["remote", "modify", remote_name, unsupported_config, "something"]) == 251
     )
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert unsupported_config not in config[f'remote "{remote_name}"']
@@ -329,20 +310,14 @@ def test_remote_modify_unset(dvc):
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
 
-    assert (
-        main(["remote", "modify", "myremote", "gdrive_client_id", "something"])
-        == 0
-    )
+    assert main(["remote", "modify", "myremote", "gdrive_client_id", "something"]) == 0
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert config['remote "myremote"'] == {
         "url": "gdrive://test/test",
         "gdrive_client_id": "something",
     }
 
-    assert (
-        main(["remote", "modify", "myremote", "gdrive_client_id", "--unset"])
-        == 0
-    )
+    assert main(["remote", "modify", "myremote", "gdrive_client_id", "--unset"]) == 0
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
 
@@ -451,7 +426,7 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     remote_odb = dvc.cloud.get_remote_odb("upstream")
 
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     out = stage.outs[0]
     file_objs = [entry_obj for _, _, entry_obj in out.obj]
 

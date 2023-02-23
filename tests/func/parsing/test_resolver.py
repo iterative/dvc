@@ -45,9 +45,7 @@ def test_vars_interpolation_errors(tmp_dir, dvc, vars_):
     )
 
 
-@pytest.mark.parametrize(
-    "vars_", [{}, {"vars": []}, {"vars": [DEFAULT_PARAMS_FILE]}]
-)
+@pytest.mark.parametrize("vars_", [{}, {"vars": []}, {"vars": [DEFAULT_PARAMS_FILE]}])
 def test_default_params_file(tmp_dir, dvc, vars_):
     (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
     resolver = DataResolver(dvc, tmp_dir.fs_path, vars_)
@@ -100,8 +98,8 @@ def test_global_overwrite_error_on_imports(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         DataResolver(dvc, tmp_dir.fs_path, d)
 
-    assert str(exc_info.value) == (
-        "failed to parse 'vars' in 'dvc.yaml':\n"
+    assert (
+        str(exc_info.value) == "failed to parse 'vars' in 'dvc.yaml':\n"
         "cannot redefine 'models.bar' from 'params.json' "
         "as it already exists in 'params.yaml'"
     )
@@ -114,8 +112,8 @@ def test_global_overwrite_vars(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         DataResolver(dvc, tmp_dir.fs_path, d)
 
-    assert str(exc_info.value) == (
-        "failed to parse 'vars' in 'dvc.yaml':\n"
+    assert (
+        str(exc_info.value) == "failed to parse 'vars' in 'dvc.yaml':\n"
         "cannot redefine 'models.bar' from 'vars[0]' "
         "as it already exists in 'params.yaml'"
     )
@@ -128,8 +126,8 @@ def test_local_declared_vars_overwrite(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         DataResolver(dvc, tmp_dir.fs_path, d)
 
-    assert str(exc_info.value) == (
-        "failed to parse 'vars' in 'dvc.yaml':\n"
+    assert (
+        str(exc_info.value) == "failed to parse 'vars' in 'dvc.yaml':\n"
         "cannot redefine 'bar' from 'vars[1]' "
         "as it already exists in 'vars[0]'"
     )
@@ -140,8 +138,8 @@ def test_specified_params_file_not_exist(tmp_dir, dvc):
     with pytest.raises(ResolveError) as exc_info:
         DataResolver(dvc, tmp_dir.fs_path, d)
 
-    assert str(exc_info.value) == (
-        "failed to parse 'vars' in 'dvc.yaml': "
+    assert (
+        str(exc_info.value) == "failed to parse 'vars' in 'dvc.yaml': "
         "'not_existing_params.yaml' does not exist"
     )
 
@@ -163,10 +161,9 @@ def test_vars_already_loaded_message(tmp_dir, dvc, local, vars_):
     else:
         d["stages"]["build"]["vars"] = vars_
 
-    with pytest.raises(ResolveError) as exc_info:
+    with pytest.raises(ResolveError) as exc_info:  # noqa: PT012
         resolver = DataResolver(dvc, tmp_dir.fs_path, d)
         resolver.resolve()
-
     assert "partially" in str(exc_info.value)
 
 
@@ -183,8 +180,8 @@ def test_local_overwrite_error(tmp_dir, dvc, vars_, loc):
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
 
-    assert str(exc_info.value) == (
-        "failed to parse stage 'build' in 'dvc.yaml':\n"
+    assert (
+        str(exc_info.value) == "failed to parse stage 'build' in 'dvc.yaml':\n"
         f"cannot redefine 'models.bar' from '{loc}' "
         "as it already exists in 'params.yaml'"
     )

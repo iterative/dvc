@@ -12,12 +12,8 @@ from dvc.utils.serialize import JSONFileCorruptedError, YAMLFileCorruptedError
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "1.1")
-    run_copy_metrics(
-        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
-    )
-    assert dvc.metrics.show() == {
-        "": {"data": {"metrics.yaml": {"data": 1.1}}}
-    }
+    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
+    assert dvc.metrics.show() == {"": {"data": {"metrics.yaml": {"data": 1.1}}}}
 
 
 def test_show_simple_from_subdir(tmp_dir, dvc, run_copy_metrics):
@@ -35,22 +31,16 @@ def test_show_simple_from_subdir(tmp_dir, dvc, run_copy_metrics):
 
     expected_path = os.path.join("..", "subdir", "metrics.yaml")
     with subdir.chdir():
-        assert dvc.metrics.show() == {
-            "": {"data": {expected_path: {"data": 1.1}}}
-        }
+        assert dvc.metrics.show() == {"": {"data": {expected_path: {"data": 1.1}}}}
     subdir2 = tmp_dir / "subdir2"
     subdir2.mkdir()
     with subdir2.chdir():
-        assert dvc.metrics.show() == {
-            "": {"data": {expected_path: {"data": 1.1}}}
-        }
+        assert dvc.metrics.show() == {"": {"data": {expected_path: {"data": 1.1}}}}
 
 
 def test_show(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
-    run_copy_metrics(
-        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
-    )
+    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
     assert dvc.metrics.show() == {
         "": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}
     }
@@ -58,9 +48,7 @@ def test_show(tmp_dir, dvc, run_copy_metrics):
 
 def test_show_toml(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.toml", "[foo]\nbar = 1.2")
-    run_copy_metrics(
-        "metrics_t.toml", "metrics.toml", metrics=["metrics.toml"]
-    )
+    run_copy_metrics("metrics_t.toml", "metrics.toml", metrics=["metrics.toml"])
     assert dvc.metrics.show() == {
         "": {"data": {"metrics.toml": {"data": {"foo": {"bar": 1.2}}}}}
     }
@@ -68,15 +56,10 @@ def test_show_toml(tmp_dir, dvc, run_copy_metrics):
 
 def test_show_targets(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
-    run_copy_metrics(
-        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
-    )
+    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
     expected = {"": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}}
     assert dvc.metrics.show(targets=["metrics.yaml"]) == expected
-    assert (
-        dvc.metrics.show(targets=(tmp_dir / "metrics.yaml").fs_path)
-        == expected
-    )
+    assert dvc.metrics.show(targets=(tmp_dir / "metrics.yaml").fs_path) == expected
 
 
 def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
@@ -85,9 +68,7 @@ def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
     run_copy_metrics("foo_temp", "foo", fname="foo.dvc", metrics=["foo"])
     run_copy_metrics("baz_temp", "baz", fname="baz.dvc", metrics=["baz"])
     assert dvc.metrics.show() == {
-        "": {
-            "data": {"foo": {"data": {"foo": 1}}, "baz": {"data": {"baz": 2}}}
-        }
+        "": {"data": {"foo": {"data": {"foo": 1}}, "baz": {"data": {"baz": 2}}}}
     }
 
 
@@ -144,9 +125,7 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
 
 def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "1.1")
-    run_copy_metrics(
-        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
-    )
+    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
 
     # This one should be skipped
     stage = run_copy_metrics(
@@ -205,24 +184,16 @@ def test_show_non_metric_branch(tmp_dir, scm, use_dvc):
 
 
 def test_non_metric_and_recurisve_show(tmp_dir, dvc, run_copy_metrics):
-    tmp_dir.gen(
-        {"metrics_t.yaml": "foo: 1.1", "metrics": {"metric1.yaml": "bar: 1.2"}}
-    )
+    tmp_dir.gen({"metrics_t.yaml": "foo: 1.1", "metrics": {"metric1.yaml": "bar: 1.2"}})
 
     metric2 = os.fspath(tmp_dir / "metrics" / "metric2.yaml")
     run_copy_metrics("metrics_t.yaml", metric2, metrics=[metric2])
 
-    assert dvc.metrics.show(
-        targets=["metrics_t.yaml", "metrics"], recursive=True
-    ) == {
+    assert dvc.metrics.show(targets=["metrics_t.yaml", "metrics"], recursive=True) == {
         "": {
             "data": {
-                os.path.join("metrics", "metric1.yaml"): {
-                    "data": {"bar": 1.2}
-                },
-                os.path.join("metrics", "metric2.yaml"): {
-                    "data": {"foo": 1.1}
-                },
+                os.path.join("metrics", "metric1.yaml"): {"data": {"bar": 1.2}},
+                os.path.join("metrics", "metric2.yaml"): {"data": {"foo": 1.1}},
                 "metrics_t.yaml": {"data": {"foo": 1.1}},
             }
         }
@@ -250,9 +221,7 @@ def test_show_malformed_metric(tmp_dir, scm, dvc, caplog):
     tmp_dir.gen("metric.json", '{"m":1')
 
     assert isinstance(
-        dvc.metrics.show(targets=["metric.json"])[""]["data"]["metric.json"][
-            "error"
-        ],
+        dvc.metrics.show(targets=["metric.json"])[""]["data"]["metric.json"]["error"],
         JSONFileCorruptedError,
     )
 
@@ -266,9 +235,7 @@ def test_show_no_metrics_files(tmp_dir, dvc, caplog):
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])
-def test_metrics_show_overlap(
-    tmp_dir, dvc, run_copy_metrics, clear_before_run
-):
+def test_metrics_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     data_dir = tmp_dir / "data"
     data_dir.mkdir()
 
@@ -292,7 +259,7 @@ def test_metrics_show_overlap(
     # so as it works even for optimized cases
     if clear_before_run:
         remove(data_dir)
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
 
     dvc._reset()
 
@@ -307,9 +274,7 @@ def test_metrics_show_overlap(
         ("metrics.yaml", ["workspace", "data", "metrics.yaml", "error"]),
     ),
 )
-def test_log_errors(
-    tmp_dir, scm, dvc, capsys, run_copy_metrics, file, error_path
-):
+def test_log_errors(tmp_dir, scm, dvc, capsys, run_copy_metrics, file, error_path):
     tmp_dir.gen("metrics_t.yaml", "m: 1.1")
     run_copy_metrics(
         "metrics_t.yaml",
@@ -329,6 +294,5 @@ def test_log_errors(
 
     assert isinstance(get_in(result, error_path), YAMLFileCorruptedError)
     assert (
-        "DVC failed to load some metrics for following revisions: 'workspace'."
-        in error
+        "DVC failed to load some metrics for following revisions: 'workspace'." in error
     )

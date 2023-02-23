@@ -16,7 +16,7 @@ def test_init_git(tmp_dir):
 
 
 def test_init_no_git(tmp_dir):
-    with pytest.raises(SCMError):
+    with pytest.raises(SCMError, match=r".* is not a git repository"):
         SCM(os.fspath(tmp_dir))
 
 

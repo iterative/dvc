@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def fetch(  # noqa: C901
+def fetch(  # noqa: C901, PLR0913
     self,
     targets=None,
     jobs=None,
@@ -194,7 +194,5 @@ def _fetch_worktree(
         all_tags=all_tags,
         all_commits=all_commits,
     ):
-        downloaded += fetch_worktree(
-            repo, remote, targets=targets, jobs=jobs, **kwargs
-        )
+        downloaded += fetch_worktree(repo, remote, targets=targets, jobs=jobs, **kwargs)
     return downloaded

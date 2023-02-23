@@ -28,9 +28,7 @@ class Tqdm(tqdm):
         "{postfix[info]}{n_fmt}/{total_fmt}"
         " [{elapsed}<{remaining}, {rate_fmt:>11}]"
     )
-    BAR_FMT_NOTOTAL = (
-        "{desc}{bar:b}|{postfix[info]}{n_fmt} [{elapsed}, {rate_fmt:>11}]"
-    )
+    BAR_FMT_NOTOTAL = "{desc}{bar:b}|{postfix[info]}{n_fmt} [{elapsed}, {rate_fmt:>11}]"
     BYTES_DEFAULTS = {
         "unit": "B",
         "unit_scale": True,
@@ -38,7 +36,7 @@ class Tqdm(tqdm):
         "miniters": 1,
     }
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         iterable=None,
         disable=None,
@@ -75,11 +73,7 @@ class Tqdm(tqdm):
         if not disable:
             disable = logger.getEffectiveLevel() > level
         # auto-disable based on TTY
-        if (
-            not disable
-            and not env2bool(DVC_IGNORE_ISATTY)
-            and hasattr(file, "isatty")
-        ):
+        if not disable and not env2bool(DVC_IGNORE_ISATTY) and hasattr(file, "isatty"):
             disable = not file.isatty()
         super().__init__(
             iterable=iterable,
@@ -95,9 +89,7 @@ class Tqdm(tqdm):
         if bar_format is None:
             if self.__len__():
                 self.bar_format = (
-                    self.BAR_FMT_DEFAULT_NESTED
-                    if self.pos
-                    else self.BAR_FMT_DEFAULT
+                    self.BAR_FMT_DEFAULT_NESTED if self.pos else self.BAR_FMT_DEFAULT
                 )
             else:
                 self.bar_format = self.BAR_FMT_NOTOTAL

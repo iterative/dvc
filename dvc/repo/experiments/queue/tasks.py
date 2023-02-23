@@ -68,9 +68,7 @@ def collect_exp(
     exec_result = executor_info.result
     try:
         if exec_result is not None:
-            BaseStashQueue.collect_executor(
-                repo.experiments, executor, exec_result
-            )
+            BaseStashQueue.collect_executor(repo.experiments, executor, exec_result)
         else:
             logger.debug("Experiment failed (Exec result was None)")
             celery_queue.stash_failed(entry)

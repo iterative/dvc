@@ -62,7 +62,6 @@ def match_defs_renderers(
     out=None,
     templates_dir: Optional["StrPath"] = None,
 ):
-
     from dvc_render import ImageRenderer, VegaRenderer
 
     plots_data = PlotsData(data)
@@ -80,9 +79,7 @@ def match_defs_renderers(
 
         for rev, inner_id, plot_definition in group:
             plot_sources = infer_data_sources(inner_id, plot_definition)
-            definitions_data = plots_data.get_definition_data(
-                plot_sources, rev
-            )
+            definitions_data = plots_data.get_definition_data(plot_sources, rev)
 
             if ImageRenderer.matches(inner_id, None):
                 renderer_cls = ImageRenderer
@@ -91,9 +88,7 @@ def match_defs_renderers(
                 renderer_cls = VegaRenderer
                 renderer_id = plot_id
 
-            converter = _get_converter(
-                renderer_cls, inner_id, props, definitions_data
-            )
+            converter = _get_converter(renderer_cls, inner_id, props, definitions_data)
 
             dps, rev_props = converter.flat_datapoints(rev)
             if not final_props and rev_props:
@@ -103,7 +98,5 @@ def match_defs_renderers(
         if "title" not in final_props:
             final_props["title"] = renderer_id
         if renderer_cls is not None:
-            renderers.append(
-                renderer_cls(plot_datapoints, renderer_id, **final_props)
-            )
+            renderers.append(renderer_cls(plot_datapoints, renderer_id, **final_props))
     return renderers

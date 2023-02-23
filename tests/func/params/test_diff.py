@@ -40,18 +40,14 @@ def test_diff_dirty(tmp_dir, scm, dvc):
     tmp_dir.scm_gen("params.yaml", "foo: baz", commit="baz")
     tmp_dir.gen("params.yaml", "foo: qux")
 
-    assert dvc.params.diff() == {
-        "params.yaml": {"foo": {"old": "baz", "new": "qux"}}
-    }
+    assert dvc.params.diff() == {"params.yaml": {"foo": {"old": "baz", "new": "qux"}}}
 
 
 def test_diff_new(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
     dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
 
-    assert dvc.params.diff() == {
-        "params.yaml": {"foo": {"old": None, "new": "bar"}}
-    }
+    assert dvc.params.diff() == {"params.yaml": {"foo": {"old": None, "new": "bar"}}}
 
 
 def test_diff_deleted(tmp_dir, scm, dvc):
@@ -62,9 +58,7 @@ def test_diff_deleted(tmp_dir, scm, dvc):
 
     (tmp_dir / "params.yaml").unlink()
 
-    assert dvc.params.diff() == {
-        "params.yaml": {"foo": {"old": "bar", "new": None}}
-    }
+    assert dvc.params.diff() == {"params.yaml": {"foo": {"old": "bar", "new": None}}}
 
 
 def test_diff_list(tmp_dir, scm, dvc):
@@ -130,9 +124,8 @@ def test_pipeline_tracked_params(tmp_dir, scm, dvc, run_copy):
 
 
 def test_no_commits(tmp_dir):
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
+    from dvc.scm import Git
 
     git = Git.init(tmp_dir.fs_path)
     assert git.no_commits
@@ -166,9 +159,7 @@ def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
     param_data["vars"]["model1"]["epoch"] = 20
     (tmp_dir / params_file).dump(param_data)
     assert dvc.params.diff() == {
-        "test_params.yaml": {
-            "vars.model1.epoch": {"new": 20, "old": 15, "diff": 5}
-        }
+        "test_params.yaml": {"vars.model1.epoch": {"new": 20, "old": 15, "diff": 5}}
     }
 
     data_dir = tmp_dir / "data"
@@ -264,9 +255,7 @@ def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file):
 
     params_file.dump({"foo": 5})
     assert dvc.params.diff() == {
-        relpath(directory / params_file): {
-            "foo": {"diff": 2, "new": 5, "old": 3}
-        }
+        relpath(directory / params_file): {"foo": {"diff": 2, "new": 5, "old": 3}}
     }
 
 

@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from funcy import first, last
@@ -82,9 +81,9 @@ def _is_datapoints(lst: List[Dict]):
     to unexpected behavior
     """
 
-    return all(isinstance(item, dict) for item in lst) and set(
-        first(lst).keys()
-    ) == {key for keys in lst for key in keys}
+    return all(isinstance(item, dict) for item in lst) and set(first(lst).keys()) == {
+        key for keys in lst for key in keys
+    }
 
 
 def get_datapoints(file_content: Dict):
@@ -195,8 +194,7 @@ class VegaConverter(Converter):
             return first(fields)
         return "x"
 
-    def flat_datapoints(self, revision):  # noqa: C901
-
+    def flat_datapoints(self, revision):  # noqa: C901, PLR0912
         file2datapoints, properties = self.convert()
 
         props_update = {}
@@ -219,7 +217,7 @@ class VegaConverter(Converter):
         num_ys = len(ys)
         if num_xs > 1 and num_xs != num_ys:
             raise DvcException(
-                f"Cannot have different number of x and y data sources. Found "
+                "Cannot have different number of x and y data sources. Found "
                 f"{num_xs} x and {num_ys} y data sources."
             )
 
@@ -233,24 +231,19 @@ class VegaConverter(Converter):
             all_y_fields = set()
 
         # override to unified y field name if there are different y fields
-        # also get common prefix to drop from field names
         if len(all_y_fields) > 1:
             props_update["y"] = "dvc_inferred_y_value"
-            common_field_prefix = os.path.commonpath(all_y_fields)
         else:
             props_update["y"] = first(all_y_fields)
-            common_field_prefix = ""
 
-        # get common prefix to drop from file names
-        if len(all_y_files) > 1:
-            common_file_prefix = os.path.commonpath(all_y_files)
-        else:
-            common_file_prefix = ""
+        # get common prefix to drop from field and file names
+        common_field_prefix = _get_common_prefix(all_y_fields)
+        common_file_prefix = _get_common_prefix(all_y_files)
 
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
                 x_file, x_field = xs[i]
-            datapoints = deepcopy(file2datapoints.get(y_file, []))
+            datapoints = [d.copy() for d in file2datapoints.get(y_file, [])]
 
             if props_update.get("y", None) == "dvc_inferred_y_value":
                 _update_from_field(
@@ -334,9 +327,7 @@ def _update_from_field(
         source_field = field
 
     if len(source_datapoints) != len(target_datapoints):
-        raise IndexError(
-            "Source and target datapoints must have the same length"
-        )
+        raise IndexError("Source and target datapoints must have the same length")
 
     for index, datapoint in enumerate(target_datapoints):
         source_datapoint = source_datapoints[index]
@@ -350,6 +341,11 @@ def _update_from_index(datapoints: List[Dict], new_field: str):
 
 
 def _update_all(datapoints: List[Dict], update_dict: Dict):
-
     for datapoint in datapoints:
         datapoint.update(update_dict)
+
+
+def _get_common_prefix(file_paths: List[str]):
+    if len(file_paths) > 1:
+        return os.path.commonpath(file_paths)
+    return ""

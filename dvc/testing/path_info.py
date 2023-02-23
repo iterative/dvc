@@ -129,7 +129,9 @@ class URLInfo(_BasePath):
 
     def __init__(self, url):
         p = urlparse(url)
-        assert not p.query and not p.params and not p.fragment
+        assert not p.query
+        assert not p.params
+        assert not p.fragment
         assert p.password is None
         self._fill_parts(p.scheme, p.hostname, p.username, p.port, p.path)
 
@@ -170,9 +172,7 @@ class URLInfo(_BasePath):
         return self._base_parts + self._path.parts
 
     def replace(self, path=None):
-        return self.from_parts(  # type: ignore[misc]
-            *self._base_parts, path=path
-        )
+        return self.from_parts(*self._base_parts, path=path)  # type: ignore[misc]
 
     @cached_property
     def url(self) -> str:
@@ -255,9 +255,7 @@ class URLInfo(_BasePath):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        return self._base_parts == other._base_parts and self._path.isin(
-            other._path
-        )
+        return self._base_parts == other._base_parts and self._path.isin(other._path)
 
 
 class CloudURLInfo(URLInfo):

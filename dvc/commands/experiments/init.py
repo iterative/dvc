@@ -92,9 +92,7 @@ class CmdExperimentsInit(CmdBase):
 
         if new_out_dirs:
             out_dirs_paths = humanize.join(map(path_fmt, new_out_dirs))
-            ui.write(
-                f"Creating output directories: {out_dirs_paths}", styled=True
-            )
+            ui.write(f"Creating output directories: {out_dirs_paths}", styled=True)
 
         ui.write(
             f"Creating [b]{self.args.name}[/b] stage in [green]dvc.yaml[/]",
@@ -120,7 +118,6 @@ class CmdExperimentsInit(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-
     EXPERIMENTS_INIT_HELP = "Quickly setup any project to use experiments."
     experiments_init_parser = experiments_subparsers.add_parser(
         "init",
@@ -167,35 +164,47 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--code",
-        help="Path to the source file or directory "
-        "which your experiments depend"
-        f" (default: {CmdExperimentsInit.CODE})",
+        help=(
+            "Path to the source file or directory "
+            "which your experiments depend"
+            f" (default: {CmdExperimentsInit.CODE})"
+        ),
     )
     experiments_init_parser.add_argument(
         "--data",
-        help="Path to the data file or directory "
-        "which your experiments depend"
-        f" (default: {CmdExperimentsInit.DATA})",
+        help=(
+            "Path to the data file or directory "
+            "which your experiments depend"
+            f" (default: {CmdExperimentsInit.DATA})"
+        ),
     )
     experiments_init_parser.add_argument(
         "--models",
-        help="Path to the model file or directory for your experiments"
-        f" (default: {CmdExperimentsInit.MODELS})",
+        help=(
+            "Path to the model file or directory for your experiments"
+            f" (default: {CmdExperimentsInit.MODELS})"
+        ),
     )
     experiments_init_parser.add_argument(
         "--params",
-        help="Path to the parameters file for your experiments"
-        f" (default: {CmdExperimentsInit.DEFAULT_PARAMS})",
+        help=(
+            "Path to the parameters file for your experiments"
+            f" (default: {CmdExperimentsInit.DEFAULT_PARAMS})"
+        ),
     )
     experiments_init_parser.add_argument(
         "--metrics",
-        help="Path to the metrics file for your experiments"
-        f" (default: {CmdExperimentsInit.DEFAULT_METRICS})",
+        help=(
+            "Path to the metrics file for your experiments"
+            f" (default: {CmdExperimentsInit.DEFAULT_METRICS})"
+        ),
     )
     experiments_init_parser.add_argument(
         "--plots",
-        help="Path to the plots file or directory for your experiments"
-        f" (default: {CmdExperimentsInit.PLOTS})",
+        help=(
+            "Path to the plots file or directory for your experiments"
+            f" (default: {CmdExperimentsInit.PLOTS})"
+        ),
     )
     experiments_init_parser.add_argument(
         "--live",

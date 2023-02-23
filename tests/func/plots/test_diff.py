@@ -31,9 +31,9 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
         diff_result, "workspace", "definitions", file="", endkey="data"
     ) == {"metric.json": props}
     assert get_plot(diff_result, "HEAD", file="metric.json") == metric_head
-    assert get_plot(
-        diff_result, "HEAD", "definitions", file="", endkey="data"
-    ) == {"metric.json": props}
+    assert get_plot(diff_result, "HEAD", "definitions", file="", endkey="data") == {
+        "metric.json": props
+    }
 
     metric_2 = [{"y": 7}, {"y": 8}]
     (tmp_dir / "metric.json").dump_json(metric_2, sort_keys=True)
@@ -52,9 +52,8 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
 
 @pytest.mark.vscode
 def test_no_commits(tmp_dir):
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
+    from dvc.scm import Git
 
     git = Git.init(tmp_dir.fs_path)
     assert git.no_commits

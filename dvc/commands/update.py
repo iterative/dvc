@@ -31,8 +31,7 @@ class CmdUpdate(CmdBase):
 def add_parser(subparsers, parent_parser):
     UPDATE_HELP = (
         "Update data artifact imported (via dvc import or dvc import-url) "
-        "from an external DVC repository or URL, or update data from a "
-        "DVC worktree remote."
+        "from an external DVC repository or URL."
     )
     update_parser = subparsers.add_parser(
         "update",
@@ -61,8 +60,10 @@ def add_parser(subparsers, parent_parser):
         "--no-download",
         action="store_true",
         default=False,
-        help="Update .dvc file git revision/hash value(s)"
-        " but do not download the file(s).",
+        help=(
+            "Update .dvc file git revision/hash value(s)"
+            " but do not download the file(s)."
+        ),
     )
     update_parser.add_argument(
         "--to-remote",

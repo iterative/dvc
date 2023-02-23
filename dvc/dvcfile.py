@@ -63,9 +63,7 @@ def is_valid_filename(path):
 
 
 def is_dvc_file(path):
-    return os.path.isfile(path) and (
-        is_valid_filename(path) or is_lock_file(path)
-    )
+    return os.path.isfile(path) and (is_valid_filename(path) or is_lock_file(path))
 
 
 def is_lock_file(path):
@@ -77,9 +75,7 @@ def is_git_ignored(repo, path):
     from dvc.scm import NoSCMError
 
     try:
-        return isinstance(repo.fs, LocalFileSystem) and repo.scm.is_ignored(
-            path
-        )
+        return isinstance(repo.fs, LocalFileSystem) and repo.scm.is_ignored(path)
     except NoSCMError:
         return False
 
@@ -152,9 +148,7 @@ class FileMixin:
         # 4. when the file is git ignored
         if not self.exists():
             dvc_ignored = self.repo.dvcignore.is_ignored_file(self.path)
-            raise StageFileDoesNotExistError(
-                self.path, dvc_ignored=dvc_ignored
-            )
+            raise StageFileDoesNotExistError(self.path, dvc_ignored=dvc_ignored)
 
         self._verify_filename()
         if not self.repo.fs.isfile(self.path):
@@ -193,7 +187,7 @@ class FileMixin:
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import SingleStageLoader as LOADER
+    from dvc.stage.loader import SingleStageLoader as LOADER  # noqa: N814
 
     metrics: List[str] = []
     plots: Any = {}
@@ -237,7 +231,7 @@ class ProjectFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import StageLoader as LOADER
+    from dvc.stage.loader import StageLoader as LOADER  # noqa: N814
 
     @property
     def _lockfile(self):
@@ -271,9 +265,7 @@ class ProjectFile(FileMixin):
     @staticmethod
     def _check_if_parametrized(stage, action: str = "dump") -> None:
         if stage.raw_data.parametrized:
-            raise ParametrizedDumpError(
-                f"cannot {action} a parametrized {stage}"
-            )
+            raise ParametrizedDumpError(f"cannot {action} a parametrized {stage}")
 
     def _dump_pipeline_file(self, stage):
         self._check_if_parametrized(stage)
@@ -286,9 +278,7 @@ class ProjectFile(FileMixin):
             data["stages"] = data.get("stages", {})
             existing_entry = stage.name in data["stages"]
             action = "Modifying" if existing_entry else "Adding"
-            logger.info(
-                "%s stage '%s' in '%s'", action, stage.name, self.relpath
-            )
+            logger.info("%s stage '%s' in '%s'", action, stage.name, self.relpath)
 
             if existing_entry:
                 orig_stage_data = data["stages"][stage.name]
@@ -300,9 +290,7 @@ class ProjectFile(FileMixin):
 
     @property
     def stage(self):
-        raise DvcException(
-            "ProjectFile has multiple stages. Please specify it's name."
-        )
+        raise DvcException("ProjectFile has multiple stages. Please specify it's name.")
 
     @cached_property
     def contents(self) -> Dict[str, Any]:
@@ -366,10 +354,7 @@ class ProjectFile(FileMixin):
 
 
 def get_lockfile_schema(d):
-    from dvc.schema import (
-        COMPILED_LOCKFILE_V1_SCHEMA,
-        COMPILED_LOCKFILE_V2_SCHEMA,
-    )
+    from dvc.schema import COMPILED_LOCKFILE_V1_SCHEMA, COMPILED_LOCKFILE_V2_SCHEMA
 
     schema = {
         LOCKFILE_VERSION.V1: COMPILED_LOCKFILE_V1_SCHEMA,
@@ -422,9 +407,7 @@ class Lockfile(FileMixin):
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             version = LOCKFILE_VERSION.from_dict(data)
             if version == LOCKFILE_VERSION.V1:
-                logger.info(
-                    "Migrating lock file '%s' from v1 to v2", self.relpath
-                )
+                logger.info("Migrating lock file '%s' from v1 to v2", self.relpath)
                 migrate_lock_v1_to_v2(data, self.latest_version_info)
             else:
                 if not data:

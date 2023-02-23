@@ -184,9 +184,7 @@ def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
     assert index.used_objs() == {None: set(expected_objs)}
     assert index.used_objs("dir") == {None: set(expected_objs[1:])}
     assert index.used_objs(".", recursive=True) == {None: set(expected_objs)}
-    assert index.used_objs("copy-foo-bar", with_deps=True) == {
-        None: {expected_objs[0]}
-    }
+    assert index.used_objs("copy-foo-bar", with_deps=True) == {None: {expected_objs[0]}}
 
 
 def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
@@ -199,6 +197,13 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
     # view should include the specific target, parent dirs, and children
     # view should exclude any siblings of the target
     view = index.targets_view("dir/subdir")
+
+    assert view.data_keys == {
+        "repo": {
+            ("dir", "subdir"),
+        }
+    }
+
     data_index = view.data["repo"]
     assert ("dir",) in data_index
     assert (
@@ -210,6 +215,31 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
         "dir",
         "in-dir",
     ) not in data_index
+
+
+def test_view_onerror(tmp_dir, scm, dvc):
+    from dvc.exceptions import NoOutputOrStageError
+
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    with pytest.raises(NoOutputOrStageError):
+        index.targets_view(["foo", "missing"])
+
+    failed = []
+
+    def onerror(target, exc):
+        failed.append((target, exc))
+
+    view = index.targets_view(["foo", "missing"], onerror=onerror)
+    data = view.data["repo"]
+
+    assert len(failed) == 1
+    target, exc = failed[0]
+    assert target == "missing"
+    assert isinstance(exc, NoOutputOrStageError)
+    assert len(data) == 1
+    assert data[("foo",)]
 
 
 def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
@@ -228,9 +258,7 @@ def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
         None, stage_filter=lambda s: getattr(s, "name", "").startswith("copy")
     )
     assert set(view.stages) == {stage2}
-    assert {out.fs_path for out in view.outs} == {
-        out.fs_path for out in stage2.outs
-    }
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage2.outs}
 
 
 def test_view_outs_filter(tmp_dir, scm, dvc, run_copy):
@@ -241,9 +269,7 @@ def test_view_outs_filter(tmp_dir, scm, dvc, run_copy):
 
     view = index.targets_view(None, outs_filter=lambda o: o.def_path == "foo")
     assert set(view.stages) == {stage1, stage2}
-    assert {out.fs_path for out in view.outs} == {
-        out.fs_path for out in stage1.outs
-    }
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage1.outs}
 
 
 def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
@@ -266,9 +292,17 @@ def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
         outs_filter=lambda o: o.def_path == "bar",
     )
     assert set(view.stages) == {stage2}
-    assert {out.fs_path for out in view.outs} == {
-        out.fs_path for out in stage2.outs
-    }
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage2.outs}
+
+
+def test_view_brancher(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    for _ in dvc.brancher(revs=["HEAD"]):
+        view = index.targets_view("foo")
+        data = view.data["repo"]
+        assert data[("foo",)]
 
 
 def test_with_gitignore(tmp_dir, dvc, scm):

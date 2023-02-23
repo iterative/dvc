@@ -20,13 +20,12 @@ from scmrepo.exceptions import SCMError as InnerScmError
 
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
-from dvc.scm import SCMError, iter_revs, resolve_rev
+from dvc.scm import Git, SCMError, iter_revs, resolve_rev
 from dvc.utils import error_handler, onerror_collect, relpath
 
 from .refs import ExpRefInfo
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
     from scmrepo.git.objects import GitCommit
 
     from dvc.repo import Repo
@@ -76,9 +75,7 @@ def collect_experiment_commit(
             commit = repo.scm.resolve_commit(rev)
             result["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
-        params = _gather_params(
-            repo, targets=None, deps=param_deps, onerror=onerror
-        )
+        params = _gather_params(repo, targets=None, deps=param_deps, onerror=onerror)
         if params:
             result["params"] = params
 
@@ -190,6 +187,7 @@ def _collect_branch(
     ref_info = ExpRefInfo(baseline_sha=baseline)
     commits: List[Tuple[str, "GitCommit", str, List[str]]] = []
 
+    assert isinstance(repo.scm, Git)
     for ref in repo.scm.iter_refs(base=str(ref_info)):
         try:
             commit = repo.scm.resolve_commit(ref)
@@ -223,8 +221,7 @@ def get_branch_names(
 ) -> Dict[str, Optional[str]]:
     names: Dict[str, Optional[str]] = {}
     for base in [
-        f"refs/exps/{baseline[:2]}/{baseline[2:]}/"
-        for baseline in baseline_set
+        f"refs/exps/{baseline[:2]}/{baseline[2:]}/" for baseline in baseline_set
     ] + ["refs/heads/", "refs/tags/"]:
         for ref in scm.iter_refs(base=base):
             if ref:
@@ -242,7 +239,6 @@ def update_names(  # noqa: C901
     branch_names: Dict[str, Optional[str]],
     result: Dict[str, Dict[str, Any]],
 ):
-
     rev_set = set()
     for baseline in result:
         for rev in result[baseline]:
@@ -387,7 +383,7 @@ def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
                     checkpoint = True
 
 
-def show(
+def show(  # noqa: PLR0913
     repo: "Repo",
     all_branches=False,
     all_tags=False,
@@ -401,7 +397,6 @@ def show(
     onerror: Optional[Callable] = None,
     fetch_running: bool = True,
 ):
-
     if repo.scm.no_commits:
         return {}
 
@@ -413,6 +408,8 @@ def show(
         revs = ["HEAD"]
     if isinstance(revs, str):
         revs = [revs]
+
+    assert isinstance(repo.scm, Git)
 
     found_revs: Dict[str, List[str]] = {"workspace": []}
     found_revs.update(

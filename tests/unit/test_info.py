@@ -30,9 +30,7 @@ def find_supported_remotes(string):
         if not line.startswith("\t"):
             break
 
-        remote_name, _, raw_dependencies = (
-            line.strip().strip(",").partition(" ")
-        )
+        remote_name, _, raw_dependencies = line.strip().strip(",").partition(" ")
         remotes[remote_name] = {
             dependency: version
             for dependency, _, version in [
@@ -47,7 +45,7 @@ def find_supported_remotes(string):
 def test_info_in_repo(scm_init, tmp_dir):
     tmp_dir.init(scm=scm_init, dvc=True)
     # Create `.dvc/cache`, that is needed to check supported link types.
-    os.mkdir(tmp_dir.dvc.odb.local.path)
+    os.mkdir(tmp_dir.dvc.cache.local.path)
 
     dvc_info = get_dvc_info()
 
@@ -87,9 +85,7 @@ def test_info_in_broken_git_repo(tmp_dir, dvc, scm, caplog):
 
 
 def test_caches(tmp_dir, dvc, caplog):
-    tmp_dir.add_remote(
-        name="sshcache", url="ssh://example.com/path", default=False
-    )
+    tmp_dir.add_remote(name="sshcache", url="ssh://example.com/path", default=False)
     with tmp_dir.dvc.config.edit() as conf:
         conf["cache"]["ssh"] = "sshcache"
 
@@ -108,9 +104,7 @@ def test_remotes_empty(tmp_dir, dvc, caplog):
 
 def test_remotes(tmp_dir, dvc, caplog):
     tmp_dir.add_remote(name="server", url="ssh://localhost", default=False)
-    tmp_dir.add_remote(
-        name="r1", url="azure://example.com/path", default=False
-    )
+    tmp_dir.add_remote(name="r1", url="azure://example.com/path", default=False)
     tmp_dir.add_remote(name="r2", url="remote://server/path", default=False)
 
     dvc_info = get_dvc_info()
@@ -119,7 +113,7 @@ def test_remotes(tmp_dir, dvc, caplog):
 
 
 def test_fs_info_in_repo(tmp_dir, dvc, caplog):
-    os.mkdir(dvc.odb.local.path)
+    os.mkdir(dvc.cache.local.path)
     dvc_info = get_dvc_info()
 
     assert re.search(r"Cache directory: .* on .*", dvc_info)

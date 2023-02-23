@@ -31,8 +31,7 @@ def mock_daemon(mocker):
     def func(argv):
         return main(["daemon", *argv])
 
-    m = mocker.patch("dvc.daemon.daemon", mocker.MagicMock(side_effect=func))
-    yield m
+    return mocker.patch("dvc.daemon.daemon", mocker.MagicMock(side_effect=func))
 
 
 def test_collect_and_send_report(mocker, dvc, mock_daemon):

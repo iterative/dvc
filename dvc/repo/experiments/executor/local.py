@@ -20,15 +20,13 @@ from dvc.repo.experiments.refs import (
     EXPS_TEMP,
 )
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
-from dvc.scm import SCM, GitMergeError
+from dvc.scm import SCM, Git, GitMergeError
 from dvc.utils.fs import remove
 from dvc.utils.objects import cached_property
 
 from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments.refs import ExpRefInfo
     from dvc.repo.experiments.stash import ExpStashEntry
@@ -131,6 +129,7 @@ class TempDirExecutor(BaseLocalExecutor):
 
         # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
         # committing
+        assert isinstance(self.scm, Git)
         head = EXEC_BRANCH if branch else EXEC_HEAD
         self.scm.checkout(head, detach=True)
         merge_rev = self.scm.get_ref(EXEC_MERGE)
@@ -154,7 +153,7 @@ class TempDirExecutor(BaseLocalExecutor):
         self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
     ):
         """Initialize DVC cache."""
-        self._config(repo.odb.repo.path)
+        self._config(repo.cache.repo.path)
 
     def cleanup(self, infofile: str):
         super().cleanup(infofile)
@@ -215,6 +214,8 @@ class WorkspaceExecutor(BaseLocalExecutor):
         self.status = TaskStatus.PREPARING
         if infofile:
             self.info.dump_json(infofile)
+
+        assert isinstance(self.scm, Git)
 
         with get_exp_rwlock(repo, writes=[EXEC_NAMESPACE]):
             scm.set_ref(EXEC_HEAD, entry.head_rev)

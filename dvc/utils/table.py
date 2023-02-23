@@ -26,10 +26,7 @@ class Table(RichTable):
         last_collapsed = -1
         columns = self.columns
         for i in range(len(columns) - 1, -1, -1):
-            if (
-                widths[i] == 0
-                and columns[i].collapse  # type: ignore[attr-defined]
-            ):
+            if widths[i] == 0 and columns[i].collapse:  # type: ignore[attr-defined]
                 if last_collapsed >= 0:
                     del widths[last_collapsed]
                     del columns[last_collapsed]
@@ -64,8 +61,7 @@ class Table(RichTable):
         handling will be used.
         """
         collapsible = [
-            column.collapse  # type: ignore[attr-defined]
-            for column in self.columns
+            column.collapse for column in self.columns  # type: ignore[attr-defined]
         ]
         total_width = sum(widths)
         excess_width = total_width - max_width

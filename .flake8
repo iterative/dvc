@@ -11,8 +11,9 @@ ignore=
     P1
     # use `!r` instead of surrounding by quotes
     B028
-max_line_length = 79
+max_line_length = 88
 max-complexity = 10
-select = B,C,E,F,W,T4,B902,T,P
+select = B,C,E,F,W,T4,B902,T,P,TYP
 show_source = true
 count = true
+min_python_version = 3.8.0

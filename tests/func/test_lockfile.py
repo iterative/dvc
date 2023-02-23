@@ -49,12 +49,8 @@ def test_deps_outs_are_sorted_by_path(tmp_dir, dvc, run_head):
     assert list(lock.keys()) == ["cmd", "deps", "outs"]
 
     # `path` key appear first and then the `md5`
-    assert all(
-        list(dep.keys()) == ["path", "md5", "size"] for dep in lock["deps"]
-    )
-    assert all(
-        list(out.keys()) == ["path", "md5", "size"] for out in lock["outs"]
-    )
+    assert all(list(dep.keys()) == ["path", "md5", "size"] for dep in lock["deps"])
+    assert all(list(out.keys()) == ["path", "md5", "size"] for out in lock["outs"])
 
     # deps are always sorted by the file path naming
     assert list(map(itemgetter("path"), lock["deps"])) == sorted(deps)
@@ -65,9 +61,7 @@ def test_deps_outs_are_sorted_by_path(tmp_dir, dvc, run_head):
     ]
 
 
-def test_order_is_preserved_when_pipeline_order_changes(
-    tmp_dir, dvc, run_head
-):
+def test_order_is_preserved_when_pipeline_order_changes(tmp_dir, dvc, run_head):
     tmp_dir.gen(FS_STRUCTURE)
     deps = ["foo", "bar", "foobar"]
     stage = run_head(*deps, name="copy-first-line")
@@ -178,7 +172,7 @@ def v1_repo_lock(tmp_dir, dvc):
     dvc.run(cmd="echo foo", name="foo", no_exec=True)
     dvc.run(cmd="echo bar>bar.txt", outs=["bar.txt"], name="bar", no_exec=True)
     (tmp_dir / "dvc.lock").dump(v1_lockdata)
-    yield v1_lockdata
+    return v1_lockdata
 
 
 def test_can_read_v1_lockfile(tmp_dir, dvc, v1_repo_lock):
@@ -188,9 +182,7 @@ def test_can_read_v1_lockfile(tmp_dir, dvc, v1_repo_lock):
     }
 
 
-def test_migrates_v1_lockfile_to_v2_during_dump(
-    tmp_dir, dvc, v1_repo_lock, caplog
-):
+def test_migrates_v1_lockfile_to_v2_during_dump(tmp_dir, dvc, v1_repo_lock, caplog):
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="dvc.dvcfile"):
         assert dvc.reproduce()

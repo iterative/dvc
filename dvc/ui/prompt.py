@@ -21,9 +21,7 @@ class RichInputMixin:
     @classmethod
     def get_input(cls, console: "RichConsole", *args, **kwargs) -> str:
         try:
-            return super().get_input(  # type: ignore[misc]
-                console, *args, **kwargs
-            )
+            return super().get_input(console, *args, **kwargs)  # type: ignore[misc]
         except (KeyboardInterrupt, EOFError):
             console.print()
             raise
@@ -48,9 +46,7 @@ class Prompt(RichInputMixin, rich.prompt.Prompt):
         cls,
         *args: Any,
         allow_omission: bool = False,
-        validator: Optional[
-            Callable[[str], Union[str, Tuple[str, str]]]
-        ] = None,
+        validator: Optional[Callable[[str], Union[str, Tuple[str, str]]]] = None,
         **kwargs: Any,
     ) -> str:
         """Extended to pass validator argument.
@@ -79,9 +75,7 @@ class Prompt(RichInputMixin, rich.prompt.Prompt):
         cls,
         *args: Any,
         allow_omission: bool = False,
-        validator: Optional[
-            Callable[[str], Union[str, Tuple[str, str]]]
-        ] = None,
+        validator: Optional[Callable[[str], Union[str, Tuple[str, str]]]] = None,
         **kwargs: Any,
     ) -> Optional[str]:
         """Extends `.ask()` to allow skipping/returning None type."""
@@ -95,9 +89,7 @@ class Prompt(RichInputMixin, rich.prompt.Prompt):
     def __call__(
         self,
         *args: Any,
-        validator: Optional[
-            Callable[[str], Union[str, Tuple[str, str]]]
-        ] = None,
+        validator: Optional[Callable[[str], Union[str, Tuple[str, str]]]] = None,
         **kwargs: Any,
     ) -> str:
         """Supports validating response and show warning message."""
@@ -106,9 +98,7 @@ class Prompt(RichInputMixin, rich.prompt.Prompt):
         # `default` values.
         while True:
             value = super().__call__(*args, **kwargs)
-            if validator is None or (
-                self.allow_omission and value == self.omit_value
-            ):
+            if validator is None or (self.allow_omission and value == self.omit_value):
                 return value
 
             try:

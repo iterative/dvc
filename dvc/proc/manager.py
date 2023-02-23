@@ -91,9 +91,7 @@ class ProcessManager:
             raise UnsupportedSignalError(sig)
 
         def handle_closed_process():
-            logging.warning(
-                "Process %s had already aborted unexpectedly.", name
-            )
+            logging.warning("Process %s had already aborted unexpectedly.", name)
             process_info.returncode = -1
             self[name] = process_info
 

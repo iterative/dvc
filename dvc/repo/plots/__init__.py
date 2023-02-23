@@ -50,8 +50,7 @@ class PlotMetricTypeError(DvcException):
 class NotAPlotError(DvcException):
     def __init__(self, out):
         super().__init__(
-            f"'{out}' is not a known plot. Use `dvc plots modify` to turn it "
-            "into one."
+            f"'{out}' is not a known plot. Use `dvc plots modify` to turn it into one."
         )
 
 
@@ -310,8 +309,7 @@ def _collect_plots(
     )
 
     result = {
-        repo.dvcfs.from_os_path(plot.fs_path): _plot_props(plot)
-        for plot in plots
+        repo.dvcfs.from_os_path(plot.fs_path): _plot_props(plot) for plot in plots
     }
     result.update({fs_path: {} for fs_path in fs_paths})
     return result
@@ -352,8 +350,7 @@ def _matches(targets, config_file, plot_id):
 
     full_id = get_plot_id(plot_id, config_file)
     if any(
-        (re.match(target, plot_id) or re.match(target, full_id))
-        for target in targets
+        (re.match(target, plot_id) or re.match(target, full_id)) for target in targets
     ):
         return True
     return False
@@ -373,14 +370,10 @@ def _relpath(fs, path):
     # and invoking from some subdir `dvcfile.relpath` returns strange long
     # relative paths
     # ("../../../../../../dvc.yaml") - investigate
-    return fs.path.relpath(
-        fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd()
-    )
+    return fs.path.relpath(fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd())
 
 
-def _collect_output_plots(
-    repo, targets, props, onerror: Optional[Callable] = None
-):
+def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = None):
     fs = repo.dvcfs
     result: Dict[str, Dict] = {}
     for plot in repo.index.plots:
@@ -497,7 +490,6 @@ def _collect_definitions(
     onerror: Optional[Callable] = None,
     **kwargs,
 ) -> Dict:
-
     result: Dict = defaultdict(dict)
     props = props or {}
 
@@ -542,9 +534,7 @@ def _collect_definitions(
     return dict(result)
 
 
-def unpack_if_dir(
-    fs, path, props: Dict[str, str], onerror: Optional[Callable] = None
-):
+def unpack_if_dir(fs, path, props: Dict[str, str], onerror: Optional[Callable] = None):
     result: Dict[str, Dict] = defaultdict(dict)
     if fs.isdir(path):
         unpacked = _unpack_dir_files(fs, path, onerror=onerror)

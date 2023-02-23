@@ -39,9 +39,7 @@ class CmdQueueStatus(CmdBase):
         ui.write()
 
         worker_status = self.repo.experiments.celery_queue.worker_status()
-        active_count = len(
-            [name for name, task in worker_status.items() if task]
-        )
+        active_count = len([name for name, task in worker_status.items() if task])
         idle_count = len(worker_status) - active_count
 
         ui.write(f"Worker status: {active_count} active, {idle_count} idle")
@@ -50,9 +48,7 @@ class CmdQueueStatus(CmdBase):
 
 
 def add_parser(queue_subparsers, parent_parser):
-    QUEUE_STATUS_HELP = (
-        "Show the status of experiments queue tasks and workers."
-    )
+    QUEUE_STATUS_HELP = "Show the status of experiments queue tasks and workers."
     queue_status_parser = queue_subparsers.add_parser(
         "status",
         parents=[parent_parser],

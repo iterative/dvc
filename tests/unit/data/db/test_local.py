@@ -32,7 +32,7 @@ def test_status_download_optimization(mocker, dvc):
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
 def test_is_protected(tmp_dir, dvc, link_name):
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     fs = odb.fs
     link_method = getattr(fs, link_name)
 
@@ -66,10 +66,8 @@ def test_is_protected(tmp_dir, dvc, link_name):
 def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
 
-    mock_chmod = mocker.patch(
-        "os.chmod", side_effect=OSError(err, "something")
-    )
-    dvc.odb.local.protect("foo")
+    mock_chmod = mocker.patch("os.chmod", side_effect=OSError(err, "something"))
+    dvc.cache.local.protect("foo")
     assert mock_chmod.called
 
 
@@ -77,10 +75,8 @@ def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
 def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
 
-    mock_chmod = mocker.patch(
-        "os.chmod", side_effect=OSError(err, "something")
-    )
-    dvc.odb.local.set_exec("foo")
+    mock_chmod = mocker.patch("os.chmod", side_effect=OSError(err, "something"))
+    dvc.cache.local.set_exec("foo")
     assert mock_chmod.called
 
 
@@ -92,10 +88,8 @@ def test_staging_file(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
     fs = LocalFileSystem()
 
-    local_odb = dvc.odb.local
-    staging_odb, _, obj = build(
-        local_odb, (tmp_dir / "foo").fs_path, fs, "md5"
-    )
+    local_odb = dvc.cache.local
+    staging_odb, _, obj = build(local_odb, (tmp_dir / "foo").fs_path, fs, "md5")
 
     assert not local_odb.exists(obj.hash_info.value)
     assert staging_odb.exists(obj.hash_info.value)
@@ -119,11 +113,9 @@ def test_staging_dir(tmp_dir, dvc):
 
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     fs = LocalFileSystem()
-    local_odb = dvc.odb.local
+    local_odb = dvc.cache.local
 
-    staging_odb, _, obj = build(
-        local_odb, (tmp_dir / "dir").fs_path, fs, "md5"
-    )
+    staging_odb, _, obj = build(local_odb, (tmp_dir / "dir").fs_path, fs, "md5")
 
     assert not local_odb.exists(obj.hash_info.value)
     assert staging_odb.exists(obj.hash_info.value)
@@ -132,9 +124,7 @@ def test_staging_dir(tmp_dir, dvc):
         check(local_odb, obj)
     check(staging_odb, obj)
 
-    transfer(
-        staging_odb, local_odb, {obj.hash_info}, shallow=False, hardlink=True
-    )
+    transfer(staging_odb, local_odb, {obj.hash_info}, shallow=False, hardlink=True)
     check(local_odb, obj)
     check(staging_odb, obj)
 

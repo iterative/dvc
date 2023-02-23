@@ -105,8 +105,7 @@ def test_grants(dvc):
 
     extra_args = fs.fs_args["s3_additional_kwargs"]
     assert (
-        extra_args["GrantRead"]
-        == "id=read-permission-id,id=other-read-permission-id"
+        extra_args["GrantRead"] == "id=read-permission-id,id=other-read-permission-id"
     )
     assert extra_args["GrantReadACP"] == "id=read-acp-permission-id"
     assert extra_args["GrantWriteACP"] == "id=write-acp-permission-id"

@@ -2,13 +2,7 @@ import json
 from collections import defaultdict
 from typing import Dict, List, Union
 
-from dvc.render import (
-    REVISION_FIELD,
-    REVISIONS_KEY,
-    SRC_FIELD,
-    TYPE_KEY,
-    VERSION_FIELD,
-)
+from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY, VERSION_FIELD
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 
@@ -35,10 +29,8 @@ def _group_by_rev(datapoints):
 
 
 def to_json(renderer, split: bool = False) -> List[Dict]:
-    from copy import deepcopy
-
     if renderer.TYPE == "vega":
-        grouped = _group_by_rev(deepcopy(renderer.datapoints))
+        grouped = _group_by_rev(renderer.datapoints)
         if split:
             content = renderer.get_filled_template(skip_anchors=["data"])
         else:

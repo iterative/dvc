@@ -4,8 +4,8 @@ import stat
 import configobj
 import pytest
 
+from dvc.cachemgr import CacheManager
 from dvc.cli import main
-from dvc.odbmgr import ODBManager
 from dvc.utils import relpath
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_objects.errors import ObjectFormatError
@@ -15,12 +15,12 @@ def test_cache(tmp_dir, dvc):
     cache1_md5 = "123"
     cache2_md5 = "234"
     cache1 = os.path.join(
-        dvc.odb.local.path,
+        dvc.cache.local.path,
         cache1_md5[0:2],
         cache1_md5[2:],
     )
     cache2 = os.path.join(
-        dvc.odb.local.path,
+        dvc.cache.local.path,
         cache2_md5[0:2],
         cache2_md5[2:],
     )
@@ -29,7 +29,7 @@ def test_cache(tmp_dir, dvc):
     assert os.path.exists(cache1)
     assert os.path.exists(cache2)
 
-    odb = ODBManager(dvc)
+    odb = CacheManager(dvc)
 
     md5_list = list(odb.local.all())
     assert len(md5_list) == 2
@@ -46,16 +46,16 @@ def test_cache_load_bad_dir_cache(tmp_dir, dvc):
     from dvc_data.hashfile import load
 
     dir_hash = "123.dir"
-    fname = os.fspath(dvc.odb.local.oid_to_path(dir_hash))
+    fname = os.fspath(dvc.cache.local.oid_to_path(dir_hash))
     tmp_dir.gen({fname: "<clearly>not,json"})
     with pytest.raises(ObjectFormatError):
-        load(dvc.odb.local, HashInfo("md5", dir_hash))
+        load(dvc.cache.local, HashInfo("md5", dir_hash))
 
     dir_hash = "234.dir"
-    fname = os.fspath(dvc.odb.local.oid_to_path(dir_hash))
+    fname = os.fspath(dvc.cache.local.oid_to_path(dir_hash))
     tmp_dir.gen({fname: '{"a": "b"}'})
     with pytest.raises(ObjectFormatError):
-        load(dvc.odb.local, HashInfo("md5", dir_hash))
+        load(dvc.cache.local, HashInfo("md5", dir_hash))
 
 
 def test_external_cache_dir(tmp_dir, dvc, make_tmp_dir):
@@ -63,8 +63,8 @@ def test_external_cache_dir(tmp_dir, dvc, make_tmp_dir):
 
     with dvc.config.edit() as conf:
         conf["cache"]["dir"] = cache_dir.fs_path
-    assert not os.path.exists(dvc.odb.local.path)
-    dvc.odb = ODBManager(dvc)
+    assert not os.path.exists(dvc.cache.local.path)
+    dvc.cache = CacheManager(dvc)
 
     tmp_dir.dvc_gen({"foo": "foo"})
 
@@ -87,9 +87,9 @@ def test_remote_cache_references(tmp_dir, dvc):
         conf["remote"]["cache"] = {"url": "remote://storage/tmp"}
         conf["cache"]["ssh"] = "cache"
 
-    dvc.odb = ODBManager(dvc)
+    dvc.cache = CacheManager(dvc)
 
-    assert dvc.odb.ssh.path == "/tmp"
+    assert dvc.cache.ssh.path == "/tmp"
 
 
 def test_shared_cache_dir(tmp_dir):
@@ -126,7 +126,7 @@ def test_shared_cache_dir(tmp_dir):
 def test_cache_link_type(tmp_dir, scm, dvc):
     with dvc.config.edit() as conf:
         conf["cache"]["type"] = "reflink,copy"
-    dvc.odb = ODBManager(dvc)
+    dvc.cache = CacheManager(dvc)
 
     stages = tmp_dir.dvc_gen({"foo": "foo"})
     assert len(stages) == 1
@@ -154,7 +154,7 @@ def test_cmd_cache_relative_path(tmp_dir, scm, dvc, make_tmp_dir):
     assert ret == 0
 
     dvc.config.load()
-    dvc.odb = ODBManager(dvc)
+    dvc.cache = CacheManager(dvc)
 
     # NOTE: we are in the repo's root and config is in .dvc/, so
     # dir path written to config should be just one level above.
@@ -170,7 +170,7 @@ def test_cmd_cache_relative_path(tmp_dir, scm, dvc, make_tmp_dir):
 
 
 def test_default_cache_type(dvc):
-    assert dvc.odb.local.cache_types == ["reflink", "copy"]
+    assert dvc.cache.local.cache_types == ["reflink", "copy"]
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
@@ -181,14 +181,12 @@ def test_shared_cache(tmp_dir, dvc, group):
     if group:
         with dvc.config.edit() as conf:
             conf["cache"].update({"shared": "group"})
-    dvc.odb = ODBManager(dvc)
-    cache_dir = dvc.odb.local.path
+    dvc.cache = CacheManager(dvc)
+    cache_dir = dvc.cache.local.path
 
     assert not os.path.exists(cache_dir)
 
-    tmp_dir.dvc_gen(
-        {"file": "file content", "dir": {"file2": "file 2 content"}}
-    )
+    tmp_dir.dvc_gen({"file": "file content", "dir": {"file2": "file 2 content"}})
 
     file_mode = oct(0o444)
     dir_mode = oct(0o2775 if group else (0o777 & ~system.umask))

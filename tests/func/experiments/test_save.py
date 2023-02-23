@@ -1,10 +1,9 @@
+import logging
+
 import pytest
 from funcy import first
 
-from dvc.repo.experiments.exceptions import (
-    ExperimentExistsError,
-    InvalidArgumentError,
-)
+from dvc.repo.experiments.exceptions import ExperimentExistsError, InvalidArgumentError
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
 
@@ -13,7 +12,6 @@ from dvc.scm import resolve_rev
 def modified_exp_stage(exp_stage, tmp_dir):
     with open(tmp_dir / "copy.py", "a", encoding="utf-8") as fh:
         fh.write("\n# dummy change")
-    yield
 
 
 def test_exp_save_unchanged(tmp_dir, dvc, scm, exp_stage):
@@ -26,7 +24,8 @@ def test_exp_save(tmp_dir, dvc, scm, exp_stage, name, modified_exp_stage):
 
     exp = dvc.experiments.save(name=name)
     ref_info = first(exp_refs_by_rev(scm, exp))
-    assert ref_info and ref_info.baseline_sha == baseline
+    assert ref_info
+    assert ref_info.baseline_sha == baseline
 
     exp_name = name if name else ref_info.name
     assert dvc.experiments.get_exact_name([exp])[exp] == exp_name
@@ -94,3 +93,15 @@ def test_exp_save_include_untracked(tmp_dir, dvc, scm, exp_stage):
 
     dvc.experiments.apply("exp-0")
     assert new_file.read_text() == "exp-0"
+
+
+def test_exp_save_include_untracked_warning(tmp_dir, dvc, scm, caplog, exp_stage):
+    """Regression test for https://github.com/iterative/dvc/issues/9061"""
+    new_dir = tmp_dir / "new_dir"
+    new_dir.mkdir()
+    (new_dir / "foo").write_text("foo")
+    (new_dir / "bar").write_text("bar")
+
+    with caplog.at_level(logging.WARNING, logger="dvc.repo.experiments.save"):
+        dvc.experiments.save(name="exp", include_untracked=["new_dir"])
+        assert not caplog.records

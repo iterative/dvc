@@ -24,9 +24,7 @@ class CmdCommit(CmdBase):
                     force=self.args.force,
                 )
             except DvcException:
-                logger.exception(
-                    "failed to commit%s", (" " + target) if target else ""
-                )
+                logger.exception("failed to commit%s", (" " + target) if target else "")
                 return 1
         return 0
 

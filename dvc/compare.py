@@ -64,9 +64,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
     def keys(self) -> List[str]:
         return self._keys
 
-    def _iter_col_row(
-        self, row: Sequence["CellT"]
-    ) -> Iterator[Tuple["CellT", Column]]:
+    def _iter_col_row(self, row: Sequence["CellT"]) -> Iterator[Tuple["CellT", Column]]:
         for val, col in zip_longest(row, self.columns):
             if col is None:
                 break
@@ -103,9 +101,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         ...
 
     @overload
-    def __setitem__(
-        self, item: slice, value: Iterable[Sequence["CellT"]]
-    ) -> None:
+    def __setitem__(self, item: slice, value: Iterable[Sequence["CellT"]]) -> None:
         ...
 
     def __setitem__(self, item, value) -> None:
@@ -113,8 +109,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         if isinstance(item, slice):
             n = len(self.columns)
             normalized_rows = (
-                chain(val, repeat(self._fill_value, n - len(val)))
-                for val in value
+                chain(val, repeat(self._fill_value, n - len(val))) for val in value
             )
             # we need to transpose those rows into columnar format
             # as we work in terms of column-based arrays
@@ -212,11 +207,9 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         self, cols: Optional[Iterable[str]] = None
     ) -> Iterable[Dict[str, "CellT"]]:
         keys = self.keys() if cols is None else set(cols)
-        return [
-            {k: self._columns[k][i] for k in keys} for i in range(len(self))
-        ]
+        return [{k: self._columns[k][i] for k in keys} for i in range(len(self))]
 
-    def dropna(  # noqa: C901
+    def dropna(  # noqa: C901, PLR0912
         self,
         axis: str = "rows",
         how="any",
@@ -224,13 +217,10 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
     ):
         if axis not in ["rows", "cols"]:
             raise ValueError(
-                f"Invalid 'axis' value {axis}."
-                "Choose one of ['rows', 'cols']"
+                f"Invalid 'axis' value {axis}.Choose one of ['rows', 'cols']"
             )
         if how not in ["any", "all"]:
-            raise ValueError(
-                f"Invalid 'how' value {how}. Choose one of ['any', 'all']"
-            )
+            raise ValueError(f"Invalid 'how' value {how}. Choose one of ['any', 'all']")
 
         match_line: Set = set()
         match_any = True
@@ -258,11 +248,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         if axis == "rows":
             for name in self.keys():  # noqa: SIM118
                 self._columns[name] = Column(
-                    [
-                        x
-                        for n, x in enumerate(self._columns[name])
-                        if n not in to_drop
-                    ]
+                    [x for n, x in enumerate(self._columns[name]) if n not in to_drop]
                 )
         else:
             self.drop(*to_drop)
@@ -275,8 +261,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
     ):
         if axis not in ["rows", "cols"]:
             raise ValueError(
-                f"Invalid 'axis' value {axis}."
-                "Choose one of ['rows', 'cols']"
+                f"Invalid 'axis' value {axis}.Choose one of ['rows', 'cols']"
             )
 
         if axis == "cols":
@@ -362,9 +347,7 @@ def diff_table(
         for item, change in sorted(diff_in_file.items()):
             old_value = with_value(change.get("old"), fill_value)
             new_value = with_value(change.get("new"), fill_value)
-            diff_value = with_value(
-                change.get("diff", on_empty_diff), fill_value
-            )
+            diff_value = with_value(change.get("diff", on_empty_diff), fill_value)
             td.append(
                 [
                     fname,
@@ -388,7 +371,7 @@ def diff_table(
     return td
 
 
-def show_diff(
+def show_diff(  # noqa: PLR0913
     diff,
     title: str,
     old: bool = True,
