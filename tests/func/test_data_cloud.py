@@ -7,6 +7,7 @@ from flaky.flaky_decorator import flaky
 
 import dvc_data
 from dvc.cli import main
+from dvc.exceptions import CheckoutError
 from dvc.external_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-import
@@ -561,3 +562,17 @@ def test_target_remote(tmp_dir, dvc, make_remote):
         "6b18131dc289fd37006705affe961ef8.dir",
         "b8a9f715dbb64fd5c56e7783c6820a61",
     }
+
+
+def test_pull_allow_missing(tmp_dir, dvc, local_remote):
+    dvc.stage.add(name="bar", outs=["bar"], cmd="echo bar > bar")
+
+    with pytest.raises(CheckoutError):
+        dvc.pull()
+
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.push()
+    clean(["foo"], dvc)
+
+    stats = dvc.pull(allow_missing=True)
+    assert stats["fetched"] == 1

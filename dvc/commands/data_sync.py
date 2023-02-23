@@ -40,6 +40,7 @@ class CmdDataPull(CmdDataBase):
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
                 glob=self.args.glob,
+                allow_missing=self.args.allow_missing,
             )
             self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
@@ -196,6 +197,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
+    )
+    pull_parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        default=False,
+        help="Ignore errors if some of the files or directories are missing.",
     )
     pull_parser.set_defaults(func=CmdDataPull)
 
