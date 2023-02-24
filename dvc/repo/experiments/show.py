@@ -197,6 +197,7 @@ def _collect_branch(
     repo: "Repo",
     baseline: str,
     running: Dict[str, Any],
+    refs: Optional[Iterable[str]] = None,
     **kwargs,
 ) -> Dict[str, Dict[str, Any]]:
     results: Dict[str, Dict[str, Any]] = OrderedDict()
@@ -215,7 +216,11 @@ def _collect_branch(
     commits: List[Tuple[str, "GitCommit", str, List[str]]] = []
 
     assert isinstance(repo.scm, Git)
-    for ref in repo.scm.iter_refs(base=str(ref_info)):
+    if refs:
+        ref_it = (ref for ref in iter(refs) if ref.startswith(str(ref_info)))
+    else:
+        ref_it = repo.scm.iter_refs(base=str(ref_info))
+    for ref in ref_it:
         try:
             commit = repo.scm.resolve_commit(ref)
             exp_rev = resolve_rev(repo.scm, ref)
@@ -244,19 +249,22 @@ def _collect_branch(
 
 
 def get_branch_names(
-    scm: "Git", baseline_set: Iterable[str]
+    scm: "Git", baseline_set: Iterable[str], refs: Optional[Iterable[str]] = None
 ) -> Dict[str, Optional[str]]:
     names: Dict[str, Optional[str]] = {}
-    for base in [
+    bases = [
         f"refs/exps/{baseline[:2]}/{baseline[2:]}/" for baseline in baseline_set
-    ] + ["refs/heads/", "refs/tags/"]:
-        for ref in scm.iter_refs(base=base):
-            if ref:
+    ] + ["refs/heads/", "refs/tags/"]
+    ref_it = iter(refs) if refs else scm.iter_refs()
+    for ref in ref_it:
+        for base in bases:
+            if ref.startswith(base):
                 try:
                     rev = scm.get_ref(ref)
                     names[rev] = ref[len(base) :]
                 except KeyError:
-                    logger.debug("unreosolved ref %s", ref)
+                    logger.debug("unresolved ref %s", ref)
+                break
     logger.debug("found refs for revs: %s", names)
     return names
 
@@ -441,7 +449,8 @@ def show(  # noqa: PLR0913
     found_revs.update(
         iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
     )
-    branch_names = get_branch_names(repo.scm, found_revs)
+    cached_refs = list(repo.scm.iter_refs())
+    branch_names = get_branch_names(repo.scm, found_revs, refs=cached_refs)
 
     running: Dict[str, Dict] = repo.experiments.get_running_exps(
         fetch_refs=fetch_running
@@ -489,6 +498,7 @@ def show(  # noqa: PLR0913
             param_deps=param_deps,
             onerror=onerror,
             force=force,
+            refs=cached_refs,
         )
 
     update_new(res, failed_experiments)
