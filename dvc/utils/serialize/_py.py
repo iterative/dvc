@@ -39,7 +39,6 @@ def parse_py_for_update(text, path):
 
 
 def _dump(data, stream):
-
     old_params = data[_PARAMS_KEY]
     new_params = {
         key: value
@@ -98,20 +97,12 @@ def _ast_tree_to_dict(tree, only_self_params=False, lineno=False):
     for _body in tree.body:
         try:
             if isinstance(_body, (ast.Assign, ast.AnnAssign)):
-                result.update(
-                    _ast_assign_to_dict(_body, only_self_params, lineno)
-                )
+                result.update(_ast_assign_to_dict(_body, only_self_params, lineno))
             elif isinstance(_body, ast.ClassDef):
+                result.update({_body.name: _ast_tree_to_dict(_body, lineno=lineno)})
+            elif isinstance(_body, ast.FunctionDef) and _body.name == "__init__":
                 result.update(
-                    {_body.name: _ast_tree_to_dict(_body, lineno=lineno)}
-                )
-            elif (
-                isinstance(_body, ast.FunctionDef) and _body.name == "__init__"
-            ):
-                result.update(
-                    _ast_tree_to_dict(
-                        _body, only_self_params=True, lineno=lineno
-                    )
+                    _ast_tree_to_dict(_body, only_self_params=True, lineno=lineno)
                 )
         except ValueError:
             continue
@@ -120,7 +111,7 @@ def _ast_tree_to_dict(tree, only_self_params=False, lineno=False):
     return result
 
 
-def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):
+def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):  # noqa: PLR0912
     result = {}
 
     if isinstance(assign, ast.AnnAssign):

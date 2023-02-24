@@ -4,11 +4,9 @@ import os
 def test_unprotect(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
 
-    dvc.odb.local.cache_types = ["hardlink"]
+    dvc.cache.local.cache_types = ["hardlink"]
     dvc.add("foo")
-    cache = os.path.join(
-        ".dvc", "cache", "ac", "bd18db4cc2f85cedef654fccc4a4d8"
-    )
+    cache = os.path.join(".dvc", "cache", "ac", "bd18db4cc2f85cedef654fccc4a4d8")
     assert not os.access("foo", os.W_OK)
     assert not os.access(cache, os.W_OK)
 

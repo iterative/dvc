@@ -14,9 +14,7 @@ class CmdMove(CmdBase):
         try:
             self.repo.move(self.args.src, self.args.dst)
         except DvcException:
-            msg = "failed to move '{}' -> '{}'".format(
-                self.args.src, self.args.dst
-            )
+            msg = f"failed to move '{self.args.src}' -> '{self.args.dst}'"
             logger.exception(msg)
             return 1
         return 0
@@ -40,7 +38,5 @@ def add_parser(subparsers, parent_parser):
     move_parser.add_argument(
         "src", help="Source path to a data file or directory."
     ).complete = completion.FILE
-    move_parser.add_argument(
-        "dst", help="Destination path."
-    ).complete = completion.FILE
+    move_parser.add_argument("dst", help="Destination path.").complete = completion.FILE
     move_parser.set_defaults(func=CmdMove)

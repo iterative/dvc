@@ -4,8 +4,6 @@ import os
 import stat
 from textwrap import dedent
 
-import dulwich.errors
-import dulwich.file
 import pytest
 from funcy import first
 
@@ -32,7 +30,8 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
     )
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
-    assert ref_info and ref_info.baseline_sha == baseline
+    assert ref_info
+    assert ref_info.baseline_sha == baseline
 
     new_mock.assert_called_once()
     fs = scm.get_fs(exp)
@@ -107,117 +106,7 @@ def test_failed_exp_workspace(
     )
 
 
-def test_apply(tmp_dir, scm, dvc, exp_stage):
-    from dvc.exceptions import InvalidArgumentError
-    from dvc.repo.experiments.exceptions import ApplyConflictError
-
-    results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], tmp_dir=True
-    )
-    exp_a = first(results)
-
-    results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=3"], tmp_dir=True, name="foo"
-    )
-    exp_b = first(results)
-
-    with pytest.raises(InvalidArgumentError):
-        dvc.experiments.apply("bar")
-
-    dvc.experiments.apply(exp_a)
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
-
-    with pytest.raises(ApplyConflictError):
-        dvc.experiments.apply(exp_b, force=False)
-        # failed apply should revert everything to prior state
-        assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-        assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
-
-    dvc.experiments.apply("foo")
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
-
-
-@pytest.mark.xfail(
-    raises=(
-        dulwich.errors.CommitError,
-        dulwich.file.FileLocked,
-    ),
-    strict=False,
-    reason="See https://github.com/iterative/dvc/issues/8570",
-)
-def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
-    from dvc.exceptions import InvalidArgumentError
-
-    dvc.experiments.run(
-        failed_exp_stage.addressing, params=["foo=2"], queue=True
-    )
-    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
-
-    dvc.experiments.run(
-        failed_exp_stage.addressing, params=["foo=3"], queue=True, name="foo"
-    )
-    dvc.experiments.run(run_all=True)
-
-    with pytest.raises(InvalidArgumentError):
-        dvc.experiments.apply("bar")
-
-    dvc.experiments.apply(exp_rev)
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-
-    dvc.experiments.apply("foo")
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-
-
-def test_apply_queued(tmp_dir, scm, dvc, exp_stage):
-    from dvc.repo.experiments.exceptions import ApplyConflictError
-
-    metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
-    dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], name="exp-a", queue=True
-    )
-    dvc.experiments.run(
-        exp_stage.addressing, params=["foo=3"], name="exp-b", queue=True
-    )
-    queue_revs = {
-        entry.name: entry.stash_rev
-        for entry in dvc.experiments.celery_queue.iter_queued()
-    }
-
-    dvc.experiments.apply(queue_revs["exp-a"])
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
-
-    with pytest.raises(ApplyConflictError):
-        dvc.experiments.apply(queue_revs["exp-b"], force=False)
-
-    dvc.experiments.apply(queue_revs["exp-b"])
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
-
-
-def test_apply_untracked(tmp_dir, scm, dvc, exp_stage):
-    from dvc.repo.experiments.exceptions import ApplyConflictError
-
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
-    exp = first(results)
-    tmp_dir.gen("untracked", "untracked")
-    tmp_dir.gen("params.yaml", "conflict")
-
-    with pytest.raises(ApplyConflictError):
-        dvc.experiments.apply(exp, force=False)
-
-    assert (tmp_dir / "untracked").read_text() == "untracked"
-    assert (tmp_dir / "params.yaml").read_text() == "conflict"
-
-    dvc.experiments.apply(exp, force=True)
-    assert (tmp_dir / "untracked").read_text() == "untracked"
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-
-
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
-
     init_rev = scm.get_rev()
     assert dvc.experiments.get_baseline(init_rev) is None
 
@@ -266,9 +155,11 @@ def test_update_py_params(tmp_dir, scm, dvc, test_queue, copy_script):
 
     tmp_dir.gen(
         "params.py",
-        "INT = 1\nFLOAT = 0.001\nDICT = {'a': 1}\n\n"
-        "class Train:\n    seed = 2020\n\n"
-        "class Klass:\n    def __init__(self):\n        self.a = 111\n",
+        (
+            "INT = 1\nFLOAT = 0.001\nDICT = {'a': 1}\n\n"
+            "class Train:\n    seed = 2020\n\n"
+            "class Klass:\n    def __init__(self):\n        self.a = 111\n"
+        ),
     )
     stage = dvc.run(
         cmd="python copy.py params.py metrics.py",
@@ -321,9 +212,7 @@ def test_update_py_params(tmp_dir, scm, dvc, test_queue, copy_script):
     scm.commit("init")
 
     with pytest.raises(PythonFileCorruptedError):
-        dvc.experiments.run(
-            stage.addressing, params=["params.py:INT=2a"], tmp_dir=True
-        )
+        dvc.experiments.run(stage.addressing, params=["params.py:INT=2a"], tmp_dir=True)
 
 
 def test_detached_parent(tmp_dir, scm, dvc, exp_stage, mocker):
@@ -351,9 +240,7 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
 
     scm.branch("branch-exists")
 
-    results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], name="foo"
-    )
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name="foo")
     exp_a = first(results)
     ref_a = dvc.experiments.get_branch_by_rev(exp_a)
 
@@ -368,9 +255,7 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
         assert scm.resolve_rev(name) == exp_a
 
     tmp_dir.scm_gen({"new_file": "new_file"}, commit="new baseline")
-    results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], name="foo"
-    )
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name="foo")
     exp_b = first(results)
     ref_b = dvc.experiments.get_branch_by_rev(exp_b)
 
@@ -499,9 +384,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
             name="copy-file",
             no_exec=True,
         )
-        scm.add(
-            [subdir / "dvc.yaml", subdir / "copy.py", subdir / "params.yaml"]
-        )
+        scm.add([subdir / "dvc.yaml", subdir / "copy.py", subdir / "params.yaml"])
         scm.commit("init")
 
         results = dvc.experiments.run(
@@ -589,9 +472,7 @@ def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
 def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
     from dvc.cli import main
 
-    mocker.patch.object(
-        dvc.experiments, "run", return_value={"abc123": "abc123"}
-    )
+    mocker.patch.object(dvc.experiments, "run", return_value={"abc123": "abc123"})
     show_mock = mocker.patch.object(dvc.metrics, "show", return_value={})
 
     main(["exp", "run", "-m"])
@@ -637,9 +518,7 @@ def test_fix_exp_head(tmp_dir, scm, tail):
     "params, target",
     itertools.product(("foo: 1", "foo: 2"), (True, False)),
 )
-def test_modified_data_dep(
-    tmp_dir, scm, dvc, workspace, params, target, copy_script
-):
+def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target, copy_script):
     tmp_dir.dvc_gen("data", "data")
     tmp_dir.gen("params.yaml", "foo: 1")
     exp_stage = dvc.run(

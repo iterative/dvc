@@ -31,8 +31,9 @@ RWLOCK_LOCK = "rwlock.lock"
 class RWLockFileCorruptedError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "Unable to read RWLock-file '{}'. JSON structure is "
-            "corrupted".format(relpath(path))
+            "Unable to read RWLock-file '{}'. JSON structure is corrupted".format(
+                relpath(path)
+            )
         )
 
 
@@ -73,7 +74,7 @@ def _infos_to_str(infos):
     )
 
 
-def _check_blockers(tmp_dir, lock, info, *, mode, waiters):  # noqa: C901
+def _check_blockers(tmp_dir, lock, info, *, mode, waiters):  # noqa: C901, PLR0912
     from .lock import LockError
 
     non_existing_pid = set()
@@ -103,8 +104,10 @@ def _check_blockers(tmp_dir, lock, info, *, mode, waiters):  # noqa: C901
                 non_existing_pid.add(pid)
                 cmd = blocker["cmd"]
                 logger.warning(
-                    "Process '%s' with (Pid %s), in RWLock-file '%s'"
-                    " had been killed. Auto remove it from the lock file.",
+                    (
+                        "Process '%s' with (Pid %s), in RWLock-file '%s'"
+                        " had been killed. Auto remove it from the lock file."
+                    ),
                     cmd,
                     pid,
                     relpath(path),
@@ -205,10 +208,7 @@ def rwlock(tmp_dir, fs, cmd, read, write, hardlink):
     info = {"pid": os.getpid(), "cmd": cmd}
 
     with _edit_rwlock(tmp_dir, fs, hardlink) as lock:
-
-        _check_blockers(
-            tmp_dir, lock, info, mode="write", waiters=read + write
-        )
+        _check_blockers(tmp_dir, lock, info, mode="write", waiters=read + write)
         _check_blockers(tmp_dir, lock, info, mode="read", waiters=write)
 
         rchanges = _acquire_read(lock, info, read)

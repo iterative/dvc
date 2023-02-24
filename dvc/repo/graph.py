@@ -33,10 +33,10 @@ def get_pipeline(pipelines, node):
     return found[0]
 
 
-def get_pipelines(G: "DiGraph"):
+def get_pipelines(graph: "DiGraph"):
     import networkx as nx
 
-    return [G.subgraph(c).copy() for c in nx.weakly_connected_components(G)]
+    return [graph.subgraph(c).copy() for c in nx.weakly_connected_components(graph)]
 
 
 def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:
@@ -97,7 +97,7 @@ def build_graph(stages, outs_trie=None):
 
     from .trie import build_outs_trie
 
-    G = nx.DiGraph()
+    graph = nx.DiGraph()
 
     # Use trie to efficiently find overlapping outs and deps
     outs_trie = outs_trie or build_outs_trie(stages)
@@ -108,7 +108,7 @@ def build_graph(stages, outs_trie=None):
             raise StagePathAsOutputError(stage, str(out))
 
     # Building graph
-    G.add_nodes_from(stages)
+    graph.add_nodes_from(stages)
     for stage in stages:
         for dep in stage.deps:
             if dep.fs_path is None:
@@ -119,10 +119,10 @@ def build_graph(stages, outs_trie=None):
             if outs_trie.has_subtrie(dep_key):
                 overlapping.extend(outs_trie.values(prefix=dep_key))
 
-            G.add_edges_from((stage, out.stage) for out in overlapping)
-    check_acyclic(G)
+            graph.add_edges_from((stage, out.stage) for out in overlapping)
+    check_acyclic(graph)
 
-    return G
+    return graph
 
 
 # NOTE: using stage graph instead of just list of stages to make sure that it
@@ -131,9 +131,9 @@ def build_graph(stages, outs_trie=None):
 def build_outs_graph(graph, outs_trie):
     import networkx as nx
 
-    G = nx.DiGraph()
+    outs_graph = nx.DiGraph()
 
-    G.add_nodes_from(outs_trie.values())
+    outs_graph.add_nodes_from(outs_trie.values())
     for stage in graph.nodes():
         for dep in stage.deps:
             if dep.fs_path is None:
@@ -145,5 +145,5 @@ def build_outs_graph(graph, outs_trie):
                 overlapping.extend(outs_trie.values(prefix=dep_key))
 
             for from_out in stage.outs:
-                G.add_edges_from((from_out, out) for out in overlapping)
-    return G
+                outs_graph.add_edges_from((from_out, out) for out in overlapping)
+    return outs_graph

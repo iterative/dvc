@@ -42,9 +42,7 @@ def test_init(dvc, webhdfs_config):
 
 def test_verify_ssl(dvc, webhdfs_config, monkeypatch, mocker):
     mock_session = mocker.create_autospec(requests.Session)
-    monkeypatch.setattr(
-        requests, "Session", mocker.Mock(return_value=mock_session)
-    )
+    monkeypatch.setattr(requests, "Session", mocker.Mock(return_value=mock_session))
     # can't have token at the same time as user or proxy_to
     del webhdfs_config["token"]
     fs = WebHDFSFileSystem(**webhdfs_config)

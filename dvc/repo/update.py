@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, List
 
 from dvc.exceptions import InvalidArgumentError
-from dvc.stage.exceptions import StageUpdateError
 
 from . import locked
 
@@ -29,18 +28,10 @@ def update(  # noqa: C901
         targets = [targets]
 
     if to_remote and no_download:
-        raise InvalidArgumentError(
-            "--to-remote can't be used with --no-download"
-        )
+        raise InvalidArgumentError("--to-remote can't be used with --no-download")
 
-    if (
-        not to_remote
-        and remote
-        and not self.cloud.get_remote(name=remote).worktree
-    ):
-        raise InvalidArgumentError(
-            "--remote can't be used without --to-remote"
-        )
+    if not to_remote and remote:
+        raise InvalidArgumentError("--remote can't be used without --to-remote")
 
     import_stages = set()
     other_stage_infos: List["StageInfo"] = []
@@ -62,28 +53,18 @@ def update(  # noqa: C901
         stage.dump()
 
     if other_stage_infos:
-        remote_obj = self.cloud.get_remote(name=remote)
-        if not remote_obj.worktree:
-            raise StageUpdateError(other_stage_infos[0].stage.relpath)
         if rev:
-            raise InvalidArgumentError(
-                "--rev can't be used with worktree update"
-            )
+            raise InvalidArgumentError("--rev can't be used with worktree update")
         if no_download:
             raise InvalidArgumentError(
                 "--no-download can't be used with worktree update"
             )
         if to_remote:
-            raise InvalidArgumentError(
-                "--to-remote can't be used with worktree update"
-            )
+            raise InvalidArgumentError("--to-remote can't be used with worktree update")
         update_worktree_stages(
             self,
             other_stage_infos,
-            remote_obj,
         )
 
-    stages = import_stages | {
-        stage_info.stage for stage_info in other_stage_infos
-    }
+    stages = import_stages | {stage_info.stage for stage_info in other_stage_infos}
     return list(stages)

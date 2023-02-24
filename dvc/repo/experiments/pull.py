@@ -67,8 +67,7 @@ def pull(  # noqa: C901
 
     if pull_cache:
         pull_cache_ref = (
-            pull_result[SyncStatus.UP_TO_DATE]
-            + pull_result[SyncStatus.SUCCESS]
+            pull_result[SyncStatus.UP_TO_DATE] + pull_result[SyncStatus.SUCCESS]
         )
         _pull_cache(repo, pull_cache_ref, **kwargs)
 
@@ -95,9 +94,7 @@ def _pull(
     def group_result(refspec):
         return results[str(refspec)]
 
-    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(
-        group_result, refs
-    )
+    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(group_result, refs)
 
     return pull_result
 
@@ -114,6 +111,4 @@ def _pull_cache(
         refs = [refs]
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc fetch experiment '%s'", refs)
-    repo.fetch(
-        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, odb=odb
-    )
+    repo.fetch(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, odb=odb)

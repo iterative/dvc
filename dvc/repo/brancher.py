@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 
 from dvc.scm import iter_revs
+
+logger = logging.getLogger(__name__)
 
 
 def brancher(  # noqa: E302
@@ -49,21 +52,18 @@ def brancher(  # noqa: E302
 
     repo_root_parts = ()
     if self.fs.path.isin(self.root_dir, self.scm.root_dir):
-        repo_root_parts = self.fs.path.relparts(
-            self.root_dir, self.scm.root_dir
-        )
+        repo_root_parts = self.fs.path.relparts(self.root_dir, self.scm.root_dir)
 
     cwd_parts = ()
     if self.fs.path.isin(self.fs.path.getcwd(), self.scm.root_dir):
-        cwd_parts = self.fs.path.relparts(
-            self.fs.path.getcwd(), self.scm.root_dir
-        )
+        cwd_parts = self.fs.path.relparts(self.fs.path.getcwd(), self.scm.root_dir)
 
     saved_fs = self.fs
     saved_root = self.root_dir
 
     scm = self.scm
 
+    logger.trace("switching fs to workspace")  # type: ignore[attr-defined]
     self.fs = LocalFileSystem(url=self.root_dir)
     yield "workspace"
 
@@ -86,14 +86,14 @@ def brancher(  # noqa: E302
         from dvc.fs import GitFileSystem
 
         for sha, names in found_revs.items():
-            self._reset_cached_indecies()  # pylint: disable=W0212
+            logger.trace(  # type: ignore[attr-defined]
+                "switching fs to revision %s [%s]", sha[:7], ", ".join(names)
+            )
             self.fs = GitFileSystem(scm=scm, rev=sha)
             self.root_dir = self.fs.path.join("/", *repo_root_parts)
 
             if cwd_parts:
-                cwd = self.fs.path.join(  # type: ignore[unreachable]
-                    "/", *cwd_parts
-                )
+                cwd = self.fs.path.join("/", *cwd_parts)  # type: ignore[unreachable]
                 self.fs.path.chdir(cwd)
 
             # ignore revs that don't contain repo root

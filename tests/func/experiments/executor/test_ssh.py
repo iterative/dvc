@@ -100,7 +100,7 @@ def test_init_cache(tmp_dir, dvc, scm, cloud):
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("git_ssh")])
 def test_reproduce(tmp_dir, scm, dvc, cloud, exp_stage, mocker):
-    from sshfs import SSHFileSystem as _sshfs
+    from sshfs import SSHFileSystem as _sshfs  # noqa: N813
 
     rev = scm.get_rev()
     root_url = cloud / SSHExecutor.gen_dirname()

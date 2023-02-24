@@ -72,9 +72,7 @@ def _format_preamble(msg: str, path: str, spacing: str = " ") -> str:
 
 def format_and_raise(exc: Exception, msg: str, path: str) -> "NoReturn":
     spacing = (
-        "\n"
-        if isinstance(exc, (ParseError, MergeError, VarsAlreadyLoaded))
-        else " "
+        "\n" if isinstance(exc, (ParseError, MergeError, VarsAlreadyLoaded)) else " "
     )
     message = _format_preamble(msg, path, spacing) + str(exc)
 
@@ -116,8 +114,7 @@ def check_interpolations(data: "DictStrAny", where: str, path: str):
     def func(s: "DictStrAny") -> None:
         if is_interpolated_string(s):
             raise ResolveError(
-                _format_preamble(f"'{where}'", path)
-                + "interpolating is not allowed"
+                _format_preamble(f"'{where}'", path) + "interpolating is not allowed"
             )
 
     return recurse(func)(data)
@@ -188,9 +185,7 @@ class DataResolver:
     def resolve(self):
         """Used for testing purposes, otherwise use resolve_one()."""
         data = join(map(self.resolve_one, self.get_keys()))
-        logger.trace(  # type: ignore[attr-defined]
-            "Resolved dvc.yaml:\n%s", data
-        )
+        logger.trace("Resolved dvc.yaml:\n%s", data)  # type: ignore[attr-defined]
         return {STAGES_KWD: data}
 
     def has_key(self, key: str):
@@ -203,9 +198,9 @@ class DataResolver:
             return False
 
         if key:
-            return isinstance(
-                definition, ForeachDefinition
-            ) and definition.has_member(key)
+            return isinstance(definition, ForeachDefinition) and definition.has_member(
+                key
+            )
         return not isinstance(definition, ForeachDefinition)
 
     @collecting
@@ -309,9 +304,7 @@ class EntryDefinition:
                 value, skip_interpolation_checks=skip_checks, key=key
             )
         except (ParseError, KeyNotInContext) as exc:
-            format_and_raise(
-                exc, f"'{self.where}.{self.name}.{key}'", self.relpath
-            )
+            format_and_raise(exc, f"'{self.where}.{self.name}.{key}'", self.relpath)
 
 
 class IterationPair(NamedTuple):
@@ -354,9 +347,7 @@ class ForeachDefinition:
         try:
             iterable = self.context.resolve(self.foreach_data, unwrap=False)
         except (ContextError, ParseError) as exc:
-            format_and_raise(
-                exc, f"'{self.where}.{self.name}.foreach'", self.relpath
-            )
+            format_and_raise(exc, f"'{self.where}.{self.name}.foreach'", self.relpath)
 
         # foreach data can be a resolved dictionary/list.
         self._check_is_map_or_seq(iterable)
@@ -381,8 +372,10 @@ class ForeachDefinition:
         if warn_for:
             linking_verb = "is" if len(warn_for) == 1 else "are"
             logger.warning(
-                "%s %s already specified, "
-                "will be overwritten for stages generated from '%s'",
+                (
+                    "%s %s already specified, "
+                    "will be overwritten for stages generated from '%s'"
+                ),
                 " and ".join(warn_for),
                 linking_verb,
                 self.name,

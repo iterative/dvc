@@ -9,7 +9,7 @@ def test_stage_cache(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
     tmp_dir.gen(
         "script.py",
-        ('open("out", "w+").write("out"); '),
+        'open("out", "w+").write("out"); ',
     )
     stage = dvc.run(
         cmd="python script.py",
@@ -55,7 +55,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
     tmp_dir.gen("myparams.yaml", "baz: 3\nqux: 4")
     tmp_dir.gen(
         "script.py",
-        ('open("out", "w+").write("out"); '),
+        'open("out", "w+").write("out"); ',
     )
     stage = dvc.run(
         cmd="python script.py",
@@ -100,7 +100,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
     tmp_dir.gen(
         "script.py",
-        ('open("out", "w+").write("out"); '),
+        'open("out", "w+").write("out"); ',
     )
     tmp_dir.gen({"wdir": {}})
     stage = dvc.run(
@@ -146,16 +146,16 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
 def test_shared_stage_cache(tmp_dir, dvc, run_copy):
     import stat
 
-    from dvc.odbmgr import ODBManager
+    from dvc.cachemgr import CacheManager
 
     tmp_dir.gen("foo", "foo")
 
     with dvc.config.edit() as config:
         config["cache"]["shared"] = "group"
 
-    dvc.odb = ODBManager(dvc)
+    dvc.cache = CacheManager(dvc)
 
-    assert not os.path.exists(dvc.odb.local.path)
+    assert not os.path.exists(dvc.cache.local.path)
 
     run_copy("foo", "bar", name="copy-foo-bar")
 
@@ -184,7 +184,7 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
         dir_mode = 0o2775
         file_mode = 0o664
 
-    assert _mode(dvc.odb.local.path) == dir_mode
+    assert _mode(dvc.cache.local.path) == dir_mode
     assert _mode(dvc.stage_cache.cache_dir) == dir_mode
     assert _mode(parent_cache_dir) == dir_mode
     assert _mode(cache_dir) == dir_mode

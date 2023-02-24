@@ -20,9 +20,7 @@ FAILED_TO_LOCK_MESSAGE = (
     "Unable to acquire lock. Most likely another DVC process is running or "
     "was terminated abruptly. Check the page {} for other possible reasons "
     "and to learn how to resolve this."
-).format(
-    format_link("https://dvc.org/doc/user-guide/troubleshooting#lock-issue")
-)
+).format(format_link("https://dvc.org/doc/user-guide/troubleshooting#lock-issue"))
 
 
 class LockError(DvcException):
@@ -61,9 +59,7 @@ class LockBase(ABC):
 
 
 class LockNoop(LockBase):
-    def __init__(
-        self, *args, **kwargs
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         self._lock = False
 
     def lock(self):
@@ -107,10 +103,8 @@ class Lock(LockBase):
             with Tqdm(
                 bar_format="{desc}",
                 disable=not self._friendly,
-                desc=(
-                    "If DVC froze, see `hardlink_lock` in {}".format(
-                        format_link("https://man.dvc.org/config#core")
-                    )
+                desc="If DVC froze, see `hardlink_lock` in {}".format(
+                    format_link("https://man.dvc.org/config#core")
                 ),
             ):
                 self._lock = zc.lockfile.LockFile(self._lockfile)

@@ -9,10 +9,7 @@ from dvc.dvcfile import (
     load_file,
 )
 from dvc.stage import PipelineStage
-from dvc.stage.exceptions import (
-    StageFileDoesNotExistError,
-    StageFileIsNotDvcFileError,
-)
+from dvc.stage.exceptions import StageFileDoesNotExistError, StageFileIsNotDvcFileError
 from dvc.utils.fs import remove
 from dvc.utils.serialize import EncodingError
 from dvc.utils.strictyaml import YAMLValidationError
@@ -33,9 +30,7 @@ def test_pipelines_file(path):
     assert isinstance(file_obj, ProjectFile)
 
 
-@pytest.mark.parametrize(
-    "path", ["Dvcfile", "stage.dvc", "../models/stage.dvc"]
-)
+@pytest.mark.parametrize("path", ["Dvcfile", "stage.dvc", "../models/stage.dvc"])
 def test_pipelines_single_stage_file(path):
     file_obj = load_file(object(), path)
     assert isinstance(file_obj, SingleStageFile)
@@ -75,9 +70,7 @@ def test_stage_load_on_invalid_data(tmp_dir, dvc, file):
 
 
 def test_dump_stage(tmp_dir, dvc):
-    stage = PipelineStage(
-        dvc, cmd="command", name="stage_name", path="dvc.yaml"
-    )
+    stage = PipelineStage(dvc, cmd="command", name="stage_name", path="dvc.yaml")
     dvcfile = load_file(dvc, "dvc.yaml")
 
     dvcfile.dump(stage, update_lock=False, update_pipeline=False)

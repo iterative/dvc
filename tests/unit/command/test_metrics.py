@@ -25,9 +25,7 @@ def test_metrics_diff(dvc, mocker, capsys):
 
     cmd = cli_args.func(cli_args)
     diff = {"metrics.yaml": {"": {"old": 1, "new": 3}}}
-    metrics_diff = mocker.patch(
-        "dvc.repo.metrics.diff.diff", return_value=diff
-    )
+    metrics_diff = mocker.patch("dvc.repo.metrics.diff.diff", return_value=diff)
     show_diff_mock = mocker.patch("dvc.compare.show_diff")
 
     assert cmd.run() == 0
@@ -75,9 +73,7 @@ def test_metrics_diff_json(dvc, mocker, capsys):
     cmd = cli_args.func(cli_args)
 
     diff = {"metrics.yaml": {"": {"old": 1, "new": 3}}}
-    metrics_diff = mocker.patch(
-        "dvc.repo.metrics.diff.diff", return_value=diff
-    )
+    metrics_diff = mocker.patch("dvc.repo.metrics.diff.diff", return_value=diff)
     show_diff_mock = mocker.patch("dvc.compare.show_diff")
 
     assert cmd.run() == 0

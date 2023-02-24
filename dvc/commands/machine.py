@@ -18,7 +18,6 @@ class MachineDisabledError(ConfigError):
 
 class CmdMachineConfig(CmdConfig):
     def __init__(self, args):
-
         super().__init__(args)
         if not self.config["feature"].get("machine", False):
             raise MachineDisabledError
@@ -163,14 +162,11 @@ class CmdMachineRename(CmdBase):
         all_config = self.config.load_config_to_level(None)
         if self.args.new in all_config.get("machine", {}):
             raise ConfigError(
-                "Rename failed. Machine '{}' already exists.".format(
-                    self.args.new
-                )
+                f"Rename failed. Machine '{self.args.new}' already exists."
             )
         ui.write(f"Rename machine '{self.args.name}' to '{self.args.new}'.")
 
     def run(self):
-
         self._check_before_rename()
 
         with self.config.edit(self.args.level) as conf:
@@ -209,9 +205,7 @@ class CmdMachineDefault(CmdMachineConfig):
                 if self.args.unset:
                     conf["core"].pop("machine", None)
                 else:
-                    merged_conf = self.config.load_config_to_level(
-                        self.args.level
-                    )
+                    merged_conf = self.config.load_config_to_level(self.args.level)
                     if (
                         self.args.name in conf["machine"]
                         or self.args.name in merged_conf["machine"]
@@ -219,8 +213,7 @@ class CmdMachineDefault(CmdMachineConfig):
                         conf["core"]["machine"] = self.args.name
                     else:
                         raise ConfigError(
-                            "default machine must be present in machine "
-                            "list."
+                            "default machine must be present in machine list."
                         )
         return 0
 
@@ -251,7 +244,6 @@ class CmdMachineStatus(CmdBase):
         all_status: List[Dict],
         td: TabularData,
     ):
-
         if not all_status:
             row = [
                 name,
@@ -310,7 +302,7 @@ class CmdMachineSsh(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, parent_parser):  # noqa: PLR0915
     from dvc.commands.config import parent_config_parser
 
     machine_HELP = "Set up and manage cloud machines."
@@ -343,8 +335,7 @@ def add_parser(subparsers, parent_parser):
         "cloud",
         help="Machine cloud. See full list of supported clouds at {}".format(
             format_link(
-                "https://github.com/iterative/"
-                "terraform-provider-iterative#machine"
+                "https://github.com/iterative/terraform-provider-iterative#machine"
             )
         ),
     )
@@ -372,9 +363,7 @@ def add_parser(subparsers, parent_parser):
         help=machine_DEFAULT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    machine_default_parser.add_argument(
-        "name", nargs="?", help="Name of the machine"
-    )
+    machine_default_parser.add_argument("name", nargs="?", help="Name of the machine")
     machine_default_parser.add_argument(
         "-u",
         "--unset",
@@ -414,9 +403,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     machine_modify_parser.add_argument("name", help="Name of the machine")
-    machine_modify_parser.add_argument(
-        "option", help="Name of the option to modify."
-    )
+    machine_modify_parser.add_argument("option", help="Name of the option to modify.")
     machine_modify_parser.add_argument(
         "value", nargs="?", help="(optional) Value of the option."
     )
@@ -449,9 +436,7 @@ def add_parser(subparsers, parent_parser):
         help=machine_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    machine_remove_parser.add_argument(
-        "name", help="Name of the machine to remove."
-    )
+    machine_remove_parser.add_argument("name", help="Name of the machine to remove.")
     machine_remove_parser.set_defaults(func=CmdMachineRemove)
 
     machine_CREATE_HELP = "Create and start a machine instance."
@@ -462,14 +447,10 @@ def add_parser(subparsers, parent_parser):
         help=machine_CREATE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    machine_create_parser.add_argument(
-        "name", help="Name of the machine to create."
-    )
+    machine_create_parser.add_argument("name", help="Name of the machine to create.")
     machine_create_parser.set_defaults(func=CmdMachineCreate)
 
-    machine_STATUS_HELP = (
-        "List the status of running instances for one/all machines."
-    )
+    machine_STATUS_HELP = "List the status of running instances for one/all machines."
     machine_status_parser = machine_subparsers.add_parser(
         "status",
         parents=[parent_parser],

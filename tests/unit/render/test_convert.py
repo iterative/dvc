@@ -1,10 +1,4 @@
-from dvc.render import (
-    REVISION_FIELD,
-    REVISIONS_KEY,
-    SRC_FIELD,
-    TYPE_KEY,
-    VERSION_FIELD,
-)
+from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY, VERSION_FIELD
 from dvc.render.convert import to_json
 
 
@@ -56,9 +50,7 @@ def test_to_json_vega(mocker):
 def test_to_json_vega_split(mocker):
     vega_renderer = mocker.MagicMock()
     vega_renderer.TYPE = "vega"
-    vega_renderer.get_filled_template.return_value = (
-        '{"this": "is split vega"}'
-    )
+    vega_renderer.get_filled_template.return_value = '{"this": "is split vega"}'
     vega_renderer.datapoints = [
         {
             "x": 1,

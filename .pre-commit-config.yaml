@@ -35,15 +35,15 @@ repos:
         args:
           - --py38-plus
   - repo: https://github.com/psf/black
-    rev: 22.12.0
+    rev: 23.1.0
     hooks:
       - id: black
   - repo: https://github.com/PyCQA/isort
-    rev: 5.11.4
+    rev: 5.12.0
     hooks:
       - id: isort
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.236'
+    rev: 'v0.0.247'
     hooks:
       - id: ruff
   - repo: https://github.com/codespell-project/codespell
@@ -60,6 +60,7 @@ repos:
           - flake8-comprehensions
           - flake8-debugger
           - flake8-string-format
+          - flake8-typing-imports
   - repo: local
     hooks:
     - id: mypy

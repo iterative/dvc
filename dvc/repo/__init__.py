@@ -3,16 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple, Union, cast
 
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
@@ -28,10 +19,11 @@ if TYPE_CHECKING:
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
     from dvc.machine import MachineManager
-    from dvc.scm import Base, Git, NoSCM
+    from dvc.scm import Git, NoSCM
     from dvc.stage import Stage
     from dvc.types import DictStrAny
     from dvc_data.hashfile.state import StateBase
+    from dvc_data.index import DataIndex
 
     from .experiments import Experiments
     from .index import Index
@@ -108,17 +100,15 @@ class Repo:
         fs: Optional["FileSystem"] = None,
         uninitialized: bool = False,
         scm: Optional[Union["Git", "NoSCM"]] = None,
-    ) -> Tuple[str, Optional[str], Optional[str]]:
+    ) -> Tuple[str, Optional[str]]:
         from dvc.fs import localfs
         from dvc.scm import SCM, SCMError
 
         dvc_dir: Optional[str] = None
-        tmp_dir: Optional[str] = None
         try:
             root_dir = self.find_root(root_dir, fs)
             fs = fs or localfs
             dvc_dir = fs.path.join(root_dir, self.DVC_DIR)
-            tmp_dir = fs.path.join(dvc_dir, "tmp")
         except NotDvcRepoError:
             if not uninitialized:
                 raise
@@ -133,9 +123,11 @@ class Repo:
                 root_dir = scm.root_dir
 
         assert root_dir
-        return root_dir, dvc_dir, tmp_dir
+        return root_dir, dvc_dir
 
     def _get_database_dir(self, db_name: str) -> Optional[str]:
+        from dvc.fs import localfs
+
         # NOTE: by default, store SQLite-based remote indexes and state's
         # `links` and `md5s` caches in the repository itself to avoid any
         # possible state corruption in 'shared cache dir' scenario, but allow
@@ -148,20 +140,24 @@ class Repo:
 
         import hashlib
 
-        root_dir_hash = hashlib.sha224(
-            self.root_dir.encode("utf-8")
-        ).hexdigest()
+        if self.local_dvc_dir:
+            fs: "FileSystem" = localfs
+            local_root = fs.path.parent(self.local_dvc_dir)
+        else:
+            fs = self.fs
+            local_root = self.root_dir
+        root_dir_hash = hashlib.sha224(local_root.encode("utf-8")).hexdigest()
 
-        db_dir = self.fs.path.join(
+        db_dir = fs.path.join(
             base_db_dir,
             self.DVC_DIR,
-            f"{self.fs.path.name(self.root_dir)}-{root_dir_hash[0:7]}",
+            f"{fs.path.name(local_root)}-{root_dir_hash[0:7]}",
         )
 
-        self.fs.makedirs(db_dir, exist_ok=True)
+        fs.makedirs(db_dir, exist_ok=True)
         return db_dir
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         root_dir: Optional[str] = None,
         fs: Optional["FileSystem"] = None,
@@ -171,13 +167,13 @@ class Repo:
         config: Optional["DictStrAny"] = None,
         url: Optional[str] = None,
         repo_factory: Optional[Callable] = None,
-        scm: Optional["Base"] = None,
+        scm: Optional[Union["Git", "NoSCM"]] = None,
     ):
+        from dvc.cachemgr import CacheManager
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
-        from dvc.odbmgr import ODBManager
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -190,6 +186,7 @@ class Repo:
         self._fs_conf = {"repo_factory": repo_factory}
         self._fs = fs or localfs
         self._scm = scm
+        self._data_index = None
 
         if rev and not fs:
             self._scm = scm = SCM(root_dir or os.curdir)
@@ -198,8 +195,10 @@ class Repo:
 
         self.root_dir: str
         self.dvc_dir: Optional[str]
-        self.tmp_dir: Optional[str]
-        self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
+        (
+            self.root_dir,
+            self.dvc_dir,
+        ) = self._get_repo_dirs(
             root_dir=root_dir,
             fs=self.fs,
             uninitialized=uninitialized,
@@ -216,23 +215,20 @@ class Repo:
         self.stage: "StageLoad" = StageLoad(self)
 
         self.lock: "LockBase"
-        self.odb: ODBManager
+        self.cache: CacheManager
         self.state: "StateBase"
         if isinstance(self.fs, GitFileSystem) or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()
-            self.odb = ODBManager(self)
-            self.tmp_dir = None
+            self.cache = CacheManager(self)
         else:
-            self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
-
             if isinstance(self.fs, LocalFileSystem):
+                self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
+
                 self.lock = make_lock(
                     self.fs.path.join(self.tmp_dir, "lock"),
                     tmp_dir=self.tmp_dir,
-                    hardlink_lock=self.config["core"].get(
-                        "hardlink_lock", False
-                    ),
+                    hardlink_lock=self.config["core"].get("hardlink_lock", False),
                     friendly=True,
                 )
                 state_db_dir = self._get_database_dir("state")
@@ -241,7 +237,7 @@ class Repo:
                 self.lock = LockNoop()
                 self.state = StateNoop()
 
-            self.odb = ODBManager(self)
+            self.cache = CacheManager(self)
 
             self.stage_cache = StageCache(self)
 
@@ -258,6 +254,41 @@ class Repo:
 
     def __str__(self):
         return self.url or self.root_dir
+
+    @cached_property
+    def local_dvc_dir(self):
+        from dvc.fs import GitFileSystem, LocalFileSystem
+
+        if not self.dvc_dir:
+            return None
+
+        if isinstance(self.fs, LocalFileSystem):
+            return self.dvc_dir
+
+        if not isinstance(self.fs, GitFileSystem):
+            return None
+
+        relparts = ()
+        if self.root_dir != "/":
+            # subrepo
+            relparts = self.fs.path.relparts(self.root_dir, "/")
+
+        dvc_dir = os.path.join(
+            self.scm.root_dir,
+            *relparts,
+            self.DVC_DIR,
+        )
+        if os.path.exists(dvc_dir):
+            return dvc_dir
+
+        return None
+
+    @cached_property
+    def tmp_dir(self):
+        if self.local_dvc_dir is None:
+            return None
+
+        return os.path.join(self.local_dvc_dir, "tmp")
 
     @cached_property
     def index(self) -> "Index":
@@ -338,8 +369,7 @@ class Repo:
         from dvc.machine import MachineManager
 
         if self.tmp_dir and (
-            self.config["feature"].get("machine", False)
-            or env2bool("DVC_TEST")
+            self.config["feature"].get("machine", False) or env2bool("DVC_TEST")
         ):
             return MachineManager(self)
         return None
@@ -354,6 +384,21 @@ class Repo:
         # Our graph cache is no longer valid, as it was based on the previous
         # fs.
         self._reset()
+
+    @property
+    def data_index(self) -> Optional["DataIndex"]:
+        from dvc_data.index import DataIndex
+
+        if not self.index_db_dir:
+            return None
+
+        if self._data_index is None:
+            index_dir = os.path.join(self.index_db_dir, "index", "data")
+            os.makedirs(index_dir, exist_ok=True)
+
+            self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
+
+        return self._data_index
 
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
@@ -393,24 +438,20 @@ class Repo:
         return os.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
-    def init(
-        root_dir=os.curdir, no_scm=False, force=False, subdir=False
-    ) -> "Repo":
+    def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False) -> "Repo":
         from dvc.repo.init import init
 
-        return init(
-            root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir
-        )
+        return init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
 
     def unprotect(self, target):
-        return self.odb.repo.unprotect(target)
+        return self.cache.repo.unprotect(target)
 
     def _ignore(self):
         flist = [self.config.files["local"]]
         if tmp_dir := self.tmp_dir:
             flist.append(tmp_dir)
-        if path_isin(self.odb.repo.path, self.root_dir):
-            flist.append(self.odb.repo.path)
+        if path_isin(self.cache.repo.path, self.root_dir):
+            flist.append(self.cache.repo.path)
 
         for file in flist:
             self.scm_context.ignore(file)
@@ -420,7 +461,7 @@ class Repo:
 
         return brancher(self, *args, **kwargs)
 
-    def used_objs(
+    def used_objs(  # noqa: PLR0913
         self,
         targets=None,
         all_branches=False,
@@ -530,9 +571,7 @@ class Repo:
     def dvcfs(self) -> "DVCFileSystem":
         from dvc.fs.dvc import DVCFileSystem
 
-        return DVCFileSystem(
-            repo=self, subrepos=self.subrepos, **self._fs_conf
-        )
+        return DVCFileSystem(repo=self, subrepos=self.subrepos, **self._fs_conf)
 
     @cached_property
     def index_db_dir(self):
@@ -573,17 +612,16 @@ class Repo:
     def close(self):
         self.scm.close()
         self.state.close()
+        if self._data_index is not None:
+            self._data_index.close()
 
-    def _reset_cached_indecies(self):
+    def _reset(self):
+        self.scm._reset()  # pylint: disable=protected-access
+        self.state.close()
         self.__dict__.pop("index", None)
         self.__dict__.pop("dvcignore", None)
         self.__dict__.pop("dvcfs", None)
         self.__dict__.pop("datafs", None)
-
-    def _reset(self):
-        self.state.close()
-        self.scm._reset()  # pylint: disable=protected-access
-        self._reset_cached_indecies()
 
     def __enter__(self):
         return self

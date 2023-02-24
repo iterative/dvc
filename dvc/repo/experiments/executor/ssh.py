@@ -22,11 +22,10 @@ from .base import BaseExecutor, ExecutorInfo, ExecutorResult, TaskStatus
 if TYPE_CHECKING:
     from queue import Queue
 
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments.refs import ExpRefInfo
     from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
 
@@ -138,9 +137,7 @@ class SSHExecutor(BaseExecutor):
             fs.makedirs(self.root_dir)
             self._ssh_cmd(fs, "git init .")
             self._ssh_cmd(fs, "git config user.name dvc-exp")
-            self._ssh_cmd(
-                fs, "git config user.email dvc-exp@noreply.localhost"
-            )
+            self._ssh_cmd(fs, "git config user.email dvc-exp@noreply.localhost")
 
             result = self._ssh_cmd(fs, "pwd")
             path = result.stdout.strip()
@@ -164,12 +161,8 @@ class SSHExecutor(BaseExecutor):
                 push_refspec(scm, self.git_url, [(branch, branch)], **kwargs)
                 self._ssh_cmd(fs, f"git symbolic-ref {EXEC_BRANCH} {branch}")
             else:
-                self._ssh_cmd(
-                    fs, f"git symbolic-ref -d {EXEC_BRANCH}", check=False
-                )
-            self._ssh_cmd(
-                fs, f"git update-ref -d {EXEC_CHECKPOINT}", check=False
-            )
+                self._ssh_cmd(fs, f"git symbolic-ref -d {EXEC_BRANCH}", check=False)
+            self._ssh_cmd(fs, f"git update-ref -d {EXEC_CHECKPOINT}", check=False)
 
             # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
             # committing
@@ -224,12 +217,12 @@ class SSHExecutor(BaseExecutor):
 
     @contextmanager
     def get_odb(self):
-        from dvc.odbmgr import ODBManager, get_odb
+        from dvc.cachemgr import CacheManager, get_odb
 
         cache_path = posixpath.join(
             self._repo_abspath,
             self.dvc_dir,
-            ODBManager.CACHE_DIR,
+            CacheManager.CACHE_DIR,
         )
 
         with self.sshfs() as fs:
@@ -267,13 +260,9 @@ class SSHExecutor(BaseExecutor):
 
         with _sshfs(fs_factory) as fs:
             while not fs.exists("/var/log/dvc-machine-init.log"):
-                logger.info(
-                    "Waiting for dvc-machine startup script to complete..."
-                )
+                logger.info("Waiting for dvc-machine startup script to complete...")
                 time.sleep(5)
-            logger.info(
-                "Reproducing experiment on '%s'", fs.fs_args.get("host")
-            )
+            logger.info("Reproducing experiment on '%s'", fs.fs_args.get("host"))
             with TemporaryFile(mode="w+", encoding="utf-8") as fobj:
                 json.dump(info.asdict(), fobj)
                 fobj.seek(0)
@@ -281,9 +270,7 @@ class SSHExecutor(BaseExecutor):
             cmd = ["source ~/.profile"]
             script_path = cls._setup_script_path(info.dvc_dir)
             if fs.exists(posixpath.join(info.root_dir, script_path)):
-                cmd.extend(
-                    [f"pushd {info.root_dir}", f"source {script_path}", "popd"]
-                )
+                cmd.extend([f"pushd {info.root_dir}", f"source {script_path}", "popd"])
             exec_cmd = f"dvc exp exec-run --infofile {infofile}"
             if log_level is not None:
                 if log_level <= logging.TRACE:  # type: ignore[attr-defined]

@@ -16,9 +16,7 @@ logger = logging.getLogger(__name__)
 
 class BasePathNotInCheckedPathException(DvcException):
     def __init__(self, path, base_path):
-        msg = "Path: {} does not overlap with base path: {}".format(
-            path, base_path
-        )
+        msg = f"Path: {path} does not overlap with base path: {base_path}"
         super().__init__(msg)
 
 

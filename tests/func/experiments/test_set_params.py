@@ -131,11 +131,12 @@ def test_hydra_sweep_requires_queue(params_repo, dvc):
         dvc.experiments.run(params=["db=mysql,postgresql"])
 
 
-def test_hydra_sweep_cant_use_name(tmp_dir, params_repo, dvc):
-    with pytest.raises(
-        InvalidArgumentError,
-        match="Sweep overrides can't be used alongside `--name`",
-    ):
-        dvc.experiments.run(
-            params=["db=mysql,postgresql"], queue=True, name="foo"
-        )
+def test_hydra_sweep_prefix_name(tmp_dir, params_repo, dvc):
+    prefix = "foo"
+    db_values = ["mysql", "postgresql"]
+    param = "+db=" + ",".join(db_values)
+    dvc.experiments.run(params=[param], queue=True, name=prefix)
+    expected_names = [f"{prefix}-{i+1}" for i, _ in enumerate(db_values)]
+    exp_names = [entry.name for entry in dvc.experiments.celery_queue.iter_queued()]
+    for name, expected in zip(exp_names, expected_names):
+        assert name == expected

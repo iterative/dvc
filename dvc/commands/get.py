@@ -5,7 +5,6 @@ from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
-from dvc.scm import CloneError
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +15,7 @@ class CmdGet(CmdBaseNoRepo):
         from dvc.ui import ui
 
         try:
-            url = get_url(
-                self.args.path, repo=self.args.url, rev=self.args.rev
-            )
+            url = get_url(self.args.path, repo=self.args.url, rev=self.args.rev)
             ui.write(url, force=True)
         except DvcException:
             logger.exception("failed to show URL")
@@ -34,6 +31,7 @@ class CmdGet(CmdBaseNoRepo):
 
     def _get_file_from_repo(self):
         from dvc.repo import Repo
+        from dvc.scm import CloneError
 
         try:
             Repo.get(
@@ -85,8 +83,10 @@ def add_parser(subparsers, parent_parser):
     get_parser.add_argument(
         "--show-url",
         action="store_true",
-        help="Print the storage location (URL) the target data would be "
-        "downloaded from, and exit.",
+        help=(
+            "Print the storage location (URL) the target data would be "
+            "downloaded from, and exit."
+        ),
     )
     get_parser.add_argument(
         "-j",

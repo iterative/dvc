@@ -49,18 +49,10 @@ def test_update_import(tmp_dir, dvc, erepo_dir, cached):
 
     assert dvc.status() == {
         "dir.dvc": [
-            {
-                "changed deps": {
-                    f"dir ({os.fspath(erepo_dir)})": "update available"
-                }
-            }
+            {"changed deps": {f"dir ({os.fspath(erepo_dir)})": "update available"}}
         ],
         "version.dvc": [
-            {
-                "changed deps": {
-                    f"version ({os.fspath(erepo_dir)})": "update available"
-                }
-            }
+            {"changed deps": {f"version ({os.fspath(erepo_dir)})": "update available"}}
         ],
     }
 
@@ -98,9 +90,7 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
     new_rev = None
     with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
         erepo_dir.scm.gitpython.repo.index.remove(["version"])
-        erepo_dir.dvc_gen(
-            "version", "updated", commit="upgrade to DVC tracking"
-        )
+        erepo_dir.dvc_gen("version", "updated", commit="upgrade to DVC tracking")
         new_rev = erepo_dir.scm.get_rev()
 
     assert old_rev != new_rev
@@ -143,11 +133,7 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
 
     assert dvc.status([stage.path]) == {
         "file.dvc": [
-            {
-                "changed deps": {
-                    f"file ({os.fspath(git_dir)})": "update available"
-                }
-            }
+            {"changed deps": {f"file ({os.fspath(git_dir)})": "update available"}}
         ]
     }
 
@@ -219,9 +205,7 @@ def test_update_import_url(tmp_dir, dvc, workspace):
 
 
 @pytest.mark.parametrize("outs_exist", (False, True))
-def test_update_import_url_no_download(
-    tmp_dir, dvc, workspace, outs_exist, mocker
-):
+def test_update_import_url_no_download(tmp_dir, dvc, workspace, outs_exist, mocker):
     workspace.gen("file", "file content")
 
     dst = tmp_dir / "imported_file"
@@ -321,12 +305,8 @@ def test_update_recursive(tmp_dir, dvc, erepo_dir):
     )
 
     assert (tmp_dir / os.path.join("dir", "foo1")).read_text() == "text1"
-    assert (
-        tmp_dir / os.path.join("dir", "subdir", "foo2")
-    ).read_text() == "text2"
-    assert (
-        tmp_dir / os.path.join("dir", "subdir", "foo3")
-    ).read_text() == "text3"
+    assert (tmp_dir / os.path.join("dir", "subdir", "foo2")).read_text() == "text2"
+    assert (tmp_dir / os.path.join("dir", "subdir", "foo3")).read_text() == "text3"
 
     assert stage1.deps[0].def_repo["rev_lock"] == old_rev
     assert stage2.deps[0].def_repo["rev_lock"] == old_rev
@@ -457,14 +437,10 @@ def test_update_import_url_to_remote_directory_changed_contents(
 def test_update_import_url_to_remote_directory_same_hash(
     tmp_dir, dvc, local_workspace, local_remote
 ):
-    local_workspace.gen(
-        {"data": {"foo": "foo", "bar": {"baz": "baz"}, "same": "same"}}
-    )
+    local_workspace.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "same": "same"}})
     stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
-    local_workspace.gen(
-        {"data": {"foo": "baz", "bar": {"baz": "foo"}, "same": "same"}}
-    )
+    local_workspace.gen({"data": {"foo": "baz", "bar": {"baz": "foo"}, "same": "same"}})
     stage = dvc.update(stage.path, to_remote=True)
 
     dvc.pull("data")

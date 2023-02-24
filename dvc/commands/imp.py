@@ -5,13 +5,14 @@ from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
-from dvc.scm import CloneError
 
 logger = logging.getLogger(__name__)
 
 
 class CmdImport(CmdBase):
     def run(self):
+        from dvc.scm import CloneError
+
         try:
             self.repo.imp(
                 self.args.url,
@@ -90,8 +91,10 @@ def add_parser(subparsers, parent_parser):
         "--no-download",
         action="store_true",
         default=False,
-        help="Create .dvc file including target data hash value(s)"
-        " but do not actually download the file(s).",
+        help=(
+            "Create .dvc file including target data hash value(s)"
+            " but do not actually download the file(s)."
+        ),
     )
     import_parser.add_argument(
         "-j",

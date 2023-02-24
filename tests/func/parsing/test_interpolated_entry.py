@@ -8,12 +8,7 @@ from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
 from dvc.parsing.context import recurse_not_a_node
 from dvc.parsing.interpolate import escape_str
 
-from . import (
-    CONTEXT_DATA,
-    RESOLVED_DVC_YAML_DATA,
-    TEMPLATED_DVC_YAML_DATA,
-    USED_VARS,
-)
+from . import CONTEXT_DATA, RESOLVED_DVC_YAML_DATA, TEMPLATED_DVC_YAML_DATA, USED_VARS
 
 
 def assert_stage_equal(d1, d2):
@@ -31,9 +26,7 @@ def assert_stage_equal(d1, d2):
 
 def test_simple(tmp_dir, dvc):
     (tmp_dir / DEFAULT_PARAMS_FILE).dump(CONTEXT_DATA)
-    resolver = DataResolver(
-        dvc, tmp_dir.fs_path, deepcopy(TEMPLATED_DVC_YAML_DATA)
-    )
+    resolver = DataResolver(dvc, tmp_dir.fs_path, deepcopy(TEMPLATED_DVC_YAML_DATA))
     assert_stage_equal(resolver.resolve(), deepcopy(RESOLVED_DVC_YAML_DATA))
     assert resolver.tracked_vars == {
         "stage1": {DEFAULT_PARAMS_FILE: USED_VARS["stage1"]},
@@ -135,9 +128,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
             }
         }
     }
-    (tmp_dir / DEFAULT_PARAMS_FILE).dump(
-        {"dict": {"bar": "bar", "ws": "data"}}
-    )
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"bar": "bar", "ws": "data"}})
     data_dir = tmp_dir / "data"
     data_dir.mkdir()
     (data_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"foo": "foo"}})
@@ -310,13 +301,16 @@ def test_cmd_dict(tmp_dir, dvc, bool_config, list_config):
         {
             "stages": {
                 "stage1": {
-                    "cmd": "python script.py"
-                    " --foo foo --bar 2"
-                    f" --string {escape_str(string)}"
-                    f" --mixed_quote_string {escape_str(mixed_quote_string)}"
-                    f"{bool_resolved}"
-                    f"{list_resolved}"
-                    " --nested.foo foo"
+                    "cmd": (
+                        "python script.py"
+                        " --foo foo --bar 2"
+                        f" --string {escape_str(string)}"
+                        " --mixed_quote_string"
+                        f" {escape_str(mixed_quote_string)}"
+                        f"{bool_resolved}"
+                        f"{list_resolved}"
+                        " --nested.foo foo"
+                    )
                 }
             }
         },

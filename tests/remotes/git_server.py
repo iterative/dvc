@@ -9,11 +9,12 @@ class GitSSH(SSH):
 
 
 @pytest.fixture
-def git_server(test_config, docker_compose, docker_services):
+def git_server(request, test_config):
     import asyncssh
     from sshfs import SSHFileSystem
 
     test_config.requires("ssh")
+    docker_services = request.getfixturevalue("docker_services")
     conn_info = {
         "host": "127.0.0.1",
         "port": docker_services.port_for("git-server", 2222),
@@ -44,7 +45,7 @@ def git_server(test_config, docker_compose, docker_services):
 def git_ssh_connection(git_server):
     from sshfs import SSHFileSystem
 
-    yield SSHFileSystem(
+    return SSHFileSystem(
         host=git_server["host"],
         port=git_server["port"],
         username=TEST_SSH_USER,

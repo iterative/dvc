@@ -7,9 +7,7 @@ from dvc.dvcfile import PROJECT_FILE
 from dvc.schema import LOCK_FILE_STAGE_SCHEMA, LOCKFILE_STAGES_SCHEMA
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import DEFAULT_PARAMS_FILE, to_lockfile
-from dvc.stage.serialize import (
-    to_single_stage_lockfile as _to_single_stage_lockfile,
-)
+from dvc.stage.serialize import to_single_stage_lockfile as _to_single_stage_lockfile
 from dvc.stage.utils import split_params_deps
 from dvc_data.hashfile.hash_info import HashInfo
 
@@ -41,9 +39,7 @@ def test_lock_deps(dvc):
 
 
 def test_lock_deps_order(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, deps=["input1", "input0"], **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, deps=["input1", "input0"], **kwargs)
     stage.deps[0].hash_info = HashInfo("md5", "md-one1")
     stage.deps[1].hash_info = HashInfo("md5", "md-zer0")
     assert to_single_stage_lockfile(stage) == OrderedDict(
@@ -61,9 +57,7 @@ def test_lock_deps_order(dvc):
 
 
 def test_lock_params(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, params=["lorem.ipsum", "abc"], **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, params=["lorem.ipsum", "abc"], **kwargs)
     stage.deps[0].hash_info = HashInfo(
         "params", {"lorem.ipsum": {"lorem1": 1, "lorem2": 2}, "abc": 3}
     )
@@ -82,7 +76,7 @@ def test_lock_params_file_sorted(dvc):
             {"myparams.yaml": ["foo", "foobar"]},
             {"a-params-file.yaml": ["bar", "barr"]},
         ],
-        **kwargs
+        **kwargs,
     )
     stage.deps[0].hash_info = HashInfo(
         "params", {"lorem.ipsum": {"lorem1": 1, "lorem2": 2}, "abc": 3}
@@ -97,9 +91,7 @@ def test_lock_params_file_sorted(dvc):
         [
             (
                 DEFAULT_PARAMS_FILE,
-                OrderedDict(
-                    [("abc", 3), ("lorem.ipsum", {"lorem1": 1, "lorem2": 2})]
-                ),
+                OrderedDict([("abc", 3), ("lorem.ipsum", {"lorem1": 1, "lorem2": 2})]),
             ),
             (
                 "a-params-file.yaml",
@@ -114,9 +106,7 @@ def test_lock_params_file_sorted(dvc):
 
 
 def test_lock_params_no_values_filled(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, params=["lorem.ipsum", "abc"], **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, params=["lorem.ipsum", "abc"], **kwargs)
     assert to_single_stage_lockfile(stage) == {"cmd": "command"}
 
 
@@ -129,9 +119,7 @@ def test_lock_params_no_values_filled(dvc):
     ],
 )
 def test_lock_params_without_targets(dvc, info, expected):
-    stage = create_stage(
-        PipelineStage, dvc, params=[{"params.yaml": None}], **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, params=[{"params.yaml": None}], **kwargs)
     stage.deps[0].fill_values(info)
     assert to_single_stage_lockfile(stage) == {
         "cmd": "command",
@@ -177,9 +165,7 @@ def test_lock_outs_isexec(dvc, typ):
 
 @pytest.mark.parametrize("typ", ["plots", "metrics", "outs"])
 def test_lock_outs_order(dvc, typ):
-    stage = create_stage(
-        PipelineStage, dvc, **{typ: ["input1", "input0"]}, **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, **{typ: ["input1", "input0"]}, **kwargs)
     stage.outs[0].hash_info = HashInfo("md5", "md-one1")
     stage.outs[1].hash_info = HashInfo("md5", "md-zer0")
     assert to_single_stage_lockfile(stage) == OrderedDict(
@@ -197,20 +183,14 @@ def test_lock_outs_order(dvc, typ):
 
 
 def test_dump_nondefault_hash(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, deps=["s3://dvc-temp/file"], **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, deps=["s3://dvc-temp/file"], **kwargs)
     stage.deps[0].hash_info = HashInfo("md5", "value")
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
             (
                 "deps",
-                [
-                    OrderedDict(
-                        [("path", "s3://dvc-temp/file"), ("md5", "value")]
-                    )
-                ],
+                [OrderedDict([("path", "s3://dvc-temp/file"), ("md5", "value")])],
             ),
         ]
     )
@@ -223,7 +203,7 @@ def test_order(dvc):
         deps=["input"],
         outs=["output"],
         params=["foo-param"],
-        **kwargs
+        **kwargs,
     )
     params, deps = split_params_deps(stage)
 

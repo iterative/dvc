@@ -18,15 +18,13 @@ from typing import (
 
 from scmrepo.exceptions import SCMError as InnerScmError
 
-from dvc.repo.metrics.show import _gather_metrics
-from dvc.repo.params.show import _gather_params
-from dvc.scm import SCMError, iter_revs, resolve_rev
-from dvc.utils import error_handler, onerror_collect, relpath
+from dvc.exceptions import DvcException
+from dvc.scm import Git, RevError, SCMError, iter_revs, resolve_rev
 
 from .refs import ExpRefInfo
+from .serialize import SerializableError, SerializableExp
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
     from scmrepo.git.objects import GitCommit
 
     from dvc.repo import Repo
@@ -41,87 +39,113 @@ class ExpStatus(Enum):
     Failed = 3
 
 
+class _CachedError(DvcException):
+    def __init__(self, msg, typ, *args):
+        super().__init__(msg, *args)
+        self.typ = typ
+
+
 def _is_scm_error(collected_exp: Dict[str, Any]) -> bool:
     if "error" in collected_exp and (
-        isinstance(collected_exp["error"], (SCMError, InnerScmError))
+        isinstance(collected_exp["error"], (_CachedError, SCMError, InnerScmError))
     ):
         return True
     return False
 
 
-def _show_onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
-    onerror_collect(result, exception, *args, **kwargs)
-    result["data"] = {}
+def _format_exp(exp: SerializableExp) -> Dict[str, Any]:
+    # SerializableExp always includes error but we need to strip it from show
+    # output when it is false-y to maintain compatibility w/tools that consume
+    # json output and assume that "error" key presence means there was an error
+    exp_dict = exp.dumpd()
+    if "error" in exp_dict and not exp_dict["error"]:
+        del exp_dict["error"]
+    return {"data": exp_dict}
 
 
-@error_handler
+def _format_error(error: SerializableError):
+    msg = error.msg or "None"
+    return {"data": {}, "error": _CachedError(msg, error.type)}
+
+
 def collect_experiment_commit(
     repo: "Repo",
     exp_rev: str,
     status: ExpStatus = ExpStatus.Success,
-    param_deps=False,
-    running: Optional[Dict[str, Any]] = None,
-    onerror: Optional[Callable] = None,
+    param_deps: bool = False,
+    force: bool = False,
+    **kwargs,
 ) -> Dict[str, Any]:
-    from dvc.dependency import ParamsDependency, RepoDependency
+    cache = repo.experiments.cache
+    # TODO: support filtering serialized exp when param_deps is set
+    if exp_rev != "workspace" and not (force or param_deps):
+        cached_exp = cache.get(exp_rev)
+        if cached_exp:
+            if status == ExpStatus.Running:
+                # expire cached queued exp entry once we start running it
+                cache.delete(exp_rev)
+            elif isinstance(cached_exp, SerializableError):
+                return _format_error(cached_exp)
+            else:
+                return _format_exp(cached_exp)
+    try:
+        exp = _collect_from_repo(
+            repo,
+            exp_rev,
+            status=status,
+            param_deps=param_deps,
+            force=force,
+            **kwargs,
+        )
+        if exp_rev != "workspace" and not param_deps:
+            cache.put(exp, force=True)
+        return _format_exp(exp)
+    except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+        logger.debug("", exc_info=True)
+        error = SerializableError(str(exc), type(exc).__name__)
+        if not (exp_rev == "workspace" or param_deps or status == ExpStatus.Running):
+            cache.put(error, rev=exp_rev, force=True)
+        return _format_error(error)
 
-    result: Dict[str, Any] = defaultdict(dict)
+
+def _collect_from_repo(
+    repo: "Repo",
+    exp_rev: str,
+    status: ExpStatus = ExpStatus.Success,
+    running: Optional[Dict[str, Any]] = None,
+    **kwargs,
+) -> "SerializableExp":
     running = running or {}
     for rev in repo.brancher(revs=[exp_rev]):
         if rev == "workspace":
             if exp_rev != "workspace":
                 continue
-            result["timestamp"] = None
+            timestamp: Optional[datetime] = None
         else:
             commit = repo.scm.resolve_commit(rev)
-            result["timestamp"] = datetime.fromtimestamp(commit.commit_time)
+            timestamp = datetime.fromtimestamp(commit.commit_time)
 
-        params = _gather_params(
-            repo, targets=None, deps=param_deps, onerror=onerror
-        )
-        if params:
-            result["params"] = params
-
-        result["deps"] = {
-            relpath(dep.fs_path, repo.root_dir): {
-                "hash": dep.hash_info.value,
-                "size": dep.meta.size,
-                "nfiles": dep.meta.nfiles,
-            }
-            for dep in repo.index.deps
-            if not isinstance(dep, (ParamsDependency, RepoDependency))
-        }
-        result["outs"] = {
-            relpath(out.fs_path, repo.root_dir): {
-                "hash": out.hash_info.value,
-                "size": out.meta.size,
-                "nfiles": out.meta.nfiles,
-                "use_cache": out.use_cache,
-                "is_data_source": out.stage.is_data_source,
-            }
-            for out in repo.index.outs
-            if not (out.is_metric or out.is_plot)
-        }
-
-        result["status"] = status.name
         if status == ExpStatus.Running:
-            result["executor"] = running.get(exp_rev, {}).get("location", None)
+            executor: Optional[str] = running.get(exp_rev, {}).get("location", None)
         else:
-            result["executor"] = None
+            executor = None
 
         if status == ExpStatus.Failed:
-            result["error"] = {
-                "msg": "Experiment run failed.",
-                "type": "",
-            }
-
-        if status not in {ExpStatus.Queued, ExpStatus.Failed}:
-            vals = _gather_metrics(
-                repo, targets=None, rev=rev, recursive=False, onerror=onerror
+            error: Optional["SerializableError"] = SerializableError(
+                "Experiment run failed."
             )
-            result["metrics"] = vals
+        else:
+            error = None
 
-    return result
+        return SerializableExp.from_repo(
+            repo,
+            rev=exp_rev,
+            timestamp=timestamp,
+            status=status.name,
+            executor=executor,
+            error=error,
+        )
+    raise RevError(f"nonexistent exp rev: '{exp_rev}'")
 
 
 def _collect_complete_experiment(
@@ -173,6 +197,7 @@ def _collect_branch(
     repo: "Repo",
     baseline: str,
     running: Dict[str, Any],
+    refs: Optional[Iterable[str]] = None,
     **kwargs,
 ) -> Dict[str, Dict[str, Any]]:
     results: Dict[str, Dict[str, Any]] = OrderedDict()
@@ -190,7 +215,12 @@ def _collect_branch(
     ref_info = ExpRefInfo(baseline_sha=baseline)
     commits: List[Tuple[str, "GitCommit", str, List[str]]] = []
 
-    for ref in repo.scm.iter_refs(base=str(ref_info)):
+    assert isinstance(repo.scm, Git)
+    if refs:
+        ref_it = (ref for ref in iter(refs) if ref.startswith(str(ref_info)))
+    else:
+        ref_it = repo.scm.iter_refs(base=str(ref_info))
+    for ref in ref_it:
         try:
             commit = repo.scm.resolve_commit(ref)
             exp_rev = resolve_rev(repo.scm, ref)
@@ -219,20 +249,22 @@ def _collect_branch(
 
 
 def get_branch_names(
-    scm: "Git", baseline_set: Iterable[str]
+    scm: "Git", baseline_set: Iterable[str], refs: Optional[Iterable[str]] = None
 ) -> Dict[str, Optional[str]]:
     names: Dict[str, Optional[str]] = {}
-    for base in [
-        f"refs/exps/{baseline[:2]}/{baseline[2:]}/"
-        for baseline in baseline_set
-    ] + ["refs/heads/", "refs/tags/"]:
-        for ref in scm.iter_refs(base=base):
-            if ref:
+    bases = [
+        f"refs/exps/{baseline[:2]}/{baseline[2:]}/" for baseline in baseline_set
+    ] + ["refs/heads/", "refs/tags/"]
+    ref_it = iter(refs) if refs else scm.iter_refs()
+    for ref in ref_it:
+        for base in bases:
+            if ref.startswith(base):
                 try:
                     rev = scm.get_ref(ref)
                     names[rev] = ref[len(base) :]
                 except KeyError:
-                    logger.debug("unreosolved ref %s", ref)
+                    logger.debug("unresolved ref %s", ref)
+                break
     logger.debug("found refs for revs: %s", names)
     return names
 
@@ -242,7 +274,6 @@ def update_names(  # noqa: C901
     branch_names: Dict[str, Optional[str]],
     result: Dict[str, Dict[str, Any]],
 ):
-
     rev_set = set()
     for baseline in result:
         for rev in result[baseline]:
@@ -387,7 +418,7 @@ def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
                     checkpoint = True
 
 
-def show(
+def show(  # noqa: PLR0913
     repo: "Repo",
     all_branches=False,
     all_tags=False,
@@ -400,12 +431,10 @@ def show(
     param_deps=False,
     onerror: Optional[Callable] = None,
     fetch_running: bool = True,
+    force: bool = False,
 ):
-
     if repo.scm.no_commits:
         return {}
-
-    onerror = onerror or _show_onerror_collect
 
     res: Dict[str, Dict] = defaultdict(OrderedDict)
 
@@ -414,11 +443,14 @@ def show(
     if isinstance(revs, str):
         revs = [revs]
 
+    assert isinstance(repo.scm, Git)
+
     found_revs: Dict[str, List[str]] = {"workspace": []}
     found_revs.update(
         iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
     )
-    branch_names = get_branch_names(repo.scm, found_revs)
+    cached_refs = list(repo.scm.iter_refs())
+    branch_names = get_branch_names(repo.scm, found_revs, refs=cached_refs)
 
     running: Dict[str, Dict] = repo.experiments.get_running_exps(
         fetch_refs=fetch_running
@@ -430,7 +462,7 @@ def show(
             found_revs,
             running,
             param_deps=param_deps,
-            onerror=onerror,
+            force=force,
         )
         if not hide_queued
         else {}
@@ -442,6 +474,7 @@ def show(
         running,
         param_deps=param_deps,
         onerror=onerror,
+        force=force,
     )
 
     failed_experiments = (
@@ -451,6 +484,7 @@ def show(
             running,
             param_deps=param_deps,
             onerror=onerror,
+            force=force,
         )
         if not hide_failed
         else {}
@@ -463,6 +497,8 @@ def show(
             running=running,
             param_deps=param_deps,
             onerror=onerror,
+            force=force,
+            refs=cached_refs,
         )
 
     update_new(res, failed_experiments)

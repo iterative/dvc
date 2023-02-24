@@ -61,7 +61,7 @@ def _get_stage_hash(stage):
 class StageCache:
     def __init__(self, repo):
         self.repo = repo
-        self.cache_dir = os.path.join(self.repo.odb.local.path, "runs")
+        self.cache_dir = os.path.join(self.repo.cache.local.path, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
@@ -120,12 +120,12 @@ class StageCache:
 
     @contextmanager
     def _cache_type_copy(self):
-        cache_types = self.repo.odb.local.cache_types
-        self.repo.odb.local.cache_types = ["copy"]
+        cache_types = self.repo.cache.local.cache_types
+        self.repo.cache.local.cache_types = ["copy"]
         try:
             yield
         finally:
-            self.repo.odb.local.cache_types = cache_types
+            self.repo.cache.local.cache_types = cache_types
 
     def _uncached_outs(self, stage, cache):
         # NOTE: using temporary stage to avoid accidentally modifying original
@@ -133,9 +133,7 @@ class StageCache:
         # outputs.
         cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
-        outs_no_cache = [
-            out.def_path for out in stage.outs if not out.use_cache
-        ]
+        outs_no_cache = [out.def_path for out in stage.outs if not out.use_cache]
 
         # NOTE: using copy link to make it look like a git-tracked file
         with self._cache_type_copy():
@@ -169,13 +167,13 @@ class StageCache:
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
         path = self._get_cache_path(cache_key, cache_value)
-        parent = self.repo.odb.local.fs.path.parent(path)
-        self.repo.odb.local.makedirs(parent)
+        parent = self.repo.cache.local.fs.path.parent(path)
+        self.repo.cache.local.makedirs(parent)
         tmp = tempfile.NamedTemporaryFile(delete=False, dir=parent).name
         assert os.path.exists(parent)
         assert os.path.isdir(parent)
         dump_yaml(tmp, cache)
-        self.repo.odb.local.move(tmp, path)
+        self.repo.cache.local.move(tmp, path)
 
     def restore(self, stage, run_cache=True, pull=False, dry=False):
         from .serialize import to_single_stage_lockfile
@@ -224,11 +222,7 @@ class StageCache:
         runs = from_fs.path.join(from_odb.path, "runs")
 
         http_odb = next(
-            (
-                odb
-                for odb in (from_odb, to_odb)
-                if isinstance(odb.fs, HTTPFileSystem)
-            ),
+            (odb for odb in (from_odb, to_odb) if isinstance(odb.fs, HTTPFileSystem)),
             None,
         )
         if http_odb:
@@ -264,16 +258,12 @@ class StageCache:
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        dest_odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "push --run-cache"
-        )
-        return self.transfer(self.repo.odb.local, dest_odb)
+        dest_odb = odb or self.repo.cloud.get_remote_odb(remote, "push --run-cache")
+        return self.transfer(self.repo.cache.local, dest_odb)
 
     def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "fetch --run-cache"
-        )
-        return self.transfer(odb, self.repo.odb.local)
+        odb = odb or self.repo.cloud.get_remote_odb(remote, "fetch --run-cache")
+        return self.transfer(odb, self.repo.cache.local)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):
         """Return used cache for the specified run-cached stages."""

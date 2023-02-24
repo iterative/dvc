@@ -9,9 +9,7 @@ META_KWD = "meta"
 
 def lockfile_version_schema(value):
     expected = [LOCKFILE_VERSION.V2.value]  # pylint: disable=no-member
-    msg = "invalid schema version {}, expected one of {}".format(
-        value, expected
-    )
+    msg = f"invalid schema version {value}, expected one of {expected}"
     return validators.Any(*expected, msg=msg)(value)
 
 
@@ -21,7 +19,7 @@ class VersionEnum(str, enum.Enum):
         return [v.value for v in cls]
 
 
-class LOCKFILE_VERSION(VersionEnum):
+class LOCKFILE_VERSION(VersionEnum):  # noqa: N801
     V1 = "1.0"
     V2 = "2.0"
 

@@ -50,9 +50,7 @@ def plain_table(
 
 
 @contextmanager
-def console_width(
-    table: "Table", console: "RichConsole", val: int
-) -> Iterator[None]:
+def console_width(table: "Table", console: "RichConsole", val: int) -> Iterator[None]:
     # NOTE: rich does not have native support for unlimited width
     # via pager. we override rich table compression by setting
     # console width to the full width of the table
@@ -110,9 +108,7 @@ def rich_table(
 
     stack = ExitStack()
     if pager:
-        stack.enter_context(
-            console_width(table, ui.rich_console, SHOW_MAX_WIDTH)
-        )
+        stack.enter_context(console_width(table, ui.rich_console, SHOW_MAX_WIDTH))
         stack.enter_context(ui.pager())
 
     with stack:

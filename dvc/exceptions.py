@@ -150,8 +150,9 @@ class CyclicGraphError(DvcException):
 class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "unable to remove '{}' without a confirmation. Use "
-            "`-f` to force.".format(path)
+            "unable to remove '{}' without a confirmation. Use `-f` to force.".format(
+                path
+            )
         )
 
 
@@ -177,9 +178,7 @@ class BadMetricError(DvcException):
 
 class RecursiveAddingWhileUsingFilename(DvcException):
     def __init__(self):
-        super().__init__(
-            "cannot use `fname` with multiple targets or `-R|--recursive`"
-        )
+        super().__init__("cannot use `fname` with multiple targets or `-R|--recursive`")
 
 
 class OverlappingOutputPathsError(DvcException):
@@ -206,9 +205,7 @@ class FileMissingError(DvcException):
     def __init__(self, path, hint=None):
         self.path = path
         hint = "" if hint is None else f". {hint}"
-        super().__init__(
-            f"Can't find '{path}' neither locally nor on remote{hint}"
-        )
+        super().__init__(f"Can't find '{path}' neither locally nor on remote{hint}")
 
 
 class FileTransferError(DvcException):
@@ -250,9 +247,7 @@ class CollectCacheError(DvcException):
 
 class NoRemoteInExternalRepoError(DvcException):
     def __init__(self, url):
-        super().__init__(
-            f"No DVC remote is specified in target repository '{url}'."
-        )
+        super().__init__(f"No DVC remote is specified in target repository '{url}'.")
 
 
 class NoOutputInExternalRepoError(DvcException):
@@ -277,8 +272,7 @@ class PathMissingError(DvcException):
         " neither as a DVC output nor as a Git-tracked file."
     )
     default_msg_dvc_only = (
-        "The path '{}' does not exist in the target repository '{}'"
-        " as an DVC output."
+        "The path '{}' does not exist in the target repository '{}' as an DVC output."
     )
 
     def __init__(self, path, repo, dvc_only=False):
@@ -294,7 +288,6 @@ class URLMissingError(DvcException):
 
 class RemoteCacheRequiredError(DvcException):
     def __init__(self, scheme, fs_path):
-
         super().__init__(
             (
                 "Current operation was unsuccessful because '{}' requires "
@@ -319,8 +312,7 @@ class NoOutputOrStageError(DvcException):
 
     def __init__(self, target, file):
         super().__init__(
-            f"'{target}' "
-            f"does not exist as an output or a stage name in '{file}'"
+            f"'{target}' does not exist as an output or a stage name in '{file}'"
         )
 
 
@@ -329,11 +321,8 @@ class MergeError(DvcException):
 
 
 class CacheLinkError(DvcException):
-
     SUPPORT_LINK = "See {} for more information.".format(
-        format_link(
-            "https://dvc.org/doc/user-guide/troubleshooting#cache-types"
-        )
+        format_link("https://dvc.org/doc/user-guide/troubleshooting#cache-types")
     )
 
     def __init__(self, fs_paths):

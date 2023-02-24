@@ -22,9 +22,7 @@ def test_is_dvc_internal(dvc):
     ],
 )
 def test_find_outs_by_path(tmp_dir, dvc, path):
-    (stage,) = tmp_dir.dvc_gen(
-        {"dir": {"subdir": {"file": "file"}, "other": "other"}}
-    )
+    (stage,) = tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
 
     outs = dvc.find_outs_by_path(path, strict=False)
     assert len(outs) == 1

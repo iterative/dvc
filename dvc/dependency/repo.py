@@ -35,9 +35,7 @@ class RepoDependency(Dependency):
         }
     }
 
-    def __init__(
-        self, def_repo: Dict[str, str], stage: "Stage", *args, **kwargs
-    ):
+    def __init__(self, def_repo: Dict[str, str], stage: "Stage", *args, **kwargs):
         self.def_repo = def_repo
         self._objs: Dict[str, "HashFile"] = {}
         self._meta: Dict[str, "Meta"] = {}
@@ -82,7 +80,7 @@ class RepoDependency(Dependency):
             to.fs_path,
             to.fs,
             obj,
-            self.repo.odb.local,
+            self.repo.cache.local,
             ignore=None,
             state=self.repo.state,
             prompt=confirm,
@@ -100,24 +98,20 @@ class RepoDependency(Dependency):
         # immutable, hence its impossible for checksum to change.
         return False
 
-    def get_used_objs(
-        self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+    def get_used_objs(self, **kwargs) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         used, _, _ = self._get_used_and_obj(**kwargs)
         return used
 
     def _get_used_and_obj(
         self, obj_only: bool = False, **kwargs
-    ) -> Tuple[
-        Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"
-    ]:
+    ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.utils import as_posix
         from dvc_data.hashfile.build import build
         from dvc_data.hashfile.tree import Tree, TreeError
 
-        local_odb = self.repo.odb.local
+        local_odb = self.repo.cache.local
         locked = kwargs.pop("locked", True)
         with self._make_repo(locked=locked, cache_dir=local_odb.path) as repo:
             used_obj_ids = defaultdict(set)
@@ -163,9 +157,7 @@ class RepoDependency(Dependency):
                 used_obj_ids[object_store].update(oid for _, _, oid in obj)
             return used_obj_ids, meta, obj
 
-    def _check_circular_import(
-        self, odb: "ObjectDB", obj_ids: Set["HashInfo"]
-    ) -> None:
+    def _check_circular_import(self, odb: "ObjectDB", obj_ids: Set["HashInfo"]) -> None:
         from dvc.exceptions import CircularImportError
         from dvc.fs.dvc import DVCFileSystem
         from dvc_data.hashfile.db.reference import ReferenceHashFileDB
@@ -187,10 +179,7 @@ class RepoDependency(Dependency):
         for obj in iter_objs():
             if not isinstance(obj.fs, DVCFileSystem):
                 continue
-            if (
-                obj.fs.repo_url in checked_urls
-                or obj.fs.repo.root_dir in checked_urls
-            ):
+            if obj.fs.repo_url in checked_urls or obj.fs.repo.root_dir in checked_urls:
                 continue
             self_url = self.repo.url or self.repo.root_dir
             if (
@@ -221,9 +210,7 @@ class RepoDependency(Dependency):
         )
         return meta
 
-    def _make_repo(
-        self, locked: bool = True, **kwargs
-    ) -> "ContextManager[Repo]":
+    def _make_repo(self, locked: bool = True, **kwargs) -> "ContextManager[Repo]":
         from dvc.external_repo import external_repo
 
         d = self.def_repo
@@ -232,6 +219,4 @@ class RepoDependency(Dependency):
 
     def _get_rev(self, locked: bool = True):
         d = self.def_repo
-        return (d.get(self.PARAM_REV_LOCK) if locked else None) or d.get(
-            self.PARAM_REV
-        )
+        return (d.get(self.PARAM_REV_LOCK) if locked else None) or d.get(self.PARAM_REV)

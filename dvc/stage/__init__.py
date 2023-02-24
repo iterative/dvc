@@ -21,12 +21,7 @@ from typing import (
 from funcy import project
 
 from dvc import prompt
-from dvc.exceptions import (
-    CacheLinkError,
-    CheckoutError,
-    DvcException,
-    MergeError,
-)
+from dvc.exceptions import CacheLinkError, CheckoutError, DvcException, MergeError
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
 
@@ -145,7 +140,7 @@ class Stage(params.StageParams):
     # pylint:disable=no-value-for-parameter
     # rwlocked() confuses pylint
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         repo,
         path=None,
@@ -199,8 +194,7 @@ class Stage(params.StageParams):
 
         if not self.path:
             raise DvcException(
-                "Stage does not have any path set "
-                "and is detached from dvcfile."
+                "Stage does not have any path set and is detached from dvcfile."
             )
 
         from dvc.dvcfile import load_file
@@ -209,9 +203,7 @@ class Stage(params.StageParams):
         return self._dvcfile
 
     @dvcfile.setter
-    def dvcfile(
-        self, dvcfile: Union["ProjectFile", "SingleStageFile"]
-    ) -> None:
+    def dvcfile(self, dvcfile: Union["ProjectFile", "SingleStageFile"]) -> None:
         self._dvcfile = dvcfile
 
     def __repr__(self):
@@ -433,14 +425,11 @@ class Stage(params.StageParams):
             if not isinstance(self, PipelineStage) and self.is_data_source:
                 logger.info("'%s' didn't change, skipping", self.addressing)
             else:
-                logger.info(
-                    "Stage '%s' didn't change, skipping", self.addressing
-                )
+                logger.info("Stage '%s' didn't change, skipping", self.addressing)
             return None
 
-        msg = (
-            "Going to reproduce {stage}. "
-            "Are you sure you want to continue?".format(stage=self)
+        msg = "Going to reproduce {stage}. Are you sure you want to continue?".format(
+            stage=self
         )
 
         if interactive and not prompt.confirm(msg):
@@ -517,10 +506,7 @@ class Stage(params.StageParams):
             merge_versioned = any(
                 (
                     out.files is not None
-                    or (
-                        out.meta is not None
-                        and out.meta.version_id is not None
-                    )
+                    or (out.meta is not None and out.meta.version_id is not None)
                 )
                 for out in old_outs.values()
             )
@@ -559,13 +545,13 @@ class Stage(params.StageParams):
         )
 
     @rwlocked(write=["outs"])
-    def commit(self, allow_missing=False, filter_info=None) -> None:
+    def commit(self, allow_missing=False, filter_info=None, **kwargs) -> None:
         from dvc.output import OutputDoesNotExistError
 
         link_failures = []
         for out in self.filter_outs(filter_info):
             try:
-                out.commit(filter_info=filter_info)
+                out.commit(filter_info=filter_info, **kwargs)
             except OutputDoesNotExistError:
                 if not (allow_missing or out.checkpoint):
                     raise
@@ -588,15 +574,11 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=False, force=False)
 
         if (not self.frozen and self.is_import) or self.is_partial_import:
-            self._sync_import(
-                dry, force, kwargs.get("jobs", None), no_download
-            )
+            self._sync_import(dry, force, kwargs.get("jobs", None), no_download)
         elif not self.frozen and self.cmd:
             self._run_stage(dry, force, **kwargs)
         else:
-            args = (
-                ("outputs", "frozen ") if self.frozen else ("data sources", "")
-            )
+            args = ("outputs", "frozen ") if self.frozen else ("data sources", "")
             logger.info("Verifying %s in %s%s", *args, self)
             if not dry:
                 self._check_missing_outputs()
@@ -712,11 +694,7 @@ class Stage(params.StageParams):
             ret.append("changed checksum")
 
     def already_cached(self) -> bool:
-        return (
-            not self.changed_stage()
-            and self.deps_cached()
-            and self.outs_cached()
-        )
+        return not self.changed_stage() and self.deps_cached() and self.outs_cached()
 
     def deps_cached(self) -> bool:
         return all(not dep.changed() for dep in self.deps)
@@ -729,8 +707,7 @@ class Stage(params.StageParams):
 
     def get_all_files_number(self, filter_info=None) -> int:
         return sum(
-            out.get_files_number(filter_info)
-            for out in self.filter_outs(filter_info)
+            out.get_files_number(filter_info) for out in self.filter_outs(filter_info)
         )
 
     def get_used_objs(
@@ -753,14 +730,11 @@ class Stage(params.StageParams):
 
         if not stage.is_data_source or stage.deps or len(stage.outs) > 1:
             raise MergeError(
-                "unable to auto-merge DVC files that weren't "
-                "created by `dvc add`"
+                "unable to auto-merge DVC files that weren't created by `dvc add`"
             )
 
         if ancestor_out and not stage.outs:
-            raise MergeError(
-                "unable to auto-merge DVC files with deleted outputs"
-            )
+            raise MergeError("unable to auto-merge DVC files with deleted outputs")
 
     def merge(self, ancestor, other, allowed=None) -> None:
         assert other

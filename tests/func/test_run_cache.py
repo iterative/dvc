@@ -36,7 +36,8 @@ def test_restore(tmp_dir, dvc, run_copy, mocker):
 
     mock_restore.assert_called_once_with(stage, dry=False)
     mock_run.assert_not_called()
-    assert (tmp_dir / "bar").exists() and not (tmp_dir / "foo").unlink()
+    assert (tmp_dir / "bar").exists()
+    assert not (tmp_dir / "foo").unlink()
     assert (tmp_dir / LOCK_FILE).exists()
 
 
@@ -81,14 +82,12 @@ def test_outs_no_cache_deactivate_run_cache(tmp_dir, dvc, out_type, run_cache):
         cmd="cp foo bar && cp foo goo",
         outs=["goo"],
         name="copy-foo-bar",
-        **{out_type: ["bar"]}
+        **{out_type: ["bar"]},
     )
     assert os.path.isdir(dvc.stage_cache.cache_dir) == run_cache
 
 
-def test_memory_for_multiple_runs_of_same_stage(
-    tmp_dir, dvc, run_copy, mocker
-):
+def test_memory_for_multiple_runs_of_same_stage(tmp_dir, dvc, run_copy, mocker):
     tmp_dir.gen("foo", "foo")
     assert not os.path.exists(dvc.stage_cache.cache_dir)
     run_copy("foo", "bar", name="copy-foo-bar")
@@ -119,7 +118,8 @@ def test_memory_for_multiple_runs_of_same_stage(
     assert (tmp_dir / "bar").read_text() == "foo"
     mock_run.assert_not_called()
     mock_restore.assert_called_once_with(stage, dry=False)
-    assert (tmp_dir / "bar").exists() and not (tmp_dir / "foo").unlink()
+    assert (tmp_dir / "bar").exists()
+    assert not (tmp_dir / "foo").unlink()
     assert (tmp_dir / LOCK_FILE).exists()
 
 
@@ -180,5 +180,6 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
     mock_restore.assert_called_once_with(stage, pull=True, dry=False)
     mock_run.assert_not_called()
     assert mock_checkout.call_count == 2
-    assert (tmp_dir / "bar").exists() and not (tmp_dir / "foo").unlink()
+    assert (tmp_dir / "bar").exists()
+    assert not (tmp_dir / "foo").unlink()
     assert (tmp_dir / LOCK_FILE).exists()

@@ -1,3 +1,5 @@
+import os
+
 from dvc.fs import GitFileSystem, Schemes
 from dvc_data.hashfile.db import get_odb
 
@@ -9,12 +11,11 @@ def _get_odb(repo, settings, fs=None):
         return None
 
     cls, config, fs_path = get_cloud_fs(repo, **settings)
-    config["tmp_dir"] = repo.tmp_dir
     fs = fs or cls(**config)
     return get_odb(fs, fs_path, state=repo.state, **config)
 
 
-class ODBManager:
+class CacheManager:
     CACHE_DIR = "cache"
     CLOUD_SCHEMES = [
         Schemes.S3,
@@ -29,16 +30,21 @@ class ODBManager:
         self.config = config = repo.config["cache"]
         self._odb = {}
 
+        default = None
+        if repo and repo.local_dvc_dir:
+            default = os.path.join(repo.local_dvc_dir, self.CACHE_DIR)
+
         local = config.get("local")
 
         if local:
             settings = {"name": local}
-        elif "dir" not in config:
+        elif "dir" not in config and not default:
             settings = None
         else:
             from dvc.config_schema import LOCAL_COMMON
 
-            settings = {"url": config["dir"]}
+            url = config.get("dir") or default
+            settings = {"url": url}
             for opt in LOCAL_COMMON:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)

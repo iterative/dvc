@@ -66,6 +66,8 @@ def test_remote_index_dir_config(make_tmp_dir, dvc):
         conf["remote"]["s3"] = {"url": "s3://bucket/name"}
 
     dvc.root_dir = "/usr/local/test_repo"
+    dvc.dvc_dir = "/usr/local/test_repo/.dvc"
+    dvc.__dict__.pop("local_dvc_dir")
 
     assert os.path.dirname(
         get_index(dvc.cloud.get_remote_odb(name="s3")).index_dir

@@ -56,12 +56,8 @@ class TerraformBackend(BaseMachineBackend):
 
     create = partialmethod(_tpi_func, "create")  # type: ignore[assignment]
     destroy = partialmethod(_tpi_func, "destroy")  # type: ignore[assignment]
-    instances = partialmethod(
-        _tpi_func, "instances"
-    )  # type: ignore[assignment]
-    run_shell = partialmethod(
-        _tpi_func, "run_shell"
-    )  # type: ignore[assignment]
+    instances = partialmethod(_tpi_func, "instances")  # type: ignore[assignment]
+    run_shell = partialmethod(_tpi_func, "run_shell")  # type: ignore[assignment]
 
     def get_executor_kwargs(self, name: str, **config) -> dict:
         with self.make_tpi(name) as tpi:

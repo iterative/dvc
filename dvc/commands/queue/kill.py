@@ -20,8 +20,7 @@ class CmdQueueKill(CmdBase):
 
 def add_parser(queue_subparsers, parent_parser):
     QUEUE_KILL_HELP = (
-        "Gracefully interrupt running experiment queue tasks "
-        "(equivalent to Ctrl-C)"
+        "Gracefully interrupt running experiment queue tasks (equivalent to Ctrl-C)"
     )
     queue_kill_parser = queue_subparsers.add_parser(
         "kill",

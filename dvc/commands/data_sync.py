@@ -40,6 +40,7 @@ class CmdDataPull(CmdDataBase):
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
                 glob=self.args.glob,
+                allow_missing=self.args.allow_missing,
             )
             self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
@@ -197,6 +198,12 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help=argparse.SUPPRESS,
     )
+    pull_parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        default=False,
+        help="Ignore errors if some of the files or directories are missing.",
+    )
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
@@ -262,9 +269,7 @@ def add_parser(subparsers, _parent_parser):
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
-    FETCH_HELP = (
-        "Download files or directories from remote storage to the cache."
-    )
+    FETCH_HELP = "Download files or directories from remote storage to the cache."
 
     fetch_parser = subparsers.add_parser(
         "fetch",
@@ -320,9 +325,7 @@ def add_parser(subparsers, _parent_parser):
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
-    STATUS_HELP = (
-        "Show changed stages, compare local cache and a remote storage."
-    )
+    STATUS_HELP = "Show changed stages, compare local cache and a remote storage."
 
     status_parser = subparsers.add_parser(
         "status",
@@ -360,24 +363,29 @@ def add_parser(subparsers, _parent_parser):
         "--all-branches",
         action="store_true",
         default=False,
-        help="Show status of a local cache compared to a remote repository "
-        "for all branches.",
+        help=(
+            "Show status of a local cache compared to a remote repository "
+            "for all branches."
+        ),
     )
     status_parser.add_argument(
         "-T",
         "--all-tags",
         action="store_true",
         default=False,
-        help="Show status of a local cache compared to a remote repository "
-        "for all tags.",
+        help=(
+            "Show status of a local cache compared to a remote repository for all tags."
+        ),
     )
     status_parser.add_argument(
         "-A",
         "--all-commits",
         action="store_true",
         default=False,
-        help="Show status of a local cache compared to a remote repository "
-        "for all commits.",
+        help=(
+            "Show status of a local cache compared to a remote repository "
+            "for all commits."
+        ),
     )
     status_parser.add_argument(
         "-d",

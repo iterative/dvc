@@ -93,8 +93,8 @@ def test_subdir_init_no_option(tmp_dir, scm, monkeypatch, caplog):
         "{} is not tracked by any supported SCM tool (e.g. Git). "
         "Use `--no-scm` if you don't want to use any SCM or "
         "`--subdir` if initializing inside a subdirectory of a parent SCM "
-        "repository.".format(os.fspath(tmp_dir / "subdir"))
-    ) in caplog.text
+        "repository.".format(os.fspath(tmp_dir / "subdir")) in caplog.text
+    )
 
 
 def test_gen_dvcignore(tmp_dir):
@@ -118,4 +118,5 @@ def test_init_when_ignored_by_git(tmp_dir, scm, caplog):
         "for example, by adding '!.dvc' to .gitignore.".format(
             dvc_dir=tmp_dir / DvcRepo.DVC_DIR
         )
-    ) in caplog.text
+        in caplog.text
+    )

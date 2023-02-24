@@ -8,11 +8,7 @@ from funcy import chunks, compact, log_durations
 from dvc.cli import completion
 from dvc.cli.actions import CommaSeparatedArgs
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import (
-    append_doc_link,
-    fix_subparsers,
-    hide_subparsers_from_help,
-)
+from dvc.cli.utils import append_doc_link, fix_subparsers, hide_subparsers_from_help
 from dvc.ui import ui
 from dvc.utils import colorize
 
@@ -25,12 +21,14 @@ logger = logging.getLogger(__name__)
 
 class CmdDataStatus(CmdBase):
     COLORS = {
+        "not_in_remote": "red",
         "not_in_cache": "red",
         "committed": "green",
         "uncommitted": "yellow",
         "untracked": "cyan",
     }
     LABELS = {
+        "not_in_remote": "Not in remote",
         "not_in_cache": "Not in cache",
         "committed": "DVC committed changes",
         "uncommitted": "DVC uncommitted changes",
@@ -38,21 +36,21 @@ class CmdDataStatus(CmdBase):
         "unchanged": "DVC unchanged files",
     }
     HINTS = {
+        "not_in_remote": ('use "dvc push <file>..." to upload files',),
         "not_in_cache": ('use "dvc fetch <file>..." to download files',),
-        "committed": (
-            "git commit the corresponding dvc files to update the repo",
-        ),
+        "committed": ("git commit the corresponding dvc files to update the repo",),
         "uncommitted": (
             'use "dvc commit <file>..." to track changes',
             'use "dvc checkout <file>..." to discard changes',
         ),
         "untracked": (
-            'use "git add <file> ..." or '
-            '"dvc add <file>..." to commit to git or to dvc',
+            (
+                'use "git add <file> ..." or '
+                '"dvc add <file>..." to commit to git or to dvc'
+            ),
         ),
         "git_dirty": (
-            "there are {}changes not tracked by dvc, "
-            'use "git status" to see',
+            'there are {}changes not tracked by dvc, use "git status" to see',
         ),
     }
 
@@ -96,8 +94,7 @@ class CmdDataStatus(CmdBase):
 
             if isinstance(stage_status, dict):
                 items = [
-                    ": ".join([state, file])
-                    for file, state in stage_status.items()
+                    ": ".join([state, file]) for file, state in stage_status.items()
                 ]
             else:
                 items = stage_status
@@ -120,6 +117,7 @@ class CmdDataStatus(CmdBase):
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
+                remote_refresh=self.args.remote_refresh,
             )
 
         if not self.args.unchanged:
@@ -180,9 +178,7 @@ class CmdDataLs(CmdBase):
 
         filter_labels = set(self.args.labels)
         filter_types = set(self.args.type)
-        d = ls(
-            self.repo, targets=self.args.targets, recursive=self.args.recursive
-        )
+        d = ls(self.repo, targets=self.args.targets, recursive=self.args.recursive)
         self._show_table(
             d,
             filter_labels=filter_labels,
@@ -205,8 +201,7 @@ def add_parser(subparsers, parent_parser):
     fix_subparsers(data_subparsers)
 
     DATA_STATUS_HELP = (
-        "Show changes between the last git commit, "
-        "the dvcfiles and the workspace."
+        "Show changes between the last git commit, the dvcfiles and the workspace."
     )
     data_status_parser = data_subparsers.add_parser(
         "status",
@@ -247,6 +242,12 @@ def add_parser(subparsers, parent_parser):
         const="all",
         nargs="?",
         help="Show untracked files.",
+    )
+    data_status_parser.add_argument(
+        "--remote-refresh",
+        action="store_true",
+        default=False,
+        help="Refresh remote index.",
     )
     data_status_parser.set_defaults(func=CmdDataStatus)
 

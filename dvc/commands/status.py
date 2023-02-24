@@ -81,9 +81,7 @@ class CmdDataStatus(CmdDataBase):
             if not self.repo.index.stages:
                 ui.write(self.EMPTY_PROJECT_MSG)
             elif self.args.cloud or self.args.remote:
-                remote = self.args.remote or self.repo.config["core"].get(
-                    "remote"
-                )
+                remote = self.args.remote or self.repo.config["core"].get("remote")
                 ui.write(self.IN_SYNC_MSG.format(remote=remote))
             else:
                 ui.write(self.UP_TO_DATE_MSG)

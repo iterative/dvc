@@ -40,14 +40,9 @@ class CmdGC(CmdBase):
             elif self.args.all_tags:
                 msg += " and all git tags"
             if self.args.commit_date:
-                msg += (
-                    " and all git commits before date "
-                    f"{self.args.commit_date}"
-                )
+                msg += f" and all git commits before date {self.args.commit_date}"
             if self.args.rev:
-                msg += (
-                    f" and last {self.args.num} commits from {self.args.rev}"
-                )
+                msg += f" and last {self.args.num} commits from {self.args.rev}"
 
         if self.args.all_experiments:
             msg += " and all experiments"
@@ -198,9 +193,11 @@ def add_parser(subparsers, parent_parser):
         dest="repos",
         type=str,
         nargs="*",
-        help="Keep data files required by these projects "
-        "in addition to the current one. "
-        "Useful if you share a single cache across repos.",
+        help=(
+            "Keep data files required by these projects "
+            "in addition to the current one. "
+            "Useful if you share a single cache across repos."
+        ),
         metavar="<paths>",
     )
     gc_parser.set_defaults(func=CmdGC)

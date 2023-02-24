@@ -8,11 +8,7 @@ import pytest
 
 from dvc.cli import main
 from dvc.dvcfile import DVC_FILE, load_file
-from dvc.exceptions import (
-    CyclicGraphError,
-    ReproductionError,
-    StagePathAsOutputError,
-)
+from dvc.exceptions import CyclicGraphError, ReproductionError, StagePathAsOutputError
 from dvc.fs import LocalFileSystem, system
 from dvc.output import Output
 from dvc.stage import Stage
@@ -221,9 +217,7 @@ def test_repro_dep_under_dir(tmp_dir, dvc, copy_script, run_stage):
     assert filecmp.cmp("file1", "foo", shallow=False)
 
 
-def test_repro_dep_dir_with_outputs_under_it(
-    tmp_dir, dvc, copy_script, run_stage
-):
+def test_repro_dep_dir_with_outputs_under_it(tmp_dir, dvc, copy_script, run_stage):
     tmp_dir.gen("foo", "foo")
     file_stage, _ = tmp_dir.dvc_gen(
         {"data/file": "file", "data/sub": {"foo": "foo", "bar": "bar"}}
@@ -348,8 +342,9 @@ def test_repro_dry_no_exec(tmp_dir, dvc):
                 idir,
                 "-o",
                 odir,
-                "python -c 'import shutil; "
-                'shutil.copytree("{}", "{}")\''.format(idir, odir),
+                'python -c \'import shutil; shutil.copytree("{}", "{}")\''.format(
+                    idir, odir
+                ),
             ]
         )
         assert ret == 0
@@ -362,9 +357,7 @@ def test_repro_dry_no_exec(tmp_dir, dvc):
             "--file",
             DVC_FILE,
             *deps,
-            "ls {}".format(
-                " ".join(dep for i, dep in enumerate(deps) if i % 2)
-            ),
+            "ls {}".format(" ".join(dep for i, dep in enumerate(deps) if i % 2)),
         ]
     )
     assert ret == 0
@@ -543,17 +536,23 @@ def test_repro_frozen(tmp_dir, dvc, copy_script, run_stage):
     assert len(stages) == 3
 
 
-def test_freeze_non_existing(dvc):
+@pytest.mark.parametrize(
+    "target",
+    [
+        "Dvcfile",
+        "pipelines.yaml",
+        "pipelines.yaml:name",
+        "Dvcfile:name",
+        "stage.dvc",
+        "stage.dvc:name",
+        "not-existing-stage.json",
+    ],
+)
+def test_freeze_non_existing(dvc, target):
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.freeze("Dvcfile")
-        dvc.freeze("pipelines.yaml")
-        dvc.freeze("pipelines.yaml:name")
-        dvc.freeze("Dvcfile:name")
-        dvc.freeze("stage.dvc")
-        dvc.freeze("stage.dvc:name")
-        dvc.freeze("not-existing-stage.json")
+        dvc.freeze(target)
 
-    ret = main(["freeze", "non-existing-stage"])
+    ret = main(["freeze", target])
     assert ret != 0
 
 
@@ -823,9 +822,7 @@ def test_repro_all_pipelines(mocker, dvc, run_stage):
 
     dvc.state = StateNoop()
 
-    mock_reproduce = mocker.patch.object(
-        Stage, "reproduce", side_effect=stages
-    )
+    mock_reproduce = mocker.patch.object(Stage, "reproduce", side_effect=stages)
     ret = main(["repro", "--all-pipelines"])
     assert ret == 0
     assert mock_reproduce.call_count == 4
@@ -840,11 +837,11 @@ def test_repro_no_commit(tmp_dir, dvc, copy_script, run_stage):
         cmd="python copy.py foo file1",
         name="run1",
     )
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
     ret = main(["repro", stage.addressing, "--no-commit"])
     assert ret == 0
     # run-cache should be skipped if `-no-commit`.
-    assert not os.path.isdir(dvc.odb.local.path)
+    assert not os.path.isdir(dvc.cache.local.path)
 
 
 class TestReproAlreadyCached:
@@ -892,9 +889,7 @@ class TestReproAlreadyCached:
         assert spy_checkout.call_count == 0
 
 
-def test_should_display_metrics_on_repro_with_metrics_option(
-    caplog, capsys, dvc
-):
+def test_should_display_metrics_on_repro_with_metrics_option(caplog, capsys, dvc):
     metrics_file = "metrics_file"
     metrics_value = 0.123489015
     ret = main(
@@ -913,9 +908,7 @@ def test_should_display_metrics_on_repro_with_metrics_option(
 
     from dvc.dvcfile import DVC_FILE_SUFFIX
 
-    ret = main(
-        ["repro", "--force", "--metrics", metrics_file + DVC_FILE_SUFFIX]
-    )
+    ret = main(["repro", "--force", "--metrics", metrics_file + DVC_FILE_SUFFIX])
     assert ret == 0
 
     expected_metrics_display = f"Path\n{metrics_file}  {metrics_value}\n"
@@ -989,16 +982,12 @@ def repro_dir(tmp_dir, dvc, run_copy):
     stages["last_stage"] = stage
 
     # Unrelated are to verify that reproducing `dir` will not trigger them too
+    assert run_copy(os.fspath(origin_copy), "unrelated1", single_stage=True) is not None
     assert (
-        run_copy(os.fspath(origin_copy), "unrelated1", single_stage=True)
-        is not None
-    )
-    assert (
-        run_copy(os.fspath(dir_file_path), "unrelated2", single_stage=True)
-        is not None
+        run_copy(os.fspath(dir_file_path), "unrelated2", single_stage=True) is not None
     )
 
-    yield stages
+    return stages
 
 
 def _rewrite_file(path_elements, new_content):
@@ -1105,9 +1094,7 @@ def test_recursive_repro_on_stage_file(dvc, repro_dir):
 
 def test_dvc_formatting_retained(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo content")
-    stage = run_copy(
-        "foo", "foo_copy", fname="foo_copy.dvc", single_stage=True
-    )
+    stage = run_copy("foo", "foo_copy", fname="foo_copy.dvc", single_stage=True)
     stage_path = tmp_dir / stage.relpath
 
     # Add comments and custom formatting to DVC-file
@@ -1155,12 +1142,8 @@ def test_downstream(dvc):
     #     A
     #
     assert main(["run", "--single-stage", "-o", "A", "echo A>A"]) == 0
-    assert (
-        main(["run", "--single-stage", "-d", "A", "-o", "B", "echo B>B"]) == 0
-    )
-    assert (
-        main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
-    )
+    assert main(["run", "--single-stage", "-d", "A", "-o", "B", "echo B>B"]) == 0
+    assert main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
     assert (
         main(
             [
@@ -1178,9 +1161,7 @@ def test_downstream(dvc):
         == 0
     )
     assert main(["run", "--single-stage", "-o", "G", "echo G>G"]) == 0
-    assert (
-        main(["run", "--single-stage", "-d", "G", "-o", "F", "echo F>F"]) == 0
-    )
+    assert main(["run", "--single-stage", "-d", "G", "-o", "F", "echo F>F"]) == 0
     assert (
         main(
             [
@@ -1239,10 +1220,6 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     data["cmd"] = "  ".join(stage.cmd.split())  # change cmd spacing by two
     (tmp_dir / stage.path).dump(data)
 
-    assert dvc.status([stage.addressing]) == {
-        stage.addressing: ["changed checksum"]
-    }
+    assert dvc.status([stage.addressing]) == {stage.addressing: ["changed checksum"]}
     assert dvc.reproduce(stage.addressing)[0] == stage
-    m.assert_called_once_with(
-        stage, checkpoint_func=None, dry=False, run_env=None
-    )
+    m.assert_called_once_with(stage, checkpoint_func=None, dry=False, run_env=None)

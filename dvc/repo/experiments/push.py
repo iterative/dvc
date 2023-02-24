@@ -29,7 +29,6 @@ def push(  # noqa: C901
     push_cache: bool = False,
     **kwargs,
 ) -> Iterable[str]:
-
     exp_ref_set: Set["ExpRefInfo"] = set()
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm))
@@ -67,8 +66,7 @@ def push(  # noqa: C901
         )
     if push_cache:
         push_cache_ref = (
-            push_result[SyncStatus.UP_TO_DATE]
-            + push_result[SyncStatus.SUCCESS]
+            push_result[SyncStatus.UP_TO_DATE] + push_result[SyncStatus.SUCCESS]
         )
         _push_cache(repo, push_cache_ref, **kwargs)
     return [ref.name for ref in push_result[SyncStatus.SUCCESS]]
@@ -101,9 +99,7 @@ def _push(
     def group_result(refspec):
         return results[str(refspec)]
 
-    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(
-        group_result, refs
-    )
+    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(group_result, refs)
 
     return pull_result
 

@@ -112,6 +112,60 @@ def collect_files(
         dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
 
 
+def _load_data_from_outs(index, prefix, outs):
+    from dvc_data.index import DataIndexEntry
+
+    for out in outs:
+        if not out.use_cache:
+            continue
+
+        ws, key = out.index_key
+
+        entry = DataIndexEntry(
+            key=key,
+            meta=out.meta,
+            hash_info=out.hash_info,
+        )
+
+        if out.stage.is_import and not out.stage.is_repo_import:
+            dep = out.stage.deps[0]
+            entry.meta = dep.meta
+            entry.hash_info = dep.hash_info
+
+        # FIXME PyGTrie-based DataIndex doesn't remove entry.key during
+        # index.add, so we have to set the entry manually here to make
+        # index.view() work correctly.
+        index[(*prefix, ws, *key)] = entry
+
+
+def _load_storage_from_out(storage_map, key, out):
+    from dvc.config import NoRemoteError
+    from dvc_data.index import FileStorage, ObjectStorage
+
+    if out.odb:
+        storage_map.add_data(ObjectStorage(key, out.odb))
+    storage_map.add_cache(ObjectStorage(key, out.cache))
+    try:
+        remote = out.repo.cloud.get_remote(out.remote)
+        if remote.fs.version_aware:
+            storage_map.add_remote(
+                FileStorage(
+                    key=key,
+                    fs=remote.fs,
+                    path=remote.fs.path.join(remote.path, *key),
+                    index=remote.index,
+                )
+            )
+        else:
+            storage_map.add_remote(ObjectStorage(key, remote.odb, index=remote.index))
+    except NoRemoteError:
+        pass
+
+    if out.stage.is_import and not out.stage.is_repo_import:
+        dep = out.stage.deps[0]
+        storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
+
+
 class Index:
     def __init__(
         self,
@@ -128,10 +182,14 @@ class Index:
         self._params = params or {}
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
 
-    def __repr__(self) -> str:
-        rev = "workspace"
+    @cached_property
+    def rev(self) -> Optional[str]:
         if not isinstance(self.repo.fs, LocalFileSystem):
-            rev = self.repo.get_rev()[:7]
+            return self.repo.get_rev()[:7]
+        return None
+
+    def __repr__(self) -> str:
+        rev = self.rev or "workspace"
         return f"Index({self.repo}, fs@{rev})"
 
     @classmethod
@@ -260,28 +318,78 @@ class Index:
         return sources
 
     @cached_property
-    def data(self) -> "Dict[str, DataIndex]":
+    def data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
         from collections import defaultdict
 
-        from dvc_data.index import DataIndex
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
-        by_workspace: dict = defaultdict(DataIndex)
-
-        by_workspace["repo"] = DataIndex()
-        by_workspace["local"] = DataIndex()
+        by_workspace["repo"] = set()
+        by_workspace["local"] = set()
 
         for out in self.outs:
             if not out.use_cache:
                 continue
 
             workspace, key = out.index_key
-            data_index = by_workspace[workspace]
-
-            entry = out.get_entry()
-            entry.key = key
-            data_index.add(entry)
+            by_workspace[workspace].add(key)
 
         return dict(by_workspace)
+
+    @cached_property
+    def data_tree(self):
+        from dvc_data.hashfile import Tree
+
+        tree = Tree()
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            ws, key = out.index_key
+
+            tree.add((ws, *key), out.meta, out.hash_info)
+
+        tree.digest()
+
+        return tree
+
+    @cached_property
+    def data(self) -> "Dict[str, DataIndex]":
+        from dvc_data.index import DataIndex
+
+        prefix: "DataIndexKey"
+        loaded = False
+
+        index = self.repo.data_index
+        if index is None:
+            index = DataIndex()
+
+        prefix = ("tree", self.data_tree.hash_info.value)
+        if index.has_node(prefix):
+            loaded = True
+
+        try:
+            if not loaded:
+                _load_data_from_outs(index, prefix, self.outs)
+                index.commit()
+
+            by_workspace = {}
+            by_workspace["repo"] = index.view((*prefix, "repo"))
+            by_workspace["local"] = index.view((*prefix, "local"))
+
+            for out in self.outs:
+                if not out.use_cache:
+                    continue
+
+                ws, key = out.index_key
+                if ws not in by_workspace:
+                    by_workspace[ws] = index.view((*prefix, ws))
+
+                data_index = by_workspace[ws]
+                _load_storage_from_out(data_index.storage_map, key, out)
+
+            return by_workspace
+        finally:
+            index.close()
 
     @staticmethod
     def _hash_targets(
@@ -297,24 +405,30 @@ class Index:
         )
 
     def collect_targets(
-        self, targets: Optional["TargetType"], **kwargs: Any
+        self, targets: Optional["TargetType"], *, onerror=None, **kwargs: Any
     ) -> List["StageInfo"]:
-        from itertools import chain
-
+        from dvc.exceptions import DvcException
         from dvc.repo.stage import StageInfo
         from dvc.utils.collections import ensure_list
+
+        if not onerror:
+
+            def onerror(_target, _exc):
+                raise  # pylint: disable=misplaced-bare-raise
 
         targets = ensure_list(targets)
         if not targets:
             return [StageInfo(stage) for stage in self.stages]
         targets_hash = self._hash_targets(targets, **kwargs)
         if targets_hash not in self._collected_targets:
-            self._collected_targets[targets_hash] = list(
-                chain.from_iterable(
-                    self.repo.stage.collect_granular(target, **kwargs)
-                    for target in targets
-                )
-            )
+            collected = []
+            for target in targets:
+                try:
+                    collected.extend(self.repo.stage.collect_granular(target, **kwargs))
+                except DvcException as exc:
+                    onerror(target, exc)
+            self._collected_targets[targets_hash] = collected
+
         return self._collected_targets[targets_hash]
 
     def used_objs(
@@ -330,9 +444,7 @@ class Index:
         from collections import defaultdict
 
         used: "ObjectContainer" = defaultdict(set)
-        pairs = self.collect_targets(
-            targets, recursive=recursive, with_deps=with_deps
-        )
+        pairs = self.collect_targets(targets, recursive=recursive, with_deps=with_deps)
         for stage, filter_info in pairs:
             for odb, objs in stage.get_used_objs(
                 remote=remote,
@@ -426,12 +538,24 @@ class IndexView:
             workspace, key = out.index_key
             if filter_info and out.fs.path.isin(filter_info, out.fs_path):
                 key = key + out.fs.path.relparts(filter_info, out.fs_path)
-            if out.meta.isdir:
+            if out.meta.isdir or out.stage.is_import and out.stage.deps[0].meta.isdir:
                 prefixes[workspace].recursive.add(key)
-            prefixes[workspace].explicit.update(
-                key[:i] for i in range(len(key), 0, -1)
-            )
+            prefixes[workspace].explicit.update(key[:i] for i in range(len(key), 0, -1))
         return prefixes
+
+    @cached_property
+    def data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        ret: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        for out, filter_info in self._filtered_outs:
+            workspace, key = out.index_key
+            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
+                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            ret[workspace].add(key)
+
+        return dict(ret)
 
     @cached_property
     def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
@@ -441,8 +565,7 @@ class IndexView:
             try:
                 prefixes = self._data_prefixes[workspace]
                 return key in prefixes.explicit or any(
-                    key[: len(prefix)] == prefix
-                    for prefix in prefixes.recursive
+                    key[: len(prefix)] == prefix for prefix in prefixes.recursive
                 )
             except KeyError:
                 return False
@@ -450,9 +573,7 @@ class IndexView:
         data: Dict[str, Union["DataIndex", "DataIndexView"]] = {}
         for workspace, data_index in self._index.data.items():
             if self.stages:
-                data[workspace] = view(
-                    data_index, partial(key_filter, workspace)
-                )
+                data[workspace] = view(data_index, partial(key_filter, workspace))
             else:
                 data[workspace] = DataIndex()
         return data
@@ -462,24 +583,20 @@ def build_data_index(
     index: Union["Index", "IndexView"],
     path: str,
     fs: "FileSystem",
-    workspace: Optional[str] = "repo",
+    workspace: str = "repo",
     compute_hash: Optional[bool] = False,
 ) -> "DataIndex":
     from dvc_data.index import DataIndex, DataIndexEntry
     from dvc_data.index.build import build_entries, build_entry
     from dvc_data.index.save import build_tree
 
+    ignore = None
+    if workspace == "repo" and isinstance(fs, LocalFileSystem):
+        ignore = index.repo.dvcignore
+
     data = DataIndex()
-    for out in index.outs:
-        if not out.use_cache:
-            continue
-
-        ws, key = out.index_key
-        if ws != workspace:
-            continue
-
-        parts = out.fs.path.relparts(out.fs_path, out.repo.root_dir)
-        out_path = fs.path.join(path, *parts)
+    for key in index.data_keys.get(workspace, set()):
+        out_path = fs.path.join(path, *key)
 
         try:
             out_entry = build_entry(
@@ -489,32 +606,34 @@ def build_data_index(
                 state=index.repo.state,
             )
         except FileNotFoundError:
-            out_entry = DataIndexEntry(path=out_path, fs=fs)
+            out_entry = DataIndexEntry()
 
         out_entry.key = key
+        data.add(out_entry)
 
         if not out_entry.meta or not out_entry.meta.isdir:
-            data.add(out_entry)
             continue
 
         for entry in build_entries(
-            out_path, fs, compute_hash=compute_hash, state=index.repo.state
+            out_path,
+            fs,
+            compute_hash=compute_hash,
+            state=index.repo.state,
+            ignore=ignore,
         ):
             if not entry.key or entry.key == ("",):
                 # NOTE: whether the root will be returned by build_entries
                 # depends on the filesystem (e.g. local doesn't, but s3 does).
                 continue
-            else:
-                entry.key = key + entry.key
 
+            entry.key = key + entry.key
             data.add(entry)
 
         if compute_hash:
             tree_meta, tree = build_tree(data, key)
             out_entry.meta = tree_meta
             out_entry.hash_info = tree.hash_info
-
-        out_entry.loaded = True
-        data.add(out_entry)
+            out_entry.loaded = True
+            data.add(out_entry)
 
     return data

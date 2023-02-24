@@ -213,12 +213,12 @@ def test_list_bad_args(tmp_dir, dvc, caplog, args):
     assert main(["config", "--list", *args]) == 1
     assert (
         "-l/--list can't be used together with any of these options: "
-        "-u/--unset, name, value"
-    ) in caplog.text
+        "-u/--unset, name, value" in caplog.text
+    )
 
 
 def test_set_invalid_key(dvc):
-    with pytest.raises(ConfigError, match=r"extra keys not allowed"):
+    with pytest.raises(ConfigError, match=r"extra keys not allowed"):  # noqa: PT012
         with dvc.config.edit() as conf:
             conf["core"]["invalid_key"] = "value"
 
@@ -227,7 +227,7 @@ def test_merging_two_levels(dvc):
     with dvc.config.edit() as conf:
         conf["remote"]["test"] = {"url": "ssh://example.com"}
 
-    with pytest.raises(
+    with pytest.raises(  # noqa: PT012
         ConfigError, match=r"expected 'url' for dictionary value"
     ):
         with dvc.config.edit("global") as conf:
@@ -274,9 +274,7 @@ def test_load_relative_paths(dvc, field, remote_url):
     # load config and check that it contains what we expect
     # (relative paths are evaluated correctly)
     cfg = Config(dvc_dir)
-    assert cfg["remote"]["test"][field] == os.path.join(
-        dvc_dir, "..", "file.txt"
-    )
+    assert cfg["remote"]["test"][field] == os.path.join(dvc_dir, "..", "file.txt")
 
 
 def test_config_gdrive_fields(tmp_dir, dvc):
@@ -291,9 +289,7 @@ def test_config_gdrive_fields(tmp_dir, dvc):
 
 def test_config_remote(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
-        "['remote \"myremote\"']\n"
-        "  url = s3://bucket/path\n"
-        "  region = myregion\n"
+        "['remote \"myremote\"']\n  url = s3://bucket/path\n  region = myregion\n"
     )
 
     assert main(["config", "remote.myremote.url"]) == 0
@@ -307,25 +303,14 @@ def test_config_remote(tmp_dir, dvc, capsys):
 
 def test_config_show_origin_single(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
-        "['remote \"myremote\"']\n"
-        "  url = s3://bucket/path\n"
-        "  region = myregion\n"
+        "['remote \"myremote\"']\n  url = s3://bucket/path\n  region = myregion\n"
     )
 
-    assert (
-        main(["config", "--show-origin", "--project", "remote.myremote.url"])
-        == 0
-    )
+    assert main(["config", "--show-origin", "--project", "remote.myremote.url"]) == 0
     out, _ = capsys.readouterr()
-    assert (
-        "{}\t{}\n".format(os.path.join(".dvc", "config"), "s3://bucket/path")
-        in out
-    )
+    assert "{}\t{}\n".format(os.path.join(".dvc", "config"), "s3://bucket/path") in out
 
-    assert (
-        main(["config", "--show-origin", "--local", "remote.myremote.url"])
-        == 251
-    )
+    assert main(["config", "--show-origin", "--local", "remote.myremote.url"]) == 251
 
     assert main(["config", "--list", "--project", "--show-origin"]) == 0
     out, _ = capsys.readouterr()
@@ -340,9 +325,7 @@ def test_config_show_origin_single(tmp_dir, dvc, capsys):
 
 def test_config_show_origin_merged(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
-        "['remote \"myremote\"']\n"
-        "  url = s3://bucket/path\n"
-        "  region = myregion\n"
+        "['remote \"myremote\"']\n  url = s3://bucket/path\n  region = myregion\n"
     )
 
     (tmp_dir / ".dvc" / "config.local").write_text(
