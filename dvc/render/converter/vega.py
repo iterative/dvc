@@ -236,9 +236,11 @@ class VegaConverter(Converter):
         else:
             props_update["y"] = first(all_y_fields)
 
-        # get common prefix to drop from field and file names
-        common_field_prefix = _get_common_prefix(all_y_fields)
-        common_file_prefix = _get_common_prefix(all_y_files)
+        # get common prefix to drop from file names
+        if len(all_y_files) > 1:
+            common_prefix_len = len(os.path.commonpath(all_y_files))
+        else:
+            common_prefix_len = 0
 
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
@@ -269,15 +271,14 @@ class VegaConverter(Converter):
                         "They have to have same length."
                     )
 
-            y_file_short = y_file[len(common_file_prefix) :].strip("/\\")
-            y_field_short = y_field[len(common_field_prefix) :].strip("/\\")
+            y_file_short = y_file[common_prefix_len:].strip("/\\")
             _update_all(
                 datapoints,
                 update_dict={
                     VERSION_FIELD: {
                         "revision": revision,
                         FILENAME_FIELD: y_file_short,
-                        "field": y_field_short,
+                        "field": y_field,
                     }
                 },
             )
@@ -343,9 +344,3 @@ def _update_from_index(datapoints: List[Dict], new_field: str):
 def _update_all(datapoints: List[Dict], update_dict: Dict):
     for datapoint in datapoints:
         datapoint.update(update_dict)
-
-
-def _get_common_prefix(file_paths: List[str]):
-    if len(file_paths) > 1:
-        return os.path.commonpath(file_paths)
-    return ""
