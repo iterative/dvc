@@ -379,6 +379,40 @@ def test_finding_lists(dictionary, expected_result):
             },
             id="multi_source_y_single_x",
         ),
+        pytest.param(
+            {
+                "dir/f": {"metric": [{"v": 1, "v2": 0.1}]},
+                "dir/f2": {"metric": [{"v": 1, "v2": 0.1}]},
+            },
+            {"y": {"dir/f": ["v2"], "dir/f2": ["v2"]}, "x": "v"},
+            [
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f2",
+                        "field": "v2",
+                    },
+                },
+            ],
+            {
+                "x": "v",
+                "y": "v2",
+                "x_label": "v",
+                "y_label": "v2",
+            },
+            id="multi_file_y_same_prefix",
+        ),
     ],
 )
 def test_convert(

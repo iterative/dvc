@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from funcy import first, last
@@ -221,13 +222,25 @@ class VegaConverter(Converter):
             )
 
         all_datapoints = []
-        all_y_fields = {y_field for _, y_field in ys}
+        if ys:
+            all_y_files, all_y_fields = list(zip(*ys))
+            all_y_fields = set(all_y_fields)
+            all_y_files = set(all_y_files)
+        else:
+            all_y_files = set()
+            all_y_fields = set()
 
         # override to unified y field name if there are different y fields
         if len(all_y_fields) > 1:
             props_update["y"] = "dvc_inferred_y_value"
         else:
             props_update["y"] = first(all_y_fields)
+
+        # get common prefix to drop from file names
+        if len(all_y_files) > 1:
+            common_prefix_len = len(os.path.commonpath(all_y_files))
+        else:
+            common_prefix_len = 0
 
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
@@ -258,12 +271,13 @@ class VegaConverter(Converter):
                         "They have to have same length."
                     )
 
+            y_file_short = y_file[common_prefix_len:].strip("/\\")
             _update_all(
                 datapoints,
                 update_dict={
                     VERSION_FIELD: {
                         "revision": revision,
-                        FILENAME_FIELD: y_file,
+                        FILENAME_FIELD: y_file_short,
                         "field": y_field,
                     }
                 },
