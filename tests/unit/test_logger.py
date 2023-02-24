@@ -20,12 +20,12 @@ colors = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def dt(mocker):
     mocker.patch(
         "time.time", return_value=time.mktime(datetime(2020, 2, 2).timetuple())
     )
-    yield "2020-02-02 00:00:00,000"
+    return "2020-02-02 00:00:00,000"
 
 
 class TestColorFormatter:
@@ -33,7 +33,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
 
-            expected = "{green}{datetime}{nc} {blue}DEBUG{nc}: message".format(
+            expected = "{blue}{datetime}{nc} {blue}DEBUG{nc}: message".format(
                 **colors, datetime=dt
             )
 
@@ -103,12 +103,9 @@ class TestColorFormatter:
                 logger.exception("")
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: description\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -126,12 +123,9 @@ class TestColorFormatter:
                 logger.debug("", exc_info=True)
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{blue}{datetime}{nc} "
                 "{blue}DEBUG{nc}: description\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     datetime=dt,
                     **colors,
@@ -149,12 +143,9 @@ class TestColorFormatter:
                 logger.exception("something", extra={"tb_only": True})
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: something\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -175,12 +166,9 @@ class TestColorFormatter:
                     logger.exception("message")
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: message - second: first\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -254,11 +242,11 @@ def test_add_existing_level(caplog, dt):
     # eg:
     # https://github.com/bokeh/bokeh/blob/04bb30fef2e72e64baaa8b2f330806d5bfdd3b11/
     # bokeh/util/logconfig.py#L79-L85
-    TRACE2 = 4
+    TRACE2 = 4  # noqa: N806
     logging.addLevelName(TRACE2, "TRACE2")
     logging.TRACE2 = TRACE2
 
-    dvc.logger.addLoggingLevel("TRACE2", 2)
+    dvc.logger.add_logging_level("TRACE2", 2)
 
     # DVC sets all expected entrypoints, but doesn't override the level
     assert logging.TRACE2 == 4

@@ -78,7 +78,12 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
                 "hash": {"old": digest("first"), "new": digest("second")},
             }
         ],
-        "not in cache": [],
+        "not in cache": [
+            {
+                "path": "file",
+                "hash": digest("first"),
+            }
+        ],
         "renamed": [],
     }
 
@@ -153,9 +158,9 @@ def test_refs(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "second", commit="second version")
     tmp_dir.dvc_gen("file", "third", commit="third version")
 
-    HEAD_2 = digest("first")
-    HEAD_1 = digest("second")
-    HEAD = digest("third")
+    HEAD_2 = digest("first")  # noqa: N806
+    HEAD_1 = digest("second")  # noqa: N806
+    HEAD = digest("third")  # noqa: N806
 
     assert dvc.diff("HEAD~1") == {
         "added": [],
@@ -247,15 +252,13 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"file": "file content"}}, commit="first")
     scm.tag("v1")
 
-    tmp_dir.dvc_gen(
-        {"dir": {"file": "modified file content"}}, commit="second"
-    )
+    tmp_dir.dvc_gen({"dir": {"file": "modified file content"}}, commit="second")
     scm.tag("v2")
 
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     # invalidate_dir_info to force cache loading
-    dvc.odb.local._dir_info = {}
+    dvc.cache.local._dir_info = {}
 
     diff = dvc.diff("v1", "v2")
     assert diff["added"] == []
@@ -267,7 +270,12 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     remove(str(tmp_dir / "dir"))
     diff = dvc.diff()
     assert diff["added"] == []
-    assert diff["deleted"] == []
+    assert diff["deleted"] == [
+        {
+            "path": os.path.join("dir", ""),
+            "hash": "f0f7a307d223921557c929f944bf5303.dir",
+        }
+    ]
     assert diff["renamed"] == []
     assert diff["modified"] == []
     assert diff["not in cache"] == [
@@ -298,9 +306,7 @@ def test_diff_dirty(tmp_dir, scm, dvc):
             },
             {"hash": "86d049de17c76ac44cdcac146042ec9b", "path": "new_file"},
         ],
-        "deleted": [
-            {"hash": "7f0b6bb0b7e951b7fd2b2a4a326297e1", "path": "file"}
-        ],
+        "deleted": [{"hash": "7f0b6bb0b7e951b7fd2b2a4a326297e1", "path": "file"}],
         "modified": [
             {
                 "hash": {
@@ -321,9 +327,8 @@ def test_no_changes(tmp_dir, scm, dvc):
 
 
 def test_no_commits(tmp_dir):
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
+    from dvc.scm import Git
 
     git = Git.init(tmp_dir.fs_path)
     assert git.no_commits
@@ -414,9 +419,7 @@ def test_targets_single_file_in_dir(tmp_dir, scm, dvc):
 def test_targets_two_files_in_dir(tmp_dir, scm, dvc):
     setup_targets_test(tmp_dir)
 
-    assert dvc.diff(
-        targets=[os.path.join("dir", "1"), os.path.join("dir", "2")]
-    ) == {
+    assert dvc.diff(targets=[os.path.join("dir", "1"), os.path.join("dir", "2")]) == {
         "added": [
             {"path": os.path.join("dir", "1"), "hash": digest("1")},
             {"path": os.path.join("dir", "2"), "hash": digest("2")},
@@ -467,8 +470,10 @@ def test_targets_single_dir_with_file(tmp_dir, scm, dvc):
         "renamed": [],
     }
 
-    assert dvc.diff(targets=["dir_with"]) == expected_result
-    assert dvc.diff(targets=["dir_with" + os.path.sep]) == expected_result
+    assert dvc.diff(targets=["dir_with"], recursive=True) == expected_result
+    assert (
+        dvc.diff(targets=["dir_with" + os.path.sep], recursive=True) == expected_result
+    )
 
 
 def test_targets_single_file_in_dir_with_file(tmp_dir, scm, dvc):
@@ -583,9 +588,7 @@ def test_diff_rename_file(tmp_dir, scm, dvc, commit_last):
         last_commit_msg = None
         a_rev = "HEAD"
 
-    paths = tmp_dir.gen(
-        {"dir": {"file": "text1", "subdir": {"file2": "text2"}}}
-    )
+    paths = tmp_dir.gen({"dir": {"file": "text1", "subdir": {"file2": "text2"}}})
     tmp_dir.dvc_add(paths, commit="commit #1")
     (tmp_dir / "dir" / "file").replace(tmp_dir / "dir" / "subdir" / "file3")
 

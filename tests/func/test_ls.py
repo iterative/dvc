@@ -158,10 +158,7 @@ def test_ls_repo_with_path_dir_dvc_only_empty(tmp_dir, dvc, scm):
 
     assert Repo.ls(os.fspath(tmp_dir), path="folder", dvc_only=True) == []
 
-    assert (
-        Repo.ls(os.fspath(tmp_dir), path="empty_dvc_folder", dvc_only=True)
-        == []
-    )
+    assert Repo.ls(os.fspath(tmp_dir), path="empty_dvc_folder", dvc_only=True) == []
 
 
 def test_ls_repo_with_path_subdir(tmp_dir, dvc, scm):
@@ -196,9 +193,7 @@ def test_ls_repo_with_path_subdir_dvc_only_recursive(tmp_dir, dvc, scm):
 
     path = os.path.join("data", "subcontent")
     files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True, recursive=True)
-    match_files(
-        files, ((("data.xml",), True), (("statistics", "data.csv"), True))
-    )
+    match_files(files, ((("data.xml",), True), (("statistics", "data.csv"), True)))
 
 
 def test_ls_repo_with_path_file_out(tmp_dir, dvc, scm):
@@ -555,9 +550,7 @@ def test_subrepo(dvc_top_level, erepo):
     dvc_files = {"dvc_dir", "foo.txt", "foo.txt.dvc", "dvc_dir.dvc"}
     common_outputs = git_tracked_outputs | extras | dvc_files
 
-    top_level_outputs = (
-        common_outputs if dvc_top_level else git_tracked_outputs
-    )
+    top_level_outputs = common_outputs if dvc_top_level else git_tracked_outputs
     assert _list_files(erepo) == top_level_outputs
     assert _list_files(erepo, "scm_dir") == {"ipsum"}
     if dvc_top_level:

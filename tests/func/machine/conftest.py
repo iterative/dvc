@@ -35,7 +35,7 @@ TEST_INSTANCE = {
 @pytest.fixture
 def machine_config(tmp_dir):
     (tmp_dir / ".dvc" / "config").write_text(BASIC_CONFIG)
-    yield BASIC_CONFIG
+    return BASIC_CONFIG
 
 
 @pytest.fixture
@@ -52,4 +52,4 @@ def machine_instance(tmp_dir, dvc, mocker):
         "tpi.terraform.TerraformBackend.instances",
         mocker.MagicMock(side_effect=mock_instances),
     )
-    yield TEST_INSTANCE
+    return TEST_INSTANCE

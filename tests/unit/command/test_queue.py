@@ -163,7 +163,6 @@ def test_experiments_stop(dvc, scm, mocker):
     ],
 )
 def test_worker_status(dvc, scm, worker_status, output, mocker, capsys):
-
     cli_args = parse_args(
         [
             "queue",

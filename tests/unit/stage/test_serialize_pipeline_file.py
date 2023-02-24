@@ -153,9 +153,7 @@ def test_plot_props(dvc):
 
 
 def test_frozen(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs)
     assert stage.PARAM_FROZEN not in to_pipeline_file(stage)["something"]
 
     stage = create_stage(PipelineStage, dvc, **kwargs, frozen=True)
@@ -163,18 +161,11 @@ def test_frozen(dvc):
 
 
 def test_always_changed(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs
-    )
-    assert (
-        stage.PARAM_ALWAYS_CHANGED not in to_pipeline_file(stage)["something"]
-    )
+    stage = create_stage(PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs)
+    assert stage.PARAM_ALWAYS_CHANGED not in to_pipeline_file(stage)["something"]
 
     stage = create_stage(PipelineStage, dvc, **kwargs, always_changed=True)
-    assert (
-        to_pipeline_file(stage)["something"][stage.PARAM_ALWAYS_CHANGED]
-        is True
-    )
+    assert to_pipeline_file(stage)["something"][stage.PARAM_ALWAYS_CHANGED] is True
 
 
 def test_order(dvc):
@@ -199,9 +190,7 @@ def test_order(dvc):
     ]
 
 
-@pytest.mark.parametrize(
-    "typ", ["outs", "metrics", "plots", "params", "deps", None]
-)
+@pytest.mark.parametrize("typ", ["outs", "metrics", "plots", "params", "deps", None])
 def test_order_deps_outs(dvc, typ):
     all_types = ["deps", "params", "outs", "metrics", "plots"]
     all_types = [item for item in all_types if item != typ]

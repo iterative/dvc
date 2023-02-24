@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
-from dvc.scm import iter_revs
+from dvc.scm import Git, iter_revs
 
 from .exceptions import UnresolvedExpNamesError
 from .utils import exp_refs, exp_refs_by_baseline, push_refspec
@@ -11,7 +11,6 @@ from .utils import exp_refs, exp_refs_by_baseline, push_refspec
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.repo.experiments.queue.celery import LocalCeleryQueue
-    from dvc.scm import Git
 
     from .queue.base import ExpRefAndQueueEntry, QueueEntry
     from .refs import ExpRefInfo
@@ -38,6 +37,8 @@ def remove(  # noqa: C901
 
     if queue:
         removed.extend(celery_queue.clear(queued=True))
+
+    assert isinstance(repo.scm, Git)
     if all_commits:
         removed.extend(
             _remove_commited_exps(

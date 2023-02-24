@@ -16,8 +16,6 @@ def test_resolve_paths():
     assert path == os.path.abspath(file_path)
     assert wdir == os.path.abspath(p)
 
-    path, wdir = resolve_paths(
-        fs=localfs, path=file_path, wdir="../../some-dir"
-    )
+    path, wdir = resolve_paths(fs=localfs, path=file_path, wdir="../../some-dir")
     assert path == os.path.abspath(file_path)
     assert wdir == os.path.abspath("some-dir")

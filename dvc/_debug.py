@@ -16,9 +16,7 @@ def viztracer_profile(
     try:
         import viztracer  # pylint: disable=import-error
     except ImportError:
-        print(  # noqa: T201
-            "Failed to run profiler, viztracer is not installed"
-        )
+        print("Failed to run profiler, viztracer is not installed")  # noqa: T201
         yield
         return
 
@@ -80,9 +78,7 @@ def instrument(html_output=False):
     try:
         from pyinstrument import Profiler  # pylint: disable=import-error
     except ImportError:
-        print(  # noqa: T201
-            "Failed to run profiler, pyinstrument is not installed"
-        )
+        print("Failed to run profiler, pyinstrument is not installed")  # noqa: T201
         yield
         return
 
@@ -194,9 +190,7 @@ def debugtools(args: Optional["Namespace"] = None, **kwargs):
             path_func = _get_path_func("viztracer", "json")
             depth = kw.get("viztracer_depth") or -1
             log_async = kw.get("viztracer_async") or False
-            prof = viztracer_profile(
-                path=path_func, depth=depth, log_async=log_async
-            )
+            prof = viztracer_profile(path=path_func, depth=depth, log_async=log_async)
             stack.enter_context(prof)
         yield
 
@@ -204,12 +198,8 @@ def debugtools(args: Optional["Namespace"] = None, **kwargs):
 def add_debugging_flags(parser):
     from argparse import SUPPRESS
 
-    parser.add_argument(
-        "--cprofile", action="store_true", default=False, help=SUPPRESS
-    )
-    parser.add_argument(
-        "--yappi", action="store_true", default=False, help=SUPPRESS
-    )
+    parser.add_argument("--cprofile", action="store_true", default=False, help=SUPPRESS)
+    parser.add_argument("--yappi", action="store_true", default=False, help=SUPPRESS)
     parser.add_argument(
         "--yappi-separate-threads",
         action="store_true",
@@ -224,9 +214,7 @@ def add_debugging_flags(parser):
         "--viztracer-async", action="store_true", default=False, help=SUPPRESS
     )
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
-    parser.add_argument(
-        "--pdb", action="store_true", default=False, help=SUPPRESS
-    )
+    parser.add_argument("--pdb", action="store_true", default=False, help=SUPPRESS)
     parser.add_argument(
         "--instrument", action="store_true", default=False, help=SUPPRESS
     )

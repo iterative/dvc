@@ -58,11 +58,14 @@ def test_load_from_pipeline_accumulates_flag(dvc):
     for out in outs:
         assert isinstance(out, Output)
         assert isinstance(out.fs, LocalFileSystem)
-        assert not out.plot and not out.metric
+        assert not out.plot
+        assert not out.metric
         assert not out.hash_info
 
-    assert outs[0].use_cache and not outs[0].persist
-    assert not outs[1].use_cache and outs[1].persist
+    assert outs[0].use_cache
+    assert not outs[0].persist
+    assert not outs[1].use_cache
+    assert outs[1].persist
 
 
 def test_load_remote_files_from_pipeline(dvc):
@@ -72,7 +75,8 @@ def test_load_remote_files_from_pipeline(dvc):
     )
     assert isinstance(out, Output)
     assert isinstance(out.fs, S3FileSystem)
-    assert not out.plot and out.metric
+    assert not out.plot
+    assert out.metric
     assert not out.persist
     assert not out.hash_info
 
@@ -89,16 +93,21 @@ def test_load_remote(dvc):
 
 @pytest.mark.parametrize("typ", [None, "", "illegal"])
 def test_load_from_pipeline_error_on_typ(dvc, typ):
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=f"'{typ}' key is not allowed for pipeline files."
+    ):
         output.load_from_pipeline(Stage(dvc), ["file1"], typ)
 
 
 @pytest.mark.parametrize("key", [3, "list".split()])
 def test_load_from_pipeline_illegal_type(dvc, key):
     stage = Stage(dvc)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=f"'{type(key).__name__}' not supported."):
         output.load_from_pipeline(stage, [key], "outs")
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=f"Expected dict for 'key', got: '{type(key).__name__}'",
+    ):
         output.load_from_pipeline(stage, [{"key": key}], "outs")
 
 
@@ -121,11 +130,13 @@ def test_plots_load_from_pipeline(dvc):
     assert isinstance(outs[0], Output)
     assert isinstance(outs[0].fs, LocalFileSystem)
     assert outs[0].use_cache
-    assert outs[0].plot is True and not outs[0].metric
+    assert outs[0].plot is True
+    assert not outs[0].metric
     assert not outs[0].persist
 
     assert isinstance(outs[1], Output)
     assert isinstance(outs[1].fs, LocalFileSystem)
     assert not outs[1].use_cache
-    assert outs[1].plot == {"x": 3} and not outs[1].metric
+    assert outs[1].plot == {"x": 3}
+    assert not outs[1].metric
     assert outs[1].persist

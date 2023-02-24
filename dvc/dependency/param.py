@@ -130,8 +130,7 @@ class ParamsDependency(Dependency):
                     and list(actual[param]) == info[param]
                 ):
                     continue
-                else:
-                    st = "modified"
+                st = "modified"
             else:
                 continue
 
@@ -155,9 +154,7 @@ class ParamsDependency(Dependency):
         try:
             return load_path(self.fs_path, self.repo.fs)
         except ParseError as exc:
-            raise BadParamFileError(
-                f"Unable to read parameters from '{self}'"
-            ) from exc
+            raise BadParamFileError(f"Unable to read parameters from '{self}'") from exc
 
     def get_hash(self):
         info = self.read_params()

@@ -10,13 +10,11 @@ from dvc.repo.experiments.exceptions import MultipleBranchError
 from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.refs import EXEC_APPLY, EXEC_CHECKPOINT
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.scm import InvalidRemoteSCMRepo
+from dvc.scm import InvalidRemoteSCMRepo, RevError
 
 
 @pytest.mark.parametrize("links", ["reflink,copy", "hardlink,symlink"])
-def test_new_checkpoint(
-    tmp_dir, scm, dvc, checkpoint_stage, mocker, workspace, links
-):
+def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, workspace, links):
     with dvc.config.edit() as conf:
         conf["cache"]["type"] = links
 
@@ -40,9 +38,7 @@ def test_new_checkpoint(
         assert scm.get_ref(EXEC_APPLY) == exp
     assert scm.get_ref(EXEC_CHECKPOINT) == exp
     if workspace:
-        assert (tmp_dir / "foo").read_text().strip() == str(
-            checkpoint_stage.iterations
-        )
+        assert (tmp_dir / "foo").read_text().strip() == str(checkpoint_stage.iterations)
         assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
 
@@ -54,7 +50,7 @@ def test_resume_checkpoint(
         checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
 
-    with pytest.raises(DvcException):
+    with pytest.raises(RevError, match="unknown Git revision 'abc1234'"):
         dvc.experiments.run(
             checkpoint_stage.addressing,
             checkpoint_resume="abc1234",
@@ -87,9 +83,7 @@ def test_resume_checkpoint(
     assert scm.get_ref(EXEC_CHECKPOINT) == exp
 
 
-def test_reset_checkpoint(
-    tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
-):
+def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace):
     dvc.experiments.run(checkpoint_stage.addressing, tmp_dir=not workspace)
 
     results = dvc.experiments.run(
@@ -164,9 +158,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     )
 
 
-def test_resume_non_head_checkpoint(
-    tmp_dir, scm, dvc, checkpoint_stage, workspace
-):
+def test_resume_non_head_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     orig_head = scm.get_rev()
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
@@ -177,7 +169,7 @@ def test_resume_non_head_checkpoint(
     rev = list(scm.branch_revs(checkpoint_head, orig_head))[-1]
     dvc.experiments.apply(rev)
 
-    with pytest.raises(DvcException):
+    with pytest.raises(DvcException, match="Nothing to do for unchanged checkpoint"):
         dvc.experiments.run(checkpoint_stage.addressing, tmp_dir=not workspace)
 
     results = dvc.experiments.run(
@@ -261,10 +253,7 @@ def test_auto_push_self_remote(
     root_dir = str(tmp_dir)
     monkeypatch.setenv(DVC_EXP_GIT_REMOTE, root_dir)
     monkeypatch.setenv(DVC_EXP_AUTO_PUSH, "true")
-    assert (
-        dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
-        != {}
-    )
+    assert dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"]) != {}
 
     with caplog.at_level(logging.WARNING, logger="dvc.repo.experiments"):
         assert (
@@ -275,9 +264,7 @@ def test_auto_push_self_remote(
         )
 
 
-def test_tmp_dir_failed_checkpoint(
-    tmp_dir, scm, dvc, failed_checkpoint_stage, caplog
-):
+def test_tmp_dir_failed_checkpoint(tmp_dir, scm, dvc, failed_checkpoint_stage, caplog):
     baseline = scm.get_rev()
 
     results = dvc.experiments.run(

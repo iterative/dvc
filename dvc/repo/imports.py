@@ -49,9 +49,7 @@ def unfetched_view(
     return unfetched, changed_deps
 
 
-def partial_view(
-    index: "Index", targets: "TargetType", **kwargs
-) -> "IndexView":
+def partial_view(index: "Index", targets: "TargetType", **kwargs) -> "IndexView":
     return index.targets_view(
         targets,
         stage_filter=lambda s: s.is_partial_import,
@@ -79,6 +77,7 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
             else:
                 out.hash_info = cast("HashInfo", entry.hash_info)
                 out.meta = entry.meta
+            out.stage.md5 = out.stage.compute_md5()
             out.stage.dump()
             updated += out.meta.nfiles if out.meta.nfiles is not None else 1
     return updated
@@ -108,7 +107,7 @@ def save_imports(
 
     data_view = unfetched.data["repo"]
     if len(data_view):
-        cache = repo.odb.local
+        cache = repo.cache.local
         if not cache.fs.exists(cache.path):
             os.makedirs(cache.path)
         with TemporaryDirectory(dir=cache.path) as tmpdir:
@@ -116,7 +115,7 @@ def save_imports(
                 desc="Downloading imports from source",
                 unit="files",
             ) as cb:
-                checkout(data_view, tmpdir, cache.fs, callback=cb)
+                checkout(data_view, tmpdir, cache.fs, callback=cb, storage="data")
             md5(data_view)
             save(data_view, odb=cache, hardlink=True)
 

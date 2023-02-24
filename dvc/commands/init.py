@@ -75,8 +75,9 @@ def add_parser(subparsers, parent_parser):
         "--no-scm",
         action="store_true",
         default=False,
-        help="Initiate DVC in directory that is "
-        "not tracked by any SCM tool (e.g. Git).",
+        help=(
+            "Initiate DVC in directory that is not tracked by any SCM tool (e.g. Git)."
+        ),
     )
     init_parser.add_argument(
         "-f",
@@ -84,8 +85,7 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=(
-            "Overwrite existing '.dvc/' directory. "
-            "This operation removes local cache."
+            "Overwrite existing '.dvc/' directory. This operation removes local cache."
         ),
     )
     init_parser.add_argument(

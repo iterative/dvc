@@ -112,9 +112,7 @@ class CmdDiff(CmdBase):
             return
 
         states_summary = ", ".join(
-            f"{summary[state]} {state}"
-            for state in states
-            if summary[state] > 0
+            f"{summary[state]} {state}" for state in states if summary[state] > 0
         )
         ui.write("files summary:", states_summary)
 
@@ -122,9 +120,7 @@ class CmdDiff(CmdBase):
         from dvc.exceptions import DvcException
 
         try:
-            diff = self.repo.diff(
-                self.args.a_rev, self.args.b_rev, self.args.targets
-            )
+            diff = self.repo.diff(self.args.a_rev, self.args.b_rev, self.args.targets)
             show_hash = self.args.show_hash
             hide_missing = self.args.b_rev or self.args.hide_missing
             if hide_missing:
@@ -133,9 +129,11 @@ class CmdDiff(CmdBase):
             for key, entries in diff.items():
                 entries = sorted(
                     entries,
-                    key=lambda entry: entry["path"]["old"]
-                    if isinstance(entry["path"], dict)
-                    else entry["path"],
+                    key=lambda entry: (
+                        entry["path"]["old"]
+                        if isinstance(entry["path"], dict)
+                        else entry["path"]
+                    ),
                 )
                 if not show_hash:
                     for entry in entries:
@@ -170,10 +168,7 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "--targets",
         nargs="*",
-        help=(
-            "Specific DVC-tracked files to compare. "
-            "Accepts one or more file paths."
-        ),
+        help="Specific DVC-tracked files to compare. Accepts one or more file paths.",
         metavar="<paths>",
     ).complete = completion.FILE
     diff_parser.add_argument(
@@ -184,7 +179,7 @@ def add_parser(subparsers, parent_parser):
     )
     diff_parser.add_argument(
         "b_rev",
-        help=("New Git commit to compare (defaults to the current workspace)"),
+        help="New Git commit to compare (defaults to the current workspace)",
         nargs="?",
     )
     diff_parser.add_argument(

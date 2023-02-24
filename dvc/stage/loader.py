@@ -88,11 +88,10 @@ class StageLoader(Mapping):
             item._compute_meta_hash_info_from_files()
 
     @classmethod
-    def load_stage(
-        cls, dvcfile: "ProjectFile", name, stage_data, lock_data=None
-    ):
+    def load_stage(cls, dvcfile: "ProjectFile", name, stage_data, lock_data=None):
         assert all([name, dvcfile, dvcfile.repo, dvcfile.path])
-        assert stage_data and isinstance(stage_data, dict)
+        assert stage_data
+        assert isinstance(stage_data, dict)
 
         path, wdir = resolve_paths(
             dvcfile.repo.fs, dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
@@ -160,9 +159,7 @@ class StageLoader(Mapping):
         if group and keys and name not in self.stages_data:
             stage.raw_data.generated_from = group
 
-        stage.raw_data.parametrized = (
-            self.stages_data.get(name, {}) != resolved_stage
-        )
+        stage.raw_data.parametrized = self.stages_data.get(name, {}) != resolved_stage
         return stage
 
     def __iter__(self):
@@ -175,9 +172,7 @@ class StageLoader(Mapping):
         return self.resolver.has_key(name)  # noqa: W601
 
     def is_foreach_generated(self, name: str):
-        return (
-            name in self.stages_data and FOREACH_KWD in self.stages_data[name]
-        )
+        return name in self.stages_data and FOREACH_KWD in self.stages_data[name]
 
 
 class SingleStageLoader(Mapping):
@@ -200,9 +195,7 @@ class SingleStageLoader(Mapping):
             )
         # during `load`, we remove attributes from stage data, so as to
         # not duplicate, therefore, for MappingView, we need to deepcopy.
-        return self.load_stage(
-            self.dvcfile, deepcopy(self.stage_data), self.stage_text
-        )
+        return self.load_stage(self.dvcfile, deepcopy(self.stage_data), self.stage_text)
 
     @classmethod
     def load_stage(
@@ -216,9 +209,7 @@ class SingleStageLoader(Mapping):
         )
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
         stage._stage_text = stage_text  # pylint: disable=protected-access
-        stage.deps = dependency.loadd_from(
-            stage, d.get(Stage.PARAM_DEPS) or []
-        )
+        stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS) or [])
         stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS) or [])
         return stage
 

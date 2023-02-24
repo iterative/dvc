@@ -21,9 +21,9 @@ from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
 
 if TYPE_CHECKING:
+    from dvc.dependency import Dependency
     from dvc.dvcfile import ProjectFile, SingleStageFile
     from dvc.repo import Repo
-    from dvc.dependency import Dependency
 
 from dvc.ui import ui
 
@@ -41,9 +41,7 @@ PROMPTS = {
 def _prompts(
     keys: Iterable[str],
     defaults: Optional[Dict[str, str]] = None,
-    validator: Optional[
-        Callable[[str, str], Union[str, Tuple[str, str]]]
-    ] = None,
+    validator: Optional[Callable[[str, str], Union[str, Tuple[str, str]]]] = None,
     allow_omission: bool = True,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, Optional[str]]:
@@ -78,9 +76,7 @@ def _disable_logging(highest_level=logging.CRITICAL):
 def init_interactive(
     defaults: Dict[str, str],
     provided: Dict[str, str],
-    validator: Optional[
-        Callable[[str, str], Union[str, Tuple[str, str]]]
-    ] = None,
+    validator: Optional[Callable[[str, str], Union[str, Tuple[str, str]]]] = None,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, str]:
     command_prompts = lremove(provided.keys(), ["cmd"])
@@ -123,14 +119,10 @@ def _check_stage_exists(
         from dvc.stage.exceptions import DuplicateStageName
 
         hint = "Use '--force' to overwrite."
-        raise DuplicateStageName(
-            f"Stage '{name}' already exists in 'dvc.yaml'. {hint}"
-        )
+        raise DuplicateStageName(f"Stage '{name}' already exists in 'dvc.yaml'. {hint}")
 
 
-def validate_prompts(
-    repo: "Repo", key: str, value: str
-) -> Union[Any, Tuple[Any, str]]:
+def validate_prompts(repo: "Repo", key: str, value: str) -> Union[Any, Tuple[Any, str]]:
     from dvc.ui.prompt import InvalidResponse
 
     msg_format = "[yellow]'{0}' does not exist, the {1} will be created.[/]"
@@ -248,9 +240,7 @@ def init(
         try:
             ParamsDependency(None, params, repo=repo).validate_filepath()
         except ParamsIsADirectoryError as exc:
-            raise DvcException(  # noqa: B904
-                f"{exc}."
-            )  # swallow cause for display
+            raise DvcException(f"{exc}.")  # noqa: B904  # swallow cause for display
         except MissingParamsFile:
             pass
 

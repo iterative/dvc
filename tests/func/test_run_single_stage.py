@@ -238,9 +238,9 @@ class TestRunBadCwd:
             dvc.run(cmd="command", wdir=make_tmp_dir("tmp"), single_stage=True)
 
     def test_same_prefix(self, tmp_dir, dvc):
+        path = f"{tmp_dir}-{uuid.uuid4()}"
+        os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            path = f"{tmp_dir}-{uuid.uuid4()}"
-            os.mkdir(path)
             dvc.run(cmd="command", wdir=path, single_stage=True)
 
 
@@ -250,22 +250,22 @@ class TestRunBadWdir:
             dvc.run(cmd="command", wdir=make_tmp_dir("tmp"), single_stage=True)
 
     def test_same_prefix(self, tmp_dir, dvc):
+        path = f"{tmp_dir}-{uuid.uuid4()}"
+        os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            path = f"{tmp_dir}-{uuid.uuid4()}"
-            os.mkdir(path)
             dvc.run(cmd="command", wdir=path, single_stage=True)
 
     def test_not_found(self, tmp_dir, dvc):
+        path = os.path.join(tmp_dir, str(uuid.uuid4()))
         with pytest.raises(StagePathNotFoundError):
-            path = os.path.join(tmp_dir, str(uuid.uuid4()))
             dvc.run(cmd="command", wdir=path, single_stage=True)
 
     def test_not_dir(self, tmp_dir, dvc):
+        path = tmp_dir / str(uuid.uuid4())
+        path.mkdir()
+        path = path / str(uuid.uuid4())
+        path.touch()
         with pytest.raises(StagePathNotDirectoryError):
-            path = tmp_dir / str(uuid.uuid4())
-            path.mkdir()
-            path = path / str(uuid.uuid4())
-            path.touch()
             dvc.run(cmd="command", wdir=os.fspath(path), single_stage=True)
 
 
@@ -279,9 +279,9 @@ class TestRunBadName:
             )
 
     def test_same_prefix(self, tmp_dir, dvc):
+        path = f"{tmp_dir}-{uuid.uuid4()}"
+        os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            path = f"{tmp_dir}-{uuid.uuid4()}"
-            os.mkdir(path)
             dvc.run(
                 cmd="command",
                 fname=os.path.join(path, "foo.dvc"),
@@ -289,8 +289,8 @@ class TestRunBadName:
             )
 
     def test_not_found(self, tmp_dir, dvc):
+        path = os.path.join(tmp_dir, str(uuid.uuid4()))
         with pytest.raises(StagePathNotFoundError):
-            path = os.path.join(tmp_dir, str(uuid.uuid4()))
             dvc.run(
                 cmd="command",
                 fname=os.path.join(path, "foo.dvc"),
@@ -629,9 +629,7 @@ def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy, mocker):
 
 def test_rerun_callback(dvc):
     def run_callback(force=False):
-        return dvc.run(
-            cmd="echo content > out", force=force, single_stage=True
-        )
+        return dvc.run(cmd="echo content > out", force=force, single_stage=True)
 
     assert run_callback() is not None
     with pytest.raises(StageFileAlreadyExistsError):
@@ -684,12 +682,12 @@ def test_run_commit(dvc):
     )
     assert ret == 0
     assert os.path.isfile(fname)
-    assert not os.path.exists(dvc.odb.local.path)
+    assert not os.path.exists(dvc.cache.local.path)
 
     ret = main(["commit", fname + ".dvc"])
     assert ret == 0
     assert os.path.isfile(fname)
-    assert len(list(dvc.odb.local.all())) == 1
+    assert len(list(dvc.cache.local.all())) == 1
 
 
 @pytest.mark.parametrize(
@@ -723,9 +721,7 @@ def test_run_persist(tmp_dir, dvc, outs_command):
     assert not (tmp_dir / "file").exists()
 
 
-def test_should_raise_on_overlapping_output_paths(
-    tmp_dir, dvc, append_foo_script
-):
+def test_should_raise_on_overlapping_output_paths(tmp_dir, dvc, append_foo_script):
     tmp_dir.gen("data", {"foo": "foo", "bar": "bar"})
     ret = main(["add", "data"])
     assert ret == 0
@@ -793,7 +789,7 @@ def test_should_not_checkout_upon_corrupted_local_hardlink_cache(
     mocker, tmp_dir, dvc, copy_script
 ):
     tmp_dir.gen("foo", "foo")
-    dvc.odb.local.cache_types = ["hardlink"]
+    dvc.cache.local.cache_types = ["hardlink"]
 
     stage = dvc.run(
         deps=["foo"],
@@ -847,9 +843,7 @@ def test_metrics_dir(tmp_dir, dvc, caplog, run_copy_metrics, metrics_type):
     tmp_dir.gen({"dir": {"file": "content"}})
     with caplog.at_level(logging.DEBUG, "dvc"):
         run_copy_metrics("dir", "dir_metric", **copyargs)
-    assert (
-        "directory 'dir_metric' cannot be used as metrics." in caplog.messages
-    )
+    assert "directory 'dir_metric' cannot be used as metrics." in caplog.messages
 
 
 def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):

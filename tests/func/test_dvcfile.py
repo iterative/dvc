@@ -211,9 +211,7 @@ def test_remove_stage_lockfile(tmp_dir, dvc, run_copy):
     lock_file = dvc_file._lockfile
     assert dvc_file.exists()
     assert lock_file.exists()
-    assert {"copy-bar-foobar", "copy-foo-bar"} == set(
-        lock_file.load()["stages"].keys()
-    )
+    assert {"copy-bar-foobar", "copy-foo-bar"} == set(lock_file.load()["stages"].keys())
     lock_file.remove_stage(stage)
 
     assert ["copy-bar-foobar"] == list(lock_file.load()["stages"].keys())
@@ -303,9 +301,7 @@ def test_remove_stage_preserves_comment(tmp_dir, dvc, run_copy):
     )
 
 
-def test_remove_stage_removes_dvcfiles_if_no_stages_left(
-    tmp_dir, dvc, run_copy
-):
+def test_remove_stage_removes_dvcfiles_if_no_stages_left(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="run_copy")
 
@@ -404,9 +400,7 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
     stage = dvc.stage.load_one(name="stage1")
     assert stage.meta == {"key1": "value1", "key2": "value2"}
     assert stage.desc == "stage desc"
-    assert stage.outs[0].annot == Annotation(
-        desc="bar desc", meta={"key": "value"}
-    )
+    assert stage.outs[0].annot == Annotation(desc="bar desc", meta={"key": "value"})
 
     # sanity check
     stage.dump()
@@ -438,10 +432,7 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
 def test_dvcfile_load_with_plots(tmp_dir, dvc, data):
     (tmp_dir / "dvc.yaml").dump(data)
     plots = list(dvc.plots.collect())
-    top_level_plots = plots[0]["workspace"]["definitions"]["data"]["dvc.yaml"][
-        "data"
-    ]
+    top_level_plots = plots[0]["workspace"]["definitions"]["data"]["dvc.yaml"]["data"]
     assert all(
-        name in top_level_plots
-        for name in ("path/to/plot", "path/to/another/plot")
+        name in top_level_plots for name in ("path/to/plot", "path/to/another/plot")
     )

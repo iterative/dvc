@@ -174,10 +174,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         ),
     ],
 )
-def test_match_ignore_from_file(
-    file_to_ignore_relpath, patterns, expected_match
-):
-
+def test_match_ignore_from_file(file_to_ignore_relpath, patterns, expected_match):
     dvcignore_path = os.path.join(
         os.path.sep, "full", "path", "to", "ignore", "file", ".dvcignore"
     )
@@ -186,8 +183,7 @@ def test_match_ignore_from_file(
     ignore_file = mock_dvcignore(dvcignore_path, patterns)
 
     assert (
-        ignore_file.matches(dvcignore_dirname, file_to_ignore_relpath)
-        == expected_match
+        ignore_file.matches(dvcignore_dirname, file_to_ignore_relpath) == expected_match
     )
 
 

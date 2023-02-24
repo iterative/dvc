@@ -25,15 +25,16 @@ def test_unlock_lock_failed(tmp_dir, dvc, mocker):
 
     # It's a common scenario now to have lock unlocked and locked back (e.g. in
     # repro of a stage) in with. We should see LockError exception here.
-    with pytest.raises(LockError), lock:
+    with lock:
         lock.unlock()
         lock_ext.lock()  # imitate an exernal process had time to lock it
-        lock.lock()
+        with pytest.raises(LockError):
+            lock.lock()
 
 
 def test_unlock_unlocked_raises():
     lock = Lock("lock")
-    with pytest.raises(DvcException):
+    with pytest.raises(DvcException, match="Unlock called on an unlocked lock"):
         lock.unlock()
 
 

@@ -39,12 +39,17 @@ def parse_args(argv=None):
 
 def _log_unknown_exceptions() -> None:
     from dvc.info import get_dvc_info
-    from dvc.logger import FOOTER
+    from dvc.ui import ui
+    from dvc.utils import colorize
 
     logger.exception("unexpected error")
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Version info for developers:\n%s", get_dvc_info())
-    logger.info(FOOTER)
+
+    q = colorize("Having any troubles?", "yellow")
+    link = colorize("https://dvc.org/support", "blue")
+    footer = f"\n{q} Hit us up at {link}, we are always happy to help!"
+    ui.error_write(footer)
 
 
 def _log_exceptions(exc: Exception) -> Optional[int]:
@@ -56,8 +61,10 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
 
         if exc.errno == errno.EMFILE:
             logger.exception(
-                "too many open files, please visit "
-                "%s to see how to handle this problem",
+                (
+                    "too many open files, please visit "
+                    "%s to see how to handle this problem"
+                ),
                 error_link("many-files"),
                 extra={"tb_only": True},
             )
@@ -80,7 +87,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
         if cmd:
             link = format_link("https://dvc.org/doc/install")
             hint = (
-                f"To install dvc with those dependencies, run:\n"
+                "To install dvc with those dependencies, run:\n"
                 "\n"
                 f"\t{cmd}\n"
                 "\n"
@@ -91,8 +98,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
             hint = f"\nPlease report this bug to {link}. Thank you!"
 
         logger.exception(
-            "URL '%s' is supported but requires these missing "
-            "dependencies: %s. %s",
+            "URL '%s' is supported but requires these missing dependencies: %s. %s",
             exc.url,
             exc.missing_deps,
             hint,
@@ -118,9 +124,11 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
 
         directory = relpath(exc.directory)
         logger.exception(
-            "Could not open pickled '%s' cache.\n"
-            "Remove the '%s' directory and then retry this command."
-            "\nSee %s for more information.",
+            (
+                "Could not open pickled '%s' cache.\n"
+                "Remove the '%s' directory and then retry this command."
+                "\nSee %s for more information."
+            ),
             exc.type,
             directory,
             error_link("pickle"),
@@ -138,7 +146,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
     return None
 
 
-def main(argv=None):  # noqa: C901
+def main(argv=None):  # noqa: C901, PLR0912, PLR0915
     """Main entry point for dvc CLI.
 
     Args:
@@ -150,7 +158,7 @@ def main(argv=None):  # noqa: C901
     from dvc._debug import debugtools
     from dvc.config import ConfigError
     from dvc.exceptions import DvcException, NotDvcRepoError
-    from dvc.logger import disable_other_loggers, set_loggers_level
+    from dvc.logger import set_loggers_level
 
     # NOTE: stderr/stdout may be closed if we are running from dvc.daemon.
     # On Linux we directly call cli.main after double forking and closing
@@ -163,9 +171,8 @@ def main(argv=None):  # noqa: C901
         logging.disable(logging.INFO)
 
     args = None
-    disable_other_loggers()
 
-    outerLogLevel = logger.level
+    outer_log_level = logger.level
     try:
         args = parse_args(argv)
 
@@ -179,6 +186,17 @@ def main(argv=None):  # noqa: C901
 
         if level is not None:
             set_loggers_level(level)
+
+        if level and level <= logging.DEBUG:
+            from platform import platform, python_implementation, python_version
+
+            from dvc import __version__
+            from dvc.utils.pkg import PKG
+
+            pyv = " ".join([python_implementation(), python_version()])
+            pkg = f" ({PKG})" if PKG else ""
+            logger.debug("v%s%s, %s on %s", __version__, pkg, pyv, platform())
+            logger.debug("command: %s", " ".join(argv or sys.argv))
 
         logger.trace(args)  # type: ignore[attr-defined]
 
@@ -225,7 +243,7 @@ def main(argv=None):  # noqa: C901
 
         return ret
     finally:
-        logger.setLevel(outerLogLevel)
+        logger.setLevel(outer_log_level)
 
         from dvc.external_repo import clean_repos
 

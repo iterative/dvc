@@ -343,9 +343,7 @@ def fixed_width_term(mocker):
     )
 
 
-@pytest.mark.parametrize(
-    "text, expected", examples.values(), ids=examples.keys()
-)
+@pytest.mark.parametrize("text, expected", examples.values(), ids=examples.keys())
 def test_exceptions(
     tmp_dir,
     dvc,
@@ -365,9 +363,7 @@ def test_exceptions(
 
     # strip whitespace on the right: output is always left-justified
     # by rich.syntax.Syntax:
-    for expected_line, err_line in zip(
-        expected.splitlines(), err.splitlines()
-    ):
+    for expected_line, err_line in zip(expected.splitlines(), err.splitlines()):
         assert expected_line == err_line.rstrip(" ")
 
 
@@ -431,10 +427,7 @@ def test_fallback_exception_message(tmp_dir, dvc, mocker, caplog):
     dvc_file = tmp_dir / "dvc.yaml"
     dvc_file.write_text(MAPPING_VALUES_NOT_ALLOWED)
     assert main(["stage", "list"]) != 0
-    assert (
-        "unable to read: 'dvc.yaml', "
-        "YAML file structure is corrupted" in caplog.text
-    )
+    assert "unable to read: 'dvc.yaml', YAML file structure is corrupted" in caplog.text
 
     caplog.clear()
     # validation error

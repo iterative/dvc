@@ -25,9 +25,7 @@ def test_default_arguments(dvc, mocker):
     cmd = CmdRepro(parse_args(["repro"]))
     mocker.patch.object(cmd.repo, "reproduce")
     cmd.run()
-    cmd.repo.reproduce.assert_called_with(
-        **common_arguments, **repro_arguments
-    )
+    cmd.repo.reproduce.assert_called_with(**common_arguments, **repro_arguments)
 
 
 def test_downstream(dvc, mocker):

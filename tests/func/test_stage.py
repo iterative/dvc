@@ -109,9 +109,7 @@ def test_default_wdir_ignored_in_checksum(tmp_dir, dvc):
 
 def test_external_remote_output_resolution(tmp_dir, dvc, make_remote):
     tmp_path = make_remote("tmp", default=False)
-    tmp_dir.add_remote(
-        url="remote://tmp/storage", name="storage", default=False
-    )
+    tmp_dir.add_remote(url="remote://tmp/storage", name="storage", default=False)
     storage = tmp_path / "storage"
     storage.mkdir()
     file_path = storage / "file"
@@ -126,9 +124,7 @@ def test_external_remote_output_resolution(tmp_dir, dvc, make_remote):
 
 def test_external_remote_dependency_resolution(tmp_dir, dvc, make_remote):
     tmp_path = make_remote("tmp", default=False)
-    tmp_dir.add_remote(
-        url="remote://tmp/storage", name="storage", default=False
-    )
+    tmp_dir.add_remote(url="remote://tmp/storage", name="storage", default=False)
     storage = tmp_path / "storage"
     storage.mkdir()
     file_path = storage / "file"
@@ -168,13 +164,7 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
     stage = dvc.stage.load_one("foo.dvc")
     assert compute_md5(stage) == "1822617147b53ae6f9eb4b3c87c0b6f3"
     assert (
-        dict_md5(
-            {
-                "outs": [
-                    {"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}
-                ]
-            }
-        )
+        dict_md5({"outs": [{"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}]})
         == "1822617147b53ae6f9eb4b3c87c0b6f3"
     )
 
@@ -248,9 +238,7 @@ def test_collect_symlink(tmp_dir, dvc, with_deps):
     data_link = tmp_dir / "data_link"
     data_link.symlink_to("data")
     stage = list(
-        dvc.stage.collect(
-            target=str(data_link / "foo.dvc"), with_deps=with_deps
-        )
+        dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
     )[0]
 
     assert stage.addressing == f"{foo_path}.dvc"

@@ -6,7 +6,6 @@ from dvc.config import ConfigError as RepoConfigError
 from dvc.config_schema import SCHEMA, Invalid
 
 # pylint: disable=unused-import
-from dvc_objects.fs import utils  # noqa: F401
 from dvc_objects.fs import (  # noqa: F401
     LocalFileSystem,
     MemoryFileSystem,
@@ -17,6 +16,7 @@ from dvc_objects.fs import (  # noqa: F401
     localfs,
     registry,
     system,
+    utils,
 )
 from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
 from dvc_objects.fs.errors import (  # noqa: F401
@@ -72,9 +72,7 @@ def get_fs_config(config, **kwargs):
         except KeyError:
             from dvc.config import RemoteNotFoundError
 
-            raise RemoteNotFoundError(  # noqa: B904
-                f"remote '{name}' doesn't exist"
-            )
+            raise RemoteNotFoundError(f"remote '{name}' doesn't exist")  # noqa: B904
     else:
         remote_conf = kwargs
     return _resolve_remote_refs(config, remote_conf)

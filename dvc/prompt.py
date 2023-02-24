@@ -24,9 +24,7 @@ def ask(prompt: str, limited_to: Optional[Collection[str]] = None):
         if answer in limited_to:
             return answer
 
-        logger.info(
-            "Your response must be one of: %s. Please try again.", limited_to
-        )
+        logger.info("Your response must be one of: %s. Please try again.", limited_to)
 
 
 def confirm(statement: str) -> bool:

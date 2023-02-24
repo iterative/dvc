@@ -31,7 +31,9 @@ def add_parser(subparsers, parent_parser):
         "--use-pre-commit-tool",
         action="store_true",
         default=False,
-        help="Install DVC hooks using pre-commit "
-        "(https://pre-commit.com) if it is installed.",
+        help=(
+            "Install DVC hooks using pre-commit "
+            "(https://pre-commit.com) if it is installed."
+        ),
     )
     install_parser.set_defaults(func=CmdInstall)

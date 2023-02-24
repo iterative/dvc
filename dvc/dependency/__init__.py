@@ -90,6 +90,4 @@ def _merge_params(s_list):
 
 def loads_params(stage, s_list):
     d = _merge_params(s_list)
-    return [
-        ParamsDependency(stage, path, params) for path, params in d.items()
-    ]
+    return [ParamsDependency(stage, path, params) for path, params in d.items()]

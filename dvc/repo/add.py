@@ -15,12 +15,7 @@ from dvc.exceptions import (
 )
 from dvc.repo.scm_context import scm_context
 from dvc.ui import ui
-from dvc.utils import (
-    LARGE_DIR_SIZE,
-    glob_targets,
-    resolve_output,
-    resolve_paths,
-)
+from dvc.utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
 from dvc.utils.collections import ensure_list, validate
 
 from . import locked
@@ -108,9 +103,7 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
 def progress_iter(stages: Stages) -> Iterator["Stage"]:
     total = len(stages)
     desc = "Adding..."
-    with ui.progress(
-        stages, total=total, desc=desc, unit="file", leave=True
-    ) as pbar:
+    with ui.progress(stages, total=total, desc=desc, unit="file", leave=True) as pbar:
         if total == 1:
             pbar.bar_format = desc
             pbar.refresh()
@@ -155,7 +148,7 @@ VALIDATORS = (
 @validate(*VALIDATORS)
 @locked
 @scm_context
-def add(  # noqa: C901
+def add(
     repo: "Repo",
     targets: "TargetType",
     recursive: bool = False,

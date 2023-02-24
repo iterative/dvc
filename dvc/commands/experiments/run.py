@@ -17,13 +17,10 @@ class CmdExperimentsRun(CmdRepro):
 
         if self.args.checkpoint_resume:
             if self.args.reset:
-                raise InvalidArgumentError(
-                    "--reset and --rev are mutually exclusive."
-                )
+                raise InvalidArgumentError("--reset and --rev are mutually exclusive.")
             if not (self.args.queue or self.args.tmp_dir):
                 raise InvalidArgumentError(
-                    "--rev can only be used in conjunction with "
-                    "--queue or --temp."
+                    "--rev can only be used in conjunction with --queue or --temp."
                 )
 
         if self.args.reset:
@@ -51,7 +48,6 @@ class CmdExperimentsRun(CmdRepro):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-
     EXPERIMENTS_RUN_HELP = "Run or resume an experiment."
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",

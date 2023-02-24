@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
+    from dvc.scm import Git
 
     from .base import BaseStashQueue
 

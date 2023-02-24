@@ -67,11 +67,7 @@ def test_do_not_show_changes():
 
 
 def test_diff_table_precision():
-    diff = {
-        "metrics.json": {
-            "a.b.c": {"old": 1.1234, "new": 2.2345, "diff": 3.3456}
-        }
-    }
+    diff = {"metrics.json": {"a.b.c": {"old": 1.1234, "new": 2.2345, "diff": 3.3456}}}
     td = diff_table(diff, title="Metric", precision=3)
     assert td.as_dict() == [
         {
@@ -85,11 +81,7 @@ def test_diff_table_precision():
 
 
 def test_diff_table_rounding():
-    diff = {
-        "metrics.json": {
-            "a.b.c": {"old": 1.1234, "new": 2.2345, "diff": 3.3456}
-        }
-    }
+    diff = {"metrics.json": {"a.b.c": {"old": 1.1234, "new": 2.2345, "diff": 3.3456}}}
     td = diff_table(diff, title="Metric", precision=3, round_digits=True)
     assert td.as_dict() == [
         {
@@ -109,7 +101,7 @@ def test_diff_unsupported_diff_message(extra, expected):
     td = diff_table(
         {"metrics.json": {"": {"old": "1", "new": "2"}}},
         title="Metric",
-        **extra
+        **extra,
     )
     assert td.as_dict() == [
         {
@@ -189,9 +181,7 @@ def test_diff_falsey_values():
     [([2, 3], "[2, 3]"), ({"foo": 3, "bar": 3}, "{'foo': 3, 'bar': 3}")],
 )
 def test_diff_list(composite, expected):
-    td = diff_table(
-        {"params.yaml": {"a.b.c": {"old": 1, "new": composite}}}, "Param"
-    )
+    td = diff_table({"params.yaml": {"a.b.c": {"old": 1, "new": composite}}}, "Param")
     assert td.as_dict() == [
         {
             "Path": "params.yaml",
@@ -279,9 +269,7 @@ def test_metrics_show_with_valid_falsey_values():
         {
             "branch_1": {
                 "data": {
-                    "metrics.json": {
-                        "data": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}
-                    }
+                    "metrics.json": {"data": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}}
                 }
             }
         },
@@ -303,9 +291,7 @@ def test_metrics_show_with_no_revision():
         {
             "branch_1": {
                 "data": {
-                    "metrics.json": {
-                        "data": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}
-                    }
+                    "metrics.json": {"data": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}}
                 }
             }
         },
@@ -321,23 +307,17 @@ def test_metrics_show_with_non_dict_values():
         {"branch_1": {"data": {"metrics.json": {"data": 1}}}},
         all_branches=True,
     )
-    assert td.as_dict() == [
-        {"Revision": "branch_1", "Path": "metrics.json", "": "1"}
-    ]
+    assert td.as_dict() == [{"Revision": "branch_1", "Path": "metrics.json", "": "1"}]
 
 
 def test_metrics_show_with_multiple_revision():
     td = metrics_table(
         {
             "branch_1": {
-                "data": {
-                    "metrics.json": {"data": {"a": 1, "b": {"ad": 1, "bc": 2}}}
-                }
+                "data": {"metrics.json": {"data": {"a": 1, "b": {"ad": 1, "bc": 2}}}}
             },
             "branch_2": {
-                "data": {
-                    "metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}
-                }
+                "data": {"metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}}
             },
         },
         all_branches=True,
@@ -365,12 +345,8 @@ def test_metrics_show_with_one_revision_multiple_paths():
         {
             "branch_1": {
                 "data": {
-                    "metrics.json": {
-                        "data": {"a": 1, "b": {"ad": 0.1, "bc": 1.03}}
-                    },
-                    "metrics_1.json": {
-                        "data": {"a": 2.3, "b": {"ad": 6.5, "bc": 7.9}}
-                    },
+                    "metrics.json": {"data": {"a": 1, "b": {"ad": 0.1, "bc": 1.03}}},
+                    "metrics_1.json": {"data": {"a": 2.3, "b": {"ad": 6.5, "bc": 7.9}}},
                 }
             }
         },
@@ -398,14 +374,10 @@ def test_metrics_show_with_different_metrics_header():
     td = metrics_table(
         {
             "branch_1": {
-                "data": {
-                    "metrics.json": {"data": {"b": {"ad": 1, "bc": 2}, "c": 4}}
-                }
+                "data": {"metrics.json": {"data": {"b": {"ad": 1, "bc": 2}, "c": 4}}}
             },
             "branch_2": {
-                "data": {
-                    "metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}
-                }
+                "data": {"metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}}
             },
         },
         all_branches=True,
@@ -455,9 +427,7 @@ def test_metrics_show_precision():
         }
     ]
 
-    td = metrics_table(
-        metrics, all_branches=True, precision=4, round_digits=True
-    )
+    td = metrics_table(metrics, all_branches=True, precision=4, round_digits=True)
     assert td.as_dict() == [
         {
             "Revision": "branch_1",
@@ -502,15 +472,11 @@ def test_metrics_show_default(capsys):
     show_metrics(
         metrics={
             "branch_1": {
-                "data": {
-                    "metrics.json": {"data": {"b": {"ad": 1, "bc": 2}, "c": 4}}
-                },
+                "data": {"metrics.json": {"data": {"b": {"ad": 1, "bc": 2}, "c": 4}}},
                 "error": Exception("Failed just a little bit"),
             },
             "branch_2": {
-                "data": {
-                    "metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}
-                }
+                "data": {"metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}}
             },
         },
         all_branches=True,
@@ -529,14 +495,10 @@ def test_metrics_show_markdown(capsys):
     show_metrics(
         metrics={
             "branch_1": {
-                "data": {
-                    "metrics.json": {"data": {"b": {"ad": 1, "bc": 2}, "c": 4}}
-                }
+                "data": {"metrics.json": {"data": {"b": {"ad": 1, "bc": 2}, "c": 4}}}
             },
             "branch_2": {
-                "data": {
-                    "metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}
-                }
+                "data": {"metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}}
             },
             "branch_3": {"error": YAMLFileCorruptedError("failed")},
         },

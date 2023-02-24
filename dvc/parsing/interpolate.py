@@ -99,7 +99,6 @@ def _(obj: dict):  # noqa: C901
 
     result = ""
     for k, v in flatten(obj).items():
-
         if isinstance(v, bool):
             if v:
                 result += f"--{k} "
@@ -115,9 +114,7 @@ def _(obj: dict):  # noqa: C901
                 if isinstance(i, str):
                     i = escape_str(i)
                 elif isinstance(i, Iterable):
-                    raise ParseError(
-                        f"Cannot interpolate nested iterable in '{k}'"
-                    )
+                    raise ParseError(f"Cannot interpolate nested iterable in '{k}'")
 
                 if config.get("list", "nargs") == "append":
                     result += f"--{k} {i} "
@@ -206,9 +203,7 @@ def validate_value(value, key):
     if not_primitive and not_foreach:
         if isinstance(value, dict) and key == "cmd":
             return True
-        raise ParseError(
-            f"Cannot interpolate data of type '{type(value).__name__}'"
-        )
+        raise ParseError(f"Cannot interpolate data of type '{type(value).__name__}'")
 
 
 def str_interpolate(

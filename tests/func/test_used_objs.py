@@ -29,18 +29,14 @@ import pytest
         ),
     ],
 )
-def test_from_gitfs_when_pwd_not_in_root(
-    tmp_dir, scm, dvc, stage_wdir, cwd, target
-):
+def test_from_gitfs_when_pwd_not_in_root(tmp_dir, scm, dvc, stage_wdir, cwd, target):
     path = tmp_dir.joinpath(stage_wdir).resolve()
     path.mkdir(parents=True, exist_ok=True)
     wdir = tmp_dir.joinpath(cwd).resolve()
     wdir.mkdir(parents=True, exist_ok=True)
 
     (path / "dvc.yaml").write_text(
-        json.dumps(
-            {"stages": {"train": {"cmd": "echo foo > foo", "outs": ["foo"]}}}
-        )
+        json.dumps({"stages": {"train": {"cmd": "echo foo > foo", "outs": ["foo"]}}})
     )
     path.gen({"foo": "foo"})
     dvc.commit(None, force=True)

@@ -1,9 +1,8 @@
 import os
 from unittest.mock import ANY
 
-from scmrepo.git import Git
-
 from dvc.external_repo import CLONES, external_repo
+from dvc.scm import Git
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils import relpath
 from dvc.utils.fs import remove
@@ -116,7 +115,7 @@ def test_relative_remote(erepo_dir, tmp_dir):
     erepo_dir.dvc.push()
 
     (erepo_dir / "file").unlink()
-    remove(erepo_dir.dvc.odb.local.path)
+    remove(erepo_dir.dvc.cache.local.path)
 
     url = os.fspath(erepo_dir)
 
@@ -140,9 +139,7 @@ def test_shallow_clone_branch(erepo_dir, mocker):
         with repo.open_by_relpath("file") as fd:
             assert fd.read() == "branch"
 
-    clone_spy.assert_called_with(
-        url, ANY, shallow_branch="branch", progress=ANY
-    )
+    clone_spy.assert_called_with(url, ANY, shallow_branch="branch", progress=ANY)
 
     path, _ = CLONES[url]
     CLONES[url] = (path, True)
@@ -198,12 +195,12 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         assert (tmp_dir / "out").read_text() == expected_files
 
         # clear cache to test saving to cache
-        cache_dir = tmp_dir / repo.odb.local.path
+        cache_dir = tmp_dir / repo.cache.local.path
         remove(cache_dir)
         os.makedirs(cache_dir)
 
         staging, _, obj = build(
-            repo.odb.local,
+            repo.cache.local,
             "dir",
             repo.dvcfs,
             "md5",
@@ -211,7 +208,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         )
         transfer(
             staging,
-            repo.odb.local,
+            repo.cache.local,
             {obj.hash_info},
             shallow=False,
             hardlink=True,

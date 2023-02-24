@@ -277,9 +277,7 @@ def test_dropna_subset(axis, expected):
 )
 def test_drop_duplicates(axis, expected, ignore_empty):
     td = TabularData(["col-1", "col-2", "col-3"], fill_value="-")
-    td.extend(
-        [["foo"], ["foo", "foo"], ["foo", "foo"], ["foo", "bar", "foobar"]]
-    )
+    td.extend([["foo"], ["foo", "foo"], ["foo", "foo"], ["foo", "bar", "foobar"]])
 
     assert list(td) == [
         ["foo", "-", "-"],
@@ -384,9 +382,7 @@ def test_to_parallel_coordinates(tmp_dir, mocker):
     td.extend([["foo", "0.1"], ["bar", "2"]])
 
     write = mocker.patch("dvc_render.html.render_html")
-    renderer_class = mocker.patch(
-        "dvc_render.plotly.ParallelCoordinatesRenderer"
-    )
+    renderer_class = mocker.patch("dvc_render.plotly.ParallelCoordinatesRenderer")
     renderer = renderer_class.return_value
 
     td.to_parallel_coordinates(output_path="foo")

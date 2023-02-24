@@ -2,6 +2,10 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
+from pathspec import PathSpec
+
+from dvc.scm import Git
+
 from .exceptions import ExperimentExistsError
 from .refs import ExpRefInfo
 from .utils import check_ref_format, get_random_exp_name
@@ -29,6 +33,8 @@ def _save_experiment(
     if repo.scm.get_ref(ref) and not force:
         raise ExperimentExistsError(ref_info.name, command="save")
 
+    assert isinstance(repo.scm, Git)
+
     repo.scm.add([], update=True)
     if include_untracked:
         repo.scm.add(include_untracked)
@@ -51,17 +57,20 @@ def save(
     """
     logger.debug("Saving workspace in %s", os.getcwd())
 
+    assert isinstance(repo.scm, Git)
+
     _, _, untracked = repo.scm.status()
     if include_untracked:
-        untracked = [
-            file for file in untracked if file not in include_untracked
-        ]
+        spec = PathSpec.from_lines("gitwildmatch", include_untracked)
+        untracked = [file for file in untracked if not spec.match_file(file)]
     if untracked:
         logger.warning(
-            "The following untracked files were present in "
-            "the workspace before saving but "
-            "will not be included in the experiment commit:\n"
-            "\t%s",
+            (
+                "The following untracked files were present in "
+                "the workspace before saving but "
+                "will not be included in the experiment commit:\n"
+                "\t%s"
+            ),
             ", ".join(untracked),
         )
 

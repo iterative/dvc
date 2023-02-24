@@ -23,9 +23,7 @@ def test_quiet(tmp_dir, dvc, capsys):
 
 
 def test_implied_cloud(dvc, mocker):
-    mock_status = mocker.patch(
-        "dvc.repo.status._cloud_status", return_value=True
-    )
+    mock_status = mocker.patch("dvc.repo.status._cloud_status", return_value=True)
 
     main(["status", "--remote", "something"])
     assert mock_status.called
@@ -43,9 +41,7 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir):
         git_dir.scm_gen("file", "second version", commit="update file")
 
     (status,) = dvc.status(["file.dvc"])["file.dvc"]
-    assert status == {
-        "changed deps": {f"file ({git_dir})": "update available"}
-    }
+    assert status == {"changed deps": {f"file ({git_dir})": "update available"}}
 
 
 def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
@@ -109,11 +105,7 @@ def test_status_recursive(tmp_dir, dvc):
             {"changed outs": {os.path.join("dir", "file"): "not in cache"}}
         ],
         os.path.join("dir", "subdir", "file2.dvc"): [
-            {
-                "changed outs": {
-                    os.path.join("dir", "subdir", "file2"): "not in cache"
-                }
-            }
+            {"changed outs": {os.path.join("dir", "subdir", "file2"): "not in cache"}}
         ],
     }
 
@@ -129,9 +121,7 @@ def test_status_outputs(tmp_dir, dvc):
     tmp_dir.gen({"alice": "new alice", "bob": "new bob"})
 
     assert dvc.status(targets=["alice_bob"]) == {
-        "alice_bob": [
-            {"changed outs": {"alice": "modified", "bob": "modified"}}
-        ]
+        "alice_bob": [{"changed outs": {"alice": "modified", "bob": "modified"}}]
     }
 
     assert dvc.status(targets=["alice"]) == {
@@ -140,12 +130,8 @@ def test_status_outputs(tmp_dir, dvc):
 
 
 def test_params_without_targets(tmp_dir, dvc):
-    dvc.stage.add(
-        name="test", cmd="echo params.yaml", params=[{"params.yaml": None}]
-    )
-    assert dvc.status() == {
-        "test": [{"changed deps": {"params.yaml": "deleted"}}]
-    }
+    dvc.stage.add(name="test", cmd="echo params.yaml", params=[{"params.yaml": None}])
+    assert dvc.status() == {"test": [{"changed deps": {"params.yaml": "deleted"}}]}
 
     (tmp_dir / "params.yaml").touch()
     assert dvc.status() == {"test": [{"changed deps": {"params.yaml": "new"}}]}
@@ -155,17 +141,13 @@ def test_params_without_targets(tmp_dir, dvc):
     # and be able to distinguish between no-lock-entry and empty-lock-entry.
     assert (tmp_dir / "dvc.lock").parse() == {
         "schema": "2.0",
-        "stages": {
-            "test": {"cmd": "echo params.yaml", "params": {"params.yaml": {}}}
-        },
+        "stages": {"test": {"cmd": "echo params.yaml", "params": {"params.yaml": {}}}},
     }
     assert dvc.status() == {}
 
     (tmp_dir / "params.yaml").dump({"foo": "foo", "bar": "bar"})
     assert dvc.status() == {
-        "test": [
-            {"changed deps": {"params.yaml": {"bar": "new", "foo": "new"}}}
-        ]
+        "test": [{"changed deps": {"params.yaml": {"bar": "new", "foo": "new"}}}]
     }
     dvc.commit("test", force=True)
 

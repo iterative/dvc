@@ -1,7 +1,17 @@
+import logging
 import re
-from typing import Dict, Iterable, NamedTuple, Optional
+from contextlib import contextmanager
+from typing import Dict, Iterable, Iterator, NamedTuple, Optional
 
 from scmrepo.git import Stash
+
+from dvc.exceptions import DvcException
+from dvc_objects.fs.local import localfs
+from dvc_objects.fs.utils import as_atomic
+
+from .refs import APPLY_HEAD, APPLY_STASH
+
+logger = logging.getLogger(__name__)
 
 
 class ExpStashEntry(NamedTuple):
@@ -72,3 +82,122 @@ class ExpStash(Stash):
             reverse=True,
         ):
             self.drop(index)
+
+
+class ApplyStashEntry(NamedTuple):
+    """Apply stash entry.
+
+    stash_index: Stash index for this entry. Can be None if this commit
+        is not pushed onto the stash ref.
+    head_rev: HEAD Git commit prior to exp apply.
+    rev: Applied experiment commit.
+    name: Optional applied exp name.
+    """
+
+    stash_index: Optional[int]
+    head_rev: str
+    rev: str
+    name: Optional[str]
+
+
+class ApplyStash(Stash):
+    DEFAULT_STASH = APPLY_STASH
+    MESSAGE_FORMAT = "dvc-exp-apply:{head_rev}:{rev}:{name}"
+    MESSAGE_RE = re.compile(
+        r"(?:commit: )"
+        r"dvc-exp-apply:(?P<head_rev>[0-9a-f]+):(?P<rev>[0-9a-f]+)"
+        r":(?P<name>[^~^:\\?\[\]*]*)"
+    )
+
+    @property
+    def stash_revs(self) -> Dict[str, ApplyStashEntry]:
+        revs = {}
+        for i, entry in enumerate(self):
+            msg = entry.message.decode("utf-8").strip()
+            m = self.MESSAGE_RE.match(msg)
+            if m:
+                revs[entry.new_sha.decode("utf-8")] = ApplyStashEntry(
+                    i,
+                    m.group("head_rev"),
+                    m.group("rev"),
+                    m.group("name"),
+                )
+        return revs
+
+    @classmethod
+    def format_message(
+        cls,
+        head_rev: str,
+        rev: str,
+        name: Optional[str] = None,
+    ) -> str:
+        return cls.MESSAGE_FORMAT.format(
+            head_rev=head_rev, rev=rev, name=name if name else ""
+        )
+
+    @contextmanager
+    def preserve_workspace(
+        self, rev: str, name: Optional[str] = None
+    ) -> Iterator[Optional[str]]:
+        if len(self):
+            logger.debug("Clearing existing exp-apply stash")
+            self.clear()
+        head = self.scm.get_rev()
+        self.scm.set_ref(APPLY_HEAD, head)
+        message = self.format_message(head, rev, name=name)
+        stash_rev = self.push(message=message, include_untracked=True)
+        try:
+            yield stash_rev
+            if stash_rev:
+                self._apply_difference(stash_rev, rev)
+        except Exception:  # pylint: disable=broad-except
+            self.revert_workspace()
+            raise
+
+    def _apply_difference(self, stash_rev: str, rev: str):
+        """Selectively apply changes from stash_rev.
+
+        Only changes to files from left which do not exist in right will be applied.
+        """
+        self._copy_difference(stash_rev, rev)
+        commit = self.scm.resolve_commit(stash_rev)
+        for parent_rev in commit.parents:
+            parent_commit = self.scm.resolve_commit(parent_rev)
+            if parent_commit.message.startswith("untracked files on "):
+                self._copy_difference(parent_rev, rev)
+
+    def _copy_difference(self, left_rev: str, right_rev: str):
+        left_fs = self.scm.get_fs(left_rev)
+        right_fs = self.scm.get_fs(right_rev)
+        paths = [path for path in left_fs.find("/") if not right_fs.exists(path)]
+        dest_paths = [
+            localfs.path.join(self.scm.root_dir, left_fs.path.relpath(path, "/"))
+            for path in paths
+        ]
+        for src, dest in zip(paths, dest_paths):
+            with as_atomic(localfs, dest, create_parents=True) as tmp_file:
+                left_fs.get_file(src, tmp_file)
+
+    def revert_workspace(self):
+        apply_head = self.scm.get_ref(self.ref)
+        head = self.scm.get_rev()
+        if apply_head != head:
+            raise DvcException(
+                f"Cannot revert workspace, current HEAD '{head[:7]}' does not match the"
+                f" pre-apply HEAD '{apply_head[:7]}'"
+            )
+        self.scm.reset(hard=True)
+        if len(self):
+            # In the event that the apply-stash and current workspace contain
+            # conflicting untracked files, we do:
+            #   1. stash the current untracked files
+            #   2. restore/pop the apply-stash (with untracked files)
+            #   3. restore/pop the untracked files from (1) and ignore any conflicts
+            #      (forcefully reverting to the apply-stash version)
+            workspace_rev = self.scm.stash.push(include_untracked=True)
+            try:
+                self.pop()
+            finally:
+                if workspace_rev:
+                    self.scm.stash.pop(skip_conflicts=True)
+        self.scm.remove_ref(self.ref)

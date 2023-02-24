@@ -33,9 +33,11 @@ def branch(repo, exp_rev, branch_name, *args, **kwargs):
                 break
         if not ref_info:
             msg = [
-                f"Ambiguous experiment name '{exp_rev}' can refer to "
-                "multiple experiments. To create a branch use a full "
-                "experiment ref:",
+                (
+                    f"Ambiguous experiment name '{exp_rev}' can refer to "
+                    "multiple experiments. To create a branch use a full "
+                    "experiment ref:"
+                ),
                 "",
             ]
             msg.extend([str(info) for info in ref_infos])
@@ -46,9 +48,7 @@ def branch(repo, exp_rev, branch_name, *args, **kwargs):
 
     branch_ref = f"refs/heads/{branch_name}"
     if repo.scm.get_ref(branch_ref):
-        raise InvalidArgumentError(
-            f"Git branch '{branch_name}' already exists."
-        )
+        raise InvalidArgumentError(f"Git branch '{branch_name}' already exists.")
 
     target = repo.scm.get_ref(str(ref_info))
     repo.scm.set_ref(

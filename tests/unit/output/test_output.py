@@ -113,7 +113,7 @@ def test_remote_missing_dependency_on_dir_pull(tmp_dir, scm, dvc, mocker):
         conf["core"] = {"remote": "s3"}
 
     remove("dir")
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     mocker.patch(
         "dvc.data_cloud.DataCloud.get_remote_odb",

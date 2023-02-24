@@ -78,9 +78,7 @@ class Updater:
                 info = json.load(fobj)
                 latest = info["version"]
             except Exception as e:  # noqa: BLE001  # pylint: disable=W0703
-                logger.debug(
-                    "'%s' is not a valid json: %s", self.updater_file, e
-                )
+                logger.debug("'%s' is not a valid json: %s", self.updater_file, e)
                 self.fetch()
                 return
 
@@ -134,9 +132,7 @@ class Updater:
             f"You are using dvc version [bold]{current}[/]; "
             f"however, version [bold]{latest}[/] is available."
         )
-        instruction = ui.rich_text.from_markup(
-            self._get_update_instructions(pkg=pkg)
-        )
+        instruction = ui.rich_text.from_markup(self._get_update_instructions(pkg=pkg))
         return ui.rich_text.assemble(
             "\n", update_message, "\n", instruction, style=color
         )
@@ -145,8 +141,7 @@ class Updater:
     def _get_update_instructions(pkg: Optional[str] = None) -> str:
         if pkg in ("osxpkg", "exe", "binary"):
             return (
-                "To upgrade, uninstall dvc and reinstall from "
-                "[blue]https://dvc.org[/]."
+                "To upgrade, uninstall dvc and reinstall from [blue]https://dvc.org[/]."
             )
 
         instructions = {
@@ -173,9 +168,7 @@ class Updater:
         enabled = to_bool(
             Config(validate=False).get("core", {}).get("check_update", "true")
         )
-        logger.debug(
-            "Check for update is %sabled.", "en" if enabled else "dis"
-        )
+        logger.debug("Check for update is %sabled.", "en" if enabled else "dis")
         return enabled
 
 

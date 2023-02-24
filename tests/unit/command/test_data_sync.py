@@ -58,6 +58,7 @@ def test_pull(mocker):
             "--recursive",
             "--run-cache",
             "--glob",
+            "--allow-missing",
         ]
     )
     assert cli_args.func == CmdDataPull
@@ -79,6 +80,7 @@ def test_pull(mocker):
         recursive=True,
         run_cache=True,
         glob=True,
+        allow_missing=True,
     )
 
 

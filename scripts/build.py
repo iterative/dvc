@@ -10,9 +10,7 @@ innosetup = path / "innosetup"
 fpm = path / "fpm"
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "pkg", choices=["deb", "rpm", "osxpkg", "exe"], help="package type"
-)
+parser.add_argument("pkg", choices=["deb", "rpm", "osxpkg", "exe"], help="package type")
 parser.add_argument("--sign-application", default=False, action="store_true")
 parser.add_argument("--application-id")
 parser.add_argument("--sign-installer", default=False, action="store_true")
@@ -61,9 +59,7 @@ else:
 if args.sign_installer:
     if args.pkg != "osxpkg":
         raise NotImplementedError
-    if not all(
-        [args.installer_id, args.apple_id_username, args.apple_id_password]
-    ):
+    if not all([args.installer_id, args.apple_id_username, args.apple_id_password]):
         print("--sign-installer requires --installer-id")
         sys.exit(1)
     check_call(
@@ -76,9 +72,7 @@ if args.notarize:
     if args.pkg != "osxpkg":
         raise NotImplementedError
     if not all([args.apple_id_username, args.apple_id_password]):
-        print(
-            "--notarize requires --apple-id-username and --apple-id-password"
-        )
+        print("--notarize requires --apple-id-username and --apple-id-password")
         sys.exit(1)
     check_call(
         [

@@ -61,20 +61,19 @@ def run(  # noqa: C901
         )
 
     if hydra_sweep:
-        if kwargs.get("name"):
-            raise InvalidArgumentError(
-                "Sweep overrides can't be used alongside `--name`"
-            )
         from dvc.utils.hydra import get_hydra_sweeps
 
         sweeps = get_hydra_sweeps(path_overrides)
+        name_prefix = kwargs.get("name")
     else:
         sweeps = [path_overrides]
 
     if not kwargs.get("checkpoint_resume", None):
         kwargs["reset"] = True
 
-    for sweep_overrides in sweeps:
+    for idx, sweep_overrides in enumerate(sweeps):
+        if hydra_sweep and name_prefix is not None:
+            kwargs["name"] = f"{name_prefix}-{idx+1}"
         queue_entry = repo.experiments.queue_one(
             repo.experiments.celery_queue,
             targets=targets,
