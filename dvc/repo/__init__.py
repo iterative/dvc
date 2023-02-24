@@ -126,6 +126,8 @@ class Repo:
         return root_dir, dvc_dir
 
     def _get_database_dir(self, db_name: str) -> Optional[str]:
+        from dvc.fs import localfs
+
         # NOTE: by default, store SQLite-based remote indexes and state's
         # `links` and `md5s` caches in the repository itself to avoid any
         # possible state corruption in 'shared cache dir' scenario, but allow
@@ -138,15 +140,21 @@ class Repo:
 
         import hashlib
 
-        root_dir_hash = hashlib.sha224(self.root_dir.encode("utf-8")).hexdigest()
+        if self.local_dvc_dir:
+            fs: "FileSystem" = localfs
+            local_root = fs.path.parent(self.local_dvc_dir)
+        else:
+            fs = self.fs
+            local_root = self.root_dir
+        root_dir_hash = hashlib.sha224(local_root.encode("utf-8")).hexdigest()
 
-        db_dir = self.fs.path.join(
+        db_dir = fs.path.join(
             base_db_dir,
             self.DVC_DIR,
-            f"{self.fs.path.name(self.root_dir)}-{root_dir_hash[0:7]}",
+            f"{fs.path.name(local_root)}-{root_dir_hash[0:7]}",
         )
 
-        self.fs.makedirs(db_dir, exist_ok=True)
+        fs.makedirs(db_dir, exist_ok=True)
         return db_dir
 
     def __init__(  # noqa: PLR0915

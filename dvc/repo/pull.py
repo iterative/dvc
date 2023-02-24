@@ -25,6 +25,7 @@ def pull(  # noqa: PLR0913
     run_cache=False,
     glob=False,
     odb: Optional["ObjectDB"] = None,
+    allow_missing=False,
 ):
     if isinstance(targets, str):
         targets = [targets]
@@ -48,6 +49,7 @@ def pull(  # noqa: PLR0913
         with_deps=with_deps,
         force=force,
         recursive=recursive,
+        allow_missing=allow_missing,
     )
 
     stats["fetched"] = processed_files_count

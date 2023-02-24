@@ -709,7 +709,7 @@ class Output:
         except _CheckoutError as exc:
             raise CheckoutError(exc.paths, {})  # noqa: B904
 
-    def commit(self, filter_info=None) -> None:
+    def commit(self, filter_info=None, relink=True) -> None:
         if not self.exists:
             raise self.DoesNotExistError(self)
 
@@ -719,8 +719,11 @@ class Output:
             granular = (
                 self.is_dir_checksum and filter_info and filter_info != self.fs_path
             )
+            # NOTE: trying to use hardlink during transfer only if we will be
+            # relinking later
+            hardlink = relink
             if granular:
-                obj = self._commit_granular_dir(filter_info)
+                obj = self._commit_granular_dir(filter_info, hardlink)
             else:
                 staging, _, obj = build(
                     self.cache,
@@ -734,20 +737,21 @@ class Output:
                     self.cache,
                     {obj.hash_info},
                     shallow=False,
-                    hardlink=True,
+                    hardlink=hardlink,
                 )
-            self._checkout(
-                filter_info or self.fs_path,
-                self.fs,
-                obj,
-                self.cache,
-                relink=True,
-                state=self.repo.state,
-                prompt=prompt.confirm,
-            )
-            self.set_exec()
+            if relink:
+                self._checkout(
+                    filter_info or self.fs_path,
+                    self.fs,
+                    obj,
+                    self.cache,
+                    relink=True,
+                    state=self.repo.state,
+                    prompt=prompt.confirm,
+                )
+                self.set_exec()
 
-    def _commit_granular_dir(self, filter_info) -> Optional["HashFile"]:
+    def _commit_granular_dir(self, filter_info, hardlink) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
         staging, _, save_obj = build(
             self.cache,
@@ -764,7 +768,7 @@ class Output:
             self.cache,
             {save_obj.hash_info} | {oid for _, _, oid in save_obj},
             shallow=True,
-            hardlink=True,
+            hardlink=hardlink,
         )
         return checkout_obj
 

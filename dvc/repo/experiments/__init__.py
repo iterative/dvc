@@ -11,6 +11,7 @@ from dvc.ui import ui
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
 
+from .cache import ExpCache
 from .exceptions import (
     BaselineMismatchError,
     ExperimentExistsError,
@@ -91,6 +92,10 @@ class Experiments:
     @cached_property
     def apply_stash(self) -> ApplyStash:
         return ApplyStash(self.scm, APPLY_STASH)
+
+    @cached_property
+    def cache(self) -> ExpCache:
+        return ExpCache(self.repo)
 
     @property
     def stash_revs(self) -> Dict[str, "ExpStashEntry"]:
