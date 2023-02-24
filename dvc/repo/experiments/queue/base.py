@@ -472,6 +472,7 @@ class BaseStashQueue(ABC):
                 force=True,
                 allow_missing=True,
                 data_only=True,
+                relink=False,
             )
 
     @staticmethod

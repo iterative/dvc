@@ -43,6 +43,7 @@ def commit(
     force=False,
     allow_missing=False,
     data_only=False,
+    relink=True,
 ):
     stages_info = [
         info
@@ -60,6 +61,10 @@ def commit(
             if any(changes):
                 prompt_to_commit(stage, changes, force=force)
                 stage.save(allow_missing=allow_missing)
-        stage.commit(filter_info=stage_info.filter_info, allow_missing=allow_missing)
+        stage.commit(
+            filter_info=stage_info.filter_info,
+            allow_missing=allow_missing,
+            relink=relink,
+        )
         stage.dump(update_pipeline=False)
     return [s.stage for s in stages_info]
