@@ -11,7 +11,6 @@ from typing import (
     Protocol,
     TextIO,
     Union,
-    cast,
 )
 
 from funcy import reraise
@@ -97,8 +96,7 @@ def _modify_data(
     dumper: DumpersFn,
     fs: Optional["FileSystem"] = None,
 ):
-    exists_fn = cast(Callable[["StrPath"], bool], fs.exists if fs else os.path.exists)
-    file_exists = exists_fn(cast(str, path))
+    file_exists = fs.exists(os.fspath(path)) if fs else os.path.exists(path)
     data = _load_data(path, parser=parser, fs=fs) if file_exists else {}
     yield data
     _dump_data(path, data, dumper=dumper, fs=fs)

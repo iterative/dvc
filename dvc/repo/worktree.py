@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Set, Tuple, Union
 
 from funcy import first
 
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from dvc.stage import Stage
     from dvc.types import TargetType
     from dvc_data.hashfile.meta import Meta
-    from dvc_data.hashfile.tree import Tree
     from dvc_data.index import DataIndex, DataIndexView
     from dvc_objects.fs.base import FileSystem
 
@@ -29,7 +28,8 @@ logger = logging.getLogger(__name__)
 def _meta_checksum(fs: "FileSystem", meta: "Meta") -> Any:
     if not meta or meta.isdir:
         return meta
-    return getattr(meta, cast(str, fs.PARAM_CHECKSUM))
+    assert fs.PARAM_CHECKSUM
+    return getattr(meta, fs.PARAM_CHECKSUM)
 
 
 def worktree_view_by_remotes(
@@ -216,13 +216,15 @@ def _merge_push_meta(
     conflicts (i.e. the DVC output's version ID may not match the pushed/latest
     version ID as long when the file content of both versions is the same).
     """
+    from dvc_data.hashfile.tree import Tree
     from dvc_data.index.save import build_tree
 
     _, key = out.index_key
     entry = index[key]
     repo = out.stage.repo
     if out.isdir():
-        old_tree = cast("Tree", out.get_obj())
+        old_tree = out.get_obj()
+        assert isinstance(old_tree, Tree)
         entry.hash_info = old_tree.hash_info
         entry.meta = out.meta
         for subkey, entry in index.iteritems(key):
@@ -419,6 +421,7 @@ def _get_update_diff_index(
     remote_index: Union["DataIndex", "DataIndexView"],
     remote: "Remote",
 ) -> "DataIndex":
+    from dvc_data.hashfile.tree import Tree
     from dvc_data.index import DataIndex
     from dvc_data.index.diff import ADD, MODIFY, UNCHANGED, diff
 
@@ -438,7 +441,8 @@ def _get_update_diff_index(
             if out.isdir():
                 if not entry.meta.isdir:
                     fs_path = repo.fs.path.join(repo.root_dir, *entry.key)
-                    tree = cast("Tree", out.obj)
+                    tree = out.obj
+                    assert isinstance(tree, Tree)
                     _, entry.hash_info = tree.get(  # type: ignore[misc]
                         repo.fs.path.relparts(fs_path, out.fs_path)
                     )

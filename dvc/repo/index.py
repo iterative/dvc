@@ -337,7 +337,7 @@ class Index:
 
     @cached_property
     def data_tree(self):
-        from dvc_data.hashfile import Tree
+        from dvc_data.hashfile.tree import Tree
 
         tree = Tree()
         for out in self.outs:
