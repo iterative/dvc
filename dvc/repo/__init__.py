@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple, Union
 
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
@@ -14,7 +14,7 @@ from dvc.utils.fs import path_isin
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
-    from dvc.fs import FileSystem, GitFileSystem
+    from dvc.fs import FileSystem
     from dvc.fs.data import DataFileSystem
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
@@ -223,7 +223,8 @@ class Repo:
             self.cache = CacheManager(self)
         else:
             if isinstance(self.fs, LocalFileSystem):
-                self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
+                assert self.tmp_dir
+                self.fs.makedirs(self.tmp_dir, exist_ok=True)
 
                 self.lock = make_lock(
                     self.fs.path.join(self.tmp_dir, "lock"),
@@ -348,7 +349,7 @@ class Repo:
         return DvcIgnoreFilter(self.fs, self.root_dir)
 
     def get_rev(self):
-        from dvc.fs import LocalFileSystem
+        from dvc.fs import GitFileSystem, LocalFileSystem
 
         assert self.scm
         if isinstance(self.fs, LocalFileSystem):
@@ -356,7 +357,8 @@ class Repo:
 
             with map_scm_exception():
                 return self.scm.get_rev()
-        return cast("GitFileSystem", self.fs).rev
+        assert isinstance(self.fs, GitFileSystem)
+        return self.fs.rev
 
     @cached_property
     def experiments(self) -> "Experiments":

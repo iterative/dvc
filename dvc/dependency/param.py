@@ -2,7 +2,7 @@ import logging
 import os
 import typing
 from collections import defaultdict
-from typing import Dict, cast
+from typing import Dict
 
 import dpath.util
 from voluptuous import Any
@@ -111,7 +111,8 @@ class ParamsDependency(Dependency):
         from funcy import ldistinct
 
         status: Dict[str, Any] = defaultdict(dict)
-        info = cast(dict, self.hash_info.value) if self.hash_info else {}
+        assert isinstance(self.hash_info.value, dict)
+        info = self.hash_info.value if self.hash_info else {}
         actual = self.read_params()
 
         # NOTE: we want to preserve the order of params as specified in the

@@ -1,7 +1,7 @@
 import logging
 import os
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, List, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, List, Set, Tuple, Union
 
 if TYPE_CHECKING:
     from dvc.dependency.base import Dependency
@@ -9,7 +9,8 @@ if TYPE_CHECKING:
     from dvc.repo.index import Index, IndexView
     from dvc.stage import Stage
     from dvc.types import TargetType
-    from dvc_data.hashfile import HashInfo
+    from dvc_data.hashfile.hash_info import HashInfo
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,8 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
     Returns:
         Total number of files which were unpartialed.
     """
+    from dvc_data.hashfile.hash_info import HashInfo
+
     updated = 0
     for out in index.outs:
         # we need to use view[key] here and since the out fields have not been
@@ -75,7 +78,8 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
                 out.hash_info = dep.get_obj().hash_info
                 out.meta = dep.get_meta()
             else:
-                out.hash_info = cast("HashInfo", entry.hash_info)
+                assert isinstance(entry.hash_info, HashInfo)
+                out.hash_info = entry.hash_info
                 out.meta = entry.meta
             out.stage.md5 = out.stage.compute_md5()
             out.stage.dump()
