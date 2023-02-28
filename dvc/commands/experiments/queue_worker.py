@@ -9,7 +9,9 @@ class CmdQueueWorker(CmdBase):
     """Run the exp queue worker."""
 
     def run(self):
-        self.repo.experiments.celery_queue.worker.start(self.args.name)
+        self.repo.experiments.celery_queue.worker.start(
+            self.args.name, fsapp_clean=self.args.clean
+        )
         return 0
 
 
@@ -22,4 +24,9 @@ def add_parser(experiments_subparsers, parent_parser):
         add_help=False,
     )
     parser.add_argument("name", help="Celery worker name.")
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Automatically cleanup celery broker on shutdown.",
+    )
     parser.set_defaults(func=CmdQueueWorker)
