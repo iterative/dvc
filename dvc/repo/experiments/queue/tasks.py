@@ -28,17 +28,17 @@ def setup_exp(entry_dict: Dict[str, Any]) -> "BaseExecutor":
     from dvc.repo import Repo
 
     entry = QueueEntry.from_dict(entry_dict)
-    repo = Repo(entry.dvc_root)
-    # TODO: split executor.init_cache into separate subtask - we can release
-    # exp.scm_lock before DVC push
-    executor = BaseStashQueue.init_executor(
-        repo.experiments,
-        entry,
-        TempDirExecutor,
-        location="dvc-task",
-    )
-    infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
-    executor.info.dump_json(infofile)
+    with Repo(entry.dvc_root) as repo:
+        # TODO: split executor.init_cache into separate subtask - we can release
+        # exp.scm_lock before DVC push
+        executor = BaseStashQueue.init_executor(
+            repo.experiments,
+            entry,
+            TempDirExecutor,
+            location="dvc-task",
+        )
+        infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
+        executor.info.dump_json(infofile)
     return executor
 
 
@@ -59,23 +59,23 @@ def collect_exp(
     from dvc.repo import Repo
 
     entry = QueueEntry.from_dict(entry_dict)
-    repo = Repo(entry.dvc_root)
-    celery_queue = repo.experiments.celery_queue
-    infofile = celery_queue.get_infofile_path(entry.stash_rev)
-    executor_info = ExecutorInfo.load_json(infofile)
-    logger.debug("Collecting experiment info '%s'", str(executor_info))
-    executor = TempDirExecutor.from_info(executor_info)
-    exec_result = executor_info.result
-    try:
-        if exec_result is not None:
-            BaseStashQueue.collect_executor(repo.experiments, executor, exec_result)
-        else:
-            logger.debug("Experiment failed (Exec result was None)")
-            celery_queue.stash_failed(entry)
-    except Exception:  # pylint: disable=broad-except
-        # Log exceptions but do not re-raise so that task chain execution
-        # continues
-        logger.exception("Failed to collect experiment")
+    with Repo(entry.dvc_root) as repo:
+        celery_queue = repo.experiments.celery_queue
+        infofile = celery_queue.get_infofile_path(entry.stash_rev)
+        executor_info = ExecutorInfo.load_json(infofile)
+        logger.debug("Collecting experiment info '%s'", str(executor_info))
+        executor = TempDirExecutor.from_info(executor_info)
+        exec_result = executor_info.result
+        try:
+            if exec_result is not None:
+                BaseStashQueue.collect_executor(repo.experiments, executor, exec_result)
+            else:
+                logger.debug("Experiment failed (Exec result was None)")
+                celery_queue.stash_failed(entry)
+        except Exception:  # pylint: disable=broad-except
+            # Log exceptions but do not re-raise so that task chain execution
+            # continues
+            logger.exception("Failed to collect experiment")
     return executor.root_dir
 
 
@@ -102,9 +102,9 @@ def run_exp(entry_dict: Dict[str, Any]) -> None:
     from dvc.repo import Repo
 
     entry = QueueEntry.from_dict(entry_dict)
-    repo = Repo(entry.dvc_root)
-    queue = repo.experiments.celery_queue
-    infofile = queue.get_infofile_path(entry.stash_rev)
+    with Repo(entry.dvc_root) as repo:
+        queue = repo.experiments.celery_queue
+        infofile = queue.get_infofile_path(entry.stash_rev)
     executor = setup_exp.s(entry_dict)()
     try:
         cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
