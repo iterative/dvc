@@ -219,7 +219,16 @@ def docker_compose_project_name():
 
 
 @pytest.fixture(scope="session")
-def docker_services(request, tmp_path_factory):
+def docker_services(
+    tmp_path_factory,
+    docker_compose_command,
+    docker_compose_file,
+    docker_compose_project_name,
+    docker_setup,
+):
+    from filelock import FileLock
+    from pytest_docker.plugin import DockerComposeExecutor, Services
+
     if os.environ.get("CI") and os.name == "nt":
         pytest.skip("disabled for Windows on CI")
 
@@ -236,11 +245,15 @@ def docker_services(request, tmp_path_factory):
         out = (err.output or b"").decode("utf-8")
         pytest.skip(f"docker-compose is not installed: {out}")
 
-    from filelock import FileLock
+    executor = DockerComposeExecutor(
+        docker_compose_command, docker_compose_file, docker_compose_project_name
+    )
 
     # making sure we don't accidentally launch docker-compose in parallel,
     # as it might result in network conflicts. Inspired by:
-    # https://pytest-xdist.readthedocs.io/en/stable/how-to.html#making-session-scoped-fixtures-execute-only-once
-    root = tmp_path_factory.getbasetemp().parent
-    with FileLock(os.fspath(root / "docker-compose.lock")):
-        yield request.getfixturevalue("docker_services")
+    # https://github.com/pytest-dev/pytest-xdist#making-session-scoped-fixtures-execute-only-once
+    lockfile = tmp_path_factory.getbasetemp().parent / "docker-compose.lock"
+    with FileLock(os.fspath(lockfile)):
+        executor.execute(docker_setup)
+        # note: we are not tearing down the containers here
+        return Services(executor)
