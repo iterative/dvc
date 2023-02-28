@@ -90,7 +90,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 "dvc_task.proc.tasks",
             ],
         )
-        app.conf.update({"task_acks_late": True})
+        app.conf.update({"task_acks_late": True, "result_expires": None})
         return app
 
     @cached_property
@@ -138,6 +138,9 @@ class LocalCeleryQueue(BaseStashQueue):
         wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
         node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
         cmd = ["exp", "queue-worker", node_name]
+        if num == 1:
+            # automatically run celery cleanup when primary worker shuts down
+            cmd.append("--clean")
         name = f"dvc-exp-worker-{num}"
 
         logger.debug("start a new worker: %s, node: %s", name, node_name)
