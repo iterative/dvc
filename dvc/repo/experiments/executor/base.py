@@ -547,55 +547,54 @@ class BaseExecutor(ABC):
         from dvc.repo import Repo
         from dvc.stage.monitor import CheckpointKilledError
 
-        dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
-        info.status = TaskStatus.RUNNING
-        if infofile is not None:
-            info.dump_json(infofile)
-        if cls.QUIET:
-            dvc.scm_context.quiet = cls.QUIET
-        old_cwd = os.getcwd()
-        if info.wdir:
-            os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
-        else:
-            os.chdir(dvc.root_dir)
-
-        try:
-            post_live_metrics(
-                "start",
-                info.baseline_rev,
-                info.name,
-                "dvc",
-                params=to_studio_params(dvc.params.show()),
-            )
-            logger.debug("Running repro in '%s'", os.getcwd())
-            yield dvc
-            info.status = TaskStatus.SUCCESS
-        except CheckpointKilledError:
-            info.status = TaskStatus.FAILED
-            raise
-        except DvcException:
-            if log_errors:
-                logger.exception("")
-            info.status = TaskStatus.FAILED
-            raise
-        except Exception:
-            if log_errors:
-                logger.exception("unexpected error")
-            info.status = TaskStatus.FAILED
-            raise
-        finally:
-            post_live_metrics(
-                "done",
-                info.baseline_rev,
-                info.name,
-                "dvc",
-                experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
-            )
-
+        with Repo(os.path.join(info.root_dir, info.dvc_dir)) as dvc:
+            info.status = TaskStatus.RUNNING
             if infofile is not None:
                 info.dump_json(infofile)
-            dvc.close()
-            os.chdir(old_cwd)
+            if cls.QUIET:
+                dvc.scm_context.quiet = cls.QUIET
+            old_cwd = os.getcwd()
+            if info.wdir:
+                os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
+            else:
+                os.chdir(dvc.root_dir)
+
+            try:
+                post_live_metrics(
+                    "start",
+                    info.baseline_rev,
+                    info.name,
+                    "dvc",
+                    params=to_studio_params(dvc.params.show()),
+                )
+                logger.debug("Running repro in '%s'", os.getcwd())
+                yield dvc
+                info.status = TaskStatus.SUCCESS
+            except CheckpointKilledError:
+                info.status = TaskStatus.FAILED
+                raise
+            except DvcException:
+                if log_errors:
+                    logger.exception("")
+                info.status = TaskStatus.FAILED
+                raise
+            except Exception:
+                if log_errors:
+                    logger.exception("unexpected error")
+                info.status = TaskStatus.FAILED
+                raise
+            finally:
+                post_live_metrics(
+                    "done",
+                    info.baseline_rev,
+                    info.name,
+                    "dvc",
+                    experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
+                )
+
+                if infofile is not None:
+                    info.dump_json(infofile)
+                os.chdir(old_cwd)
 
     @classmethod
     def _repro_args(cls, dvc):
