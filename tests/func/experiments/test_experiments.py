@@ -633,3 +633,9 @@ def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing, dry=True)
 
     assert len(dvc.experiments.ls()["master"]) == 0
+
+
+def test_clean(tmp_dir, scm, dvc, mocker):
+    clean = mocker.spy(dvc.experiments.celery_queue.celery, "clean")
+    dvc.experiments.clean()
+    clean.assert_called_once_with()

@@ -8,6 +8,7 @@ import pytest
 from dvc.cli import DvcParserError, parse_args
 from dvc.commands.experiments.apply import CmdExperimentsApply
 from dvc.commands.experiments.branch import CmdExperimentsBranch
+from dvc.commands.experiments.clean import CmdExperimentsClean
 from dvc.commands.experiments.diff import CmdExperimentsDiff
 from dvc.commands.experiments.gc import CmdExperimentsGC
 from dvc.commands.experiments.init import CmdExperimentsInit
@@ -926,3 +927,15 @@ def test_experiments_save(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo, name="exp-name", force=True, include_untracked=[]
     )
+
+
+def test_experiments_clean(dvc, scm, mocker):
+    cli_args = parse_args(["experiments", "clean"])
+    assert cli_args.func == CmdExperimentsClean
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.clean.clean", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(cmd.repo)
