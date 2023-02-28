@@ -71,7 +71,7 @@ all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
 azure = ["dvc-azure==2.21.1"]
 dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,terraform,tests,webdav,webhdfs]"]
 gdrive = ["dvc-gdrive==2.19.1"]
-gs = ["dvc-gs==2.21.1"]
+gs = ["dvc-gs==2.22.0"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
     "mypy==1.0.1",
