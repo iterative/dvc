@@ -74,7 +74,6 @@ class Plots:
         recursive: bool = False,
         onerror: Optional[Callable] = None,
         props: Optional[Dict] = None,
-        config_files: Optional[Set[str]] = None,
     ) -> Iterator[Dict]:
         """Collects plots definitions and data sources.
 
@@ -131,7 +130,6 @@ class Plots:
                 targets=targets,
                 revision=rev,
                 onerror=onerror,
-                config_files=config_files,
                 props=props,
             )
             if definitions:
@@ -186,7 +184,6 @@ class Plots:
         props=None,
         recursive=False,
         onerror=None,
-        config_files: Optional[Set[str]] = None,
     ):
         if onerror is None:
             onerror = onerror_collect
@@ -198,7 +195,6 @@ class Plots:
             recursive,
             onerror=onerror,
             props=props,
-            config_files=config_files,
         ):
             _resolve_data_sources(data)
             result.update(data)
@@ -482,7 +478,6 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
 def _collect_definitions(
     repo: "Repo",
     targets=None,
-    config_files: Optional[Set[str]] = None,
     props: Optional[Dict] = None,
     onerror: Optional[Callable] = None,
     **kwargs,
@@ -494,34 +489,15 @@ def _collect_definitions(
 
     fs = DVCFileSystem(repo=repo)
 
-    if not config_files:
-        dpath.merge(
-            result,
-            _collect_pipeline_files(repo, targets, props, onerror=onerror),
-        )
+    dpath.merge(
+        result,
+        _collect_pipeline_files(repo, targets, props, onerror=onerror),
+    )
 
-    if targets or (not targets and not config_files):
-        dpath.merge(
-            result,
-            _collect_output_plots(repo, targets, props, onerror=onerror),
-        )
-
-    if config_files:
-        for path in config_files:
-            definitions = parse(fs, path).get("data", {})
-            if definitions:
-                resolved = _resolve_definitions(
-                    repo.dvcfs,
-                    targets,
-                    props,
-                    path,
-                    definitions,
-                    onerror=onerror,
-                )
-                dpath.merge(
-                    result,
-                    {path: resolved},
-                )
+    dpath.merge(
+        result,
+        _collect_output_plots(repo, targets, props, onerror=onerror),
+    )
 
     for target in targets:
         if not result or fs.exists(target):

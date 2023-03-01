@@ -9,7 +9,7 @@ from dvc.repo import Repo
 from dvc.repo.plots import PlotMetricTypeError
 from dvc.utils import onerror_collect
 from dvc.utils.fs import remove
-from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError
+from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError, modify_yaml
 from tests.utils.plots import get_plot
 
 
@@ -351,14 +351,11 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
         ),
     ],
 )
-@pytest.mark.parametrize("separate_config", [True, False])
-def test_load_from_config(
+def test_top_level_plots(
     tmp_dir,
     dvc,
     plot_config,
     expected_datafiles,
-    separate_config,
-    run_copy_metrics,
 ):
     data = {
         "data1.json": [
@@ -377,23 +374,11 @@ def test_load_from_config(
             os.makedirs(dirname)
         (tmp_dir / filename).dump_json(content, sort_keys=True)
 
-    config_files = None
-    if separate_config:
-        (tmp_dir / "plot_config.json").dump_json(plot_config, sort_keys=True)
-        config_file = "plot_config.json"
-        config_files = {config_file}
-    else:
-        # TODO we need that to create any stage, as dvc.yaml plots
-        #     collections bases on existing stages - fix collection
-        run_copy_metrics("data1.json", "copy.json", name="train")
+    config_file = "dvc.yaml"
+    with modify_yaml(config_file) as dvcfile_content:
+        dvcfile_content["plots"] = plot_config
 
-        from dvc.utils.serialize import modify_yaml
-
-        config_file = "dvc.yaml"
-        with modify_yaml(config_file) as dvcfile_content:
-            dvcfile_content["plots"] = plot_config
-
-    result = dvc.plots.show(config_files=config_files)
+    result = dvc.plots.show()
 
     assert plot_config == get_plot(
         result, "workspace", typ="definitions", file=config_file
