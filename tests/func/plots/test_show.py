@@ -1,3 +1,4 @@
+import json
 import os
 
 import pytest
@@ -389,3 +390,33 @@ def test_top_level_plots(
             assert content == get_plot(result, "workspace", file=filename)
         else:
             assert filename not in get_plot(result, "workspace")
+
+
+def test_show_plots_defined_with_native_os_path(tmp_dir, dvc, scm, capsys):
+    """Regression test for #8689"""
+    top_level_plot = os.path.join("subdir", "top_level_plot.csv")
+    stage_plot = os.path.join("subdir", "stage_plot.csv")
+    (tmp_dir / "subdir").mkdir()
+    (tmp_dir / top_level_plot).write_text("foo,bar\n1,2")
+    (tmp_dir / stage_plot).write_text("foo,bar\n1,2")
+    (tmp_dir / "dvc.yaml").dump({"plots": [top_level_plot]})
+
+    dvc.stage.add(name="foo", plots=[stage_plot], cmd="echo foo")
+
+    plots = dvc.plots.show()
+
+    # sources are in posixpath format
+    sources = plots["workspace"]["sources"]["data"]
+    assert sources["subdir/top_level_plot.csv"]["data"] == [{"foo": "1", "bar": "2"}]
+    assert sources["subdir/stage_plot.csv"]["data"] == [{"foo": "1", "bar": "2"}]
+    # definitions are in native os format
+    definitions = plots["workspace"]["definitions"]["data"]
+    assert top_level_plot in definitions["dvc.yaml"]["data"]
+    assert stage_plot in definitions[""]["data"]
+
+    capsys.readouterr()
+    assert main(["plots", "show", "--json"]) == 0
+    out, _ = capsys.readouterr()
+    json_out = json.loads(out)
+    assert json_out[f"dvc.yaml::{top_level_plot}"]
+    assert json_out[stage_plot]
