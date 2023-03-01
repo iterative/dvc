@@ -629,5 +629,4 @@ class Repo:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._reset()
-        self.scm.close()
+        self.close()
