@@ -2,7 +2,7 @@ import csv
 import io
 import logging
 import os
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from copy import deepcopy
 from functools import partial
 from multiprocessing import cpu_count
@@ -581,21 +581,14 @@ def _load_sv(path, fs, delimiter=",", header=True):
     with fs.open(path, "r") as fd:
         content = fd.read()
 
-    first_row = first(csv.reader(io.StringIO(content)))
-
     if header:
         reader = csv.DictReader(io.StringIO(content), delimiter=delimiter)
     else:
+        first_row = first(csv.reader(io.StringIO(content)))
         reader = csv.DictReader(
             io.StringIO(content),
             delimiter=delimiter,
             fieldnames=[str(i) for i in range(len(first_row))],
         )
 
-    fieldnames = reader.fieldnames or []
-    data = list(reader)
-
-    return [
-        OrderedDict([(field, data_point[field]) for field in fieldnames])
-        for data_point in data
-    ]
+    return list(reader)
