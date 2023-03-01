@@ -282,3 +282,85 @@ class TestGetUrl:
     def test_get_url_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
             Repo.get_url(str(cloud / "nonexistent"), config=cloud.config)
+
+
+class TestToRemote:
+    def test_add_to_remote(self, tmp_dir, dvc, remote, workspace):
+        workspace.gen("foo", "foo")
+
+        url = "remote://workspace/foo"
+        [stage] = dvc.add(url, to_remote=True)
+
+        assert not (tmp_dir / "foo").exists()
+        assert (tmp_dir / "foo.dvc").exists()
+
+        assert len(stage.deps) == 0
+        assert len(stage.outs) == 1
+
+        hash_info = stage.outs[0].hash_info
+        meta = stage.outs[0].meta
+        assert hash_info.name == "md5"
+        assert hash_info.value == "acbd18db4cc2f85cedef654fccc4a4d8"
+        assert (remote / "ac" / "bd18db4cc2f85cedef654fccc4a4d8").read_text() == "foo"
+        assert meta.size == len("foo")
+
+    def test_import_url_to_remote_file(self, tmp_dir, dvc, workspace, remote):
+        workspace.gen("foo", "foo")
+
+        url = "remote://workspace/foo"
+        stage = dvc.imp_url(url, to_remote=True)
+
+        assert stage.deps[0].hash_info.value is not None
+        assert not (tmp_dir / "foo").exists()
+        assert (tmp_dir / "foo.dvc").exists()
+
+        assert len(stage.deps) == 1
+        assert stage.deps[0].def_path == url
+        assert len(stage.outs) == 1
+
+        hash_info = stage.outs[0].hash_info
+        assert hash_info.name == "md5"
+        assert hash_info.value == "acbd18db4cc2f85cedef654fccc4a4d8"
+        assert (remote / "ac" / "bd18db4cc2f85cedef654fccc4a4d8").read_text() == "foo"
+        assert stage.outs[0].meta.size == len("foo")
+
+    def test_import_url_to_remote_dir(self, tmp_dir, dvc, workspace, remote):
+        import json
+
+        workspace.gen(
+            {
+                "data": {
+                    "foo": "foo",
+                    "bar": "bar",
+                    "sub_dir": {"baz": "sub_dir/baz"},
+                }
+            }
+        )
+
+        url = "remote://workspace/data"
+        stage = dvc.imp_url(url, to_remote=True)
+
+        assert not (tmp_dir / "data").exists()
+        assert (tmp_dir / "data.dvc").exists()
+
+        assert len(stage.deps) == 1
+        assert stage.deps[0].def_path == url
+        assert len(stage.outs) == 1
+
+        hash_info = stage.outs[0].hash_info
+        assert hash_info.name == "md5"
+        assert hash_info.value == "55d05978954d1b2cd7b06aedda9b9e43.dir"
+        file_parts = json.loads(
+            (remote / "55" / "d05978954d1b2cd7b06aedda9b9e43.dir").read_text()
+        )
+
+        assert len(file_parts) == 3
+        assert {file_part["relpath"] for file_part in file_parts} == {
+            "foo",
+            "bar",
+            "sub_dir/baz",
+        }
+
+        for file_part in file_parts:
+            md5 = file_part["md5"]
+            assert (remote / md5[:2] / md5[2:]).read_text() == file_part["relpath"]

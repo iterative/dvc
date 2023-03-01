@@ -35,7 +35,7 @@ class Remote:
         if self.worktree:
             path = self.fs.path.join(path, ".dvc", "cache")
 
-        return get_odb(self.fs, path, **self.config)
+        return get_odb(self.fs, path, hash_name="md5", **self.config)
 
 
 class DataCloud:

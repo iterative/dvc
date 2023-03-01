@@ -898,26 +898,6 @@ def test_add_long_fname(tmp_dir, dvc):
     assert (tmp_dir / "data").read_text() == {name: "foo"}
 
 
-def test_add_to_remote(tmp_dir, dvc, remote, workspace):
-    workspace.gen("foo", "foo")
-
-    url = "remote://workspace/foo"
-    [stage] = dvc.add(url, to_remote=True)
-
-    assert not (tmp_dir / "foo").exists()
-    assert (tmp_dir / "foo.dvc").exists()
-
-    assert len(stage.deps) == 0
-    assert len(stage.outs) == 1
-
-    hash_info = stage.outs[0].hash_info
-    meta = stage.outs[0].meta
-    with open(remote.oid_to_path(hash_info.value), encoding="utf-8") as stream:
-        assert stream.read() == "foo"
-
-    assert meta.size == len("foo")
-
-
 def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, remote):
     tmp_abs_dir = make_tmp_dir("abs")
     tmp_foo = tmp_abs_dir / "foo"
