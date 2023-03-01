@@ -169,7 +169,7 @@ class SSHExecutor(BaseExecutor):
             head = EXEC_BRANCH if branch else EXEC_HEAD
             self._ssh_cmd(fs, f"git checkout {head}")
             merge_rev = scm.get_ref(EXEC_MERGE)
-            self._ssh_cmd(fs, f"git merge --squash --no-commit {merge_rev}")
+            self._ssh_cmd(fs, f"git stash apply {merge_rev}")
 
             if self._setup_script:
                 self._init_setup_script(fs)
