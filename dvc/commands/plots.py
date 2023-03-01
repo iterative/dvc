@@ -76,10 +76,6 @@ class CmdPlots(CmdBase):
         props = {p: getattr(self.args, p) for p in PLOT_PROPS}
         return {k: v for k, v in props.items() if v is not None}
 
-    def _config_files(self):
-        if self.args.from_config:
-            return {self.args.from_config}
-
     def _html_template_path(self):
         html_template_path = self.args.html_template
         if not html_template_path:
@@ -114,7 +110,6 @@ class CmdPlots(CmdBase):
             plots_data = self._func(
                 targets=self.args.targets,
                 props=self._props(),
-                config_files=self._config_files(),
             )
 
             if not plots_data:
@@ -411,10 +406,4 @@ def _add_ui_arguments(parser):
         default=None,
         help="Custom HTML template for VEGA visualization.",
         metavar="<path>",
-    )
-    parser.add_argument(
-        "--from-config",
-        default=None,
-        metavar="<path>",
-        help=argparse.SUPPRESS,
     )
