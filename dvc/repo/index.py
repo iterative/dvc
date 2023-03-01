@@ -19,6 +19,7 @@ from typing import (
 from funcy.debug import format_time
 
 from dvc.fs import LocalFileSystem
+from dvc.fs.callbacks import DEFAULT_CALLBACK
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from pygtrie import Trie
 
     from dvc.dependency import Dependency, ParamsDependency
+    from dvc.fs.callbacks import Callback
     from dvc.output import Output
     from dvc.repo import Repo
     from dvc.repo.stage import StageInfo
@@ -113,13 +115,17 @@ def collect_files(
 
 
 def _load_data_from_outs(index, prefix, outs):
-    from dvc_data.index import DataIndexEntry
+    from dvc_data.index import DataIndexEntry, Meta
 
+    parents = set()
     for out in outs:
         if not out.use_cache:
             continue
 
         ws, key = out.index_key
+
+        for key_len in range(1, len(key)):
+            parents.add((ws, key[:key_len]))
 
         entry = DataIndexEntry(
             key=key,
@@ -136,6 +142,11 @@ def _load_data_from_outs(index, prefix, outs):
         # index.add, so we have to set the entry manually here to make
         # index.view() work correctly.
         index[(*prefix, ws, *key)] = entry
+
+    for ws, key in parents:
+        index[(*prefix, ws, *key)] = DataIndexEntry(
+            key=key, meta=Meta(isdir=True), loaded=True
+        )
 
 
 def _load_storage_from_out(storage_map, key, out):
@@ -163,7 +174,7 @@ def _load_storage_from_out(storage_map, key, out):
 
     if out.stage.is_import:
         dep = out.stage.deps[0]
-        storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
+        storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path))
 
 
 class Index:
@@ -534,10 +545,12 @@ class IndexView:
             lambda: _DataPrefixes(set(), set())
         )
         for out, filter_info in self._filtered_outs:
+            if not out.use_cache:
+                continue
             workspace, key = out.index_key
             if filter_info and out.fs.path.isin(filter_info, out.fs_path):
                 key = key + out.fs.path.relparts(filter_info, out.fs_path)
-            entry = self._index.data[workspace][key]
+            entry = self._index.data[workspace].get(key)
             if entry and entry.meta and entry.meta.isdir:
                 prefixes[workspace].recursive.add(key)
             prefixes[workspace].explicit.update(key[:i] for i in range(len(key), 0, -1))
@@ -550,6 +563,9 @@ class IndexView:
         ret: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
         for out, filter_info in self._filtered_outs:
+            if not out.use_cache:
+                continue
+
             workspace, key = out.index_key
             if filter_info and out.fs.path.isin(filter_info, out.fs_path):
                 key = key + out.fs.path.relparts(filter_info, out.fs_path)
@@ -579,14 +595,15 @@ class IndexView:
         return data
 
 
-def build_data_index(
+def build_data_index(  # noqa: C901
     index: Union["Index", "IndexView"],
     path: str,
     fs: "FileSystem",
     workspace: str = "repo",
     compute_hash: Optional[bool] = False,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> "DataIndex":
-    from dvc_data.index import DataIndex, DataIndexEntry
+    from dvc_data.index import DataIndex, DataIndexEntry, Meta
     from dvc_data.index.build import build_entries, build_entry
     from dvc_data.index.save import build_tree
 
@@ -595,8 +612,15 @@ def build_data_index(
         ignore = index.repo.dvcignore
 
     data = DataIndex()
+    parents = set()
     for key in index.data_keys.get(workspace, set()):
         out_path = fs.path.join(path, *key)
+
+        for key_len in range(1, len(key)):
+            parents.add(key[:key_len])
+
+        if not fs.exists(out_path):
+            continue
 
         try:
             out_entry = build_entry(
@@ -606,10 +630,11 @@ def build_data_index(
                 state=index.repo.state,
             )
         except FileNotFoundError:
-            out_entry = DataIndexEntry()
+            continue
 
         out_entry.key = key
         data.add(out_entry)
+        callback.relative_update(1)
 
         if not out_entry.meta or not out_entry.meta.isdir:
             continue
@@ -628,6 +653,7 @@ def build_data_index(
 
             entry.key = key + entry.key
             data.add(entry)
+            callback.relative_update(1)
 
         if compute_hash:
             tree_meta, tree = build_tree(data, key)
@@ -635,5 +661,14 @@ def build_data_index(
             out_entry.hash_info = tree.hash_info
             out_entry.loaded = True
             data.add(out_entry)
+            callback.relative_update(1)
+
+    for key in parents:
+        parent_path = fs.path.join(path, *key)
+        if not fs.exists(parent_path):
+            continue
+        direntry = DataIndexEntry(key=key, meta=Meta(isdir=True), loaded=True)
+        data.add(direntry)
+        callback.relative_update(1)
 
     return data

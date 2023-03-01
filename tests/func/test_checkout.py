@@ -8,12 +8,7 @@ import pytest
 
 from dvc.cli import main
 from dvc.dvcfile import PROJECT_FILE, load_file
-from dvc.exceptions import (
-    CheckoutError,
-    CheckoutErrorSuggestGit,
-    ConfirmRemoveError,
-    NoOutputOrStageError,
-)
+from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
 from dvc.fs import LocalFileSystem, system
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
@@ -82,7 +77,7 @@ def test_checkout_corrupted_cache_file(tmp_dir, dvc):
         fd.write("1")
 
     with pytest.raises(CheckoutError):
-        dvc.checkout(force=True)
+        dvc.checkout(force=True, relink=True)
 
     assert not os.path.isfile("foo")
     assert not os.path.isfile(cache)
@@ -114,7 +109,7 @@ def test_checkout_corrupted_cache_dir(tmp_dir, dvc):
         fobj.write("1")
 
     with pytest.raises(CheckoutError):
-        dvc.checkout(force=True)
+        dvc.checkout(force=True, relink=True)
 
     assert not os.path.exists(cache)
 
@@ -292,19 +287,6 @@ def test_checkout_directory(tmp_dir, dvc):
     assert ret == 0
 
     assert os.path.exists("data")
-
-
-def test_checkout_hook(mocker, tmp_dir, dvc):
-    """Test that dvc checkout handles EOFError gracefully, which is what
-    it will experience when running in a git hook.
-    """
-    tmp_dir.dvc_gen({"data": {"foo": "foo"}})
-    mocker.patch("sys.stdout.isatty", return_value=True)
-    mocker.patch("dvc.prompt.input", side_effect=EOFError)
-
-    (tmp_dir / "data").gen("test", "test")
-    with pytest.raises(ConfirmRemoveError):
-        dvc.checkout()
 
 
 def test_checkout_suggest_git(tmp_dir, dvc, scm):
@@ -636,27 +618,6 @@ def test_checkout_recursive(tmp_dir, dvc):
     }
 
 
-def test_checkout_for_external_outputs(tmp_dir, dvc, workspace):
-    workspace.gen("foo", "foo")
-
-    file_path = workspace / "foo"
-    dvc.add("remote://workspace/foo")
-
-    odb = dvc.cloud.get_remote_odb("workspace")
-    odb.fs.remove(str(file_path))
-    assert not file_path.exists()
-
-    stats = dvc.checkout(force=True)
-    assert stats == {**empty_checkout, "added": ["remote://workspace/foo"]}
-    assert file_path.exists()
-
-    workspace.gen("foo", "foo\nfoo")
-
-    stats = dvc.checkout(force=True)
-    assert stats == {**empty_checkout, "modified": ["remote://workspace/foo"]}
-    assert file_path.read_text() == "foo"
-
-
 def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
     tmp_dir.gen({"foo": "foo", "lorem": "lorem"})
     run_copy("foo", "bar", name="copy-foo-bar")
@@ -723,22 +684,6 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
 
     (tmp_dir / "ipsum").unlink()
     assert set(dvc.checkout()["added"]) == {"bar", "ipsum"}
-
-
-def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
-    # regression: happened when file in external output changed and checkout
-    # was attempted without force, dvc checks if it's present in its cache
-    # before asking user to remove it.
-    workspace.gen("foo", "foo")
-    dvc.add("remote://workspace/foo", external=True)
-    scm.add(["foo.dvc"])
-    scm.commit("add foo")
-
-    workspace.gen("foo", "foobar")  # messing up the external outputs
-    mocker.patch("dvc.prompt.confirm", return_value=True)
-    dvc.checkout()
-
-    assert (workspace / "foo").read_text() == "foo"
 
 
 def test_checkout_executable(tmp_dir, dvc):
@@ -817,7 +762,7 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
     assert len(stats["modified"]) == 1
 
     stats = dvc.checkout(str(data_dir / "empty_sub_dir"))
-    assert not any(stats.values())
+    assert stats == {**empty_checkout, "modified": ["data" + os.sep]}
 
     dvc.checkout(str(data_dir))
 

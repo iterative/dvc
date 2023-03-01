@@ -717,11 +717,6 @@ class Stage(params.StageParams):
             for out in self.outs
         )
 
-    def get_all_files_number(self, filter_info=None) -> int:
-        return sum(
-            out.get_files_number(filter_info) for out in self.filter_outs(filter_info)
-        )
-
     def get_used_objs(
         self, *args, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:

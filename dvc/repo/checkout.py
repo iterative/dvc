@@ -1,15 +1,11 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, List, Set
+from typing import Dict, List
 
 from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
 from dvc.utils import relpath
 
 from . import locked
-
-if TYPE_CHECKING:
-    from . import Repo
-    from .stage import StageInfo
 
 logger = logging.getLogger(__name__)
 
@@ -30,37 +26,41 @@ def _remove_unused_links(repo):
     return ret
 
 
-def get_all_files_numbers(pairs):
-    return sum(stage.get_all_files_number(filter_info) for stage, filter_info in pairs)
+def _build_out_changes(index, changes):
+    from dvc_data.index.checkout import MODIFY
 
+    out_keys = []
+    for out in index.outs:
+        if not out.use_cache:
+            continue
 
-def _collect_pairs(
-    self: "Repo", targets, with_deps: bool, recursive: bool
-) -> Set["StageInfo"]:
-    from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
+        ws, key = out.index_key
+        if ws != "repo":
+            continue
 
-    pairs: Set["StageInfo"] = set()
-    for target in targets:
-        try:
-            pairs.update(
-                self.stage.collect_granular(
-                    target, with_deps=with_deps, recursive=recursive
-                )
-            )
-        except (
-            StageFileDoesNotExistError,
-            StageFileBadNameError,
-            NoOutputOrStageError,
-        ) as exc:
-            if not target:
-                raise
-            raise CheckoutErrorSuggestGit(target) from exc
+        out_keys.append(key)
 
-    return pairs
+    out_changes = {}
+    for objects in changes.values():
+        for change in objects:
+            for out_key in out_keys:
+                if (
+                    len(out_key) > len(change.key)
+                    or change.key[: len(out_key)] != out_key
+                ):
+                    continue
+
+                if change.key == out_key:
+                    out_changes[out_key] = change.typ
+                elif not out_changes.get(out_key):
+                    out_changes[out_key] = MODIFY
+                break
+
+    return out_changes
 
 
 @locked
-def checkout(
+def checkout(  # noqa: C901
     self,
     targets=None,
     with_deps=False,
@@ -70,13 +70,18 @@ def checkout(
     allow_missing=False,
     **kwargs,
 ):
+    from dvc import prompt
     from dvc.fs.callbacks import Callback
+    from dvc.repo.index import build_data_index
+    from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
+    from dvc_data.hashfile.checkout import CheckoutError as IndexCheckoutError
+    from dvc_data.index.checkout import ADD, DELETE, MODIFY
+    from dvc_data.index.checkout import checkout as icheckout
 
     stats: Dict[str, List[str]] = {
         "added": [],
         "deleted": [],
         "modified": [],
-        "failed": [],
     }
     if not targets:
         targets = [None]
@@ -85,28 +90,78 @@ def checkout(
     if isinstance(targets, str):
         targets = [targets]
 
-    pairs = _collect_pairs(self, targets, with_deps, recursive)
-    total = get_all_files_numbers(pairs)
+    def onerror(target, exc):
+        if target and isinstance(
+            exc,
+            (
+                StageFileDoesNotExistError,
+                StageFileBadNameError,
+                NoOutputOrStageError,
+            ),
+        ):
+            raise CheckoutErrorSuggestGit(target) from exc
+        raise  # pylint: disable=misplaced-bare-raise
+
+    view = self.index.targets_view(
+        targets,
+        recursive=recursive,
+        with_deps=with_deps,
+        onerror=onerror,
+    )
+
+    with Callback.as_tqdm_callback(
+        unit="entry",
+        desc="Building data index",
+    ) as cb:
+        old = build_data_index(
+            view, self.root_dir, self.fs, compute_hash=True, callback=cb
+        )
+
+    new = view.data["repo"]
+
+    for out in view.outs:
+        out.changed_cache()
+
     with Callback.as_tqdm_callback(
         unit="file",
         desc="Checkout",
-        disable=total == 0,
     ) as cb:
-        cb.set_size(total)
-        for stage, filter_info in pairs:
-            result = stage.checkout(
-                force=force,
-                progress_callback=cb,
+        try:
+            changes = icheckout(
+                new,
+                self.root_dir,
+                self.fs,
+                old=old,
+                callback=cb,
+                delete=True,
+                prompt=prompt.confirm,
+                update_meta=False,
                 relink=relink,
-                filter_info=filter_info,
+                force=force,
                 allow_missing=allow_missing,
+                state=self.state,
                 **kwargs,
             )
-            for key, items in result.items():
-                stats[key].extend(_fspath_dir(path) for path in items)
+        except IndexCheckoutError as exc:
+            raise CheckoutError(exc.paths, {}) from exc
 
-    if stats.get("failed"):
-        raise CheckoutError(stats["failed"], stats)
+    out_changes = _build_out_changes(view, changes)
 
-    del stats["failed"]
+    typ_map = {ADD: "added", DELETE: "deleted", MODIFY: "modified"}
+    for key, typ in out_changes.items():
+        out_path = self.fs.path.join(self.root_dir, *key)
+        self.state.save_link(out_path, self.fs)
+        stats[typ_map[typ]].append(_fspath_dir(out_path))
+
+    failed = []
+    for out in view.outs:
+        if not out.use_cache:
+            continue
+
+        if not out.hash_info:
+            failed.append(_fspath_dir(out.fs_path))
+
+    if not allow_missing and failed:
+        raise CheckoutError(failed, stats)
+
     return stats
