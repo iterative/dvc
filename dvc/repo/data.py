@@ -73,10 +73,8 @@ def _diff(
     ):
         if (
             change.typ == UNCHANGED
-            and change.old
-            and change.new
-            and not change.old.hash_info
-            and not change.new.hash_info
+            and (not change.old or not change.old.hash_info)
+            and (not change.new or not change.new.hash_info)
         ):
             # NOTE: emulating previous behaviour
             continue

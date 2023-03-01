@@ -336,11 +336,11 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
     os.rename("foo", "foo.back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 1
+    assert file_md5_counter.mock.call_count == 2
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 1
+    assert file_md5_counter.mock.call_count == 2
 
 
 def test_should_update_state_entry_for_directory_after_add(mocker, dvc, tmp_dir):
@@ -362,11 +362,11 @@ def test_should_update_state_entry_for_directory_after_add(mocker, dvc, tmp_dir)
     os.rename("data", "data.back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 5
+    assert file_md5_counter.mock.call_count == 6
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 6
+    assert file_md5_counter.mock.call_count == 7
 
 
 def test_add_commit(tmp_dir, dvc):
