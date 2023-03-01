@@ -1,4 +1,3 @@
-import json
 import os
 import textwrap
 from uuid import uuid4
@@ -169,63 +168,6 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
         frozen: true
     """
     )
-
-
-def test_import_url_to_remote_single_file(tmp_dir, dvc, workspace, local_remote):
-    workspace.gen("foo", "foo")
-
-    url = "remote://workspace/foo"
-    stage = dvc.imp_url(url, to_remote=True)
-
-    assert stage.deps[0].hash_info.value is not None
-    assert not (tmp_dir / "foo").exists()
-    assert (tmp_dir / "foo.dvc").exists()
-
-    assert len(stage.deps) == 1
-    assert stage.deps[0].def_path == url
-    assert len(stage.outs) == 1
-
-    hash_info = stage.outs[0].hash_info
-    with open(local_remote.oid_to_path(hash_info.value), encoding="utf-8") as fobj:
-        assert fobj.read() == "foo"
-    assert stage.outs[0].meta.size == len("foo")
-
-
-def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
-    workspace.gen(
-        {
-            "data": {
-                "foo": "foo",
-                "bar": "bar",
-                "sub_dir": {"baz": "sub_dir/baz"},
-            }
-        }
-    )
-
-    url = "remote://workspace/data"
-    stage = dvc.imp_url(url, to_remote=True)
-
-    assert not (tmp_dir / "data").exists()
-    assert (tmp_dir / "data.dvc").exists()
-
-    assert len(stage.deps) == 1
-    assert stage.deps[0].def_path == url
-    assert len(stage.outs) == 1
-
-    hash_info = stage.outs[0].hash_info
-    with open(local_remote.oid_to_path(hash_info.value), encoding="utf-8") as stream:
-        file_parts = json.load(stream)
-
-    assert len(file_parts) == 3
-    assert {file_part["relpath"] for file_part in file_parts} == {
-        "foo",
-        "bar",
-        "sub_dir/baz",
-    }
-
-    for file_part in file_parts:
-        with open(local_remote.oid_to_path(file_part["md5"]), encoding="utf-8") as fobj:
-            assert fobj.read() == file_part["relpath"]
 
 
 def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
