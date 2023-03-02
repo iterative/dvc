@@ -40,7 +40,6 @@ dependencies = [
     "dvc-render>=0.1.2",
     "dvc-studio-client>=0.1.1",
     "dvc-task>=0.2.0,<1",
-    "dvclive>=1.2.2",
     "flatten_dict<1,>=0.4.1",
     "flufl.lock>=5",
     "funcy>=1.14",
