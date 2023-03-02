@@ -19,7 +19,6 @@ SUBPROJECTS = (
     "dvc_objects",
     "dvc_render",
     "dvc_task",
-    "dvclive",
     "scmrepo",
 )
 package = "" if PKG is None else f" ({PKG})"
