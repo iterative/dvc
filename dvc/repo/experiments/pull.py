@@ -85,7 +85,7 @@ def _pull(
 
     with TqdmGit(desc="Fetching git refs") as pbar:
         results: Mapping[str, SyncStatus] = repo.scm.fetch_refspecs(
-            git_remote,
+            repo.scm.get_remote_url(git_remote),
             refspec_list,
             force=force,
             progress=pbar.update_git,

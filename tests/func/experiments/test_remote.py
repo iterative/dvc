@@ -163,11 +163,12 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 
 
 @pytest.mark.parametrize("use_url", [True, False])
-def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
+def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url, mocker):
     from dvc.exceptions import InvalidArgumentError
 
     remote = git_downstream.url if use_url else git_downstream.remote
     downstream_exp = git_downstream.tmp_dir.dvc.experiments
+    fetch_refspecs = mocker.spy(git_downstream.tmp_dir.dvc.scm, "fetch_refspecs")
     with pytest.raises(InvalidArgumentError):
         downstream_exp.pull(remote, ["foo"])
 
@@ -184,6 +185,7 @@ def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     downstream_exp.pull(
         git_downstream.remote, [ref_info1.name, ref_info2.name], force=True
     )
+    assert fetch_refspecs.call_args[0][0] == git_downstream.url
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info2)) == exp2
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info3)) is None
