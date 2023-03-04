@@ -154,12 +154,11 @@ def push_refspec(
             for ref in scm.iter_refs(base=src):
                 refname = ref.split("/")[-1]
                 refspecs.append(f"{ref}:{dest}{refname}")
+        elif dest.endswith("/"):
+            refname = src.split("/")[-1]
+            refspecs.append(f"{src}:{dest}/{refname}")
         else:
-            if dest.endswith("/"):
-                refname = src.split("/")[-1]
-                refspecs.append(f"{src}:{dest}/{refname}")
-            else:
-                refspecs.append(f"{src}:{dest}")
+            refspecs.append(f"{src}:{dest}")
 
     try:
         results = scm.push_refspecs(

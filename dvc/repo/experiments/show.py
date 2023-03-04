@@ -412,10 +412,9 @@ def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
                 if rev_result["status"] == ExpStatus.Running.name:
                     head["status"] = ExpStatus.Running.name
                     rev_result["status"] = ExpStatus.Success.name
-            else:
-                if rev_result["checkpoint_tip"] == rev:
-                    head = rev_result
-                    checkpoint = True
+            elif rev_result["checkpoint_tip"] == rev:
+                head = rev_result
+                checkpoint = True
 
 
 def show(  # noqa: PLR0913
