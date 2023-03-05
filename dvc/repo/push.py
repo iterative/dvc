@@ -1,5 +1,7 @@
+from contextlib import suppress
 from typing import TYPE_CHECKING, Optional, Sequence
 
+from dvc.config import NoRemoteError
 from dvc.exceptions import InvalidArgumentError, UploadError
 from dvc.utils import glob_targets
 
@@ -30,9 +32,10 @@ def push(  # noqa: C901, PLR0913
     include_imports=False,
 ):
     worktree_remote: Optional["Remote"] = None
-    _remote = self.cloud.get_remote(name=remote)
-    if _remote.worktree or _remote.fs.version_aware:
-        worktree_remote = _remote
+    with suppress(NoRemoteError):
+        _remote = self.cloud.get_remote(name=remote)
+        if _remote and (_remote.worktree or _remote.fs.version_aware):
+            worktree_remote = _remote
 
     pushed = 0
     used_run_cache = self.stage_cache.push(remote, odb=odb) if run_cache else []
