@@ -2,6 +2,7 @@ import logging
 import os
 import posixpath
 from collections import defaultdict
+from contextlib import suppress
 from operator import itemgetter
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type
 from urllib.parse import urlparse
@@ -1017,7 +1018,8 @@ class Output:
         except FileNotFoundError:
             if self.remote:
                 kwargs["remote"] = self.remote
-            self.repo.cloud.pull([obj.hash_info], **kwargs)
+            with suppress(Exception):
+                self.repo.cloud.pull([obj.hash_info], **kwargs)
 
         if self.obj:
             return self.obj
