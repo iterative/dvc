@@ -4,7 +4,7 @@ import typing
 from collections import defaultdict
 from typing import Dict
 
-import dpath.util
+import dpath
 from voluptuous import Any
 
 from dvc.exceptions import DvcException
@@ -87,17 +87,17 @@ class ParamsDependency(Dependency):
         if flatten:
             for param in self.params:
                 try:
-                    ret[param] = dpath.util.get(config, param, separator=".")
+                    ret[param] = dpath.get(config, param, separator=".")
                 except KeyError:
                     continue
             return ret
 
-        from dpath.util import merge
+        from dpath import merge
 
         for param in self.params:
             merge(
                 ret,
-                dpath.util.search(config, param, separator="."),
+                dpath.search(config, param, separator="."),
                 separator=".",
             )
         return ret
