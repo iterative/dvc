@@ -23,14 +23,17 @@ def mock_popen(mocker):
         ["/bin/foo", "-o", "option"],
     ],
 )
-def test_init_args(tmp_dir, args, mocker):
+def test_init_args(tmp_dir, request, args, mocker):
     expected = ["/bin/foo", "-o", "option"]
     proc = ManagedProcess(args)
+    request.addfinalizer(proc._close_fds)
     assert expected == proc.args
 
 
-def test_run(tmp_dir, mocker):
+def test_run(tmp_dir, request, mocker):
     proc = ManagedProcess("/bin/foo")
+
+    request.addfinalizer(proc._close_fds)
     assert proc.pid == TEST_PID
 
     with open(proc.info_path, encoding="utf-8") as fobj:
