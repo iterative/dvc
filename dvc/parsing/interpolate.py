@@ -12,7 +12,7 @@ from dvc.utils.flatten import flatten
 if typing.TYPE_CHECKING:
     from typing import List, Match, NoReturn
 
-    from pyparsing import ParseException
+    from pyparsing import ParseException  # type: ignore[import]
 
     from .context import Context
 
@@ -26,7 +26,7 @@ KEYCRE = re.compile(
     (?<!\\)                            # escape \${}
     \${                                # starts with ${
     (?P<inner>.*?)                     # match every char inside
-    }                                  # end with {
+    }                                  # end with }
 """,
     re.VERBOSE,
 )
@@ -202,6 +202,16 @@ def validate_value(value, key):
     not_foreach = key is not None and "foreach" not in key
     if not_primitive and not_foreach:
         if isinstance(value, dict) and key == "cmd":
+            return True
+        if isinstance(value, list) and key in [
+            "deps",
+            "outs",
+            "params",
+            "metrics",
+            "plots",
+        ]:
+            for e in value:
+                validate_value(e, key)
             return True
         raise ParseError(f"Cannot interpolate data of type '{type(value).__name__}'")
 

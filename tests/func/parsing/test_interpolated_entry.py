@@ -5,10 +5,16 @@ import pytest
 
 from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
-from dvc.parsing.context import recurse_not_a_node
+from dvc.parsing.context import Context, recurse_not_a_node
 from dvc.parsing.interpolate import escape_str
 
-from . import CONTEXT_DATA, RESOLVED_DVC_YAML_DATA, TEMPLATED_DVC_YAML_DATA, USED_VARS
+from . import (
+    CONTEXT_DATA,
+    RESOLVED_DVC_YAML_DATA,
+    TEMPLATED_DVC_YAML_DATA,
+    USED_VARS,
+    make_entry_definition,
+)
 
 
 def assert_stage_equal(d1, d2):
@@ -315,3 +321,19 @@ def test_cmd_dict(tmp_dir, dvc, bool_config, list_config):
             }
         },
     )
+
+
+def test_interpolate_bool(tmp_dir, dvc):
+    definition = make_entry_definition(
+        tmp_dir, "build", {"frozen": "${freeze}"}, Context(freeze=False)
+    )
+    definition.resolve_stage()
+
+    assert definition.resolve_stage() == {"build": {"frozen": False}}
+
+
+def test_interpolate_list(tmp_dir, dvc):
+    definition = make_entry_definition(
+        tmp_dir, "build", {"outs": "${models}"}, Context(models=["a", 1])
+    )
+    assert definition.resolve_stage() == {"build": {"outs": ["a", 1]}}

@@ -12,6 +12,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar
 
 from dvc.exceptions import PrettyDvcException
+from dvc.parsing.interpolate import is_interpolated_string
 from dvc.ui import ui
 from dvc.utils.serialize import (
     EncodingError,
@@ -266,7 +267,24 @@ def validate(
     try:
         return schema(data)
     except MultipleInvalid as exc:
-        raise YAMLValidationError(exc, path, text, rev=rev) from exc
+        # See https://stackoverflow.com/a/37704379
+        def nested_get(dic, keys):
+            for key in keys:
+                dic = dic[key]
+            return dic
+
+        # Drop errors for str interpolation values
+        errors = []
+        for err in exc.errors:
+            path = nested_get(data, err.path)
+            if not is_interpolated_string(path):
+                errors.append(err)
+
+        # Only raise errors for values other than str interpolation
+        if errors:
+            exc.errors = errors
+            raise YAMLValidationError(exc, path, text, rev=rev) from exc
+        return data
 
 
 def load(
