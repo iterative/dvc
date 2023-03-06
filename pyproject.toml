@@ -101,7 +101,7 @@ tests = [
     "pytest-mock",
     "pytest-test-utils",
     "pytest-timeout>=2",
-    "pytest-xdist>=3",
+    "pytest-xdist>=3.2",
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
 ]
 webdav = ["dvc-webdav==2.19.1"]
@@ -131,7 +131,7 @@ known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task",
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "-ra --cov-config pyproject.toml"
+addopts = "-ra --cov-config pyproject.toml --dist worksteal"
 filterwarnings = [
     "error::pytest_mock.PytestMockWarning",
     # remove when aiobotocore supports botocore>=1.29.13
