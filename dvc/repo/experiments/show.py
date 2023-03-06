@@ -97,14 +97,12 @@ def collect_experiment_commit(
             force=force,
             **kwargs,
         )
-        if exp_rev != "workspace" and not param_deps:
+        if exp_rev != "workspace" and not param_deps and not exp.contains_error:
             cache.put(exp, force=True)
         return _format_exp(exp)
     except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
         logger.debug("", exc_info=True)
         error = SerializableError(str(exc), type(exc).__name__)
-        if not (exp_rev == "workspace" or param_deps or status == ExpStatus.Running):
-            cache.put(error, rev=exp_rev, force=True)
         return _format_error(error)
 
 
