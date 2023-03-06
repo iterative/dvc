@@ -1,8 +1,8 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional
 
+import dpath
 import dpath.options
-import dpath.util
 from funcy import last
 
 from dvc.repo.plots import infer_data_sources

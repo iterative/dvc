@@ -18,8 +18,8 @@ from typing import (
     Union,
 )
 
+import dpath
 import dpath.options
-import dpath.util
 from funcy import distinct, first, project
 
 from dvc.exceptions import DvcException
@@ -389,7 +389,7 @@ def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = No
                 onerror=onerror,
             )
 
-            dpath.util.merge(
+            dpath.merge(
                 result,
                 {"": unpacked},
             )
@@ -436,13 +436,13 @@ def _resolve_definitions(
                     props={**plot_props, **props},
                     onerror=onerror,
                 )
-                dpath.util.merge(
+                dpath.merge(
                     result,
                     unpacked,
                 )
         elif _matches(targets, config_path, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
-            dpath.util.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
+            dpath.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
 
     return result
 
@@ -471,7 +471,7 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
             dvcfile_defs_dict,
             onerror=onerror,
         )
-        dpath.util.merge(
+        dpath.merge(
             result,
             {dvcfile_path: resolved},
         )
@@ -495,13 +495,13 @@ def _collect_definitions(
     fs = DVCFileSystem(repo=repo)
 
     if not config_files:
-        dpath.util.merge(
+        dpath.merge(
             result,
             _collect_pipeline_files(repo, targets, props, onerror=onerror),
         )
 
     if targets or (not targets and not config_files):
-        dpath.util.merge(
+        dpath.merge(
             result,
             _collect_output_plots(repo, targets, props, onerror=onerror),
         )
@@ -518,7 +518,7 @@ def _collect_definitions(
                     definitions,
                     onerror=onerror,
                 )
-                dpath.util.merge(
+                dpath.merge(
                     result,
                     {path: resolved},
                 )
@@ -526,7 +526,7 @@ def _collect_definitions(
     for target in targets:
         if not result or fs.exists(target):
             unpacked = unpack_if_dir(fs, target, props=props, onerror=onerror)
-            dpath.util.merge(result[""], unpacked)
+            dpath.merge(result[""], unpacked)
 
     return dict(result)
 
