@@ -405,11 +405,12 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     assert resolve_rev(scm, ref_info.name) == exp
 
 
-def test_subrepo(tmp_dir, scm, workspace):
+def test_subrepo(tmp_dir, request, scm, workspace):
     from dvc.testing.tmp_dir import make_subrepo
 
     subrepo = tmp_dir / "dir" / "repo"
     make_subrepo(subrepo, scm)
+    request.addfinalizer(subrepo.dvc.close)
 
     subrepo.gen("copy.py", COPY_SCRIPT)
     subrepo.gen("params.yaml", "foo: 1")
