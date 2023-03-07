@@ -117,7 +117,7 @@ class Config(dict):
 
     @classmethod
     def get_dir(cls, level):
-        from appdirs import site_config_dir, user_config_dir
+        from platformdirs import site_config_dir, user_config_dir
 
         assert level in ("global", "system")
 
