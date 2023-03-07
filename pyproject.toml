@@ -73,7 +73,7 @@ gdrive = ["dvc-gdrive==2.19.1"]
 gs = ["dvc-gs==2.22.0"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
-    "mypy==1.0.1",
+    "mypy==1.1.1",
     "pylint==2.16.4",
     "types-appdirs",
     "types-colorama",
