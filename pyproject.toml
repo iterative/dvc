@@ -30,7 +30,6 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "appdirs>=1.4.3",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "distro>=1.3",
@@ -49,6 +48,7 @@ dependencies = [
     "networkx>=2.5",
     "packaging>=19",
     "pathspec>=0.10.3",
+    "platformdirs<4,>=3",
     "psutil>=5.8",
     "pydot>=1.2.4",
     "pygtrie>=2.3.2",
@@ -75,7 +75,6 @@ hdfs = ["dvc-hdfs==2.19"]
 lint = [
     "mypy==1.0.1",
     "pylint==2.16.4",
-    "types-appdirs",
     "types-colorama",
     "types-psutil",
     "types-requests",
