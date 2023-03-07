@@ -14,7 +14,14 @@ from dvc.utils import fix_env, is_binary
 logger = logging.getLogger(__name__)
 
 
-def _popen(cmd, **kwargs):
+def _suppress_resource_warning(popen: Popen):
+    """Sets the returncode to avoid ResourceWarning when popen is garbage collected."""
+    # only use for daemon processes.
+    # See https://bugs.python.org/issue38890.
+    popen.returncode = 0
+
+
+def _popen(cmd, **kwargs) -> Popen:
     prefix = [sys.executable]
     if not is_binary():
         main_entrypoint = os.path.join(
@@ -40,7 +47,10 @@ def _spawn_windows(cmd, env):
         startupinfo = STARTUPINFO()
         startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-        _popen(cmd, env=env, creationflags=creationflags, startupinfo=startupinfo)
+        popen = _popen(
+            cmd, env=env, creationflags=creationflags, startupinfo=startupinfo
+        )
+        _suppress_resource_warning(popen)
 
 
 def _spawn_posix(cmd, env):
