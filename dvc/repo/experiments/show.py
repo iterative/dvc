@@ -81,7 +81,10 @@ def collect_experiment_commit(
     if exp_rev != "workspace" and not (force or param_deps):
         cached_exp = cache.get(exp_rev)
         if cached_exp:
-            if status == ExpStatus.Running:
+            if status == ExpStatus.Running or (
+                isinstance(cached_exp, SerializableExp)
+                and cached_exp.status == ExpStatus.Running.name
+            ):
                 # expire cached queued exp entry once we start running it
                 cache.delete(exp_rev)
             elif isinstance(cached_exp, SerializableError):
@@ -97,7 +100,12 @@ def collect_experiment_commit(
             force=force,
             **kwargs,
         )
-        if exp_rev != "workspace" and not param_deps and not exp.contains_error:
+        if not (
+            exp_rev == "workspace"
+            or status == ExpStatus.Running
+            or param_deps
+            or exp.contains_error
+        ):
             cache.put(exp, force=True)
         return _format_exp(exp)
     except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
