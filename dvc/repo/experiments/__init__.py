@@ -256,7 +256,17 @@ class Experiments:
             )
 
         name = kwargs.get("name", None)
-        baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
+        if self.repo.scm.no_commits:
+            from dulwich.index import commit_tree as _commit_tree
+            from dulwich.porcelain import commit_tree
+
+            dulwich_repo = self.repo.scm.dulwich.repo
+            logger.warning("Creating an initial commit in an empty git repository")
+            tree = _commit_tree(dulwich_repo.object_store, [])
+            message = b"initial empty commit - dvc"
+            baseline_sha = commit_tree(dulwich_repo, tree, message=message)
+        else:
+            baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
 
         if name:
             exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)

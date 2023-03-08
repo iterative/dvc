@@ -9,11 +9,12 @@ from funcy import first
 
 from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import ReproductionError
+from dvc.repo import Repo
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.scm import resolve_rev
+from dvc.scm import Git, resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.scripts import COPY_SCRIPT
@@ -628,6 +629,31 @@ def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing)
 
     assert len(dvc.experiments.ls()["master"]) == 2
+
+
+def test_experiment_empty_repo(tmp_dir, copy_script):
+    from dulwich.objectspec import parse_commit
+
+    tmp_dir.gen("foo", "foo")
+    scm = Git.init(tmp_dir)
+    assert scm.no_commits
+
+    with Repo.init() as dvc:
+        stage = dvc.stage.add(
+            cmd=f"python {copy_script} foo bar",
+            deps=["foo"],
+            outs=["bar"],
+            name="copy-foo-bar",
+        )
+        results = dvc.experiments.run(stage.addressing)
+        assert results
+
+    commit = parse_commit(scm.dulwich.repo, b"HEAD")
+    assert not commit.parents
+
+    ref_info = first(exp_refs_by_rev(scm, first(results)))
+    assert ref_info
+    assert ref_info.baseline_sha == commit.id.decode("ascii")
 
 
 def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
