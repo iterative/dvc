@@ -248,7 +248,7 @@ def run_copy_metrics(tmp_dir, copy_script):
 
 @pytest.fixture(autouse=True)
 def gc_collect_on_dvc_close_on_win_311(mocker):
-    if sys.version_info < (3, 11) and os.name != "nt":
+    if sys.version_info < (3, 11) or os.name != "nt":
         return
 
     from dvc.repo import Repo
