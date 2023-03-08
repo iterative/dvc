@@ -337,7 +337,7 @@ def to_studio_params(dvc_params):
     if not dvc_params:
         return result
     for rev_data in dvc_params.values():
-        for file_name, file_data in rev_data["data"].items():
+        for file_name, file_data in rev_data.get("data", {}).items():
             result[file_name] = file_data["data"]
 
     return result
