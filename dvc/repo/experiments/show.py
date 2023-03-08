@@ -19,7 +19,7 @@ from typing import (
 from scmrepo.exceptions import SCMError as InnerScmError
 
 from dvc.exceptions import DvcException
-from dvc.scm import Git, RevError, SCMError, iter_revs, resolve_rev
+from dvc.scm import Git, SCMError, iter_revs, resolve_rev
 
 from .refs import ExpRefInfo
 from .serialize import SerializableError, SerializableExp
@@ -122,10 +122,8 @@ def _collect_from_repo(
     **kwargs,
 ) -> "SerializableExp":
     running = running or {}
-    for rev in repo.brancher(revs=[exp_rev]):
+    with repo.switch(exp_rev) as rev:
         if rev == "workspace":
-            if exp_rev != "workspace":
-                continue
             timestamp: Optional[datetime] = None
         else:
             commit = repo.scm.resolve_commit(rev)
@@ -151,7 +149,6 @@ def _collect_from_repo(
             executor=executor,
             error=error,
         )
-    raise RevError(f"nonexistent exp rev: '{exp_rev}'")
 
 
 def _collect_complete_experiment(
