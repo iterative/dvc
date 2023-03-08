@@ -182,10 +182,7 @@ def _diff_head_to_index(
 ) -> Dict[str, List[str]]:
     index = repo.index.data["repo"]
 
-    for rev in repo.brancher(revs=[head]):
-        if rev == "workspace":
-            continue
-
+    with repo.switch(head):
         head_index = repo.index.data["repo"]
 
     with ui.status("Calculating diff between head/index"):
