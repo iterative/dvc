@@ -2,6 +2,7 @@
 import argparse
 import logging
 import os
+from functools import lru_cache
 
 from dvc import __version__
 from dvc.commands import (
@@ -150,6 +151,7 @@ def get_parent_parser():
     return parent_parser
 
 
+@lru_cache(maxsize=1)
 def get_main_parser():
     parent_parser = get_parent_parser()
 
