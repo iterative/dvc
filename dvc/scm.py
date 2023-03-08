@@ -165,7 +165,7 @@ def clone(url: str, to_path: str, **kwargs):
             raise CloneError("SCM error") from exc
 
 
-def resolve_rev(scm: "Git", rev: str) -> str:
+def resolve_rev(scm: Union["Git", "NoSCM"], rev: str) -> str:
     from scmrepo.exceptions import RevError as InternalRevError
 
     from dvc.repo.experiments.utils import fix_exp_head
@@ -173,6 +173,7 @@ def resolve_rev(scm: "Git", rev: str) -> str:
     try:
         return scm.resolve_rev(fix_exp_head(scm, rev))
     except InternalRevError as exc:
+        assert isinstance(scm, Git)
         # `scm` will only resolve git branch and tag names,
         # if rev is not a sha it may be an abbreviated experiment name
         if not (rev == "HEAD" or rev.startswith("refs/")):

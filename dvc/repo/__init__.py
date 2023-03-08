@@ -3,7 +3,16 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    ContextManager,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
@@ -462,6 +471,11 @@ class Repo:
         from dvc.repo.brancher import brancher
 
         return brancher(self, *args, **kwargs)
+
+    def switch(self, rev: str) -> ContextManager[str]:
+        from dvc.repo.brancher import switch
+
+        return switch(self, rev)
 
     def used_objs(  # noqa: PLR0913
         self,
