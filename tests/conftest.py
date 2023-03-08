@@ -174,22 +174,20 @@ def mocked_webbrowser_open(mocker):
     mocker.patch("webbrowser.open")
 
 
-@pytest.fixture(autouse=True)
-def isolate(tmp_path_factory, monkeypatch) -> None:
+@pytest.fixture(scope="session", autouse=True)
+def isolate(tmp_path_factory):
     path = tmp_path_factory.mktemp("mock")
     home_dir = path / "home"
     home_dir.mkdir()
 
+    monkeypatch = pytest.MonkeyPatch()
     if sys.platform == "win32":
         home_drive, home_path = os.path.splitdrive(home_dir)
         monkeypatch.setenv("USERPROFILE", str(home_dir))
         monkeypatch.setenv("HOMEDRIVE", home_drive)
         monkeypatch.setenv("HOMEPATH", home_path)
 
-        for env_var, sub_path in (
-            ("APPDATA", "Roaming"),
-            ("LOCALAPPDATA", "Local"),
-        ):
+        for env_var, sub_path in (("APPDATA", "Roaming"), ("LOCALAPPDATA", "Local")):
             path = home_dir / "AppData" / sub_path
             path.mkdir(parents=True)
             monkeypatch.setenv(env_var, os.fspath(path))
@@ -209,6 +207,8 @@ defaultBranch=master
     import pygit2
 
     pygit2.settings.search_path[pygit2.GIT_CONFIG_LEVEL_GLOBAL] = str(home_dir)
+    yield
+    monkeypatch.undo()
 
 
 @pytest.fixture
