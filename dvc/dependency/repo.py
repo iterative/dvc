@@ -111,7 +111,7 @@ class RepoDependency(Dependency):
         return used
 
     def _get_used_and_obj(
-        self, obj_only: bool = False, **kwargs
+        self, obj_only: bool = False, tree_only: bool = False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError
@@ -134,6 +134,7 @@ class RepoDependency(Dependency):
                         force=True,
                         jobs=kwargs.get("jobs"),
                         recursive=True,
+                        tree_only=tree_only,
                     ).items():
                         if odb is None:
                             odb = repo.cloud.get_remote_odb()
@@ -161,6 +162,11 @@ class RepoDependency(Dependency):
 
             self._objs[rev] = obj
             self._meta[rev] = meta
+
+            if tree_only:
+                if isinstance(obj, Tree):
+                    used_obj_ids[object_store].add(obj.hash_info)
+                return used_obj_ids, meta, obj
 
             used_obj_ids[object_store].add(obj.hash_info)
             if isinstance(obj, Tree):

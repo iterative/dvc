@@ -1067,7 +1067,7 @@ class Output:
         return obj
 
     def get_used_objs(  # noqa: C901, PLR0911
-        self, **kwargs
+        self, tree_only: bool = False, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""
 
@@ -1078,7 +1078,7 @@ class Output:
         if self.stage.is_repo_import:
             if push:
                 return {}
-            return self.get_used_external(**kwargs)
+            return self.get_used_external(tree_only=tree_only, **kwargs)
 
         if push and not self.can_push:
             return {}
@@ -1102,6 +1102,16 @@ class Output:
             logger.warning(msg)
             return {}
 
+        if self.remote:
+            remote = self.repo.cloud.get_remote_odb(name=self.remote)
+        else:
+            remote = None
+
+        if tree_only:
+            if self.is_dir_checksum:
+                return {remote: [self.hash_info]}
+            return {}
+
         obj: Optional["HashFile"]
         if self.is_dir_checksum:
             obj = self._collect_used_dir_cache(**kwargs)
@@ -1112,11 +1122,6 @@ class Output:
 
         if not obj:
             return {}
-
-        if self.remote:
-            remote = self.repo.cloud.get_remote_odb(name=self.remote)
-        else:
-            remote = None
 
         return {remote: self._named_obj_ids(obj)}
 

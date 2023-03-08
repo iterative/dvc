@@ -432,6 +432,7 @@ class Index:
         recursive: bool = False,
         jobs: Optional[int] = None,
         push: bool = False,
+        tree_only: bool = False,
     ) -> "ObjectContainer":
         from collections import defaultdict
 
@@ -444,6 +445,7 @@ class Index:
                 jobs=jobs,
                 filter_info=filter_info,
                 push=push,
+                tree_only=tree_only,
             ).items():
                 used[odb].update(objs)
         return used

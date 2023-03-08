@@ -32,6 +32,7 @@ def fetch(  # noqa: C901, PLR0913
     run_cache=False,
     revs=None,
     odb: Optional["HashFileDB"] = None,
+    tree_only: bool = False,
 ) -> int:
     """Download data items from a cloud and imported repositories
 
@@ -96,6 +97,7 @@ def fetch(  # noqa: C901, PLR0913
                 recursive=recursive,
                 revs=revs,
                 odb=odb,
+                tree_only=tree_only,
             )
             result.transferred.update(d)
             result.failed.update(f)

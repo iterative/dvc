@@ -458,6 +458,7 @@ class Repo:
         revs=None,
         num=1,
         push: bool = False,
+        tree_only: bool = False,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -493,6 +494,7 @@ class Repo:
                 recursive=recursive,
                 with_deps=with_deps,
                 push=push,
+                tree_only=tree_only,
             ).items():
                 used[odb].update(objs)
 

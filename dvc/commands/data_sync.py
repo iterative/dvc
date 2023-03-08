@@ -91,6 +91,7 @@ class CmdDataFetch(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
+                tree_only=self.args.tree_only,
             )
             self.log_summary({"fetched": processed_files_count})
         except DvcException:
@@ -321,6 +322,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Fetch run history for all stages.",
+    )
+    fetch_parser.add_argument(
+        "--tree-only",
+        action="store_true",
+        default=False,
+        help="Only fetch .dir objects.",
     )
     fetch_parser.set_defaults(func=CmdDataFetch)
 
