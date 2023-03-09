@@ -26,7 +26,7 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
-def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
+def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, session_queue):
     from dvc.exceptions import InvalidArgumentError
 
     dvc.experiments.run(failed_exp_stage.addressing, params=["foo=2"], queue=True)
