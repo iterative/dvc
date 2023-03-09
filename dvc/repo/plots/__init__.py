@@ -20,7 +20,7 @@ from typing import (
 
 import dpath
 import dpath.options
-from funcy import distinct, first, project, reraise
+from funcy import first, ldistinct, project, reraise
 
 from dvc.exceptions import DvcException
 from dvc.utils import error_handler, errored_revisions, onerror_collect
@@ -356,7 +356,7 @@ def infer_data_sources(plot_id, config=None):
     if isinstance(x, dict):
         sources.append(first(x.keys()))
 
-    return distinct(source for source in sources)
+    return ldistinct(source for source in sources)
 
 
 def _matches(targets, config_file, plot_id):

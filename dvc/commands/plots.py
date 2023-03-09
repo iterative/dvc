@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+from typing import TYPE_CHECKING, Dict, List
 
 from funcy import first
 
@@ -11,14 +12,47 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import format_link
 
+if TYPE_CHECKING:
+    from dvc.render.match import RendererWithErrors
+
+
 logger = logging.getLogger(__name__)
 
 
-def _show_json(renderers, split=False):
+def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
     from dvc.render.convert import to_json
+    from dvc.utils.serialize import encode_exception
 
-    result = {renderer.name: to_json(renderer, split) for renderer in renderers}
-    ui.write_json(result, highlight=False)
+    errors: List[Dict] = []
+    out = {}
+
+    for renderer, src_errors, def_errors in renderers_with_errors:
+        name = renderer.name
+        out[name] = to_json(renderer, split)
+        if src_errors:
+            errors.extend(
+                {
+                    "name": name,
+                    "revision": rev,
+                    "source": source,
+                    **encode_exception(e),
+                }
+                for rev, per_rev_src_errors in src_errors.items()
+                for source, e in per_rev_src_errors.items()
+            )
+        if def_errors:
+            errors.extend(
+                {
+                    "name": name,
+                    "revision": rev,
+                    **encode_exception(e),
+                }
+                for rev, e in def_errors.items()
+            )
+
+    if errors:
+        out = {"errors": errors, **out}
+    ui.write_json(out, highlight=False)
 
 
 def _adjust_vega_renderers(renderers):
@@ -122,15 +156,16 @@ class CmdPlots(CmdBase):
 
             renderers_out = out if self.args.json else os.path.join(out, "static")
 
-            renderers = match_defs_renderers(
+            renderers_with_errors = match_defs_renderers(
                 data=plots_data,
                 out=renderers_out,
                 templates_dir=self.repo.plots.templates_dir,
             )
             if self.args.json:
-                _show_json(renderers, self.args.split)
+                _show_json(renderers_with_errors, self.args.split)
                 return 0
 
+            renderers = [r.renderer for r in renderers_with_errors]
             _adjust_vega_renderers(renderers)
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))

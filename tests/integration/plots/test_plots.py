@@ -361,13 +361,28 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
 
     for s in {"show", "diff"}:
         _, json_result, split_json_result = call(capsys, subcommand=s)
-        for p in {
-            "linear.json",
-            "confusion.json",
-            "image.png",
-        }:
-            assert json_result[p] == []
-            assert split_json_result[p] == []
+        errors = [
+            {
+                "name": p,
+                "source": p,
+                "revision": "workspace",
+                "type": "FileNotFoundError",
+                "msg": "",
+            }
+            for p in [
+                "linear.json",
+                "confusion.json",
+                "image.png",
+            ]
+        ]
+        expected_result = {
+            "errors": errors,
+            "image.png": [],
+            "confusion.json": [],
+            "linear.json": [],
+        }
+        assert json_result == expected_result
+        assert split_json_result == expected_result
 
 
 def test_config_output_dir(tmp_dir, dvc, capsys):

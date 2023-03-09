@@ -77,9 +77,9 @@ def test_match_renderers(mocker):
         },
     }
 
-    renderers = match_defs_renderers(data)
-    assert len(renderers) == 1
-    assert renderers[0].datapoints == [
+    (renderer_with_errors,) = match_defs_renderers(data)
+    renderer = renderer_with_errors[0]
+    assert renderer.datapoints == [
         {
             VERSION_FIELD: {
                 "revision": "v1",
@@ -99,7 +99,7 @@ def test_match_renderers(mocker):
             "y": 2,
         },
     ]
-    assert renderers[0].properties == {
+    assert renderer.properties == {
         "title": "config_file_1::plot_id_1",
         "x": "x",
         "y": "y",
