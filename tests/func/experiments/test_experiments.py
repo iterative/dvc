@@ -131,7 +131,7 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{1}}") == init_rev
 
 
-def test_update_py_params(tmp_dir, scm, dvc, test_queue, copy_script):
+def test_update_py_params(tmp_dir, scm, dvc, session_queue, copy_script):
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
         cmd="python copy.py params.py metrics.py",
