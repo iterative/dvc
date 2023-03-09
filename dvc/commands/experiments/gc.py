@@ -78,7 +78,8 @@ class CmdExperimentsGC(CmdBase):
 def add_parser(experiments_subparsers, parent_parser):
     EXPERIMENTS_GC_HELP = "Garbage collect unneeded experiments."
     EXPERIMENTS_GC_DESCRIPTION = (
-        "Removes all experiments which are not derived from the specifiedGit revisions."
+        "Removes all experiments which are not derived"
+        " from the specified Git revisions."
     )
     experiments_gc_parser = experiments_subparsers.add_parser(
         "gc",
