@@ -19,7 +19,7 @@ def _show_json(renderers, split=False):
     from dvc.render.convert import to_json
 
     result = {renderer.name: to_json(renderer, split) for renderer in renderers}
-    ui.write_json(result)
+    ui.write_json(result, highlight=False)
 
 
 def _adjust_vega_renderers(renderers):
