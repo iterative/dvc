@@ -267,16 +267,10 @@ def validate(
     try:
         return schema(data)
     except MultipleInvalid as exc:
-        # See https://stackoverflow.com/a/37704379
-        def nested_get(dic, keys):
-            for key in keys:
-                dic = dic[key]
-            return dic
-
         # Drop errors for str interpolation values
         errors = []
         for err in exc.errors:
-            path = nested_get(data, err.path)
+            path = get_in(data, err.path)
             if not is_interpolated_string(path):
                 errors.append(err)
 
