@@ -144,6 +144,7 @@ def test_experiments_run(dvc, scm, mocker):
     cmd = CmdExperimentsRun(parse_args(["exp", "run"]))
     mocker.patch.object(cmd.repo, "reproduce")
     mocker.patch.object(cmd.repo.experiments, "run")
+    cmd.repo.scm.commit("commit")
     cmd.run()
     cmd.repo.experiments.run.assert_called_with(**default_arguments)
 
