@@ -11,6 +11,8 @@ import typing
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar
 
+from funcy import get_in
+
 from dvc.exceptions import PrettyDvcException
 from dvc.parsing.interpolate import is_interpolated_string
 from dvc.ui import ui
