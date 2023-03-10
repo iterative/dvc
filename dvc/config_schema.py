@@ -1,8 +1,21 @@
+import logging
 import os
 from urllib.parse import urlparse
 
-from funcy import walk_values
-from voluptuous import All, Any, Coerce, Invalid, Lower, Optional, Range, Schema
+from funcy import once, walk_values
+from voluptuous import (
+    REMOVE_EXTRA,
+    All,
+    Any,
+    Coerce,
+    Invalid,
+    Lower,
+    Optional,
+    Range,
+    Schema,
+)
+
+logger = logging.getLogger(__name__)
 
 Bool = All(
     Lower,
@@ -63,6 +76,27 @@ def ByUrl(mapping):  # noqa: N802
 
 class RelPath(str):
     pass
+
+
+class FeatureSchema(Schema):
+    def __init__(self, schema, required=False):
+        super().__init__(schema, required=required, extra=REMOVE_EXTRA)
+
+    @staticmethod
+    @once
+    def _log_deprecated(keys):
+        # only run this once per session
+        message = "%s config option%s unsupported"
+        paths = ", ".join(f"'feature.{key}'" for key in keys)
+        pluralize = " is" if len(keys) == 1 else "s are"
+        logger.warning(message, paths, pluralize)
+
+    def __call__(self, data):
+        ret = super().__call__(data)
+        extra_keys = data.keys() - ret.keys()
+        if extra_keys:
+            self._log_deprecated(sorted(extra_keys))
+        return ret
 
 
 REMOTE_COMMON = {
@@ -262,12 +296,12 @@ SCHEMA = {
         },
     },
     # section for experimental features
-    "feature": {
-        Optional("machine", default=False): Bool,
-        # enabled by default. It's of no use, kept for backward compatibility.
-        Optional("data_index_cache", default=False): Bool,
-        Optional("parametrization", default=True): Bool,
-    },
+    # only specified keys are validated, others get logged and then ignored/removed
+    "feature": FeatureSchema(
+        {
+            Optional("machine", default=False): Bool,
+        },
+    ),
     "plots": {
         "html_template": str,
         Optional("auto_open", default=False): Bool,
