@@ -75,7 +75,7 @@ class DataCloud:
                     config["version_aware"] = True
 
             fs = cls(**config)
-            config["tmp_dir"] = self.repo.index_db_dir
+            config["tmp_dir"] = self.repo.site_cache_dir
             if self.repo.data_index is not None:
                 index = self.repo.data_index.view(("remote", name))
             else:

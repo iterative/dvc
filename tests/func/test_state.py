@@ -1,7 +1,5 @@
 import os
-import re
 
-from dvc.repo import Repo
 from dvc_data.hashfile.hash import file_md5
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.state import State
@@ -71,15 +69,3 @@ def test_get_unused_links(tmp_dir, dvc):
             dvc.fs,
         )
     ) == {"bar"}
-
-
-def test_state_dir_config(make_tmp_dir, dvc):
-    assert dvc.state.tmp_dir == dvc.tmp_dir
-
-    index_dir = str(make_tmp_dir("tmp_index"))
-    repo = Repo(config={"state": {"dir": index_dir}})
-    assert os.path.dirname(repo.state.tmp_dir) == os.path.join(index_dir, ".dvc")
-    assert re.match(
-        r"^test_state_dir_config0-([0-9a-f]+)$",
-        os.path.basename(repo.state.tmp_dir),
-    )

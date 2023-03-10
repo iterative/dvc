@@ -54,6 +54,7 @@ def get_dvc_info():
             fs_root = get_fs_type(os.path.abspath(root_directory))
             info.append(f"Workspace directory: {fs_root}")
             info.append(f"Repo: {_get_dvc_repo_info(repo)}")
+            info.append(f"Repo.site_cache_dir: {repo.site_cache_dir}")
     except NotDvcRepoError:
         pass
     except SCMError:

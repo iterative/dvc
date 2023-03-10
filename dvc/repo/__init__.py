@@ -134,38 +134,6 @@ class Repo:
         assert root_dir
         return root_dir, dvc_dir
 
-    def _get_database_dir(self, db_name: str) -> Optional[str]:
-        from dvc.fs import localfs
-
-        # NOTE: by default, store SQLite-based remote indexes and state's
-        # `links` and `md5s` caches in the repository itself to avoid any
-        # possible state corruption in 'shared cache dir' scenario, but allow
-        # user to override this through config when, say, the repository is
-        # located on a mounted volume — see
-        # https://github.com/iterative/dvc/issues/4420
-        base_db_dir = self.config.get(db_name, {}).get("dir", None)
-        if not base_db_dir:
-            return self.tmp_dir
-
-        import hashlib
-
-        if self.local_dvc_dir:
-            fs: "FileSystem" = localfs
-            local_root = fs.path.parent(self.local_dvc_dir)
-        else:
-            fs = self.fs
-            local_root = self.root_dir
-        root_dir_hash = hashlib.sha224(local_root.encode("utf-8")).hexdigest()
-
-        db_dir = fs.path.join(
-            base_db_dir,
-            self.DVC_DIR,
-            f"{fs.path.name(local_root)}-{root_dir_hash[0:7]}",
-        )
-
-        fs.makedirs(db_dir, exist_ok=True)
-        return db_dir
-
     def __init__(  # noqa: PLR0915
         self,
         root_dir: Optional[str] = None,
@@ -241,8 +209,8 @@ class Repo:
                     hardlink_lock=self.config["core"].get("hardlink_lock", False),
                     friendly=True,
                 )
-                state_db_dir = self._get_database_dir("state")
-                self.state = State(self.root_dir, state_db_dir, self.dvcignore)
+                os.makedirs(self.site_cache_dir, exist_ok=True)
+                self.state = State(self.root_dir, self.site_cache_dir, self.dvcignore)
             else:
                 self.lock = LockNoop()
                 self.state = StateNoop()
@@ -401,13 +369,9 @@ class Repo:
         from dvc_data.index import DataIndex
 
         if self._data_index is None:
-            if self.index_db_dir:
-                index_dir = os.path.join(self.index_db_dir, "index", "data")
-                os.makedirs(index_dir, exist_ok=True)
-
-                self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
-            else:
-                self._data_index = DataIndex()
+            index_dir = os.path.join(self.site_cache_dir, "index", "data")
+            os.makedirs(index_dir, exist_ok=True)
+            self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
 
         return self._data_index
 
@@ -590,8 +554,27 @@ class Repo:
         return DVCFileSystem(repo=self, subrepos=self.subrepos, **self._fs_conf)
 
     @cached_property
-    def index_db_dir(self):
-        return self._get_database_dir("index")
+    def site_cache_dir(self) -> str:
+        import hashlib
+
+        import platformdirs
+
+        from dvc.fs import GitFileSystem
+
+        cache_dir = platformdirs.site_cache_dir("dvc", "iterative", opinion=True)
+
+        if isinstance(self.fs, GitFileSystem):
+            relparts = ()
+            if self.root_dir != "/":
+                # subrepo
+                relparts = self.fs.path.relparts(self.root_dir, "/")
+            root_dir = os.path.join(self.scm.root_dir, *relparts)
+        else:
+            root_dir = self.root_dir
+
+        repo_token = hashlib.md5(os.fsencode(root_dir)).hexdigest()  # noqa: S324
+
+        return os.path.join(cache_dir, "repo", repo_token)
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
