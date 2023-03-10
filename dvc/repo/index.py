@@ -354,42 +354,34 @@ class Index:
 
     @cached_property
     def data(self) -> "Dict[str, DataIndex]":
-        from dvc_data.index import DataIndex
-
         prefix: "DataIndexKey"
         loaded = False
 
         index = self.repo.data_index
-        if index is None:
-            index = DataIndex()
-
         prefix = ("tree", self.data_tree.hash_info.value)
         if index.has_node(prefix):
             loaded = True
 
-        try:
-            if not loaded:
-                _load_data_from_outs(index, prefix, self.outs)
-                index.commit()
+        if not loaded:
+            _load_data_from_outs(index, prefix, self.outs)
+            index.commit()
 
-            by_workspace = {}
-            by_workspace["repo"] = index.view((*prefix, "repo"))
-            by_workspace["local"] = index.view((*prefix, "local"))
+        by_workspace = {}
+        by_workspace["repo"] = index.view((*prefix, "repo"))
+        by_workspace["local"] = index.view((*prefix, "local"))
 
-            for out in self.outs:
-                if not out.use_cache:
-                    continue
+        for out in self.outs:
+            if not out.use_cache:
+                continue
 
-                ws, key = out.index_key
-                if ws not in by_workspace:
-                    by_workspace[ws] = index.view((*prefix, ws))
+            ws, key = out.index_key
+            if ws not in by_workspace:
+                by_workspace[ws] = index.view((*prefix, ws))
 
-                data_index = by_workspace[ws]
-                _load_storage_from_out(data_index.storage_map, key, out)
+            data_index = by_workspace[ws]
+            _load_storage_from_out(data_index.storage_map, key, out)
 
-            return by_workspace
-        finally:
-            index.close()
+        return by_workspace
 
     @staticmethod
     def _hash_targets(
