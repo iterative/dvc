@@ -62,7 +62,6 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
             new_dir.dvc = Repo(str_path)
         if scm:
             new_dir.scm = new_dir.dvc.scm if hasattr(new_dir, "dvc") else Git(str_path)
-            new_dir.scm.commit("init")
         request.addfinalizer(new_dir.close)
         return new_dir
 
