@@ -17,7 +17,9 @@ from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
     from rich.console import Console as RichConsole
+    from rich.console import JustifyMethod, OverflowMethod
     from rich.status import Status
+    from rich.style import Style
     from rich.text import Text as RichText
 
     from dvc.progress import Tqdm
@@ -105,8 +107,9 @@ class Console:
         if indent is None and self.isatty():
             indent = 2
 
-        console = self.error_console if stderr else self.rich_console
-        return console.print_json(
+        from rich.json import JSON
+
+        json = JSON.from_data(
             data=data,
             indent=indent,
             highlight=bool(highlight),
@@ -116,6 +119,50 @@ class Console:
             allow_nan=allow_nan,
             default=default,
             sort_keys=sort_keys,
+        )
+        if not highlight:
+            return self.write(json.text, stderr=stderr)
+        return self.rich_print(json, stderr=stderr, soft_wrap=True)
+
+    def rich_print(
+        self,
+        *objects: Any,
+        sep: str = " ",
+        end: str = "\n",
+        stderr: bool = False,
+        style: Optional[Union[str, "Style"]] = None,
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
+        no_wrap: Optional[bool] = None,
+        emoji: Optional[bool] = None,
+        markup: Optional[bool] = None,
+        highlight: Optional[bool] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        crop: bool = True,
+        soft_wrap: Optional[bool] = None,
+        new_line_start: bool = False,
+    ) -> None:
+        if stderr:
+            console = self.error_console
+        else:
+            console = self.rich_console
+        return console.print(
+            *objects,
+            sep=sep,
+            end=end,
+            style=style,
+            justify=justify,
+            overflow=overflow,
+            no_wrap=no_wrap,
+            emoji=emoji,
+            markup=markup,
+            highlight=highlight,
+            width=width,
+            height=height,
+            crop=crop,
+            soft_wrap=soft_wrap,
+            new_line_start=new_line_start,
         )
 
     def write(
@@ -142,10 +189,21 @@ class Console:
         with Tqdm.external_write_mode(file=file):
             # if we are inside pager context, send the output to rich's buffer
             if styled or self._paginate.get():
-                console = self.error_console if stderr else self.rich_console
                 if styled:
-                    return console.print(*objects, sep=sep, end=end)
-                return console.out(*objects, sep=sep, end=end, highlight=False)
+                    return self.rich_print(*objects, sep=sep, end=end, stderr=stderr)
+                return self.rich_print(
+                    sep.join(str(_object) for _object in objects),
+                    style=None,
+                    highlight=False,
+                    emoji=False,
+                    markup=False,
+                    no_wrap=True,
+                    overflow="ignore",
+                    crop=False,
+                    sep=sep,
+                    end=end,
+                    stderr=stderr,
+                )
 
             values = (self.formatter.format(obj, style) for obj in objects)
             return print(*values, sep=sep, end=end, file=file)

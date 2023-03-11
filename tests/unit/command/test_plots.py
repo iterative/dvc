@@ -53,8 +53,6 @@ def test_plots_diff(dvc, mocker, plots_data):
             "HEAD",
             "tag1",
             "tag2",
-            "--from-config",
-            "path_to_config",
         ]
     )
     assert cli_args.func == CmdPlotsDiff
@@ -78,7 +76,6 @@ def test_plots_diff(dvc, mocker, plots_data):
             "y_label": "y_title",
         },
         experiment=True,
-        config_files={"path_to_config"},
     )
     render_mock.assert_not_called()
 
@@ -104,7 +101,6 @@ def test_plots_show_vega(dvc, mocker, plots_data):
     m = mocker.patch(
         "dvc.repo.plots.Plots.show",
         return_value=plots_data,
-        config_files=None,
     )
     render_mock = mocker.patch("dvc_render.render_html", return_value="html_path")
 
@@ -113,7 +109,6 @@ def test_plots_show_vega(dvc, mocker, plots_data):
     m.assert_called_once_with(
         targets=["datafile"],
         props={"template": "template", "header": False},
-        config_files=None,
     )
     render_mock.assert_not_called()
 

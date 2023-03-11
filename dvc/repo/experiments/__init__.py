@@ -494,3 +494,8 @@ class Experiments:
         from dvc.repo.experiments.remove import remove
 
         return remove(self.repo, *args, **kwargs)
+
+    def clean(self, *args, **kwargs):
+        from dvc.repo.experiments.clean import clean
+
+        return clean(self.repo, *args, **kwargs)

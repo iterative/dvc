@@ -3,6 +3,8 @@ from textwrap import dedent
 
 import pytest
 
+from dvc_task.app import FSApp
+
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
     """\
@@ -147,11 +149,60 @@ def _thread_worker(app, **kwargs):
     return worker.start_worker(app, pool="threads", **kwargs)
 
 
+@pytest.fixture(scope="session")
+def session_app(tmp_path_factory) -> FSApp:
+    """Session scoped experiments queue celery app."""
+    from kombu.transport.filesystem import Channel
+
+    # related to https://github.com/iterative/dvc-task/issues/61
+    Channel.QoS.restore_at_shutdown = False
+
+    from dvc_task.app import FSApp
+
+    wdir = tmp_path_factory.mktemp("dvc-test-celery")
+    app = FSApp(
+        "dvc-exp-local",
+        wdir=wdir,
+        mkdir=True,
+        include=[
+            "dvc.repo.experiments.queue.tasks",
+            "dvc_task.proc.tasks",
+        ],
+    )
+    app.conf.update({"task_acks_late": True, "result_expires": None})
+    return app
+
+
+@pytest.fixture(scope="session")
+def session_worker(session_app):
+    """Session scoped celery worker that runs in separate thread(s)."""
+    with _thread_worker(
+        session_app,
+        concurrency=1,
+        ping_task_timeout=20,
+        loglevel="DEBUG",
+    ) as worker:
+        yield worker
+
+
+@pytest.fixture
+def session_queue(tmp_dir, dvc, scm, mocker, session_app, session_worker):
+    """Patches experiments celery queue for pytest testing.
+
+    Uses session-scoped celery worker.
+    """
+    queue = dvc.experiments.celery_queue
+    queue.celery = session_app
+    queue.worker = session_worker
+    mocker.patch.object(queue, "_spawn_worker")
+    return queue
+
+
 @pytest.fixture
 def test_queue(tmp_dir, dvc, scm, mocker):
     """Patches experiments celery queue for pytest testing.
 
-    Test queue worker runs for the duration of the test in separate thread(s).
+    Uses function-scoped celery worker which runs in separate thread(s).
     """
     import celery
 

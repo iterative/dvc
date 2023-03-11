@@ -5,6 +5,9 @@ from tests.unit.repo.experiments.conftest import (  # noqa, pylint disable=unuse
     exp_stage,
     failed_checkpoint_stage,
     failed_exp_stage,
+    session_app,
+    session_queue,
+    session_worker,
     test_queue,
 )
 
@@ -24,7 +27,7 @@ def http_auth_patch(mocker):
 
 
 @pytest.fixture(params=[True, False])
-def workspace(request, test_queue) -> bool:  # noqa: F811
+def workspace(request, session_queue) -> bool:  # noqa: F811
     return request.param
 
 

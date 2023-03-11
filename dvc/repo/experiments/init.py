@@ -218,13 +218,12 @@ def init(
             provided=overrides,
             stream=stream,
         )
+    elif "live" in overrides:
+        # suppress `metrics`/`plots` if live is selected.
+        defaults.pop("metrics", None)
+        defaults.pop("plots", None)
     else:
-        if "live" in overrides:
-            # suppress `metrics`/`plots` if live is selected.
-            defaults.pop("metrics", None)
-            defaults.pop("plots", None)
-        else:
-            defaults.pop("live", None)  # suppress live otherwise
+        defaults.pop("live", None)  # suppress live otherwise
 
     context: Dict[str, str] = {**defaults, **overrides}
     assert "cmd" in context

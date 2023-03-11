@@ -3,4 +3,4 @@ if __name__ == "__main__":
 
     import pytest
 
-    sys.exit(pytest.main(["-v", "-n=auto", *sys.argv[1:]]))
+    sys.exit(pytest.main(["-v", "-n=logical", *sys.argv[1:]]))

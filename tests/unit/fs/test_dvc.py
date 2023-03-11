@@ -59,10 +59,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
     dvc.scm.add(["foo.dvc", ".gitignore"])
     dvc.scm.commit("foofoo")
 
-    for rev in dvc.brancher(revs=["HEAD~1"]):
-        if rev == "workspace":
-            continue
-
+    with dvc.switch("HEAD~1"):
         fs = DVCFileSystem(repo=dvc)
         with fs.open("foo", "r") as fobj:
             assert fobj.read() == "foo"

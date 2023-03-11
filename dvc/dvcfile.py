@@ -409,11 +409,10 @@ class Lockfile(FileMixin):
             if version == LOCKFILE_VERSION.V1:
                 logger.info("Migrating lock file '%s' from v1 to v2", self.relpath)
                 migrate_lock_v1_to_v2(data, self.latest_version_info)
-            else:
-                if not data:
-                    data.update(self.latest_version_info)
-                    # order is important, meta should always be at the top
-                    logger.info("Generating lock file '%s'", self.relpath)
+            elif not data:
+                data.update(self.latest_version_info)
+                # order is important, meta should always be at the top
+                logger.info("Generating lock file '%s'", self.relpath)
 
             data["stages"] = data.get("stages", {})
             modified = data["stages"].get(stage.name, {}) != stage_data.get(

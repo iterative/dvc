@@ -2,8 +2,9 @@ import logging
 import os
 import posixpath
 from collections import defaultdict
+from contextlib import suppress
 from operator import itemgetter
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type
 from urllib.parse import urlparse
 
 from funcy import collecting, first, project
@@ -20,7 +21,6 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.utils.objects import cached_property
-from dvc_data.hashfile import Tree
 from dvc_data.hashfile import check as ocheck
 from dvc_data.hashfile import load as oload
 from dvc_data.hashfile.build import build
@@ -29,6 +29,7 @@ from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer as otransfer
+from dvc_data.hashfile.tree import Tree
 from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
@@ -753,15 +754,16 @@ class Output:
 
     def _commit_granular_dir(self, filter_info, hardlink) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
-        staging, _, save_obj = build(
+        staging, _, obj = build(
             self.cache,
             self.fs_path,
             self.fs,
             self.hash_name,
             ignore=self.dvcignore,
         )
-        save_obj = cast(Tree, save_obj)
-        save_obj = cast(Tree, save_obj.filter(prefix))
+        assert isinstance(obj, Tree)
+        save_obj = obj.filter(prefix)
+        assert isinstance(save_obj, Tree)
         checkout_obj = save_obj.get_obj(self.cache, prefix)
         otransfer(
             staging,
@@ -826,7 +828,7 @@ class Output:
         if with_files:
             obj = self.obj or self.get_obj()
             if obj:
-                obj = cast("Tree", obj)
+                assert isinstance(obj, Tree)
                 ret[self.PARAM_FILES] = [
                     split_file_meta_from_cloud(f)
                     for f in _serialize_tree_obj_to_files(obj)
@@ -874,7 +876,7 @@ class Output:
         fs_path = self.fs.path
         if filter_info and filter_info != self.fs_path:
             prefix = fs_path.relparts(filter_info, self.fs_path)
-            obj = cast(Tree, obj)
+            assert isinstance(obj, Tree)
             obj = obj.get_obj(self.cache, prefix)
 
         return obj
@@ -1016,7 +1018,8 @@ class Output:
         except FileNotFoundError:
             if self.remote:
                 kwargs["remote"] = self.remote
-            self.repo.cloud.pull([obj.hash_info], **kwargs)
+            with suppress(Exception):
+                self.repo.cloud.pull([obj.hash_info], **kwargs)
 
         if self.obj:
             return self.obj
@@ -1056,12 +1059,12 @@ class Output:
             return None
 
         obj = self.get_obj()
+        assert obj is None or isinstance(obj, Tree)
         if filter_info and filter_info != self.fs_path:
             assert obj
             prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
-            obj = cast(Tree, obj)
             return obj.filter(prefix)
-        return cast(Tree, obj)
+        return obj
 
     def get_used_objs(  # noqa: C901, PLR0911
         self, **kwargs

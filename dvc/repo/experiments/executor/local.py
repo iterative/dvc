@@ -5,7 +5,6 @@ from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Optional, Union
 
 from funcy import retry
-from scmrepo.exceptions import SCMError as _SCMError
 from shortuuid import uuid
 
 from dvc.lock import LockError
@@ -20,7 +19,7 @@ from dvc.repo.experiments.refs import (
     EXPS_TEMP,
 )
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
-from dvc.scm import SCM, Git, GitMergeError
+from dvc.scm import SCM, Git
 from dvc.utils.fs import remove
 from dvc.utils.objects import cached_property
 
@@ -134,10 +133,7 @@ class TempDirExecutor(BaseLocalExecutor):
         self.scm.checkout(head, detach=True)
         merge_rev = self.scm.get_ref(EXEC_MERGE)
 
-        try:
-            self.scm.merge(merge_rev, squash=True, commit=False)
-        except _SCMError as exc:
-            raise GitMergeError(str(exc), scm=self.scm)  # noqa: B904
+        self.scm.stash.apply(merge_rev)
 
     def _config(self, cache_dir):
         local_config = os.path.join(
@@ -229,10 +225,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
                 )
             )
             merge_rev = self.scm.get_ref(EXEC_MERGE)
-            try:
-                self.scm.merge(merge_rev, squash=True, commit=False)
-            except _SCMError as exc:
-                raise GitMergeError(str(exc), scm=self.scm)  # noqa: B904
+            self.scm.stash.apply(merge_rev)
             if branch:
                 self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
             elif scm.get_ref(EXEC_BRANCH):

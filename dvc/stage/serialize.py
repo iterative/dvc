@@ -8,7 +8,6 @@ from typing import (
     List,
     Optional,
     Union,
-    cast,
     no_type_check,
 )
 
@@ -24,7 +23,6 @@ from .utils import resolve_wdir, split_params_deps
 
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage
-    from dvc_data.hashfile.tree import Tree
 
 PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
 PARAM_PATH = ParamsDependency.PARAM_PATH
@@ -155,6 +153,7 @@ def to_pipeline_file(stage: "PipelineStage"):
 
 def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     from dvc.output import _serialize_tree_obj_to_files, split_file_meta_from_cloud
+    from dvc_data.hashfile.tree import Tree
 
     assert stage.cmd
 
@@ -163,7 +162,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
         if item.hash_info.isdir and kwargs.get("with_files"):
             obj = item.obj or item.get_obj()
             if obj:
-                obj = cast("Tree", obj)
+                assert isinstance(obj, Tree)
                 ret[item.PARAM_FILES] = [
                     split_file_meta_from_cloud(f)
                     for f in _serialize_tree_obj_to_files(obj)

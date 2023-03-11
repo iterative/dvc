@@ -169,7 +169,7 @@ def determine_linecol(
     number of steps upward to just 5. If it does not find any linecols, it'll
     abort.
     """
-    from dpath.util import get
+    from dpath import get
 
     step = 1
     line, col = None, None

@@ -1,11 +1,12 @@
+import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional
 
+import dpath
 import dpath.options
-import dpath.util
 from funcy import last
 
-from dvc.repo.plots import infer_data_sources
+from dvc.repo.plots import _normpath, infer_data_sources
 from dvc.utils.plots import get_plot_id
 
 from .convert import _get_converter
@@ -43,17 +44,20 @@ class PlotsData:
 
     def get_definition_data(self, target_files, rev):
         result = {}
-        for file in target_files:
+        for definition_file in target_files:
+            if os.name == "nt":
+                source_file = _normpath(definition_file).replace("\\", "/")
+            else:
+                source_file = definition_file
             file_content = (
                 self.data.get(rev, {})
                 .get("sources", {})
                 .get("data", {})
-                .get(file, {})
+                .get(source_file, {})
                 .get("data", {})
             )
             if file_content:
-                result[file] = file_content
-
+                result[definition_file] = file_content
         return result
 
 

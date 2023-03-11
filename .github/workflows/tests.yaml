@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   tests:
-    timeout-minutes: 45
+    timeout-minutes: 50
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -41,9 +41,9 @@ jobs:
         pip install -e ".[dev]"
     - uses: pre-commit/action@v3.0.0
     - name: run tests
-      timeout-minutes: 30
+      timeout-minutes: 40
       run: >
-        pytest -nauto --timeout=300 --durations=100
+        pytest -n=logical --timeout=300 --durations=100
         --cov --cov-report=xml --cov-report=term
     - name: upload coverage report
       uses: codecov/codecov-action@v3

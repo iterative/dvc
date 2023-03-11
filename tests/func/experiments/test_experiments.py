@@ -131,7 +131,7 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{1}}") == init_rev
 
 
-def test_update_py_params(tmp_dir, scm, dvc, test_queue, copy_script):
+def test_update_py_params(tmp_dir, scm, dvc, session_queue, copy_script):
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
         cmd="python copy.py params.py metrics.py",
@@ -405,11 +405,12 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     assert resolve_rev(scm, ref_info.name) == exp
 
 
-def test_subrepo(tmp_dir, scm, workspace):
+def test_subrepo(tmp_dir, request, scm, workspace):
     from dvc.testing.tmp_dir import make_subrepo
 
     subrepo = tmp_dir / "dir" / "repo"
     make_subrepo(subrepo, scm)
+    request.addfinalizer(subrepo.dvc.close)
 
     subrepo.gen("copy.py", COPY_SCRIPT)
     subrepo.gen("params.yaml", "foo: 1")
@@ -633,3 +634,9 @@ def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing, dry=True)
 
     assert len(dvc.experiments.ls()["master"]) == 0
+
+
+def test_clean(tmp_dir, scm, dvc, mocker):
+    clean = mocker.spy(dvc.experiments.celery_queue.celery, "clean")
+    dvc.experiments.clean()
+    clean.assert_called_once_with()

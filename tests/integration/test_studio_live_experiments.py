@@ -38,4 +38,5 @@ def test_post_to_studio(tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp):
         "name": name,
         "client": "dvc",
         "experiment_rev": exp_rev,
+        "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
     }

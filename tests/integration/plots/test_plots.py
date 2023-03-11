@@ -5,7 +5,7 @@ from typing import Dict, List
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-import dpath.util
+import dpath
 import pytest
 from bs4 import BeautifulSoup
 from funcy import first
@@ -124,9 +124,9 @@ def verify_vega(
         tmp1 = deepcopy(html_template)
         tmp2 = deepcopy(filled_template)
         tmp3 = deepcopy(split_template)
-        dpath.util.set(tmp1, path, {})
-        dpath.util.set(tmp2, path, {})
-        dpath.util.set(tmp3, path, {})
+        dpath.set(tmp1, path, {})
+        dpath.set(tmp2, path, {})
+        dpath.set(tmp3, path, {})
 
         assert tmp1 == tmp2 == tmp3
 
@@ -140,17 +140,17 @@ def verify_vega_props(plot_id, json_result, title, x, y, **kwargs):
     assert len(data) == 1
     data = first(data)
 
-    assert dpath.util.get(data, ["content", "title"]) == title
+    assert dpath.get(data, ["content", "title"]) == title
 
     try:
         # TODO confusion_matrix_plot - need to find better way of asserting
         #      encoding as its place is not constant in vega
-        plot_x = dpath.util.get(data, ["content", "spec", "encoding", "x", "field"])
-        plot_y = dpath.util.get(data, ["content", "spec", "encoding", "y", "field"])
+        plot_x = dpath.get(data, ["content", "spec", "encoding", "x", "field"])
+        plot_y = dpath.get(data, ["content", "spec", "encoding", "y", "field"])
     except KeyError:
         # default plot
-        plot_x = dpath.util.get(data, ["content", "layer", 0, "encoding", "x", "field"])
-        plot_y = dpath.util.get(data, ["content", "layer", 0, "encoding", "y", "field"])
+        plot_x = dpath.get(data, ["content", "layer", 0, "encoding", "x", "field"])
+        plot_y = dpath.get(data, ["content", "layer", 0, "encoding", "y", "field"])
 
     assert plot_x == x
     assert plot_y == y

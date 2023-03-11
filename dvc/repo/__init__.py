@@ -3,7 +3,16 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    ContextManager,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
@@ -14,7 +23,7 @@ from dvc.utils.fs import path_isin
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
-    from dvc.fs import FileSystem, GitFileSystem
+    from dvc.fs import FileSystem
     from dvc.fs.data import DataFileSystem
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
@@ -223,7 +232,8 @@ class Repo:
             self.cache = CacheManager(self)
         else:
             if isinstance(self.fs, LocalFileSystem):
-                self.fs.makedirs(cast(str, self.tmp_dir), exist_ok=True)
+                assert self.tmp_dir
+                self.fs.makedirs(self.tmp_dir, exist_ok=True)
 
                 self.lock = make_lock(
                     self.fs.path.join(self.tmp_dir, "lock"),
@@ -348,7 +358,7 @@ class Repo:
         return DvcIgnoreFilter(self.fs, self.root_dir)
 
     def get_rev(self):
-        from dvc.fs import LocalFileSystem
+        from dvc.fs import GitFileSystem, LocalFileSystem
 
         assert self.scm
         if isinstance(self.fs, LocalFileSystem):
@@ -356,7 +366,8 @@ class Repo:
 
             with map_scm_exception():
                 return self.scm.get_rev()
-        return cast("GitFileSystem", self.fs).rev
+        assert isinstance(self.fs, GitFileSystem)
+        return self.fs.rev
 
     @cached_property
     def experiments(self) -> "Experiments":
@@ -386,17 +397,17 @@ class Repo:
         self._reset()
 
     @property
-    def data_index(self) -> Optional["DataIndex"]:
+    def data_index(self) -> "DataIndex":
         from dvc_data.index import DataIndex
 
-        if not self.index_db_dir:
-            return None
-
         if self._data_index is None:
-            index_dir = os.path.join(self.index_db_dir, "index", "data")
-            os.makedirs(index_dir, exist_ok=True)
+            if self.index_db_dir:
+                index_dir = os.path.join(self.index_db_dir, "index", "data")
+                os.makedirs(index_dir, exist_ok=True)
 
-            self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
+                self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
+            else:
+                self._data_index = DataIndex()
 
         return self._data_index
 
@@ -460,6 +471,11 @@ class Repo:
         from dvc.repo.brancher import brancher
 
         return brancher(self, *args, **kwargs)
+
+    def switch(self, rev: str) -> ContextManager[str]:
+        from dvc.repo.brancher import switch
+
+        return switch(self, rev)
 
     def used_objs(  # noqa: PLR0913
         self,
@@ -627,5 +643,4 @@ class Repo:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._reset()
-        self.scm.close()
+        self.close()

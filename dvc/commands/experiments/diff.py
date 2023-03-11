@@ -52,7 +52,7 @@ class CmdExperimentsDiff(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    EXPERIMENTS_DIFF_HELP = "Show changes between experiments in the DVC repository."
+    EXPERIMENTS_DIFF_HELP = "Show changes between experiments."
 
     experiments_diff_parser = experiments_subparsers.add_parser(
         "diff",
