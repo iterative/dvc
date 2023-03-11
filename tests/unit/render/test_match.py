@@ -1,4 +1,4 @@
-from dvc.render import VERSION_FIELD
+from dvc.render import REVISION_FIELD
 from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_renderers
 
 
@@ -81,22 +81,22 @@ def test_match_renderers(mocker):
     assert len(renderers) == 1
     assert renderers[0].datapoints == [
         {
-            VERSION_FIELD: {
-                "revision": "v1",
-                "filename": "file.json",
-                "field": "y",
-            },
             "x": 1,
             "y": 1,
+            REVISION_FIELD: "v1::file.json::y",
+            "dvc_id": "v1::file.json::y",
+            "dvc_rev": "v1",
+            "dvc_filename": "file.json",
+            "dvc_field": "y",
         },
         {
-            VERSION_FIELD: {
-                "revision": "v1",
-                "filename": "file.json",
-                "field": "y",
-            },
             "x": 2,
             "y": 2,
+            REVISION_FIELD: "v1::file.json::y",
+            "dvc_id": "v1::file.json::y",
+            "dvc_rev": "v1",
+            "dvc_filename": "file.json",
+            "dvc_field": "y",
         },
     ]
     assert renderers[0].properties == {

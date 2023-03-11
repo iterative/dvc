@@ -1,4 +1,4 @@
-from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY, VERSION_FIELD
+from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
 from dvc.render.convert import to_json
 
 
@@ -10,14 +10,22 @@ def test_to_json_vega(mocker):
         {
             "x": 1,
             "y": 2,
-            VERSION_FIELD: {"revision": "foo"},
             "filename": "foo.json",
+            REVISION_FIELD: "foo::foo.json::y",
+            "dvc_id": "foo::foo.json::y",
+            "dvc_rev": "foo",
+            "dvc_filename": "foo.json",
+            "dvc_field": "y",
         },
         {
             "x": 2,
             "y": 1,
-            VERSION_FIELD: {"revision": "bar"},
             "filename": "foo.json",
+            REVISION_FIELD: "bar::foo.json::y",
+            "dvc_id": "bar::foo.json::y",
+            "dvc_rev": "bar",
+            "dvc_filename": "foo.json",
+            "dvc_field": "y",
         },
     ]
     result = to_json(vega_renderer)
@@ -31,7 +39,11 @@ def test_to_json_vega(mocker):
                     "x": 1,
                     "y": 2,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "foo"},
+                    REVISION_FIELD: "foo::foo.json::y",
+                    "dvc_id": "foo::foo.json::y",
+                    "dvc_rev": "foo",
+                    "dvc_filename": "foo.json",
+                    "dvc_field": "y",
                 },
             ],
             "bar": [
@@ -39,7 +51,11 @@ def test_to_json_vega(mocker):
                     "x": 2,
                     "y": 1,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "bar"},
+                    REVISION_FIELD: "bar::foo.json::y",
+                    "dvc_id": "bar::foo.json::y",
+                    "dvc_rev": "bar",
+                    "dvc_filename": "foo.json",
+                    "dvc_field": "y",
                 },
             ],
         },
@@ -55,14 +71,22 @@ def test_to_json_vega_split(mocker):
         {
             "x": 1,
             "y": 2,
-            VERSION_FIELD: {"revision": "foo"},
             "filename": "foo.json",
+            REVISION_FIELD: "foo::foo.json::y",
+            "dvc_id": "foo::foo.json::y",
+            "dvc_rev": "foo",
+            "dvc_filename": "foo.json",
+            "dvc_field": "y",
         },
         {
             "x": 2,
             "y": 1,
-            VERSION_FIELD: {"revision": "bar"},
             "filename": "foo.json",
+            REVISION_FIELD: "bar::foo.json::y",
+            "dvc_id": "bar::foo.json::y",
+            "dvc_rev": "bar",
+            "dvc_filename": "foo.json",
+            "dvc_field": "y",
         },
     ]
     result = to_json(vega_renderer, split=True)
@@ -76,7 +100,11 @@ def test_to_json_vega_split(mocker):
                     "x": 1,
                     "y": 2,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "foo"},
+                    REVISION_FIELD: "foo::foo.json::y",
+                    "dvc_id": "foo::foo.json::y",
+                    "dvc_rev": "foo",
+                    "dvc_filename": "foo.json",
+                    "dvc_field": "y",
                 }
             ],
             "bar": [
@@ -84,7 +112,11 @@ def test_to_json_vega_split(mocker):
                     "x": 2,
                     "y": 1,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "bar"},
+                    REVISION_FIELD: "bar::foo.json::y",
+                    "dvc_id": "bar::foo.json::y",
+                    "dvc_rev": "bar",
+                    "dvc_filename": "foo.json",
+                    "dvc_field": "y",
                 }
             ],
         },

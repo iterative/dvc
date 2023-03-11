@@ -350,5 +350,5 @@ def _get_x_props(xs: List):
 def _get_all_y_props(ys: List):
     if ys:
         all_y_files, all_y_fields = list(zip(*ys))
-        return set(all_y_fields), set(all_y_files)
+        return set(all_y_files), set(all_y_fields)
     return set(), set()
