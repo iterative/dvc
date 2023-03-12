@@ -300,6 +300,7 @@ SCHEMA = {
     "feature": FeatureSchema(
         {
             Optional("machine", default=False): Bool,
+            Optional("push_exp_to_studio", default=False): Bool,
         },
     ),
     "plots": {
