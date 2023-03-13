@@ -1,4 +1,3 @@
-import gc
 import json
 import os
 import sys
@@ -244,17 +243,3 @@ def run_copy_metrics(tmp_dir, copy_script):
         return stage
 
     return run
-
-
-@pytest.fixture(autouse=True)
-def gc_collect_on_dvc_close_on_win(mocker):
-    from dvc.repo import Repo
-
-    close = Repo.close
-
-    def wrapped(repo):
-        close(repo)
-        gc.collect()
-
-    if os.name == "nt":
-        mocker.patch("dvc.repo.Repo.close", wrapped)
