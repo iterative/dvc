@@ -323,7 +323,8 @@ class BaseStashQueue(ABC):
         .. _Hydra Override:
             https://hydra.cc/docs/next/advanced/override_grammar/basic/
         """
-        with self.scm.stash_workspace(reinstate_index=True) as workspace:
+        stash_kwargs = {"reinstate_index": True, "include_untracked": True}
+        with self.scm.stash_workspace(**stash_kwargs) as workspace:
             with self.scm.detach_head(client="dvc") as orig_head:
                 stash_head = orig_head
                 if baseline_rev is None:
