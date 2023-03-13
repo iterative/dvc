@@ -215,8 +215,6 @@ def exp_commits(
     refs = ref_infos if ref_infos else exp_refs(scm)
     for ref_info in refs:
         shas.update(scm.branch_revs(str(ref_info), ref_info.baseline_sha))
-        if ref_info.baseline_sha:
-            shas.add(ref_info.baseline_sha)
     yield from shas
 
 
