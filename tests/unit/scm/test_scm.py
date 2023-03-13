@@ -64,7 +64,6 @@ def test_iter_revs(
     assert gen == {
         rev_new: [rev_new],
         rev_old: [rev_old],
-        rev_root: [rev_root],
     }
 
     def _resolve_commit(rev):
