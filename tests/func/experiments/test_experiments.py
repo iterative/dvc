@@ -653,11 +653,10 @@ def test_experiment_no_commit(tmp_dir):
 
     from dvc.repo import Repo
 
-    git = Git.init(tmp_dir.fs_path)
-    assert git.no_commits
-    git.close()
-
+    Git.init(tmp_dir.fs_path).close()
+    
     repo = Repo.init()
+    assert repo.scm.no_commits
 
     try:
         with pytest.raises(SCMError):  # noqa: PT011
