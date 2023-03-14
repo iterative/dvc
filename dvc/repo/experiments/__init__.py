@@ -62,7 +62,6 @@ class Experiments:
             raise NoSCMError
 
         if repo.scm.no_commits:
-            self.scm.close()
             raise SCMError("Empty Git repo. Add a commit to use experiments.")
 
         self.repo = repo
