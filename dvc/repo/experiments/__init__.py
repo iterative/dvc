@@ -56,13 +56,10 @@ class Experiments:
     )
 
     def __init__(self, repo):
-        from dvc.scm import NoSCMError, SCMError
+        from dvc.scm import NoSCMError
 
         if repo.config["core"].get("no_scm", False):
             raise NoSCMError
-
-        if repo.scm.no_commits:
-            raise SCMError("Empty Git repo. Add a commit to use experiments.")
 
         self.repo = repo
 
