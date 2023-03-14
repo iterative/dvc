@@ -42,17 +42,6 @@ def make_executor_info(**kwargs):
 
 
 @pytest.mark.vscode
-def test_show_no_commits(tmp_dir):
-    from dvc.repo import Repo
-    from dvc.scm import Git
-
-    git = Git.init(tmp_dir.fs_path)
-    assert git.no_commits
-
-    assert Repo.init().experiments.show() == {}
-
-
-@pytest.mark.vscode
 def test_show_branch_and_tag_name(tmp_dir, scm, dvc, exp_stage):
     with tmp_dir.branch("new/branch", new=True):
         tmp_dir.scm_gen("branch", "branch", "commit")

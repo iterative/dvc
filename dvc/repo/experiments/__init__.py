@@ -65,6 +65,11 @@ class Experiments:
 
     @property
     def scm(self):
+        from dvc.scm import SCMError
+
+        if self.repo.scm.no_commits:
+            raise SCMError("Empty Git repo. Add a commit to use experiments.")
+
         return self.repo.scm
 
     @cached_property
