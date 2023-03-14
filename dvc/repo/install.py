@@ -20,16 +20,19 @@ def pre_commit_install(scm: "Git") -> None:
             "hooks": [
                 {
                     "id": "dvc-pre-commit",
+                    "additional_dependencies": [".[all]"],
                     "language_version": "python3",
                     "stages": ["commit"],
                 },
                 {
                     "id": "dvc-pre-push",
+                    "additional_dependencies": [".[all]"],
                     "language_version": "python3",
                     "stages": ["push"],
                 },
                 {
                     "id": "dvc-post-checkout",
+                    "additional_dependencies": [".[all]"],
                     "language_version": "python3",
                     "stages": ["post-checkout"],
                     "always_run": True,
