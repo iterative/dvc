@@ -655,6 +655,12 @@ def test_experiment_no_commit(tmp_dir):
 
     git = Git.init(tmp_dir.fs_path)
     assert git.no_commits
+    git.close()
 
-    with pytest.raises(SCMError):  # noqa: PT011
-        Repo.init().experiments.ls()
+    repo = Repo.init()
+
+    try:
+        with pytest.raises(SCMError):  # noqa: PT011
+            repo.experiments.ls()
+    finally:
+        repo.close()
