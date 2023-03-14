@@ -3,7 +3,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Dict, List
 
-from funcy import first
+from funcy import compact, first
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
@@ -24,35 +24,31 @@ def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
     from dvc.utils.serialize import encode_exception
 
     errors: List[Dict] = []
-    out = {}
+    data = {}
 
     for renderer, src_errors, def_errors in renderers_with_errors:
         name = renderer.name
-        out[name] = to_json(renderer, split)
-        if src_errors:
-            errors.extend(
-                {
-                    "name": name,
-                    "revision": rev,
-                    "source": source,
-                    **encode_exception(e),
-                }
-                for rev, per_rev_src_errors in src_errors.items()
-                for source, e in per_rev_src_errors.items()
-            )
-        if def_errors:
-            errors.extend(
-                {
-                    "name": name,
-                    "revision": rev,
-                    **encode_exception(e),
-                }
-                for rev, e in def_errors.items()
-            )
+        data[name] = to_json(renderer, split)
+        errors.extend(
+            {
+                "name": name,
+                "revision": rev,
+                "source": source,
+                **encode_exception(e),
+            }
+            for rev, per_rev_src_errors in src_errors.items()
+            for source, e in per_rev_src_errors.items()
+        )
+        errors.extend(
+            {
+                "name": name,
+                "revision": rev,
+                **encode_exception(e),
+            }
+            for rev, e in def_errors.items()
+        )
 
-    if errors:
-        out = {"errors": errors, **out}
-    ui.write_json(out, highlight=False)
+    ui.write_json(compact({"errors": errors, "data": data}), highlight=False)
 
 
 def _adjust_vega_renderers(renderers):
