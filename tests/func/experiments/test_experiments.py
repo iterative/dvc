@@ -654,7 +654,7 @@ def test_experiment_no_commit(tmp_dir):
     from dvc.repo import Repo
 
     Git.init(tmp_dir.fs_path).close()
-    
+
     repo = Repo.init()
     assert repo.scm.no_commits
 
