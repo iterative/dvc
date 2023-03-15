@@ -13,6 +13,8 @@ from typing import (
     Union,
 )
 
+import colorama
+
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -25,6 +27,15 @@ if TYPE_CHECKING:
     from dvc.progress import Tqdm
     from dvc.types import StrPath
     from dvc.ui.table import Headers, Styles, TableData
+
+
+@contextmanager
+def disable_colorama():
+    colorama.deinit()
+    try:
+        yield
+    finally:
+        colorama.reinit()
 
 
 class Formatter:
@@ -121,7 +132,10 @@ class Console:
             sort_keys=sort_keys,
         )
         if not highlight:
-            return self.write(json.text, stderr=stderr)
+            # we don't need colorama to try to strip ansi codes
+            # when highlighting is disabled
+            with disable_colorama():
+                return self.write(json.text, stderr=stderr)
         return self.rich_print(json, stderr=stderr, soft_wrap=True)
 
     def rich_print(
