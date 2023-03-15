@@ -200,7 +200,10 @@ class Plots:
             onerror=onerror,
             props=props,
         ):
-            _resolve_data_sources(data, cache_remote_stream=True)
+            short_rev = "workspace"
+            if rev := getattr(self.repo.fs, "rev", None):
+                short_rev = rev[:7]
+            _resolve_data_sources(data, short_rev, cache_remote_stream=True)
             result.update(data)
 
         errored = errored_revisions(result)
@@ -269,7 +272,11 @@ def _is_plot(out: "Output") -> bool:
     return bool(out.plot)
 
 
-def _resolve_data_sources(plots_data: Dict, cache_remote_stream: bool = False):
+def _resolve_data_sources(
+    plots_data: Dict, rev: str, cache_remote_stream: bool = False
+):
+    from dvc.progress import Tqdm
+
     values = list(plots_data.values())
     to_resolve = []
     while values:
@@ -284,14 +291,24 @@ def _resolve_data_sources(plots_data: Dict, cache_remote_stream: bool = False):
         assert callable(data_source)
         value.update(data_source(cache_remote_stream=cache_remote_stream))
 
+    if not to_resolve:
+        return
+
     executor = ThreadPoolExecutor(
-        max_workers=4 * cpu_count(),
+        max_workers=min(16, 4 * cpu_count()),
         thread_name_prefix="resolve_data",
         cancel_on_error=True,
     )
     with executor:
-        # imap_unordered is lazy, wrapping to trigger it
-        list(executor.imap_unordered(resolve, to_resolve))
+        iterable = executor.imap_unordered(resolve, to_resolve)
+        with Tqdm(
+            iterable,
+            total=len(to_resolve),
+            desc=f"Reading plot's data from {rev}",
+            unit="files",
+            unit_scale=False,
+        ) as progress_iterable:
+            list(progress_iterable)
 
 
 def _collect_plots(
