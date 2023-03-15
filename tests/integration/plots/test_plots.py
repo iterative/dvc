@@ -383,7 +383,7 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
             {
                 "name": p,
                 "source": p,
-                "revision": "workspace",
+                "rev": "workspace",
                 "type": "FileNotFoundError",
                 "msg": "",
             }

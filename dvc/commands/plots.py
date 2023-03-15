@@ -32,7 +32,7 @@ def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
         errors.extend(
             {
                 "name": name,
-                "revision": rev,
+                "rev": rev,
                 "source": source,
                 **encode_exception(e),
             }
@@ -42,7 +42,7 @@ def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
         errors.extend(
             {
                 "name": name,
-                "revision": rev,
+                "rev": rev,
                 **encode_exception(e),
             }
             for rev, e in def_errors.items()
