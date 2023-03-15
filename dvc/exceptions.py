@@ -261,6 +261,11 @@ class NoOutputInExternalRepoError(DvcException):
         )
 
 
+class CloudVersionedRemoteInExternalRepoError(DvcException):
+    def __init__(self, url):
+        super().__init__(f"Target repository '{url}' uses cloud-versioned remotes.")
+
+
 class HTTPError(DvcException):
     def __init__(self, code, reason):
         super().__init__(f"'{code} {reason}'")

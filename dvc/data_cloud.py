@@ -3,7 +3,7 @@
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from dvc.config import NoRemoteError, RemoteConfigError
+from dvc.config import CloudVersioningUnsupportedError, NoRemoteError, RemoteConfigError
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
 
@@ -104,7 +104,7 @@ class DataCloud:
     ) -> "HashFileDB":
         remote = self.get_remote(name=name, command=command)
         if remote.fs.version_aware or remote.worktree:
-            raise NoRemoteError(
+            raise CloudVersioningUnsupportedError(
                 f"'{command}' is unsupported for cloud versioned remotes"
             )
         return remote.odb

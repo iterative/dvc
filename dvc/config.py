@@ -34,6 +34,11 @@ class NoRemoteError(RemoteConfigError):
     pass
 
 
+class CloudVersioningUnsupportedError(NoRemoteError):
+    def __init__(self, msg):
+        super(ConfigError, self).__init__(msg)
+
+
 class RemoteNotFoundError(RemoteConfigError):
     pass
 

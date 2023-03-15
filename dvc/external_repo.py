@@ -3,11 +3,12 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Collection, Dict, Iterator, Optional, Tuple
 
 from funcy import retry, wrap_with
 
 from dvc.exceptions import (
+    CloudVersionedRemoteInExternalRepoError,
     FileMissingError,
     NoOutputInExternalRepoError,
     NoRemoteInExternalRepoError,
@@ -37,7 +38,7 @@ def external_repo(
     cache_types: Optional[Collection[str]] = None,
     **kwargs,
 ) -> Iterator["Repo"]:
-    from dvc.config import NoRemoteError
+    from dvc.config import CloudVersioningUnsupportedError, NoRemoteError
     from dvc.fs import GitFileSystem
     from dvc.scm import Git
 
@@ -64,7 +65,7 @@ def external_repo(
         fs = GitFileSystem(scm=scm, rev=rev)
         root_dir = "/"
 
-    repo_kwargs = dict(
+    repo_kwargs = _repo_kwargs(
         root_dir=root_dir,
         url=url,
         fs=fs,
@@ -73,17 +74,12 @@ def external_repo(
         scm=scm,
         **kwargs,
     )
-
-    if "subrepos" not in repo_kwargs:
-        repo_kwargs["subrepos"] = True
-
-    if "uninitialized" not in repo_kwargs:
-        repo_kwargs["uninitialized"] = True
-
     repo = Repo(**repo_kwargs)
 
     try:
         yield repo
+    except CloudVersioningUnsupportedError as exc:
+        raise CloudVersionedRemoteInExternalRepoError(url) from exc
     except NoRemoteError as exc:
         raise NoRemoteInExternalRepoError(url) from exc
     except OutputNotFoundError as exc:
@@ -96,6 +92,15 @@ def external_repo(
         repo.close()
         if for_write:
             _remove(path)
+
+
+def _repo_kwargs(**kwargs) -> Dict[str, Any]:
+    repo_kwargs = dict(kwargs)
+    if "subrepos" not in repo_kwargs:
+        repo_kwargs["subrepos"] = True
+    if "uninitialized" not in repo_kwargs:
+        repo_kwargs["uninitialized"] = True
+    return repo_kwargs
 
 
 def erepo_factory(url, root_dir, cache_config):

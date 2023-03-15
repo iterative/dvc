@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 from copy import copy
-from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set, Tuple, Union
 
 from voluptuous import Required
 
@@ -105,8 +105,7 @@ class RepoDependency(Dependency):
     def _get_used_and_obj(
         self, obj_only: bool = False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"]:
-        from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError, PathMissingError
+        from dvc.exceptions import PathMissingError
         from dvc.utils import as_posix
         from dvc_data.hashfile.build import build
         from dvc_data.hashfile.tree import Tree, TreeError
@@ -114,26 +113,14 @@ class RepoDependency(Dependency):
         local_odb = self.repo.cache.local
         locked = kwargs.pop("locked", True)
         with self._make_repo(locked=locked, cache_dir=local_odb.path) as repo:
-            used_obj_ids = defaultdict(set)
+            used_obj_ids: Dict[Optional["ObjectDB"], Set["HashInfo"]] = defaultdict(set)
             rev = repo.get_rev()
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = rev
 
             if not obj_only:
-                try:
-                    for odb, obj_ids in repo.used_objs(
-                        [os.path.join(repo.root_dir, self.def_path)],
-                        force=True,
-                        jobs=kwargs.get("jobs"),
-                        recursive=True,
-                    ).items():
-                        if odb is None:
-                            odb = repo.cloud.get_remote_odb()
-                            odb.read_only = True
-                        self._check_circular_import(odb, obj_ids)
-                        used_obj_ids[odb].update(obj_ids)
-                except (NoRemoteError, NoOutputOrStageError):
-                    pass
+                for odb, obj_ids in self._get_erepo_used_objs(repo, **kwargs):
+                    used_obj_ids[odb].update(obj_ids)
 
             try:
                 object_store, meta, obj = build(
@@ -156,6 +143,33 @@ class RepoDependency(Dependency):
             if isinstance(obj, Tree):
                 used_obj_ids[object_store].update(oid for _, _, oid in obj)
             return used_obj_ids, meta, obj
+
+    def _get_erepo_used_objs(
+        self, repo: "Repo", **kwargs
+    ) -> Iterator[Tuple["ObjectDB", Set["HashInfo"]]]:
+        from dvc.config import CloudVersioningUnsupportedError, NoRemoteError
+        from dvc.exceptions import NoOutputOrStageError
+
+        try:
+            for odb, obj_ids in repo.used_objs(
+                [os.path.join(repo.root_dir, self.def_path)],
+                force=True,
+                jobs=kwargs.get("jobs"),
+                recursive=True,
+            ).items():
+                if odb is None:
+                    odb = repo.cloud.get_remote_odb(command="dvc import")
+                    odb.read_only = True
+                self._check_circular_import(odb, obj_ids)
+                if odb.fs.version_aware:
+                    raise CloudVersioningUnsupportedError(
+                        "'dvc import' is unsupported for cloud versioned remotes."
+                    )
+                yield odb, obj_ids
+        except CloudVersioningUnsupportedError:
+            raise
+        except (NoRemoteError, NoOutputOrStageError):
+            pass
 
     def _check_circular_import(self, odb: "ObjectDB", obj_ids: Set["HashInfo"]) -> None:
         from dvc.exceptions import CircularImportError
