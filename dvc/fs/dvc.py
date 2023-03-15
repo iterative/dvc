@@ -251,12 +251,15 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         try:
             return self.repo.fs.open(fs_path, mode=mode)
         except FileNotFoundError:
-            _, dvc_fs, subkey = self._get_subrepo_info(key)
+            repo, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
-        return dvc_fs.open(dvc_path, mode=mode)
+        kw = {}
+        if kwargs.get("cache_remote_stream", False):
+            kw["cache_odb"] = repo.cache.local
+        return dvc_fs.open(dvc_path, mode=mode, **kw)
 
     def isdvc(self, path, **kwargs) -> bool:
         """Is this entry dvc-tracked?"""

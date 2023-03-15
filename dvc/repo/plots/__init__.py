@@ -20,13 +20,14 @@ from typing import (
 
 import dpath
 import dpath.options
-from funcy import distinct, first, project
+from funcy import distinct, first, project, reraise
 
 from dvc.exceptions import DvcException
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.objects import cached_property
-from dvc.utils.serialize import LOADERS
+from dvc.utils.serialize import PARSERS, EncodingError
 from dvc.utils.threadpool import ThreadPoolExecutor
+from dvc_render.image import ImageRenderer
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
@@ -37,6 +38,9 @@ if TYPE_CHECKING:
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
 logger = logging.getLogger(__name__)
+
+
+SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS
 
 
 class PlotMetricTypeError(DvcException):
@@ -196,7 +200,7 @@ class Plots:
             onerror=onerror,
             props=props,
         ):
-            _resolve_data_sources(data)
+            _resolve_data_sources(data, cache_remote_stream=True)
             result.update(data)
 
         errored = errored_revisions(result)
@@ -265,7 +269,7 @@ def _is_plot(out: "Output") -> bool:
     return bool(out.plot)
 
 
-def _resolve_data_sources(plots_data: Dict):
+def _resolve_data_sources(plots_data: Dict, cache_remote_stream: bool = False):
     values = list(plots_data.values())
     to_resolve = []
     while values:
@@ -278,7 +282,7 @@ def _resolve_data_sources(plots_data: Dict):
     def resolve(value):
         data_source = value.pop("data_source")
         assert callable(data_source)
-        value.update(data_source())
+        value.update(data_source(cache_remote_stream=cache_remote_stream))
 
     executor = ThreadPoolExecutor(
         max_workers=4 * cpu_count(),
@@ -524,20 +528,25 @@ def unpack_if_dir(fs, path, props: Dict[str, str], onerror: Optional[Callable] =
 
 
 @error_handler
-def parse(fs, path, props=None, **kwargs):
+def parse(fs, path, props=None, **fs_kwargs):
     props = props or {}
     _, extension = os.path.splitext(path)
-    if extension in (".tsv", ".csv"):
-        header = props.get("header", True)
-        if extension == ".csv":
-            return _load_sv(path=path, fs=fs, delimiter=",", header=header)
-        return _load_sv(path=path, fs=fs, delimiter="\t", header=header)
-    if extension in LOADERS or extension in (".yml", ".yaml"):
-        return LOADERS[extension](path=path, fs=fs)
-    if extension in (".jpeg", ".jpg", ".gif", ".png", ".svg"):
-        with fs.open(path, "rb") as fd:
+    if extension in SUPPORTED_IMAGE_EXTENSIONS:
+        with fs.open(path, mode="rb", **fs_kwargs) as fd:
             return fd.read()
-    raise PlotMetricTypeError(path)
+
+    if extension not in PARSERS.keys() | {".yml", ".yaml", ".csv", ".tsv"}:
+        raise PlotMetricTypeError(path)
+
+    with reraise(UnicodeDecodeError, EncodingError(path, "utf8")):
+        with fs.open(path, mode="r", encoding="utf8", **fs_kwargs) as fd:
+            contents = fd.read()
+
+    if extension in (".csv", ".tsv"):
+        header = props.get("header", True)
+        delim = "\t" if extension == ".tsv" else ","
+        return _load_sv(contents, delimiter=delim, header=header)
+    return PARSERS[extension](contents, path)
 
 
 def _plot_props(out: "Output") -> Dict:
@@ -553,10 +562,7 @@ def _plot_props(out: "Output") -> Dict:
     return project(out.plot, PLOT_PROPS)
 
 
-def _load_sv(path, fs, delimiter=",", header=True):
-    with fs.open(path, "r") as fd:
-        content = fd.read()
-
+def _load_sv(content, delimiter=",", header=True):
     if header:
         reader = csv.DictReader(io.StringIO(content), delimiter=delimiter)
     else:
@@ -566,5 +572,4 @@ def _load_sv(path, fs, delimiter=",", header=True):
             delimiter=delimiter,
             fieldnames=[str(i) for i in range(len(first_row))],
         )
-
     return list(reader)
