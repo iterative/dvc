@@ -45,7 +45,7 @@ class RepoDependency(Dependency):
 
         self.fs = DVCFileSystem(
             url=self.def_repo[self.PARAM_URL],
-            rev=self.def_repo.get(self.PARAM_REV_LOCK),
+            rev=self._get_rev(),
         )
 
     def _parse_path(self, fs, fs_path):  # noqa: ARG002
