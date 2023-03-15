@@ -572,9 +572,17 @@ class Repo:
         else:
             root_dir = self.root_dir
 
+        repos_dir = os.path.join(cache_dir, "repo")
+
+        umask = os.umask(0)
+        try:
+            os.makedirs(repos_dir, mode=0o777, exist_ok=True)
+        finally:
+            os.umask(umask)
+
         repo_token = hashlib.md5(os.fsencode(root_dir)).hexdigest()  # noqa: S324
 
-        return os.path.join(cache_dir, "repo", repo_token)
+        return os.path.join(repos_dir, repo_token)
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
