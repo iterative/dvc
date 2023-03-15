@@ -110,6 +110,8 @@ def _notify_studio(
     session.mount(endpoint, HTTPAdapter(max_retries=3))
 
     json = {"repo_url": repo_url, "client": "dvc", "refs": refs}
+    logger.trace("Sending %s to %s", json, endpoint)  # type: ignore[attr-defined]
+
     headers = {"Authorization": f"token {token}"}
     resp = session.post(endpoint, json=json, headers=headers, timeout=5)
     resp.raise_for_status()
