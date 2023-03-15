@@ -1103,7 +1103,7 @@ class Output:
             return {}
 
         obj: Optional["HashFile"]
-        if self.is_dir_checksum:
+        if self.is_dir_checksum and not self.files:
             obj = self._collect_used_dir_cache(**kwargs)
         else:
             obj = self.get_obj(filter_info=kwargs.get("filter_info"))
