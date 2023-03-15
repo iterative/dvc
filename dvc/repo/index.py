@@ -161,7 +161,7 @@ def _load_storage_from_out(storage_map, key, out):
     except NoRemoteError:
         pass
 
-    if out.stage.is_import and not out.stage.is_repo_import:
+    if out.stage.is_import:
         dep = out.stage.deps[0]
         storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
 

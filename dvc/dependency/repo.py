@@ -36,10 +36,17 @@ class RepoDependency(Dependency):
     }
 
     def __init__(self, def_repo: Dict[str, str], stage: "Stage", *args, **kwargs):
+        from dvc.fs import DVCFileSystem
+
         self.def_repo = def_repo
         self._objs: Dict[str, "HashFile"] = {}
         self._meta: Dict[str, "Meta"] = {}
         super().__init__(stage, *args, **kwargs)
+
+        self.fs = DVCFileSystem(
+            self.def_repo[self.PARAM_URL],
+            rev=self.def_repo.get(self.PARAM_REV_LOCK),
+        )
 
     def _parse_path(self, fs, fs_path):  # noqa: ARG002
         return None
