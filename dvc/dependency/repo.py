@@ -44,7 +44,7 @@ class RepoDependency(Dependency):
         super().__init__(stage, *args, **kwargs)
 
         self.fs = DVCFileSystem(
-            self.def_repo[self.PARAM_URL],
+            url=self.def_repo[self.PARAM_URL],
             rev=self.def_repo.get(self.PARAM_REV_LOCK),
         )
 
