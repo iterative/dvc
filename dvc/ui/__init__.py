@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -132,9 +132,12 @@ class Console:
             sort_keys=sort_keys,
         )
         if not highlight:
+            import os
+
             # we don't need colorama to try to strip ansi codes
             # when highlighting is disabled
-            with disable_colorama():
+            ctx = nullcontext() if "DVC_TEST" in os.environ else disable_colorama()
+            with ctx:
                 return self.write(json.text, stderr=stderr)
         return self.rich_print(json, stderr=stderr, soft_wrap=True)
 
