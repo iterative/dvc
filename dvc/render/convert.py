@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 from typing import Dict, List, Union
 
@@ -32,15 +31,17 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
     if renderer.TYPE == "vega":
         grouped = _group_by_rev(renderer.datapoints)
         if split:
-            content = renderer.get_filled_template(skip_anchors=["data"])
+            content = renderer.get_filled_template(
+                skip_anchors=["data"], as_string=False
+            )
         else:
-            content = renderer.get_filled_template()
+            content = renderer.get_filled_template(as_string=False)
         if grouped:
             return [
                 {
                     TYPE_KEY: renderer.TYPE,
                     REVISIONS_KEY: sorted(grouped.keys()),
-                    "content": json.loads(content),
+                    "content": content,
                     "datapoints": grouped,
                 }
             ]

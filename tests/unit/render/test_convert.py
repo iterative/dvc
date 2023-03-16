@@ -5,7 +5,7 @@ from dvc.render.convert import to_json
 def test_to_json_vega(mocker):
     vega_renderer = mocker.MagicMock()
     vega_renderer.TYPE = "vega"
-    vega_renderer.get_filled_template.return_value = '{"this": "is vega"}'
+    vega_renderer.get_filled_template.return_value = {"this": "is vega"}
     vega_renderer.datapoints = [
         {
             "x": 1,
@@ -50,7 +50,7 @@ def test_to_json_vega(mocker):
 def test_to_json_vega_split(mocker):
     vega_renderer = mocker.MagicMock()
     vega_renderer.TYPE = "vega"
-    vega_renderer.get_filled_template.return_value = '{"this": "is split vega"}'
+    vega_renderer.get_filled_template.return_value = {"this": "is split vega"}
     vega_renderer.datapoints = [
         {
             "x": 1,
@@ -89,7 +89,9 @@ def test_to_json_vega_split(mocker):
             ],
         },
     }
-    vega_renderer.get_filled_template.assert_called_with(skip_anchors=["data"])
+    vega_renderer.get_filled_template.assert_called_with(
+        as_string=False, skip_anchors=["data"]
+    )
 
 
 def test_to_json_image(mocker):

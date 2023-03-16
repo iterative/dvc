@@ -1,5 +1,4 @@
 import argparse
-import json
 import logging
 import os
 
@@ -136,7 +135,7 @@ class CmdPlots(CmdBase):
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
-                    ui.write_json(json.loads(renderer.get_filled_template()))
+                    ui.write_json(renderer.get_filled_template(as_string=False))
                 return 0
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"
