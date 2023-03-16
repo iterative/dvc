@@ -15,7 +15,7 @@ from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 
 logger = logging.getLogger(__name__)
 
-STUDIO_ENDPOINT = ""
+STUDIO_ENDPOINT = "https://studio.iterative.ai/webhook/dvc"
 
 
 @locked
