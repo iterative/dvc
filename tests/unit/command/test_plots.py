@@ -129,7 +129,7 @@ def test_plots_diff_vega(dvc, mocker, capsys, plots_data):
     mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
     mocker.patch(
         "dvc_render.VegaRenderer.get_filled_template",
-        return_value=json.dumps({"this": "is vega json"}),
+        return_value={"this": "is vega json"},
     )
     render_mock = mocker.patch("dvc_render.render_html")
     assert cmd.run() == 0
