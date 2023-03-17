@@ -82,6 +82,7 @@ def _spawn_posix(cmd, env):
     sys.stdin.close()
     sys.stdout.close()
     sys.stderr.close()
+    os.closerange(0, 3)
 
     if platform.system() == "Darwin":
         # workaround for MacOS bug
