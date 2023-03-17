@@ -56,6 +56,11 @@ def _spawn_windows(cmd, env):
 def _spawn_posix(cmd, env):
     from dvc.cli import main
 
+    if sys.stdout and not sys.stdout.closed:
+        sys.stdout.flush()
+    if sys.stderr and not sys.stderr.closed:
+        sys.stderr.flush()
+
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exception and throws
     # errors such as "[26338] Failed to execute script __main__"
