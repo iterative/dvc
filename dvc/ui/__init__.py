@@ -31,10 +31,16 @@ if TYPE_CHECKING:
 
 @contextmanager
 def disable_colorama():
+    import sys
+
     colorama.deinit()
     try:
         yield
     finally:
+        if sys.stdout:
+            sys.stdout.flush()
+        if sys.stderr:
+            sys.stderr.flush()
         colorama.reinit()
 
 
