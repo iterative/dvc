@@ -1066,7 +1066,7 @@ class Output:
             return obj.filter(prefix)
         return obj
 
-    def get_used_objs(  # noqa: C901, PLR0911
+    def get_used_objs(  # noqa: C901
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""
@@ -1076,9 +1076,7 @@ class Output:
 
         push: bool = kwargs.pop("push", False)
         if self.stage.is_repo_import:
-            if push:
-                return {}
-            return self.get_used_external(**kwargs)
+            return {}
 
         if push and not self.can_push:
             return {}
@@ -1129,15 +1127,6 @@ class Output:
                 oid.obj_name = self.fs.sep.join([name, *key])
                 oids.add(oid)
         return oids
-
-    def get_used_external(
-        self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
-        if not self.use_cache or not self.stage.is_repo_import:
-            return {}
-
-        (dep,) = self.stage.deps
-        return dep.get_used_objs(**kwargs)
 
     def _validate_output_path(self, path, stage=None):
         from dvc.dvcfile import is_valid_filename

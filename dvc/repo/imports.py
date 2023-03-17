@@ -28,11 +28,7 @@ def unfetched_view(
     changed_deps: List["Dependency"] = []
 
     def need_fetch(stage: "Stage") -> bool:
-        if (
-            not stage.is_import
-            or stage.is_repo_import
-            or (stage.is_partial_import and not unpartial)
-        ):
+        if not stage.is_import or (stage.is_partial_import and not unpartial):
             return False
 
         out = stage.outs[0]
@@ -65,6 +61,7 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
         Total number of files which were unpartialed.
     """
     from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.meta import Meta
 
     updated = 0
     for out in index.outs:
@@ -73,14 +70,8 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
         workspace, key = out.index_key
         entry = index.data[workspace][key]
         if out.stage.is_partial_import:
-            if out.stage.is_repo_import:
-                dep = out.stage.deps[0]
-                out.hash_info = dep.get_obj().hash_info
-                out.meta = dep.get_meta()
-            else:
-                assert isinstance(entry.hash_info, HashInfo)
-                out.hash_info = entry.hash_info
-                out.meta = entry.meta
+            out.hash_info = entry.hash_info or HashInfo()
+            out.meta = entry.meta or Meta()
             out.stage.md5 = out.stage.compute_md5()
             out.stage.dump()
             updated += out.meta.nfiles if out.meta.nfiles is not None else 1

@@ -77,7 +77,10 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):  # noqa: 
 
     if os.path.isdir(proj.site_cache_dir):
         proj.close()
-        remove(proj.site_cache_dir)
+        try:
+            remove(proj.site_cache_dir)
+        except OSError:
+            logger.debug("failed to remove %s", dvc_dir, exc_info=True)
         proj = Repo(root_dir)
 
     with proj.scm_context(autostage=True) as context:
