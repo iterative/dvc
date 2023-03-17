@@ -56,6 +56,8 @@ def _spawn_windows(cmd, env):
 def _spawn_posix(cmd, env):
     from dvc.cli import main
 
+    # `fork` will copy buffers, so we need to flush them before forking.
+    # Otherwise, we will get duplicated outputs.
     if sys.stdout and not sys.stdout.closed:
         sys.stdout.flush()
     if sys.stderr and not sys.stderr.closed:
