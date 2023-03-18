@@ -18,10 +18,6 @@ from .exceptions import (
     InvalidExpRefError,
     MultipleBranchError,
 )
-from .executor.base import BaseExecutor
-from .queue.celery import LocalCeleryQueue
-from .queue.tempdir import TempDirQueue
-from .queue.workspace import WorkspaceQueue
 from .refs import (
     APPLY_STASH,
     CELERY_FAILED_STASH,
@@ -38,6 +34,9 @@ from .utils import check_ref_format, exp_refs_by_rev, unlocked_repo
 
 if TYPE_CHECKING:
     from .queue.base import BaseStashQueue, QueueEntry
+    from .queue.celery import LocalCeleryQueue
+    from .queue.tempdir import TempDirQueue
+    from .queue.workspace import WorkspaceQueue
     from .stash import ExpStashEntry
 
 logger = logging.getLogger(__name__)
@@ -78,20 +77,28 @@ class Experiments:
 
     @cached_property
     def args_file(self) -> str:
+        from .executor.base import BaseExecutor
+
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @cached_property
-    def workspace_queue(self) -> WorkspaceQueue:
+    def workspace_queue(self) -> "WorkspaceQueue":
+        from .queue.workspace import WorkspaceQueue
+
         return WorkspaceQueue(self.repo, WORKSPACE_STASH)
 
     @cached_property
-    def tempdir_queue(self) -> TempDirQueue:
+    def tempdir_queue(self) -> "TempDirQueue":
+        from .queue.tempdir import TempDirQueue
+
         # NOTE: tempdir and workspace stash is shared since both
         # implementations immediately push -> pop (queue length is only 0 or 1)
         return TempDirQueue(self.repo, WORKSPACE_STASH)
 
     @cached_property
-    def celery_queue(self) -> LocalCeleryQueue:
+    def celery_queue(self) -> "LocalCeleryQueue":
+        from .queue.celery import LocalCeleryQueue
+
         return LocalCeleryQueue(self.repo, CELERY_STASH, CELERY_FAILED_STASH)
 
     @cached_property
