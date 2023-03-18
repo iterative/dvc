@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, DefaultDict, Dict, List, NamedTuple, Optional
 
 import dpath
 import dpath.options
-from funcy import last
+from funcy import get_in, last
 
 from dvc.repo.plots import _normpath, infer_data_sources
 from dvc.utils.plots import get_plot_id
@@ -92,8 +92,6 @@ def match_defs_renderers(  # noqa: C901, PLR0912
             props["out"] = out
         if templates_dir is not None:
             props["template_dir"] = templates_dir
-
-        from funcy import get_in
 
         for rev, inner_id, plot_definition in group:
             plot_sources = infer_data_sources(inner_id, plot_definition)
