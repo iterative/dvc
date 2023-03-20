@@ -301,6 +301,8 @@ SCHEMA = {
         {
             Optional("machine", default=False): Bool,
             Optional("push_exp_to_studio", default=False): Bool,
+            "studio_token": str,
+            "studio_url": str,
         },
     ),
     "plots": {

@@ -19,6 +19,8 @@ class CmdExperimentsPush(CmdBase):
             )
 
     def run(self):
+        from dvc.utils import humanize
+
         self.raise_error_if_all_disabled()
 
         pushed_exps = self.repo.experiments.push(
@@ -36,8 +38,8 @@ class CmdExperimentsPush(CmdBase):
 
         if pushed_exps:
             ui.write(
-                f"Pushed experiment '{pushed_exps}'"
-                f"to Git remote '{self.args.git_remote}'."
+                f"Pushed experiment {humanize.join(map(repr, pushed_exps))} "
+                f"to Git remote {self.args.git_remote!r}."
             )
         else:
             ui.write("No experiments to push.")
