@@ -346,11 +346,22 @@ class ForeachDefinition:
     def _resolve_foreach_data(self) -> "SeqOrMap":
         try:
             iterable = self.context.resolve(self.foreach_data, unwrap=False)
+
+            if isinstance(iterable, Mapping):
+                # reject non string keys - can cause ambiguity when stringifying
+                # in presence of similar string keys; e.g. "0.0" and 0.0
+                for k in iterable:
+                    if not isinstance(k, str):
+                        raise ParseError(
+                            f"Dict key '{k}' must be of type string (try quoting)"
+                        )
+
         except (ContextError, ParseError) as exc:
             format_and_raise(exc, f"'{self.where}.{self.name}.foreach'", self.relpath)
 
         # foreach data can be a resolved dictionary/list.
         self._check_is_map_or_seq(iterable)
+
         # foreach stages will have `item` and `key` added to the context
         # so, we better warn them if they have them already in the context
         # from the global vars. We could add them in `set_temporarily`, but
@@ -392,7 +403,7 @@ class ForeachDefinition:
         """Convert sequence to Mapping with keys normalized."""
         iterable = self.resolved_iterable
         if isinstance(iterable, Mapping):
-            return {to_str(k): v for k, v in iterable.items()}
+            return iterable
 
         assert isinstance(iterable, Sequence)
         if any(map(is_map_or_seq, iterable)):

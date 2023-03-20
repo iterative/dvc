@@ -3,7 +3,12 @@ import os
 
 import pytest
 
-from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver, ForeachDefinition
+from dvc.parsing import (
+    DEFAULT_PARAMS_FILE,
+    DataResolver,
+    ForeachDefinition,
+    ResolveError,
+)
 from dvc.parsing.context import Context
 
 
@@ -61,27 +66,29 @@ def test_with_composite_list(tmp_dir, dvc):
     assert not resolver.tracked_vars["build@0"]
 
 
-def test_with_dict_data_non_string_key(tmp_dir, dvc):
+@pytest.mark.parametrize(
+    "foreach_data",
+    [
+        {0: "foo", "a": "bar"},
+        {0.1: "foo", "a": "bar"},
+        {0.2: "foo", "a": "bar"},
+        {True: "foo", "a": "bar"},
+    ],
+)
+def test_with_dict_data_non_string_key(tmp_dir, dvc, foreach_data):
     resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     context = Context()
 
-    foreach_data = {0: "foo", 0.1: "bar", 0.2: "baz", True: "really?"}
     data = {"foreach": foreach_data, "do": {"cmd": "echo ${key} ${item}"}}
     definition = ForeachDefinition(resolver, context, "build", data)
 
-    assert definition.resolve_one("0") == {"build@0": {"cmd": "echo 0 foo"}}
-    assert definition.resolve_one("0.1") == {"build@0.1": {"cmd": "echo 0.1 bar"}}
-    assert definition.resolve_one("0.2") == {"build@0.2": {"cmd": "echo 0.2 baz"}}
-    assert definition.resolve_one("true") == {
-        "build@true": {"cmd": "echo true really?"}
-    }
+    with pytest.raises(ResolveError) as e:
+        _ = definition.resolved_iterable
+    assert "failed to parse 'stages.build.foreach'" in str(e)
 
     # check that `foreach` item-key replacement did not leave any leftovers.
     assert not context
-    assert not resolver.tracked_vars["build@0"]
-    assert not resolver.tracked_vars["build@0.1"]
-    assert not resolver.tracked_vars["build@0.2"]
-    assert not resolver.tracked_vars["build@true"]
+    assert not resolver.tracked_vars
 
 
 def test_foreach_interpolated_simple_list(tmp_dir, dvc):
