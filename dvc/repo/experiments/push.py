@@ -15,7 +15,8 @@ from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 
 logger = logging.getLogger(__name__)
 
-STUDIO_ENDPOINT = "https://studio.iterative.ai/webhook/dvc"
+
+STUDIO_URL = "https://studio.iterative.ai"
 
 
 @locked
@@ -75,40 +76,56 @@ def push(  # noqa: C901, PLR0912
         _push_cache(repo, push_cache_ref, **kwargs)
 
     refs = push_result[SyncStatus.SUCCESS]
-    config = repo.config
-    if refs and config["feature"]["push_exp_to_studio"] and not env2bool("DVC_TEST"):
-        from dvc_studio_client.post_live_metrics import get_studio_token_and_repo_url
+    feature_config = repo.config["feature"]
 
-        token, repo_url = get_studio_token_and_repo_url()
+    push_to_studio = (
+        bool(feature_config.get("studio_token")) or feature_config["push_exp_to_studio"]
+    )
+    if refs and push_to_studio and not env2bool("DVC_TEST"):
+        token, repo_url = get_studio_token_and_repo_url(feature_config)
         if token and repo_url:
-            logger.debug(
-                "pushing experiments %s to Studio",
-                ", ".join(ref.name for ref in refs),
-            )
-            _notify_studio([str(ref) for ref in refs], repo_url, token)
+            studio_url = feature_config.get("studio_url")
+            _notify_studio([str(ref) for ref in refs], repo_url, token, url=studio_url)
     return [ref.name for ref in refs]
+
+
+def get_studio_token_and_repo_url(config):
+    import os
+
+    from dvc_studio_client.post_live_metrics import get_studio_repo_url
+
+    token = os.getenv("STUDIO_TOKEN") or config.get("studio_token")
+    if not token:
+        logger.debug("Studio token not found. Skipping push to Studio.")
+    repo_url = os.getenv("STUDIO_REPO_URL") or get_studio_repo_url()
+    if token and not repo_url:
+        logger.warning(
+            "Could not detect repository url. "
+            "Please set STUDIO_REPO_URL environment variable "
+            "to your remote git repository url. "
+        )
+    return token, repo_url
 
 
 def _notify_studio(
     refs: List[str],
     repo_url: str,
     token: str,
-    endpoint: Optional[str] = None,
+    url: Optional[str] = None,
 ):
     if not refs:
         return
 
-    import os
+    from urllib.parse import urljoin
 
     import requests
     from requests.adapters import HTTPAdapter
 
-    endpoint = endpoint or os.getenv("STUDIO_ENDPOINT", STUDIO_ENDPOINT)
-    assert endpoint is not None
-
+    endpoint = urljoin(url or STUDIO_URL, "/webhook/dvc")
     session = requests.Session()
     session.mount(endpoint, HTTPAdapter(max_retries=3))
 
+    logger.debug("pushing experiments to Studio (%s)", url)
     json = {"repo_url": repo_url, "client": "dvc", "refs": refs}
     logger.trace("Sending %s to %s", json, endpoint)  # type: ignore[attr-defined]
 

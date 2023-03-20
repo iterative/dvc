@@ -1,6 +1,8 @@
+from urllib.parse import urljoin
+
 from requests import Response
 
-from dvc.repo.experiments.push import STUDIO_ENDPOINT, _notify_studio
+from dvc.repo.experiments.push import STUDIO_URL, _notify_studio
 
 
 def test_notify_studio_for_exp_push(mocker):
@@ -16,7 +18,7 @@ def test_notify_studio_for_exp_push(mocker):
 
     assert mock_post.called
     assert mock_post.call_args == mocker.call(
-        STUDIO_ENDPOINT,
+        urljoin(STUDIO_URL, "/webhook/dvc"),
         json={
             "repo_url": "git@github.com:iterative/dvc.git",
             "client": "dvc",
