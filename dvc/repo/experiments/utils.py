@@ -286,7 +286,7 @@ def check_ref_format(scm: "Git", ref: ExpRefInfo):
         )
 
 
-def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
+def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None, **kwargs):
     refspecs = [
         f"{ref}:{ref}"
         for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
@@ -296,6 +296,7 @@ def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
         url,
         refspecs,
         progress=progress,
+        **kwargs,
     )
 
 
