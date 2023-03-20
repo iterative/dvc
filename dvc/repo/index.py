@@ -166,6 +166,36 @@ def _load_storage_from_out(storage_map, key, out):
         storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
 
 
+def index_from_targets(
+    repo: "Repo",
+    targets: Optional[List[str]] = None,
+    with_deps: bool = False,
+    recursive: bool = False,
+) -> Tuple["Index", "Optional[List[str]]"]:
+    from dvc.stage.exceptions import StageFileDoesNotExistError, StageNotFound
+    from dvc.utils import parse_target
+
+    if targets and all(targets) and not with_deps and not recursive:
+        try:
+            indexes = []
+            for target in targets:
+                file, name = parse_target(target)
+                if file and not name:
+                    index = Index.from_file(repo, file)
+                else:
+                    stages = repo.stage.collect(target)
+                    index = Index(repo, stages=list(stages))
+                indexes.append(index)
+
+            return (
+                Index._from_indexes(repo, indexes),  # pylint: disable=protected-access
+                None,
+            )
+        except (StageFileDoesNotExistError, StageNotFound):
+            pass
+    return repo.index, targets
+
+
 class Index:
     def __init__(
         self,
@@ -182,41 +212,15 @@ class Index:
         self._params = params or {}
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
 
-    @cached_property
-    def rev(self) -> Optional[str]:
-        if not isinstance(self.repo.fs, LocalFileSystem):
-            return self.repo.get_rev()[:7]
-        return None
-
-    def __repr__(self) -> str:
-        rev = self.rev or "workspace"
-        return f"Index({self.repo}, fs@{rev})"
-
     @classmethod
     def from_repo(
         cls,
         repo: "Repo",
         onerror: Optional[Callable[[str, Exception], None]] = None,
     ) -> "Index":
-        stages = []
-        metrics = {}
-        plots = {}
-        params = {}
-
         onerror = onerror or repo.stage_collection_error_handler
-        for _, idx in collect_files(repo, onerror=onerror):
-            # pylint: disable=protected-access
-            stages.extend(idx.stages)
-            metrics.update(idx._metrics)
-            plots.update(idx._plots)
-            params.update(idx._params)
-        return cls(
-            repo,
-            stages=stages,
-            metrics=metrics,
-            plots=plots,
-            params=params,
-        )
+        indexes = [index for _, index in collect_files(repo, onerror=onerror)]
+        return cls._from_indexes(repo, indexes)
 
     @classmethod
     def from_file(cls, repo: "Repo", path: str) -> "Index":
@@ -230,6 +234,30 @@ class Index:
             plots={path: dvcfile.plots} if dvcfile.plots else {},
             params={path: dvcfile.params} if dvcfile.params else {},
         )
+
+    @classmethod
+    def _from_indexes(cls, repo: "Repo", indexes: Iterable["Index"]) -> "Index":
+        stages = []
+        metrics = {}
+        plots = {}
+        params = {}
+
+        for index in indexes:
+            stages.extend(index.stages)
+            metrics.update(index._metrics)  # pylint: disable=protected-access
+            plots.update(index._plots)  # pylint: disable=protected-access
+            params.update(index._params)  # pylint: disable=protected-access
+        return cls(repo, stages, metrics, plots, params)
+
+    @cached_property
+    def rev(self) -> Optional[str]:
+        if not isinstance(self.repo.fs, LocalFileSystem):
+            return self.repo.get_rev()[:7]
+        return None
+
+    def __repr__(self) -> str:
+        rev = self.rev or "workspace"
+        return f"Index({self.repo}, fs@{rev})"
 
     def update(self, stages: Iterable["Stage"]) -> "Index":
         stages = set(stages)

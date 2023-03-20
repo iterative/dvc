@@ -476,6 +476,8 @@ class Repo:
             belong to each ODB. If the ODB instance is None, the objects
             are naive and do not belong to a specific remote ODB.
         """
+        from .index import index_from_targets
+
         used = defaultdict(set)
 
         for _ in self.brancher(
@@ -487,7 +489,10 @@ class Repo:
             commit_date=commit_date,
             num=num,
         ):
-            for odb, objs in self.index.used_objs(
+            index, targets = index_from_targets(
+                self, targets, with_deps=with_deps, recursive=recursive
+            )
+            for odb, objs in index.used_objs(
                 targets,
                 remote=remote,
                 force=force,
