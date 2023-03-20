@@ -392,7 +392,7 @@ class ForeachDefinition:
         """Convert sequence to Mapping with keys normalized."""
         iterable = self.resolved_iterable
         if isinstance(iterable, Mapping):
-            return {str(k): v for k, v in iterable.items()}
+            return {to_str(k): v for k, v in iterable.items()}
 
         assert isinstance(iterable, Sequence)
         if any(map(is_map_or_seq, iterable)):

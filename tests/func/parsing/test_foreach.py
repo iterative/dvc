@@ -17,7 +17,7 @@ def test_with_simple_list_data(tmp_dir, dvc):
 
     assert definition.resolve_one("foo") == {"build@foo": {"cmd": "echo foo"}}
     assert definition.resolve_one("bar") == {"build@bar": {"cmd": "echo bar"}}
-    # check that `foreach` item-key replacement didnot leave any leftovers.
+    # check that `foreach` item-key replacement did not leave any leftovers.
     assert not context
     assert not resolver.tracked_vars["build@foo"]
     assert not resolver.tracked_vars["build@bar"]
@@ -38,7 +38,7 @@ def test_with_dict_data(tmp_dir, dvc):
         "build@model2": {"cmd": "echo model2 bar"}
     }
 
-    # check that `foreach` item-key replacement didnot leave any leftovers.
+    # check that `foreach` item-key replacement did not leave any leftovers.
     assert not context
     assert not resolver.tracked_vars["build@model1"]
     assert not resolver.tracked_vars["build@model2"]
@@ -53,12 +53,35 @@ def test_with_composite_list(tmp_dir, dvc):
     definition = ForeachDefinition(resolver, context, "build", data)
 
     assert definition.resolve_one("0") == {"build@0": {"cmd": "echo foo"}}
-    # check that `foreach` item-key replacement didnot leave any leftovers.
+    # check that `foreach` item-key replacement did not leave any leftovers.
     assert not context
 
     assert definition.resolve_one("1") == {"build@1": {"cmd": "echo bar"}}
     assert not context
     assert not resolver.tracked_vars["build@0"]
+
+
+def test_with_dict_data_non_string_key(tmp_dir, dvc):
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
+    context = Context()
+
+    foreach_data = {0: "foo", 0.1: "bar", 0.2: "baz", True: "really?"}
+    data = {"foreach": foreach_data, "do": {"cmd": "echo ${key} ${item}"}}
+    definition = ForeachDefinition(resolver, context, "build", data)
+
+    assert definition.resolve_one("0") == {"build@0": {"cmd": "echo 0 foo"}}
+    assert definition.resolve_one("0.1") == {"build@0.1": {"cmd": "echo 0.1 bar"}}
+    assert definition.resolve_one("0.2") == {"build@0.2": {"cmd": "echo 0.2 baz"}}
+    assert definition.resolve_one("true") == {
+        "build@true": {"cmd": "echo true really?"}
+    }
+
+    # check that `foreach` item-key replacement did not leave any leftovers.
+    assert not context
+    assert not resolver.tracked_vars["build@0"]
+    assert not resolver.tracked_vars["build@0.1"]
+    assert not resolver.tracked_vars["build@0.2"]
+    assert not resolver.tracked_vars["build@true"]
 
 
 def test_foreach_interpolated_simple_list(tmp_dir, dvc):
@@ -120,7 +143,7 @@ def test_params_file_with_dict_tracked(tmp_dir, dvc):
         "build@model1": {"cmd": "echo foo"},
         "build@model2": {"cmd": "echo bar"},
     }
-    # check that `foreach` item-key replacement didnot leave any leftovers.
+    # check that `foreach` item-key replacement did not leave any leftovers.
     assert resolver.context == {"models": foreach_data}
     assert resolver.tracked_vars == {
         "build@model1": {"params.yaml": {"models.model1.thresh": "foo"}},
