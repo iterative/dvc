@@ -25,7 +25,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
             repo.scm_gen("foo", "foo", commit=f"git add {repo}/foo")
             repo.dvc_gen("bar", "bar", commit=f"dvc add {repo}/bar")
 
-    with external_repo(str(erepo_dir)) as repo:
+    with external_repo(str(erepo_dir), subrepos=True, uninitialized=True) as repo:
         spy = mocker.spy(repo.dvcfs.fs, "repo_factory")
 
         list(repo.dvcfs.walk("", ignore_subrepos=False))  # drain
@@ -62,7 +62,11 @@ def test_subrepo_is_constructed_properly(
 
     cache_dir = make_tmp_dir("temp-cache")
     with external_repo(
-        str(tmp_dir), cache_dir=str(cache_dir), cache_types=["symlink"]
+        str(tmp_dir),
+        subrepos=True,
+        uninitialized=True,
+        cache_dir=str(cache_dir),
+        cache_types=["symlink"],
     ) as repo:
         spy = mocker.spy(repo.dvcfs.fs, "repo_factory")
 
