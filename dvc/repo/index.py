@@ -174,12 +174,14 @@ class Index:
         metrics: Optional[Dict[str, List[str]]] = None,
         plots: Optional[Dict[str, List[str]]] = None,
         params: Optional[Dict[str, Any]] = None,
+        artifacts: Optional[Dict[str, Dict]] = None,
     ) -> None:
         self.repo = repo
         self.stages = stages or []
         self._metrics = metrics or {}
         self._plots = plots or {}
         self._params = params or {}
+        self._artifacts = artifacts or {}
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
 
     @cached_property
@@ -202,6 +204,7 @@ class Index:
         metrics = {}
         plots = {}
         params = {}
+        artifacts = {}
 
         onerror = onerror or repo.stage_collection_error_handler
         for _, idx in collect_files(repo, onerror=onerror):
@@ -210,12 +213,14 @@ class Index:
             metrics.update(idx._metrics)
             plots.update(idx._plots)
             params.update(idx._params)
+            artifacts.update(idx._artifacts)
         return cls(
             repo,
             stages=stages,
             metrics=metrics,
             plots=plots,
             params=params,
+            artifacts=artifacts,
         )
 
     @classmethod
@@ -229,6 +234,7 @@ class Index:
             metrics={path: dvcfile.metrics} if dvcfile.metrics else {},
             plots={path: dvcfile.plots} if dvcfile.plots else {},
             params={path: dvcfile.params} if dvcfile.params else {},
+            artifacts={path: dvcfile.artifacts} if dvcfile.artifacts else {},
         )
 
     def update(self, stages: Iterable["Stage"]) -> "Index":
@@ -242,6 +248,7 @@ class Index:
             metrics=self._metrics,
             plots=self._plots,
             params=self._params,
+            artifacts=self._artifacts,
         )
 
     @cached_property

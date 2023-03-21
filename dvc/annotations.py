@@ -10,11 +10,13 @@ class Annotation:
     PARAM_TYPE: ClassVar[str] = "type"
     PARAM_LABELS: ClassVar[str] = "labels"
     PARAM_META: ClassVar[str] = "meta"
+    # PARAM_PATH: ClassVar[str] = "path"
 
     desc: Optional[str] = None
     type: Optional[str] = None  # noqa: A003
     labels: List[str] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
+    # path: Optional[str] = None
 
     def update(self, **kwargs) -> "Annotation":
         for attr, value in kwargs.items():
@@ -32,4 +34,5 @@ ANNOTATION_SCHEMA = {
     Annotation.PARAM_TYPE: str,
     Annotation.PARAM_LABELS: [str],
     Annotation.PARAM_META: object,
+    # Annotation.PARAM_PATH: str,
 }
