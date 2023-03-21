@@ -68,12 +68,6 @@ def external_repo(
         **kwargs,
     )
 
-    if "subrepos" not in repo_kwargs:
-        repo_kwargs["subrepos"] = True
-
-    if "uninitialized" not in repo_kwargs:
-        repo_kwargs["uninitialized"] = True
-
     repo = Repo(**repo_kwargs)
 
     try:

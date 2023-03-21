@@ -52,7 +52,12 @@ def get(url, path, out=None, rev=None, jobs=None):
     cache_types = ["reflink", "hardlink", "copy"]
     try:
         with external_repo(
-            url=url, rev=rev, cache_dir=tmp_dir, cache_types=cache_types
+            url=url,
+            rev=rev,
+            subrepos=True,
+            uninitialized=True,
+            cache_dir=tmp_dir,
+            cache_types=cache_types,
         ) as repo:
             from dvc.fs.data import DataFileSystem
 

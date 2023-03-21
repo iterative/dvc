@@ -222,7 +222,13 @@ class RepoDependency(Dependency):
 
         d = self.def_repo
         rev = self._get_rev(locked=locked)
-        return external_repo(d[self.PARAM_URL], rev=rev, **kwargs)
+        return external_repo(
+            d[self.PARAM_URL],
+            rev=rev,
+            subrepos=True,
+            uninitialized=True,
+            **kwargs,
+        )
 
     def _get_rev(self, locked: bool = True):
         d = self.def_repo
