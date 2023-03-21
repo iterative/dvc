@@ -38,8 +38,6 @@ def external_repo(
     **kwargs,
 ) -> Iterator["Repo"]:
     from dvc.config import NoRemoteError
-    from dvc.fs import GitFileSystem
-    from dvc.scm import Git
 
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
@@ -55,22 +53,18 @@ def external_repo(
     config = _get_remote_config(url) if os.path.isdir(url) else {}
     config.update(cache_config)
 
+    main_root = "/"
     if for_write:
-        scm = None
-        root_dir = path
-        fs = None
-    else:
-        scm = Git(path)
-        fs = GitFileSystem(scm=scm, rev=rev)
-        root_dir = "/"
+        # we already checked out needed revision
+        rev = None
+        main_root = path
 
     repo_kwargs = dict(
-        root_dir=root_dir,
+        root_dir=path,
         url=url,
-        fs=fs,
         config=config,
-        repo_factory=erepo_factory(url, root_dir, cache_config),
-        scm=scm,
+        repo_factory=erepo_factory(url, main_root, cache_config),
+        rev=rev,
         **kwargs,
     )
 
