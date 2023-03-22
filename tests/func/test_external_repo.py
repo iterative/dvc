@@ -21,11 +21,11 @@ def test_external_repo(erepo_dir, mocker):
     clone_spy = mocker.spy(Git, "clone")
 
     with external_repo(url) as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "master"
 
     with external_repo(url, rev="branch") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "branch"
 
     assert clone_spy.call_count == 1
@@ -122,7 +122,7 @@ def test_relative_remote(erepo_dir, tmp_dir):
     with external_repo(url) as repo:
         assert os.path.isabs(repo.config["remote"]["upstream"]["url"])
         assert os.path.isdir(repo.config["remote"]["upstream"]["url"])
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "contents"
 
 
@@ -136,7 +136,7 @@ def test_shallow_clone_branch(erepo_dir, mocker):
     clone_spy = mocker.spy(Git, "clone")
 
     with external_repo(url, rev="branch") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "branch"
 
     clone_spy.assert_called_with(url, ANY, shallow_branch="branch", progress=ANY)
@@ -146,7 +146,7 @@ def test_shallow_clone_branch(erepo_dir, mocker):
 
     mock_fetch = mocker.patch.object(Git, "fetch")
     with external_repo(url) as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "master"
     mock_fetch.assert_called_with(unshallow=True)
 
@@ -161,7 +161,7 @@ def test_shallow_clone_tag(erepo_dir, mocker):
 
     clone_spy = mocker.spy(Git, "clone")
     with external_repo(url, rev="v1") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "foo"
 
     clone_spy.assert_called_with(url, ANY, shallow_branch="v1", progress=ANY)
@@ -171,7 +171,7 @@ def test_shallow_clone_tag(erepo_dir, mocker):
 
     mock_fetch = mocker.patch.object(Git, "fetch")
     with external_repo(url, rev="master") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "bar"
     mock_fetch.assert_called_with(unshallow=True)
 

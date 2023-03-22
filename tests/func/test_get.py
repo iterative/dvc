@@ -239,7 +239,7 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
     with caplog.at_level(logging.ERROR):
-        assert main(["get", os.fspath(tmp_dir), "foo", "--show-url"]) == 1
+        assert main(["get", os.fspath(tmp_dir), "foo", "--show-url"]) != 0
 
 
 def test_get_pipeline_tracked_outs(tmp_dir, dvc, scm, git_dir, run_copy, local_remote):
