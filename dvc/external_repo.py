@@ -10,7 +10,6 @@ from funcy import retry, wrap_with
 from dvc.exceptions import (
     FileMissingError,
     NoOutputInExternalRepoError,
-    NoRemoteInExternalRepoError,
     NotDvcRepoError,
     OutputNotFoundError,
     PathMissingError,
@@ -37,8 +36,6 @@ def external_repo(
     cache_types: Optional[Collection[str]] = None,
     **kwargs,
 ) -> Iterator["Repo"]:
-    from dvc.config import NoRemoteError
-
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
     # Local HEAD points to the tip of whatever branch we first cloned from
@@ -72,8 +69,6 @@ def external_repo(
 
     try:
         yield repo
-    except NoRemoteError as exc:
-        raise NoRemoteInExternalRepoError(url) from exc
     except OutputNotFoundError as exc:
         if exc.repo is repo:
             raise NoOutputInExternalRepoError(exc.output, repo.root_dir, url) from exc

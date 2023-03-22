@@ -245,11 +245,6 @@ class CollectCacheError(DvcException):
     pass
 
 
-class NoRemoteInExternalRepoError(DvcException):
-    def __init__(self, url):
-        super().__init__(f"No DVC remote is specified in target repository '{url}'.")
-
-
 class NoOutputInExternalRepoError(DvcException):
     def __init__(self, path, external_repo_path, external_repo_url):
         from dvc.utils import relpath
