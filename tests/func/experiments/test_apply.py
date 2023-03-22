@@ -35,7 +35,7 @@ def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, session_queue):
     dvc.experiments.run(
         failed_exp_stage.addressing, params=["foo=3"], queue=True, name="foo"
     )
-    dvc.experiments.run(run_all=True)
+    session_queue.wait(["foo"])
 
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.apply("bar")

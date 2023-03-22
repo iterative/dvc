@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-import time
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import chain, first
@@ -205,8 +204,7 @@ class Experiments:
             )
             for entry in entries:
                 # wait for task execution to start
-                while not self.celery_queue.proc.get(entry.stash_rev):
-                    time.sleep(1)
+                self.celery_queue.wait_for_start(entry, sleep_interval=1)
                 self.celery_queue.follow(entry)
                 # wait for task collection to complete
                 try:
