@@ -295,6 +295,28 @@ class LocalCeleryQueue(BaseStashQueue):
         # out of the active task list, and needs to be loaded here.
         return self._get_done_result(entry, timeout)
 
+    def wait(self, revs: Collection[str], **kwargs) -> None:
+        """Block until the specified tasks have completed."""
+        revs = [revs] if isinstance(revs, str) else revs
+        results = self.match_queue_entry_by_name(
+            revs, self.iter_queued(), self.iter_done(), self.iter_failed()
+        )
+        for entry in results.values():
+            if not entry:
+                continue
+            self.wait_for_start(entry, **kwargs)
+            try:
+                self.get_result(entry)
+            except FileNotFoundError:
+                pass
+
+    def wait_for_start(self, entry: QueueEntry, sleep_interval: float = 0.001) -> None:
+        """Block until the specified task has been started."""
+        import time
+
+        while not self.proc.get(entry.stash_rev):
+            time.sleep(sleep_interval)
+
     def _get_running_task_ids(self) -> Set[str]:
         running_task_ids: Set[str] = set()
         active_workers = self.worker_status()

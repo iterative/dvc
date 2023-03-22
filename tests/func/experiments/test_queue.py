@@ -22,8 +22,9 @@ def test_celery_logs(
     test_queue,
 ):
     celery_queue = dvc.experiments.celery_queue
-    dvc.experiments.run(failed_exp_stage.addressing, queue=True)
+    dvc.experiments.run(failed_exp_stage.addressing, queue=True, name="foo")
     dvc.experiments.run(run_all=True)
+    test_queue.wait(["foo"])
 
     done_result = first(celery_queue.iter_done())
 
@@ -34,10 +35,6 @@ def test_celery_logs(
     assert "failed to reproduce 'failed-copy-file'" in captured.out
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="https://github.com/iterative/dvc/issues/9143",
-)
 def test_queue_remove_done(
     dvc,
     exp_stage,
@@ -63,6 +60,7 @@ def test_queue_remove_done(
             name=name_fail,
         )
     dvc.experiments.run(run_all=True)
+    test_queue.wait(success_tasks + failed_tasks)
     assert len(celery_queue.failed_stash) == 3
     status = to_dict(celery_queue.status())
     assert len(status) == 6
