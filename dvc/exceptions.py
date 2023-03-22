@@ -245,17 +245,6 @@ class CollectCacheError(DvcException):
     pass
 
 
-class NoOutputInExternalRepoError(DvcException):
-    def __init__(self, path, external_repo_path, external_repo_url):
-        from dvc.utils import relpath
-
-        super().__init__(
-            "Output '{}' not found in target repository '{}'".format(
-                relpath(path, external_repo_path), external_repo_url
-            )
-        )
-
-
 class HTTPError(DvcException):
     def __init__(self, code, reason):
         super().__init__(f"'{code} {reason}'")
