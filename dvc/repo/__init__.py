@@ -14,8 +14,6 @@ from typing import (
     Union,
 )
 
-from dvc.exceptions import FileMissingError
-from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
 from dvc.utils import env2bool
@@ -585,38 +583,6 @@ class Repo:
         repo_token = hashlib.md5(os.fsencode(root_dir)).hexdigest()  # noqa: S324
 
         return os.path.join(repos_dir, repo_token)
-
-    @contextmanager
-    def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
-        """Opens a specified resource as a file descriptor"""
-        from dvc.fs.data import DataFileSystem
-        from dvc.fs.dvc import DVCFileSystem
-
-        fs: Union["FileSystem", DataFileSystem, DVCFileSystem]
-        if os.path.isabs(path):
-            fs = DataFileSystem(index=self.index.data["local"])
-            fs_path = path
-        else:
-            fs = DVCFileSystem(repo=self, subrepos=True)
-            fs_path = fs.from_os_path(path)
-
-        try:
-            if remote:
-                remote_odb = self.cloud.get_remote_odb(name=remote)
-                oid = fs.info(fs_path)["dvc_info"]["md5"]
-                fs = remote_odb.fs
-                fs_path = remote_odb.oid_to_path(oid)
-
-            with fs.open(
-                fs_path,
-                mode=mode,
-                encoding=encoding,
-            ) as fobj:
-                yield fobj
-        except FileNotFoundError as exc:
-            raise FileMissingError(path) from exc
-        except IsADirectoryError as exc:
-            raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 
     def close(self):
         self.scm.close()

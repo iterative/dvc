@@ -5,7 +5,6 @@ from operator import itemgetter
 
 import pytest
 
-from dvc.exceptions import PathMissingError
 from dvc.repo import Repo
 from dvc.scm import CloneError
 
@@ -151,7 +150,7 @@ def test_ls_repo_with_path_dir_dvc_only_empty(tmp_dir, dvc, scm):
     tmp_dir.scm_gen({"empty_scm_folder/": {}}, commit="add scm empty")
     tmp_dir.dvc_gen({"empty_dvc_folder": {}}, commit="empty dvc folder")
 
-    with pytest.raises(PathMissingError):
+    with pytest.raises(FileNotFoundError):
         Repo.ls(os.fspath(tmp_dir), path="not_exist_folder")
 
     assert Repo.ls(os.fspath(tmp_dir), path="empty_scm_folder") == []
@@ -218,23 +217,21 @@ def test_ls_repo_with_missed_path(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    with pytest.raises(PathMissingError) as exc_info:
+    with pytest.raises(FileNotFoundError):
         Repo.ls(os.fspath(tmp_dir), path="missed_path")
-    assert not exc_info.value.dvc_only
 
 
 def test_ls_repo_with_missed_path_dvc_only(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    with pytest.raises(PathMissingError) as exc_info:
+    with pytest.raises(FileNotFoundError):
         Repo.ls(
             os.fspath(tmp_dir),
             path="missed_path",
             recursive=True,
             dvc_only=True,
         )
-    assert exc_info.value.dvc_only
 
 
 def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):

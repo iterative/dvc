@@ -1,8 +1,6 @@
 import os
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import PathMissingError
-
 if TYPE_CHECKING:
     from dvc.fs.dvc import DVCFileSystem
 
@@ -61,10 +59,7 @@ def _ls(
     fs: "DVCFileSystem" = repo.dvcfs
     fs_path = fs.from_os_path(path)
 
-    try:
-        fs_path = fs.info(fs_path)["name"]
-    except FileNotFoundError:
-        raise PathMissingError(path, repo, dvc_only=dvc_only)  # noqa: B904
+    fs_path = fs.info(fs_path)["name"]
 
     infos = {}
     for root, dirs, files in fs.walk(

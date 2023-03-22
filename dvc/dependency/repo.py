@@ -1,3 +1,4 @@
+import errno
 import os
 from collections import defaultdict
 from copy import copy
@@ -113,7 +114,7 @@ class RepoDependency(Dependency):
         self, obj_only: bool = False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"]:
         from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError, PathMissingError
+        from dvc.exceptions import NoOutputOrStageError
         from dvc.utils import as_posix
         from dvc_data.hashfile.build import build
         from dvc_data.hashfile.tree import Tree, TreeError
@@ -150,8 +151,10 @@ class RepoDependency(Dependency):
                     local_odb.fs.PARAM_CHECKSUM,
                 )
             except (FileNotFoundError, TreeError) as exc:
-                raise PathMissingError(
-                    self.def_path, self.def_repo[self.PARAM_URL]
+                raise FileNotFoundError(
+                    errno.ENOENT,
+                    os.strerror(errno.ENOENT) + f" in {self.def_repo[self.PARAM_URL]}",
+                    self.def_path,
                 ) from exc
             object_store = copy(object_store)
             object_store.read_only = True

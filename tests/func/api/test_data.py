@@ -4,7 +4,7 @@ import pytest
 from funcy import first, get_in
 
 from dvc import api
-from dvc.exceptions import FileMissingError, OutputNotFoundError, PathMissingError
+from dvc.exceptions import OutputNotFoundError, PathMissingError
 from dvc.testing.api_tests import TestAPI  # noqa, pylint: disable=unused-import
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
@@ -75,7 +75,7 @@ def test_missing(tmp_dir, dvc, remote):
 
     remove("foo")
 
-    with pytest.raises(FileMissingError):
+    with pytest.raises(PathMissingError):
         api.read("foo")
 
 
@@ -100,7 +100,7 @@ def test_open_not_cached(dvc):
         assert fd.read() == metric_content
 
     os.remove(metric_file)
-    with pytest.raises(FileMissingError):
+    with pytest.raises(PathMissingError):
         api.read(metric_file)
 
 

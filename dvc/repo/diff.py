@@ -1,9 +1,9 @@
+import errno
 import logging
 import os
 from collections import defaultdict
 from typing import Dict, List, Optional
 
-from dvc.exceptions import PathMissingError
 from dvc.repo import locked
 from dvc.ui import ui
 
@@ -154,7 +154,7 @@ def diff(
 
         # check for overlapping missing targets between a_rev and b_rev
         for target in old_missing & new_missing:
-            raise PathMissingError(target, self)
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), target)
 
     old = indexes[a_rev]
     new = indexes[b_rev]
