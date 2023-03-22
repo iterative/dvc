@@ -14,7 +14,6 @@ from typing import (
     Union,
 )
 
-from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
@@ -613,8 +612,6 @@ class Repo:
                 encoding=encoding,
             ) as fobj:
                 yield fobj
-        except FileNotFoundError as exc:
-            raise FileMissingError(path) from exc
         except IsADirectoryError as exc:
             raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 

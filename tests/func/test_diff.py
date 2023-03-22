@@ -358,11 +358,9 @@ def setup_targets_test(tmp_dir):
 
 
 def test_targets_missing_path(tmp_dir, scm, dvc):
-    from dvc.exceptions import PathMissingError
-
     setup_targets_test(tmp_dir)
 
-    with pytest.raises(PathMissingError):
+    with pytest.raises(FileNotFoundError):
         dvc.diff(targets=["missing"])
 
 

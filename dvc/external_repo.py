@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional, Tuple
 
 from funcy import retry, wrap_with
 
-from dvc.exceptions import FileMissingError, NotDvcRepoError, PathMissingError
+from dvc.exceptions import NotDvcRepoError
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
@@ -63,8 +63,6 @@ def external_repo(
 
     try:
         yield repo
-    except FileMissingError as exc:
-        raise PathMissingError(exc.path, url) from exc
     finally:
         repo.close()
         if for_write:

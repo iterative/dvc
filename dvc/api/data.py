@@ -1,9 +1,7 @@
 from contextlib import _GeneratorContextManager as GCM
 from typing import Optional
 
-from funcy import reraise
-
-from dvc.exceptions import OutputNotFoundError, PathMissingError
+from dvc.exceptions import OutputNotFoundError
 from dvc.repo import Repo
 
 
@@ -20,8 +18,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     """
     with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
         fs_path = _repo.dvcfs.from_os_path(path)
-        with reraise(FileNotFoundError, PathMissingError(path, repo)):
-            info = _repo.dvcfs.info(fs_path)
+        info = _repo.dvcfs.info(fs_path)
 
         dvc_info = info.get("dvc_info")
         if not dvc_info:

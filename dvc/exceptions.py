@@ -201,13 +201,6 @@ class ETagMismatchError(DvcException):
         )
 
 
-class FileMissingError(DvcException):
-    def __init__(self, path, hint=None):
-        self.path = path
-        hint = "" if hint is None else f". {hint}"
-        super().__init__(f"Can't find '{path}' neither locally nor on remote{hint}")
-
-
 class FileTransferError(DvcException):
     _METHOD = "transfer"
 
@@ -248,21 +241,6 @@ class CollectCacheError(DvcException):
 class HTTPError(DvcException):
     def __init__(self, code, reason):
         super().__init__(f"'{code} {reason}'")
-
-
-class PathMissingError(DvcException):
-    default_msg = (
-        "The path '{}' does not exist in the target repository '{}'"
-        " neither as a DVC output nor as a Git-tracked file."
-    )
-    default_msg_dvc_only = (
-        "The path '{}' does not exist in the target repository '{}' as an DVC output."
-    )
-
-    def __init__(self, path, repo, dvc_only=False):
-        msg = self.default_msg if not dvc_only else self.default_msg_dvc_only
-        super().__init__(msg.format(path, repo))
-        self.dvc_only = dvc_only
 
 
 class URLMissingError(DvcException):
