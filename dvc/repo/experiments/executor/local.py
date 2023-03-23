@@ -48,7 +48,7 @@ class BaseLocalExecutor(BaseExecutor):
     def scm(self) -> Union["Git", "NoSCM"]:
         return SCM(self.root_dir)
 
-    def cleanup(self, infofile: str):
+    def cleanup(self, infofile: Optional[str] = None):
         self.scm.close()
         del self.scm
         super().cleanup(infofile)
@@ -151,7 +151,7 @@ class TempDirExecutor(BaseLocalExecutor):
         """Initialize DVC cache."""
         self._config(repo.cache.repo.path)
 
-    def cleanup(self, infofile: str):
+    def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)
         logger.debug("Removing tmpdir '%s'", self.root_dir)
         remove(self.root_dir)
@@ -234,9 +234,10 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         pass
 
-    def cleanup(self, infofile: str):
+    def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)
-        remove(os.path.dirname(infofile))
+        if infofile:
+            remove(os.path.dirname(infofile))
         with self._detach_stack:
             self.scm.remove_ref(EXEC_BASELINE)
             self.scm.remove_ref(EXEC_MERGE)
