@@ -10,13 +10,11 @@ class Annotation:
     PARAM_TYPE: ClassVar[str] = "type"
     PARAM_LABELS: ClassVar[str] = "labels"
     PARAM_META: ClassVar[str] = "meta"
-    # PARAM_PATH: ClassVar[str] = "path"
 
     desc: Optional[str] = None
     type: Optional[str] = None  # noqa: A003
     labels: List[str] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
-    # path: Optional[str] = None
 
     def update(self, **kwargs) -> "Annotation":
         for attr, value in kwargs.items():
@@ -28,11 +26,20 @@ class Annotation:
         return compact(asdict(self))
 
 
+@dataclass
+class Artifact(Annotation):
+    PARAM_PATH: ClassVar[str] = "path"
+    path: Optional[str] = None
+
+
 ANNOTATION_FIELDS = [field.name for field in fields(Annotation)]
 ANNOTATION_SCHEMA = {
     Annotation.PARAM_DESC: str,
     Annotation.PARAM_TYPE: str,
     Annotation.PARAM_LABELS: [str],
     Annotation.PARAM_META: object,
-    # Annotation.PARAM_PATH: str,
+}
+ARTIFACT_SCHEMA = {
+    **ANNOTATION_SCHEMA,
+    Artifact.PARAM_PATH: str,
 }

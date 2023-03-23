@@ -1,9 +1,10 @@
 from collections.abc import Mapping
+from typing import Dict
 
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
-from dvc.annotations import ANNOTATION_SCHEMA
+from dvc.annotations import ANNOTATION_SCHEMA, ARTIFACT_SCHEMA
 from dvc.output import (
     CHECKSUMS_SCHEMA,
     CLOUD_SCHEMA,
@@ -115,7 +116,9 @@ PLOT_DEFINITION = {
 }
 SINGLE_PLOT_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
 
-SINGLE_ARTIFACT_SCHEMA = {str: Any(ANNOTATION_SCHEMA, None)}
+ARTIFACTS = "artifacts"
+SINGLE_ARTIFACT_SCHEMA = {str: Any(ARTIFACT_SCHEMA, None)}
+ARTIFACTS_SCHEMA = Any(str, SINGLE_ARTIFACT_SCHEMA)
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
@@ -129,9 +132,7 @@ MULTI_STAGE_SCHEMA = {
     VARS_KWD: VARS_SCHEMA,
     StageParams.PARAM_PARAMS: [str],
     StageParams.PARAM_METRICS: [str],
-    StageParams.PARAM_ARTIFACTS: Any(
-        SINGLE_ARTIFACT_SCHEMA, [Any(str, SINGLE_ARTIFACT_SCHEMA)]
-    ),
+    ARTIFACTS: ARTIFACTS_SCHEMA,
 }
 
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)
