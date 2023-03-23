@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from funcy import first
 
@@ -35,6 +37,11 @@ def test_celery_logs(
     assert "failed to reproduce 'failed-copy-file'" in captured.out
 
 
+@pytest.mark.xfail(
+    os.name == "nt",
+    strict=False,
+    reason="https://github.com/iterative/dvc/issues/9143",
+)
 def test_queue_remove_done(
     dvc,
     exp_stage,
