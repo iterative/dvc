@@ -64,7 +64,11 @@ class PropsNotFoundError(DvcException):
 
 @error_handler
 def _unpack_dir_files(fs, path, **kwargs):
-    return list(fs.find(path))
+    ret = list(fs.find(path))
+    if not ret:
+        # This will raise FileNotFoundError if it is a broken symlink or TreeError
+        next(iter(fs.ls(path)), None)
+    return ret
 
 
 class Plots:
