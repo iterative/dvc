@@ -31,14 +31,19 @@ class OutputDuplicationError(DvcException):
 
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
+        msg = ""
+        stage_names = [s.addressing for s in stages]
+        stages_str = " ".join(stage_names)
         if len(stages) == 1:
-            msg = "output '{}' is already specified in {}.".format(
-                output, first(stages)
-            )
+            stage_name = first(stages)
+            msg = f"output '{output}' is already specified in {stage_name}."
         else:
             msg = "output '{}' is already specified in stages:\n{}".format(
-                output, "\n".join(f"\t- {s.addressing}" for s in stages)
+                output, "\n".join(f"\t- {s}" for s in stage_names)
             )
+        msg += (
+            f"\nUse `dvc remove {stages_str}` to stop tracking the overlapping output."
+        )
         super().__init__(msg)
         self.stages = stages
         self.output = output

@@ -4,6 +4,7 @@ import pytest
 
 from dvc.annotations import Annotation
 from dvc.dvcfile import SingleStageFile
+from dvc.exceptions import OutputDuplicationError
 from dvc.fs import LocalFileSystem
 from dvc.output import Output
 from dvc.repo import Repo, lock_repo
@@ -333,3 +334,14 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
     mock_cmd_run.assert_called_with(
         stage, checkpoint_func=callback, dry=False, run_env=None
     )
+
+
+def test_stage_add_duplicated_output(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.add("foo")
+
+    with pytest.raises(
+        OutputDuplicationError,
+        match="Use `dvc remove foo.dvc` to stop tracking the overlapping output.",
+    ):
+        dvc.stage.add(name="duplicated", cmd="echo bar > foo", outs=["foo"])
