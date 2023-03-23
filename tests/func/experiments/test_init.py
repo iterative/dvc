@@ -166,7 +166,7 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
@@ -194,7 +194,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
             }
         }
     }
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
 
     out, err = capsys.readouterr()
@@ -226,7 +226,7 @@ def test_init_with_no_defaults_interactive(tmp_dir, dvc):
             }
         }
     }
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
 
 
@@ -275,7 +275,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
@@ -345,7 +345,7 @@ def test_init_interactive_live(tmp_dir, scm, dvc, interactive, overrides, inp, c
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")

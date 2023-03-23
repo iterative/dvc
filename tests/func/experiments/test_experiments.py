@@ -620,7 +620,7 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     )
     dvc.experiments.run()
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
-    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() != ""
+    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip()
     assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
 
     dvc.experiments.run(name="foo")

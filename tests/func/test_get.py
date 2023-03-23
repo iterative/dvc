@@ -217,7 +217,7 @@ def test_get_url_positive(tmp_dir, erepo_dir, caplog, local_cloud):
     caplog.clear()
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert main(["get", os.fspath(erepo_dir), "foo", "--show-url"]) == 0
-        assert caplog.text == ""
+        assert not caplog.text
 
 
 def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):

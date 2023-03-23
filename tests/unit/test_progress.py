@@ -9,8 +9,8 @@ def test_quiet_logging(caplog, capsys):
         for _ in Tqdm(range(10)):
             pass
         out_err = capsys.readouterr()
-        assert out_err.out == ""
-        assert out_err.err == ""
+        assert not out_err.out
+        assert not out_err.err
 
 
 def test_quiet_logging_disable_false(caplog, capsys, mocker):
@@ -20,8 +20,8 @@ def test_quiet_logging_disable_false(caplog, capsys, mocker):
         for _ in Tqdm(range(10), disable=False):
             pass
         out_err = capsys.readouterr()
-        assert out_err.out == ""
-        assert out_err.err == ""
+        assert not out_err.out
+        assert not out_err.err
 
 
 def test_quiet_notty(caplog, capsys):
@@ -29,11 +29,11 @@ def test_quiet_notty(caplog, capsys):
         for _ in Tqdm(range(10)):
             pass
         out_err = capsys.readouterr()
-        assert out_err.out == ""
+        assert not out_err.out
         if env2bool("DVC_IGNORE_ISATTY"):
             assert "0/10" in out_err.err
         else:
-            assert out_err.err == ""
+            assert not out_err.err
 
 
 def test_default(caplog, capsys, mocker):
@@ -44,5 +44,5 @@ def test_default(caplog, capsys, mocker):
             pass
 
         out_err = capsys.readouterr()
-        assert out_err.out == ""
+        assert not out_err.out
         assert "0/10" in out_err.err
