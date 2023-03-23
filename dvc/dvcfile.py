@@ -366,7 +366,7 @@ def get_lockfile_schema(d):
 
 
 def migrate_lock_v1_to_v2(d, version_info):
-    stages = {k: v for k, v in d.items()}
+    stages = dict(d)
 
     for key in stages:
         d.pop(key)
