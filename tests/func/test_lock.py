@@ -27,7 +27,7 @@ def test_unlock_lock_failed(tmp_dir, dvc, request, mocker):
     # repro of a stage) in with. We should see LockError exception here.
     with lock:
         lock.unlock()
-        lock_ext.lock()  # imitate an exernal process had time to lock it
+        lock_ext.lock()  # imitate an external process had time to lock it
         request.addfinalizer(lock_ext.unlock)
         with pytest.raises(LockError):
             lock.lock()

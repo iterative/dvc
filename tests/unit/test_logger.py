@@ -200,13 +200,13 @@ class TestColorFormatter:
 
                 formatter.format(debug_record)
                 captured = capsys.readouterr()
-                assert captured.out == ""
+                assert not captured.out
 
             #  when the message is actually visible
             with caplog.at_level(logging.INFO, logger="dvc"):
                 logger.info("some info")
                 captured = capsys.readouterr()
-                assert captured.out == ""
+                assert not captured.out
 
 
 def test_handlers():
