@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from funcy import first
 
@@ -38,7 +36,6 @@ def test_celery_logs(
 
 
 @pytest.mark.xfail(
-    os.name == "nt",
     strict=False,
     reason="https://github.com/iterative/dvc/issues/9143",
 )
