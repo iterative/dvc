@@ -246,11 +246,12 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
 
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.branch("foo", "branch-exists")
+    dvc.experiments.branch("foo")
     dvc.experiments.branch("foo", "branch-name")
     dvc.experiments.branch(exp_a, "branch-rev")
     dvc.experiments.branch(ref_a, "branch-ref")
 
-    for name in ["branch-name", "branch-rev", "branch-ref"]:
+    for name in ["foo-branch", "branch-name", "branch-rev", "branch-ref"]:
         assert name in scm.list_branches()
         assert scm.resolve_rev(name) == exp_a
 
