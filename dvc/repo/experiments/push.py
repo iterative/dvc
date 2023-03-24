@@ -121,7 +121,7 @@ def _notify_studio(
     import requests
     from requests.adapters import HTTPAdapter
 
-    endpoint = urljoin(url or STUDIO_URL, "/webhook/dvc")
+    endpoint = urljoin(url or STUDIO_URL, "/webhook/dvc/")
     session = requests.Session()
     session.mount(endpoint, HTTPAdapter(max_retries=3))
 
