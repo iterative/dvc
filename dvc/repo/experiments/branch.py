@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def branch(repo, exp_rev, branch_name, *args, **kwargs):
+def branch(repo, exp_rev, branch_name=None, **kwargs):
     from dvc.scm import resolve_rev
 
     try:
@@ -45,6 +45,8 @@ def branch(repo, exp_rev, branch_name, *args, **kwargs):
 
     if not ref_info:
         raise InvalidExpRevError(exp_rev)
+
+    branch_name = branch_name or f"{ref_info.name}-branch"
 
     branch_ref = f"refs/heads/{branch_name}"
     if repo.scm.get_ref(branch_ref):

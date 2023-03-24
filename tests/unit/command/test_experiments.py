@@ -187,15 +187,21 @@ def test_experiments_gc(dvc, scm, mocker):
 
 
 def test_experiments_branch(dvc, scm, mocker):
-    cli_args = parse_args(["experiments", "branch", "expname", "branchname"])
+    m = mocker.patch("dvc.repo.experiments.branch.branch", return_value={})
+
+    cli_args = parse_args(["experiments", "branch", "expname"])
     assert cli_args.func == CmdExperimentsBranch
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.repo.experiments.branch.branch", return_value={})
-
     assert cmd.run() == 0
 
-    m.assert_called_once_with(cmd.repo, "expname", "branchname")
+    m.assert_called_with(cmd.repo, "expname", None)
+
+    cli_args = parse_args(["experiments", "branch", "expname", "branchname"])
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+
+    m.assert_called_with(cmd.repo, "expname", "branchname")
 
 
 def test_experiments_list(dvc, scm, mocker):
