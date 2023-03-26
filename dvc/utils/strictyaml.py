@@ -177,8 +177,8 @@ def determine_linecol(
         value = get(data, paths, default=None)
         if value is not None:
             with suppress(AttributeError, TypeError):
-                line = value.lc.line + 1
-                col = value.lc.col + 1
+                line = value.lc.line + 1  # type: ignore[attr-defined]
+                col = value.lc.col + 1  # type: ignore[attr-defined]
                 break
         step += 1
         *paths, _ = paths

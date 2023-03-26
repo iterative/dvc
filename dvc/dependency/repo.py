@@ -48,6 +48,7 @@ class RepoDependency(Dependency):
             url=self.def_repo[self.PARAM_URL],
             rev=self._get_rev(),
         )
+        self.fs_path = self.def_path
 
     def _parse_path(self, fs, fs_path):  # noqa: ARG002
         return None
