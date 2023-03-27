@@ -106,6 +106,10 @@ def match_defs_renderers(  # noqa: C901, PLR0912
 
             converter = _get_converter(renderer_cls, inner_id, props, definitions_data)
 
+            for src in plot_sources:
+                if error := get_in(data, [rev, "sources", "data", src, "error"]):
+                    src_errors[rev][src] = error
+
             try:
                 dps, rev_props = converter.flat_datapoints(rev)
             except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
@@ -115,10 +119,6 @@ def match_defs_renderers(  # noqa: C901, PLR0912
             if not final_props and rev_props:
                 final_props = rev_props
             plot_datapoints.extend(dps)
-
-            for src in plot_sources:
-                if error := get_in(data, [rev, "sources", "data", src, "error"]):
-                    src_errors[rev][src] = error
 
         if "title" not in final_props:
             final_props["title"] = renderer_id
