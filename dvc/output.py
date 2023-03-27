@@ -427,7 +427,7 @@ class Output:
             self.hash_info = tree.hash_info
             self.meta.isdir = True
             self.meta.nfiles = len(self.files)
-            self.meta.size = sum(f.get("size") for f in self.files)
+            self.meta.size = sum(filter(None, (f.get("size") for f in self.files)))
             self.meta.remote = first(f.get("remote") for f in self.files)
         elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
