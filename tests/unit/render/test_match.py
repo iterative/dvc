@@ -1,4 +1,7 @@
+from funcy import set_in
+
 from dvc.render import VERSION_FIELD
+from dvc.render.converter.vega import VegaConverter
 from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_renderers
 
 
@@ -35,7 +38,7 @@ def test_group_definitions():
     }
 
 
-def test_match_renderers(mocker):
+def test_match_renderers(M):
     data = {
         "v1": {
             "definitions": {
@@ -77,9 +80,9 @@ def test_match_renderers(mocker):
         },
     }
 
-    renderers = match_defs_renderers(data)
-    assert len(renderers) == 1
-    assert renderers[0].datapoints == [
+    (renderer_with_errors,) = match_defs_renderers(data)
+    renderer = renderer_with_errors[0]
+    assert renderer.datapoints == [
         {
             VERSION_FIELD: {
                 "revision": "v1",
@@ -99,13 +102,31 @@ def test_match_renderers(mocker):
             "y": 2,
         },
     ]
-    assert renderers[0].properties == {
+    assert renderer.properties == {
         "title": "config_file_1::plot_id_1",
         "x": "x",
         "y": "y",
         "x_label": "x",
         "y_label": "y",
     }
+    assert renderer_with_errors.source_errors == {
+        "revision_with_no_data": {"file.json": M.instance_of(FileNotFoundError)}
+    }
+    assert not renderer_with_errors.definition_errors
+
+
+def test_flat_datapoints_errors_are_caught(M, mocker):
+    d = {}
+    d = set_in(
+        d,
+        ["v1", "definitions", "data", "dvc.yaml", "data", "plot_id_1"],
+        {"x": "x", "y": {"file.json": "y"}},
+    )
+    d = set_in(d, ["v1", "sources", "data", "file.json", "data"], [{"x": 1, "y": 1}])
+    mocker.patch.object(VegaConverter, "flat_datapoints", side_effect=ValueError)
+    (renderer_with_errors,) = match_defs_renderers(d)
+    assert not renderer_with_errors.source_errors
+    assert renderer_with_errors.definition_errors == {"v1": M.instance_of(ValueError)}
 
 
 def test_squash_plots_properties():
