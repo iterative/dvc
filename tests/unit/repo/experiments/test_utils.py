@@ -63,6 +63,10 @@ def test_run_check_ref_format(scm, name, result):
             {"params.yaml": {"foo": 1}},
         ),
         (
+            {"workspace": {"data": {"params.yaml": {"error": "FileNotFound"}}}},
+            {"params.yaml": {}},
+        ),
+        (
             {"workspace": {"error": "something went wrong"}},
             {},
         ),
