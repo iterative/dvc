@@ -24,9 +24,11 @@ class CmdExperimentsRemove(CmdBase):
             )
 
     def run(self):
+        from dvc.utils import humanize
+
         self.check_arguments()
 
-        removed_list = self.repo.experiments.remove(
+        removed = self.repo.experiments.remove(
             exp_names=self.args.experiment,
             all_commits=self.args.all_commits,
             rev=self.args.rev,
@@ -34,8 +36,10 @@ class CmdExperimentsRemove(CmdBase):
             queue=self.args.queue,
             git_remote=self.args.git_remote,
         )
-        removed = ",".join(removed_list)
-        ui.write(f"Removed experiments: {removed}")
+        if removed:
+            ui.write(f"Removed experiments: {humanize.join(map(repr, removed))}")
+        else:
+            ui.write("No experiments to remove.")
 
         return 0
 
