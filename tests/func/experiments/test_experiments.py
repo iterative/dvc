@@ -683,3 +683,24 @@ def test_local_config_is_propagated_to_tmp(tmp_dir, scm, dvc):
     with fs.open("file") as fobj:
         conf_obj = ConfigObj(fobj)
         assert conf_obj["cache"]["type"] == "hardlink"
+
+
+@pytest.mark.parametrize("tmp", [True, False])
+def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc, tmp):
+    (tmp_dir / "dvc.yaml").dump(
+        {
+            "metrics": ["metrics.json"],
+            "params": ["params.yaml"],
+            "plots": ["plots.csv"],
+        }
+    )
+    stage = dvc.stage.add(
+        cmd="touch metrics.json && touch params.yaml && touch plots.csv",
+        name="top-level",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+    results = dvc.experiments.run(stage.addressing, tmp_dir=tmp)
+    exp = first(results)
+    fs = scm.get_fs(exp)
+    for file in ["metrics.json", "params.yaml", "plots.csv"]:
+        assert fs.exists(file)
