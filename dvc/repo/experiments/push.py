@@ -1,13 +1,14 @@
 import logging
 from typing import Iterable, List, Mapping, Optional, Set, Union
 
-from funcy import group_by
+from funcy import compact, group_by
 from scmrepo.git.backend.base import SyncStatus
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit, iter_revs
 from dvc.ui import ui
+from dvc.utils import env2bool
 
 from .exceptions import UnresolvedExpNamesError
 from .refs import ExpRefInfo
@@ -16,12 +17,24 @@ from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 logger = logging.getLogger(__name__)
 
 
-STUDIO_URL = "https://studio.iterative.ai"
+def notify_refs_to_studio(config, git_remote: str, **refs: List[str]):
+    token = config.get("studio_token")
+    refs = compact(refs)
+    if refs and (token or config["push_exp_to_studio"]) and not env2bool("DVC_TEST"):
+        from dvc.utils import studio
+
+        studio_url = config.get("studio_url")
+        studio.notify_refs(
+            git_remote,
+            default_token=token,
+            studio_url=studio_url,
+            **refs,  # type: ignore[arg-type]
+        )
 
 
 @locked
 @scm_context
-def push(  # noqa: C901, PLR0912
+def push(  # noqa: C901
     repo,
     git_remote: str,
     exp_names: Union[Iterable[str], str],
@@ -32,8 +45,6 @@ def push(  # noqa: C901, PLR0912
     push_cache: bool = False,
     **kwargs,
 ) -> Iterable[str]:
-    from dvc.utils import env2bool
-
     exp_ref_set: Set["ExpRefInfo"] = set()
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm))
@@ -76,62 +87,9 @@ def push(  # noqa: C901, PLR0912
         _push_cache(repo, push_cache_ref, **kwargs)
 
     refs = push_result[SyncStatus.SUCCESS]
-    feature_config = repo.config["feature"]
-
-    push_to_studio = (
-        bool(feature_config.get("studio_token")) or feature_config["push_exp_to_studio"]
-    )
-    if refs and push_to_studio and not env2bool("DVC_TEST"):
-        token, repo_url = get_studio_token_and_repo_url(feature_config)
-        if token and repo_url:
-            studio_url = feature_config.get("studio_url")
-            _notify_studio([str(ref) for ref in refs], repo_url, token, url=studio_url)
+    pushed_refs = [str(r) for r in refs]
+    notify_refs_to_studio(repo.config["feature"], git_remote, pushed=pushed_refs)
     return [ref.name for ref in refs]
-
-
-def get_studio_token_and_repo_url(config):
-    import os
-
-    from dvc_studio_client.post_live_metrics import get_studio_repo_url
-
-    token = os.getenv("STUDIO_TOKEN") or config.get("studio_token")
-    if not token:
-        logger.debug("Studio token not found. Skipping push to Studio.")
-    repo_url = os.getenv("STUDIO_REPO_URL") or get_studio_repo_url()
-    if token and not repo_url:
-        logger.warning(
-            "Could not detect repository url. "
-            "Please set STUDIO_REPO_URL environment variable "
-            "to your remote git repository url. "
-        )
-    return token, repo_url
-
-
-def _notify_studio(
-    refs: List[str],
-    repo_url: str,
-    token: str,
-    url: Optional[str] = None,
-):
-    if not refs:
-        return
-
-    from urllib.parse import urljoin
-
-    import requests
-    from requests.adapters import HTTPAdapter
-
-    endpoint = urljoin(url or STUDIO_URL, "/webhook/dvc")
-    session = requests.Session()
-    session.mount(endpoint, HTTPAdapter(max_retries=3))
-
-    logger.debug("pushing experiments to Studio (%s)", url)
-    json = {"repo_url": repo_url, "client": "dvc", "refs": refs}
-    logger.trace("Sending %s to %s", json, endpoint)  # type: ignore[attr-defined]
-
-    headers = {"Authorization": f"token {token}"}
-    resp = session.post(endpoint, json=json, headers=headers, timeout=5)
-    resp.raise_for_status()
 
 
 def _push(
