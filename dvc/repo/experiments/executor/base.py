@@ -34,6 +34,8 @@ from dvc.repo.experiments.refs import (
     ExpRefInfo,
 )
 from dvc.repo.experiments.utils import to_studio_params
+from dvc.repo.metrics.show import _collect_top_level_metrics
+from dvc.repo.params.show import _collect_top_level_params
 from dvc.stage.serialize import to_lockfile
 from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
@@ -274,6 +276,13 @@ class BaseExecutor(ABC):
             os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
         else:
             os.chdir(dvc.root_dir)
+
+        include_untracked = include_untracked or []
+        include_untracked.extend(_collect_top_level_metrics(dvc))
+        include_untracked.extend(_collect_top_level_params(dvc))
+        include_untracked.extend(
+            dvc.index._plot_sources  # pylint: disable=protected-access
+        )
 
         try:
             stages = dvc.commit([], force=True, relink=False)

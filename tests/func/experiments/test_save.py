@@ -116,3 +116,23 @@ def test_exp_save_include_untracked_warning(tmp_dir, dvc, scm, mocker):
 
     dvc.experiments.save(name="exp", include_untracked=["new_dir"])
     assert not logger.warning.called
+
+
+def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc):
+    (tmp_dir / "dvc.yaml").dump(
+        {
+            "metrics": ["metrics.json"],
+            "params": ["params.yaml"],
+            "plots": ["plots.csv"],
+        }
+    )
+    stage = dvc.stage.add(
+        cmd="touch metrics.json && touch params.yaml && touch plots.csv",
+        name="top-level",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+    dvc.reproduce(stage.addressing)
+    exp = dvc.experiments.save()
+    fs = scm.get_fs(exp)
+    for file in ["metrics.json", "params.yaml", "plots.csv"]:
+        assert fs.exists(file)
