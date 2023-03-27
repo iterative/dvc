@@ -18,7 +18,7 @@ def test_notify_studio_for_exp_push(mocker):
 
     assert mock_post.called
     assert mock_post.call_args == mocker.call(
-        urljoin(STUDIO_URL, "/webhook/dvc/"),
+        urljoin(STUDIO_URL, "/webhook/dvc"),
         json={
             "repo_url": "git@github.com:iterative/dvc.git",
             "client": "dvc",
