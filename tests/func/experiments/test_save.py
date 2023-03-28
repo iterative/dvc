@@ -134,5 +134,22 @@ def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc):
     dvc.reproduce(stage.addressing)
     exp = dvc.experiments.save()
     fs = scm.get_fs(exp)
-    for file in ["metrics.json", "params.yaml", "plots.csv"]:
+    for file in ["metrics.json", "params.yaml", "plots.csv", "dvc.lock"]:
         assert fs.exists(file)
+
+
+def test_untracked_dvclock_is_included_in_exp(tmp_dir, scm, dvc):
+    stage = dvc.stage.add(
+        cmd="echo foo",
+        name="foo",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+    dvc.reproduce(stage.addressing)
+
+    # dvc.reproduce automatically stages `dvc.lock`
+    # force it to be untracked
+    scm.reset()
+
+    exp = dvc.experiments.save()
+    fs = scm.get_fs(exp)
+    assert fs.exists("dvc.lock")
