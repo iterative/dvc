@@ -192,7 +192,6 @@ class SingleStageFile(FileMixin):
     metrics: List[str] = []
     plots: Any = {}
     params: List[str] = []
-    artifacts: Any = {}
 
     @property
     def stage(self) -> "Stage":
