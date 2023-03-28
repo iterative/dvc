@@ -228,16 +228,15 @@ class Index:
         from dvc.dvcfile import load_file
 
         dvcfile = load_file(repo, path)
-        kwargs = {}
-        if hasattr(dvcfile, "artifacts"):
-            kwargs["artifacts"] = {path: dvcfile.artifacts} if dvcfile.artifacts else {}
         return cls(
             repo,
             stages=list(dvcfile.stages.values()),
             metrics={path: dvcfile.metrics} if dvcfile.metrics else {},
             plots={path: dvcfile.plots} if dvcfile.plots else {},
             params={path: dvcfile.params} if dvcfile.params else {},
-            **kwargs,
+            artifacts={path: dvcfile.artifacts}
+            if hasattr(dvcfile, "artifacts")
+            else {},
         )
 
     def update(self, stages: Iterable["Stage"]) -> "Index":
