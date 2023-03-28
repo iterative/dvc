@@ -39,7 +39,7 @@ class CmdCheckIgnore(CmdBase):
                 target = input()
             except (KeyboardInterrupt, EOFError):
                 break
-            if target == "":
+            if not target:
                 break
             if not self._check_one_file(target):
                 ret = 0

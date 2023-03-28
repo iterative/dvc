@@ -1,3 +1,4 @@
+import errno
 import os
 from collections import defaultdict
 from copy import copy
@@ -36,10 +37,18 @@ class RepoDependency(Dependency):
     }
 
     def __init__(self, def_repo: Dict[str, str], stage: "Stage", *args, **kwargs):
+        from dvc.fs import DVCFileSystem
+
         self.def_repo = def_repo
         self._objs: Dict[str, "HashFile"] = {}
         self._meta: Dict[str, "Meta"] = {}
         super().__init__(stage, *args, **kwargs)
+
+        self.fs = DVCFileSystem(
+            url=self.def_repo[self.PARAM_URL],
+            rev=self._get_rev(),
+        )
+        self.fs_path = self.def_path
 
     def _parse_path(self, fs, fs_path):  # noqa: ARG002
         return None
@@ -106,7 +115,7 @@ class RepoDependency(Dependency):
         self, obj_only: bool = False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"]:
         from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError, PathMissingError
+        from dvc.exceptions import NoOutputOrStageError
         from dvc.utils import as_posix
         from dvc_data.hashfile.build import build
         from dvc_data.hashfile.tree import Tree, TreeError
@@ -143,8 +152,10 @@ class RepoDependency(Dependency):
                     local_odb.fs.PARAM_CHECKSUM,
                 )
             except (FileNotFoundError, TreeError) as exc:
-                raise PathMissingError(
-                    self.def_path, self.def_repo[self.PARAM_URL]
+                raise FileNotFoundError(
+                    errno.ENOENT,
+                    os.strerror(errno.ENOENT) + f" in {self.def_repo[self.PARAM_URL]}",
+                    self.def_path,
                 ) from exc
             object_store = copy(object_store)
             object_store.read_only = True
@@ -215,7 +226,13 @@ class RepoDependency(Dependency):
 
         d = self.def_repo
         rev = self._get_rev(locked=locked)
-        return external_repo(d[self.PARAM_URL], rev=rev, **kwargs)
+        return external_repo(
+            d[self.PARAM_URL],
+            rev=rev,
+            subrepos=True,
+            uninitialized=True,
+            **kwargs,
+        )
 
     def _get_rev(self, locked: bool = True):
         d = self.def_repo

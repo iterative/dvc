@@ -276,8 +276,7 @@ def test_gc_all_experiments(tmp_dir, scm, dvc):
     (foo,) = tmp_dir.dvc_gen("foo", "foo", commit="foo")
     foo_hash = foo.outs[0].hash_info.value
 
-    (bar,) = tmp_dir.dvc_gen("foo", "bar", commit="bar")
-    bar_hash = bar.outs[0].hash_info.value
+    tmp_dir.dvc_gen("foo", "bar", commit="bar")
     baseline = scm.get_rev()
 
     (baz,) = tmp_dir.dvc_gen("foo", "baz", commit="baz")
@@ -288,12 +287,7 @@ def test_gc_all_experiments(tmp_dir, scm, dvc):
 
     dvc.gc(all_experiments=True, force=True)
 
-    # all_experiments will include the experiment commit (baz) plus baseline
-    # commit (bar)
     assert not (tmp_dir / ".dvc" / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
-    assert (
-        tmp_dir / ".dvc" / "cache" / bar_hash[:2] / bar_hash[2:]
-    ).read_text() == "bar"
     assert (
         tmp_dir / ".dvc" / "cache" / baz_hash[:2] / baz_hash[2:]
     ).read_text() == "baz"

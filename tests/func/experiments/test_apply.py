@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from funcy import first
 
@@ -26,7 +28,12 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
-def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
+@pytest.mark.xfail(
+    os.name == "nt",
+    strict=False,
+    reason="https://github.com/iterative/dvc/issues/9143",
+)
+def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, session_queue):
     from dvc.exceptions import InvalidArgumentError
 
     dvc.experiments.run(failed_exp_stage.addressing, params=["foo=2"], queue=True)
@@ -35,7 +42,7 @@ def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
     dvc.experiments.run(
         failed_exp_stage.addressing, params=["foo=3"], queue=True, name="foo"
     )
-    dvc.experiments.run(run_all=True)
+    session_queue.wait(["foo"])
 
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.apply("bar")

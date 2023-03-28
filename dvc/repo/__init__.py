@@ -3,10 +3,17 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    ContextManager,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
-from dvc.exceptions import FileMissingError
-from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
 from dvc.utils import env2bool
@@ -116,6 +123,8 @@ class Repo:
             if not scm:
                 try:
                     scm = SCM(root_dir or os.curdir)
+                    if scm.dulwich.repo.bare:
+                        raise NotDvcRepoError(f"{scm.root_dir} is a bare git repo")
                 except SCMError:
                     scm = SCM(os.curdir, no_scm=True)
 
@@ -124,38 +133,6 @@ class Repo:
 
         assert root_dir
         return root_dir, dvc_dir
-
-    def _get_database_dir(self, db_name: str) -> Optional[str]:
-        from dvc.fs import localfs
-
-        # NOTE: by default, store SQLite-based remote indexes and state's
-        # `links` and `md5s` caches in the repository itself to avoid any
-        # possible state corruption in 'shared cache dir' scenario, but allow
-        # user to override this through config when, say, the repository is
-        # located on a mounted volume — see
-        # https://github.com/iterative/dvc/issues/4420
-        base_db_dir = self.config.get(db_name, {}).get("dir", None)
-        if not base_db_dir:
-            return self.tmp_dir
-
-        import hashlib
-
-        if self.local_dvc_dir:
-            fs: "FileSystem" = localfs
-            local_root = fs.path.parent(self.local_dvc_dir)
-        else:
-            fs = self.fs
-            local_root = self.root_dir
-        root_dir_hash = hashlib.sha224(local_root.encode("utf-8")).hexdigest()
-
-        db_dir = fs.path.join(
-            base_db_dir,
-            self.DVC_DIR,
-            f"{fs.path.name(local_root)}-{root_dir_hash[0:7]}",
-        )
-
-        fs.makedirs(db_dir, exist_ok=True)
-        return db_dir
 
     def __init__(  # noqa: PLR0915
         self,
@@ -232,8 +209,8 @@ class Repo:
                     hardlink_lock=self.config["core"].get("hardlink_lock", False),
                     friendly=True,
                 )
-                state_db_dir = self._get_database_dir("state")
-                self.state = State(self.root_dir, state_db_dir, self.dvcignore)
+                os.makedirs(self.site_cache_dir, exist_ok=True)
+                self.state = State(self.root_dir, self.site_cache_dir, self.dvcignore)
             else:
                 self.lock = LockNoop()
                 self.state = StateNoop()
@@ -388,16 +365,12 @@ class Repo:
         self._reset()
 
     @property
-    def data_index(self) -> Optional["DataIndex"]:
+    def data_index(self) -> "DataIndex":
         from dvc_data.index import DataIndex
 
-        if not self.index_db_dir:
-            return None
-
         if self._data_index is None:
-            index_dir = os.path.join(self.index_db_dir, "index", "data")
+            index_dir = os.path.join(self.site_cache_dir, "index", "data")
             os.makedirs(index_dir, exist_ok=True)
-
             self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))
 
         return self._data_index
@@ -462,6 +435,11 @@ class Repo:
         from dvc.repo.brancher import brancher
 
         return brancher(self, *args, **kwargs)
+
+    def switch(self, rev: str) -> ContextManager[str]:
+        from dvc.repo.brancher import switch
+
+        return switch(self, rev)
 
     def used_objs(  # noqa: PLR0913
         self,
@@ -576,40 +554,35 @@ class Repo:
         return DVCFileSystem(repo=self, subrepos=self.subrepos, **self._fs_conf)
 
     @cached_property
-    def index_db_dir(self):
-        return self._get_database_dir("index")
+    def site_cache_dir(self) -> str:
+        import hashlib
 
-    @contextmanager
-    def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
-        """Opens a specified resource as a file descriptor"""
-        from dvc.fs.data import DataFileSystem
-        from dvc.fs.dvc import DVCFileSystem
+        import platformdirs
 
-        fs: Union["FileSystem", DataFileSystem, DVCFileSystem]
-        if os.path.isabs(path):
-            fs = DataFileSystem(index=self.index.data["local"])
-            fs_path = path
+        from dvc.fs import GitFileSystem
+
+        cache_dir = platformdirs.site_cache_dir("dvc", "iterative", opinion=True)
+
+        if isinstance(self.fs, GitFileSystem):
+            relparts = ()
+            if self.root_dir != "/":
+                # subrepo
+                relparts = self.fs.path.relparts(self.root_dir, "/")
+            root_dir = os.path.join(self.scm.root_dir, *relparts)
         else:
-            fs = DVCFileSystem(repo=self, subrepos=True)
-            fs_path = fs.from_os_path(path)
+            root_dir = self.root_dir
 
+        repos_dir = os.path.join(cache_dir, "repo")
+
+        umask = os.umask(0)
         try:
-            if remote:
-                remote_odb = self.cloud.get_remote_odb(name=remote)
-                oid = fs.info(fs_path)["dvc_info"]["md5"]
-                fs = remote_odb.fs
-                fs_path = remote_odb.oid_to_path(oid)
+            os.makedirs(repos_dir, mode=0o777, exist_ok=True)
+        finally:
+            os.umask(umask)
 
-            with fs.open(
-                fs_path,
-                mode=mode,
-                encoding=encoding,
-            ) as fobj:
-                yield fobj
-        except FileNotFoundError as exc:
-            raise FileMissingError(path) from exc
-        except IsADirectoryError as exc:
-            raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
+        repo_token = hashlib.md5(os.fsencode(root_dir)).hexdigest()  # noqa: S324
+
+        return os.path.join(repos_dir, repo_token)
 
     def close(self):
         self.scm.close()

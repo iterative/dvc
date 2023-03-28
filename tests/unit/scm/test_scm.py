@@ -3,7 +3,7 @@ from datetime import datetime
 from scmrepo.exceptions import SCMError
 
 from dvc.repo.experiments import ExpRefInfo
-from dvc.scm import GitMergeError, iter_revs
+from dvc.scm import iter_revs
 
 
 def test_iter_revs(
@@ -64,7 +64,6 @@ def test_iter_revs(
     assert gen == {
         rev_new: [rev_new],
         rev_old: [rev_old],
-        rev_root: [rev_root],
     }
 
     def _resolve_commit(rev):
@@ -99,11 +98,3 @@ def test_iter_revs(
         rev_old: [rev_old],
         rev_other: [rev_other],
     }
-
-
-def test_merge_error(tmp_dir, scm):
-    exc = GitMergeError("Merge failed")
-    assert "shallow" not in str(exc)
-    tmp_dir.gen({".git": {"shallow": ""}})
-    exc = GitMergeError("Merge failed", scm=scm)
-    assert "shallow" in str(exc)

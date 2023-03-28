@@ -75,7 +75,7 @@ class DataCloud:
                     config["version_aware"] = True
 
             fs = cls(**config)
-            config["tmp_dir"] = self.repo.index_db_dir
+            config["tmp_dir"] = self.repo.site_cache_dir
             if self.repo.data_index is not None:
                 index = self.repo.data_index.view(("remote", name))
             else:
@@ -84,14 +84,14 @@ class DataCloud:
 
         if bool(self.repo.config["remote"]):
             error_msg = (
-                "no remote specified. Setup default remote with\n"
+                f"no remote specified in {self.repo}. Setup default remote with\n"
                 "    dvc remote default <remote name>\n"
                 "or use:\n"
-                "    dvc {} -r <remote name>".format(command)
+                f"    dvc {command} -r <remote name>"
             )
         else:
             error_msg = (
-                "no remote specified. Create a default remote with\n"
+                f"no remote specified in {self.repo}. Create a default remote with\n"
                 "    dvc remote add -d <remote name> <remote url>"
             )
 

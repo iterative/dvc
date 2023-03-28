@@ -25,9 +25,7 @@ def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, workspace, 
     exp = first(results)
 
     new_mock.assert_called_once()
-    for rev in dvc.brancher([exp]):
-        if rev == "workspace":
-            continue
+    with dvc.switch(exp):
         fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
@@ -69,9 +67,7 @@ def test_resume_checkpoint(
     )
     exp = first(results)
 
-    for rev in dvc.brancher([exp]):
-        if rev == "workspace":
-            continue
+    with dvc.switch(exp):
         fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
@@ -94,9 +90,7 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
     )
     exp = first(results)
 
-    for rev in dvc.brancher([exp]):
-        if rev == "workspace":
-            continue
+    with dvc.switch(exp):
         fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
@@ -132,18 +126,14 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     )
     checkpoint_b = first(results)
 
-    for rev in dvc.brancher([checkpoint_a]):
-        if rev == "workspace":
-            continue
+    with dvc.switch(checkpoint_a):
         fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
         with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
-    for rev in dvc.brancher([checkpoint_b]):
-        if rev == "workspace":
-            continue
+    with dvc.switch(checkpoint_b):
         fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)

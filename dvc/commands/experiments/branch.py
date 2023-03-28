@@ -26,5 +26,13 @@ def add_parser(experiments_subparsers, parent_parser):
     experiments_branch_parser.add_argument(
         "experiment", help="Experiment to be promoted."
     )
-    experiments_branch_parser.add_argument("branch", help="Name for the new Git branch")
+    experiments_branch_parser.add_argument(
+        "branch",
+        nargs="?",
+        default=None,
+        help=(
+            "Optional name for the new Git branch. "
+            "Defaults to '{experiment-name}-branch'."
+        ),
+    )
     experiments_branch_parser.set_defaults(func=CmdExperimentsBranch)

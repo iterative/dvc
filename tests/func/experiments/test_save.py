@@ -1,5 +1,3 @@
-import logging
-
 import pytest
 from funcy import first
 
@@ -8,18 +6,21 @@ from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
 
 
-@pytest.fixture
-def modified_exp_stage(exp_stage, tmp_dir):
-    with open(tmp_dir / "copy.py", "a", encoding="utf-8") as fh:
-        fh.write("\n# dummy change")
+def setup_stage(tmp_dir, dvc, scm):
+    tmp_dir.gen("params.yaml", "foo: 1")
+    dvc.run(name="echo-foo", outs=["bar"], cmd="echo ${foo} > bar")
+    scm.add(["dvc.yaml", "dvc.lock", ".gitignore", "params.yaml"])
+    scm.commit("init")
 
 
-def test_exp_save_unchanged(tmp_dir, dvc, scm, exp_stage):
+def test_exp_save_unchanged(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
     dvc.experiments.save()
 
 
 @pytest.mark.parametrize("name", (None, "test"))
-def test_exp_save(tmp_dir, dvc, scm, exp_stage, name, modified_exp_stage):
+def test_exp_save(tmp_dir, dvc, scm, name):
+    setup_stage(tmp_dir, dvc, scm)
     baseline = scm.get_rev()
 
     exp = dvc.experiments.save(name=name)
@@ -32,12 +33,12 @@ def test_exp_save(tmp_dir, dvc, scm, exp_stage, name, modified_exp_stage):
     assert resolve_rev(scm, exp_name) == exp
 
 
-def test_exp_save_overwrite_experiment(
-    tmp_dir, dvc, scm, exp_stage, modified_exp_stage
-):
+def test_exp_save_overwrite_experiment(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
     name = "dummy"
     dvc.experiments.save(name=name)
 
+    tmp_dir.gen("params.yaml", "foo: 2")
     with pytest.raises(ExperimentExistsError):
         dvc.experiments.save(name=name)
 
@@ -54,12 +55,14 @@ def test_exp_save_overwrite_experiment(
         "invalidname.",
     ),
 )
-def test_exp_save_invalid_name(tmp_dir, dvc, scm, exp_stage, name):
+def test_exp_save_invalid_name(tmp_dir, dvc, scm, name):
+    setup_stage(tmp_dir, dvc, scm)
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.save(name=name, force=True)
 
 
-def test_exp_save_after_commit(tmp_dir, dvc, scm, exp_stage):
+def test_exp_save_after_commit(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
     baseline = scm.get_rev()
     dvc.experiments.save(name="exp-1", force=True)
 
@@ -72,36 +75,44 @@ def test_exp_save_after_commit(tmp_dir, dvc, scm, exp_stage):
 
 
 def test_exp_save_with_staged_changes(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
+    tmp_dir.gen({"deleted": "deleted", "modified": "modified"})
+    scm.add_commit(["deleted", "modified"], "init")
+
+    (tmp_dir / "deleted").unlink()
     tmp_dir.gen({"new_file": "new_file"})
-    scm.add("new_file")
+    (tmp_dir / "modified").write_text("foo")
+    scm.add(["deleted", "new_file", "modified"])
 
-    dvc.experiments.save(name="exp")
+    exp_rev = dvc.experiments.save(name="exp")
+    scm.checkout(exp_rev, force=True)
+    assert not (tmp_dir / "deleted").exists()
+    assert (tmp_dir / "new_file").exists()
+    assert (tmp_dir / "modified").read_text() == "foo"
 
-    _, _, unstaged = scm.status()
-    assert "new_file" in unstaged
 
+def test_exp_save_include_untracked(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
 
-def test_exp_save_include_untracked(tmp_dir, dvc, scm, exp_stage):
     new_file = tmp_dir / "new_file"
-    for i in range(2):
-        new_file.write_text(f"exp-{i}")
-        dvc.experiments.save(name=f"exp-{i}", include_untracked=["new_file"])
+    new_file.write_text("new_file")
+    dvc.experiments.save(name="exp", include_untracked=["new_file"])
 
     _, _, unstaged = scm.status()
     assert "new_file" in unstaged
-    assert new_file.read_text() == f"exp-{i}"
-
-    dvc.experiments.apply("exp-0")
-    assert new_file.read_text() == "exp-0"
+    assert new_file.read_text() == "new_file"
 
 
-def test_exp_save_include_untracked_warning(tmp_dir, dvc, scm, caplog, exp_stage):
+def test_exp_save_include_untracked_warning(tmp_dir, dvc, scm, mocker):
     """Regression test for https://github.com/iterative/dvc/issues/9061"""
+    setup_stage(tmp_dir, dvc, scm)
+
     new_dir = tmp_dir / "new_dir"
     new_dir.mkdir()
     (new_dir / "foo").write_text("foo")
     (new_dir / "bar").write_text("bar")
 
-    with caplog.at_level(logging.WARNING, logger="dvc.repo.experiments.save"):
-        dvc.experiments.save(name="exp", include_untracked=["new_dir"])
-        assert not caplog.records
+    logger = mocker.patch("dvc.repo.experiments.executor.base.logger")
+
+    dvc.experiments.save(name="exp", include_untracked=["new_dir"])
+    assert not logger.warning.called

@@ -1,6 +1,5 @@
 import logging
 import os
-import tempfile
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
@@ -167,9 +166,10 @@ class StageCache:
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
         path = self._get_cache_path(cache_key, cache_value)
-        parent = self.repo.cache.local.fs.path.parent(path)
+        local_fs = self.repo.cache.local.fs
+        parent = local_fs.path.parent(path)
         self.repo.cache.local.makedirs(parent)
-        tmp = tempfile.NamedTemporaryFile(delete=False, dir=parent).name
+        tmp = local_fs.path.join(parent, fs.utils.tmp_fname())
         assert os.path.exists(parent)
         assert os.path.isdir(parent)
         dump_yaml(tmp, cache)

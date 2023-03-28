@@ -12,6 +12,13 @@ LOADERS: DefaultDict[str, LoaderFn] = defaultdict(  # noqa: F405
 )
 LOADERS.update({".toml": load_toml, ".json": load_json, ".py": load_py})  # noqa: F405
 
+PARSERS: DefaultDict[str, ParserFn] = defaultdict(  # noqa: F405
+    lambda: parse_yaml  # noqa: F405
+)
+PARSERS.update(
+    {".toml": parse_toml, ".json": parse_json, ".py": parse_py}  # noqa: F405
+)
+
 
 def load_path(fs_path, fs):
     suffix = fs.path.suffix(fs_path).lower()

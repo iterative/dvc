@@ -14,7 +14,7 @@ class CmdExperimentsClean(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    EXPERIMENTS_CLEAN_HELP = "Cleanup dvc exp internal tempfiles."
+    EXPERIMENTS_CLEAN_HELP = "Cleanup experiments temporary internal files."
     experiments_clean_parser = experiments_subparsers.add_parser(
         "clean",
         parents=[parent_parser],

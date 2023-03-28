@@ -14,7 +14,14 @@ from dvc.utils import fix_env, is_binary
 logger = logging.getLogger(__name__)
 
 
-def _popen(cmd, **kwargs):
+def _suppress_resource_warning(popen: Popen):
+    """Sets the returncode to avoid ResourceWarning when popen is garbage collected."""
+    # only use for daemon processes.
+    # See https://bugs.python.org/issue38890.
+    popen.returncode = 0
+
+
+def _popen(cmd, **kwargs) -> Popen:
     prefix = [sys.executable]
     if not is_binary():
         main_entrypoint = os.path.join(
@@ -40,11 +47,21 @@ def _spawn_windows(cmd, env):
         startupinfo = STARTUPINFO()
         startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-        _popen(cmd, env=env, creationflags=creationflags, startupinfo=startupinfo)
+        popen = _popen(
+            cmd, env=env, creationflags=creationflags, startupinfo=startupinfo
+        )
+        _suppress_resource_warning(popen)
 
 
 def _spawn_posix(cmd, env):
     from dvc.cli import main
+
+    # `fork` will copy buffers, so we need to flush them before forking.
+    # Otherwise, we will get duplicated outputs.
+    if sys.stdout and not sys.stdout.closed:
+        sys.stdout.flush()
+    if sys.stderr and not sys.stderr.closed:
+        sys.stderr.flush()
 
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exception and throws
@@ -72,6 +89,7 @@ def _spawn_posix(cmd, env):
     sys.stdin.close()
     sys.stdout.close()
     sys.stderr.close()
+    os.closerange(0, 3)
 
     if platform.system() == "Darwin":
         # workaround for MacOS bug

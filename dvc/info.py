@@ -54,6 +54,7 @@ def get_dvc_info():
             fs_root = get_fs_type(os.path.abspath(root_directory))
             info.append(f"Workspace directory: {fs_root}")
             info.append(f"Repo: {_get_dvc_repo_info(repo)}")
+            info.append(f"Repo.site_cache_dir: {repo.site_cache_dir}")
     except NotDvcRepoError:
         pass
     except SCMError:
@@ -138,7 +139,7 @@ def _get_supported_remotes():
 def get_fs_type(path):
     partition = {}
     for part in psutil.disk_partitions(all=True):
-        if part.fstype != "":
+        if part.fstype:
             try:
                 mountpoint = pathlib.Path(part.mountpoint).resolve()
                 partition[mountpoint] = part.fstype + " on " + part.device

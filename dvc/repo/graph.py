@@ -110,10 +110,10 @@ def build_graph(stages, outs_trie=None):
     # Building graph
     graph.add_nodes_from(stages)
     for stage in stages:
-        for dep in stage.deps:
-            if dep.fs_path is None:
-                continue
+        if stage.is_repo_import:
+            continue
 
+        for dep in stage.deps:
             dep_key = dep.fs.path.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):

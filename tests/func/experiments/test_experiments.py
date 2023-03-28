@@ -13,7 +13,7 @@ from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.scm import resolve_rev
+from dvc.scm import SCMError, resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.scripts import COPY_SCRIPT
@@ -131,7 +131,7 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{1}}") == init_rev
 
 
-def test_update_py_params(tmp_dir, scm, dvc, test_queue, copy_script):
+def test_update_py_params(tmp_dir, scm, dvc, session_queue, copy_script):
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
         cmd="python copy.py params.py metrics.py",
@@ -246,11 +246,12 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
 
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.branch("foo", "branch-exists")
+    dvc.experiments.branch("foo")
     dvc.experiments.branch("foo", "branch-name")
     dvc.experiments.branch(exp_a, "branch-rev")
     dvc.experiments.branch(ref_a, "branch-ref")
 
-    for name in ["branch-name", "branch-rev", "branch-ref"]:
+    for name in ["foo-branch", "branch-name", "branch-rev", "branch-ref"]:
         assert name in scm.list_branches()
         assert scm.resolve_rev(name) == exp_a
 
@@ -405,11 +406,12 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     assert resolve_rev(scm, ref_info.name) == exp
 
 
-def test_subrepo(tmp_dir, scm, workspace):
+def test_subrepo(tmp_dir, request, scm, workspace):
     from dvc.testing.tmp_dir import make_subrepo
 
     subrepo = tmp_dir / "dir" / "repo"
     make_subrepo(subrepo, scm)
+    request.addfinalizer(subrepo.dvc.close)
 
     subrepo.gen("copy.py", COPY_SCRIPT)
     subrepo.gen("params.yaml", "foo: 1")
@@ -596,16 +598,20 @@ def test_experiments_workspace_not_log_exception(caplog, dvc, scm):
     assert not caplog.text
 
 
+@pytest.mark.vscode
 def test_run_env(tmp_dir, dvc, scm, mocker):
     dump_run_env = dedent(
         """\
         import os
+        from dvc_studio_client.env import STUDIO_REPO_URL
         from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
-        with open("DVC_EXP_BASELINE_REV", "w") as f:
-            f.write(os.environ.get(DVC_EXP_BASELINE_REV, ""))
-        with open("DVC_EXP_NAME", "w") as f:
-            f.write(os.environ.get(DVC_EXP_NAME, ""))
+        for v in (DVC_EXP_BASELINE_REV, DVC_EXP_NAME, STUDIO_REPO_URL):
+            with open(v, "w") as f:
+                f.write(os.environ.get(v, ""))
         """
+    )
+    mocker.patch(
+        "dvc.repo.experiments.queue.base.get_studio_repo_url", return_value="REPO_URL"
     )
     (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
     baseline = scm.get_rev()
@@ -615,11 +621,13 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     )
     dvc.experiments.run()
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
-    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() != ""
+    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip()
+    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
 
     dvc.experiments.run(name="foo")
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
     assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == "foo"
+    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
 
 
 def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
@@ -639,3 +647,20 @@ def test_clean(tmp_dir, scm, dvc, mocker):
     clean = mocker.spy(dvc.experiments.celery_queue.celery, "clean")
     dvc.experiments.clean()
     clean.assert_called_once_with()
+
+
+def test_experiment_no_commit(tmp_dir):
+    from scmrepo.git import Git
+
+    from dvc.repo import Repo
+
+    Git.init(tmp_dir.fs_path).close()
+
+    repo = Repo.init()
+    assert repo.scm.no_commits
+
+    try:
+        with pytest.raises(SCMError):  # noqa: PT011
+            repo.experiments.ls()
+    finally:
+        repo.close()

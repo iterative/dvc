@@ -121,7 +121,7 @@ def _get_cloud_fs(repo_config, **kwargs):
 
     remote_conf = get_fs_config(repo_config, **kwargs)
     try:
-        remote_conf = SCHEMA["remote"][str](remote_conf)
+        remote_conf = SCHEMA["remote"][str](remote_conf)  # type: ignore[index]
     except Invalid as exc:
         raise RepoConfigError(str(exc)) from None
 

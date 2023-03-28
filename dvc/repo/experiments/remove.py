@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def remove(  # noqa: C901
+def remove(  # noqa: C901, PLR0912
     repo: "Repo",
     exp_names: Union[None, str, List[str]] = None,
     rev: Optional[str] = None,
@@ -39,13 +39,6 @@ def remove(  # noqa: C901
         removed.extend(celery_queue.clear(queued=True))
 
     assert isinstance(repo.scm, Git)
-    if all_commits:
-        removed.extend(
-            _remove_commited_exps(
-                repo.scm, list(exp_refs(repo.scm, git_remote)), git_remote
-            )
-        )
-        return removed
 
     exp_ref_list: List["ExpRefInfo"] = []
     queue_entry_list: List["QueueEntry"] = []
@@ -70,6 +63,9 @@ def remove(  # noqa: C901
         exp_ref_dict = _resolve_exp_by_baseline(repo, rev, num, git_remote)
         removed.extend(exp_ref_dict.keys())
         exp_ref_list.extend(exp_ref_dict.values())
+    elif all_commits:
+        exp_ref_list.extend(exp_refs(repo.scm, git_remote))
+        removed = [ref.name for ref in exp_ref_list]
 
     if exp_ref_list:
         _remove_commited_exps(repo.scm, exp_ref_list, git_remote)
@@ -79,15 +75,22 @@ def remove(  # noqa: C901
 
         remove_tasks(celery_queue, queue_entry_list)
 
+    if git_remote:
+        from .push import notify_refs_to_studio
+
+        removed_refs = [str(r) for r in exp_ref_list]
+        notify_refs_to_studio(repo, git_remote, removed=removed_refs)
     return removed
 
 
 def _resolve_exp_by_baseline(
-    repo,
+    repo: "Repo",
     rev: str,
     num: int,
     git_remote: Optional[str] = None,
 ) -> Dict[str, "ExpRefInfo"]:
+    assert isinstance(repo.scm, Git)
+
     commit_ref_dict: Dict[str, "ExpRefInfo"] = {}
     rev_dict = iter_revs(repo.scm, [rev], num)
     rev_set = set(rev_dict.keys())

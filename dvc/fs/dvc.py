@@ -251,12 +251,15 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         try:
             return self.repo.fs.open(fs_path, mode=mode)
         except FileNotFoundError:
-            _, dvc_fs, subkey = self._get_subrepo_info(key)
+            repo, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
-        return dvc_fs.open(dvc_path, mode=mode)
+        kw = {}
+        if kwargs.get("cache_remote_stream", False):
+            kw["cache_odb"] = repo.cache.local
+        return dvc_fs.open(dvc_path, mode=mode, **kw)
 
     def isdvc(self, path, **kwargs) -> bool:
         """Is this entry dvc-tracked?"""
@@ -265,19 +268,22 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
-    def ls(  # pylint: disable=arguments-differ
+    def ls(  # pylint: disable=arguments-differ # noqa: C901
         self, path, detail=True, dvc_only=False, **kwargs
     ):
         key = self._get_key_from_relative(path)
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
+        dvc_exists = False
         dvc_infos = {}
         if dvc_fs:
+            dvc_path = _get_dvc_path(dvc_fs, subkey)
             with suppress(FileNotFoundError):
-                dvc_path = _get_dvc_path(dvc_fs, subkey)
                 for info in dvc_fs.ls(dvc_path, detail=True):
                     dvc_infos[dvc_fs.path.name(info["name"])] = info
+            dvc_exists = bool(dvc_infos) or dvc_fs.exists(dvc_path)
 
+        fs_exists = False
         fs_infos = {}
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
         if not dvc_only:
@@ -291,11 +297,18 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             except (FileNotFoundError, NotADirectoryError):
                 pass
 
+            fs_exists = bool(fs_infos) or fs.exists(fs_path)
+
         dvcfiles = kwargs.get("dvcfiles", False)
 
         infos = []
         paths = []
         names = set(dvc_infos.keys()) | set(fs_infos.keys())
+
+        if not names and (dvc_exists or fs_exists):
+            # broken symlink or TreeError
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
+
         for name in names:
             if not dvcfiles and _is_dvc_file(name):
                 continue

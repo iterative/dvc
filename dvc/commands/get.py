@@ -14,12 +14,8 @@ class CmdGet(CmdBaseNoRepo):
         from dvc.api import get_url
         from dvc.ui import ui
 
-        try:
-            url = get_url(self.args.path, repo=self.args.url, rev=self.args.rev)
-            ui.write(url, force=True)
-        except DvcException:
-            logger.exception("failed to show URL")
-            return 1
+        url = get_url(self.args.path, repo=self.args.url, rev=self.args.rev)
+        ui.write(url, force=True)
 
         return 0
 

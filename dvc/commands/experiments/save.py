@@ -35,7 +35,7 @@ class CmdExperimentsSave(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    EXPERIMENTS_SAVE_HELP = "Save current workspace as a dvc experiment."
+    EXPERIMENTS_SAVE_HELP = "Save current workspace as an experiment."
     save_parser = experiments_subparsers.add_parser(
         "save",
         parents=[parent_parser],

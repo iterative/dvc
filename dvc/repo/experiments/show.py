@@ -19,7 +19,7 @@ from typing import (
 from scmrepo.exceptions import SCMError as InnerScmError
 
 from dvc.exceptions import DvcException
-from dvc.scm import Git, RevError, SCMError, iter_revs, resolve_rev
+from dvc.scm import Git, SCMError, iter_revs, resolve_rev
 
 from .refs import ExpRefInfo
 from .serialize import SerializableError, SerializableExp
@@ -81,7 +81,10 @@ def collect_experiment_commit(
     if exp_rev != "workspace" and not (force or param_deps):
         cached_exp = cache.get(exp_rev)
         if cached_exp:
-            if status == ExpStatus.Running:
+            if status == ExpStatus.Running or (
+                isinstance(cached_exp, SerializableExp)
+                and cached_exp.status == ExpStatus.Running.name
+            ):
                 # expire cached queued exp entry once we start running it
                 cache.delete(exp_rev)
             elif isinstance(cached_exp, SerializableError):
@@ -97,14 +100,17 @@ def collect_experiment_commit(
             force=force,
             **kwargs,
         )
-        if exp_rev != "workspace" and not param_deps:
+        if not (
+            exp_rev == "workspace"
+            or status == ExpStatus.Running
+            or param_deps
+            or exp.contains_error
+        ):
             cache.put(exp, force=True)
         return _format_exp(exp)
     except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
         logger.debug("", exc_info=True)
         error = SerializableError(str(exc), type(exc).__name__)
-        if not (exp_rev == "workspace" or param_deps or status == ExpStatus.Running):
-            cache.put(error, rev=exp_rev, force=True)
         return _format_error(error)
 
 
@@ -116,10 +122,8 @@ def _collect_from_repo(
     **kwargs,
 ) -> "SerializableExp":
     running = running or {}
-    for rev in repo.brancher(revs=[exp_rev]):
+    with repo.switch(exp_rev) as rev:
         if rev == "workspace":
-            if exp_rev != "workspace":
-                continue
             timestamp: Optional[datetime] = None
         else:
             commit = repo.scm.resolve_commit(rev)
@@ -145,7 +149,6 @@ def _collect_from_repo(
             executor=executor,
             error=error,
         )
-    raise RevError(f"nonexistent exp rev: '{exp_rev}'")
 
 
 def _collect_complete_experiment(
@@ -412,10 +415,9 @@ def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
                 if rev_result["status"] == ExpStatus.Running.name:
                     head["status"] = ExpStatus.Running.name
                     rev_result["status"] = ExpStatus.Success.name
-            else:
-                if rev_result["checkpoint_tip"] == rev:
-                    head = rev_result
-                    checkpoint = True
+            elif rev_result["checkpoint_tip"] == rev:
+                head = rev_result
+                checkpoint = True
 
 
 def show(  # noqa: PLR0913

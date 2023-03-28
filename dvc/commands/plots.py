@@ -1,9 +1,9 @@
 import argparse
-import json
 import logging
 import os
+from typing import TYPE_CHECKING, Dict, List
 
-from funcy import first
+from funcy import compact, first
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
@@ -12,14 +12,43 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import format_link
 
+if TYPE_CHECKING:
+    from dvc.render.match import RendererWithErrors
+
+
 logger = logging.getLogger(__name__)
 
 
-def _show_json(renderers, split=False):
+def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
     from dvc.render.convert import to_json
+    from dvc.utils.serialize import encode_exception
 
-    result = {renderer.name: to_json(renderer, split) for renderer in renderers}
-    ui.write_json(result)
+    errors: List[Dict] = []
+    data = {}
+
+    for renderer, src_errors, def_errors in renderers_with_errors:
+        name = renderer.name
+        data[name] = to_json(renderer, split)
+        errors.extend(
+            {
+                "name": name,
+                "rev": rev,
+                "source": source,
+                **encode_exception(e),
+            }
+            for rev, per_rev_src_errors in src_errors.items()
+            for source, e in per_rev_src_errors.items()
+        )
+        errors.extend(
+            {
+                "name": name,
+                "rev": rev,
+                **encode_exception(e),
+            }
+            for rev, e in def_errors.items()
+        )
+
+    ui.write_json(compact({"errors": errors, "data": data}), highlight=False)
 
 
 def _adjust_vega_renderers(renderers):
@@ -76,10 +105,6 @@ class CmdPlots(CmdBase):
         props = {p: getattr(self.args, p) for p in PLOT_PROPS}
         return {k: v for k, v in props.items() if v is not None}
 
-    def _config_files(self):
-        if self.args.from_config:
-            return {self.args.from_config}
-
     def _html_template_path(self):
         html_template_path = self.args.html_template
         if not html_template_path:
@@ -89,7 +114,7 @@ class CmdPlots(CmdBase):
             if html_template_path and not os.path.isabs(html_template_path):
                 assert self.repo.dvc_dir
                 html_template_path = os.path.join(self.repo.dvc_dir, html_template_path)
-        return html_template_path  # noqa: RET504
+        return html_template_path
 
     def run(self) -> int:  # noqa: C901, PLR0911, PLR0912
         from pathlib import Path
@@ -114,10 +139,9 @@ class CmdPlots(CmdBase):
             plots_data = self._func(
                 targets=self.args.targets,
                 props=self._props(),
-                config_files=self._config_files(),
             )
 
-            if not plots_data:
+            if not plots_data and not self.args.json:
                 ui.error_write(
                     "No plots were loaded, visualization file will not be created."
                 )
@@ -128,20 +152,21 @@ class CmdPlots(CmdBase):
 
             renderers_out = out if self.args.json else os.path.join(out, "static")
 
-            renderers = match_defs_renderers(
+            renderers_with_errors = match_defs_renderers(
                 data=plots_data,
                 out=renderers_out,
                 templates_dir=self.repo.plots.templates_dir,
             )
             if self.args.json:
-                _show_json(renderers, self.args.split)
+                _show_json(renderers_with_errors, self.args.split)
                 return 0
 
+            renderers = [r.renderer for r in renderers_with_errors]
             _adjust_vega_renderers(renderers)
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
-                    ui.write_json(json.loads(renderer.get_filled_template()))
+                    ui.write_json(renderer.get_filled_template(as_string=False))
                 return 0
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"
@@ -411,10 +436,4 @@ def _add_ui_arguments(parser):
         default=None,
         help="Custom HTML template for VEGA visualization.",
         metavar="<path>",
-    )
-    parser.add_argument(
-        "--from-config",
-        default=None,
-        metavar="<path>",
-        help=argparse.SUPPRESS,
     )

@@ -7,14 +7,7 @@ from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional, Tuple
 
 from funcy import retry, wrap_with
 
-from dvc.exceptions import (
-    FileMissingError,
-    NoOutputInExternalRepoError,
-    NoRemoteInExternalRepoError,
-    NotDvcRepoError,
-    OutputNotFoundError,
-    PathMissingError,
-)
+from dvc.exceptions import NotDvcRepoError
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
@@ -37,10 +30,6 @@ def external_repo(
     cache_types: Optional[Collection[str]] = None,
     **kwargs,
 ) -> Iterator["Repo"]:
-    from dvc.config import NoRemoteError
-    from dvc.fs import GitFileSystem
-    from dvc.scm import Git
-
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
     # Local HEAD points to the tip of whatever branch we first cloned from
@@ -55,43 +44,25 @@ def external_repo(
     config = _get_remote_config(url) if os.path.isdir(url) else {}
     config.update(cache_config)
 
+    main_root = "/"
     if for_write:
-        scm = None
-        root_dir = path
-        fs = None
-    else:
-        scm = Git(path)
-        fs = GitFileSystem(scm=scm, rev=rev)
-        root_dir = "/"
+        # we already checked out needed revision
+        rev = None
+        main_root = path
 
     repo_kwargs = dict(
-        root_dir=root_dir,
+        root_dir=path,
         url=url,
-        fs=fs,
         config=config,
-        repo_factory=erepo_factory(url, root_dir, cache_config),
-        scm=scm,
+        repo_factory=erepo_factory(url, main_root, cache_config),
+        rev=rev,
         **kwargs,
     )
-
-    if "subrepos" not in repo_kwargs:
-        repo_kwargs["subrepos"] = True
-
-    if "uninitialized" not in repo_kwargs:
-        repo_kwargs["uninitialized"] = True
 
     repo = Repo(**repo_kwargs)
 
     try:
         yield repo
-    except NoRemoteError as exc:
-        raise NoRemoteInExternalRepoError(url) from exc
-    except OutputNotFoundError as exc:
-        if exc.repo is repo:
-            raise NoOutputInExternalRepoError(exc.output, repo.root_dir, url) from exc
-        raise
-    except FileMissingError as exc:
-        raise PathMissingError(exc.path, url) from exc
     finally:
         repo.close()
         if for_write:

@@ -42,17 +42,6 @@ def make_executor_info(**kwargs):
 
 
 @pytest.mark.vscode
-def test_show_no_commits(tmp_dir):
-    from dvc.repo import Repo
-    from dvc.scm import Git
-
-    git = Git.init(tmp_dir.fs_path)
-    assert git.no_commits
-
-    assert Repo.init().experiments.show() == {}
-
-
-@pytest.mark.vscode
 def test_show_branch_and_tag_name(tmp_dir, scm, dvc, exp_stage):
     with tmp_dir.branch("new/branch", new=True):
         tmp_dir.scm_gen("branch", "branch", "commit")
@@ -167,15 +156,18 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
 
 
 @pytest.mark.vscode
-def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
+def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
     )
 
-    dvc.experiments.run(failed_exp_stage.addressing, params=["foo=2"], queue=True)
+    dvc.experiments.run(
+        failed_exp_stage.addressing, params=["foo=2"], queue=True, name="show-failed"
+    )
     exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
     dvc.experiments.run(run_all=True)
+    test_queue.wait(["show-failed"])
     experiments = dvc.experiments.show()[baseline_rev]
 
     expected_baseline = {
@@ -553,15 +545,20 @@ def test_show_running_celery(tmp_dir, scm, dvc, exp_stage, mocker):
     assert results["workspace"]["baseline"]["data"]["status"] == "Success"
 
 
-def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
+def test_show_running_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, mocker, test_queue
+):
     from dvc.repo.experiments.executor.local import TempDirExecutor
 
     baseline_rev = scm.get_rev()
-    dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"], queue=True)
+    dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"], queue=True, name="foo"
+    )
     queue = dvc.experiments.celery_queue
     entries = list(queue.iter_queued())
 
     run_results = dvc.experiments.run(run_all=True)
+    test_queue.wait(["foo"])
     checkpoint_rev = first(run_results)
     exp_ref = first(exp_refs_by_rev(scm, checkpoint_rev))
 

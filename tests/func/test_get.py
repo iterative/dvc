@@ -217,7 +217,7 @@ def test_get_url_positive(tmp_dir, erepo_dir, caplog, local_cloud):
     caplog.clear()
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert main(["get", os.fspath(erepo_dir), "foo", "--show-url"]) == 0
-        assert caplog.text == ""
+        assert not caplog.text
 
 
 def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
@@ -231,17 +231,15 @@ def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
                     "--show-url",
                 ]
             )
-            == 1
+            != 0
         )
-        assert "failed to show URL" in caplog.text
 
 
 def test_get_url_git_only_repo(tmp_dir, scm, caplog):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
     with caplog.at_level(logging.ERROR):
-        assert main(["get", os.fspath(tmp_dir), "foo", "--show-url"]) == 1
-        assert "failed to show URL" in caplog.text
+        assert main(["get", os.fspath(tmp_dir), "foo", "--show-url"]) != 0
 
 
 def test_get_pipeline_tracked_outs(tmp_dir, dvc, scm, git_dir, run_copy, local_remote):

@@ -1,3 +1,4 @@
+import logging
 import os
 import textwrap
 
@@ -94,3 +95,22 @@ def test_load_configob_error(tmp_dir, dvc, mocker):
     with pytest.raises(ConfigError):
         with config.edit():
             pass
+
+
+def test_feature_section_supports_arbitrary_values(caplog):
+    with caplog.at_level(logging.WARNING, logger="dvc.config_schema"):
+        data = Config.validate(
+            {
+                "feature": {
+                    "random_key_1": "random_value_1",
+                    "random_key_2": 42,
+                }
+            }
+        )
+
+    assert "random_key_1" not in data
+    assert "random_key_2" not in data
+    assert (
+        "'feature.random_key_1', 'feature.random_key_2' "
+        "config options are unsupported"
+    ) in caplog.text

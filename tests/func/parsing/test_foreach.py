@@ -44,6 +44,23 @@ def test_with_dict_data(tmp_dir, dvc):
     assert not resolver.tracked_vars["build@model2"]
 
 
+def test_with_dict_with_non_str_keys(tmp_dir, dvc):
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
+    context = Context()
+
+    foreach_data = {2021: {"thresh": "foo"}, 2022: {"thresh": "bar"}}
+    data = {"foreach": foreach_data, "do": {"cmd": "echo ${key} ${item.thresh}"}}
+    definition = ForeachDefinition(resolver, context, "build", data)
+
+    assert definition.resolve_one("2021") == {"build@2021": {"cmd": "echo 2021 foo"}}
+    assert definition.resolve_one("2022") == {"build@2022": {"cmd": "echo 2022 bar"}}
+
+    # check that `foreach` item-key replacement didnot leave any leftovers.
+    assert not context
+    assert not resolver.tracked_vars["build@2021"]
+    assert not resolver.tracked_vars["build@2022"]
+
+
 def test_with_composite_list(tmp_dir, dvc):
     resolver = DataResolver(dvc, tmp_dir.fs_path, {})
 

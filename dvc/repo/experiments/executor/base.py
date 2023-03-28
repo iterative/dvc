@@ -21,6 +21,7 @@ from typing import (
     Union,
 )
 
+from funcy import get_in
 from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
@@ -255,6 +256,60 @@ class BaseExecutor(ABC):
             **kwargs,
         )
 
+    @classmethod
+    def save(
+        cls,
+        info: "ExecutorInfo",
+        force: bool = False,
+        include_untracked: Optional[List[str]] = None,
+    ) -> ExecutorResult:
+        from dvc.repo import Repo
+
+        exp_hash: Optional[str] = None
+        exp_ref: Optional[ExpRefInfo] = None
+
+        dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
+        old_cwd = os.getcwd()
+        if info.wdir:
+            os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
+        else:
+            os.chdir(dvc.root_dir)
+
+        try:
+            stages = dvc.commit([], force=True, relink=False)
+            exp_hash = cls.hash_exp(stages)
+            if include_untracked:
+                dvc.scm.add(include_untracked)
+            cls.commit(
+                dvc.scm,  # type: ignore[arg-type]
+                exp_hash,
+                exp_name=info.name,
+                force=force,
+            )
+            ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+            exp_ref = ExpRefInfo.from_ref(ref) if ref else None
+            untracked = dvc.scm.untracked_files()
+            if untracked:
+                logger.warning(
+                    "The following untracked files were present in "
+                    "the workspace before saving but "
+                    "will not be included in the experiment commit:\n"
+                    "\t%s",
+                    ", ".join(untracked),
+                )
+            info.result_hash = exp_hash
+            info.result_ref = ref
+            info.result_force = False
+            info.status = TaskStatus.SUCCESS
+        except DvcException:
+            info.status = TaskStatus.FAILED
+            raise
+        finally:
+            dvc.close()
+            os.chdir(old_cwd)
+
+        return ExecutorResult(ref, exp_ref, info.result_force)
+
     @staticmethod
     def hash_exp(stages: Iterable["PipelineStage"]) -> str:
         from dvc.stage import PipelineStage
@@ -265,7 +320,7 @@ class BaseExecutor(ABC):
                 exp_data.update(to_lockfile(stage))
         return dict_sha256(exp_data)
 
-    def cleanup(self, infofile: str):
+    def cleanup(self, infofile: Optional[str] = None):
         if infofile is not None:
             info = ExecutorInfo.load_json(infofile)
             if info.status < TaskStatus.FAILED:
@@ -590,6 +645,7 @@ class BaseExecutor(ABC):
                     info.name,
                     "dvc",
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
+                    metrics=get_in(dvc.metrics.show(), ["", "data"]),
                 )
 
                 if infofile is not None:

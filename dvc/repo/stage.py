@@ -5,7 +5,11 @@ from contextlib import suppress
 from functools import wraps
 from typing import Iterable, List, NamedTuple, Optional, Set, Tuple, Union
 
-from dvc.exceptions import NoOutputOrStageError, OutputNotFoundError
+from dvc.exceptions import (
+    NoOutputOrStageError,
+    OutputDuplicationError,
+    OutputNotFoundError,
+)
 from dvc.repo import lock_repo
 from dvc.ui import ui
 from dvc.utils import as_posix, parse_target
@@ -176,7 +180,12 @@ class StageLoad:
 
                 check_stage_exists(self.repo, stage, stage.path)
 
-            self.repo.check_graph(stages={stage})
+            try:
+                self.repo.check_graph(stages={stage})
+            except OutputDuplicationError as exc:
+                # Don't include the stage currently being added.
+                exc.stages.remove(stage)
+                raise OutputDuplicationError(exc.output, exc.stages) from None
 
         restore_fields(stage)
         return stage

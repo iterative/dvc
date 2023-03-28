@@ -35,6 +35,7 @@ from .refs import (
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.scm import NoSCM
 
 
 EXEC_TMP_DIR = "exps"
@@ -108,7 +109,9 @@ def exp_refs_by_rev(scm: "Git", rev: str) -> Generator[ExpRefInfo, None, None]:
 
 
 def exp_refs_by_baseline(
-    scm: "Git", revs: Optional[Set[str]] = None, url: Optional[str] = None
+    scm: "Git",
+    revs: Optional[Set[str]] = None,
+    url: Optional[str] = None,
 ) -> Mapping[str, List[ExpRefInfo]]:
     """Iterate over all experiment refs with the specified baseline."""
     all_exp_refs = exp_refs(scm, url)
@@ -154,12 +157,11 @@ def push_refspec(
             for ref in scm.iter_refs(base=src):
                 refname = ref.split("/")[-1]
                 refspecs.append(f"{ref}:{dest}{refname}")
+        elif dest.endswith("/"):
+            refname = src.split("/")[-1]
+            refspecs.append(f"{src}:{dest}/{refname}")
         else:
-            if dest.endswith("/"):
-                refname = src.split("/")[-1]
-                refspecs.append(f"{src}:{dest}/{refname}")
-            else:
-                refspecs.append(f"{src}:{dest}")
+            refspecs.append(f"{src}:{dest}")
 
     try:
         results = scm.push_refspecs(
@@ -213,8 +215,6 @@ def exp_commits(
     refs = ref_infos if ref_infos else exp_refs(scm)
     for ref_info in refs:
         shas.update(scm.branch_revs(str(ref_info), ref_info.baseline_sha))
-        if ref_info.baseline_sha:
-            shas.add(ref_info.baseline_sha)
     yield from shas
 
 
@@ -234,7 +234,7 @@ def remove_exp_refs(scm: "Git", ref_infos: Iterable[ExpRefInfo]):
         scm.remove_ref(str(ref_info))
 
 
-def fix_exp_head(scm: "Git", ref: Optional[str]) -> Optional[str]:
+def fix_exp_head(scm: Union["Git", "NoSCM"], ref: Optional[str]) -> Optional[str]:
     if ref:
         name, tail = Git.split_ref_pattern(ref)
         if name == "HEAD" and scm.get_ref(EXEC_BASELINE):
@@ -286,7 +286,7 @@ def check_ref_format(scm: "Git", ref: ExpRefInfo):
         )
 
 
-def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
+def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None, **kwargs):
     refspecs = [
         f"{ref}:{ref}"
         for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
@@ -296,6 +296,7 @@ def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
         url,
         refspecs,
         progress=progress,
+        **kwargs,
     )
 
 
@@ -338,7 +339,7 @@ def to_studio_params(dvc_params):
     if not dvc_params:
         return result
     for rev_data in dvc_params.values():
-        for file_name, file_data in rev_data["data"].items():
+        for file_name, file_data in rev_data.get("data", {}).items():
             result[file_name] = file_data["data"]
 
     return result

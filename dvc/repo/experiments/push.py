@@ -1,35 +1,69 @@
 import logging
-from typing import Iterable, List, Mapping, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Set, Union
 
-from funcy import group_by
+from funcy import compact, group_by
 from scmrepo.git.backend.base import SyncStatus
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
-from dvc.scm import TqdmGit, iter_revs
+from dvc.scm import Git, TqdmGit, iter_revs
 from dvc.ui import ui
+from dvc.utils import env2bool
 
 from .exceptions import UnresolvedExpNamesError
 from .refs import ExpRefInfo
 from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 
+if TYPE_CHECKING:
+    from dvc.repo import Repo
+
 logger = logging.getLogger(__name__)
+
+
+def notify_refs_to_studio(repo: "Repo", git_remote: str, **refs: List[str]) -> None:
+    config = repo.config["feature"]
+    refs = compact(refs)
+    if not refs or env2bool("DVC_TEST"):
+        return
+
+    if not (config.get("studio_token") or config["push_exp_to_studio"]):
+        logger.debug(
+            "Either feature.studio_token or feature.push_exp_to_studio config "
+            "needs to be set."
+        )
+        return
+
+    import os
+
+    token = os.environ.get("STUDIO_TOKEN") or config.get("studio_token")
+    if not token:
+        logger.debug("Studio token not found.")
+        return
+
+    from dulwich.porcelain import get_remote_repo
+
+    from dvc.utils import studio
+
+    _, repo_url = get_remote_repo(repo.scm.dulwich.repo, git_remote)
+    studio_url = config.get("studio_url")
+    studio.notify_refs(repo_url, token, studio_url=studio_url, **refs)
 
 
 @locked
 @scm_context
 def push(  # noqa: C901
-    repo,
+    repo: "Repo",
     git_remote: str,
     exp_names: Union[Iterable[str], str],
-    all_commits=False,
+    all_commits: bool = False,
     rev: Optional[str] = None,
-    num=1,
+    num: int = 1,
     force: bool = False,
     push_cache: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> Iterable[str]:
     exp_ref_set: Set["ExpRefInfo"] = set()
+    assert isinstance(repo.scm, Git)
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm))
 
@@ -69,11 +103,15 @@ def push(  # noqa: C901
             push_result[SyncStatus.UP_TO_DATE] + push_result[SyncStatus.SUCCESS]
         )
         _push_cache(repo, push_cache_ref, **kwargs)
-    return [ref.name for ref in push_result[SyncStatus.SUCCESS]]
+
+    refs = push_result[SyncStatus.SUCCESS]
+    pushed_refs = [str(r) for r in refs]
+    notify_refs_to_studio(repo, git_remote, pushed=pushed_refs)
+    return [ref.name for ref in refs]
 
 
 def _push(
-    repo,
+    repo: "Repo",
     git_remote: str,
     refs: Iterable["ExpRefInfo"],
     force: bool,
@@ -83,7 +121,7 @@ def _push(
     from dvc.scm import GitAuthError
 
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
-    logger.debug("git push experiment '%s' -> '%s'", refspec_list, git_remote)
+    logger.debug("git push experiment %s -> '%s'", refspec_list, git_remote)
 
     with TqdmGit(desc="Pushing git refs") as pbar:
         try:
@@ -105,14 +143,15 @@ def _push(
 
 
 def _push_cache(
-    repo,
+    repo: "Repo",
     refs: Union[ExpRefInfo, Iterable["ExpRefInfo"]],
-    dvc_remote=None,
-    jobs=None,
-    run_cache=False,
+    dvc_remote: Optional[str] = None,
+    jobs: Optional[int] = None,
+    run_cache: bool = False,
 ):
     if isinstance(refs, ExpRefInfo):
         refs = [refs]
+    assert isinstance(repo.scm, Git)
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc push experiment '%s'", refs)
     repo.push(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)

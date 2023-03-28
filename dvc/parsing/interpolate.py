@@ -102,9 +102,8 @@ def _(obj: dict):  # noqa: C901
         if isinstance(v, bool):
             if v:
                 result += f"--{k} "
-            else:
-                if config.get("bool", "store_true") == "boolean_optional":
-                    result += f"--no-{k} "
+            elif config.get("bool", "store_true") == "boolean_optional":
+                result += f"--no-{k} "
 
         elif isinstance(v, str):
             result += f"--{k} {escape_str(v)} "

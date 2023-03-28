@@ -30,15 +30,14 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "appdirs>=1.4.3",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "distro>=1.3",
-    "dpath<3,>=2.0.2",
-    "dvc-data>=0.42.1,<0.43",
+    "dpath<3,>=2.1.0",
+    "dvc-data>=0.46.0,<0.47",
     "dvc-http",
-    "dvc-render>=0.1.2",
-    "dvc-studio-client>=0.1.1",
+    "dvc-render>=0.3.1,<0.4.0",
+    "dvc-studio-client>=0.5.0,<1",
     "dvc-task>=0.2.0,<1",
     "flatten_dict<1,>=0.4.1",
     "flufl.lock>=5",
@@ -49,6 +48,7 @@ dependencies = [
     "networkx>=2.5",
     "packaging>=19",
     "pathspec>=0.10.3",
+    "platformdirs<4,>=3.1.1",
     "psutil>=5.8",
     "pydot>=1.2.4",
     "pygtrie>=2.3.2",
@@ -56,7 +56,7 @@ dependencies = [
     "requests>=2.22",
     "rich>=12",
     "ruamel.yaml>=0.17.11",
-    "scmrepo>=0.1.14,<1",
+    "scmrepo>=0.1.17,<1",
     "shortuuid>=0.5",
     "shtab<2,>=1.3.4",
     "tabulate>=0.8.7",
@@ -73,9 +73,8 @@ gdrive = ["dvc-gdrive==2.19.1"]
 gs = ["dvc-gs==2.22.0"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
-    "mypy==1.0.1",
-    "pylint==2.16.2",
-    "types-appdirs",
+    "mypy==1.1.1",
+    "pylint==2.17.1",
     "types-colorama",
     "types-psutil",
     "types-requests",
@@ -101,7 +100,7 @@ tests = [
     "pytest-mock",
     "pytest-test-utils",
     "pytest-timeout>=2",
-    "pytest-xdist>=3",
+    "pytest-xdist>=3.2",
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
 ]
 webdav = ["dvc-webdav==2.19.1"]
@@ -131,8 +130,31 @@ known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task",
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "-ra --cov-config pyproject.toml"
-filterwarnings = ["error::pytest_mock.PytestMockWarning"]
+addopts = "-ra --cov-config pyproject.toml --dist worksteal"
+filterwarnings = [
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+    "error::pytest_mock.PytestMockWarning",
+    # remove when aiobotocore supports botocore>=1.29.13
+    "ignore:'cgi' is deprecated and slated for removal in Python 3.13:DeprecationWarning",
+    # also relates to botocore, but looks like it's not going to be fixed
+    # https://github.com/boto/botocore/issues/2744
+    "ignore:'urllib3.contrib.pyopenssl' module is deprecated:DeprecationWarning",
+    # ruamel.yaml: https://sourceforge.net/p/ruamel-yaml/tickets/452/
+    # google.cloud: https://github.com/googleapis/python-storage/issues/1000
+    # google.logging: https://github.com/googleapis/python-logging/issues/730
+    # Also happens with `zc.lockfile`.
+    "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
+    # see https://github.com/celery/kombu/issues/1339
+    # and https://github.com/celery/celery/issues/7528
+    # drop when celery==5.3 && kombu==5.3 releases
+    "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning",
+    # see https://github.com/networkx/networkx/issues/5723.
+    "ignore:nx.nx_pydot.* depends on the pydot package, which has.*known issues and is not actively maintained:DeprecationWarning",
+    # remove when new version of pytest-cov gets released
+    # https://github.com/pytest-dev/pytest-cov/issues/557
+    "ignore:The --rsyncdir command line argument and rsyncdirs config variable are deprecated:DeprecationWarning",
+]
 log_level = "debug"
 markers = [
     "needs_internet: Might need network access for the tests",
@@ -183,6 +205,7 @@ module = [
     "celery.*",
     "configobj.*",
     "dpath.*",
+    "distro",
     "dvc_http",
     "dvc_render.*",
     "dvc_ssh",
@@ -197,9 +220,12 @@ module = [
     "networkx.*",  # https://github.com/networkx/networkx/issues/3988
     "pygtrie.*",
     "pyinstrument",
+    "pyparsing",
     "pytest_docker.plugin",
     "ruamel.*",
     "ruamel.yaml.*",
+    "shortuuid",
+    "shtab",
     "tpi.*",
     "viztracer",
     "voluptuous",
@@ -230,7 +256,7 @@ ignored-argument-names = "_.*|args|kwargs"
 [tool.ruff]
 # external flake8 codes that should be preserved
 external = ["B301", "C901", "E302", "W601"]
-ignore = ["N818", "S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM111", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR2004", "RUF005"]
+ignore = ["N818", "S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR2004", "PLW2901", "RUF005"]
 select = ["F", "E", "W", "C90", "N", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "RUF"]
 show-source = true
 target-version = "py38"

@@ -117,6 +117,16 @@ class SerializableExp:
         except (TypeError, json.JSONDecodeError) as exc:
             raise DeserializeError("failed to load SerializableExp") from exc
 
+    @property
+    def contains_error(self) -> bool:
+        return (
+            self.error is not None
+            or self.params.get("error")
+            or any(value.get("error") for value in self.params.values())
+            or self.metrics.get("error")
+            or any(value.get("error") for value in self.metrics.values())
+        )
+
 
 @dataclass(frozen=True)
 class _ExpDep:

@@ -172,7 +172,7 @@ def determine_linecol(
     number of steps upward to just 5. If it does not find any linecols, it'll
     abort.
     """
-    from dpath.util import get
+    from dpath import get
 
     step = 1
     line, col = None, None
@@ -180,8 +180,8 @@ def determine_linecol(
         value = get(data, paths, default=None)
         if value is not None:
             with suppress(AttributeError, TypeError):
-                line = value.lc.line + 1
-                col = value.lc.col + 1
+                line = value.lc.line + 1  # type: ignore[attr-defined]
+                col = value.lc.col + 1  # type: ignore[attr-defined]
                 break
         step += 1
         *paths, _ = paths

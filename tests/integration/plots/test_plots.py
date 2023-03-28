@@ -5,7 +5,7 @@ from typing import Dict, List
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-import dpath.util
+import dpath
 import pytest
 from bs4 import BeautifulSoup
 from funcy import first
@@ -124,9 +124,9 @@ def verify_vega(
         tmp1 = deepcopy(html_template)
         tmp2 = deepcopy(filled_template)
         tmp3 = deepcopy(split_template)
-        dpath.util.set(tmp1, path, {})
-        dpath.util.set(tmp2, path, {})
-        dpath.util.set(tmp3, path, {})
+        dpath.set(tmp1, path, {})
+        dpath.set(tmp2, path, {})
+        dpath.set(tmp3, path, {})
 
         assert tmp1 == tmp2 == tmp3
 
@@ -140,17 +140,17 @@ def verify_vega_props(plot_id, json_result, title, x, y, **kwargs):
     assert len(data) == 1
     data = first(data)
 
-    assert dpath.util.get(data, ["content", "title"]) == title
+    assert dpath.get(data, ["content", "title"]) == title
 
     try:
         # TODO confusion_matrix_plot - need to find better way of asserting
         #      encoding as its place is not constant in vega
-        plot_x = dpath.util.get(data, ["content", "spec", "encoding", "x", "field"])
-        plot_y = dpath.util.get(data, ["content", "spec", "encoding", "y", "field"])
+        plot_x = dpath.get(data, ["content", "spec", "encoding", "x", "field"])
+        plot_y = dpath.get(data, ["content", "spec", "encoding", "y", "field"])
     except KeyError:
         # default plot
-        plot_x = dpath.util.get(data, ["content", "layer", 0, "encoding", "x", "field"])
-        plot_y = dpath.util.get(data, ["content", "layer", 0, "encoding", "y", "field"])
+        plot_x = dpath.get(data, ["content", "layer", 0, "encoding", "x", "field"])
+        plot_y = dpath.get(data, ["content", "layer", 0, "encoding", "y", "field"])
 
     assert plot_x == x
     assert plot_y == y
@@ -182,7 +182,13 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
     html_path, json_result, split_json_result = call(capsys)
     html_result = extract_vega_specs(html_path, ["linear.json", "confusion.json"])
 
-    assert json_result["linear.json"][0]["content"]["data"][
+    assert "errors" not in json_result
+    assert "errors" not in split_json_result
+
+    json_data = json_result["data"]
+    split_json_data = split_json_result["data"]
+
+    assert json_data["linear.json"][0]["content"]["data"][
         "values"
     ] == _update_datapoints(
         linear_v1,
@@ -200,7 +206,7 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             REVISION_FIELD: "workspace",
         },
     )
-    assert json_result["confusion.json"][0]["content"]["data"][
+    assert json_data["confusion.json"][0]["content"]["data"][
         "values"
     ] == _update_datapoints(
         confusion_v1,
@@ -218,34 +224,40 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             REVISION_FIELD: "workspace",
         },
     )
-    verify_image(tmp_dir, "workspace", "image.png", image_v1, html_path, json_result)
+    verify_image(tmp_dir, "workspace", "image.png", image_v1, html_path, json_data)
 
     for plot in ["linear.json", "confusion.json"]:
         verify_vega(
             "workspace",
             html_result[plot],
-            json_result[plot],
-            split_json_result[plot],
+            json_data[plot],
+            split_json_data[plot],
         )
 
-    verify_vega_props("confusion.json", json_result, **confusion_props)
+    verify_vega_props("confusion.json", json_data, **confusion_props)
 
     image_v2, linear_v2, confusion_v2, confusion_props = next(repo_state)
 
     html_path, json_result, split_json_result = call(capsys, subcommand="diff")
     html_result = extract_vega_specs(html_path, ["linear.json", "confusion.json"])
 
-    verify_image(tmp_dir, "workspace", "image.png", image_v2, html_path, json_result)
-    verify_image(tmp_dir, "HEAD", "image.png", image_v1, html_path, json_result)
+    assert "errors" not in json_result
+    assert "errors" not in split_json_result
+
+    json_data = json_result["data"]
+    split_json_data = split_json_result["data"]
+
+    verify_image(tmp_dir, "workspace", "image.png", image_v2, html_path, json_data)
+    verify_image(tmp_dir, "HEAD", "image.png", image_v1, html_path, json_data)
 
     for plot in ["linear.json", "confusion.json"]:
         verify_vega(
             ["HEAD", "workspace"],
             html_result[plot],
-            json_result[plot],
-            split_json_result[plot],
+            json_data[plot],
+            split_json_data[plot],
         )
-    verify_vega_props("confusion.json", json_result, **confusion_props)
+    verify_vega_props("confusion.json", json_data, **confusion_props)
     path = tmp_dir / "subdir"
     path.mkdir()
     with path.chdir():
@@ -254,7 +266,13 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             html_path,
             ["../linear.json", "../confusion.json"],
         )
-        assert json_result["../linear.json"][0]["content"]["data"][
+
+        assert "errors" not in json_result
+        assert "errors" not in split_json_result
+
+        json_data = json_result["data"]
+        split_json_data = split_json_result["data"]
+        assert json_data["../linear.json"][0]["content"]["data"][
             "values"
         ] == _update_datapoints(
             linear_v2,
@@ -286,7 +304,7 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
                 REVISION_FIELD: "HEAD",
             },
         )
-        assert json_result["../confusion.json"][0]["content"]["data"][
+        assert json_data["../confusion.json"][0]["content"]["data"][
             "values"
         ] == _update_datapoints(
             confusion_v2,
@@ -326,8 +344,8 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             verify_vega(
                 ["HEAD", "workspace"],
                 html_result[plot],
-                json_result[plot],
-                split_json_result[plot],
+                json_data[plot],
+                split_json_data[plot],
             )
         verify_image(
             path,
@@ -335,7 +353,7 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             "../image.png",
             image_v2,
             html_path,
-            json_result,
+            json_data,
         )
         verify_image(
             path,
@@ -343,7 +361,7 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             "../image.png",
             image_v1,
             html_path,
-            json_result,
+            json_data,
         )
 
 
@@ -361,13 +379,30 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
 
     for s in {"show", "diff"}:
         _, json_result, split_json_result = call(capsys, subcommand=s)
-        for p in {
-            "linear.json",
-            "confusion.json",
-            "image.png",
-        }:
-            assert json_result[p] == []
-            assert split_json_result[p] == []
+        errors = [
+            {
+                "name": p,
+                "source": p,
+                "rev": "workspace",
+                "type": "FileNotFoundError",
+                "msg": "",
+            }
+            for p in [
+                "linear.json",
+                "confusion.json",
+                "image.png",
+            ]
+        ]
+        expected_result = {
+            "errors": errors,
+            "data": {
+                "image.png": [],
+                "confusion.json": [],
+                "linear.json": [],
+            },
+        }
+        assert json_result == expected_result
+        assert split_json_result == expected_result
 
 
 def test_config_output_dir(tmp_dir, dvc, capsys):
