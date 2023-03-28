@@ -174,8 +174,7 @@ class Index:
         metrics: Optional[Dict[str, List[str]]] = None,
         plots: Optional[Dict[str, List[str]]] = None,
         params: Optional[Dict[str, Any]] = None,
-        artifacts: Optional[Dict[str, Dict]] = None,
-        dvcfiles: Optional[List[str]] = None,
+        artifacts: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.repo = repo
         self.stages = stages or []
@@ -183,7 +182,6 @@ class Index:
         self._plots = plots or {}
         self._params = params or {}
         self._artifacts = artifacts or {}
-        self._dvcfiles = dvcfiles or []
         self._collected_targets: Dict[int, List["StageInfo"]] = {}
 
     @cached_property
@@ -207,7 +205,6 @@ class Index:
         plots = {}
         params = {}
         artifacts = {}
-        dvcfiles = []
 
         onerror = onerror or repo.stage_collection_error_handler
         for _, idx in collect_files(repo, onerror=onerror):
@@ -217,7 +214,6 @@ class Index:
             plots.update(idx._plots)
             params.update(idx._params)
             artifacts.update(idx._artifacts)
-            dvcfiles.append(_)
         return cls(
             repo,
             stages=stages,
@@ -225,7 +221,6 @@ class Index:
             plots=plots,
             params=params,
             artifacts=artifacts,
-            dvcfiles=dvcfiles,
         )
 
     @classmethod

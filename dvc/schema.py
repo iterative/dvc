@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from typing import Dict
 
 from voluptuous import Any, Optional, Required, Schema
 

@@ -1,6 +1,7 @@
 import pytest
 
 from dvc.annotations import Artifact
+from dvc.exceptions import DuplicatedArtifactError
 
 dvcyaml = {
     "artifacts": {
@@ -49,5 +50,5 @@ def test_exception_same_artifact_name(tmp_dir, dvc):
 
     (subdir / "dvc.yaml").dump(dvcyaml)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(DuplicatedArtifactError):
         tmp_dir.dvc.artifacts.read()

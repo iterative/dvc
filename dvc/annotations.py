@@ -40,6 +40,6 @@ ANNOTATION_SCHEMA = {
     Annotation.PARAM_META: object,
 }
 ARTIFACT_SCHEMA = {
-    **ANNOTATION_SCHEMA,
     Artifact.PARAM_PATH: str,
+    **ANNOTATION_SCHEMA,  # type: ignore[arg-type]
 }

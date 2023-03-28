@@ -181,6 +181,11 @@ class BadMetricError(DvcException):
         )
 
 
+class DuplicatedArtifactError(DvcException):
+    def __init__(self, name, dvcfile1, dvcfile2):
+        super().__init__(f"Duplicated artifact ID: {name} in {dvcfile1} and {dvcfile2}")
+
+
 class RecursiveAddingWhileUsingFilename(DvcException):
     def __init__(self):
         super().__init__("cannot use `fname` with multiple targets or `-R|--recursive`")
