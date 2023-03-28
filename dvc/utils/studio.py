@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -13,7 +12,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 STUDIO_URL = "https://studio.iterative.ai"
-STUDIO_TOKEN = "STUDIO_TOKEN"  # noqa: S105
 
 
 def post(
@@ -38,9 +36,9 @@ def post(
 
 def notify_refs(
     repo_url: str,
+    token: str,
     *,
-    default_token: Optional[str] = None,
-    studio_url: Optional[str] = None,
+    studio_url: Optional[str] = STUDIO_URL,
     **refs: List[str],
 ) -> None:
     extra_keys = refs.keys() - {"pushed", "removed"}
@@ -50,11 +48,6 @@ def notify_refs(
     if not refs:
         return
 
-    token = os.getenv(STUDIO_TOKEN) or default_token
-    if not token:
-        logger.debug("Studio token not found.")
-        return
-
     logger.debug(
         "notifying Studio%s about updated experiments",
         f" ({studio_url})" if studio_url else "",
@@ -62,7 +55,7 @@ def notify_refs(
     data = {"repo_url": repo_url, "client": "dvc", "refs": refs}
 
     try:
-        post("/webhook/dvc", token=token, data=data, url=studio_url)
+        post("/webhook/dvc", token, data, url=studio_url)
     except requests.RequestException as e:
         logger.debug("", exc_info=True)
 
