@@ -46,12 +46,7 @@ def notify_refs_to_studio(repo: "Repo", git_remote: str, **refs: List[str]) -> N
 
     _, repo_url = get_remote_repo(repo.scm.dulwich.repo, git_remote)
     studio_url = config.get("studio_url")
-    studio.notify_refs(
-        repo_url,
-        token,
-        studio_url=studio_url,
-        **refs,  # type: ignore[arg-type]
-    )
+    studio.notify_refs(repo_url, token, studio_url=studio_url, **refs)
 
 
 @locked
