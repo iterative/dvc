@@ -58,7 +58,7 @@ def remove(  # noqa: C901, PLR0912
                 queue_entry_list.append(result.queue_entry)
 
         if remained:
-            raise UnresolvedExpNamesError(remained)
+            raise UnresolvedExpNamesError(remained, git_remote=git_remote)
     elif rev:
         exp_ref_dict = _resolve_exp_by_baseline(repo, rev, num, git_remote)
         removed.extend(exp_ref_dict.keys())
