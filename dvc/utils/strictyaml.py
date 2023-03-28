@@ -264,7 +264,7 @@ def validate(
     path: Optional[str] = None,
     rev: Optional[str] = None,
 ) -> _T:
-    from voluptuous import MultipleInvalid
+    from voluptuous import MultipleInvalid, TypeInvalid
 
     try:
         return schema(data)
@@ -272,9 +272,11 @@ def validate(
         # Drop errors for str interpolation values
         errors = []
         for err in exc.errors:
-            path = get_in(data, err.path)
-            if not is_interpolated_string(path):
-                errors.append(err)
+            if isinstance(err, TypeInvalid):
+                err_path = get_in(data, err.path)
+                if is_interpolated_string(err_path):
+                    continue
+            errors.append(err)
 
         # Only raise errors for values other than str interpolation
         if errors:

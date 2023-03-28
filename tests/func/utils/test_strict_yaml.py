@@ -286,6 +286,26 @@ Could not find expected ':', in line 4, column 8
   4 │   cmd: python src/load_data.py"""
 
 
+INTERPOLATED_BOOL = """\
+stages:
+  stage1:
+    foreach: [true, false]
+    do:
+      cmd: python script.py
+      frozen: ${item}
+      extra: ${item}
+"""
+
+
+INTERPOLATED_BOOL_OUTPUT = """\
+'./dvc.yaml' validation failed.
+
+extra keys not allowed, in stages -> stage1 -> do -> extra, line 5, column 7
+  4 │   do:
+  5 │     cmd: python script.py
+  6 │     frozen: ${item}"""
+
+
 examples = {
     # on parse errors
     "duplicate_keys": (DUPLICATE_KEYS, DUPLICATE_KEYS_OUTPUT),
@@ -321,6 +341,8 @@ examples = {
     ),
     # merge conflicts
     "merge_conflicts": (MERGE_CONFLICTS, MERGE_CONFLICTS_OUTPUT),
+    # skip interpolation errors
+    "interpolated_bool": (INTERPOLATED_BOOL, INTERPOLATED_BOOL_OUTPUT),
 }
 
 
