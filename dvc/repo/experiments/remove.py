@@ -79,18 +79,18 @@ def remove(  # noqa: C901, PLR0912
         from .push import notify_refs_to_studio
 
         removed_refs = [str(r) for r in exp_ref_list]
-        notify_refs_to_studio(
-            repo.scm, repo.config["feature"], git_remote, removed=removed_refs
-        )
+        notify_refs_to_studio(repo, git_remote, removed=removed_refs)
     return removed
 
 
 def _resolve_exp_by_baseline(
-    repo,
+    repo: "Repo",
     rev: str,
     num: int,
     git_remote: Optional[str] = None,
 ) -> Dict[str, "ExpRefInfo"]:
+    assert isinstance(repo.scm, Git)
+
     commit_ref_dict: Dict[str, "ExpRefInfo"] = {}
     rev_dict = iter_revs(repo.scm, [rev], num)
     rev_set = set(rev_dict.keys())
