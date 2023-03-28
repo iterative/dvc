@@ -1,10 +1,9 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
-from dvc_studio_client.post_live_metrics import get_studio_repo_url
 from funcy import compact
 from requests.adapters import HTTPAdapter
 
@@ -14,18 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 STUDIO_URL = "https://studio.iterative.ai"
-STUDIO_REPO_URL = "STUDIO_REPO_URL"
 STUDIO_TOKEN = "STUDIO_TOKEN"  # noqa: S105
-
-
-def get_studio_token_and_repo_url(
-    default_token: Optional[str] = None,
-    repo_url_finder: Optional[Callable[[], Optional[str]]] = None,
-) -> Tuple[Optional[str], Optional[str]]:
-    token = os.getenv(STUDIO_TOKEN) or default_token
-    url_finder = repo_url_finder or get_studio_repo_url
-    repo_url = os.getenv(STUDIO_REPO_URL) or url_finder()
-    return token, repo_url
 
 
 def post(
@@ -49,34 +37,22 @@ def post(
 
 
 def notify_refs(
-    git_remote: str,
+    repo_url: str,
+    *,
     default_token: Optional[str] = None,
     studio_url: Optional[str] = None,
-    repo_url_finder: Optional[Callable[[], Optional[str]]] = None,
     **refs: List[str],
 ) -> None:
-    # TODO: Should we use git_remote to associate with Studio project
-    # instead of using `git ls-remote` on fallback?
+    extra_keys = refs.keys() - {"pushed", "removed"}
+    assert not extra_keys, f"got extra args: {extra_keys}"
+
     refs = compact(refs)
     if not refs:
         return
 
-    assert git_remote
-    token, repo_url = get_studio_token_and_repo_url(
-        default_token=default_token,
-        repo_url_finder=repo_url_finder,
-    )
+    token = os.getenv(STUDIO_TOKEN) or default_token
     if not token:
         logger.debug("Studio token not found.")
-        return
-
-    if not repo_url:
-        logger.warning(
-            "Could not detect repository url. "
-            "Please set %s environment variable "
-            "to your remote git repository url. ",
-            STUDIO_REPO_URL,
-        )
         return
 
     logger.debug(

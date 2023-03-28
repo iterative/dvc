@@ -17,15 +17,18 @@ from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 logger = logging.getLogger(__name__)
 
 
-def notify_refs_to_studio(config, git_remote: str, **refs: List[str]):
+def notify_refs_to_studio(scm, config, git_remote: str, **refs: List[str]):
     token = config.get("studio_token")
     refs = compact(refs)
     if refs and (token or config["push_exp_to_studio"]) and not env2bool("DVC_TEST"):
+        from dulwich.porcelain import get_remote_repo
+
         from dvc.utils import studio
 
+        _, repo_url = get_remote_repo(scm.dulwich.repo, git_remote)
         studio_url = config.get("studio_url")
         studio.notify_refs(
-            git_remote,
+            repo_url,
             default_token=token,
             studio_url=studio_url,
             **refs,  # type: ignore[arg-type]
@@ -88,7 +91,9 @@ def push(  # noqa: C901
 
     refs = push_result[SyncStatus.SUCCESS]
     pushed_refs = [str(r) for r in refs]
-    notify_refs_to_studio(repo.config["feature"], git_remote, pushed=pushed_refs)
+    notify_refs_to_studio(
+        repo.scm, repo.config["feature"], git_remote, pushed=pushed_refs
+    )
     return [ref.name for ref in refs]
 
 

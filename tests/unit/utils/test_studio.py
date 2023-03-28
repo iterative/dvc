@@ -21,9 +21,8 @@ def test_notify_refs(mocker, status_code):
     mock_post = mocker.patch("requests.Session.post", return_value=response)
 
     notify_refs(
-        "origin",
-        "TOKEN",
-        repo_url_finder=lambda: "git@github.com:iterative/dvc.git",
+        "git@github.com:iterative/dvc.git",
+        default_token="TOKEN",
         pushed=["p1", "p2"],
         removed=["r1", "r2"],
     )

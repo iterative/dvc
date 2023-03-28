@@ -79,7 +79,9 @@ def remove(  # noqa: C901, PLR0912
         from .push import notify_refs_to_studio
 
         removed_refs = [str(r) for r in exp_ref_list]
-        notify_refs_to_studio(repo.config["feature"], git_remote, removed=removed_refs)
+        notify_refs_to_studio(
+            repo.scm, repo.config["feature"], git_remote, removed=removed_refs
+        )
     return removed
 
 
