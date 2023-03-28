@@ -1137,6 +1137,9 @@ class Output:
             return {}
 
         (dep,) = self.stage.deps
+        filter_info = kwargs.get("filter_info", None)
+        if filter_info:
+            kwargs["filter_target"] = relpath(filter_info, self.fspath)
         return dep.get_used_objs(**kwargs)
 
     def _validate_output_path(self, path, stage=None):

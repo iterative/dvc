@@ -112,7 +112,10 @@ class RepoDependency(Dependency):
         return used
 
     def _get_used_and_obj(
-        self, obj_only: bool = False, **kwargs
+        self,
+        obj_only: bool = False,
+        filter_target: Optional[str] = None,
+        **kwargs,
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "Meta", "HashFile"]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError
@@ -122,6 +125,10 @@ class RepoDependency(Dependency):
 
         local_odb = self.repo.cache.local
         locked = kwargs.pop("locked", True)
+        target = self.def_path
+        if filter_target:
+            target = os.path.join(target, filter_target)
+
         with self._make_repo(locked=locked, cache_dir=local_odb.path) as repo:
             used_obj_ids = defaultdict(set)
             rev = repo.get_rev()
@@ -131,7 +138,7 @@ class RepoDependency(Dependency):
             if not obj_only:
                 try:
                     for odb, obj_ids in repo.used_objs(
-                        [os.path.join(repo.root_dir, self.def_path)],
+                        [os.path.join(repo.root_dir, target)],
                         force=True,
                         jobs=kwargs.get("jobs"),
                         recursive=True,
@@ -147,7 +154,7 @@ class RepoDependency(Dependency):
             try:
                 object_store, meta, obj = build(
                     local_odb,
-                    as_posix(self.def_path),
+                    as_posix(target),
                     repo.dvcfs,
                     local_odb.fs.PARAM_CHECKSUM,
                 )
@@ -155,7 +162,7 @@ class RepoDependency(Dependency):
                 raise FileNotFoundError(
                     errno.ENOENT,
                     os.strerror(errno.ENOENT) + f" in {self.def_repo[self.PARAM_URL]}",
-                    self.def_path,
+                    target,
                 ) from exc
             object_store = copy(object_store)
             object_store.read_only = True
