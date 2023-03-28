@@ -265,6 +265,7 @@ class BaseExecutor(ABC):
         force: bool = False,
         include_untracked: Optional[List[str]] = None,
     ) -> ExecutorResult:
+        from dvc.dvcfile import LOCK_FILE
         from dvc.repo import Repo
 
         exp_hash: Optional[str] = None
@@ -283,6 +284,10 @@ class BaseExecutor(ABC):
         include_untracked.extend(
             dvc.index._plot_sources  # pylint: disable=protected-access
         )
+        # dvc repro automatically stages dvc.lock. Running redundant `git add`
+        # on it causes an error when exiting the detached head context.
+        if LOCK_FILE in dvc.scm.untracked_files():
+            include_untracked.append(LOCK_FILE)
 
         try:
             stages = dvc.commit([], force=True, relink=False)
