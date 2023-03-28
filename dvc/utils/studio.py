@@ -3,9 +3,9 @@ import os
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
 
+import requests
 from dvc_studio_client.post_live_metrics import get_studio_repo_url
 from funcy import compact
-from requests import RequestException, Session
 from requests.adapters import HTTPAdapter
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ def post(
     timeout: int = 5,
 ) -> "Response":
     endpoint = urljoin(url or STUDIO_URL, endpoint)
-    session = Session()
+    session = requests.Session()
     session.mount(endpoint, HTTPAdapter(max_retries=max_retries))
 
     logger.trace("Sending %s to %s", data, endpoint)  # type: ignore[attr-defined]
@@ -87,7 +87,21 @@ def notify_refs(
 
     try:
         post("/webhook/dvc", token=token, data=data, url=studio_url)
-    except RequestException:
-        # TODO: handle expected failures and show appropriate message
-        # TODO: handle unexpected failures and show appropriate message
-        logger.debug("failed to notify Studio", exc_info=True)
+    except requests.RequestException as e:
+        logger.debug("", exc_info=True)
+
+        msg = str(e)
+        if (r := e.response) is not None:
+            status = r.status_code
+            # try to parse json response for more detailed error message
+            try:
+                d = r.json()
+                logger.trace(  # type: ignore[attr-defined]
+                    "received response: %s (status=%r)", d, status
+                )
+            except requests.JSONDecodeError:
+                pass
+            else:
+                if detail := d.get("detail"):
+                    msg = f"{detail} ({status=})"
+        logger.warning("failed to notify Studio: %s", msg.lower())
