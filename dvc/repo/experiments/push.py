@@ -18,21 +18,36 @@ logger = logging.getLogger(__name__)
 
 
 def notify_refs_to_studio(scm, config, git_remote: str, **refs: List[str]):
-    token = config.get("studio_token")
     refs = compact(refs)
-    if refs and (token or config["push_exp_to_studio"]) and not env2bool("DVC_TEST"):
-        from dulwich.porcelain import get_remote_repo
+    if not refs or env2bool("DVC_TEST"):
+        return
 
-        from dvc.utils import studio
-
-        _, repo_url = get_remote_repo(scm.dulwich.repo, git_remote)
-        studio_url = config.get("studio_url")
-        studio.notify_refs(
-            repo_url,
-            default_token=token,
-            studio_url=studio_url,
-            **refs,  # type: ignore[arg-type]
+    if not (config.get("studio_token") or config["push_exp_to_studio"]):
+        logger.debug(
+            "Either feature.studio_token or feature.push_exp_to_studio config "
+            "needs to be set."
         )
+        return
+
+    import os
+
+    token = os.environ.get("STUDIO_TOKEN") or config.get("studio_token")
+    if not token:
+        logger.debug("Studio token not found.")
+        return
+
+    from dulwich.porcelain import get_remote_repo
+
+    from dvc.utils import studio
+
+    _, repo_url = get_remote_repo(scm.dulwich.repo, git_remote)
+    studio_url = config.get("studio_url")
+    studio.notify_refs(
+        repo_url,
+        token,
+        studio_url=studio_url,
+        **refs,  # type: ignore[arg-type]
+    )
 
 
 @locked

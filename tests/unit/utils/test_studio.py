@@ -22,7 +22,7 @@ def test_notify_refs(mocker, status_code):
 
     notify_refs(
         "git@github.com:iterative/dvc.git",
-        default_token="TOKEN",
+        "TOKEN",
         pushed=["p1", "p2"],
         removed=["r1", "r2"],
     )
