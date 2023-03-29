@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from dvc.annotations import Artifact
 from dvc.dvcfile import FileMixin
-from dvc.exceptions import DuplicatedArtifactError
+from dvc.utils import relpath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -25,8 +25,7 @@ class Artifacts:
     def __init__(self, repo) -> None:
         self.repo = repo
 
-    def _read(self):
-        # merge artifacts from all dvc.yaml files found
+    def read(self):
         artifacts: Dict[str, Dict[str, Any]] = {}
         for (
             dvcfile,
@@ -39,14 +38,7 @@ class Artifacts:
                     os.path.join(os.path.dirname(dvcfile), dvcfile_artifacts),
                     verify=False,
                 ).load()
-            for name, value in dvcfile_artifacts.items():
-                if name in artifacts:
-                    # Q: maybe better to issue a warning here and take the first one?
-                    raise DuplicatedArtifactError(
-                        name, dvcfile, artifacts[name]["dvcfile"]
-                    )
-                artifacts[name] = {"dvcfile": dvcfile, "annotation": Artifact(**value)}
+            artifacts[relpath(dvcfile, self.repo.root_dir)] = {
+                name: Artifact(**value) for name, value in dvcfile_artifacts.items()
+            }
         return artifacts
-
-    def read(self):
-        return {name: value["annotation"] for name, value in self._read().items()}
