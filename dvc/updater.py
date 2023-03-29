@@ -166,7 +166,7 @@ class Updater:
         from dvc.config import Config, to_bool
 
         enabled = to_bool(
-            Config(validate=False).get("core", {}).get("check_update", "true")
+            Config.from_cwd(validate=False).get("core", {}).get("check_update", "true")
         )
         logger.debug("Check for update is %sabled.", "en" if enabled else "dis")
         return enabled

@@ -408,9 +408,12 @@ class Repo:
         raise NotDvcRepoError(msg)
 
     @classmethod
-    def find_dvc_dir(cls, root=None) -> str:
-        root_dir = cls.find_root(root)
-        return os.path.join(root_dir, cls.DVC_DIR)
+    def find_dvc_dir(cls, root=None, fs=None) -> str:
+        from dvc.fs import localfs
+
+        fs = fs or localfs
+        root_dir = cls.find_root(root, fs=fs)
+        return fs.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False) -> "Repo":
