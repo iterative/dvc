@@ -76,7 +76,10 @@ def test_push_diverged(tmp_dir, scm, dvc, git_upstream, exp_stage):
 
     git_upstream.tmp_dir.scm.set_ref(str(ref_info), remote_rev)
 
-    assert dvc.experiments.push(git_upstream.remote, [ref_info.name]) == []
+    assert dvc.experiments.push(git_upstream.remote, [ref_info.name]) == {
+        "pushed": [],
+        "url": None,
+    }
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info)) == remote_rev
 
     dvc.experiments.push(git_upstream.remote, [ref_info.name], force=True)
