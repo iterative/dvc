@@ -1,9 +1,9 @@
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 from urllib.parse import urljoin
 
 import requests
-from funcy import compact
+from funcy import compact, ignore
 from requests.adapters import HTTPAdapter
 
 if TYPE_CHECKING:
@@ -29,9 +29,9 @@ def post(
     logger.trace("Sending %s to %s", data, endpoint)  # type: ignore[attr-defined]
 
     headers = {"Authorization": f"token {token}"}
-    resp = session.post(endpoint, json=data, headers=headers, timeout=timeout)
-    resp.raise_for_status()
-    return resp
+    r = session.post(endpoint, json=data, headers=headers, timeout=timeout)
+    r.raise_for_status()
+    return r
 
 
 def notify_refs(
@@ -40,13 +40,13 @@ def notify_refs(
     *,
     studio_url: Optional[str] = STUDIO_URL,
     **refs: List[str],
-) -> None:
+) -> Dict[str, Any]:
     extra_keys = refs.keys() - {"pushed", "removed"}
     assert not extra_keys, f"got extra args: {extra_keys}"
 
     refs = compact(refs)
     if not refs:
-        return
+        return {}
 
     logger.debug(
         "notifying Studio%s about updated experiments",
@@ -55,22 +55,26 @@ def notify_refs(
     data = {"repo_url": repo_url, "client": "dvc", "refs": refs}
 
     try:
-        post("/webhook/dvc", token, data, url=studio_url)
+        r = post("/webhook/dvc", token, data, url=studio_url)
     except requests.RequestException as e:
         logger.debug("", exc_info=True)
 
         msg = str(e)
-        if (r := e.response) is not None:
-            status = r.status_code
-            # try to parse json response for more detailed error message
-            try:
-                d = r.json()
-                logger.trace(  # type: ignore[attr-defined]
-                    "received response: %s (status=%r)", d, status
-                )
-            except requests.JSONDecodeError:
-                pass
-            else:
-                if detail := d.get("detail"):
-                    msg = f"{detail} ({status=})"
+        if e.response is None:
+            logger.warning("failed to notify Studio: %s", msg.lower())
+            return {}
+
+        r = cast("Response", e.response)
+        d = ignore(Exception, default={})(r.json)()
+        status = r.status_code
+        if detail := d.get("detail"):
+            msg = f"{detail} ({status=})"
         logger.warning("failed to notify Studio: %s", msg.lower())
+    else:
+        d = r.json()
+
+    if d:
+        logger.trace(  # type: ignore[attr-defined]
+            "received response: %s (status=%r)", d, r.status_code
+        )
+    return d

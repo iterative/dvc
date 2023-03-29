@@ -7,16 +7,17 @@ from dvc.utils.studio import STUDIO_URL, notify_refs
 
 
 @pytest.mark.parametrize(
-    "status_code",
+    "status_code, side_effect",
     [
-        200,  # success
-        401,  # should not fail on client errors
-        500,  # should not fail even on server errors
+        (200, {}),  # success
+        (401, {"detail": "unauthorized"}),  # should not fail on client errors
+        (500, ValueError),  # should not fail even on server errors
     ],
 )
-def test_notify_refs(mocker, status_code):
+def test_notify_refs(mocker, status_code, side_effect):
     response = Response()
     response.status_code = status_code
+    mocker.patch.object(response, "json", side_effect=[side_effect])
 
     mock_post = mocker.patch("requests.Session.post", return_value=response)
 
