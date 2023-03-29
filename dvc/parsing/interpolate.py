@@ -95,7 +95,7 @@ def _(obj: bool):
 def _(obj: dict):  # noqa: C901
     from dvc.config import Config
 
-    config = Config().get("parsing", {})
+    config = Config.from_cwd().get("parsing", {})
 
     result = ""
     for k, v in flatten(obj).items():

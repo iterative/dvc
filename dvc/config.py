@@ -103,17 +103,21 @@ class Config(dict):
         self.wfs = LocalFileSystem()
         self.fs = fs or self.wfs
 
-        if not dvc_dir:
-            try:
-                from dvc.repo import Repo
-
-                self.dvc_dir = Repo.find_dvc_dir()
-            except NotDvcRepoError:
-                self.dvc_dir = None
-        else:
+        if dvc_dir:
             self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
 
         self.load(validate=validate, config=config)
+
+    @classmethod
+    def from_cwd(cls, fs: Optional["FileSystem"] = None, **kwargs):
+        from dvc.repo import Repo
+
+        try:
+            dvc_dir = Repo.find_dvc_dir(fs=fs)
+        except NotDvcRepoError:
+            dvc_dir = None
+
+        return cls(dvc_dir=dvc_dir, fs=fs, **kwargs)
 
     @classmethod
     def get_dir(cls, level):

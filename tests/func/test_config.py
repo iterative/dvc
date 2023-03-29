@@ -245,7 +245,7 @@ def test_merging_two_levels(dvc):
 
 def test_config_loads_without_error_for_non_dvc_repo(tmp_dir):
     # regression testing for https://github.com/iterative/dvc/issues/3328
-    Config(validate=True)
+    Config.from_cwd(validate=True)
 
 
 @pytest.mark.parametrize(
@@ -284,7 +284,7 @@ def test_config_gdrive_fields(tmp_dir, dvc):
             "profile": "myprofile",
         }
 
-    Config(validate=True)
+    Config.from_cwd(validate=True)
 
 
 def test_config_remote(tmp_dir, dvc, capsys):

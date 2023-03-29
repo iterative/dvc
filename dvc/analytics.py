@@ -47,7 +47,7 @@ def is_enabled():
     enabled = not os.getenv(DVC_NO_ANALYTICS)
     if enabled:
         enabled = to_bool(
-            Config(validate=False).get("core", {}).get("analytics", "true")
+            Config.from_cwd(validate=False).get("core", {}).get("analytics", "true")
         )
 
     logger.debug("Analytics is %sabled.", "en" if enabled else "dis")

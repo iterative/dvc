@@ -32,7 +32,7 @@ class CmdConfig(CmdBaseNoRepo):
 
         super().__init__(args)
 
-        self.config = Config(validate=False)
+        self.config = Config.from_cwd(validate=False)
 
     def run(self):
         if self.args.show_origin and (self.args.value or self.args.unset):
