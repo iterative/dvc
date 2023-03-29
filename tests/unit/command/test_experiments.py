@@ -5,7 +5,6 @@ from dvc.commands.experiments.apply import CmdExperimentsApply
 from dvc.commands.experiments.branch import CmdExperimentsBranch
 from dvc.commands.experiments.clean import CmdExperimentsClean
 from dvc.commands.experiments.diff import CmdExperimentsDiff
-from dvc.commands.experiments.gc import CmdExperimentsGC
 from dvc.commands.experiments.ls import CmdExperimentsList
 from dvc.commands.experiments.pull import CmdExperimentsPull
 from dvc.commands.experiments.push import CmdExperimentsPush
@@ -139,44 +138,6 @@ def test_experiments_run(dvc, scm, mocker):
     mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()
     cmd.repo.experiments.run.assert_called_with(**default_arguments)
-
-
-def test_experiments_gc(dvc, scm, mocker):
-    cli_args = parse_args(
-        [
-            "exp",
-            "gc",
-            "--workspace",
-            "--all-tags",
-            "--all-branches",
-            "--all-commits",
-            "--queued",
-            "--date",
-            "2022-07-04",
-            "--force",
-        ]
-    )
-    assert cli_args.func == CmdExperimentsGC
-
-    cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.repo.experiments.gc.gc", return_value={})
-
-    assert cmd.run() == 0
-
-    m.assert_called_once_with(
-        cmd.repo,
-        workspace=True,
-        all_tags=True,
-        all_branches=True,
-        all_commits=True,
-        commit_date="2022-07-04",
-        queued=True,
-    )
-
-    cli_args = parse_args(["exp", "gc"])
-    cmd = cli_args.func(cli_args)
-    with pytest.raises(InvalidArgumentError):
-        cmd.run()
 
 
 def test_experiments_branch(dvc, scm, mocker):
