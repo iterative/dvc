@@ -2,6 +2,7 @@ import pytest
 from funcy import first
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 from dvc.repo.experiments.utils import exp_refs_by_rev
 
 
@@ -120,6 +121,11 @@ def test_remove_remote(tmp_dir, scm, dvc, exp_stage, git_upstream, use_url):
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_list[0])) is None
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_list[1])) is None
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_list[2])) == exp_list[2]
+
+    with pytest.raises(
+        UnresolvedExpNamesError, match=f"Experiment 'foo' does not exist in '{remote}'"
+    ):
+        dvc.experiments.remove(git_remote=remote, exp_names=["foo"])
 
 
 def test_remove_experiments_by_rev(tmp_dir, scm, dvc, exp_stage):
