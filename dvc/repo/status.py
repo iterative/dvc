@@ -1,7 +1,5 @@
 import logging
-from itertools import compress
-
-from funcy.py3 import cat
+from itertools import chain, compress
 
 from dvc.exceptions import InvalidArgumentError
 
@@ -29,7 +27,7 @@ def _joint_status(pairs):
 
 def _local_status(self, targets=None, with_deps=False, recursive=False):
     targets = targets or [None]
-    pairs = cat(
+    pairs = chain.from_iterable(
         self.stage.collect_granular(t, with_deps=with_deps, recursive=recursive)
         for t in targets
     )
