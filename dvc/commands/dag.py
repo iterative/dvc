@@ -45,29 +45,32 @@ def _show_dot(graph: "DiGraph"):
 
 
 def _show_mermaid(graph, markdown: bool = False):
+    import networkx as nx
+
     from dvc.repo.graph import get_pipelines
+
+    graph = nx.convert_node_labels_to_integers(graph, 0, label_attribute="stage name")
 
     pipelines = get_pipelines(graph)
 
-    graph = "flowchart TD"
+    diagram_type = "flowchart TD"
 
-    total_nodes = 0
+    nodes = []
+    edges = []
     for pipeline in pipelines:
-        node_ids = {}
-        nodes = sorted(str(x) for x in pipeline.nodes)
-        for node in nodes:
-            total_nodes += 1
-            node_id = f"node{total_nodes}"
-            graph += f'\n\t{node_id}["{node}"]'
-            node_ids[node] = node_id
-        edges = sorted((str(a), str(b)) for b, a in pipeline.edges)
-        for a, b in edges:
-            graph += f"\n\t{node_ids[str(a)]}-->{node_ids[str(b)]}"
+        for node, data in pipeline.nodes(data=True):
+            node_str = f"\n\tnode{node}[\"{data['stage name']}\"]"
+            nodes.append(node_str)
+
+        for edge in pipeline.edges:
+            edges.append(f"\n\tnode{edge[1]} --> node{edge[0]}")
+
+    output = "\n".join([diagram_type, "\t".join(nodes), "\t".join(edges)])
 
     if markdown:
-        return f"```mermaid\n{graph}\n```"
+        return f"```mermaid\n{output}\n```"
 
-    return graph
+    return output
 
 
 def _collect_targets(repo, target, outs):
