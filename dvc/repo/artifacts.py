@@ -16,9 +16,12 @@ logger = logging.getLogger(__name__)
 NAME_RE = re.compile(r"^[a-z][a-z0-9-/.]*[a-z0-9]$")
 
 
+def name_is_compatible(name: str) -> bool:
+    return bool(NAME_RE.search(name))
+
+
 def check_name_format(name: str) -> None:
-    # "/" forbidden, only in dvc exp as we didn't support it for now.
-    if not bool(NAME_RE.search(name)):
+    if not name_is_compatible(name):
         logger.warning(
             "To be compatible with Git tags and GTO, artifact name ('%s') "
             "must satisfy the following regex: %s",
