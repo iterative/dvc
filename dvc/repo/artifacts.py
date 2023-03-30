@@ -20,13 +20,11 @@ class ArtifactsFile(FileMixin):
 
 
 class Artifacts:
-    repo: "Repo"
-
-    def __init__(self, repo) -> None:
+    def __init__(self, repo: "Repo") -> None:
         self.repo = repo
 
-    def read(self):
-        artifacts: Dict[str, Dict[str, Any]] = {}
+    def read(self) -> Dict[str, Dict[str, Any]]:
+        artifacts = {}
         for (
             dvcfile,
             dvcfile_artifacts,
