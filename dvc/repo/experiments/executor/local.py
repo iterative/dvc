@@ -4,6 +4,7 @@ from contextlib import ExitStack
 from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Optional, Union
 
+from configobj import ConfigObj
 from funcy import retry
 from shortuuid import uuid
 
@@ -134,22 +135,29 @@ class TempDirExecutor(BaseLocalExecutor):
         merge_rev = self.scm.get_ref(EXEC_MERGE)
 
         self.scm.stash.apply(merge_rev)
+        self._update_config(repo.config.read("local"))
 
-    def _config(self, cache_dir):
+    def _update_config(self, update):
         local_config = os.path.join(
             self.root_dir,
             self.dvc_dir,
             "config.local",
         )
         logger.debug("Writing experiments local config '%s'", local_config)
-        with open(local_config, "w", encoding="utf-8") as fobj:
-            fobj.write(f"[cache]\n    dir = {cache_dir}")
+        if os.path.exists(local_config):
+            conf_obj = ConfigObj(local_config)
+            conf_obj.merge(update)
+        else:
+            conf_obj = ConfigObj(update)
+        if conf_obj:
+            with open(local_config, "wb") as fobj:
+                conf_obj.write(fobj)
 
     def init_cache(
         self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
     ):
         """Initialize DVC cache."""
-        self._config(repo.cache.repo.path)
+        self._update_config({"cache": {"dir": repo.cache.repo.path}})
 
     def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)

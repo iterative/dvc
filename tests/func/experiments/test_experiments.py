@@ -5,6 +5,7 @@ import stat
 from textwrap import dedent
 
 import pytest
+from configobj import ConfigObj
 from funcy import first
 
 from dvc.dvcfile import PROJECT_FILE
@@ -664,3 +665,21 @@ def test_experiment_no_commit(tmp_dir):
             repo.experiments.ls()
     finally:
         repo.close()
+
+
+def test_local_config_is_propagated_to_tmp(tmp_dir, scm, dvc):
+    with dvc.config.edit("local") as conf:
+        conf["cache"]["type"] = "hardlink"
+
+    stage = dvc.stage.add(
+        cmd="cat .dvc/config.local > file", name="foo", outs_no_cache=["file"]
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+
+    results = dvc.experiments.run(stage.addressing, tmp_dir=True)
+    exp = first(results)
+    fs = scm.get_fs(exp)
+
+    with fs.open("file") as fobj:
+        conf_obj = ConfigObj(fobj)
+        assert conf_obj["cache"]["type"] == "hardlink"
