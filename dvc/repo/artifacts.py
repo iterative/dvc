@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Dict
 
 from dvc.annotations import Artifact
 from dvc.dvcfile import FileMixin
@@ -41,8 +41,8 @@ class Artifacts:
     def __init__(self, repo: "Repo") -> None:
         self.repo = repo
 
-    def read(self) -> Dict[str, Dict[str, Any]]:
-        artifacts: Dict[str, Dict[str, Any]] = {}
+    def read(self) -> Dict[str, Dict[str, Artifact]]:
+        artifacts: Dict[str, Dict[str, Artifact]] = {}
         for (
             dvcfile,
             dvcfile_artifacts,
