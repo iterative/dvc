@@ -1,15 +1,5 @@
 import logging
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Set, Union
 
 from funcy import compact, group_by
 from scmrepo.git.backend.base import SyncStatus
@@ -30,27 +20,25 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def notify_refs_to_studio(
-    repo: "Repo", git_remote: str, **refs: List[str]
-) -> Optional[str]:
+def notify_refs_to_studio(repo: "Repo", git_remote: str, **refs: List[str]) -> None:
     config = repo.config["feature"]
     refs = compact(refs)
     if not refs or env2bool("DVC_TEST"):
-        return None
+        return
 
     if not (config.get("studio_token") or config["push_exp_to_studio"]):
         logger.debug(
             "Either feature.studio_token or feature.push_exp_to_studio config "
             "needs to be set."
         )
-        return None
+        return
 
     import os
 
     token = os.environ.get("STUDIO_TOKEN") or config.get("studio_token")
     if not token:
         logger.debug("Studio token not found.")
-        return None
+        return
 
     from dulwich.porcelain import get_remote_repo
 
@@ -58,8 +46,7 @@ def notify_refs_to_studio(
 
     _, repo_url = get_remote_repo(repo.scm.dulwich.repo, git_remote)
     studio_url = config.get("studio_url")
-    d = studio.notify_refs(repo_url, token, studio_url=studio_url, **refs)
-    return d.get("url")
+    studio.notify_refs(repo_url, token, studio_url=studio_url, **refs)
 
 
 @locked
@@ -74,7 +61,7 @@ def push(  # noqa: C901
     force: bool = False,
     push_cache: bool = False,
     **kwargs: Any,
-) -> Dict[str, Any]:
+) -> Iterable[str]:
     exp_ref_set: Set["ExpRefInfo"] = set()
     assert isinstance(repo.scm, Git)
     if all_commits:
@@ -119,8 +106,8 @@ def push(  # noqa: C901
 
     refs = push_result[SyncStatus.SUCCESS]
     pushed_refs = [str(r) for r in refs]
-    url = notify_refs_to_studio(repo, git_remote, pushed=pushed_refs)
-    return {"pushed": [ref.name for ref in refs], "url": url}
+    notify_refs_to_studio(repo, git_remote, pushed=pushed_refs)
+    return [ref.name for ref in refs]
 
 
 def _push(
