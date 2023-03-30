@@ -59,39 +59,30 @@ def _show_dot(graph: "DiGraph"):
 def _show_mermaid(
     graph, markdown: bool = False, direction: str = "TD", status: bool = False
 ):
-    import networkx as nx
-
     from dvc.repo.graph import get_pipelines
-
-    graph = nx.convert_node_labels_to_integers(graph, 0, label_attribute="stage name")
 
     pipelines = get_pipelines(graph)
 
-    output_blocks = []
-
-    diagram_type = f"flowchart {direction}"
-    output_blocks.append(diagram_type)
+    output = f"flowchart {direction}"
 
     if status:
-        class_defs = _get_class_defs()
-        output_blocks.append(class_defs)
+        output += _get_class_defs()
 
-    nodes = []
-    edges = []
+    total_nodes = 0
     for pipeline in pipelines:
-        for node, data in pipeline.nodes(data=True):
-            node_str = f"\n\tnode{node}[\"{data['stage name']}\"]"
+        node_ids = {}
+        nodes = sorted(str(x) for x in pipeline.nodes)
+        for node in nodes:
+            total_nodes += 1
+            node_id = f"node{total_nodes}"
+            node_str = f'\n\t{node_id}["{node}"]'
             if status:
-                node_str += f":::{data['status']}"
-            nodes.append(node_str)
-
-        for edge in pipeline.edges:
-            edges.append(f"\n\tnode{edge[1]} --> node{edge[0]}")
-
-    output_blocks.append("\t".join(nodes))
-    output_blocks.append("\t".join(edges))
-
-    output = "\n".join(output_blocks)
+                node_str += f":::{pipeline.nodes[node]['status']}"
+            node_ids[node] = node_id
+            output += node_str
+        edges = sorted((str(a), str(b)) for b, a in pipeline.edges)
+        for a, b in edges:
+            output += f"\n\t{node_ids[str(a)]}-->{node_ids[str(b)]}"
 
     if markdown:
         return f"```mermaid\n{output}\n```"
