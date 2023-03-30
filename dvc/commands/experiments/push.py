@@ -23,7 +23,7 @@ class CmdExperimentsPush(CmdBase):
 
         self.raise_error_if_all_disabled()
 
-        result = self.repo.experiments.push(
+        pushed_exps = self.repo.experiments.push(
             self.args.git_remote,
             self.args.experiment,
             all_commits=self.args.all_commits,
@@ -35,17 +35,14 @@ class CmdExperimentsPush(CmdBase):
             jobs=self.args.jobs,
             run_cache=self.args.run_cache,
         )
-        if pushed_exps := result.get("pushed"):
+
+        if pushed_exps:
             ui.write(
                 f"Pushed experiment {humanize.join(map(repr, pushed_exps))} "
                 f"to Git remote {self.args.git_remote!r}."
             )
         else:
             ui.write("No experiments to push.")
-
-        if project_url := result.get("url"):
-            ui.write("[yellow]View your experiments at", project_url, styled=True)
-
         if not self.args.push_cache:
             ui.write(
                 "To push cached outputs",
