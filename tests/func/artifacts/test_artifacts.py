@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from dvc.annotations import Artifact
@@ -40,7 +42,7 @@ def test_reading_artifacts_subdir(tmp_dir, dvc):
     }
     assert tmp_dir.dvc.artifacts.read() == {
         "dvc.yaml": artifacts,
-        "subdir/dvc.yaml": artifacts,
+        f"subdir{os.path.sep}dvc.yaml": artifacts,
     }
 
 
