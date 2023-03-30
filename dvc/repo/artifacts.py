@@ -28,7 +28,7 @@ def check_name_format(name: str) -> None:
 
 
 class ArtifactsFile(FileMixin):
-    from dvc.schema import ARTIFACTS_SCHEMA as SCHEMA
+    from dvc.schema import SINGLE_ARTIFACT_SCHEMA as SCHEMA
 
     def dump(self, stage, **kwargs):
         raise NotImplementedError
