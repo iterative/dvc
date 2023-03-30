@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-NAME_RE = re.compile("^[a-z][a-z0-9-/.]*[a-z0-9]$")
+NAME_RE = re.compile(r"^[a-z][a-z0-9-/.]*[a-z0-9]$")
 
 
 def check_name_format(name: str) -> None:
