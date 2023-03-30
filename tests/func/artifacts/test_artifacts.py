@@ -18,6 +18,13 @@ dvcyaml = {
 }
 
 
+def set_id_as_path(artifacts):
+    artifacts = artifacts.copy()
+    for name in artifacts:
+        artifacts[name]["path"] = artifacts[name].get("path", name)
+    return artifacts
+
+
 def test_reading_artifacts_subdir(tmp_dir, dvc):
     (tmp_dir / "dvc.yaml").dump(dvcyaml)
 
@@ -27,7 +34,8 @@ def test_reading_artifacts_subdir(tmp_dir, dvc):
     (subdir / "dvc.yaml").dump(dvcyaml)
 
     artifacts = {
-        name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
+        name: Artifact(**values)
+        for name, values in set_id_as_path(dvcyaml["artifacts"]).items()
     }
     assert tmp_dir.dvc.artifacts.read() == {
         "dvc.yaml": artifacts,
@@ -74,7 +82,8 @@ def test_read_artifacts_yaml(tmp_dir, dvc):
     (tmp_dir / "artifacts.yaml").dump(dvcyaml["artifacts"])
 
     artifacts = {
-        name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
+        name: Artifact(**values)
+        for name, values in set_id_as_path(dvcyaml["artifacts"]).items()
     }
     assert tmp_dir.dvc.artifacts.read() == {
         "dvc.yaml": artifacts,

@@ -38,7 +38,9 @@ class Artifacts:
                     os.path.join(os.path.dirname(dvcfile), dvcfile_artifacts),
                     verify=False,
                 ).load()
-            artifacts[relpath(dvcfile, self.repo.root_dir)] = {
-                name: Artifact(**value) for name, value in dvcfile_artifacts.items()
-            }
+            if dvcfile_artifacts:
+                artifacts[relpath(dvcfile, self.repo.root_dir)] = {
+                    name: Artifact(**{"path": name, **(value or {})})
+                    for name, value in dvcfile_artifacts.items()
+                }
         return artifacts
