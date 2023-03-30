@@ -234,9 +234,7 @@ class Index:
             metrics={path: dvcfile.metrics} if dvcfile.metrics else {},
             plots={path: dvcfile.plots} if dvcfile.plots else {},
             params={path: dvcfile.params} if dvcfile.params else {},
-            artifacts={path: dvcfile.artifacts}
-            if hasattr(dvcfile, "artifacts")
-            else {},
+            artifacts={path: dvcfile.artifacts} if dvcfile.artifacts else {},
         )
 
     def update(self, stages: Iterable["Stage"]) -> "Index":

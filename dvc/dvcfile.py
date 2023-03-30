@@ -192,6 +192,7 @@ class SingleStageFile(FileMixin):
     metrics: List[str] = []
     plots: Any = {}
     params: List[str] = []
+    artifacts: Dict[str, Optional[Dict[str, Any]]] = {}
 
     @property
     def stage(self) -> "Stage":
@@ -324,7 +325,7 @@ class ProjectFile(FileMixin):
         return self.contents.get("params", [])
 
     @property
-    def artifacts(self) -> List[str]:
+    def artifacts(self) -> Dict[str, Optional[Dict[str, Any]]]:
         return self.contents.get("artifacts", {})
 
     def remove(self, force=False):
