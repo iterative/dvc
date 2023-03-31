@@ -4,10 +4,12 @@ import posixpath
 from pathlib import Path
 
 import pytest
+from funcy import set_in
 
 from dvc.cli import parse_args
 from dvc.commands.plots import CmdPlotsDiff, CmdPlotsShow, CmdPlotsTemplates
 from dvc.render.match import RendererWithErrors
+from dvc.utils.serialize import YAMLFileCorruptedError
 
 
 @pytest.fixture
@@ -316,7 +318,7 @@ def test_plots_diff_json(dvc, mocker, capsys):
 
     assert cmd.run() == 0
 
-    show_json_mock.assert_called_once_with(renderers, True)
+    show_json_mock.assert_called_once_with(renderers, True, errors={})
 
     render_mock.assert_not_called()
 
@@ -379,3 +381,24 @@ def test_show_json_no_renderers(capsys):
 
     out, _ = capsys.readouterr()
     assert json.dumps({}) in out
+
+
+def test_show_json_with_error(dvc, mocker, capsys):
+    cli_args = parse_args(["plots", "show", "--json"])
+    cmd = cli_args.func(cli_args)
+
+    e = YAMLFileCorruptedError("dvc.yaml")
+    data = set_in({}, ["workspace", "definitions", "error"], e)
+    cmd._func = mocker.MagicMock(return_value=data)
+
+    cmd.run()
+    out, _ = capsys.readouterr()
+    assert json.loads(out) == {
+        "errors": [
+            {
+                "rev": "workspace",
+                "type": type(e).__name__,
+                "msg": e.args[0],
+            }
+        ]
+    }

@@ -1,9 +1,9 @@
 import argparse
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from funcy import compact, first
+from funcy import compact, first, get_in
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
@@ -19,17 +19,21 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
+def _show_json(
+    renderers_with_errors: List["RendererWithErrors"],
+    split=False,
+    errors: Optional[Dict[str, Exception]] = None,
+):
     from dvc.render.convert import to_json
     from dvc.utils.serialize import encode_exception
 
-    errors: List[Dict] = []
+    all_errors: List[Dict] = []
     data = {}
 
     for renderer, src_errors, def_errors in renderers_with_errors:
         name = renderer.name
         data[name] = to_json(renderer, split)
-        errors.extend(
+        all_errors.extend(
             {
                 "name": name,
                 "rev": rev,
@@ -39,7 +43,7 @@ def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
             for rev, per_rev_src_errors in src_errors.items()
             for source, e in per_rev_src_errors.items()
         )
-        errors.extend(
+        all_errors.extend(
             {
                 "name": name,
                 "rev": rev,
@@ -48,7 +52,11 @@ def _show_json(renderers_with_errors: List["RendererWithErrors"], split=False):
             for rev, e in def_errors.items()
         )
 
-    ui.write_json(compact({"errors": errors, "data": data}), highlight=False)
+    # these errors are not tied to any renderers
+    errors = errors or {}
+    all_errors.extend({"rev": rev, **encode_exception(e)} for rev, e in errors.items())
+
+    ui.write_json(compact({"errors": all_errors, "data": data}), highlight=False)
 
 
 def _adjust_vega_renderers(renderers):
@@ -151,14 +159,19 @@ class CmdPlots(CmdBase):
             )
 
             renderers_out = out if self.args.json else os.path.join(out, "static")
-
             renderers_with_errors = match_defs_renderers(
                 data=plots_data,
                 out=renderers_out,
                 templates_dir=self.repo.plots.templates_dir,
             )
             if self.args.json:
-                _show_json(renderers_with_errors, self.args.split)
+                errors = compact(
+                    {
+                        rev: get_in(data, ["definitions", "error"])
+                        for rev, data in plots_data.items()
+                    }
+                )
+                _show_json(renderers_with_errors, self.args.split, errors=errors)
                 return 0
 
             renderers = [r.renderer for r in renderers_with_errors]
