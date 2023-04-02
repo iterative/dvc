@@ -558,6 +558,7 @@ class Repo:
 
     @cached_property
     def site_cache_dir(self) -> str:
+        import getpass
         import hashlib
 
         import platformdirs
@@ -583,7 +584,9 @@ class Repo:
         finally:
             os.umask(umask)
 
-        repo_token = hashlib.md5(os.fsencode(root_dir)).hexdigest()  # noqa: S324
+        repo_token = hashlib.md5(  # noqa: S324
+            str((root_dir, getpass.getuser())).encode()
+        ).hexdigest()
 
         return os.path.join(repos_dir, repo_token)
 
