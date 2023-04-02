@@ -565,7 +565,8 @@ class Repo:
 
         from dvc.fs import GitFileSystem
 
-        cache_dir = platformdirs.site_cache_dir("dvc", "iterative", opinion=True)
+        default = platformdirs.site_cache_dir("dvc", "iterative", opinion=True)
+        cache_dir = self.config["core"].get("site_cache_dir") or default
 
         if isinstance(self.fs, GitFileSystem):
             relparts = ()
