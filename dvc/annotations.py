@@ -2,6 +2,7 @@ from dataclasses import asdict, dataclass, field, fields
 from typing import Any, ClassVar, Dict, List, Optional
 
 from funcy import compact
+from voluptuous import Required
 
 
 @dataclass
@@ -40,6 +41,6 @@ ANNOTATION_SCHEMA = {
     Annotation.PARAM_META: object,
 }
 ARTIFACT_SCHEMA = {
-    Artifact.PARAM_PATH: str,
+    Required(Artifact.PARAM_PATH): str,
     **ANNOTATION_SCHEMA,  # type: ignore[arg-type]
 }

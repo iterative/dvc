@@ -8,7 +8,7 @@ from dvc.utils.strictyaml import YAMLSyntaxError, YAMLValidationError
 
 dvcyaml = {
     "artifacts": {
-        "myart": {"type": "model"},
+        "myart": {"type": "model", "path": "myart.pkl"},
         "hello": {"type": "file", "path": "hello.txt"},
         "world": {
             "type": "object",
@@ -21,13 +21,6 @@ dvcyaml = {
 }
 
 
-def set_id_as_path(artifacts):
-    artifacts = artifacts.copy()
-    for name in artifacts:
-        artifacts[name]["path"] = artifacts[name].get("path", name)
-    return artifacts
-
-
 def test_reading_artifacts_subdir(tmp_dir, dvc):
     (tmp_dir / "dvc.yaml").dump(dvcyaml)
 
@@ -37,8 +30,7 @@ def test_reading_artifacts_subdir(tmp_dir, dvc):
     (subdir / "dvc.yaml").dump(dvcyaml)
 
     artifacts = {
-        name: Artifact(**values)
-        for name, values in set_id_as_path(dvcyaml["artifacts"]).items()
+        name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
     }
     assert tmp_dir.dvc.artifacts.read() == {
         "dvc.yaml": artifacts,
@@ -48,14 +40,24 @@ def test_reading_artifacts_subdir(tmp_dir, dvc):
 
 bad_dvcyaml_extra_field = {
     "artifacts": {
-        "lol": {"kek": "cheburek"},
+        "lol": {"kek": "cheburek", "path": "lol"},
         "hello": {"type": "file", "path": "hello.txt"},
     }
 }
 
 
-def test_broken_dvcyaml_extra_field(tmp_dir, dvc):
-    (tmp_dir / "dvc.yaml").dump(bad_dvcyaml_extra_field)
+bad_dvcyaml_missing_path = {
+    "artifacts": {
+        "lol": {},
+    }
+}
+
+
+@pytest.mark.parametrize(
+    "bad_dvcyaml", [bad_dvcyaml_extra_field, bad_dvcyaml_missing_path]
+)
+def test_broken_dvcyaml_extra_field(tmp_dir, dvc, bad_dvcyaml):
+    (tmp_dir / "dvc.yaml").dump(bad_dvcyaml)
 
     with pytest.raises(YAMLValidationError):
         tmp_dir.dvc.artifacts.read()
@@ -85,8 +87,7 @@ def test_read_artifacts_yaml(tmp_dir, dvc):
     (tmp_dir / "artifacts.yaml").dump(dvcyaml["artifacts"])
 
     artifacts = {
-        name: Artifact(**values)
-        for name, values in set_id_as_path(dvcyaml["artifacts"]).items()
+        name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
     }
     assert tmp_dir.dvc.artifacts.read() == {
         "dvc.yaml": artifacts,
@@ -96,11 +97,11 @@ def test_read_artifacts_yaml(tmp_dir, dvc):
 @pytest.mark.parametrize(
     "name",
     [
+        "m",
         "nn",
         "m1",
         "model-prod",
         "model-prod-v1",
-        "namespace/model",
     ],
 )
 def test_check_name_is_valid(name):
@@ -111,7 +112,6 @@ def test_check_name_is_valid(name):
     "name",
     [
         "",
-        "m",
         "1",
         "m/",
         "/m",
@@ -125,6 +125,7 @@ def test_check_name_is_valid(name):
         "model@1",
         "model#1",
         "@namespace/model",
+        "namespace/model",
     ],
 )
 def test_check_name_is_invalid(name):

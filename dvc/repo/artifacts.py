@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-NAME_RE = re.compile(r"^[a-z][a-z0-9-/.]*[a-z0-9]$")
+NAME_RE = re.compile(r"^[a-z]([a-z0-9-]*[a-z0-9])?$")
 
 
 def name_is_compatible(name: str) -> bool:
@@ -23,10 +23,10 @@ def name_is_compatible(name: str) -> bool:
 def check_name_format(name: str) -> None:
     if not name_is_compatible(name):
         logger.warning(
-            "To be compatible with Git tags and GTO, artifact name ('%s') "
-            "must satisfy the following regex: %s",
+            "Can't use '%s' as artifact name (ID)."
+            " You can use letters and numbers, and use '-' as separator"
+            " (but not at the start or end). The first character must be a letter.",
             name,
-            NAME_RE.pattern,
         )
 
 
@@ -63,5 +63,5 @@ class Artifacts:
             artifacts[dvcyaml] = {}
             for name, value in dvcfile_artifacts.items():
                 check_name_format(name)
-                artifacts[dvcyaml][name] = Artifact(**{"path": name, **(value or {})})
+                artifacts[dvcyaml][name] = Artifact(**(value or {}))
         return artifacts
