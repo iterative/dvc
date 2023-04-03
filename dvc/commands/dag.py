@@ -287,6 +287,11 @@ def _validate_pipeline(pipeline: "DiGraph") -> None:
     Returns:
         None.
     """
+    # pipeline is right now a dependency graph, we reverse it to make it a
+    # "data flow" graph. Then we can invalidate "downstream" stages if a
+    # stage is not green.
+    pipeline.reverse()
+
     # Set the 'validated' attribute to True for all nodes by default
     for node in pipeline.nodes:
         pipeline.nodes[node]["validated"] = True
@@ -297,6 +302,9 @@ def _validate_pipeline(pipeline: "DiGraph") -> None:
         # Check if any attribute has a False value
         if not all(node_data.get(key, True) for key in VALIDATION_ATTRIBUTES):
             _invalidate_downstream(pipeline, node)
+
+    # reverse the reversion
+    pipeline.reverse()
 
 
 def _set_stage_status(pipeline: "DiGraph"):
