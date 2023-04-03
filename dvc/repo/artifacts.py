@@ -40,16 +40,6 @@ class ArtifactsFile(FileMixin):
         raise NotImplementedError
 
 
-def migrate_from_gto(value: Dict) -> Dict:
-    if not value:
-        return value
-    if "description" in value:
-        value["desc"] = value.pop("description")
-    if "virtual" in value:
-        value.pop("virtual")
-    return value
-
-
 class Artifacts:
     def __init__(self, repo: "Repo") -> None:
         self.repo = repo
@@ -73,5 +63,5 @@ class Artifacts:
             artifacts[dvcyaml] = {}
             for name, value in dvcfile_artifacts.items():
                 check_name_format(name)
-                artifacts[dvcyaml][name] = Artifact(**migrate_from_gto(value))
+                artifacts[dvcyaml][name] = Artifact(**value)
         return artifacts
