@@ -1,6 +1,6 @@
 from contextlib import _GeneratorContextManager as GCM
 from contextlib import contextmanager
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from funcy import reraise
 
@@ -214,7 +214,11 @@ def open(  # noqa, pylint: disable=redefined-builtin
 
 
 def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
+    repo_kwargs: Dict[str, Any] = {"subrepos": True, "uninitialized": True}
+    if remote:
+        repo_kwargs["config"] = {"core": {"remote": remote}}
+
+    with Repo.open(repo, rev=rev, **repo_kwargs) as _repo:
         with _wrap_exceptions(_repo, path):
             import os
             from typing import TYPE_CHECKING, Union
@@ -235,12 +239,6 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
                 fs_path = fs.from_os_path(path)
 
             try:
-                if remote:
-                    remote_odb = _repo.cloud.get_remote_odb(name=remote)
-                    oid = fs.info(fs_path)["dvc_info"]["md5"]
-                    fs = remote_odb.fs
-                    fs_path = remote_odb.oid_to_path(oid)
-
                 with fs.open(
                     fs_path,
                     mode=mode,
