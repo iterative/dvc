@@ -56,17 +56,15 @@ def _show_dot(graph: "DiGraph"):
     return dot_file.getvalue()
 
 
-def _show_mermaid(
-    graph, markdown: bool = False, direction: str = "TD", status: bool = False
-):
+def _show_mermaid(graph, markdown: bool = False, status: bool = False):
     from dvc.repo.graph import get_pipelines
 
     pipelines = get_pipelines(graph)
 
-    output = f"flowchart {direction}"
+    output = "flowchart LR"
 
     if status:
-        output += _get_class_defs()
+        output += "\n" + _get_class_defs()
 
     total_nodes = 0
     for pipeline in pipelines:
@@ -354,7 +352,7 @@ def _set_stage_status(pipeline: "DiGraph"):
 
 
 def _update_stage_status(
-    repo: "Repo", target: Optional[str], graph: "DiGraph", status_import: bool = False
+    repo: "Repo", target: Optional[str], graph: "DiGraph", skip_import_deps: bool = True
 ) -> "DiGraph":
     """
     Updates all status attributes of stages in the graph.
@@ -362,18 +360,13 @@ def _update_stage_status(
     Args:
         repo: The repository object that contains the stages.
         graph: The pipeline graph containing the stage nodes.
-        status_import: Whether to set resource information for import dependencies.
+        skip_import_deps: Whether to skip resource information for import dependencies.
 
     Returns:
         The updated graph with all status attributes of stages updated.
     """
     repo_status = repo.status(targets=target)
     cloud_status = repo.status(targets=target, cloud=True)
-    if status_import:
-        pass
-
-    if target:
-        pass
 
     for stage in repo.index.stages:
         # ignore stages that are not in pipeline
@@ -381,7 +374,7 @@ def _update_stage_status(
             _set_stage_info(graph, stage, repo_status)
             _set_stage_resource_info(graph, stage, cloud_status, "outs")
 
-            if not stage.is_import or status_import:
+            if not stage.is_import or not skip_import_deps:
                 _set_stage_resource_info(graph, stage, cloud_status, "deps")
 
     _validate_pipeline(graph)
@@ -401,17 +394,13 @@ class CmdDAG(CmdBase):
 
         if self.args.status and not self.args.dot:
             graph = _update_stage_status(
-                self.repo, self.args.target, graph, self.args.status_import
+                self.repo, self.args.target, graph, self.args.skip_import_deps
             )
 
         if self.args.dot:
             ui.write(_show_dot(graph))
         elif self.args.mermaid or self.args.markdown or self.args.status:
-            ui.write(
-                _show_mermaid(
-                    graph, self.args.markdown, self.args.direction, self.args.status
-                )
-            )
+            ui.write(_show_mermaid(graph, self.args.markdown, self.args.status))
         else:
             with ui.pager():
                 ui.write(_show_ascii(graph))
@@ -465,15 +454,6 @@ def add_parser(subparsers, parent_parser):
         help="Print output files instead of stages.",
     )
     dag_parser.add_argument(
-        "--direction",
-        choices=["LR", "TD"],
-        default="TD",
-        help=(
-            "Direction of the rendered mermaid DAG. "
-            "Can either be 'LR' for left-to-right or 'TD' for top-down'."
-        ),
-    )
-    dag_parser.add_argument(
         "--status",
         action="store_true",
         default=False,
@@ -483,10 +463,13 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     dag_parser.add_argument(
-        "--status-import",
+        "--skip-import-deps",
         action="store_true",
         default=False,
-        help="Check the dependencies of import stages. (Only compatible with --status)",
+        help=(
+            "Skip dependency check of import stages. Can improve computing time. "
+            "(Only compatible with --status)"
+        ),
     )
     dag_parser.add_argument(
         "target",
