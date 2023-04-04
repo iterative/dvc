@@ -41,4 +41,5 @@ def test_notify_refs(mocker, status_code, side_effect):
         },
         headers={"Authorization": "token TOKEN"},
         timeout=5,
+        allow_redirects=False,
     )
