@@ -585,10 +585,10 @@ class Repo:
         finally:
             os.umask(umask)
 
-        repo_token = hashlib.md5(  # noqa: S324
+        md5 = hashlib.md5(  # noqa: S324  # nosec B324
             str((root_dir, getpass.getuser())).encode()
-        ).hexdigest()
-
+        )
+        repo_token = md5.hexdigest()
         return os.path.join(repos_dir, repo_token)
 
     def close(self):

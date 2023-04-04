@@ -187,7 +187,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
 
         if self._tmp_dir is not None:
             # Under Windows file path length is limited so we hash it
-            hasher = hashlib.md5(self._claimfile.encode())  # noqa: S324
+            hasher = hashlib.md5(self._claimfile.encode())  # nosec B324  # noqa: S324
             filename = hasher.hexdigest()
             self._claimfile = os.path.join(self._tmp_dir, filename + ".lock")
 

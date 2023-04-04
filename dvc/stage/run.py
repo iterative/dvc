@@ -1,7 +1,7 @@
 import logging
 import os
 import signal
-import subprocess
+import subprocess  # nosec B404
 import threading
 from typing import TYPE_CHECKING, List
 
@@ -86,7 +86,7 @@ def _run(stage: "Stage", executable, cmd, checkpoint_func, **kwargs):
     exec_cmd = _make_cmd(executable, cmd)
 
     try:
-        p = subprocess.Popen(exec_cmd, **kwargs)
+        p = subprocess.Popen(exec_cmd, **kwargs)  # nosec B603
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 

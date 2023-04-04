@@ -5,7 +5,7 @@ import logging
 import os
 import platform
 import sys
-from subprocess import Popen
+from subprocess import Popen  # nosec B404
 from typing import List
 
 from dvc.env import DVC_DAEMON
@@ -28,12 +28,12 @@ def _popen(cmd, **kwargs) -> Popen:
             os.path.abspath(os.path.dirname(__file__)), "__main__.py"
         )
         prefix += [main_entrypoint]
-    return Popen(prefix + cmd, close_fds=True, shell=False, **kwargs)
+    return Popen(prefix + cmd, close_fds=True, shell=False, **kwargs)  # nosec B603
 
 
 def _spawn_windows(cmd, env):
     if sys.platform == "win32":
-        from subprocess import (
+        from subprocess import (  # nosec B404
             CREATE_NEW_PROCESS_GROUP,
             CREATE_NO_WINDOW,
             STARTF_USESHOWWINDOW,

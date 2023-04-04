@@ -146,7 +146,8 @@ class LoggerHandler(logging.StreamHandler):
                         self.emit_pretty_exception(exc, verbose=_is_verbose())
                         if not _is_verbose():
                             return
-                    except Exception:  # noqa, pylint: disable=broad-except
+                    # pylint: disable-next=broad-except
+                    except Exception:  # noqa: BLE001, S110  # nosec B110
                         pass
 
             msg = self.format(record)

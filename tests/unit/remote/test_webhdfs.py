@@ -47,5 +47,5 @@ def test_verify_ssl(dvc, webhdfs_config, monkeypatch, mocker):
     del webhdfs_config["token"]
     fs = WebHDFSFileSystem(**webhdfs_config)
     # ssl verify can't be set until after the file system is instantiated
-    fs.fs
+    assert fs.fs
     assert mock_session.verify == ssl_verify
