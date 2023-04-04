@@ -43,7 +43,7 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.257'
+    rev: 'v0.0.260'
     hooks:
       - id: ruff
   - repo: https://github.com/codespell-project/codespell
@@ -61,6 +61,13 @@ repos:
           - flake8-debugger
           - flake8-string-format
           - flake8-typing-imports
+  - repo: https://github.com/PyCQA/bandit
+    rev: '1.7.5'
+    hooks:
+    - id: bandit
+      args: ["-c", "pyproject.toml", "--quiet", "--format=custom"]
+      files: ^dvc/
+      additional_dependencies: [".[toml]"]
   - repo: local
     hooks:
     - id: mypy

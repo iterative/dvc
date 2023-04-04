@@ -1,5 +1,5 @@
 import os
-import subprocess
+import subprocess  # nosec B404
 from typing import Dict, Tuple
 
 import pytest
@@ -233,14 +233,16 @@ def docker_services(
         pytest.skip("disabled for Windows on CI")
 
     try:
-        subprocess.check_output("docker ps", stderr=subprocess.STDOUT, shell=True)
+        subprocess.check_output(  # nosec B607, B602
+            "docker ps", stderr=subprocess.STDOUT, shell=True
+        )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
         pytest.skip(f"docker is not installed or the daemon is not running: {out}")
 
     try:
         cmd = "docker-compose version"
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)  # nosec
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
         pytest.skip(f"docker-compose is not installed: {out}")

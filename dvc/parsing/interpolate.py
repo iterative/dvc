@@ -73,7 +73,7 @@ def embrace(s: str):
 
 def escape_str(value):
     if os.name == "nt":
-        from subprocess import list2cmdline
+        from subprocess import list2cmdline  # nosec B404
 
         return list2cmdline([value])
     from shlex import quote

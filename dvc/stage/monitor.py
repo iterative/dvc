@@ -1,7 +1,7 @@
 import functools
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List
@@ -96,7 +96,9 @@ class Monitor:
     def _kill_nt(proc):
         # windows stages are spawned with shell=True, proc is the shell process
         # and not the actual stage process - we have to kill the entire tree
-        subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
+        subprocess.call(  # nosec B607, B603
+            ["taskkill", "/F", "/T", "/PID", str(proc.pid)]
+        )
 
     @staticmethod
     def _loop(tasks: List[MonitorTask], done: threading.Event):
