@@ -40,7 +40,7 @@ def notify_refs(
     repo_url: str,
     token: str,
     *,
-    studio_url: Optional[str] = STUDIO_URL,
+    base_url: Optional[str] = STUDIO_URL,
     **refs: List[str],
 ) -> Dict[str, Any]:
     extra_keys = refs.keys() - {"pushed", "removed"}
@@ -52,12 +52,12 @@ def notify_refs(
 
     logger.debug(
         "notifying Studio%s about updated experiments",
-        f" ({studio_url})" if studio_url else "",
+        f" ({base_url})" if base_url else "",
     )
     data = {"repo_url": repo_url, "client": "dvc", "refs": refs}
 
     try:
-        r = post("/webhook/dvc", token, data, base_url=studio_url)
+        r = post("/webhook/dvc", token, data, base_url=base_url)
     except requests.RequestException as e:
         logger.trace("", exc_info=True)  # type: ignore[attr-defined]
 

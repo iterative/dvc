@@ -58,7 +58,7 @@ def notify_refs_to_studio(
 
     _, repo_url = get_remote_repo(repo.scm.dulwich.repo, git_remote)
     studio_url = config.get("studio_url")
-    d = studio.notify_refs(repo_url, token, studio_url=studio_url, **refs)
+    d = studio.notify_refs(repo_url, token, base_url=studio_url, **refs)
     return d.get("url")
 
 
