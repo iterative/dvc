@@ -67,6 +67,7 @@ repos:
     - id: bandit
       args: ["-c", "pyproject.toml", "--quiet", "--format=custom"]
       files: ^dvc/
+      additional_dependencies: [".[toml]"]
   - repo: local
     hooks:
     - id: mypy
