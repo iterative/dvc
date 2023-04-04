@@ -193,10 +193,6 @@ def test_get_url_subrepos(tmp_dir, scm, local_cloud):
     assert api.get_url("subrepo/bar") == expected_url
 
 
-@pytest.mark.xfail(
-    raises=PathMissingError,
-    reason="https://github.com/iterative/dvc/issues/7341",
-)
 def test_open_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
     erepo_dir.add_remote(config=cloud.config, name="other")
     erepo_dir.add_remote(config=local_cloud.config, default=True)

@@ -43,6 +43,7 @@ def external_repo(
 
     config = _get_remote_config(url) if os.path.isdir(url) else {}
     config.update(cache_config)
+    config.update(kwargs.pop("config", None) or {})
 
     main_root = "/"
     if for_write:
