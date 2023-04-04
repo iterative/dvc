@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def run(  # noqa: C901
+def run(  # noqa: C901, PLR0912
     repo,
     targets: Optional[Iterable[str]] = None,
     params: Optional[Iterable[str]] = None,
@@ -36,6 +36,18 @@ def run(  # noqa: C901
         from dvc.utils.hydra import to_hydra_overrides
 
         path_overrides = to_path_overrides(params)
+
+        if tmp_dir or queue:
+            untracked = repo.scm.untracked_files()
+            for path in path_overrides:
+                if path in untracked:
+                    logger.debug(
+                        "'%s' is currently untracked but will be modified by DVC. "
+                        "Adding it to git.",
+                        path,
+                    )
+                    repo.scm.add([path])
+
         hydra_sweep = any(
             x.is_sweep_override()
             for param_file in path_overrides

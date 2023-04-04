@@ -92,3 +92,19 @@ def test_queue_remove_done(
     assert set(celery_queue.clear(success=True)) == set(success_tasks[:2])
 
     assert celery_queue.status() == []
+
+
+def test_queue_doesnt_remove_untracked_params_file(tmp_dir, dvc, scm):
+    """Regression test for https://github.com/iterative/dvc/issues/7842"""
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(cmd="echo ${foo}", params=["foo"], name="echo-foo")
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+    dvc.experiments.run(stage.addressing, params=["foo=2"], queue=True)
+    assert (tmp_dir / "params.yaml").exists()
