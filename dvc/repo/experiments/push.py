@@ -14,10 +14,10 @@ from typing import (
 from funcy import compact, group_by
 from scmrepo.git.backend.base import SyncStatus
 
+from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, TqdmGit, iter_revs
-from dvc.ui import ui
 from dvc.utils import env2bool
 
 from .exceptions import UnresolvedExpNamesError
@@ -28,6 +28,12 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
+
+
+class UploadError(DvcException):
+    def __init__(self, msg, result):
+        self.result = result
+        super().__init__(msg)
 
 
 def notify_refs_to_studio(
@@ -104,23 +110,26 @@ def push(  # noqa: C901
                 exp_ref_set.update(ref_info_list)
 
     push_result = _push(repo, git_remote, exp_ref_set, force)
-    if push_result[SyncStatus.DIVERGED]:
-        diverged_refs = [ref.name for ref in push_result[SyncStatus.DIVERGED]]
-        ui.warn(
-            f"Local experiment '{diverged_refs}' has diverged from remote "
-            "experiment with the same name. To override the remote experiment "
-            "re-run with '--force'."
-        )
+
+    refs = {
+        status.name.lower(): [ref.name for ref in ref_list]
+        for status, ref_list in push_result.items()
+    }
+    result: Dict[str, Any] = {**refs, "uploaded": 0}
+
     if push_cache:
         push_cache_ref = (
             push_result[SyncStatus.UP_TO_DATE] + push_result[SyncStatus.SUCCESS]
         )
-        _push_cache(repo, push_cache_ref, **kwargs)
 
-    refs = push_result[SyncStatus.SUCCESS]
-    pushed_refs = [str(r) for r in refs]
+        try:
+            result["uploaded"] = _push_cache(repo, push_cache_ref, **kwargs)
+        except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+            raise UploadError("failed to push cache", result) from exc
+
+    pushed_refs = [str(r) for r in push_result[SyncStatus.SUCCESS]]
     url = notify_refs_to_studio(repo, git_remote, pushed=pushed_refs)
-    return {"pushed": [ref.name for ref in refs], "url": url}
+    return {**result, "url": url}
 
 
 def _push(
@@ -161,10 +170,10 @@ def _push_cache(
     dvc_remote: Optional[str] = None,
     jobs: Optional[int] = None,
     run_cache: bool = False,
-):
+) -> int:
     if isinstance(refs, ExpRefInfo):
         refs = [refs]
     assert isinstance(repo.scm, Git)
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc push experiment '%s'", refs)
-    repo.push(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)
+    return repo.push(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)

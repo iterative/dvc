@@ -1,5 +1,6 @@
 import argparse
 import logging
+from typing import Any, Dict
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
@@ -18,34 +19,60 @@ class CmdExperimentsPush(CmdBase):
                 "`--rev` or `--all-commits` flag."
             )
 
-    def run(self):
+    @staticmethod
+    def log_result(result: Dict[str, Any], remote: str):
         from dvc.utils import humanize
 
-        self.raise_error_if_all_disabled()
+        def join_exps(exps):
+            return humanize.join([f"[bold]{e}[/]" for e in exps])
 
-        result = self.repo.experiments.push(
-            self.args.git_remote,
-            self.args.experiment,
-            all_commits=self.args.all_commits,
-            rev=self.args.rev,
-            num=self.args.num,
-            force=self.args.force,
-            push_cache=self.args.push_cache,
-            dvc_remote=self.args.dvc_remote,
-            jobs=self.args.jobs,
-            run_cache=self.args.run_cache,
-        )
-        if pushed_exps := result.get("pushed"):
-            ui.write(
-                f"Pushed experiment {humanize.join(map(repr, pushed_exps))} "
-                f"to Git remote {self.args.git_remote!r}."
+        if diverged_exps := result.get("diverged"):
+            exps = join_exps(diverged_exps)
+            ui.warn(
+                f"Local experiment {exps} has diverged "
+                "from remote experiment with the same name. "
+                "To override the remote experiment re-run with '--force'."
             )
-        else:
+        if uptodate_exps := result.get("up_to_date"):
+            verb = "are" if len(uptodate_exps) > 1 else "is"
+            exps = join_exps(uptodate_exps)
+            ui.write(f"Experiment {exps} {verb} up to date.", styled=True)
+        if pushed_exps := result.get("success"):
+            exps = join_exps(pushed_exps)
+            ui.write(f"Pushed experiment {exps} to Git remote {remote!r}.", styled=True)
+        if not uptodate_exps and not pushed_exps:
             ui.write("No experiments to push.")
 
         if project_url := result.get("url"):
             ui.write("[yellow]View your experiments at", project_url, styled=True)
 
+        if uploaded := result.get("uploaded"):
+            stats = {"uploaded": uploaded}
+            ui.write(humanize.get_summary(stats.items()))
+
+    def run(self):
+        from dvc.repo.experiments.push import UploadError
+
+        self.raise_error_if_all_disabled()
+
+        try:
+            result = self.repo.experiments.push(
+                self.args.git_remote,
+                self.args.experiment,
+                all_commits=self.args.all_commits,
+                rev=self.args.rev,
+                num=self.args.num,
+                force=self.args.force,
+                push_cache=self.args.push_cache,
+                dvc_remote=self.args.dvc_remote,
+                jobs=self.args.jobs,
+                run_cache=self.args.run_cache,
+            )
+        except UploadError as e:
+            self.log_result(e.result, self.args.git_remote)
+            raise
+
+        self.log_result(result, self.args.git_remote)
         if not self.args.push_cache:
             ui.write(
                 "To push cached outputs",
