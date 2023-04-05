@@ -19,6 +19,7 @@ class CmdExecutorRun(CmdBaseNoRepo):
             queue=None,
             log_level=logger.getEffectiveLevel(),
             infofile=self.args.infofile,
+            copy_paths=self.args.copy_paths,
         )
         return 0
 
@@ -35,5 +36,15 @@ def add_parser(experiments_subparsers, parent_parser):
         "--infofile",
         help="Path to executor info file",
         default=None,
+    )
+    exec_run_parser.add_argument(
+        "-C",
+        "--copy-paths",
+        action="append",
+        default=[],
+        help=(
+            "List of ignored or untracked paths to copy into the temp directory."
+            " Only used if `--temp` or `--queue` is specified."
+        ),
     )
     exec_run_parser.set_defaults(func=CmdExecutorRun)

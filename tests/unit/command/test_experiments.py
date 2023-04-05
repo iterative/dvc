@@ -138,6 +138,7 @@ def test_experiments_run(dvc, scm, mocker):
         "checkpoint_resume": None,
         "reset": False,
         "machine": None,
+        "copy_paths": [],
     }
     default_arguments.update(repro_arguments)
 

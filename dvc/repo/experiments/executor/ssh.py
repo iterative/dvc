@@ -3,7 +3,7 @@ import os
 import posixpath
 import sys
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Iterable, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional
 
 from dvc_ssh import SSHFileSystem
 from funcy import first
@@ -242,6 +242,7 @@ class SSHExecutor(BaseExecutor):
         infofile: Optional[str] = None,
         log_errors: bool = True,
         log_level: Optional[int] = None,
+        copy_paths: Optional[List[str]] = None,  # noqa: ARG003
         **kwargs,
     ) -> "ExecutorResult":
         """Reproduce an experiment on a remote machine over SSH.

@@ -36,6 +36,7 @@ class CmdExperimentsRun(CmdRepro):
             reset=self.args.reset,
             tmp_dir=self.args.tmp_dir,
             machine=self.args.machine,
+            copy_paths=self.args.copy_paths,
             **self._common_kwargs,
         )
 
@@ -135,4 +136,14 @@ def _add_run_common(parser):
         #     "Run this experiment on the specified 'dvc machine' instance."
         # )
         # metavar="<name>",
+    )
+    parser.add_argument(
+        "-C",
+        "--copy-paths",
+        action="append",
+        default=[],
+        help=(
+            "List of ignored or untracked paths to copy into the temp directory."
+            " Only used if `--temp` or `--queue` is specified."
+        ),
     )

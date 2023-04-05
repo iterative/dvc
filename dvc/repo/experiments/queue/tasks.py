@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
@@ -91,7 +91,7 @@ def cleanup_exp(executor: TempDirExecutor, infofile: str) -> None:
 
 
 @shared_task
-def run_exp(entry_dict: Dict[str, Any]) -> None:
+def run_exp(entry_dict: Dict[str, Any], copy_paths: Optional[List[str]] = None) -> None:
     """Run a full experiment.
 
     Experiment subtasks are executed inline as one atomic operation.
@@ -108,6 +108,9 @@ def run_exp(entry_dict: Dict[str, Any]) -> None:
     executor = setup_exp.s(entry_dict)()
     try:
         cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
+        if copy_paths:
+            for path in copy_paths:
+                cmd.extend(["--copy-paths", path])
         proc_dict = queue.proc.run_signature(cmd, name=entry.stash_rev)()
         collect_exp.s(proc_dict, entry_dict)()
     finally:

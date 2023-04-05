@@ -108,3 +108,25 @@ def test_queue_doesnt_remove_untracked_params_file(tmp_dir, dvc, scm):
     scm.commit("init")
     dvc.experiments.run(stage.addressing, params=["foo=2"], queue=True)
     assert (tmp_dir / "params.yaml").exists()
+
+
+def test_copy_paths_queue(tmp_dir, scm, dvc):
+    stage = dvc.stage.add(
+        cmd="cat file && ls dir",
+        name="foo",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+
+    (tmp_dir / "dir").mkdir()
+    (tmp_dir / "dir" / "file").write_text("dir/file")
+    scm.ignore(tmp_dir / "dir")
+    (tmp_dir / "file").write_text("file")
+    scm.ignore(tmp_dir / "file")
+
+    dvc.experiments.run(stage.addressing, queue=True)
+    results = dvc.experiments.run(run_all=True)
+
+    exp = first(results)
+    fs = scm.get_fs(exp)
+    assert not fs.exists("dir")
+    assert not fs.exists("file")

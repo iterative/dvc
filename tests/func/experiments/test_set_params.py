@@ -116,10 +116,7 @@ def test_hydra_sweep(
     assert patched.call_count == len(expected)
     for e in expected:
         patched.assert_any_call(
-            mocker.ANY,
-            params=e,
-            reset=True,
-            targets=None,
+            mocker.ANY, params=e, reset=True, targets=None, copy_paths=None
         )
 
 

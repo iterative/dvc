@@ -33,6 +33,7 @@ class WorkspaceQueue(BaseStashQueue):
     _EXEC_NAME: Optional[str] = "workspace"
 
     def put(self, *args, **kwargs) -> QueueEntry:
+        kwargs.pop("copy_paths", None)
         with get_exp_rwlock(self.repo, writes=["workspace", WORKSPACE_STASH]):
             return self._stash_exp(*args, **kwargs)
 
@@ -81,19 +82,24 @@ class WorkspaceQueue(BaseStashQueue):
     def iter_success(self) -> Generator["QueueDoneResult", None, None]:
         raise NotImplementedError
 
-    def reproduce(self) -> Dict[str, Dict[str, str]]:
+    def reproduce(
+        self, copy_paths: Optional[List[str]] = None
+    ) -> Dict[str, Dict[str, str]]:
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
         try:
             while True:
                 entry, executor = self.get()
-                results.update(self._reproduce_entry(entry, executor))
+                results.update(
+                    self._reproduce_entry(entry, executor, copy_paths=copy_paths)
+                )
         except ExpQueueEmptyError:
             pass
         return results
 
     def _reproduce_entry(
-        self, entry: QueueEntry, executor: "BaseExecutor"
+        self, entry: QueueEntry, executor: "BaseExecutor", **kwargs
     ) -> Dict[str, Dict[str, str]]:
+        kwargs.pop("copy_paths", None)
         from dvc.stage.monitor import CheckpointKilledError
 
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
