@@ -151,6 +151,7 @@ class Repo:
         from dvc.data_cloud import DataCloud
         from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
+        from dvc.repo.artifacts import Artifacts
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -224,6 +225,7 @@ class Repo:
         self.metrics: Metrics = Metrics(self)
         self.plots: Plots = Plots(self)
         self.params: Params = Params(self)
+        self.artifacts: Artifacts = Artifacts(self)
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]
