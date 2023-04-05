@@ -19,6 +19,7 @@ def run(  # noqa: C901, PLR0912
     jobs: int = 1,
     tmp_dir: bool = False,
     queue: bool = False,
+    copy_paths: Optional[Iterable[str]] = None,
     **kwargs,
 ) -> Dict[str, str]:
     """Reproduce the specified targets as an experiment.
@@ -69,7 +70,11 @@ def run(  # noqa: C901, PLR0912
 
     if not queue:
         return repo.experiments.reproduce_one(
-            targets=targets, params=path_overrides, tmp_dir=tmp_dir, **kwargs
+            targets=targets,
+            params=path_overrides,
+            tmp_dir=tmp_dir,
+            copy_paths=copy_paths,
+            **kwargs,
         )
 
     if hydra_sweep:
@@ -90,6 +95,7 @@ def run(  # noqa: C901, PLR0912
             repo.experiments.celery_queue,
             targets=targets,
             params=sweep_overrides,
+            copy_paths=copy_paths,
             **kwargs,
         )
         if sweep_overrides:

@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import TYPE_CHECKING, Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
 
 from funcy import chain, first
 
@@ -118,6 +118,7 @@ class Experiments:
     def reproduce_one(
         self,
         tmp_dir: bool = False,
+        copy_paths: Optional[List[str]] = None,
         **kwargs,
     ):
         """Reproduce and checkout a single (standalone) experiment."""
@@ -125,7 +126,7 @@ class Experiments:
             self.tempdir_queue if tmp_dir else self.workspace_queue
         )
         self.queue_one(exp_queue, **kwargs)
-        results = self._reproduce_queue(exp_queue)
+        results = self._reproduce_queue(exp_queue, copy_paths=copy_paths)
         exp_rev = first(results)
         if exp_rev is not None:
             self._log_reproduced(results, tmp_dir=tmp_dir)
@@ -347,7 +348,9 @@ class Experiments:
         self.scm.remove_ref(EXEC_APPLY)
 
     @unlocked_repo
-    def _reproduce_queue(self, queue: "BaseStashQueue", **kwargs) -> Dict[str, str]:
+    def _reproduce_queue(
+        self, queue: "BaseStashQueue", copy_paths: Optional[List[str]] = None, **kwargs
+    ) -> Dict[str, str]:
         """Reproduce queued experiments.
 
         Arguments:
@@ -357,7 +360,7 @@ class Experiments:
             dict mapping successfully reproduced experiment revs to their
             results.
         """
-        exec_results = queue.reproduce()
+        exec_results = queue.reproduce(copy_paths=copy_paths)
 
         results: Dict[str, str] = {}
         for _, exp_result in exec_results.items():

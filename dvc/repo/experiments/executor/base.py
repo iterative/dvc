@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle  # nosec B403
+import shutil
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -451,6 +452,7 @@ class BaseExecutor(ABC):
         infofile: Optional[str] = None,
         log_errors: bool = True,
         log_level: Optional[int] = None,
+        copy_paths: Optional[List[str]] = None,
         **kwargs,
     ) -> "ExecutorResult":
         """Run dvc repro and return the result.
@@ -487,6 +489,7 @@ class BaseExecutor(ABC):
             info,
             infofile,
             log_errors=log_errors,
+            copy_paths=copy_paths,
             **kwargs,
         ) as dvc:
             if auto_push:
@@ -609,6 +612,7 @@ class BaseExecutor(ABC):
         info: "ExecutorInfo",
         infofile: Optional[str] = None,
         log_errors: bool = True,
+        copy_paths: Optional[List[str]] = None,
         **kwargs,
     ):
         from dvc_studio_client.post_live_metrics import post_live_metrics
@@ -623,6 +627,10 @@ class BaseExecutor(ABC):
             if cls.QUIET:
                 dvc.scm_context.quiet = cls.QUIET
             old_cwd = os.getcwd()
+
+            for path in copy_paths or []:
+                cls._copy_path(os.path.realpath(path), os.path.join(dvc.root_dir, path))
+
             if info.wdir:
                 os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
             else:
@@ -791,6 +799,20 @@ class BaseExecutor(ABC):
         dvc_logger = logging.getLogger("dvc")
         if level is not None:
             dvc_logger.setLevel(level)
+
+    @staticmethod
+    def _copy_path(src, dst):
+        try:
+            if os.path.isfile(src):
+                shutil.copy(src, dst)
+            elif os.path.isdir(src):
+                shutil.copytree(src, dst)
+            else:
+                raise DvcException(
+                    f"Unable to copy '{src}'. It is not a file or directory."
+                )
+        except OSError as exc:
+            raise DvcException(f"Unable to copy '{src}' to '{dst}'.") from exc
 
     @contextmanager
     def set_temp_refs(self, scm: "Git", temp_dict: Dict[str, str]):

@@ -252,7 +252,9 @@ class BaseStashQueue(ABC):
         """Iterate over items which been failed."""
 
     @abstractmethod
-    def reproduce(self) -> Mapping[str, Mapping[str, str]]:
+    def reproduce(
+        self, copy_paths: Optional[List[str]] = None
+    ) -> Mapping[str, Mapping[str, str]]:
         """Reproduce queued experiments sequentially."""
 
     @abstractmethod

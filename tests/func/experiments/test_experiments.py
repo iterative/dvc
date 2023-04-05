@@ -9,7 +9,7 @@ from configobj import ConfigObj
 from funcy import first
 
 from dvc.dvcfile import PROJECT_FILE
-from dvc.exceptions import ReproductionError
+from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.refs import CELERY_STASH
@@ -704,3 +704,43 @@ def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc, tmp):
     fs = scm.get_fs(exp)
     for file in ["metrics.json", "params.yaml", "plots.csv"]:
         assert fs.exists(file)
+
+
+@pytest.mark.parametrize("tmp", [True, False])
+def test_copy_paths(tmp_dir, scm, dvc, tmp):
+    stage = dvc.stage.add(
+        cmd="cat file && ls dir",
+        name="foo",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+
+    (tmp_dir / "dir").mkdir()
+    (tmp_dir / "dir" / "file").write_text("dir/file")
+    scm.ignore(tmp_dir / "dir")
+    (tmp_dir / "file").write_text("file")
+    scm.ignore(tmp_dir / "file")
+
+    results = dvc.experiments.run(
+        stage.addressing, tmp_dir=tmp, copy_paths=["dir", "file"]
+    )
+    exp = first(results)
+    fs = scm.get_fs(exp)
+    assert not fs.exists("dir")
+    assert not fs.exists("file")
+
+
+def test_copy_paths_errors(tmp_dir, scm, dvc, mocker):
+    stage = dvc.stage.add(
+        cmd="echo foo",
+        name="foo",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+
+    with pytest.raises(DvcException, match="Unable to copy"):
+        dvc.experiments.run(stage.addressing, tmp_dir=True, copy_paths=["foo"])
+
+    (tmp_dir / "foo").write_text("foo")
+    mocker.patch("shutil.copy", side_effect=OSError)
+
+    with pytest.raises(DvcException, match="Unable to copy"):
+        dvc.experiments.run(stage.addressing, tmp_dir=True, copy_paths=["foo"])

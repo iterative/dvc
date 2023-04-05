@@ -174,11 +174,13 @@ class LocalCeleryQueue(BaseStashQueue):
 
         return started
 
-    def put(self, *args, **kwargs) -> QueueEntry:
+    def put(
+        self, *args, copy_paths: Optional[List[str]] = None, **kwargs
+    ) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
         with get_exp_rwlock(self.repo, writes=["workspace", CELERY_STASH]):
             entry = self._stash_exp(*args, **kwargs)
-        self.celery.signature(run_exp.s(entry.asdict())).delay()
+        self.celery.signature(run_exp.s(entry.asdict(), copy_paths=copy_paths)).delay()
         return entry
 
     # NOTE: Queue consumption should not be done directly. Celery worker(s)
@@ -250,7 +252,9 @@ class LocalCeleryQueue(BaseStashQueue):
             if exp_result is None:
                 yield QueueDoneResult(queue_entry, exp_result)
 
-    def reproduce(self) -> Mapping[str, Mapping[str, str]]:
+    def reproduce(
+        self, copy_paths: Optional[List[str]] = None
+    ) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 
     def _load_info(self, rev: str) -> ExecutorInfo:

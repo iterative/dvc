@@ -1,7 +1,7 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Generator, Optional
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional
 
 from funcy import first
 
@@ -92,7 +92,11 @@ class TempDirQueue(WorkspaceQueue):
                 )
 
     def _reproduce_entry(
-        self, entry: QueueEntry, executor: "BaseExecutor"
+        self,
+        entry: QueueEntry,
+        executor: "BaseExecutor",
+        copy_paths: Optional[List[str]] = None,
+        **kwargs,
     ) -> Dict[str, Dict[str, str]]:
         from dvc.stage.monitor import CheckpointKilledError
 
@@ -107,6 +111,7 @@ class TempDirQueue(WorkspaceQueue):
                 infofile=infofile,
                 log_level=logger.getEffectiveLevel(),
                 log_errors=True,
+                copy_paths=copy_paths,
             )
             if not exec_result.exp_hash:
                 raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'")
