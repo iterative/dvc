@@ -3,10 +3,12 @@
 import logging
 import logging.config
 import logging.handlers
+import os
 import sys
 
 import colorama
 
+from dvc.env import DVC_SHOW_TRACEBACK
 from dvc.progress import Tqdm
 
 
@@ -86,9 +88,10 @@ class ColorFormatter(logging.Formatter):
         "CRITICAL": colorama.Fore.RED,
     }
 
-    def __init__(self, log_colors: bool = True) -> None:
+    def __init__(self, log_colors: bool = True, show_traceback: bool = False) -> None:
         super().__init__()
         self.log_colors = log_colors
+        self.show_traceback = show_traceback
 
     def format(self, record) -> str:  # noqa: A003, C901
         record.message = record.getMessage()
@@ -106,8 +109,10 @@ class ColorFormatter(logging.Formatter):
             msg = msg + sep + cause
 
         asctime = ""
-        if _is_verbose():
+        verbose = _is_verbose()
+        if verbose:
             asctime = self.formatTime(record, self.datefmt)
+        if verbose or self.show_traceback:
             if ei and not record.exc_text:
                 record.exc_text = self.formatException(ei)
             if record.exc_text:
@@ -198,7 +203,10 @@ def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     console_trace.setFormatter(formatter)
     console_trace.addFilter(exclude_filter(logging.DEBUG))
 
-    err_formatter = ColorFormatter(log_colors=log_colors and sys.stderr.isatty())
+    show_traceback = bool(os.environ.get(DVC_SHOW_TRACEBACK))
+    err_formatter = ColorFormatter(
+        log_colors=log_colors and sys.stderr.isatty(), show_traceback=show_traceback
+    )
     console_errors = LoggerHandler(sys.stderr)
     console_errors.setLevel(logging.WARNING)
     console_errors.setFormatter(err_formatter)
