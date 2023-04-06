@@ -28,10 +28,11 @@ class CmdExperimentsPush(CmdBase):
 
         if diverged_exps := result.get("diverged"):
             exps = join_exps(diverged_exps)
-            ui.warn(
-                f"Local experiment {exps} has diverged "
+            ui.error_write(
+                f"[yellow]Local experiment {exps} has diverged "
                 "from remote experiment with the same name.\n"
-                "To override the remote experiment re-run with '--force'."
+                "To override the remote experiment re-run with '--force'.",
+                styled=True,
             )
         if uptodate_exps := result.get("up_to_date"):
             exps = join_exps(uptodate_exps)
