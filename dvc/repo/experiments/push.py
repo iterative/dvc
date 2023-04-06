@@ -117,17 +117,16 @@ def push(  # noqa: C901
     }
     result: Dict[str, Any] = {**refs, "uploaded": 0}
 
+    pushed_refs_info = (
+        push_result[SyncStatus.UP_TO_DATE] + push_result[SyncStatus.SUCCESS]
+    )
     if push_cache:
-        push_cache_ref = (
-            push_result[SyncStatus.UP_TO_DATE] + push_result[SyncStatus.SUCCESS]
-        )
-
         try:
-            result["uploaded"] = _push_cache(repo, push_cache_ref, **kwargs)
+            result["uploaded"] = _push_cache(repo, pushed_refs_info, **kwargs)
         except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
             raise UploadError("failed to push cache", result) from exc
 
-    pushed_refs = [str(r) for r in push_result[SyncStatus.SUCCESS]]
+    pushed_refs = [str(r) for r in pushed_refs_info]
     url = notify_refs_to_studio(repo, git_remote, pushed=pushed_refs)
     return {**result, "url": url}
 

@@ -30,25 +30,28 @@ class CmdExperimentsPush(CmdBase):
             exps = join_exps(diverged_exps)
             ui.warn(
                 f"Local experiment {exps} has diverged "
-                "from remote experiment with the same name. "
+                "from remote experiment with the same name.\n"
                 "To override the remote experiment re-run with '--force'."
             )
         if uptodate_exps := result.get("up_to_date"):
-            verb = "are" if len(uptodate_exps) > 1 else "is"
             exps = join_exps(uptodate_exps)
-            ui.write(f"Experiment {exps} {verb} up to date.", styled=True)
+            verb = "are" if len(uptodate_exps) > 1 else "is"
+            ui.write(
+                f"Experiment {exps} {verb} up to date on Git remote {remote!r}.",
+                styled=True,
+            )
         if pushed_exps := result.get("success"):
             exps = join_exps(pushed_exps)
             ui.write(f"Pushed experiment {exps} to Git remote {remote!r}.", styled=True)
         if not uptodate_exps and not pushed_exps:
             ui.write("No experiments to push.")
 
-        if project_url := result.get("url"):
-            ui.write("[yellow]View your experiments at", project_url, styled=True)
-
         if uploaded := result.get("uploaded"):
             stats = {"uploaded": uploaded}
             ui.write(humanize.get_summary(stats.items()))
+
+        if project_url := result.get("url"):
+            ui.write("[yellow]View your experiments at", project_url, styled=True)
 
     def run(self):
         from dvc.repo.experiments.push import UploadError
