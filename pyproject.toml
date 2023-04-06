@@ -84,8 +84,8 @@ lint = [
 ]
 oss = ["dvc-oss==2.19"]
 s3 = ["dvc-s3==2.21"]
-ssh = ["dvc-ssh==2.21"]
-ssh_gssapi = ["dvc-ssh[gssapi]==2.21"]
+ssh = ["dvc-ssh>=2.22.1,<3"]
+ssh_gssapi = ["dvc-ssh[gssapi]>=2.22.1,<3"]
 terraform = ["tpi[ssh]>=2.1"]
 testing = ["pytest-test-utils"]
 tests = [

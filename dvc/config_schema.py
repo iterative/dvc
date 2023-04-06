@@ -215,6 +215,7 @@ SCHEMA = {
                     "timeout": Coerce(int),
                     "gss_auth": Bool,
                     "allow_agent": Bool,
+                    "max_sessions": Coerce(int),
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
