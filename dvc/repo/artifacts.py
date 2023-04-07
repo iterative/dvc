@@ -1,10 +1,10 @@
 import logging
 import os
 import re
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Optional
 
 from dvc.annotations import Artifact
-from dvc.dvcfile import FileMixin
+from dvc.dvcfile import FileMixin, ProjectFile
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
@@ -13,11 +13,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-NAME_RE = re.compile(r"^[a-z]([a-z0-9-]*[a-z0-9])?$")
+SEPARATOR_IN_NAME = ":"
+dirname = r"[a-z0-9-_./]+"  # improve? but change in conjunction with GTO
+name = r"[a-z]([a-z0-9-]*[a-z0-9])?"  # just like in GTO now w/o "/"
+name_re = re.compile(f"^{name}$")
+fullname = f"(?P<dirname>{dirname}{SEPARATOR_IN_NAME})?(?P<name>{name})"
+fullname_re = re.compile(f"^{fullname}$")
 
 
 def name_is_compatible(name: str) -> bool:
-    return bool(NAME_RE.search(name))
+    return bool(name_re.search(name))
 
 
 def check_name_format(name: str) -> None:
@@ -65,3 +70,37 @@ class Artifacts:
                 check_name_format(name)
                 artifacts[dvcyaml][name] = Artifact(**value)
         return artifacts
+
+    def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
+        dvcfile, name = parse_name(name, dvcfile)
+        # this doesn't update it "in place", so self.get() won't return the updated value
+        # TODO: support writing in `artifacts: artifacts.yaml` case
+        # TODO: check `dvcfile` exists - or maybe it's checked in `ProjectFile` already?
+        ProjectFile(
+            self.repo, os.path.join(self.repo.root_dir, dvcfile, "dvc.yaml")
+        )._dump_pipeline_file_artifacts(name, artifact.to_dict() if artifact else {})
+
+    def remove(self, name: str, dvcfile: Optional[str] = None):
+        pass
+        # do the same as add, but pass None to `_dump_pipeline_file_artifacts` as artifact
+
+
+def parse_name(fullname, dvcfile=None):
+    if not dvcfile:
+        return _parse_name(fullname)
+    dvcfile_from_name, name = _parse_name(fullname)
+    if dvcfile_from_name != dvcfile:
+        raise ValueError(
+            f"Artifact name {fullname} doesn't match given dvcfile {dvcfile}"
+        )
+    return dvcfile_from_name, name
+
+
+def _parse_name(fullname):
+    match = fullname_re.search(fullname)
+    if not match:
+        raise ValueError(f"Invalid artifact name: {fullname}")
+    print(match, match["dirname"], match["name"])
+    dirname = match["dirname"] or ""
+    name = match.group("name")
+    return dirname, name

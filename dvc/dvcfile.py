@@ -289,6 +289,33 @@ class ProjectFile(FileMixin):
 
         self.repo.scm_context.track_file(self.relpath)
 
+    def _dump_pipeline_file_artifacts(self, name, artifact):
+        # I can either generalize `_dump_pipeline_file` or implement a separate one
+        # happens that `_dump_pipeline_file` is very much tailored to the `Stage` class
+        # WDYT - does it worth to generalize?
+
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
+            if not data:
+                logger.info("Creating '%s'", self.relpath)
+
+            data["artifacts"] = data.get("artifacts", {})
+            existing_entry = name in data["artifacts"]
+            action = "Modifying" if existing_entry else "Adding"
+            logger.info("%s artifact '%s' in '%s'", action, name, self.relpath)
+
+            if not artifact:
+                # remove
+                data["artifacts"].pop(name, None)
+            elif existing_entry:
+                # modify
+                orig_stage_data = data["artifacts"][name]
+                apply_diff(artifact, orig_stage_data)
+            else:
+                # add
+                data["artifacts"].update({name: artifact})
+
+        self.repo.scm_context.track_file(self.relpath)
+
     @property
     def stage(self):
         raise DvcException("ProjectFile has multiple stages. Please specify it's name.")
