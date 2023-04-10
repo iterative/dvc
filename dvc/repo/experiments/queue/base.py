@@ -520,7 +520,7 @@ class BaseStashQueue(ABC):
         else:
             extra = None
         BaseExecutor.pack_repro_args(self.args_file, *args, extra=extra, **kwargs)
-        self.scm.add(self.args_file)
+        self.scm.add(self.args_file, force=True)
 
     @staticmethod
     def _format_new_params_msg(new_params, config_path):
