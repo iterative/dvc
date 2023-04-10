@@ -76,7 +76,9 @@ class Artifacts:
         # this doesn't update it "in place", so self.get() won't return the updated value
         # TODO: support writing in `artifacts: artifacts.yaml` case
         # TODO: check `dvcfile` exists - or maybe it's checked in `ProjectFile` already?
-        dvcyaml_path = os.path.join(self.repo.root_dir, dvcfile, "dvc.yaml")
+        dvcfile_dir = os.path.join(self.repo.root_dir, dvcfile)
+        os.path.mkdir(dvcfile_dir, exist_ok=True)
+        dvcyaml_path = os.path.join(dvcfile_dir, "dvc.yaml")
         ProjectFile(self.repo, dvcyaml_path)._dump_pipeline_file_artifacts(
             name, artifact.to_dict() if artifact else {}
         )
