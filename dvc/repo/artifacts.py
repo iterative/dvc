@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 SEPARATOR_IN_NAME = ":"
 dirname = r"[a-z0-9-_./]+"  # improve? but change in conjunction with GTO
-name = r"[a-z]([a-z0-9-]*[a-z0-9])?"  # just like in GTO now w/o "/"
+name = r"[a-z]([a-z0-9-/]*[a-z0-9])?"  # just like in GTO now w/o "/"
 name_re = re.compile(f"^{name}$")
 fullname = f"((?P<dirname>{dirname}){SEPARATOR_IN_NAME})?(?P<name>{name})"
 fullname_re = re.compile(f"^{fullname}$")
