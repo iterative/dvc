@@ -17,7 +17,7 @@ SEPARATOR_IN_NAME = ":"
 dirname = r"[a-z0-9-_./]+"  # improve? but change in conjunction with GTO
 name = r"[a-z]([a-z0-9-]*[a-z0-9])?"  # just like in GTO now w/o "/"
 name_re = re.compile(f"^{name}$")
-fullname = f"(?P<dirname>{dirname}{SEPARATOR_IN_NAME})?(?P<name>{name})"
+fullname = f"((?P<dirname>{dirname}){SEPARATOR_IN_NAME})?(?P<name>{name})"
 fullname_re = re.compile(f"^{fullname}$")
 
 
@@ -77,7 +77,8 @@ class Artifacts:
         # TODO: support writing in `artifacts: artifacts.yaml` case
         # TODO: check `dvcfile` exists - or maybe it's checked in `ProjectFile` already?
         dvcfile_dir = os.path.join(self.repo.root_dir, dvcfile)
-        os.path.mkdir(dvcfile_dir, exist_ok=True)
+        if not os.path.exists(dvcfile_dir):
+            os.mkdir(dvcfile_dir)
         dvcyaml_path = os.path.join(dvcfile_dir, "dvc.yaml")
         ProjectFile(self.repo, dvcyaml_path)._dump_pipeline_file_artifacts(
             name, artifact.to_dict() if artifact else {}
