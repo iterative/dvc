@@ -335,6 +335,7 @@ def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
     with caplog.at_level(logging.WARNING):
         dvc.experiments.run(exp_stage.addressing)
         assert "Temporary DVC file" in caplog.text
+    assert not (tmp_dir / ".dvc" / "tmp" / BaseExecutor.PACKED_ARGS_FILE).exists()
 
 
 def test_list(tmp_dir, scm, dvc, exp_stage):
@@ -744,3 +745,29 @@ def test_copy_paths_errors(tmp_dir, scm, dvc, mocker):
 
     with pytest.raises(DvcException, match="Unable to copy"):
         dvc.experiments.run(stage.addressing, tmp_dir=True, copy_paths=["foo"])
+
+
+def test_mixed_git_dvc_out(tmp_dir, scm, dvc, exp_stage):
+    (tmp_dir / "dir").mkdir()
+    dir_metrics = os.path.join("dir", "metrics.yaml")
+    dvc.stage.add(
+        cmd=f"python copy.py params.yaml {dir_metrics}",
+        metrics=[dir_metrics],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py"],
+        force=True,
+    )
+    dvc.stage.add(
+        cmd=f"python copy.py {dir_metrics} metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        name="copy-dir-file",
+        deps=["dir"],
+    )
+    scm.add(["dvc.yaml", "dvc.lock"])
+    scm.commit("add dir stage")
+
+    exp = first(dvc.experiments.run())
+    assert (tmp_dir / "dir" / "metrics.yaml").exists()
+    git_fs = scm.get_fs(exp)
+    assert not git_fs.exists("dir/metrics.yaml")
