@@ -149,11 +149,11 @@ class TmpDir(pathlib.Path):
         paths = self.gen(struct, text)
         return self.dvc_add(paths, commit=commit)
 
-    def scm_gen(self, struct, text="", commit=None):
+    def scm_gen(self, struct, text="", commit=None, force=False):
         paths = self.gen(struct, text)
-        return self.scm_add(paths, commit=commit)
+        return self.scm_add(paths, commit=commit, force=force)
 
-    def commit(self, output_paths, msg):
+    def commit(self, output_paths, msg, force=False):
         def to_gitignore(stage_path):
             from dvc.scm import Git
 
@@ -162,7 +162,7 @@ class TmpDir(pathlib.Path):
         gitignores = [
             to_gitignore(s) for s in output_paths if os.path.exists(to_gitignore(s))
         ]
-        return self.scm_add(output_paths + gitignores, commit=msg)
+        return self.scm_add(output_paths + gitignores, commit=msg, force=force)
 
     def dvc_add(self, filenames, commit=None):
         self._require("dvc")
@@ -173,10 +173,13 @@ class TmpDir(pathlib.Path):
             self.commit([s.path for s in stages], msg=commit)
         return stages
 
-    def scm_add(self, filenames, commit=None):
+    def scm_add(self, filenames, commit=None, force=False):
+        from dvc.scm import Git
+
         self._require("scm")
         filenames = _coerce_filenames(filenames)
-        self.scm.add(filenames)
+        assert isinstance(self.scm, Git)
+        self.scm.add(filenames, force=force)
         if commit:
             self.scm.commit(commit)
 

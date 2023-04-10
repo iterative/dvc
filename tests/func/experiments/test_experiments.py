@@ -330,6 +330,7 @@ def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
         tmp_dir / ".dvc" / "tmp" / BaseExecutor.PACKED_ARGS_FILE,
         "",
         commit="commit args file",
+        force=True,
     )
 
     with caplog.at_level(logging.WARNING):
