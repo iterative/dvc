@@ -36,9 +36,10 @@ def imp_url(  # noqa: C901, PLR0913
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(self, out, always_local=to_remote and not out)
 
-    if to_remote and (no_exec or no_download):
+    if to_remote and (no_exec or no_download or version_aware):
         raise InvalidArgumentError(
-            "--no-exec/--no-download cannot be combined with --to-remote"
+            "--no-exec/--no-download/--version-aware cannot be combined with "
+            "--to-remote"
         )
 
     if not to_remote and remote:
