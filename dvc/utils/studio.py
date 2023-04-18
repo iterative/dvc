@@ -57,7 +57,7 @@ def notify_refs(
     data = {"repo_url": repo_url, "client": "dvc", "refs": refs}
 
     try:
-        r = post("/webhook/dvc", token, data, base_url=base_url)
+        r = post("webhook/dvc", token, data, base_url=base_url)
     except requests.RequestException as e:
         logger.trace("", exc_info=True)  # type: ignore[attr-defined]
 
