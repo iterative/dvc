@@ -14,6 +14,7 @@ from typing import (
 from funcy import compact, group_by
 from scmrepo.git.backend.base import SyncStatus
 
+from dvc.env import DVC_STUDIO_TOKEN, DVC_STUDIO_URL
 from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
@@ -47,7 +48,7 @@ def notify_refs_to_studio(
         return None
 
     token = (
-        os.environ.get("DVC_STUDIO_TOKEN")
+        os.environ.get(DVC_STUDIO_TOKEN)
         or os.environ.get("STUDIO_TOKEN")
         or config.get("token")
     )
@@ -60,7 +61,7 @@ def notify_refs_to_studio(
     from dvc.utils import studio
 
     _, repo_url = get_remote_repo(repo.scm.dulwich.repo, git_remote)
-    studio_url = config.get("url")
+    studio_url = os.environ.get(DVC_STUDIO_URL) or config.get("url")
     d = studio.notify_refs(repo_url, token, base_url=studio_url, **refs)
     return d.get("url")
 
