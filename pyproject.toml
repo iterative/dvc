@@ -83,7 +83,7 @@ lint = [
     "types-tqdm",
 ]
 oss = ["dvc-oss==2.19"]
-s3 = ["dvc-s3==2.21"]
+s3 = ["dvc-s3==2.22.0"]
 ssh = ["dvc-ssh>=2.22.1,<3"]
 ssh_gssapi = ["dvc-ssh[gssapi]>=2.22.1,<3"]
 terraform = ["tpi[ssh]>=2.1"]
