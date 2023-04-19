@@ -3,8 +3,6 @@ from functools import partial
 from typing import TYPE_CHECKING, Iterator, List
 
 from dvc.exceptions import DvcException, ReproductionError
-from dvc.repo.metrics.show import _collect_top_level_metrics
-from dvc.repo.params.show import _collect_top_level_params
 from dvc.repo.scm_context import scm_context
 from dvc.stage.exceptions import CheckpointKilledError
 
@@ -76,25 +74,15 @@ def _track_stage(stage: "Stage") -> None:
     return context.track_changed_files()
 
 
-def _track_top_level(repo: "Repo") -> None:
-    context = repo.scm_context
-    for metric_file in _collect_top_level_metrics(repo):
-        context.track_file(metric_file)
-    for param_file in _collect_top_level_params(repo):
-        context.track_file(param_file)
-    for plot_file in repo.index._plot_sources:  # pylint: disable=protected-access
-        context.track_file(plot_file)
-    context.track_changed_files()
-
-
 @locked
 @scm_context
-def reproduce(  # noqa: C901
+def reproduce(  # noqa: C901, PLR0912
     self: "Repo",
     targets=None,
     recursive=False,
     pipeline=False,
     all_pipelines=False,
+    after_repro_callback=None,
     **kwargs,
 ):
     from .graph import get_pipeline, get_pipelines
@@ -139,12 +127,18 @@ def reproduce(  # noqa: C901
             )
 
     result = _reproduce_stages(self.index.graph, list(stages), **kwargs)
-    _track_top_level(self)
+    if callable(after_repro_callback):
+        after_repro_callback()
     return result
 
 
 def _reproduce_stages(  # noqa: C901
-    graph, stages, downstream=False, single_item=False, on_unchanged=None, **kwargs
+    graph,
+    stages,
+    downstream=False,
+    single_item=False,
+    on_unchanged=None,
+    **kwargs,
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
