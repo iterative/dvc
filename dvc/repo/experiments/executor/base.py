@@ -13,6 +13,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
     NamedTuple,
     Optional,
@@ -260,6 +261,12 @@ class BaseExecutor(ABC):
         )
 
     @classmethod
+    def _get_top_level_paths(cls, repo: "Repo") -> Iterable["str"]:
+        yield from _collect_top_level_metrics(repo)
+        yield from _collect_top_level_params(repo)
+        yield from repo.index._plot_sources  # pylint: disable=protected-access
+
+    @classmethod
     def save(
         cls,
         info: "ExecutorInfo",
@@ -280,11 +287,7 @@ class BaseExecutor(ABC):
             os.chdir(dvc.root_dir)
 
         include_untracked = include_untracked or []
-        include_untracked.extend(_collect_top_level_metrics(dvc))
-        include_untracked.extend(_collect_top_level_params(dvc))
-        include_untracked.extend(
-            dvc.index._plot_sources  # pylint: disable=protected-access
-        )
+        include_untracked.extend(cls._get_top_level_paths(dvc))
         # dvc repro automatically stages dvc.lock. Running redundant `git add`
         # on it causes an error when exiting the detached head context.
         if LOCK_FILE in dvc.scm.untracked_files():
@@ -540,11 +543,19 @@ class BaseExecutor(ABC):
                 info.name,
                 repro_force or checkpoint_reset,
             )
+
+            def after_repro():
+                paths = list(cls._get_top_level_paths(dvc))
+                if paths:
+                    logger.debug("Staging top-level files: %s", paths)
+                    dvc.scm_context.add(paths)
+
             stages = dvc_reproduce(
                 dvc,
                 *args,
                 on_unchanged=filter_pipeline,
                 checkpoint_func=checkpoint_func,
+                after_repro_callback=after_repro,
                 **kwargs,
             )
 
@@ -614,7 +625,7 @@ class BaseExecutor(ABC):
         log_errors: bool = True,
         copy_paths: Optional[List[str]] = None,
         **kwargs,
-    ):
+    ) -> Iterator["Repo"]:
         from dvc_studio_client.post_live_metrics import post_live_metrics
 
         from dvc.repo import Repo
