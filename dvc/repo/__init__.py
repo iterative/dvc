@@ -367,6 +367,14 @@ class Repo:
 
         return self._data_index
 
+    def drop_data_index(self) -> None:
+        try:
+            self.data_index.delete_node(("tree",))
+        except KeyError:
+            pass
+        self.data_index.commit()
+        self._reset()
+
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 

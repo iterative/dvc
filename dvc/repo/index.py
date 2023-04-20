@@ -178,6 +178,19 @@ def _load_storage_from_out(storage_map, key, out):
 
     if out.stage.is_import:
         dep = out.stage.deps[0]
+        if not out.hash_info:
+            from fsspec.utils import tokenize
+
+            # partial import
+            storage_map.add_cache(
+                FileStorage(
+                    key,
+                    out.cache.fs,
+                    out.cache.fs.path.join(
+                        out.cache.path, "fs", dep.fs.protocol, tokenize(dep.fs_path)
+                    ),
+                )
+            )
         storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path))
 
 

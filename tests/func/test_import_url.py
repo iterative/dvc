@@ -232,8 +232,9 @@ def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):
 
     assert dst.exists()
 
-    stage = load_file(dvc, "file.dvc").stage
+    dvc.commit(force=True)
 
+    stage = load_file(dvc, "file.dvc").stage
     assert stage.outs[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
     assert stage.outs[0].meta.size == 12
 

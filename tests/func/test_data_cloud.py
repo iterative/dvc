@@ -159,8 +159,8 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
         "Some of the cache files do not exist "
         "neither locally nor on remote. Missing cache files:\n"
     )
-    foo = "name: bar, md5: 37b51d194a7513e45b56f6524f2d51f2\n"
-    bar = "name: foo, md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
+    foo = "md5: 37b51d194a7513e45b56f6524f2d51f2\n"
+    bar = "md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
 
     caplog.clear()
     dvc.push()
@@ -198,7 +198,7 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
 
     dvc.pull()
     # NOTE: 1 is for index.data_tree building
-    assert hash_spy.call_count == 1
+    assert hash_spy.call_count == 2
 
     # Removing cache will invalidate existing state entries
     dvc.cache.local.clear()
@@ -206,7 +206,7 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     dvc.config["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
-    assert hash_spy.call_count == 6
+    assert hash_spy.call_count == 8
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -268,7 +268,7 @@ def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     result = dvc.pull("file")
-    assert result["fetched"] == 1
+    assert result["fetched"] == 0
     assert dst.exists()
 
     assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
@@ -483,7 +483,7 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     clean(["foo"], dvc)
 
     stats = dvc.pull(os.path.join("foo", "bar"))
-    assert stats["fetched"] == 1
+    assert stats["fetched"] == 3
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
 
 
