@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
     from dvc.repo.experiments.executor.base import ExecutorResult
+    from dvc.repo.experiments.serialize import ExpRange
     from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
@@ -733,4 +734,58 @@ class BaseStashQueue(ABC):
 
         Args:
             fetch_ref (bool): fetch completed checkpoints or not.
+        """
+
+    @abstractmethod
+    def collect_active_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        fetch_refs: bool = False,
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for active (running) experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+            fetch_refs: Whether or not to fetch completed checkpoint commits from Git
+                remote.
+
+        Returns:
+            Dict mapping baseline revision to list of active experiments.
+        """
+
+    @abstractmethod
+    def collect_queued_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for queued experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+
+        Returns:
+            Dict mapping baseline revision to list of queued experiments.
+        """
+
+    @abstractmethod
+    def collect_failed_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for failed experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+
+        Returns:
+            Dict mapping baseline revision to list of queued experiments.
         """

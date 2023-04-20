@@ -1,28 +1,27 @@
 import json
 import logging
+import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
 
 import psutil
 from funcy import first
-from voluptuous import Invalid
 
 from dvc.exceptions import DvcException
-from dvc.lock import make_lock
 from dvc.repo.experiments.exceptions import ExpQueueEmptyError
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
 from dvc.repo.experiments.refs import EXEC_BRANCH, WORKSPACE_STASH
 from dvc.repo.experiments.utils import get_exp_rwlock
-from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
-from dvc.utils import relpath
 from dvc.utils.fs import remove
+from dvc.utils.serialize import load_json
 
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
 
 if TYPE_CHECKING:
     from dvc.repo.experiments import Experiments
     from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorResult
+    from dvc.repo.experiments.serialize import ExpRange
 
     from .base import QueueDoneResult
 
@@ -101,9 +100,14 @@ class WorkspaceQueue(BaseStashQueue):
     ) -> Dict[str, Dict[str, str]]:
         kwargs.pop("copy_paths", None)
         from dvc.stage.monitor import CheckpointKilledError
+        from dvc_task.proc.process import ProcessInfo
 
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
         exec_name = self._EXEC_NAME or entry.stash_rev
+        proc_info = ProcessInfo(os.getpid(), None, None, None, None)
+        proc_info_path = self._proc_info_path(exec_name)
+        os.makedirs(os.path.dirname(proc_info_path), exist_ok=True)
+        proc_info.dump(proc_info_path)
         infofile = self.get_infofile_path(exec_name)
         try:
             rev = entry.stash_rev
@@ -129,7 +133,28 @@ class WorkspaceQueue(BaseStashQueue):
             raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'") from exc
         finally:
             executor.cleanup(infofile)
+            remove(self._proc_info_path(exec_name))
         return results
+
+    def _proc_info_path(self, name: str) -> str:
+        return os.path.join(self.pid_dir, name, f"{name}.json")
+
+    @property
+    def _active_pid(self) -> Optional[int]:
+        from dvc_task.proc.process import ProcessInfo
+
+        assert self._EXEC_NAME
+        name = self._EXEC_NAME
+        try:
+            proc_info = ProcessInfo.load(self._proc_info_path(name))
+            pid = proc_info.pid
+            if psutil.pid_exists(pid):
+                return pid
+            logger.debug("Workspace exec PID '%d' no longer exists, removing.", pid)
+            remove(self._proc_info_path(name))
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+        return None
 
     @staticmethod
     def collect_executor(  # pylint: disable=unused-argument
@@ -163,70 +188,13 @@ class WorkspaceQueue(BaseStashQueue):
     ):
         raise NotImplementedError
 
-    def check_rwlock(
-        self,
-        hardlink: bool = False,
-        autocorrect: bool = False,
-    ) -> bool:
-        """Check and autocorrect the RWLock status for file paths.
-
-        Args:
-            hardlink (bool): use hardlink lock to guard rwlock file when on
-                            edit.
-            autocorrect (bool): autocorrect corrupted rwlock file.
-
-        Return:
-            (bool): if the pid alive.
-        """
-        path = self.repo.fs.path.join(self.repo.tmp_dir, RWLOCK_FILE)
-
-        rwlock_guard = make_lock(
-            self.repo.fs.path.join(self.repo.tmp_dir, RWLOCK_LOCK),
-            tmp_dir=self.repo.tmp_dir,
-            hardlink_lock=hardlink,
-        )
-        with rwlock_guard:
-            try:
-                with self.repo.fs.open(path, encoding="utf-8") as fobj:
-                    lock: Dict[str, List[Dict]] = SCHEMA(json.load(fobj))
-                file_path = first(lock["read"])
-                if not file_path:
-                    return False
-                lock_info = first(lock["read"][file_path])
-                pid = int(lock_info["pid"])
-                if psutil.pid_exists(pid):
-                    return True
-                cmd = lock_info["cmd"]
-                logger.warning(
-                    "Process '%s' with (Pid %s), in RWLock-file '%s' had been killed.",
-                    cmd,
-                    pid,
-                    relpath(path),
-                )
-            except FileNotFoundError:
-                return False
-            except json.JSONDecodeError:
-                logger.warning(
-                    "Unable to read RWLock-file '%s'. JSON structure is corrupted",
-                    relpath(path),
-                )
-            except Invalid:
-                logger.warning("RWLock-file '%s' format error.", relpath(path))
-            if autocorrect:
-                logger.warning("Delete corrupted RWLock-file '%s'", relpath(path))
-                remove(path)
-            return False
-
     def get_running_exps(
         self,
         fetch_refs: bool = True,  # noqa: ARG002
     ) -> Dict[str, Dict]:
-        from dvc.utils.serialize import load_json
-
         assert self._EXEC_NAME
         result: Dict[str, Dict] = {}
-
-        if not self.check_rwlock(autocorrect=True):
+        if self._active_pid is None:
             return result
 
         infofile = self.get_infofile_path(self._EXEC_NAME)
@@ -247,3 +215,59 @@ class WorkspaceQueue(BaseStashQueue):
             else:
                 result[self._EXEC_NAME] = info.asdict()
         return result
+
+    def collect_active_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        fetch_refs: bool = False,  # noqa: ARG002
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo.experiments.collect import collect_exec_branch
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        pid = self._active_pid
+        if pid is None:
+            return result
+
+        assert self._EXEC_NAME
+        infofile = self.get_infofile_path(self._EXEC_NAME)
+        try:
+            info = ExecutorInfo.from_dict(load_json(infofile))
+        except OSError:
+            return result
+
+        if (
+            (not baseline_revs or info.baseline_rev in baseline_revs)
+            and info.status < TaskStatus.FAILED
+            and info.status != TaskStatus.SUCCESS
+        ):
+            local_exec = LocalExpExecutor(root=info.root_dir, pid=pid)
+            exps = list(collect_exec_branch(self.repo, info.baseline_rev, **kwargs))
+            exps[0].name = info.name
+            result[info.baseline_rev] = [
+                ExpRange(
+                    exps,
+                    executor=ExpExecutor("running", name="workspace", local=local_exec),
+                    name=info.name,
+                )
+            ]
+        return result
+
+    def collect_queued_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        raise NotImplementedError
+
+    def collect_failed_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        raise NotImplementedError
