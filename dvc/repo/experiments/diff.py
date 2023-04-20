@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):
-    from dvc.repo.experiments.show import collect_experiment_commit
+    from dvc.repo.experiments.collect import collect_rev
     from dvc.scm import resolve_rev
 
     if repo.scm.no_commits:
@@ -15,22 +15,21 @@ def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):
 
     if a_rev:
         rev = resolve_rev(repo.scm, a_rev)
-        old = collect_experiment_commit(repo, rev, param_deps=param_deps)
     else:
-        old = collect_experiment_commit(repo, "HEAD", param_deps=param_deps)
+        rev = resolve_rev(repo.scm, "HEAD")
+    old = collect_rev(repo, rev, param_deps=param_deps)
 
     if b_rev:
         rev = resolve_rev(repo.scm, b_rev)
-        new = collect_experiment_commit(repo, rev, param_deps=param_deps)
     else:
-        new = collect_experiment_commit(repo, "workspace", param_deps=param_deps)
+        rev = "workspace"
+    new = collect_rev(repo, rev, param_deps=param_deps)
 
     with_unchanged = kwargs.pop("all", False)
-
     return {
         key: _diff(
-            format_dict(old.get("data", {}).get(key, {})),
-            format_dict(new.get("data", {}).get(key, {})),
+            format_dict(getattr(old.data, key, {})),
+            format_dict(getattr(new.data, key, {})),
             with_unchanged=with_unchanged,
         )
         for key in ["metrics", "params"]
