@@ -1,7 +1,7 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
 
 from funcy import first
 
@@ -19,6 +19,7 @@ from .workspace import WorkspaceQueue
 if TYPE_CHECKING:
     from dvc.repo.experiments import Experiments
     from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorResult
+    from dvc.repo.experiments.serialize import ExpRange
     from dvc_task.proc.manager import ProcessManager
 
 logger = logging.getLogger(__name__)
@@ -146,5 +147,56 @@ class TempDirQueue(WorkspaceQueue):
         for entry in self.iter_active():
             result.update(
                 fetch_running_exp_from_temp_dir(self, entry.stash_rev, fetch_refs)
+            )
+        return result
+
+    def collect_active_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        fetch_refs: bool = False,
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo import Repo
+        from dvc.repo.experiments.collect import collect_exec_branch
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        for entry in self.iter_active():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            if fetch_refs:
+                fetch_running_exp_from_temp_dir(self, entry.stash_rev, fetch_refs)
+            proc_info = self.proc.get(entry.stash_rev)
+            infofile = self.get_infofile_path(entry.stash_rev)
+            executor_info = ExecutorInfo.load_json(infofile)
+            if proc_info:
+                local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                    root=executor_info.root_dir,
+                    log=proc_info.stdout,
+                    pid=proc_info.pid,
+                )
+            else:
+                local_exec = None
+            dvc_root = os.path.join(executor_info.root_dir, executor_info.dvc_dir)
+            with Repo(dvc_root) as repo:
+                exps = list(
+                    collect_exec_branch(repo, executor_info.baseline_rev, **kwargs)
+                )
+            exps[0].rev = entry.stash_rev
+            exps[0].name = entry.name
+            result[entry.baseline_rev].append(
+                ExpRange(
+                    exps,
+                    executor=ExpExecutor(
+                        "running",
+                        name=executor_info.location,
+                        local=local_exec,
+                    ),
+                    name=entry.name,
+                )
             )
         return result
