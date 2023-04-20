@@ -304,7 +304,7 @@ def collect(
         experiments = list(
             itertools.chain.from_iterable(
                 _sorted_ranges(collected.get(baseline_rev, []))
-                for collected in (successful, active, queued, failed)
+                for collected in (active, successful, queued, failed)
             )
         )
         result.append(
