@@ -241,12 +241,13 @@ def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
 
     dvc.pull(["foo_imported.dvc"])
-    assert (tmp_dir / "foo_imported").exists
+    assert (tmp_dir / "foo_imported").exists()
     assert (tmp_dir / "foo_imported" / "bar").read_bytes() == b"bar"
     assert (tmp_dir / "foo_imported" / "baz").read_bytes() == b"baz contents"
 
-    stage = load_file(dvc, "foo_imported.dvc").stage
+    dvc.commit(force=True)
 
+    stage = load_file(dvc, "foo_imported.dvc").stage
     if os.name == "nt":
         expected_hash = "2e798234df5f782340ac3ce046f8dfae.dir"
     else:

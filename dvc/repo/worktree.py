@@ -104,32 +104,6 @@ def _get_remote(
     return repo.cloud.get_remote(name, command)
 
 
-def fetch_worktree(
-    repo: "Repo",
-    remote: "Remote",
-    targets: Optional["TargetType"] = None,
-    jobs: Optional[int] = None,
-    **kwargs: Any,
-) -> int:
-    from dvc_data.index import save
-
-    transferred = 0
-    for remote_name, view in worktree_view_by_remotes(
-        repo.index, push=True, targets=targets, **kwargs
-    ):
-        remote_obj = _get_remote(repo, remote_name, remote, "fetch")
-        index = view.data["repo"]
-        total = len(index)
-        with Callback.as_tqdm_callback(
-            unit="file",
-            desc=f"Fetching from remote {remote_obj.name!r}",
-            disable=total == 0,
-        ) as cb:
-            cb.set_size(total)
-            transferred += save(index, callback=cb, jobs=jobs, storage="remote")
-    return transferred
-
-
 def push_worktree(
     repo: "Repo",
     remote: "Remote",

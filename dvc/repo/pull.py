@@ -1,11 +1,7 @@
 import logging
-from typing import TYPE_CHECKING, Optional
 
 from dvc.repo import locked
 from dvc.utils import glob_targets
-
-if TYPE_CHECKING:
-    from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +20,6 @@ def pull(  # noqa: PLR0913
     all_commits=False,
     run_cache=False,
     glob=False,
-    odb: Optional["ObjectDB"] = None,
     allow_missing=False,
 ):
     if isinstance(targets, str):
@@ -42,7 +37,6 @@ def pull(  # noqa: PLR0913
         with_deps=with_deps,
         recursive=recursive,
         run_cache=run_cache,
-        odb=odb,
     )
     stats = self.checkout(
         targets=expanded_targets,
