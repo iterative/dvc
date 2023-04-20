@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Literal, Optional
 
 from dvc.exceptions import DvcException
 from dvc.repo.metrics.show import _gather_metrics
@@ -25,17 +25,15 @@ class _ISOEncoder(json.JSONEncoder):
 
 @dataclass(frozen=True)
 class SerializableExp:
-    """Serializable experiment state."""
+    """Serializable experiment data."""
 
     rev: str
     timestamp: Optional[datetime] = None
     params: Dict[str, Any] = field(default_factory=dict)
     metrics: Dict[str, Any] = field(default_factory=dict)
-    deps: Dict[str, "_ExpDep"] = field(default_factory=dict)
-    outs: Dict[str, "_ExpOut"] = field(default_factory=dict)
-    status: Optional[str] = None
-    executor: Optional[str] = None
-    error: Optional["SerializableError"] = None
+    deps: Dict[str, "ExpDep"] = field(default_factory=dict)
+    outs: Dict[str, "ExpOut"] = field(default_factory=dict)
+    meta: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_repo(
@@ -43,6 +41,7 @@ class SerializableExp:
         repo: "Repo",
         rev: Optional[str] = None,
         onerror: Optional[Callable] = None,
+        param_deps: bool = False,
         **kwargs,
     ) -> "SerializableExp":
         """Returns a SerializableExp from the current repo state.
@@ -57,29 +56,26 @@ class SerializableExp:
 
         rev = rev or repo.get_rev()
         assert rev
-        status: Optional[str] = kwargs.get("status")
         # NOTE: _gather_params/_gather_metrics return defaultdict which is not
         # supported in dataclasses.asdict() on all python releases
         # see https://bugs.python.org/issue35540
-        params = dict(_gather_params(repo, onerror=onerror))
-        if status and status.lower() in ("queued", "failed"):
-            metrics: Dict[str, Any] = {}
-        else:
-            metrics = dict(
-                _gather_metrics(
-                    repo,
-                    targets=None,
-                    rev=rev[:7],
-                    recursive=False,
-                    onerror=onerror_collect,
-                )
+        params = dict(_gather_params(repo, deps=param_deps, onerror=onerror))
+        metrics = dict(
+            _gather_metrics(
+                repo,
+                targets=None,
+                rev=rev[:7],
+                recursive=False,
+                onerror=onerror_collect,
             )
+        )
+        meta = cls._gather_meta(repo)
         return cls(
             rev=rev,
             params=params,
             metrics=metrics,
             deps={
-                relpath(dep.fs_path, repo.root_dir): _ExpDep(
+                relpath(dep.fs_path, repo.root_dir): ExpDep(
                     hash=dep.hash_info.value if dep.hash_info else None,
                     size=dep.meta.size if dep.meta else None,
                     nfiles=dep.meta.nfiles if dep.meta else None,
@@ -88,7 +84,7 @@ class SerializableExp:
                 if not isinstance(dep, (ParamsDependency, RepoDependency))
             },
             outs={
-                relpath(out.fs_path, repo.root_dir): _ExpOut(
+                relpath(out.fs_path, repo.root_dir): ExpOut(
                     hash=out.hash_info.value if out.hash_info else None,
                     size=out.meta.size if out.meta else None,
                     nfiles=out.meta.nfiles if out.meta else None,
@@ -98,8 +94,15 @@ class SerializableExp:
                 for out in repo.index.outs
                 if not (out.is_metric or out.is_plot)
             },
+            meta=meta,
             **kwargs,
         )
+
+    @staticmethod
+    def _gather_meta(repo: "Repo") -> Dict[str, Any]:
+        return {
+            "has_checkpoints": any(stage.is_checkpoint for stage in repo.index.stages)
+        }
 
     def dumpd(self) -> Dict[str, Any]:
         return asdict(self)
@@ -113,6 +116,10 @@ class SerializableExp:
             parsed = json.loads(data)
             if "timestamp" in parsed:
                 parsed["timestamp"] = datetime.fromisoformat(parsed["timestamp"])
+            if "deps" in parsed:
+                parsed["deps"] = {k: ExpDep(**v) for k, v in parsed["deps"].items()}
+            if "outs" in parsed:
+                parsed["outs"] = {k: ExpOut(**v) for k, v in parsed["outs"].items()}
             return cls(**parsed)
         except (TypeError, json.JSONDecodeError) as exc:
             raise DeserializeError("failed to load SerializableExp") from exc
@@ -120,8 +127,7 @@ class SerializableExp:
     @property
     def contains_error(self) -> bool:
         return (
-            self.error is not None
-            or self.params.get("error")
+            self.params.get("error")
             or any(value.get("error") for value in self.params.values())
             or self.metrics.get("error")
             or any(value.get("error") for value in self.metrics.values())
@@ -129,14 +135,14 @@ class SerializableExp:
 
 
 @dataclass(frozen=True)
-class _ExpDep:
+class ExpDep:
     hash: Optional[str]  # noqa: A003
     size: Optional[int]
     nfiles: Optional[int]
 
 
 @dataclass(frozen=True)
-class _ExpOut:
+class ExpOut:
     hash: Optional[str]  # noqa: A003
     size: Optional[int]
     nfiles: Optional[int]
@@ -162,3 +168,52 @@ class SerializableError:
             return cls(**parsed)
         except (TypeError, json.JSONDecodeError) as exc:
             raise DeserializeError("failed to load SerializableError") from exc
+
+
+@dataclass
+class ExpState:
+    """Git/DVC experiment state."""
+
+    rev: str
+    name: Optional[str] = None
+    data: Optional[SerializableExp] = None
+    error: Optional[SerializableError] = None
+    experiments: Optional[List["ExpRange"]] = None
+
+    def dumpd(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class ExpRange:
+    revs: List["ExpState"]
+    executor: Optional["ExpExecutor"] = None
+    name: Optional[str] = None
+
+    def __len__(self) -> int:
+        return len(self.revs)
+
+    def __iter__(self) -> Iterator["ExpState"]:
+        return iter(self.revs)
+
+    def __getitem__(self, index: int) -> "ExpState":
+        return self.revs[index]
+
+    def dumpd(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class LocalExpExecutor:
+    root: Optional[str] = None
+    log: Optional[str] = None
+    pid: Optional[int] = None
+    returncode: Optional[int] = None
+    task_id: Optional[str] = None
+
+
+@dataclass
+class ExpExecutor:
+    state: Literal["success", "queued", "running", "failed"]
+    name: Optional[str] = None
+    local: Optional[LocalExpExecutor] = None
