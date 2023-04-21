@@ -76,13 +76,12 @@ def _track_stage(stage: "Stage") -> None:
 
 @locked
 @scm_context
-def reproduce(  # noqa: C901, PLR0912
+def reproduce(  # noqa: C901
     self: "Repo",
     targets=None,
     recursive=False,
     pipeline=False,
     all_pipelines=False,
-    after_repro_callback=None,
     **kwargs,
 ):
     from .graph import get_pipeline, get_pipelines
@@ -126,10 +125,7 @@ def reproduce(  # noqa: C901, PLR0912
                 )
             )
 
-    result = _reproduce_stages(self.index.graph, list(stages), **kwargs)
-    if callable(after_repro_callback):
-        after_repro_callback()
-    return result
+    return _reproduce_stages(self.index.graph, list(stages), **kwargs)
 
 
 def _reproduce_stages(  # noqa: C901
