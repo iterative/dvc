@@ -2,11 +2,12 @@ import datetime
 import logging
 import os
 import shutil
+import textwrap
 
 import pytest
 
 from dvc.cli import main
-from dvc.exceptions import CollectCacheError
+from dvc.exceptions import CollectCacheError, InvalidArgumentError
 from dvc.fs import LocalFileSystem
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db.local import LocalHashFileDB
@@ -334,3 +335,100 @@ def test_date(tmp_dir, scm, dvc):
     assert dvc.cache.local.exists(
         "3bcf3b1be3e794a97a5a6b93a005784c"
     )  # "modified, again"
+
+
+def test_gc_not_in_remote(tmp_dir, scm, dvc, tmp_path_factory, mocker):
+    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
+    dvc.config["remote"]["local_remote"] = {"url": storage}
+    dvc.config["core"]["remote"] = "local_remote"
+
+    (standalone, dir1, dir2) = tmp_dir.dvc_gen(
+        {
+            "file1": "standalone",
+            "dir1": {"file2": "file2"},
+            "dir2": {"file3": "file3", "file4": "file4"},
+        }
+    )
+    mocked_remove = mocker.spy(LocalFileSystem, "remove")
+    dvc.gc(workspace=True)
+    assert not mocked_remove.call_args_list
+
+    dvc.push(["file1", "dir1"])
+
+    dvc.gc(workspace=True, not_in_remote=True)
+
+    assert len(mocked_remove.mock_calls) == 3
+
+    arg_list = mocked_remove.call_args_list
+
+    standalone_hash = standalone.outs[0].hash_info.value
+    dir1_hash = dir1.outs[0].hash_info.value
+    assert f"{dir1_hash[2:]}.unpacked" in arg_list[0][0][1]
+    assert f"{dir1_hash[2:]}" in arg_list[1][0][1][0]
+    # We expect 2 calls: standalone_hash and dir1/file2/file2
+    assert len(arg_list[2][0][1]) == 2
+    # Order is not guaranteed here.
+    assert (
+        f"{standalone_hash[2:]}" in arg_list[2][0][1][0]
+        or f"{standalone_hash[2:]}" in arg_list[2][0][1][1]
+    )
+
+
+def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker):
+    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
+    dvc.config["remote"]["local_remote"] = {"url": storage}
+    dvc.config["core"]["remote"] = "local_remote"
+    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
+    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+
+    tmp_dir.dvc_gen(
+        {
+            "file1": "standalone",
+            "dir1": {"file2": "file2"},
+            "dir2": {"file3": "file3", "file4": "file4"},
+        }
+    )
+    mocked_remove = mocker.spy(LocalFileSystem, "remove")
+
+    dvc.push(["file1", "dir1"], remote="other_remote")
+
+    dvc.gc(workspace=True, not_in_remote=True)
+
+    assert not mocked_remove.mock_calls
+
+    dvc.gc(workspace=True, not_in_remote=True, remote="other_remote")
+
+    assert len(mocked_remove.mock_calls) == 3
+
+
+def test_gc_not_in_remote_cloud(tmp_dir, scm, dvc):
+    with pytest.raises(
+        InvalidArgumentError,
+        match="`--not-in-remote` and `--cloud` are mutually exclusive",
+    ):
+        dvc.gc(workspace=True, not_in_remote=True, cloud=True)
+
+
+@pytest.mark.xfail(reason="--cloud Doesn't respect `remote` field.")
+def test_gc_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
+    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
+    dvc.config["remote"]["local_remote"] = {"url": storage}
+    dvc.config["core"]["remote"] = "local_remote"
+    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
+    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+
+    text = textwrap.dedent(
+        """\
+        outs:
+        - path: foo
+          remote: other_remote
+    """
+    )
+    tmp_dir.gen("foo.dvc", text)
+    (foo,) = tmp_dir.dvc_gen("foo", "foo")
+    dvc.push()
+    dvc.remove(foo.relpath)
+
+    mocked_remove = mocker.spy(LocalFileSystem, "remove")
+    dvc.gc(workspace=True, cloud=True)
+    assert len(mocked_remove.mock_calls) == 2
