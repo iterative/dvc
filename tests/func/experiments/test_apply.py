@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from funcy import first
 
@@ -28,28 +26,37 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
-@pytest.mark.xfail(
-    os.name == "nt",
-    strict=False,
-    reason="https://github.com/iterative/dvc/issues/9143",
-)
-def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, session_queue):
-    from dvc.exceptions import InvalidArgumentError
-
-    dvc.experiments.run(failed_exp_stage.addressing, params=["foo=2"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
+def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, mocker):
+    from dvc.repo.experiments.queue.base import QueueDoneResult, QueueEntry
 
     dvc.experiments.run(
         failed_exp_stage.addressing, params=["foo=3"], queue=True, name="foo"
     )
-    session_queue.wait(["foo"])
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
 
-    with pytest.raises(InvalidArgumentError):
-        dvc.experiments.apply("bar")
+    # patch iter_done to return exp_rev as a failed exp (None-type result)
+    queue = dvc.experiments.celery_queue
+    mocker.patch.object(
+        queue,
+        "iter_done",
+        return_value=[
+            QueueDoneResult(
+                QueueEntry("", "", queue.ref, exp_rev, "", None, "foo", None),
+                None,
+            ),
+        ],
+    )
+    mocker.patch.object(
+        queue,
+        "iter_queued",
+        return_value=[],
+    )
 
     dvc.experiments.apply(exp_rev)
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
 
+    scm.reset(hard=True)
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 1"
     dvc.experiments.apply("foo")
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
 
