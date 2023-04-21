@@ -627,6 +627,7 @@ class BaseExecutor(ABC):
         copy_paths: Optional[List[str]] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
+        from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
         from dvc_studio_client.post_live_metrics import post_live_metrics
 
         from dvc.repo import Repo
@@ -649,12 +650,18 @@ class BaseExecutor(ABC):
                 os.chdir(dvc.root_dir)
 
             try:
+                args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
+                if os.path.exists(args_path):
+                    _, kwargs = cls.unpack_repro_args(args_path)
+                run_env = kwargs.get("run_env", {})
                 post_live_metrics(
                     "start",
                     info.baseline_rev,
                     info.name,
                     "dvc",
                     params=to_studio_params(dvc.params.show()),
+                    studio_token=run_env.get(STUDIO_TOKEN, None),
+                    studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
                 )
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
@@ -680,6 +687,8 @@ class BaseExecutor(ABC):
                     "dvc",
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
                     metrics=get_in(dvc.metrics.show(), ["", "data"]),
+                    studio_token=run_env.get(STUDIO_TOKEN, None),
+                    studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
                 )
 
                 if infofile is not None:

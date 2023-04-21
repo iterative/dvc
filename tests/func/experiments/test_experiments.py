@@ -614,7 +614,8 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
         """
     )
     mocker.patch(
-        "dvc.repo.experiments.queue.base.get_studio_repo_url", return_value="REPO_URL"
+        "dvc.repo.experiments.queue.base.get_studio_token_and_repo_url",
+        return_value=("REPO_TOKEN", "REPO_URL"),
     )
     (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
     baseline = scm.get_rev()
