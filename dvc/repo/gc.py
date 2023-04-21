@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 def _validate_args(**kwargs):
+    not_in_remote = kwargs.pop("not_in_remote", None)
+    cloud = kwargs.pop("cloud", None)
+    if not_in_remote and cloud:
+        raise InvalidArgumentError(
+            "`--not-in-remote` and `--cloud` are mutually exclusive"
+        )
     if not any(kwargs.values()):
         raise InvalidArgumentError(
             "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
@@ -23,7 +29,7 @@ def _validate_args(**kwargs):
 
 
 @locked
-def gc(  # noqa: PLR0913
+def gc(  # noqa: PLR0913, C901
     self: "Repo",
     all_branches: bool = False,
     cloud: bool = False,
@@ -39,6 +45,7 @@ def gc(  # noqa: PLR0913
     commit_date: Optional[str] = None,
     rev: Optional[str] = None,
     num: Optional[int] = None,
+    not_in_remote: bool = False,
 ):
     # require `workspace` to be true to come into effect.
     # assume `workspace` to be enabled if any of `all_tags`, `all_commits`,
@@ -52,6 +59,8 @@ def gc(  # noqa: PLR0913
         commit_date=commit_date,
         rev=rev,
         num=num,
+        cloud=cloud,
+        not_in_remote=not_in_remote,
     )
 
     from contextlib import ExitStack
@@ -85,6 +94,11 @@ def gc(  # noqa: PLR0913
             ).values():
                 used_obj_ids.update(obj_ids)
 
+    if not_in_remote:
+        cloud_odb = self.cloud.get_remote_odb(remote, "gc --not-in-remote")
+        remote_hashes = list(cloud_odb.all(jobs=jobs))
+        used_obj_ids = {x for x in used_obj_ids if x.value not in remote_hashes}
+
     for scheme, odb in self.cache.by_scheme():
         if not odb:
             continue
@@ -96,9 +110,9 @@ def gc(  # noqa: PLR0913
     if not cloud:
         return
 
-    odb = self.cloud.get_remote_odb(remote, "gc -c")
-    removed = ogc(odb, used_obj_ids, jobs=jobs)
+    cloud_odb = self.cloud.get_remote_odb(remote, "gc -c")
+    removed = ogc(cloud_odb, used_obj_ids, jobs=jobs)
     if removed:
-        get_index(odb).clear()
+        get_index(cloud_odb).clear()
     else:
         logger.info("No unused cache to remove from remote.")

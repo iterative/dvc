@@ -22,6 +22,8 @@ class CmdGC(CmdBase):
             workspace=self.args.workspace,
             rev=self.args.rev,
             num=self.args.num,
+            cloud=self.args.cloud,
+            not_in_remote=self.args.not_in_remote,
         )
 
         if self.args.rev:
@@ -74,6 +76,7 @@ class CmdGC(CmdBase):
             workspace=self.args.workspace,
             rev=self.args.rev,
             num=self.args.num,
+            not_in_remote=self.args.not_in_remote,
         )
         return 0
 
@@ -156,6 +159,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Keep data files for all experiments.",
+    )
+    gc_parser.add_argument(
+        "--not-in-remote",
+        action="store_true",
+        default=False,
+        help="Keep data files that are not present in the remote.",
     )
     gc_parser.add_argument(
         "-c",
