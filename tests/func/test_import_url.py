@@ -49,6 +49,21 @@ def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
     assert remove_outs_call_counter.mock.call_count == 1
 
 
+def test_import_conflict_and_override(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    tmp_dir.gen("bar", "bar")
+
+    # bar exists, fail
+    ret = main(["import-url", "foo", "bar"])
+    assert ret != 0
+    assert not os.path.exists("bar.dvc")
+
+    # force override
+    ret = main(["import-url", "foo", "bar", "--force"])
+    assert ret == 0
+    assert os.path.exists("bar.dvc")
+
+
 def test_import_filename(tmp_dir, dvc, cloud):
     external_source = cloud / "file"
     (cloud / "file").write_text("content", encoding="utf-8")

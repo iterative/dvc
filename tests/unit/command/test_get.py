@@ -23,7 +23,9 @@ def test_get(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("repo_url", path="src", out="out", rev="version", jobs=4)
+    m.assert_called_once_with(
+        "repo_url", path="src", out="out", rev="version", jobs=4, force=False
+    )
 
 
 def test_get_url(mocker, capsys):
