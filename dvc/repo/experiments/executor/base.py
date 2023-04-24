@@ -7,12 +7,14 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from enum import IntEnum
 from functools import partial
+from itertools import chain
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
     NamedTuple,
     Optional,
@@ -260,6 +262,16 @@ class BaseExecutor(ABC):
         )
 
     @classmethod
+    def _get_top_level_paths(cls, repo: "Repo") -> List["str"]:
+        return list(
+            chain(
+                _collect_top_level_metrics(repo),
+                _collect_top_level_params(repo),
+                repo.index._plot_sources,  # pylint: disable=protected-access
+            )
+        )
+
+    @classmethod
     def save(
         cls,
         info: "ExecutorInfo",
@@ -280,11 +292,7 @@ class BaseExecutor(ABC):
             os.chdir(dvc.root_dir)
 
         include_untracked = include_untracked or []
-        include_untracked.extend(_collect_top_level_metrics(dvc))
-        include_untracked.extend(_collect_top_level_params(dvc))
-        include_untracked.extend(
-            dvc.index._plot_sources  # pylint: disable=protected-access
-        )
+        include_untracked.extend(cls._get_top_level_paths(dvc))
         # dvc repro automatically stages dvc.lock. Running redundant `git add`
         # on it causes an error when exiting the detached head context.
         if LOCK_FILE in dvc.scm.untracked_files():
@@ -540,6 +548,7 @@ class BaseExecutor(ABC):
                 info.name,
                 repro_force or checkpoint_reset,
             )
+
             stages = dvc_reproduce(
                 dvc,
                 *args,
@@ -547,6 +556,9 @@ class BaseExecutor(ABC):
                 checkpoint_func=checkpoint_func,
                 **kwargs,
             )
+            if paths := cls._get_top_level_paths(dvc):
+                logger.debug("Staging top-level files: %s", paths)
+                dvc.scm_context.add(paths)
 
             exp_hash = cls.hash_exp(stages)
             if not repro_dry:
@@ -614,7 +626,8 @@ class BaseExecutor(ABC):
         log_errors: bool = True,
         copy_paths: Optional[List[str]] = None,
         **kwargs,
-    ):
+    ) -> Iterator["Repo"]:
+        from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
         from dvc_studio_client.post_live_metrics import post_live_metrics
 
         from dvc.repo import Repo
@@ -637,12 +650,18 @@ class BaseExecutor(ABC):
                 os.chdir(dvc.root_dir)
 
             try:
+                args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
+                if os.path.exists(args_path):
+                    _, kwargs = cls.unpack_repro_args(args_path)
+                run_env = kwargs.get("run_env", {})
                 post_live_metrics(
                     "start",
                     info.baseline_rev,
                     info.name,
                     "dvc",
                     params=to_studio_params(dvc.params.show()),
+                    studio_token=run_env.get(STUDIO_TOKEN, None),
+                    studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
                 )
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
@@ -668,6 +687,8 @@ class BaseExecutor(ABC):
                     "dvc",
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
                     metrics=get_in(dvc.metrics.show(), ["", "data"]),
+                    studio_token=run_env.get(STUDIO_TOKEN, None),
+                    studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
                 )
 
                 if infofile is not None:
@@ -681,7 +702,7 @@ class BaseExecutor(ABC):
             args, kwargs = cls.unpack_repro_args(args_path)
             remove(args_path)
             # explicitly git rm/unstage the args file
-            dvc.scm.add([args_path])
+            dvc.scm.add([args_path], force=True)
         else:
             args = []
             kwargs = {}

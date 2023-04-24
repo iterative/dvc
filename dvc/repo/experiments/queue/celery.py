@@ -2,6 +2,7 @@ import hashlib
 import locale
 import logging
 import os
+from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Collection,
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 
     from dvc.repo.experiments.executor.base import ExecutorResult
     from dvc.repo.experiments.refs import ExpRefInfo
+    from dvc.repo.experiments.serialize import ExpRange
     from dvc_task.app import FSApp
     from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
@@ -198,7 +200,9 @@ class LocalCeleryQueue(BaseStashQueue):
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
-            logger.debug("Found queued task %s", entry_dict["stash_rev"])
+            logger.trace(  # type: ignore[attr-defined]
+                "Found queued task %s", entry_dict["stash_rev"]
+            )
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_processed(self) -> Generator[_MessageEntry, None, None]:
@@ -214,7 +218,9 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if not result.ready():
-                logger.debug("Found active task %s", entry.stash_rev)
+                logger.trace(  # type: ignore[attr-defined]
+                    "Found active task %s", entry.stash_rev
+                )
                 yield _TaskEntry(result, entry)
 
     def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
@@ -222,7 +228,9 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if result.ready():
-                logger.debug("Found done task %s", entry.stash_rev)
+                logger.trace(  # type: ignore[attr-defined]
+                    "Found done task %s", entry.stash_rev
+                )
                 yield _TaskEntry(result, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:
@@ -512,3 +520,124 @@ class LocalCeleryQueue(BaseStashQueue):
             queue_entry = None if git_remote else queue_entry_match[exp_name]
             results[exp_name] = ExpRefAndQueueEntry(exp_ref, queue_entry)
         return results
+
+    def collect_active_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        fetch_refs: bool = False,
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo import Repo
+        from dvc.repo.experiments.collect import collect_exec_branch
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        for entry in self.iter_active():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            if fetch_refs:
+                fetch_running_exp_from_temp_dir(self, entry.stash_rev, fetch_refs)
+            proc_info = self.proc.get(entry.stash_rev)
+            executor_info = self._load_info(entry.stash_rev)
+            if proc_info:
+                local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                    root=executor_info.root_dir,
+                    log=proc_info.stdout,
+                    pid=proc_info.pid,
+                    task_id=entry.stash_rev,
+                )
+            else:
+                local_exec = None
+            dvc_root = os.path.join(executor_info.root_dir, executor_info.dvc_dir)
+            with Repo(dvc_root) as exec_repo:
+                kwargs["cache"] = self.repo.experiments.cache
+                exps = list(
+                    collect_exec_branch(exec_repo, executor_info.baseline_rev, **kwargs)
+                )
+            exps[0].rev = entry.stash_rev
+            exps[0].name = entry.name
+            result[entry.baseline_rev].append(
+                ExpRange(
+                    exps,
+                    executor=ExpExecutor(
+                        "running",
+                        name=executor_info.location,
+                        local=local_exec,
+                    ),
+                    name=entry.name,
+                )
+            )
+        return result
+
+    def collect_queued_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo.experiments.collect import collect_rev
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        for entry in self.iter_queued():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            exp = collect_rev(self.repo, entry.stash_rev, **kwargs)
+            exp.name = entry.name
+            local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                task_id=entry.stash_rev,
+            )
+            result[entry.baseline_rev].append(
+                ExpRange(
+                    [exp],
+                    executor=ExpExecutor("queued", name="dvc-task", local=local_exec),
+                    name=entry.name,
+                )
+            )
+        return result
+
+    def collect_failed_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo.experiments.collect import collect_rev
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+            SerializableError,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        for entry, _ in self.iter_failed():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            proc_info = self.proc.get(entry.stash_rev)
+            if proc_info:
+                local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                    log=proc_info.stdout,
+                    pid=proc_info.pid,
+                    returncode=proc_info.returncode,
+                    task_id=entry.stash_rev,
+                )
+            else:
+                local_exec = None
+            exp = collect_rev(self.repo, entry.stash_rev, **kwargs)
+            exp.name = entry.name
+            exp.error = SerializableError("Experiment run failed")
+            result[entry.baseline_rev].append(
+                ExpRange(
+                    [exp],
+                    executor=ExpExecutor("failed", local=local_exec),
+                    name=entry.name,
+                )
+            )
+        return result

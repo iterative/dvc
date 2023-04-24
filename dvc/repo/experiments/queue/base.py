@@ -17,8 +17,8 @@ from typing import (
     Union,
 )
 
-from dvc_studio_client.env import STUDIO_REPO_URL
-from dvc_studio_client.post_live_metrics import get_studio_repo_url
+from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
+from dvc_studio_client.post_live_metrics import get_studio_token_and_repo_url
 from funcy import retry
 
 from dvc.dependency import ParamsDependency
@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
     from dvc.repo.experiments.executor.base import ExecutorResult
+    from dvc.repo.experiments.serialize import ExpRange
     from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
@@ -419,12 +420,14 @@ class BaseStashQueue(ABC):
                     run_env[DVC_EXP_NAME] = name
                     if resume_rev:
                         run_env[DVCLIVE_RESUME] = "1"
-                    studio_repo_url = get_studio_repo_url()
+
+                    studio_token, studio_repo_url = get_studio_token_and_repo_url()
+                    if studio_token is not None:
+                        run_env[STUDIO_TOKEN] = studio_token
                     if studio_repo_url is not None:
                         run_env[STUDIO_REPO_URL] = studio_repo_url
 
                     self._pack_args(*args, run_env=run_env, **kwargs)
-
                     # save experiment as a stash commit
                     msg = self._stash_msg(
                         stash_head,
@@ -520,7 +523,7 @@ class BaseStashQueue(ABC):
         else:
             extra = None
         BaseExecutor.pack_repro_args(self.args_file, *args, extra=extra, **kwargs)
-        self.scm.add(self.args_file)
+        self.scm.add(self.args_file, force=True)
 
     @staticmethod
     def _format_new_params_msg(new_params, config_path):
@@ -733,4 +736,58 @@ class BaseStashQueue(ABC):
 
         Args:
             fetch_ref (bool): fetch completed checkpoints or not.
+        """
+
+    @abstractmethod
+    def collect_active_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        fetch_refs: bool = False,
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for active (running) experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+            fetch_refs: Whether or not to fetch completed checkpoint commits from Git
+                remote.
+
+        Returns:
+            Dict mapping baseline revision to list of active experiments.
+        """
+
+    @abstractmethod
+    def collect_queued_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for queued experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+
+        Returns:
+            Dict mapping baseline revision to list of queued experiments.
+        """
+
+    @abstractmethod
+    def collect_failed_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for failed experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+
+        Returns:
+            Dict mapping baseline revision to list of queued experiments.
         """

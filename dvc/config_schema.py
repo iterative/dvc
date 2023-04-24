@@ -302,9 +302,6 @@ SCHEMA = {
     "feature": FeatureSchema(
         {
             Optional("machine", default=False): Bool,
-            Optional("push_exp_to_studio", default=False): Bool,
-            "studio_token": str,
-            "studio_url": str,
         },
     ),
     "plots": {
@@ -329,5 +326,9 @@ SCHEMA = {
         Optional("enabled", default=False): Bool,
         "config_dir": str,
         "config_name": str,
+    },
+    "studio": {
+        "token": str,
+        "url": str,
     },
 }

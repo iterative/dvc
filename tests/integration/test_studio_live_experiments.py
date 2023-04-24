@@ -1,5 +1,5 @@
 import pytest
-from dvc_studio_client import env
+from dvc_studio_client import env, post_live_metrics
 from funcy import first
 
 
@@ -7,6 +7,7 @@ from funcy import first
 def test_post_to_studio(tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp):
     valid_response = mocker.MagicMock()
     valid_response.status_code = 200
+    live_metrics = mocker.spy(post_live_metrics, "post_live_metrics")
     mocked_post = mocker.patch("requests.post", return_value=valid_response)
 
     monkeypatch.setenv(env.STUDIO_ENDPOINT, "https://0.0.0.0")
@@ -18,6 +19,12 @@ def test_post_to_studio(tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp):
         dvc.experiments.run(exp_stage.addressing, params=["foo=1"], tmp_dir=tmp)
     )
     name = dvc.experiments.get_exact_name([exp_rev])[exp_rev]
+    assert live_metrics.call_count == 2
+
+    start_call, done_call = live_metrics.call_args_list
+    assert start_call.kwargs["studio_token"] == "STUDIO_TOKEN"
+    assert start_call.kwargs["studio_repo_url"] == "STUDIO_REPO_URL"
+
     assert mocked_post.call_count == 2
 
     start_call, done_call = mocked_post.call_args_list

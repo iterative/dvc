@@ -14,6 +14,7 @@ from typing import (
 from funcy import compact, group_by
 from scmrepo.git.backend.base import SyncStatus
 
+from dvc.env import DVC_STUDIO_TOKEN, DVC_STUDIO_URL
 from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
@@ -39,21 +40,18 @@ class UploadError(DvcException):
 def notify_refs_to_studio(
     repo: "Repo", git_remote: str, **refs: List[str]
 ) -> Optional[str]:
-    config = repo.config["feature"]
+    import os
+
+    config = repo.config["studio"]
     refs = compact(refs)
     if not refs or env2bool("DVC_TEST"):
         return None
 
-    if not (config.get("studio_token") or config["push_exp_to_studio"]):
-        logger.debug(
-            "Either feature.studio_token or feature.push_exp_to_studio config "
-            "needs to be set."
-        )
-        return None
-
-    import os
-
-    token = os.environ.get("STUDIO_TOKEN") or config.get("studio_token")
+    token = (
+        os.environ.get(DVC_STUDIO_TOKEN)
+        or os.environ.get("STUDIO_TOKEN")
+        or config.get("token")
+    )
     if not token:
         logger.debug("Studio token not found.")
         return None
@@ -63,7 +61,7 @@ def notify_refs_to_studio(
     from dvc.utils import studio
 
     _, repo_url = get_remote_repo(repo.scm.dulwich.repo, git_remote)
-    studio_url = config.get("studio_url")
+    studio_url = os.environ.get(DVC_STUDIO_URL) or config.get("url")
     d = studio.notify_refs(repo_url, token, base_url=studio_url, **refs)
     return d.get("url")
 

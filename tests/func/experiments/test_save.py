@@ -8,7 +8,7 @@ from dvc.scm import resolve_rev
 
 def setup_stage(tmp_dir, dvc, scm):
     tmp_dir.gen("params.yaml", "foo: 1")
-    dvc.run(name="echo-foo", outs=["bar"], cmd="echo ${foo} > bar")
+    dvc.run(name="echo-foo", outs=["bar"], cmd="echo foo > bar")
     scm.add(["dvc.yaml", "dvc.lock", ".gitignore", "params.yaml"])
     scm.commit("init")
 

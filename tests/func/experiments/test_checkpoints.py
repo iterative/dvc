@@ -255,17 +255,14 @@ def test_auto_push_self_remote(
 
 
 def test_tmp_dir_failed_checkpoint(tmp_dir, scm, dvc, failed_checkpoint_stage, caplog):
-    baseline = scm.get_rev()
-
-    results = dvc.experiments.run(
+    dvc.experiments.run(
         failed_checkpoint_stage.addressing, params=["foo=2"], tmp_dir=True
     )
-    exp = first(results)
 
-    result = dvc.experiments.show()[baseline]
-    # Assert 4 rows: baseline, 2 checkpoints, and final commit
-    assert len(result) == 4
-    assert exp in result
+    result = dvc.experiments.show()[1]
+    assert len(result.experiments) == 1
+    # Assert 2 checkpoints and final commit
+    assert len(result.experiments[0]) == 3
     assert (
         "Checkpoint stage 'failed-checkpoint-file' was interrupted remaining "
         "stages in pipeline will not be reproduced." in caplog.text

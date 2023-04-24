@@ -140,7 +140,7 @@ def test_import_url_to_remote(mocker):
     )
 
 
-@pytest.mark.parametrize("flag", ["--no-exec", "--no-download"])
+@pytest.mark.parametrize("flag", ["--no-exec", "--no-download", "--version-aware"])
 def test_import_url_to_remote_invalid_combination(dvc, mocker, caplog, flag):
     cli_args = parse_args(
         [
@@ -158,7 +158,10 @@ def test_import_url_to_remote_invalid_combination(dvc, mocker, caplog, flag):
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = "--no-exec/--no-download cannot be combined with --to-remote"
+        expected_msg = (
+            "--no-exec/--no-download/--version-aware cannot be combined with "
+            "--to-remote"
+        )
         assert expected_msg in caplog.text
 
 
