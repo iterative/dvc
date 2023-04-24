@@ -149,6 +149,8 @@ filterwarnings = [
     # and https://github.com/celery/celery/issues/7528
     # drop when celery==5.3 && kombu==5.3 releases
     "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning",
+    # tpi imports pkg_resources
+    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
     # see https://github.com/networkx/networkx/issues/5723.
     "ignore:nx.nx_pydot.* depends on the pydot package, which has.*known issues and is not actively maintained:DeprecationWarning",
     # remove when new version of pytest-cov gets released

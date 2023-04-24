@@ -2,7 +2,6 @@ import os
 import textwrap
 
 import pytest
-import tpi
 
 from dvc.cli import main
 from dvc.ui import ui
@@ -109,6 +108,8 @@ def test_machine_list(tmp_dir, dvc, capsys):
 
 
 def test_machine_rename_success(tmp_dir, scm, dvc, machine_config, capsys, mocker):
+    import tpi
+
     config_file = tmp_dir / ".dvc" / "config"
 
     mocker.patch.object(
@@ -147,6 +148,8 @@ def test_machine_rename_exist(tmp_dir, scm, dvc, caplog):
 
 
 def test_machine_rename_error(tmp_dir, scm, dvc, machine_config, caplog, mocker):
+    import tpi
+
     config_file = tmp_dir / ".dvc" / "config"
     os.makedirs(tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo")
 
