@@ -62,6 +62,7 @@ class CmdAdd(CmdBase):
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 jobs=self.args.jobs,
+                force=self.args.force,
             )
 
         except DvcException:
@@ -139,6 +140,14 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Ignores overwrites to dvc.yaml file and allows overwriting local stage"
+        " output (file or folder) if exists.",
     )
 
     _add_annotating_args(parser)

@@ -7,7 +7,7 @@ from dvc.utils import resolve_output
 
 
 def get_url(url, out=None, *, config=None, jobs=None, force=False):
-    out = resolve_output(url, out, override=force, override_hint=True)
+    out = resolve_output(url, out, force=force)
     out = os.path.abspath(out)
     (out,) = output.loads_from(None, [out], use_cache=False)
 

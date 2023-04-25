@@ -27,7 +27,7 @@ def get(url, path, out=None, rev=None, jobs=None, force=False):
     from dvc.external_repo import external_repo
     from dvc.fs.callbacks import Callback
 
-    out = resolve_output(path, out, override=force, override_hint=True)
+    out = resolve_output(path, out, force=force)
 
     if is_valid_filename(out):
         raise GetDVCFileError()

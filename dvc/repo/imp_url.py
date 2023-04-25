@@ -34,7 +34,7 @@ def imp_url(  # noqa: C901, PLR0913
     fs_config=None,
     version_aware: bool = False,
 ):
-    out = resolve_output(url, out, override=force, override_hint=True)
+    out = resolve_output(url, out, force=force)
     path, wdir, out = resolve_paths(self, out, always_local=to_remote and not out)
 
     if to_remote and (no_exec or no_download or version_aware):

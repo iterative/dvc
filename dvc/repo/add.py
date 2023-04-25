@@ -247,11 +247,12 @@ def create_stages(
     fname: Optional[str] = None,
     transfer: bool = False,
     external: bool = False,
+    force: bool = False,
     **kwargs: Any,
 ) -> Iterator["Stage"]:
     for target in targets:
         if kwargs.get("out"):
-            target = resolve_output(target, kwargs["out"])
+            target = resolve_output(target, kwargs["out"], force=force)
         path, wdir, out = resolve_paths(
             repo, target, always_local=transfer and not kwargs.get("out")
         )
@@ -263,6 +264,7 @@ def create_stages(
             wdir=wdir,
             outs=[out],
             external=external,
+            force=force,
         )
 
         out_obj = stage.outs[0]
