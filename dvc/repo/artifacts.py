@@ -14,15 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 SEPARATOR_IN_NAME = ":"
-dirname = r"[a-z0-9-_./]+"  # improve? but change in conjunction with GTO
-name = r"[a-z]([a-z0-9-/]*[a-z0-9])?"  # just like in GTO now w/o "/"
-name_re = re.compile(f"^{name}$")
-fullname = f"((?P<dirname>{dirname}){SEPARATOR_IN_NAME})?(?P<name>{name})"
-fullname_re = re.compile(f"^{fullname}$")
+DIRNAME = r"[a-z0-9-_./]+"  # improve? but change in conjunction with GTO
+NAME = r"[a-z]([a-z0-9-/]*[a-z0-9])?"  # just like in GTO now w/o "/"
+NAME_RE = re.compile(f"^{NAME}$")
+FULLNAME = f"((?P<dirname>{DIRNAME}){SEPARATOR_IN_NAME})?(?P<name>{NAME})"
+FULLNAME_RE = re.compile(f"^{FULLNAME}$")
 
 
 def name_is_compatible(name: str) -> bool:
-    return bool(name_re.search(name))
+    return bool(NAME_RE.search(name))
 
 
 def check_name_format(name: str) -> None:
@@ -73,21 +73,17 @@ class Artifacts:
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
         dvcfile, name = parse_name(name, dvcfile)
-        # this doesn't update it "in place", so self.get() won't return the updated value
+        # this doesn't update it "in place": self.read() won't return the updated value
         # TODO: support writing in `artifacts: artifacts.yaml` case
         # TODO: check `dvcfile` exists - or maybe it's checked in `ProjectFile` already?
-        dvcfile_dir = os.path.join(self.repo.root_dir, dvcfile)
+        dvcfile_dir = os.path.join(self.repo.root_dir, dvcfile or "")
         if not os.path.exists(dvcfile_dir):
             os.mkdir(dvcfile_dir)
         dvcyaml_path = os.path.join(dvcfile_dir, "dvc.yaml")
-        ProjectFile(self.repo, dvcyaml_path)._dump_pipeline_file_artifacts(
-            name, artifact.to_dict() if artifact else {}
-        )
+        ProjectFile(  # pylint: disable=protected-access
+            self.repo, dvcyaml_path
+        )._dump_pipeline_file_artifacts(name, artifact.to_dict() if artifact else {})
         return dvcyaml_path
-
-    def remove(self, name: str, dvcfile: Optional[str] = None):
-        pass
-        # do the same as add, but pass None to `_dump_pipeline_file_artifacts` as artifact
 
 
 def parse_name(fullname, dvcfile=None):
@@ -102,10 +98,9 @@ def parse_name(fullname, dvcfile=None):
 
 
 def _parse_name(fullname):
-    match = fullname_re.search(fullname)
+    match = FULLNAME_RE.search(fullname)
     if not match:
         raise ValueError(f"Invalid artifact name: {fullname}")
-    print(match, match["dirname"], match["name"])
     dirname = match["dirname"] or ""
     name = match.group("name")
     return dirname, name
