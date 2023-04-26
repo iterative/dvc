@@ -146,8 +146,7 @@ def add_parser(subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Ignores overwrites to dvc.yaml file and allows overwriting local stage"
-        " output (file or folder) if exists.",
+        help="Override local file or folder if exists.",
     )
 
     _add_annotating_args(parser)
