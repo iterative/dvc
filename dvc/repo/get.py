@@ -21,7 +21,7 @@ class GetDVCFileError(DvcException):
         )
 
 
-def resolve_artifact_addressing(path):  # add tests
+def resolve_artifact_path(path):
     parts = path.split(":")
     if len(parts) == 1:
         dvcyaml = None
@@ -80,11 +80,11 @@ def get(url, path, out=None, rev=None, jobs=None):
                 artifacts = repo.artifacts.read()
                 if dvcyaml not in artifacts:
                     raise InvalidArgumentError(
-                        f"{dvcyaml} doesn't exist or doesn't have artifacts section"
+                        f"'{dvcyaml}' doesn't exist or doesn't have an artifacts section"
                     )
                 if path not in artifacts[dvcyaml]:
                     raise InvalidArgumentError(
-                        f"artifact {path} doesn't exist in {dvcyaml}"
+                        f"Artifact '{path}' doesn't exist in '{dvcyaml}'"
                     )
                 path = repo.artifacts.read()[dvcyaml][
                     path
