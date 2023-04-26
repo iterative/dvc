@@ -62,7 +62,7 @@ def show(
 
 def tabulate(
     baseline_states: Iterable["ExpState"],
-    fill_value: str = "-",
+    fill_value: Optional[str] = "-",
     error_value: str = "!",
     **kwargs,
 ) -> Tuple["TabularData", Dict[str, Iterable[str]]]:
@@ -124,7 +124,7 @@ def _build_rows(
     baseline_states: Iterable["ExpState"],
     *,
     all_headers: Iterable[str],
-    fill_value: str,
+    fill_value: Optional[str],
     sort_by: Optional[str] = None,
     sort_order: Optional[Literal["asc", "desc"]] = None,
     **kwargs,
@@ -234,7 +234,7 @@ def _exp_range_rows(
     exp_range: "ExpRange",
     *,
     all_headers: Iterable[str],
-    fill_value: str,
+    fill_value: Optional[str],
     is_base: bool = False,
     **kwargs,
 ) -> Iterator[Tuple["CellT", ...]]:
@@ -276,7 +276,7 @@ def _data_cells(
     metrics_names: Mapping[str, Iterable[str]],
     params_names: Mapping[str, Iterable[str]],
     deps_names: Iterable[str],
-    fill_value: str = "-",
+    fill_value: Optional[str] = "-",
     error_value: str = "!",
     precision: Optional[int] = None,
     **kwargs,
@@ -317,10 +317,10 @@ def _data_cells(
 
 def format_time(
     timestamp: Optional[datetime],
-    fill_value: str = "-",
+    fill_value: Optional[str] = "-",
     iso: bool = False,
     **kwargs,
-) -> str:
+) -> Optional[str]:
     if not timestamp:
         return fill_value
     if iso:

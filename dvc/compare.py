@@ -35,7 +35,7 @@ def with_value(value, default):
 
 
 class TabularData(MutableSequence[Sequence["CellT"]]):
-    def __init__(self, columns: Sequence[str], fill_value: str = ""):
+    def __init__(self, columns: Sequence[str], fill_value: Optional[str] = ""):
         self._columns: Dict[str, Column] = {name: Column() for name in columns}
         self._keys: List[str] = list(columns)
         self._fill_value = fill_value
