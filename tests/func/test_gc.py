@@ -401,6 +401,32 @@ def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker
     assert len(mocked_remove.mock_calls) == 3
 
 
+def test_gc_not_in_remote_with_remote_field(
+    tmp_dir, scm, dvc, tmp_path_factory, mocker
+):
+    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
+    dvc.config["remote"]["local_remote"] = {"url": storage}
+    dvc.config["core"]["remote"] = "local_remote"
+
+    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
+    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+
+    text = textwrap.dedent(
+        """\
+        outs:
+        - path: foo
+          remote: other_remote
+    """
+    )
+    tmp_dir.gen("foo.dvc", text)
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.push()
+
+    mocked_remove = mocker.spy(LocalFileSystem, "remove")
+    dvc.gc(workspace=True, not_in_remote=True)
+    assert len(mocked_remove.mock_calls) == 1
+
+
 def test_gc_not_in_remote_cloud(tmp_dir, scm, dvc):
     with pytest.raises(
         InvalidArgumentError,
@@ -409,8 +435,7 @@ def test_gc_not_in_remote_cloud(tmp_dir, scm, dvc):
         dvc.gc(workspace=True, not_in_remote=True, cloud=True)
 
 
-@pytest.mark.xfail(reason="--cloud Doesn't respect `remote` field.")
-def test_gc_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
+def test_gc_cloud_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
     dvc.config["remote"]["local_remote"] = {"url": storage}
     dvc.config["core"]["remote"] = "local_remote"
@@ -425,10 +450,10 @@ def test_gc_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     """
     )
     tmp_dir.gen("foo.dvc", text)
-    (foo,) = tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("foo", "foo")
     dvc.push()
-    dvc.remove(foo.relpath)
+    tmp_dir.dvc_gen("foo", "bar")
 
     mocked_remove = mocker.spy(LocalFileSystem, "remove")
     dvc.gc(workspace=True, cloud=True)
-    assert len(mocked_remove.mock_calls) == 2
+    assert len(mocked_remove.mock_calls) == 2  # local and other_remote
