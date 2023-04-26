@@ -132,6 +132,11 @@ class StageLoader(Mapping):
         logger.debug("Lockfile '%s' needs to be updated.", lockfile)
 
     def __getitem__(self, name):
+        from voluptuous import Schema
+
+        from dvc.schema import SINGLE_PIPELINE_STAGE_SCHEMA as SCHEMA
+        from dvc.utils.strictyaml import validate
+
         if not name:
             raise StageNameUnspecified(self.dvcfile)
 
@@ -139,6 +144,8 @@ class StageLoader(Mapping):
             resolved_data = self.resolver.resolve_one(name)
         except EntryNotFound:
             raise StageNotFound(self.dvcfile, name)  # noqa: B904
+
+        validate(resolved_data, Schema(SCHEMA))
 
         if self.lockfile_data and name not in self.lockfile_data:
             self.lockfile_needs_update()
