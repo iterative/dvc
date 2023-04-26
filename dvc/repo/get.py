@@ -28,7 +28,7 @@ def resolve_artifact_path(path):
     elif len(parts) == 2:
         dvcyaml, path = parts
     else:
-        raise ValueError("more than one ':' found")  # todo replace error
+        raise InvalidArgumentError("more than one ':' found")  # todo replace error
     if dvcyaml is not None and dvcyaml[-len(PROJECT_FILE) :] != PROJECT_FILE:
         dvcyaml = os.path.join(dvcyaml, PROJECT_FILE)
     return dvcyaml, path
@@ -41,7 +41,7 @@ def get(url, path, out=None, rev=None, jobs=None):
     from dvc.external_repo import external_repo
     from dvc.fs.callbacks import Callback
 
-    dvcyaml, path = resolve_artifact_addressing(path)
+    dvcyaml, path = resolve_artifact_path(path)
     out = resolve_output(path, out)
 
     if is_valid_filename(out):
@@ -77,20 +77,22 @@ def get(url, path, out=None, rev=None, jobs=None):
             from dvc.fs.data import DataFileSystem
 
             if dvcyaml:
+                name, path = path, None
                 artifacts = repo.artifacts.read()
                 if dvcyaml not in artifacts:
                     raise InvalidArgumentError(
-                        f"'{dvcyaml}' doesn't exist or doesn't have an artifacts section"
+                        f"'{dvcyaml}' doesn't exist"
+                        " or doesn't have an artifacts section"
                     )
-                if path not in artifacts[dvcyaml]:
+                if name not in artifacts[dvcyaml]:
                     raise InvalidArgumentError(
-                        f"Artifact '{path}' doesn't exist in '{dvcyaml}'"
+                        f"Artifact '{name}' doesn't exist in '{dvcyaml}'"
                     )
-                path = repo.artifacts.read()[dvcyaml][
-                    path
-                ].path  # check keys exist and raise errors if not
+                path = repo.artifacts.read()[dvcyaml][name].path
                 if path is None:
-                    raise InvalidArgumentError("path is None")  # todo replace error
+                    raise InvalidArgumentError(
+                        "`path` is None for '{name}' in '{dvcyaml}'"
+                    )
             fs: Union[DataFileSystem, "DVCFileSystem"]
             if os.path.isabs(path):
                 fs = DataFileSystem(index=repo.index.data["local"])

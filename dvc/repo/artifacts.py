@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional
 
 from dvc.annotations import Artifact
@@ -77,8 +78,7 @@ class Artifacts:
         # TODO: support writing in `artifacts: artifacts.yaml` case
         # TODO: check `dvcfile` exists - or maybe it's checked in `ProjectFile` already?
         dvcfile_dir = os.path.join(self.repo.root_dir, dvcfile or "")
-        if not os.path.exists(dvcfile_dir):
-            os.mkdir(dvcfile_dir)
+        Path(dvcfile_dir).mkdir(exist_ok=True)
         dvcyaml_path = os.path.join(dvcfile_dir, "dvc.yaml")
         ProjectFile(  # pylint: disable=protected-access
             self.repo, dvcyaml_path
