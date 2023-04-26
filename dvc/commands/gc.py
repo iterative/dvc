@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdGC(CmdBase):
-    def run(self):  # noqa: C901
+    def run(self):  # noqa: C901, PLR0912
         from dvc.repo.gc import _validate_args
 
         _validate_args(
@@ -48,6 +48,10 @@ class CmdGC(CmdBase):
 
         if self.args.all_experiments:
             msg += " and all experiments"
+
+        if self.args.not_in_remote:
+            msg += " that are present in the DVC remote"
+
         if self.args.repos:
             msg += " of the current and the following repos:"
 
