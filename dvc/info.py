@@ -155,11 +155,11 @@ def get_fs_type(path):
     return ("unknown", "none")
 
 
-def _get_dvc_repo_info(self):
-    if self.config.get("core", {}).get("no_scm", False):
+def _get_dvc_repo_info(repo):
+    if repo.config.get("core", {}).get("no_scm", False):
         return "dvc (no_scm)"
 
-    if self.root_dir != self.scm.root_dir:
+    if repo.root_dir != repo.scm.root_dir:
         return "dvc (subdir), git"
 
     return "dvc, git"
