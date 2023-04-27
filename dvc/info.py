@@ -42,7 +42,7 @@ def get_dvc_info():
             # `dvc config cache.shared group`.
             if os.path.exists(repo.cache.local.path):
                 info.append(f"Cache types: {_get_linktype_support_info(repo)}")
-                fs_type = get_fs_type(repo.cache.local.path)
+                fs_type = _get_fs_type(repo.cache.local.path)
                 info.append(f"Cache directory: {fs_type}")
             else:
                 info.append("Cache types: " + error_link("no-dvc-cache"))
@@ -51,7 +51,7 @@ def get_dvc_info():
             info.append(f"Remotes: {_get_remotes(repo.config)}")
 
             root_directory = repo.root_dir
-            fs_root = get_fs_type(os.path.abspath(root_directory))
+            fs_root = _get_fs_type(os.path.abspath(root_directory))
             info.append(f"Workspace directory: {fs_root}")
             info.append(f"Repo: {_get_dvc_repo_info(repo)}")
             info.append(f"Repo.site_cache_dir: {repo.site_cache_dir}")
@@ -136,7 +136,7 @@ def _get_supported_remotes():
     return "\n\t" + ",\n\t".join(supported_remotes)
 
 
-def get_fs_type(path):
+def _get_fs_type(path):
     partition = {}
     for part in psutil.disk_partitions(all=True):
         if part.fstype:
