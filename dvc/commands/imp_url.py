@@ -25,6 +25,7 @@ class CmdImportUrl(CmdBase):
                 labels=self.args.labels,
                 meta=self.args.meta,
                 jobs=self.args.jobs,
+                force=self.args.force,
                 version_aware=self.args.version_aware,
             )
         except DvcException:
@@ -111,6 +112,13 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    import_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Override local file or folder if exists.",
     )
     import_parser.add_argument(
         "--version-aware",

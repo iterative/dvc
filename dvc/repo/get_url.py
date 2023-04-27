@@ -6,8 +6,8 @@ from dvc.fs import download, parse_external_url
 from dvc.utils import resolve_output
 
 
-def get_url(url, out=None, *, config=None, jobs=None):
-    out = resolve_output(url, out)
+def get_url(url, out=None, *, config=None, jobs=None, force=False):
+    out = resolve_output(url, out, force=force)
     out = os.path.abspath(out)
     (out,) = output.loads_from(None, [out], use_cache=False)
 

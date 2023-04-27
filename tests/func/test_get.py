@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 
@@ -5,6 +6,7 @@ import pytest
 
 from dvc.cachemgr import CacheManager
 from dvc.cli import main
+from dvc.exceptions import FileExistsLocallyError
 from dvc.fs import system
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
@@ -21,18 +23,36 @@ def test_get_repo_file(tmp_dir, erepo_dir):
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
-def test_get_repo_file_replace_without_confirmation(tmp_dir, erepo_dir):
+def test_get_repo_file_no_override(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
-        erepo_dir.dvc_gen("file", "contents", commit="create file")
-        erepo_dir.dvc_gen("file2", "something different", commit="create file2")
+        erepo_dir.dvc_gen("file1", "file1 contents", commit="create file")
+        erepo_dir.dvc_gen("file2", "file2 contents", commit="create file2")
 
-    Repo.get(os.fspath(erepo_dir), "file", "file_imported")
+    Repo.get(os.fspath(erepo_dir), "file1", "file_imported")
     # getting another file with a name that already exists in Repo.
-    with pytest.raises(FileExistsError):
+    with pytest.raises(FileExistsLocallyError) as exc_info:
         Repo.get(os.fspath(erepo_dir), "file2", "file_imported")
 
+    # Make sure it's a functional FileExistsError with errno
+    assert isinstance(exc_info.value, FileExistsError)
+    assert exc_info.value.errno == errno.EEXIST
+
     assert os.path.isfile("file_imported")
-    assert (tmp_dir / "file_imported").read_text() == "contents"
+    assert (tmp_dir / "file_imported").read_text() == "file1 contents"
+
+
+def test_get_repo_file_with_override(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file1", "file1 contents", commit="create file")
+        erepo_dir.dvc_gen("file2", "file2 contents", commit="create file2")
+
+    Repo.get(os.fspath(erepo_dir), "file1", "file_imported")
+
+    # override with the 2nd file
+    Repo.get(os.fspath(erepo_dir), "file2", "file_imported", force=True)
+
+    assert os.path.isfile("file_imported")
+    assert (tmp_dir / "file_imported").read_text() == "file2 contents"
 
 
 def test_get_repo_dir(tmp_dir, erepo_dir):

@@ -36,6 +36,7 @@ class CmdGet(CmdBaseNoRepo):
                 out=self.args.out,
                 rev=self.args.rev,
                 jobs=self.args.jobs,
+                force=self.args.force,
             )
             return 0
         except CloneError:
@@ -93,5 +94,12 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    get_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Override local file or folder if exists.",
     )
     get_parser.set_defaults(func=CmdGet)
