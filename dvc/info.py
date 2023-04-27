@@ -32,6 +32,7 @@ def get_dvc_info():
         f"Platform: Python {platform.python_version()} on {platform.platform()}",
         f"Subprojects:{_get_subprojects()}",
         f"Supports:{_get_supported_remotes()}",
+        f"Config:{_get_config_dirs()}",
     ]
 
     try:
@@ -134,6 +135,17 @@ def _get_supported_remotes():
 
     assert len(supported_remotes) >= 1
     return "\n\t" + ",\n\t".join(supported_remotes)
+
+
+def _get_config_dirs():
+    from dvc.config import Config
+
+    dirs = [
+        f"Global: {Config.get_dir('global')}",
+        f"System: {Config.get_dir('system')}",
+    ]
+
+    return "\n\t" + "\n\t".join(dirs)
 
 
 def _get_fs_type(path):
