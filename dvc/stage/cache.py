@@ -44,7 +44,12 @@ def _can_hash(stage):
             return False
 
     for out in stage.outs:
-        if out.protocol != "local" or not out.def_path or out.persist:
+        if (
+            out.protocol != "local"
+            or not out.def_path
+            or out.persist
+            or not out.use_cache
+        ):
             return False
 
     return True
