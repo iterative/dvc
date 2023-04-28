@@ -68,7 +68,7 @@ def notify_refs_to_studio(
 
 @locked
 @scm_context
-def push(  # noqa: C901
+def push(  # noqa: C901, PLR0912
     repo: "Repo",
     git_remote: str,
     exp_names: Union[Iterable[str], str],
@@ -118,15 +118,20 @@ def push(  # noqa: C901
     pushed_refs_info = (
         push_result[SyncStatus.UP_TO_DATE] + push_result[SyncStatus.SUCCESS]
     )
+
+    e = None
     if push_cache:
         try:
             result["uploaded"] = _push_cache(repo, pushed_refs_info, **kwargs)
         except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
-            raise UploadError("failed to push cache", result) from exc
+            e = exc
 
     pushed_refs = [str(r) for r in pushed_refs_info]
-    url = notify_refs_to_studio(repo, git_remote, pushed=pushed_refs)
-    return {**result, "url": url}
+    result["url"] = notify_refs_to_studio(repo, git_remote, pushed=pushed_refs)
+
+    if e:
+        raise UploadError("failed to push cache", result) from e
+    return result
 
 
 def _push(
