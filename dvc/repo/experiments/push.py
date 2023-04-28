@@ -20,6 +20,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, TqdmGit, iter_revs
 from dvc.utils import env2bool
+from dvc.utils.collections import ensure_list
 
 from .exceptions import UnresolvedExpNamesError
 from .refs import ExpRefInfo
@@ -66,12 +67,37 @@ def notify_refs_to_studio(
     return d.get("url")
 
 
+def exp_refs_from_names(scm: "Git", exp_names: List[str]) -> Set["ExpRefInfo"]:
+    exp_ref_set = set()
+    exp_ref_dict = resolve_name(scm, exp_names)
+    unresolved_exp_names = []
+    for exp_name, exp_ref in exp_ref_dict.items():
+        if exp_ref is None:
+            unresolved_exp_names.append(exp_name)
+        else:
+            exp_ref_set.add(exp_ref)
+
+    if unresolved_exp_names:
+        raise UnresolvedExpNamesError(unresolved_exp_names)
+    return exp_ref_set
+
+
+def exp_refs_from_rev(scm: "Git", rev: str, num: int = 1) -> Set["ExpRefInfo"]:
+    exp_ref_set = set()
+    rev_dict = iter_revs(scm, [rev], num)
+    rev_set = set(rev_dict.keys())
+    ref_info_dict = exp_refs_by_baseline(scm, rev_set)
+    for _, ref_info_list in ref_info_dict.items():
+        exp_ref_set.update(ref_info_list)
+    return exp_ref_set
+
+
 @locked
 @scm_context
-def push(  # noqa: C901, PLR0912
+def push(
     repo: "Repo",
     git_remote: str,
-    exp_names: Union[Iterable[str], str],
+    exp_names: Union[List[str], str],
     all_commits: bool = False,
     rev: Optional[str] = None,
     num: int = 1,
@@ -83,29 +109,10 @@ def push(  # noqa: C901, PLR0912
     assert isinstance(repo.scm, Git)
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm))
-
-    else:
-        if exp_names:
-            if isinstance(exp_names, str):
-                exp_names = [exp_names]
-            exp_ref_dict = resolve_name(repo.scm, exp_names)
-
-            unresolved_exp_names = []
-            for exp_name, exp_ref in exp_ref_dict.items():
-                if exp_ref is None:
-                    unresolved_exp_names.append(exp_name)
-                else:
-                    exp_ref_set.add(exp_ref)
-
-            if unresolved_exp_names:
-                raise UnresolvedExpNamesError(unresolved_exp_names)
-
-        if rev:
-            rev_dict = iter_revs(repo.scm, [rev], num)
-            rev_set = set(rev_dict.keys())
-            ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set)
-            for _, ref_info_list in ref_info_dict.items():
-                exp_ref_set.update(ref_info_list)
+    if exp_names:
+        exp_ref_set.update(exp_refs_from_names(repo.scm, ensure_list(exp_names)))
+    if rev:
+        exp_ref_set.update(exp_refs_from_rev(repo.scm, rev, num=num))
 
     push_result = _push(repo, git_remote, exp_ref_set, force)
 
