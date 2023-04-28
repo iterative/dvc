@@ -58,7 +58,6 @@ def _can_hash(stage):
 def _get_stage_hash(stage):
     from .serialize import to_single_stage_lockfile
 
-    assert _can_hash(stage)
     return _get_cache_hash(to_single_stage_lockfile(stage), key=True)
 
 
