@@ -27,7 +27,7 @@ def test_diff(tmp_dir, scm, dvc):
     tmp_dir.scm_gen("params.yaml", "foo: qux", commit="qux")
 
     assert dvc.params.diff(a_rev="HEAD~2") == {
-        "params.yaml": {"foo": {"old": "bar", "new": "qux"}}
+        "params.yaml": {"foo": {"old": "bar", "new": "qux", "diff": ""}}
     }
 
 
@@ -40,7 +40,9 @@ def test_diff_dirty(tmp_dir, scm, dvc):
     tmp_dir.scm_gen("params.yaml", "foo: baz", commit="baz")
     tmp_dir.gen("params.yaml", "foo: qux")
 
-    assert dvc.params.diff() == {"params.yaml": {"foo": {"old": "baz", "new": "qux"}}}
+    assert dvc.params.diff() == {
+        "params.yaml": {"foo": {"old": "baz", "new": "qux", "diff": ""}}
+    }
 
 
 def test_diff_new(tmp_dir, scm, dvc):
@@ -71,7 +73,7 @@ def test_diff_list(tmp_dir, scm, dvc):
 
     assert dvc.params.diff() == {
         "params.yaml": {
-            "foo": {"old": "['bar', 'baz']", "new": "['bar', 'baz', 'qux']"}
+            "foo": {"old": "['bar', 'baz']", "new": "['bar', 'baz', 'qux']", "diff": ""}
         }
     }
 
@@ -85,7 +87,7 @@ def test_diff_dict(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo:\n  bar: qux")
 
     assert dvc.params.diff() == {
-        "params.yaml": {"foo.bar": {"old": "baz", "new": "qux"}}
+        "params.yaml": {"foo.bar": {"old": "baz", "new": "qux", "diff": ""}}
     }
 
 
@@ -100,8 +102,8 @@ def test_diff_with_unchanged(tmp_dir, scm, dvc):
 
     assert dvc.params.diff(a_rev="HEAD~2", all=True) == {
         "params.yaml": {
-            "foo": {"old": "bar", "new": "qux"},
-            "xyz": {"old": "val", "new": "val"},
+            "xyz": {"old": "val", "new": "val", "diff": ""},
+            "foo": {"old": "bar", "new": "qux", "diff": ""},
         }
     }
 
@@ -119,7 +121,7 @@ def test_pipeline_tracked_params(tmp_dir, scm, dvc, run_copy):
     tmp_dir.scm_gen("params.yaml", "foo: qux\nxyz: val", commit="qux")
 
     assert dvc.params.diff(a_rev="HEAD~2") == {
-        "params.yaml": {"foo": {"old": "bar", "new": "qux"}}
+        "params.yaml": {"foo": {"old": "bar", "new": "qux", "diff": ""}}
     }
 
 
@@ -202,16 +204,16 @@ def test_diff_targeted(tmp_dir, scm, dvc, run_copy):
     )
 
     assert dvc.params.diff(a_rev="HEAD~2") == {
-        "params.yaml": {"foo": {"old": "bar", "new": "qux"}},
-        "other_params.yaml": {"xyz": {"old": "val", "new": "val3"}},
+        "params.yaml": {"foo": {"old": "bar", "new": "qux", "diff": ""}},
+        "other_params.yaml": {"xyz": {"old": "val", "new": "val3", "diff": ""}},
     }
 
     assert dvc.params.diff(a_rev="HEAD~2", targets=["params.yaml"]) == {
-        "params.yaml": {"foo": {"old": "bar", "new": "qux"}}
+        "params.yaml": {"foo": {"old": "bar", "new": "qux", "diff": ""}}
     }
 
     assert dvc.params.diff(a_rev="HEAD~2", targets=["other_params.yaml"]) == {
-        "other_params.yaml": {"xyz": {"old": "val", "new": "val3"}}
+        "other_params.yaml": {"xyz": {"old": "val", "new": "val3", "diff": ""}}
     }
 
 
@@ -229,9 +231,9 @@ def test_diff_without_targets_specified(tmp_dir, dvc, scm, file):
     params_file.dump({"foo": {"bar": "baz"}, "y": "100"})
     assert dvc.params.diff() == {
         file: {
-            "foo.bar": {"new": "baz", "old": "bar"},
-            "x": {"new": None, "old": "0"},
-            "y": {"new": "100", "old": None},
+            "y": {"old": None, "new": "100"},
+            "x": {"old": "0", "new": None},
+            "foo.bar": {"old": "bar", "new": "baz", "diff": ""},
         }
     }
 
