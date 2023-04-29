@@ -32,7 +32,12 @@ def test_metrics_diff_yaml(tmp_dir, scm, dvc, run_copy_metrics):
     _gen(2)
     _gen(3)
 
-    expected = {"m.yaml": {"a.b.c": {"old": 1, "new": 3, "diff": 2}}}
+    expected = {
+        "m.yaml": {
+            "a.b.e": {"old": "1", "new": "3", "diff": ""},
+            "a.b.c": {"old": 1, "new": 3, "diff": 2},
+        }
+    }
 
     assert dvc.metrics.diff(a_rev="HEAD~2") == expected
 
@@ -47,7 +52,12 @@ def test_metrics_diff_json(tmp_dir, scm, dvc, run_copy_metrics):
     _gen(2)
     _gen(3)
 
-    expected = {"m.json": {"a.b.c": {"old": 1, "new": 3, "diff": 2}}}
+    expected = {
+        "m.json": {
+            "a.b.e": {"old": "1", "new": "3", "diff": ""},
+            "a.b.c": {"old": 1, "new": 3, "diff": 2},
+        }
+    }
     assert dvc.metrics.diff(a_rev="HEAD~2") == expected
 
 
@@ -78,6 +88,7 @@ def test_metrics_diff_broken_json(tmp_dir, scm, dvc, run_copy_metrics):
 
     assert dvc.metrics.diff() == {
         "m.json": {
+            "a.b.e": {"old": "3", "new": None},
             "a.b.c": {"old": 1, "new": None},
             "a.b.d": {"old": 1, "new": None},
         }
@@ -96,6 +107,7 @@ def test_metrics_diff_new_metric(tmp_dir, scm, dvc, run_copy_metrics):
 
     assert dvc.metrics.diff() == {
         "m.json": {
+            "a.b.e": {"old": None, "new": "3"},
             "a.b.c": {"old": None, "new": 1},
             "a.b.d": {"old": None, "new": 1},
         }
@@ -116,6 +128,7 @@ def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc, run_copy_metrics):
 
     assert dvc.metrics.diff() == {
         "m.json": {
+            "a.b.e": {"old": "3", "new": None},
             "a.b.c": {"old": 1, "new": None},
             "a.b.d": {"old": 1, "new": None},
         }

@@ -47,7 +47,7 @@ def _collect_metrics(repo, targets, recursive):
 
 
 def _extract_metrics(metrics, path, rev):
-    if isinstance(metrics, (int, float)):
+    if isinstance(metrics, (int, float, str)):
         return metrics
 
     if not isinstance(metrics, dict):
