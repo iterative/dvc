@@ -93,6 +93,7 @@ testing = [
   "pytest-virtualenv",
 ]
 tests = [
+    "dvc[testing]",
     "beautifulsoup4>=4.4",
     "dvc-ssh",
     "filelock",
@@ -119,7 +120,7 @@ dvc = "dvc.cli:main"
 [project.entry-points."fsspec.specs"]
 dvc = "dvc.api:DVCFileSystem"
 [project.entry-points."pytest11"]
-dvc-testing = "dvc.testing"
+dvc-testing = "dvc.testing.plugin"
 
 [tool.setuptools]
 license-files = ["LICENSE"]
