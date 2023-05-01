@@ -29,11 +29,18 @@ Stages = List["Stage"]
 logger = logging.getLogger(__name__)
 
 
-OVERLAPPING_OUTPUT_FMT = (
+OVERLAPPING_CHILD_FMT = (
     "Cannot add '{out}', because it is overlapping with other "
     "DVC tracked output: '{parent}'.\n"
     "To include '{out}' in '{parent}', run "
     "'dvc commit {parent_stage}'"
+)
+
+OVERLAPPING_PARENT_FMT = (
+    "Cannot add '{parent}', because it is overlapping with other "
+    "DVC tracked output: '{out}'.\n"
+    "To include '{out}' in '{parent}', run "
+    "'dvc remove {out_stage}' and then 'dvc add {parent}'"
 )
 
 
@@ -86,11 +93,18 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
     try:
         yield
     except OverlappingOutputPathsError as exc:
-        msg = OVERLAPPING_OUTPUT_FMT.format(
-            out=exc.overlapping_out.fs_path,
-            parent=exc.parent.fs_path,
-            parent_stage=exc.parent.stage.addressing,
-        )
+        if exc.parent in [o for s in stages for o in s.outs]:
+            msg = OVERLAPPING_PARENT_FMT.format(
+                out=exc.overlapping_out,
+                parent=exc.parent,
+                out_stage=exc.overlapping_out.stage.addressing,
+            )
+        else:
+            msg = OVERLAPPING_CHILD_FMT.format(
+                out=exc.overlapping_out,
+                parent=exc.parent,
+                parent_stage=exc.parent.stage.addressing,
+            )
         raise OverlappingOutputPathsError(  # noqa: B904
             exc.parent, exc.overlapping_out, msg
         )
