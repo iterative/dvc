@@ -14,7 +14,12 @@ class CmdGetUrl(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            Repo.get_url(self.args.url, out=self.args.out, jobs=self.args.jobs)
+            Repo.get_url(
+                self.args.url,
+                out=self.args.out,
+                jobs=self.args.jobs,
+                force=self.args.force,
+            )
             return 0
         except DvcException:
             logger.exception("failed to get '%s'", self.args.url)
@@ -45,5 +50,12 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    get_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Override local file or folder if exists.",
     )
     get_parser.set_defaults(func=CmdGetUrl)

@@ -255,9 +255,10 @@ def env2bool(var, undefined=False):
     return bool(re.search("1|y|yes|true", var, flags=re.I))
 
 
-def resolve_output(inp, out):
-    import errno
+def resolve_output(inp, out, force=False):
     from urllib.parse import urlparse
+
+    from dvc.exceptions import FileExistsLocallyError
 
     name = os.path.basename(os.path.normpath(urlparse(inp).path))
     if not out:
@@ -267,8 +268,9 @@ def resolve_output(inp, out):
     else:
         ret = out
 
-    if os.path.exists(ret):
-        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), ret)
+    if os.path.exists(ret) and not force:
+        hint = "\nTo override it, re-run with '--force'."
+        raise FileExistsLocallyError(ret, hint=hint)
 
     return ret
 

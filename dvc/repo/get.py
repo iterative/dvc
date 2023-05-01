@@ -34,7 +34,7 @@ def resolve_artifact_path(path):
     return dvcyaml, path
 
 
-def get(url, path, out=None, rev=None, jobs=None):
+def get(url, path, out=None, rev=None, jobs=None, force=False):
     import shortuuid
 
     from dvc.dvcfile import is_valid_filename
@@ -42,7 +42,7 @@ def get(url, path, out=None, rev=None, jobs=None):
     from dvc.fs.callbacks import Callback
 
     dvcyaml, path = resolve_artifact_path(path)
-    out = resolve_output(path, out)
+    out = resolve_output(path, out, force=force)
 
     if is_valid_filename(out):
         raise GetDVCFileError()

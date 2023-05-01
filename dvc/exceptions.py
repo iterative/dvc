@@ -1,4 +1,5 @@
 """Exceptions raised by the dvc."""
+import errno
 from typing import Dict, List
 
 from dvc.utils import format_link
@@ -204,6 +205,18 @@ class ETagMismatchError(DvcException):
             "ETag mismatch detected when copying file to cache! "
             "(expected: '{}', actual: '{}')".format(etag, cached_etag)
         )
+
+
+class FileExistsLocallyError(FileExistsError, DvcException):
+    def __init__(self, path, hint=None):
+        import os.path
+
+        self.path = path
+        hint = "" if hint is None else f". {hint}"
+        path_typ = "directory" if os.path.isdir(path) else "file"
+        msg = f"The {path_typ} '{path}' already exists locally{hint}"
+        super().__init__(msg)
+        self.errno = errno.EEXIST
 
 
 class FileMissingError(DvcException):

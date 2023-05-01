@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 SHOW_MAX_WIDTH = 1024
 
 
-CellT = Union[str, "RichText"]  # RichText is mostly compatible with str
+CellT = Union[str, "RichText", None]  # RichText is mostly compatible with str
 Row = Sequence[CellT]
 TableData = Sequence[Row]
 Headers = Sequence[str]

@@ -41,6 +41,7 @@ def test_add(mocker, dvc):
         labels=None,
         meta=None,
         jobs=None,
+        force=False,
     )
 
 
@@ -78,6 +79,7 @@ def test_add_to_remote(mocker):
         labels=None,
         meta=None,
         jobs=None,
+        force=False,
     )
 
 

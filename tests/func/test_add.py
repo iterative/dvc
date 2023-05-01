@@ -468,6 +468,28 @@ def test_should_throw_proper_exception_on_corrupted_stage_file(caplog, tmp_dir, 
     assert expected_error in caplog.text
 
 
+def test_should_throw_proper_exception_on_existing_out(caplog, tmp_dir, dvc):
+    tmp_dir.gen({"foo": "foo"})
+    (tmp_dir / "out").write_text("old contents")
+
+    assert main(["add", "foo", "--out", "out"]) == 1
+
+    assert (tmp_dir / "out").read_text() == "old contents"
+    expected_error_lines = [
+        "Error: The file 'out' already exists locally.",
+        "To override it, re-run with '--force'.",
+    ]
+    assert all(line in caplog.text for line in expected_error_lines)
+
+
+def test_add_force_overwrite_out(caplog, tmp_dir, dvc):
+    tmp_dir.gen({"foo": "foo"})
+    (tmp_dir / "out").write_text("old contents")
+
+    assert main(["add", "foo", "--out", "out", "--force"]) == 0
+    assert (tmp_dir / "foo").read_text() == "foo"
+
+
 def test_add_filename(tmp_dir, dvc):
     tmp_dir.gen({"foo": "foo", "bar": "bar", "data": {"file": "file"}})
     ret = main(["add", "foo", "bar", "--file", "error.dvc"])

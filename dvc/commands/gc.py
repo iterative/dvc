@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdGC(CmdBase):
-    def run(self):  # noqa: C901
+    def run(self):  # noqa: C901, PLR0912
         from dvc.repo.gc import _validate_args
 
         _validate_args(
@@ -22,6 +22,8 @@ class CmdGC(CmdBase):
             workspace=self.args.workspace,
             rev=self.args.rev,
             num=self.args.num,
+            cloud=self.args.cloud,
+            not_in_remote=self.args.not_in_remote,
         )
 
         if self.args.rev:
@@ -46,6 +48,10 @@ class CmdGC(CmdBase):
 
         if self.args.all_experiments:
             msg += " and all experiments"
+
+        if self.args.not_in_remote:
+            msg += " that are present in the DVC remote"
+
         if self.args.repos:
             msg += " of the current and the following repos:"
 
@@ -74,6 +80,7 @@ class CmdGC(CmdBase):
             workspace=self.args.workspace,
             rev=self.args.rev,
             num=self.args.num,
+            not_in_remote=self.args.not_in_remote,
         )
         return 0
 
@@ -156,6 +163,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Keep data files for all experiments.",
+    )
+    gc_parser.add_argument(
+        "--not-in-remote",
+        action="store_true",
+        default=False,
+        help="Keep data files that are not present in the remote.",
     )
     gc_parser.add_argument(
         "-c",

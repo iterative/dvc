@@ -32,6 +32,7 @@ def get_dvc_info():
         f"Platform: Python {platform.python_version()} on {platform.platform()}",
         f"Subprojects:{_get_subprojects()}",
         f"Supports:{_get_supported_remotes()}",
+        f"Config:{_get_config_dirs()}",
     ]
 
     try:
@@ -42,7 +43,7 @@ def get_dvc_info():
             # `dvc config cache.shared group`.
             if os.path.exists(repo.cache.local.path):
                 info.append(f"Cache types: {_get_linktype_support_info(repo)}")
-                fs_type = get_fs_type(repo.cache.local.path)
+                fs_type = _get_fs_type(repo.cache.local.path)
                 info.append(f"Cache directory: {fs_type}")
             else:
                 info.append("Cache types: " + error_link("no-dvc-cache"))
@@ -51,7 +52,7 @@ def get_dvc_info():
             info.append(f"Remotes: {_get_remotes(repo.config)}")
 
             root_directory = repo.root_dir
-            fs_root = get_fs_type(os.path.abspath(root_directory))
+            fs_root = _get_fs_type(os.path.abspath(root_directory))
             info.append(f"Workspace directory: {fs_root}")
             info.append(f"Repo: {_get_dvc_repo_info(repo)}")
             info.append(f"Repo.site_cache_dir: {repo.site_cache_dir}")
@@ -136,7 +137,18 @@ def _get_supported_remotes():
     return "\n\t" + ",\n\t".join(supported_remotes)
 
 
-def get_fs_type(path):
+def _get_config_dirs():
+    from dvc.config import Config
+
+    dirs = [
+        f"Global: {Config.get_dir('global')}",
+        f"System: {Config.get_dir('system')}",
+    ]
+
+    return "\n\t" + "\n\t".join(dirs)
+
+
+def _get_fs_type(path):
     partition = {}
     for part in psutil.disk_partitions(all=True):
         if part.fstype:
@@ -155,11 +167,11 @@ def get_fs_type(path):
     return ("unknown", "none")
 
 
-def _get_dvc_repo_info(self):
-    if self.config.get("core", {}).get("no_scm", False):
+def _get_dvc_repo_info(repo):
+    if repo.config.get("core", {}).get("no_scm", False):
         return "dvc (no_scm)"
 
-    if self.root_dir != self.scm.root_dir:
+    if repo.root_dir != repo.scm.root_dir:
         return "dvc (subdir), git"
 
     return "dvc, git"

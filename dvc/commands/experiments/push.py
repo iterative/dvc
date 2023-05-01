@@ -52,7 +52,9 @@ class CmdExperimentsPush(CmdBase):
             ui.write(humanize.get_summary(stats.items()))
 
         if project_url := result.get("url"):
-            ui.write("[yellow]View your experiments at", project_url, styled=True)
+            ui.rich_print(
+                "View your experiments at", project_url, style="yellow", soft_wrap=True
+            )
 
     def run(self):
         from dvc.repo.experiments.push import UploadError
