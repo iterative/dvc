@@ -38,6 +38,7 @@ class CmdRepro(CmdBase):
             "recursive": self.args.recursive,
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
+            "pull_missing_deps": self.args.pull_missing_deps,
         }
 
     @property
@@ -133,6 +134,15 @@ and then the stage name name.
         help=(
             "Try automatically pulling missing cache for outputs restored "
             "from the run-cache."
+        ),
+    )
+    repro_parser.add_argument(
+        "--pull-missing-deps",
+        action="store_true",
+        default=False,
+        help=(
+            "Try automatically pulling missing dependencies for stages and skip"
+            "the stages without local changes."
         ),
     )
     repro_parser.add_argument(

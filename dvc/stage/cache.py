@@ -115,6 +115,7 @@ class StageCache:
             path="dvc.yaml",
             cmd=cache["cmd"],
             wdir=wdir,
+            deps=[dep["path"] for dep in cache["deps"]],
             outs=[out["path"] for out in cache["outs"]],
             external=True,
         )

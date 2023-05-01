@@ -125,8 +125,8 @@ def reproduce(  # noqa: C901, PLR0912
                 )
             )
 
-    if kwargs.get("pull", False):
-        logger.debug("Pulling run cache")
+    if kwargs.get("pull", False) or kwargs.get("pull_missing_deps", False):
+        logger.info("Pulling run cache.")
         self.stage_cache.pull(None)
 
     return _reproduce_stages(self.index.graph, list(stages), **kwargs)
@@ -138,6 +138,7 @@ def _reproduce_stages(  # noqa: C901, PLR0912
     downstream=False,
     single_item=False,
     on_unchanged=None,
+    pull_missing_deps=False,
     **kwargs,
 ):
     r"""Derive the evaluation of the given node for the given graph.
@@ -194,10 +195,39 @@ def _reproduce_stages(  # noqa: C901, PLR0912
             )
 
         try:
-            if kwargs.get("pull", False):
+            if pull_missing_deps:
+                if stage.is_data_source or stage.is_import:
+                    logger.info("Skipping %s because is data source.", stage.addressing)
+                    continue
+
+                deps_status = stage._status(stage.deps)
+                if not stage.changed_stage() and all(
+                    v == "deleted" for v in _values(deps_status)
+                ):
+                    logger.info(
+                        "Skipping %s because no local changes.", stage.addressing
+                    )
+                    continue
+
+                stage.save_deps(allow_missing=True)
+                cache = stage.repo.stage_cache._load(stage)
+                if cache is not None:
+                    logger.info(
+                        "Skipping %s because it is in run cache.", stage.addressing
+                    )
+                    cached_stage = stage.repo.stage_cache._create_stage(
+                        cache, wdir=stage.wdir
+                    )
+                    cached_stage.name = stage.name
+                    cached_stage.desc = stage.desc
+                    cached_stage.meta = stage.meta
+                    cached_stage.deps = stage.deps
+                    cached_stage.dump(update_pipeline=False)
+                    continue
+
                 for dep in stage.deps:
                     if not dep.exists:
-                        logger.debug("Pulling missing dependency %s.", dep.def_path)
+                        logger.info("Pulling missing dependency %s.", dep.def_path)
                         stage.repo.pull(dep.def_path)
 
             ret = _reproduce_stage(stage, **kwargs)
@@ -278,3 +308,11 @@ def _get_steps(graph, stages, downstream, single_item):
 
 def _repro_callback(experiments_callback, unchanged, stages):
     experiments_callback(unchanged, stages)
+
+
+def _values(d):
+    for v in d.values():
+        if isinstance(v, dict):
+            yield from _values(v)
+        else:
+            yield v
