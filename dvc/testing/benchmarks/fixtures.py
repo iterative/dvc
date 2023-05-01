@@ -63,7 +63,7 @@ def dvc_bin(
     make_dvc_venv,
     dvc_git_repo,
     bench_config,
-    request,  # noqa: ARG001
+    request,
 ):
     if dvc_rev:
         venv = dvc_venvs.get(dvc_rev)
@@ -82,6 +82,7 @@ def dvc_bin(
         return check_output([dvc_bin, *args], text=True)  # nosec B603
 
     _dvc_bin.version = parse_tuple(_dvc_bin("--version"))  # type: ignore[attr-defined]
+    _skip_if_dvc_version_lt_required(request, _dvc_bin)
     return _dvc_bin
 
 
@@ -93,8 +94,7 @@ def parse_tuple(version_string):
     return (parsed.major, parsed.minor, parsed.micro)
 
 
-@pytest.fixture(autouse=True)
-def skip_if_dvc_version_lt_required(request, dvc_bin):
+def _skip_if_dvc_version_lt_required(request, dvc_bin):
     if marker := request.node.get_closest_marker("requires"):
         minversion = marker.kwargs.get("minversion") or first(marker.args)
         assert minversion, (
@@ -153,7 +153,7 @@ def _pull(repo, *args):
 
 
 @pytest.fixture
-def make_dataset(request, bench_config, tmp_dir, dvc_bench_git_repo):  # noqa: ARG001
+def make_dataset(request, bench_config, tmp_dir, dvc_bench_git_repo):
     def _make_dataset(
         dvcfile=False, files=True, cache=False, commit=False, remote=False
     ):
