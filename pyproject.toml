@@ -287,6 +287,7 @@ ignore-names = ["M", "SCM"]
 [tool.ruff.per-file-ignores]
 "dvc/commands/**" = ["N806"]
 "dvc/testing/**" = ["ARG002"]
+"dvc/testing/benchmarks/**" = ["ARG001"]
 "scripts/**" = ["T201", "INP001", "TRY002"]
 
 [tool.ruff.pylint]
