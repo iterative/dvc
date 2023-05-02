@@ -300,7 +300,7 @@ class BaseExecutor(ABC):
             include_untracked.append(LOCK_FILE)
 
         try:
-            stages = dvc.commit([], force=True, relink=False)
+            stages = dvc.commit([], relink=False)
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
                 dvc.scm.add(include_untracked)

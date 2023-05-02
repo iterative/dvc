@@ -372,7 +372,7 @@ def test_run_external_outputs(
     assert not (tmp_dir / "dvc.lock").exists()
 
     local_workspace.gen("bar", "bar")
-    dvc.commit("dvc.yaml", force=True)
+    dvc.commit("dvc.yaml")
 
     assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
     assert (tmp_dir / "dvc.lock").read_text() == (

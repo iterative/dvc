@@ -21,8 +21,10 @@ class CmdCommit(CmdBase):
                     target,
                     with_deps=self.args.with_deps,
                     recursive=self.args.recursive,
-                    force=self.args.force,
                 )
+            except FileNotFoundError:
+                logger.exception("")
+                return 1
             except DvcException:
                 logger.exception("failed to commit%s", (" " + target) if target else "")
                 return 1

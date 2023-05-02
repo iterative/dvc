@@ -39,7 +39,7 @@ def test_from_gitfs_when_pwd_not_in_root(tmp_dir, scm, dvc, stage_wdir, cwd, tar
         json.dumps({"stages": {"train": {"cmd": "echo foo > foo", "outs": ["foo"]}}})
     )
     path.gen({"foo": "foo"})
-    dvc.commit(None, force=True)
+    dvc.commit(None)
     tmp_dir.scm_add(
         [path / file for file in ("dvc.yaml", "dvc.lock", ".gitignore")],
         commit="add files",

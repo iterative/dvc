@@ -6,7 +6,6 @@ import pytest
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dvcfile import PROJECT_FILE
 from dvc.output import OutputDoesNotExistError
-from dvc.stage.exceptions import StageCommitError
 
 
 def test_commit_recursive(tmp_dir, dvc):
@@ -18,25 +17,6 @@ def test_commit_recursive(tmp_dir, dvc):
 
     dvc.commit("dir", recursive=True)
     assert dvc.status() == {}
-
-
-def test_commit_force(tmp_dir, dvc):
-    tmp_dir.gen({"dir": {"file": "text1", "file2": "text2"}})
-    (stage,) = dvc.add("dir", no_commit=True)
-
-    assert stage.outs[0].changed_cache()
-
-    tmp_dir.gen("dir/file", "file content modified")
-
-    assert stage.outs[0].changed_cache()
-
-    with pytest.raises(StageCommitError):
-        dvc.commit(stage.path)
-
-    assert stage.outs[0].changed_cache()
-
-    dvc.commit(stage.path, force=True)
-    assert dvc.status([stage.path]) == {}
 
 
 def test_commit_preserve_fields(tmp_dir, dvc):
@@ -102,27 +82,12 @@ def test_commit_with_deps(tmp_dir, dvc, run_copy, run_kw):
     assert not stage.outs[0].changed_cache()
 
 
-def test_commit_changed_md5(tmp_dir, dvc):
-    tmp_dir.gen({"file": "file content"})
-    (stage,) = dvc.add("file", no_commit=True)
-
-    stage_file_content = (tmp_dir / stage.path).parse()
-    stage_file_content["md5"] = "1111111111"
-    (tmp_dir / stage.path).dump(stage_file_content)
-
-    with pytest.raises(StageCommitError):
-        dvc.commit(stage.path)
-
-    dvc.commit(stage.path, force=True)
-    assert "md5" not in (tmp_dir / stage.path).parse()
-
-
 def test_commit_no_exec(tmp_dir, dvc):
     tmp_dir.gen({"dep": "dep", "out": "out"})
     stage = dvc.run(name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True)
 
     assert dvc.status(stage.path)
-    dvc.commit(stage.path, force=True)
+    dvc.commit(stage.path)
     assert dvc.status(stage.path) == {}
 
 
@@ -181,25 +146,30 @@ def test_commit_granular_dir(tmp_dir, dvc):
 
     dvc.commit(os.path.join("data", "foo"))
     assert set(cache.glob("*/*")) == {
-        cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
+        cache / "84" / "fe43362de8f1634c6fd2900440e9e2.dir",
         cache / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
     }
 
     dvc.commit(os.path.join("data", "subdir"))
     assert set(cache.glob("*/*")) == {
-        cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
+        cache / "84" / "fe43362de8f1634c6fd2900440e9e2.dir",
         cache / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
         cache / "4c" / "e8d2a2cf314a52fa7f315ca37ca445",
         cache / "68" / "dde2c3c4e7953c2290f176bbdc9a54",
+        cache / "26" / "d6b64d96a660707412f523e8184b5f.dir",
+        cache / "23" / "dae188d1babe6223f8528a2e956b15.dir",
     }
 
     dvc.commit(os.path.join("data"))
     assert set(cache.glob("*/*")) == {
-        cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
+        cache / "84" / "fe43362de8f1634c6fd2900440e9e2.dir",
         cache / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
         cache / "4c" / "e8d2a2cf314a52fa7f315ca37ca445",
         cache / "68" / "dde2c3c4e7953c2290f176bbdc9a54",
         cache / "37" / "b51d194a7513e45b56f6524f2d51f2",
+        cache / "26" / "d6b64d96a660707412f523e8184b5f.dir",
+        cache / "23" / "dae188d1babe6223f8528a2e956b15.dir",
+        cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
     }
 
 
@@ -208,7 +178,7 @@ def test_commit_no_exec_missing_dep(tmp_dir, dvc):
     assert dvc.status(stage.path)
 
     with pytest.raises(DependencyDoesNotExistError):
-        dvc.commit(stage.path, force=True)
+        dvc.commit(stage.path)
 
 
 def test_commit_no_exec_missing_out(tmp_dir, dvc):
@@ -216,14 +186,14 @@ def test_commit_no_exec_missing_out(tmp_dir, dvc):
     assert dvc.status(stage.path)
 
     with pytest.raises(OutputDoesNotExistError):
-        dvc.commit(stage.path, force=True)
+        dvc.commit(stage.path)
 
 
 def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
     assert dvc.status(stage.addressing)
-    assert dvc.commit(stage.addressing, force=True) == [stage]
+    assert dvc.commit(stage.addressing) == [stage]
     assert not dvc.status(stage.addressing)
 
     # just to confirm different variants work
@@ -274,7 +244,7 @@ def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
     (data / "foo").write_text("foo")
     (data / "bar").write_text("bar2")
 
-    dvc.commit("data", force=True)
+    dvc.commit("data")
 
     assert (tmp_dir / "data.dvc").parse() == {
         "outs": [

@@ -623,7 +623,7 @@ def test_parameterized_repo(tmp_dir, dvc, scm, erepo_dir, paths):
     )
     path.gen({"foo": "foo"})
     with path.chdir():
-        erepo_dir.dvc.commit(None, force=True)
+        erepo_dir.dvc.commit(None)
         erepo_dir.scm.add_commit(
             ["params.yaml", "dvc.yaml", "dvc.lock", ".gitignore"],
             message="init",

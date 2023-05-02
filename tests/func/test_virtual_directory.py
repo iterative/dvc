@@ -1,11 +1,15 @@
 import shutil
 from os.path import join
 
+import pytest
+
+from dvc.repo import Repo
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 
 
-def test_virtual_add(tmp_dir, dvc, remote):
+@pytest.mark.parametrize("add_or_commit", [Repo.add, Repo.commit])
+def test_virtual_add(tmp_dir, dvc, remote, add_or_commit):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
 
     (stage,) = dvc.add("dir")
@@ -22,7 +26,7 @@ def test_virtual_add(tmp_dir, dvc, remote):
     tmp_dir.gen(
         {"dir": {"foobar": "foobar", "lorem": "ipsum", "subdir": {"file": "file"}}}
     )
-    (stage,) = dvc.add("dir/foobar")
+    (stage,) = add_or_commit(dvc, "dir/foobar")
 
     out = stage.outs[0]
     assert out.hash_info == HashInfo(
@@ -31,7 +35,7 @@ def test_virtual_add(tmp_dir, dvc, remote):
     assert out.meta == Meta(isdir=True, size=12, nfiles=3)
     assert dvc.push() == 2
 
-    (stage,) = dvc.add("dir/subdir")
+    (stage,) = add_or_commit(dvc, "dir/subdir")
     out = stage.outs[0]
     assert out.hash_info == HashInfo(
         name="md5", value="de78e9fff7c3478c6b316bf08437d0f6.dir"
@@ -40,7 +44,8 @@ def test_virtual_add(tmp_dir, dvc, remote):
     assert dvc.push() == 2
 
 
-def test_virtual_remove(tmp_dir, dvc, remote):
+@pytest.mark.parametrize("add_or_commit", [Repo.add, Repo.commit])
+def test_virtual_remove(tmp_dir, dvc, remote, add_or_commit):
     tmp_dir.gen(
         {
             "dir": {
@@ -63,7 +68,7 @@ def test_virtual_remove(tmp_dir, dvc, remote):
     dvc.cache.local.clear()
 
     (tmp_dir / "dir" / "foo").unlink()
-    (stage,) = dvc.add("dir/foo")
+    (stage,) = add_or_commit(dvc, "dir/foo")
 
     out = stage.outs[0]
     assert out.hash_info == HashInfo(
@@ -74,7 +79,7 @@ def test_virtual_remove(tmp_dir, dvc, remote):
     assert dvc.push() == 1
 
     shutil.rmtree(tmp_dir / "dir" / "subdir")
-    (stage,) = dvc.add("dir/subdir")
+    (stage,) = add_or_commit(dvc, "dir/subdir")
 
     out = stage.outs[0]
     assert out.hash_info == HashInfo(
@@ -84,7 +89,8 @@ def test_virtual_remove(tmp_dir, dvc, remote):
     assert dvc.push() == 1
 
 
-def test_virtual_update_dir(tmp_dir, dvc, remote):
+@pytest.mark.parametrize("add_or_commit", [Repo.add, Repo.commit])
+def test_virtual_update_dir(tmp_dir, dvc, remote, add_or_commit):
     tmp_dir.gen({"dir": {"foo": "foo", "subdir": {"lorem": "lorem"}}})
     (stage,) = dvc.add("dir")
     out = stage.outs[0]
@@ -99,7 +105,7 @@ def test_virtual_update_dir(tmp_dir, dvc, remote):
     shutil.rmtree("dir")
 
     tmp_dir.gen({"dir": {"subdir": {"ipsum": "lorem ipsum", "file": "file"}}})
-    (stage,) = dvc.add("dir/subdir")
+    (stage,) = add_or_commit(dvc, "dir/subdir")
 
     out = stage.outs[0]
     assert out.hash_info == HashInfo(
@@ -109,7 +115,8 @@ def test_virtual_update_dir(tmp_dir, dvc, remote):
     assert dvc.push() == 3
 
 
-def test_virtual_update_file(tmp_dir, dvc, remote):
+@pytest.mark.parametrize("add_or_commit", [Repo.add, Repo.commit])
+def test_virtual_update_file(tmp_dir, dvc, remote, add_or_commit):
     tmp_dir.gen({"dir": {"foo": "foo", "subdir": {"lorem": "lorem"}}})
     (stage,) = dvc.add("dir")
     out = stage.outs[0]
@@ -124,7 +131,7 @@ def test_virtual_update_file(tmp_dir, dvc, remote):
     shutil.rmtree("dir")
 
     tmp_dir.gen({"dir": {"foo": "foobar"}})
-    (stage,) = dvc.add("dir/foo")
+    (stage,) = add_or_commit(dvc, "dir/foo")
     out = stage.outs[0]
     assert out.hash_info == HashInfo(
         name="md5", value="49408ac059c76086a3a892129a324b60.dir"
@@ -133,7 +140,8 @@ def test_virtual_update_file(tmp_dir, dvc, remote):
     assert dvc.push() == 2
 
 
-def test_virtual_update_noop(tmp_dir, dvc, remote):
+@pytest.mark.parametrize("add_or_commit", [Repo.add, Repo.commit])
+def test_virtual_update_noop(tmp_dir, dvc, remote, add_or_commit):
     tmp_dir.gen({"dir": {"foo": "foo", "subdir": {"lorem": "lorem"}}})
 
     (stage,) = dvc.add("dir")
@@ -150,7 +158,7 @@ def test_virtual_update_noop(tmp_dir, dvc, remote):
 
     tmp_dir.gen({"dir": {"foo": "foo", "subdir": {"lorem": "lorem"}}})
 
-    (stage,) = dvc.add("dir/foo")
+    (stage,) = add_or_commit(dvc, "dir/foo")
     out = stage.outs[0]
     assert out.hash_info == hash_info
     assert out.meta == meta
@@ -158,14 +166,15 @@ def test_virtual_update_noop(tmp_dir, dvc, remote):
 
     dvc.cache.local.clear()
 
-    (stage,) = dvc.add("dir/subdir")
+    (stage,) = add_or_commit(dvc, "dir/subdir")
     out = stage.outs[0]
     assert out.hash_info == hash_info
     assert out.meta == meta
     assert not dvc.push()
 
 
-def test_partial_checkout_and_update(M, tmp_dir, dvc, remote):
+@pytest.mark.parametrize("add_or_commit", [Repo.add, Repo.commit])
+def test_partial_checkout_and_update(M, tmp_dir, dvc, remote, add_or_commit):
     tmp_dir.gen({"dir": {"foo": "foo", "subdir": {"lorem": "lorem"}}})
 
     (stage,) = dvc.add("dir")
@@ -187,7 +196,7 @@ def test_partial_checkout_and_update(M, tmp_dir, dvc, remote):
     assert (tmp_dir / "dir").read_text() == {"subdir": {"lorem": "lorem"}}
 
     tmp_dir.gen({"dir": {"subdir": {"ipsum": "ipsum"}}})
-    (stage,) = dvc.add("dir/subdir/ipsum")
+    (stage,) = add_or_commit(dvc, "dir/subdir/ipsum")
 
     out = stage.outs[0]
     assert out.hash_info == HashInfo(

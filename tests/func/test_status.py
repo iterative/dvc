@@ -136,7 +136,7 @@ def test_params_without_targets(tmp_dir, dvc):
     (tmp_dir / "params.yaml").touch()
     assert dvc.status() == {"test": [{"changed deps": {"params.yaml": "new"}}]}
 
-    dvc.commit("test", force=True)
+    dvc.commit("test")
     # make sure that we are able to keep track of "empty" contents
     # and be able to distinguish between no-lock-entry and empty-lock-entry.
     assert (tmp_dir / "dvc.lock").parse() == {
@@ -149,7 +149,7 @@ def test_params_without_targets(tmp_dir, dvc):
     assert dvc.status() == {
         "test": [{"changed deps": {"params.yaml": {"bar": "new", "foo": "new"}}}]
     }
-    dvc.commit("test", force=True)
+    dvc.commit("test")
 
     (tmp_dir / "params.yaml").dump({"foo": "foobar", "lorem": "ipsum"})
     assert dvc.status() == {

@@ -109,7 +109,7 @@ def test_tracked_directory_deep(M, tmp_dir, dvc, scm):
     scm.add_commit(["sub/dir.dvc", "sub/.gitignore"], message="add sub/dir")
 
     (tmp_dir / "sub" / "dir").gen("bar", "bar")
-    dvc.commit(None, force=True)
+    dvc.commit(None)
     (tmp_dir / "sub" / "dir").gen("foobar", "foobar")
 
     assert dvc.data_status() == {
