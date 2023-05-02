@@ -20,9 +20,9 @@ Warning! This fork contains several modifications:
  * ``deps``, ``outs`` and ``metrics`` can be referred in the command in ``dvc.yaml`` using ``${outs[0]}`` or
    ``${outs.myname}``
  * Ternary operator in variables substitution, e.g.: ``${cond?var1:"some string"}``
- * ``--allow-no-hash`` option for ``pull`` and ``checkout``: Don't treat missing hash as error. Simply don't checkout
    these files. It makes perfect sense for non-source files (outputs of some stages).
  * ``stages`` in ``dvc.lock`` are sorted to simplify changes detection
+ * ``--both`` option in ``dag`` command to show both files and stages.
 
 |
 

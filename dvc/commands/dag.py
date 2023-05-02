@@ -31,6 +31,9 @@ def _quote_label(node):
     return label
 
 
+DOT_STYLES = {"stage": {"shape": "box"}, "file": {"shape": "parallelogram"}}
+
+
 def _show_dot(graph: "DiGraph"):
     import io
 
@@ -40,6 +43,11 @@ def _show_dot(graph: "DiGraph"):
     dot_file = io.StringIO()
 
     nx.relabel_nodes(graph, _quote_label, copy=False)
+    for node, data in graph.nodes(data=True):
+        if "type" in data:
+            data.update(DOT_STYLES[data["type"]])
+            del data["type"]
+
     write_dot(graph.reverse(), dot_file)
     return dot_file.getvalue()
 
@@ -92,7 +100,34 @@ def _collect_targets(repo, target, outs):
     return targets
 
 
-def _transform(index, outs):
+def _get_both_stages_and_files(index):
+    from typing import Dict
+
+    import networkx as nx
+
+    from dvc.output import Output
+
+    g = nx.DiGraph()
+    files: Dict[tuple, Output] = {}  # Out
+    for stage in index.graph.nodes:
+        g.add_node(stage, type="stage")
+        for dep in stage.deps:
+            if dep.index_key not in files:
+                files[dep.index_key] = dep
+                g.add_node(dep, type="file")
+            dep_repr = files[dep.index_key]
+            g.add_edge(stage, dep_repr)  # this is reversed in _show_* functions
+        for out in stage.outs:
+            if out.index_key not in files:
+                files[out.index_key] = out
+                g.add_node(out, type="file")
+            out_repr = files[out.index_key]
+            g.add_edge(out_repr, stage)
+
+    return g
+
+
+def _transform(index, outs, both):
     import networkx as nx
 
     from dvc.stage import Stage
@@ -100,7 +135,12 @@ def _transform(index, outs):
     def _relabel(node) -> str:
         return node.addressing if isinstance(node, Stage) else str(node)
 
-    graph = index.outs_graph if outs else index.graph
+    if both:
+        graph = _get_both_stages_and_files(index)
+    elif outs:
+        graph = index.outs_graph
+    else:
+        graph = index.graph
     return nx.relabel_nodes(graph, _relabel, copy=True)
 
 
@@ -127,9 +167,9 @@ def _filter(graph, targets, full):
     return new_graph
 
 
-def _build(repo, target=None, full=False, outs=False):
-    targets = _collect_targets(repo, target, outs)
-    graph = _transform(repo.index, outs)
+def _build(repo, target=None, full=False, outs=False, both=False):
+    targets = _collect_targets(repo, target, outs or both)
+    graph = _transform(repo.index, outs, both)
     return _filter(graph, targets, full)
 
 
@@ -140,6 +180,7 @@ class CmdDAG(CmdBase):
             target=self.args.target,
             full=self.args.full,
             outs=self.args.outs,
+            both=self.args.both,
         )
 
         if self.args.dot:
@@ -197,6 +238,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Print output files instead of stages.",
+    )
+    dag_parser.add_argument(
+        "-b",
+        "--both",
+        action="store_true",
+        default=False,
+        help="Print both stages and input/output files.",
     )
     dag_parser.add_argument(
         "target",
