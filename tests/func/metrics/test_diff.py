@@ -34,7 +34,7 @@ def test_metrics_diff_yaml(tmp_dir, scm, dvc, run_copy_metrics):
 
     expected = {
         "m.yaml": {
-            "a.b.e": {"old": "1", "new": "3", "diff": ""},
+            "a.b.e": {"old": "1", "new": "3"},
             "a.b.c": {"old": 1, "new": 3, "diff": 2},
         }
     }
@@ -54,7 +54,7 @@ def test_metrics_diff_json(tmp_dir, scm, dvc, run_copy_metrics):
 
     expected = {
         "m.json": {
-            "a.b.e": {"old": "1", "new": "3", "diff": ""},
+            "a.b.e": {"old": "1", "new": "3"},
             "a.b.c": {"old": 1, "new": 3, "diff": 2},
         }
     }
