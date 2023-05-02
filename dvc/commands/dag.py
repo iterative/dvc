@@ -95,7 +95,7 @@ def _collect_targets(repo, target, outs):
             continue
 
         for out in outs_trie.itervalues(prefix=repo.fs.path.parts(path)):  # noqa: B301
-            targets.extend(str(out))
+            targets.append(str(out))
 
     return targets
 
