@@ -1,480 +1,390 @@
 import logging
-from collections import OrderedDict, defaultdict
-from datetime import datetime
-from enum import Enum
-from itertools import chain
+from collections import Counter, defaultdict
+from datetime import date, datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
+    Literal,
+    Mapping,
+    NamedTuple,
     Optional,
     Set,
     Tuple,
     Union,
 )
 
-from scmrepo.exceptions import SCMError as InnerScmError
+from dvc.exceptions import InvalidArgumentError
+from dvc.scm import Git
+from dvc.ui import ui
+from dvc.utils.flatten import flatten
 
-from dvc.repo.metrics.show import _gather_metrics
-from dvc.repo.params.show import _gather_params
-from dvc.scm import SCMError, iter_revs, resolve_rev
-from dvc.utils import error_handler, onerror_collect, relpath
-
-from .refs import ExpRefInfo
+from .collect import collect
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
-    from scmrepo.git.objects import GitCommit
-
+    from dvc.compare import TabularData
     from dvc.repo import Repo
+    from dvc.ui.table import CellT
+
+    from .serialize import ExpRange, ExpState
 
 logger = logging.getLogger(__name__)
 
 
-class ExpStatus(Enum):
-    Success = 0
-    Queued = 1
-    Running = 2
-    Failed = 3
-
-
-def _is_scm_error(collected_exp: Dict[str, Any]) -> bool:
-    if "error" in collected_exp and (
-        isinstance(collected_exp["error"], SCMError)
-        or isinstance(collected_exp["error"], InnerScmError)
-    ):
-        return True
-    return False
-
-
-def _show_onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
-    onerror_collect(result, exception, *args, **kwargs)
-    result["data"] = {}
-
-
-@error_handler
-def collect_experiment_commit(
-    repo: "Repo",
-    exp_rev: str,
-    status: ExpStatus = ExpStatus.Success,
-    param_deps=False,
-    running: Optional[Dict[str, Any]] = None,
-    onerror: Optional[Callable] = None,
-) -> Dict[str, Any]:
-    from dvc.dependency import ParamsDependency, RepoDependency
-
-    result: Dict[str, Any] = defaultdict(dict)
-    running = running or {}
-    for rev in repo.brancher(revs=[exp_rev]):
-        if rev == "workspace":
-            if exp_rev != "workspace":
-                continue
-            result["timestamp"] = None
-        else:
-            commit = repo.scm.resolve_commit(rev)
-            result["timestamp"] = datetime.fromtimestamp(commit.commit_time)
-
-        params = _gather_params(
-            repo, rev=rev, targets=None, deps=param_deps, onerror=onerror
-        )
-        if params:
-            result["params"] = params
-
-        result["deps"] = {
-            relpath(dep.fs_path, repo.root_dir): {
-                "hash": dep.hash_info.value,
-                "size": dep.meta.size,
-                "nfiles": dep.meta.nfiles,
-            }
-            for dep in repo.index.deps
-            if not isinstance(dep, (ParamsDependency, RepoDependency))
-        }
-        result["outs"] = {
-            relpath(out.fs_path, repo.root_dir): {
-                "hash": out.hash_info.value,
-                "size": out.meta.size,
-                "nfiles": out.meta.nfiles,
-                "use_cache": out.use_cache,
-                "is_data_source": out.stage.is_data_source,
-            }
-            for out in repo.index.outs
-            if not (out.is_metric or out.is_plot)
-        }
-
-        result["status"] = status.name
-        if status == ExpStatus.Running:
-            result["executor"] = running.get(exp_rev, {}).get("location", None)
-        else:
-            result["executor"] = None
-
-        if status == ExpStatus.Failed:
-            result["error"] = {
-                "msg": "Experiment run failed.",
-                "type": "",
-            }
-
-        if status not in {ExpStatus.Queued, ExpStatus.Failed}:
-            vals = _gather_metrics(
-                repo, targets=None, rev=rev, recursive=False, onerror=onerror
-            )
-            result["metrics"] = vals
-
-    return result
-
-
-def _collect_complete_experiment(
-    repo: "Repo",
-    baseline: str,
-    exp_rev: str,
-    running: Dict[str, Any],
-    revs: List[str],
-    **kwargs,
-) -> Dict[str, Dict[str, Any]]:
-    results: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
-
-    checkpoint: bool = True if len(revs) > 1 else False
-    prev = ""
-
-    for rev in revs:
-        status = ExpStatus.Running if rev in running else ExpStatus.Success
-        collected_exp = collect_experiment_commit(
-            repo,
-            rev,
-            status=status,
-            running=running,
-            **kwargs,
-        )
-        if _is_scm_error(collected_exp):
-            return {}
-        if checkpoint:
-            exp = {"checkpoint_tip": exp_rev}
-            if prev:
-                results[prev]["data"][  # type: ignore[unreachable]
-                    "checkpoint_parent"
-                ] = rev
-            if rev in results:
-                results[rev]["data"].update(exp)
-                results.move_to_end(rev)
-            else:
-                exp.update(collected_exp["data"])
-        else:
-            exp = collected_exp["data"]
-        if rev not in results:
-            results[rev] = {"data": exp}
-        prev = rev
-    if checkpoint and prev:
-        results[prev]["data"]["checkpoint_parent"] = baseline
-    return results
-
-
-def _collect_branch(
-    repo: "Repo",
-    baseline: str,
-    running: Dict[str, Any],
-    **kwargs,
-) -> Dict[str, Dict[str, Any]]:
-    results: Dict[str, Dict[str, Any]] = OrderedDict()
-    status = ExpStatus.Running if baseline in running else ExpStatus.Success
-    results["baseline"] = collect_experiment_commit(
-        repo,
-        baseline,
-        status=status,
-        running=running,
-        **kwargs,
-    )
-    if baseline == "workspace" or _is_scm_error(results["baseline"]):
-        return results
-
-    ref_info = ExpRefInfo(baseline_sha=baseline)
-    commits: List[Tuple[str, "GitCommit", str, List[str]]] = []
-
-    for ref in repo.scm.iter_refs(base=str(ref_info)):
-        try:
-            commit = repo.scm.resolve_commit(ref)
-            exp_rev = resolve_rev(repo.scm, ref)
-            revs = list(repo.scm.branch_revs(exp_rev, baseline))
-        except (SCMError, InnerScmError):
-            continue
-        commits.append((ref, commit, exp_rev, revs))
-
-    for exp_ref, _, exp_rev, revs in sorted(
-        commits, key=lambda x: x[1].commit_time, reverse=True
-    ):
-        ref_info = ExpRefInfo.from_ref(exp_ref)
-        assert ref_info.baseline_sha == baseline
-        collected_exp = _collect_complete_experiment(
-            repo,
-            baseline=baseline,
-            exp_rev=exp_rev,
-            running=running,
-            revs=revs,
-            **kwargs,
-        )
-        if _is_scm_error(collected_exp):
-            continue
-        results.update(collected_exp)
-    return results
-
-
-def get_branch_names(
-    scm: "Git", baseline_set: Iterable[str]
-) -> Dict[str, Optional[str]]:
-    names: Dict[str, Optional[str]] = {}
-    for base in [
-        f"refs/exps/{baseline[:2]}/{baseline[2:]}/"
-        for baseline in baseline_set
-    ] + ["refs/heads/", "refs/tags/"]:
-        for ref in scm.iter_refs(base=base):
-            if ref:
-                try:
-                    rev = scm.get_ref(ref)
-                    names[rev] = ref[len(base) :]
-                except KeyError:
-                    logger.debug("unreosolved ref %s", ref)
-    logger.debug("found refs for revs: %s", names)
-    return names
-
-
-def update_names(
-    repo: "Repo",
-    branch_names: Dict[str, Optional[str]],
-    result: Dict[str, Dict[str, Any]],
-):
-
-    rev_set = set()
-    for baseline in result:
-        for rev in result[baseline]:
-            if rev == "baseline":
-                rev = baseline
-            if rev != "workspace":
-                rev_set.add(rev)
-
-    if rev_set:
-        rev_set.difference_update(branch_names.keys())
-
-    exact_name = repo.experiments.get_exact_name(rev_set)
-
-    for baseline, baseline_results in result.items():
-        name_set: Set[str] = set()
-        for rev, rev_result in baseline_results.items():
-            name: Optional[str] = None
-            if rev == "baseline":
-                rev = baseline
-                if rev == "workspace":
-                    continue
-            name = branch_names.get(rev, None) or exact_name[rev]
-            if name and name not in name_set:
-                name_set.add(name)
-                rev_result["data"]["name"] = name
-
-
-def _collect_active_experiment(
-    repo: "Repo",
-    found_revs: Dict[str, List[str]],
-    running: Dict[str, Any],
-    **kwargs,
-) -> Dict[str, Dict[str, Any]]:
-    result: Dict[str, Dict] = defaultdict(OrderedDict)
-    for entry in chain(
-        repo.experiments.tempdir_queue.iter_active(),
-        repo.experiments.celery_queue.iter_active(),
-    ):
-        stash_rev = entry.stash_rev
-        if entry.baseline_rev in found_revs and (
-            stash_rev not in running or not running[stash_rev].get("last")
-        ):
-            collected_exp = collect_experiment_commit(
-                repo,
-                stash_rev,
-                status=ExpStatus.Running,
-                running=running,
-                **kwargs,
-            )
-            if _is_scm_error(collected_exp):
-                continue
-            result[entry.baseline_rev][stash_rev] = collected_exp
-    return result
-
-
-def _collect_queued_experiment(
-    repo: "Repo",
-    found_revs: Dict[str, List[str]],
-    running: Dict[str, Any],
-    **kwargs,
-) -> Dict[str, Dict[str, Any]]:
-    result: Dict[str, Dict] = defaultdict(OrderedDict)
-    for entry in repo.experiments.celery_queue.iter_queued():
-        stash_rev = entry.stash_rev
-        if entry.baseline_rev in found_revs:
-            collected_exp = collect_experiment_commit(
-                repo,
-                stash_rev,
-                status=ExpStatus.Queued,
-                running=running,
-                **kwargs,
-            )
-            if _is_scm_error(collected_exp):
-                continue
-            result[entry.baseline_rev][stash_rev] = collected_exp
-    return result
-
-
-def _collect_failed_experiment(
-    repo: "Repo",
-    found_revs: Dict[str, List[str]],
-    running: Dict[str, Any],
-    **kwargs,
-) -> Dict[str, Dict[str, Any]]:
-    result: Dict[str, Dict] = defaultdict(OrderedDict)
-    for queue_done_result in repo.experiments.celery_queue.iter_failed():
-        entry = queue_done_result.entry
-        stash_rev = entry.stash_rev
-        if entry.baseline_rev in found_revs:
-            collected_exp = collect_experiment_commit(
-                repo,
-                stash_rev,
-                status=ExpStatus.Failed,
-                running=running,
-                **kwargs,
-            )
-            if _is_scm_error(collected_exp):
-                continue
-            result[entry.baseline_rev][stash_rev] = collected_exp
-    return result
-
-
-def update_new(
-    to_dict: Dict[str, Dict[str, Any]], from_dict: Dict[str, Dict[str, Any]]
-):
-    for baseline, experiments in from_dict.items():
-        for rev, experiment in experiments.items():
-            to_dict[baseline][rev] = to_dict[baseline].get(rev, experiment)
-
-
-def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
-    for _, baseline_results in result.items():
-        checkpoint: bool = False
-        head: Dict[str, Any] = {}
-        for rev, rev_data in baseline_results.items():
-            if (
-                "data" not in rev_data
-                or rev_data["data"].get("checkpoint_tip", None) is None
-            ):
-                checkpoint = False
-                head = {}
-                continue
-
-            rev_result: Dict[str, Any] = rev_data["data"]
-            if (
-                checkpoint is True
-                and rev_result["checkpoint_tip"] == head["checkpoint_tip"]
-            ):
-                if "name" in rev_result and "name" not in head:
-                    head["name"] = rev_result["name"]
-                    del rev_result["name"]
-                if rev_result["executor"]:
-                    if not head["executor"]:
-                        head["executor"] = rev_result["executor"]
-                    rev_result["executor"] = None
-                if rev_result["status"] == ExpStatus.Running.name:
-                    head["status"] = ExpStatus.Running.name
-                    rev_result["status"] = ExpStatus.Success.name
-            else:
-                if rev_result["checkpoint_tip"] == rev:
-                    head = rev_result
-                    checkpoint = True
-
-
 def show(
     repo: "Repo",
-    all_branches=False,
-    all_tags=False,
     revs: Union[List[str], str, None] = None,
-    all_commits=False,
-    hide_queued=False,
-    hide_failed=False,
-    sha_only=False,
-    num=1,
-    param_deps=False,
-    onerror: Optional[Callable] = None,
-    fetch_running: bool = True,
-):
-
-    if repo.scm.no_commits:
-        return {}
-
-    onerror = onerror or _show_onerror_collect
-
-    res: Dict[str, Dict] = defaultdict(OrderedDict)
-
-    if not any([revs, all_branches, all_tags, all_commits]):
-        revs = ["HEAD"]
-    if isinstance(revs, str):
-        revs = [revs]
-
-    found_revs: Dict[str, List[str]] = {"workspace": []}
-    found_revs.update(
-        iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
-    )
-    branch_names = get_branch_names(repo.scm, found_revs)
-
-    running: Dict[str, Dict] = repo.experiments.get_running_exps(
-        fetch_refs=fetch_running
-    )
-
-    queued_experiment = (
-        _collect_queued_experiment(
-            repo,
-            found_revs,
-            running,
-            param_deps=param_deps,
-            onerror=onerror,
-        )
-        if not hide_queued
-        else {}
-    )
-
-    active_experiment = _collect_active_experiment(
+    all_branches: bool = False,
+    all_tags: bool = False,
+    all_commits: bool = False,
+    num: int = 1,
+    hide_queued: bool = False,
+    hide_failed: bool = False,
+    sha_only: bool = False,
+    **kwargs,
+) -> List["ExpState"]:
+    return collect(
         repo,
-        found_revs,
-        running,
-        param_deps=param_deps,
-        onerror=onerror,
+        revs=revs,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+        num=num,
+        hide_queued=hide_queued,
+        hide_failed=hide_failed,
+        sha_only=sha_only,
+        **kwargs,
     )
 
-    failed_experiments = (
-        _collect_failed_experiment(
-            repo,
-            found_revs,
-            running,
-            param_deps=param_deps,
-            onerror=onerror,
+
+def tabulate(
+    baseline_states: Iterable["ExpState"],
+    fill_value: Optional[str] = "-",
+    error_value: str = "!",
+    **kwargs,
+) -> Tuple["TabularData", Dict[str, Iterable[str]]]:
+    """Return table data for experiments.
+
+    Returns:
+        Tuple of (table_data, data_headers)
+    """
+    from funcy import lconcat
+    from funcy.seqs import flatten as flatten_list
+
+    from dvc.compare import TabularData
+
+    data_names = _collect_names(baseline_states)
+    metrics_names = data_names.metrics
+    params_names = data_names.params
+    deps_names = data_names.sorted_deps
+
+    headers = [
+        "Experiment",
+        "rev",
+        "typ",
+        "Created",
+        "parent",
+        "State",
+        "Executor",
+    ]
+    names = {**metrics_names, **params_names}
+    counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
+    counter.update(headers)
+    metrics_headers = _normalize_headers(metrics_names, counter)
+    params_headers = _normalize_headers(params_names, counter)
+
+    all_headers = lconcat(headers, metrics_headers, params_headers, deps_names)
+    td = TabularData(all_headers, fill_value=fill_value)
+    td.extend(
+        _build_rows(
+            baseline_states,
+            all_headers=all_headers,
+            metrics_headers=metrics_headers,
+            params_headers=params_headers,
+            metrics_names=metrics_names,
+            params_names=params_names,
+            deps_names=deps_names,
+            fill_value=fill_value,
+            error_value=error_value,
+            **kwargs,
         )
-        if not hide_failed
-        else {}
     )
+    data_headers: Dict[str, Iterable[str]] = {
+        "metrics": metrics_headers,
+        "params": params_headers,
+        "deps": deps_names,
+    }
+    return td, data_headers
 
-    for baseline in found_revs:
-        res[baseline] = _collect_branch(
-            repo,
-            baseline,
-            running=running,
-            param_deps=param_deps,
-            onerror=onerror,
+
+def _build_rows(
+    baseline_states: Iterable["ExpState"],
+    *,
+    all_headers: Iterable[str],
+    fill_value: Optional[str],
+    sort_by: Optional[str] = None,
+    sort_order: Optional[Literal["asc", "desc"]] = None,
+    **kwargs,
+) -> Iterator[Tuple["CellT", ...]]:
+    for baseline in baseline_states:
+        row: Dict[str, "CellT"] = {k: fill_value for k in all_headers}
+        row["Experiment"] = ""
+        if baseline.name:
+            row["rev"] = baseline.name
+        elif Git.is_sha(baseline.rev):
+            row["rev"] = baseline.rev[:7]
+        else:
+            row["rev"] = baseline.rev
+        row["typ"] = "baseline"
+        row["parent"] = ""
+        if baseline.data:
+            row["Created"] = format_time(
+                baseline.data.timestamp, fill_value=fill_value, **kwargs
+            )
+            row.update(
+                _data_cells(  # pylint: disable=missing-kwoa
+                    baseline, fill_value=fill_value, **kwargs
+                )
+            )
+        yield tuple(row.values())
+        if baseline.experiments:
+            if sort_by:
+                metrics_names: Mapping[str, Iterable[str]] = kwargs.get(
+                    "metrics_names", {}
+                )
+                params_names: Mapping[str, Iterable[str]] = kwargs.get(
+                    "params_names", {}
+                )
+                sort_path, sort_name, sort_type = _sort_column(
+                    sort_by, metrics_names, params_names
+                )
+                reverse = sort_order == "desc"
+                experiments = _sort_exp(
+                    baseline.experiments, sort_path, sort_name, sort_type, reverse
+                )
+            else:
+                experiments = baseline.experiments
+            for i, child in enumerate(experiments):
+                yield from _exp_range_rows(
+                    child,
+                    all_headers=all_headers,
+                    fill_value=fill_value,
+                    is_base=i == len(baseline.experiments) - 1,
+                    **kwargs,
+                )
+
+
+def _sort_column(
+    sort_by: str,
+    metric_names: Mapping[str, Iterable[str]],
+    param_names: Mapping[str, Iterable[str]],
+) -> Tuple[str, str, str]:
+    path, _, sort_name = sort_by.rpartition(":")
+    matches: Set[Tuple[str, str, str]] = set()
+
+    if path:
+        if path in metric_names and sort_name in metric_names[path]:
+            matches.add((path, sort_name, "metrics"))
+        if path in param_names and sort_name in param_names[path]:
+            matches.add((path, sort_name, "params"))
+    else:
+        for path in metric_names:
+            if sort_name in metric_names[path]:
+                matches.add((path, sort_name, "metrics"))
+        for path in param_names:
+            if sort_name in param_names[path]:
+                matches.add((path, sort_name, "params"))
+
+    if len(matches) == 1:
+        return matches.pop()
+    if len(matches) > 1:
+        raise InvalidArgumentError(
+            "Ambiguous sort column '{}' matched '{}'".format(
+                sort_by,
+                ", ".join([f"{path}:{name}" for path, name, _ in matches]),
+            )
         )
+    raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
 
-    update_new(res, failed_experiments)
 
-    update_new(res, active_experiment)
+def _sort_exp(
+    experiments: Iterable["ExpRange"],
+    sort_path: str,
+    sort_name: str,
+    typ: str,
+    reverse: bool,
+) -> List["ExpRange"]:
+    from funcy import first
 
-    update_new(res, queued_experiment)
+    def _sort(exp_range: "ExpRange"):
+        exp = first(exp_range.revs)
+        if not exp:
+            return True
+        data = exp.data.dumpd().get(typ, {}).get(sort_path, {}).get("data", {})
+        val = flatten(data).get(sort_name)
+        return val is None, val
 
-    if not sha_only:
-        update_names(repo, branch_names, res)
+    return sorted(experiments, key=_sort, reverse=reverse)
 
-    move_properties_to_head(res)
 
-    return res
+def _exp_range_rows(
+    exp_range: "ExpRange",
+    *,
+    all_headers: Iterable[str],
+    fill_value: Optional[str],
+    is_base: bool = False,
+    **kwargs,
+) -> Iterator[Tuple["CellT", ...]]:
+    for i, exp in enumerate(exp_range.revs):
+        row: Dict[str, "CellT"] = {k: fill_value for k in all_headers}
+        row["Experiment"] = exp.name or ""
+        row["rev"] = exp.rev[:7] if Git.is_sha(exp.rev) else exp.rev
+        if len(exp_range.revs) > 1:
+            if i == 0:
+                row["typ"] = "checkpoint_tip"
+            elif i == len(exp_range.revs) - 1:
+                row["typ"] = "checkpoint_base"
+            else:
+                row["typ"] = "checkpoint_commit"
+        else:
+            row["typ"] = "branch_base" if is_base else "branch_commit"
+        row["parent"] = ""
+        if exp_range.executor:
+            row["State"] = exp_range.executor.state.capitalize()
+            if exp_range.executor.name:
+                row["Executor"] = exp_range.executor.name.capitalize()
+        if exp.data:
+            row["Created"] = format_time(
+                exp.data.timestamp, fill_value=fill_value, **kwargs
+            )
+            row.update(
+                _data_cells(  # pylint: disable=missing-kwoa
+                    exp, fill_value=fill_value, **kwargs
+                )
+            )
+        yield tuple(row.values())
+
+
+def _data_cells(
+    exp: "ExpState",
+    *,
+    metrics_headers: Iterable[str],
+    params_headers: Iterable[str],
+    metrics_names: Mapping[str, Iterable[str]],
+    params_names: Mapping[str, Iterable[str]],
+    deps_names: Iterable[str],
+    fill_value: Optional[str] = "-",
+    error_value: str = "!",
+    precision: Optional[int] = None,
+    **kwargs,
+) -> Iterator[Tuple[str, "CellT"]]:
+    def _d_cells(
+        d: Mapping[str, Any],
+        names: Mapping[str, Iterable[str]],
+        headers: Iterable[str],
+    ) -> Iterator[Tuple[str, "CellT"]]:
+        from dvc.compare import _format_field, with_value
+
+        for fname, data in d.items():
+            item = data.get("data", {})
+            item = flatten(item) if isinstance(item, dict) else {fname: item}
+            for name in names[fname]:
+                value = with_value(
+                    item.get(name),
+                    error_value if data.get("error") else fill_value,
+                )
+                # wrap field data in ui.rich_text, otherwise rich may
+                # interpret unescaped braces from list/dict types as rich
+                # markup tags
+                value = ui.rich_text(str(_format_field(value, precision)))
+                if name in headers:
+                    yield name, value
+                else:
+                    yield f"{fname}:{name}", value
+
+    if not exp.data:
+        return
+    yield from _d_cells(exp.data.metrics, metrics_names, metrics_headers)
+    yield from _d_cells(exp.data.params, params_names, params_headers)
+    for name in deps_names:
+        dep = exp.data.deps.get(name)
+        if dep:
+            yield name, dep.hash or fill_value
+
+
+def format_time(
+    timestamp: Optional[datetime],
+    fill_value: Optional[str] = "-",
+    iso: bool = False,
+    **kwargs,
+) -> Optional[str]:
+    if not timestamp:
+        return fill_value
+    if iso:
+        return timestamp.isoformat()
+    if timestamp.date() == date.today():
+        fmt = "%I:%M %p"
+    else:
+        fmt = "%b %d, %Y"
+    return timestamp.strftime(fmt)
+
+
+class _DataNames(NamedTuple):
+    # NOTE: we use nested dict instead of set for metrics/params names to
+    # preserve key ordering
+    metrics: Dict[str, Dict[str, Any]]
+    params: Dict[str, Dict[str, Any]]
+    deps: Set[str]
+
+    @property
+    def sorted_deps(self):
+        return sorted(self.deps)
+
+    def update(self, other: "_DataNames"):
+        def _update_d(
+            d: Dict[str, Dict[str, Any]], other_d: Mapping[str, Mapping[str, Any]]
+        ):
+            for k, v in other_d.items():
+                if k in d:
+                    d[k].update(v)
+                else:
+                    d[k] = dict(v)
+
+        _update_d(self.metrics, other.metrics)
+        _update_d(self.params, other.params)
+        self.deps.update(other.deps)
+
+
+def _collect_names(exp_states: Iterable["ExpState"]) -> _DataNames:
+    result = _DataNames(defaultdict(dict), defaultdict(dict), set())
+
+    def _collect_d(result_d: Dict[str, Dict[str, Any]], data_d: Dict[str, Any]):
+        for path, item in data_d.items():
+            item = item.get("data", {})
+            if isinstance(item, dict):
+                item = flatten(item)
+                result_d[path].update((key, None) for key in item)
+
+    for exp in exp_states:
+        if exp.data:
+            _collect_d(result.metrics, exp.data.metrics)
+            _collect_d(result.params, exp.data.params)
+            result.deps.update(exp.data.deps)
+        if exp.experiments:
+            for child in exp.experiments:
+                result.update(_collect_names(child.revs))
+
+    return result
+
+
+def _normalize_headers(
+    names: Mapping[str, Mapping[str, Any]], count: Mapping[str, int]
+) -> List[str]:
+    return [
+        name if count[name] == 1 else f"{path}:{name}"
+        for path in names
+        for name in names[path]
+    ]

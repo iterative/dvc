@@ -12,7 +12,7 @@ from tests.func.parsing.test_errors import escape_ansi
 
 @pytest.fixture
 def mocked_status():
-    yield Status(
+    return Status(
         not_in_cache=["notincache"],
         committed={
             "added": ["dir/bar", "dir/foo"],
@@ -33,9 +33,7 @@ def mocked_status():
 
 
 def test_cli(dvc, mocker, mocked_status):
-    status = mocker.patch(
-        "dvc.repo.Repo.data_status", return_value=mocked_status
-    )
+    status = mocker.patch("dvc.repo.Repo.data_status", return_value=mocked_status)
 
     cli_args = parse_args(
         [
@@ -53,6 +51,7 @@ def test_cli(dvc, mocker, mocked_status):
     assert cmd.run() == 0
     status.assert_called_once_with(
         untracked_files="all",
+        remote_refresh=False,
         granular=True,
     )
 

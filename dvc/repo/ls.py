@@ -1,8 +1,6 @@
 import os
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import PathMissingError
-
 if TYPE_CHECKING:
     from dvc.fs.dvc import DVCFileSystem
 
@@ -12,8 +10,8 @@ if TYPE_CHECKING:
 def ls(
     url: str,
     path: Optional[str] = None,
-    rev: str = None,
-    recursive: bool = None,
+    rev: Optional[str] = None,
+    recursive: Optional[bool] = None,
     dvc_only: bool = False,
 ):
     """Methods for getting files and outputs for the repo.
@@ -53,15 +51,15 @@ def ls(
 
 
 def _ls(
-    repo: "Repo", path: str, recursive: bool = None, dvc_only: bool = False
+    repo: "Repo",
+    path: str,
+    recursive: Optional[bool] = None,
+    dvc_only: bool = False,
 ):
     fs: "DVCFileSystem" = repo.dvcfs
     fs_path = fs.from_os_path(path)
 
-    try:
-        fs_path = fs.info(fs_path)["name"]
-    except FileNotFoundError:
-        raise PathMissingError(path, repo, dvc_only=dvc_only)
+    fs_path = fs.info(fs_path)["name"]
 
     infos = {}
     for root, dirs, files in fs.walk(
@@ -70,11 +68,12 @@ def _ls(
         if not recursive:
             files.update(dirs)
 
+        parts = fs.path.relparts(root, fs_path)
+        if parts == (".",):
+            parts = ()
+
         for name, entry in files.items():
-            entry_fs_path = fs.path.join(root, name)
-            relparts = fs.path.relparts(entry_fs_path, fs_path)
-            name = os.path.join(*relparts)
-            infos[name] = entry
+            infos[os.path.join(*parts, name)] = entry
 
         if not recursive:
             break

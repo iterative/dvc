@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsSave(CmdBase):
     def run(self):
-
         try:
             ref = self.repo.experiments.save(
                 name=self.args.name,
@@ -36,7 +35,7 @@ class CmdExperimentsSave(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    EXPERIMENTS_SAVE_HELP = "Save current workspace as a dvc experiment."
+    EXPERIMENTS_SAVE_HELP = "Save current workspace as an experiment."
     save_parser = experiments_subparsers.add_parser(
         "save",
         parents=[parent_parser],
@@ -49,7 +48,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Save even if hash value for dependencies/outputs changed.",
+        help="Replace experiment if it already exists.",
     )
     save_parser.add_argument(
         "--json",

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdGC(CmdBase):
-    def run(self):
+    def run(self):  # noqa: C901, PLR0912
         from dvc.repo.gc import _validate_args
 
         _validate_args(
@@ -22,6 +22,8 @@ class CmdGC(CmdBase):
             workspace=self.args.workspace,
             rev=self.args.rev,
             num=self.args.num,
+            cloud=self.args.cloud,
+            not_in_remote=self.args.not_in_remote,
         )
 
         if self.args.rev:
@@ -40,17 +42,16 @@ class CmdGC(CmdBase):
             elif self.args.all_tags:
                 msg += " and all git tags"
             if self.args.commit_date:
-                msg += (
-                    " and all git commits before date "
-                    f"{self.args.commit_date}"
-                )
+                msg += f" and all git commits before date {self.args.commit_date}"
             if self.args.rev:
-                msg += (
-                    f" and last {self.args.num} commits from {self.args.rev}"
-                )
+                msg += f" and last {self.args.num} commits from {self.args.rev}"
 
         if self.args.all_experiments:
             msg += " and all experiments"
+
+        if self.args.not_in_remote:
+            msg += " that are present in the DVC remote"
+
         if self.args.repos:
             msg += " of the current and the following repos:"
 
@@ -79,6 +80,7 @@ class CmdGC(CmdBase):
             workspace=self.args.workspace,
             rev=self.args.rev,
             num=self.args.num,
+            not_in_remote=self.args.not_in_remote,
         )
         return 0
 
@@ -163,6 +165,12 @@ def add_parser(subparsers, parent_parser):
         help="Keep data files for all experiments.",
     )
     gc_parser.add_argument(
+        "--not-in-remote",
+        action="store_true",
+        default=False,
+        help="Keep data files that are not present in the remote.",
+    )
+    gc_parser.add_argument(
         "-c",
         "--cloud",
         action="store_true",
@@ -198,9 +206,11 @@ def add_parser(subparsers, parent_parser):
         dest="repos",
         type=str,
         nargs="*",
-        help="Keep data files required by these projects "
-        "in addition to the current one. "
-        "Useful if you share a single cache across repos.",
+        help=(
+            "Keep data files required by these projects "
+            "in addition to the current one. "
+            "Useful if you share a single cache across repos."
+        ),
         metavar="<paths>",
     )
     gc_parser.set_defaults(func=CmdGC)

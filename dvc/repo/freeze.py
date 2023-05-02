@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
 def _set(repo: "Repo", target, frozen):
     stage = repo.stage.get_target(target)
     stage.frozen = frozen
-    stage.dvcfile.dump(stage, update_lock=False)
+    stage.dump(update_lock=False)
 
     return stage
 

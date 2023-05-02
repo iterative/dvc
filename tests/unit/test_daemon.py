@@ -19,7 +19,7 @@ def test_daemon(mocker):
         args = mock_posix.call_args[0]
 
     env = args[1]
-    assert "PYTHONPATH" in env.keys()
+    assert "PYTHONPATH" in env
 
     file_path = os.path.abspath(inspect.stack()[0][1])
     file_dir = os.path.dirname(file_path)

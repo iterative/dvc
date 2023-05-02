@@ -7,6 +7,9 @@ from .exceptions import InvalidExpRefError
 EXPS_NAMESPACE = "refs/exps"
 EXPS_STASH = f"{EXPS_NAMESPACE}/stash"
 WORKSPACE_STASH = EXPS_STASH
+APPLY_NAMESPACE = f"{EXPS_NAMESPACE}/apply"
+APPLY_HEAD = f"{APPLY_NAMESPACE}/ORIG_HEAD"
+APPLY_STASH = f"{APPLY_NAMESPACE}/stash"
 CELERY_STASH = f"{EXPS_NAMESPACE}/celery/stash"
 CELERY_FAILED_STASH = f"{EXPS_NAMESPACE}/celery/failed"
 EXEC_NAMESPACE = f"{EXPS_NAMESPACE}/exec"
@@ -18,10 +21,10 @@ EXEC_HEAD = f"{EXEC_NAMESPACE}/EXEC_HEAD"
 EXEC_MERGE = f"{EXEC_NAMESPACE}/EXEC_MERGE"
 EXPS_TEMP = f"{EXPS_NAMESPACE}/temp"
 STASHES = {WORKSPACE_STASH, CELERY_STASH}
+ITER_SKIP_NAMESPACES = {APPLY_NAMESPACE, EXEC_NAMESPACE}
 
 
 class ExpRefInfo:
-
     namespace = EXPS_NAMESPACE
 
     def __init__(self, baseline_sha: str, name: Optional[str] = None):
@@ -55,7 +58,7 @@ class ExpRefInfo:
             ):
                 raise InvalidExpRefError(ref)
         except ValueError:
-            raise InvalidExpRefError(ref)
+            raise InvalidExpRefError(ref)  # noqa: B904
         baseline_sha = parts[2] + parts[3]
         name = parts[4] if len(parts) == 5 else None
         return cls(baseline_sha, name)

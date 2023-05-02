@@ -13,10 +13,10 @@ from typing import (
 )
 
 from dvc.exceptions import DvcException
-from dvc.types import StrPath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.types import StrPath
 
     from .backend.base import BaseMachineBackend
 
@@ -67,16 +67,14 @@ class MachineBackends(Mapping):
         initialized = self.initialized.get(key)
         if not initialized:
             backend = self.backends[key]
-            initialized = backend(
-                os.path.join(self.tmp_dir, key), **self.kwargs
-            )
+            initialized = backend(os.path.join(self.tmp_dir, key), **self.kwargs)
             self.initialized[key] = initialized
         return initialized
 
     def __init__(
         self,
         selected: Optional[Iterable[str]],
-        tmp_dir: StrPath,
+        tmp_dir: "StrPath",
         **kwargs,
     ) -> None:
         selected = selected or list(self.DEFAULT)
@@ -127,6 +125,7 @@ class MachineManager:
         self, repo: "Repo", backends: Optional[Iterable[str]] = None, **kwargs
     ):
         self.repo = repo
+        assert self.repo.tmp_dir
         tmp_dir = os.path.join(self.repo.tmp_dir, "machine")
         self.backends = MachineBackends(backends, tmp_dir=tmp_dir, **kwargs)
 
@@ -167,7 +166,9 @@ class MachineManager:
             except KeyError:
                 from dvc.config import MachineNotFoundError
 
-                raise MachineNotFoundError(f"machine '{name}' doesn't exist")
+                raise MachineNotFoundError(  # noqa: B904
+                    f"machine '{name}' doesn't exist"
+                )
         else:
             conf = kwargs
         return conf
@@ -179,7 +180,9 @@ class MachineManager:
             backend = self.CLOUD_BACKENDS[cloud]
             return self.backends[backend]
         except KeyError:
-            raise NoMachineError(f"Machine platform '{cloud}' unsupported")
+            raise NoMachineError(  # noqa: B904
+                f"Machine platform '{cloud}' unsupported"
+            )
 
     def create(self, name: Optional[str]):
         """Create and start the specified machine instance."""

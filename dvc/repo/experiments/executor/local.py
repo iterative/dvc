@@ -2,18 +2,14 @@ import logging
 import os
 from contextlib import ExitStack
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
-from funcy import cached_property, retry
-from scmrepo.exceptions import SCMError as _SCMError
+from configobj import ConfigObj
+from funcy import retry
 from shortuuid import uuid
 
-from dvc.exceptions import DvcException
 from dvc.lock import LockError
-from dvc.scm import SCM, GitMergeError
-from dvc.utils.fs import makedirs, remove
-
-from ..refs import (
+from dvc.repo.experiments.refs import (
     EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -22,18 +18,19 @@ from ..refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
     EXPS_TEMP,
-    ExpRefInfo,
 )
-from ..utils import EXEC_TMP_DIR, get_exp_rwlock
-from .base import BaseExecutor, ExecutorResult, TaskStatus
+from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
+from dvc.scm import SCM, Git
+from dvc.utils.fs import remove
+from dvc.utils.objects import cached_property
+
+from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
-
-    from ..stash import ExpStashEntry
-    from .base import ExecutorInfo
+    from dvc.repo.experiments.refs import ExpRefInfo
+    from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import NoSCM
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +46,10 @@ class BaseLocalExecutor(BaseExecutor):
         return f"file://{root_dir}"
 
     @cached_property
-    def scm(self):
+    def scm(self) -> Union["Git", "NoSCM"]:
         return SCM(self.root_dir)
 
-    def cleanup(self, infofile: str):
+    def cleanup(self, infofile: Optional[str] = None):
         self.scm.close()
         del self.scm
         super().cleanup(infofile)
@@ -85,7 +82,7 @@ class TempDirExecutor(BaseLocalExecutor):
     ):
         from dulwich.repo import Repo as DulwichRepo
 
-        from ..utils import push_refspec
+        from dvc.repo.experiments.utils import push_refspec
 
         DulwichRepo.init(os.fspath(self.root_dir))
 
@@ -132,30 +129,37 @@ class TempDirExecutor(BaseLocalExecutor):
 
         # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
         # committing
+        assert isinstance(self.scm, Git)
         head = EXEC_BRANCH if branch else EXEC_HEAD
         self.scm.checkout(head, detach=True)
         merge_rev = self.scm.get_ref(EXEC_MERGE)
 
-        try:
-            self.scm.merge(merge_rev, squash=True, commit=False)
-        except _SCMError as exc:
-            raise GitMergeError(str(exc), scm=self.scm)
+        self.scm.stash.apply(merge_rev)
+        self._update_config(repo.config.read("local"))
 
-    def _config(self, cache_dir):
+    def _update_config(self, update):
         local_config = os.path.join(
             self.root_dir,
             self.dvc_dir,
             "config.local",
         )
         logger.debug("Writing experiments local config '%s'", local_config)
-        with open(local_config, "w", encoding="utf-8") as fobj:
-            fobj.write(f"[cache]\n    dir = {cache_dir}")
+        if os.path.exists(local_config):
+            conf_obj = ConfigObj(local_config)
+            conf_obj.merge(update)
+        else:
+            conf_obj = ConfigObj(update)
+        if conf_obj:
+            with open(local_config, "wb") as fobj:
+                conf_obj.write(fobj)
 
-    def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
+    def init_cache(
+        self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
+    ):
         """Initialize DVC cache."""
-        self._config(repo.odb.repo.path)
+        self._update_config({"cache": {"dir": repo.cache.repo.path}})
 
-    def cleanup(self, infofile: str):
+    def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)
         logger.debug("Removing tmpdir '%s'", self.root_dir)
         remove(self.root_dir)
@@ -168,8 +172,9 @@ class TempDirExecutor(BaseLocalExecutor):
         wdir: Optional[str] = None,
         **kwargs,
     ):
+        assert repo.tmp_dir
         parent_dir: str = wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
-        makedirs(parent_dir, exist_ok=True)
+        os.makedirs(parent_dir, exist_ok=True)
         tmp_dir = mkdtemp(dir=parent_dir)
         try:
             executor = cls._from_stash_entry(repo, entry, tmp_dir, **kwargs)
@@ -214,6 +219,8 @@ class WorkspaceExecutor(BaseLocalExecutor):
         if infofile:
             self.info.dump_json(infofile)
 
+        assert isinstance(self.scm, Git)
+
         with get_exp_rwlock(repo, writes=[EXEC_NAMESPACE]):
             scm.set_ref(EXEC_HEAD, entry.head_rev)
             scm.set_ref(EXEC_MERGE, stash_rev)
@@ -226,10 +233,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
                 )
             )
             merge_rev = self.scm.get_ref(EXEC_MERGE)
-            try:
-                self.scm.merge(merge_rev, squash=True, commit=False)
-            except _SCMError as exc:
-                raise GitMergeError(str(exc), scm=self.scm)
+            self.scm.stash.apply(merge_rev)
             if branch:
                 self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
             elif scm.get_ref(EXEC_BRANCH):
@@ -238,9 +242,10 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         pass
 
-    def cleanup(self, infofile: str):
+    def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)
-        remove(os.path.dirname(infofile))
+        if infofile:
+            remove(os.path.dirname(infofile))
         with self._detach_stack:
             self.scm.remove_ref(EXEC_BASELINE)
             self.scm.remove_ref(EXEC_MERGE)
@@ -249,57 +254,3 @@ class WorkspaceExecutor(BaseLocalExecutor):
             checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
             if checkpoint and checkpoint != self._orig_checkpoint:
                 self.scm.set_ref(EXEC_APPLY, checkpoint)
-
-    @classmethod
-    def save(
-        cls,
-        info: "ExecutorInfo",
-        force: bool = False,
-        include_untracked: Optional[List[str]] = None,
-    ) -> ExecutorResult:
-        from dvc.repo import Repo
-
-        exp_hash: Optional[str] = None
-        exp_ref: Optional[ExpRefInfo] = None
-
-        dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
-        old_cwd = os.getcwd()
-        if info.wdir:
-            os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
-        else:
-            os.chdir(dvc.root_dir)
-
-        try:
-            stages = dvc.commit([], force=force)
-            exp_hash = cls.hash_exp(stages)
-            if include_untracked:
-                dvc.scm.add(include_untracked)
-            cls.commit(
-                dvc.scm,
-                exp_hash,
-                exp_name=info.name,
-                force=force,
-            )
-            ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-            exp_ref = ExpRefInfo.from_ref(ref) if ref else None
-            untracked = dvc.scm.untracked_files()
-            if untracked:
-                logger.warning(
-                    "The following untracked files were present in "
-                    "the workspace before saving but "
-                    "will not be included in the experiment commit:\n"
-                    "\t%s",
-                    ", ".join(untracked),
-                )
-            info.result_hash = exp_hash
-            info.result_ref = ref
-            info.result_force = False
-            info.status = TaskStatus.SUCCESS
-        except DvcException:
-            info.status = TaskStatus.FAILED
-            raise
-        finally:
-            dvc.close()
-            os.chdir(old_cwd)
-
-        return ExecutorResult(ref, exp_ref, info.result_force)

@@ -1,0 +1,3 @@
+extend = "../pyproject.toml"
+extend-select = ["RUF005"]
+extend-ignore = ["S", "RUF001", "ARG001", "ARG002", "TRY002"]

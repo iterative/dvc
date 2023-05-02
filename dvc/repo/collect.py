@@ -1,7 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Callable, Iterable, List, Tuple
-
-from dvc.types import AnyPath
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from dvc.output import Output
@@ -12,12 +10,11 @@ logger = logging.getLogger(__name__)
 
 FilterFn = Callable[["Output"], bool]
 Outputs = List["Output"]
-AnyPaths = List[AnyPath]
 StrPaths = List[str]
 
 
 def _collect_outs(
-    repo: "Repo", output_filter: FilterFn = None, deps: bool = False
+    repo: "Repo", output_filter: Optional[FilterFn] = None, deps: bool = False
 ) -> Outputs:
     index = repo.index
     index.check_graph()  # ensure graph is correct
@@ -28,7 +25,6 @@ def _collect_paths(
     repo: "Repo",
     targets: Iterable[str],
     recursive: bool = False,
-    rev: str = None,
 ) -> StrPaths:
     from dvc.fs.dvc import DVCFileSystem
 
@@ -39,13 +35,6 @@ def _collect_paths(
     for fs_path in fs_paths:
         if recursive and fs.isdir(fs_path):
             target_paths.extend(fs.find(fs_path))
-
-        rel = fs.path.relpath(fs_path)
-        if not fs.exists(fs_path):
-            if rev == "workspace" or rev == "":
-                logger.warning("'%s' was not found in current workspace.", rel)
-            else:
-                logger.warning("'%s' was not found at: '%s'.", rel, rev)
         target_paths.append(fs_path)
 
     return target_paths
@@ -71,9 +60,8 @@ def _filter_outs(
 def collect(
     repo: "Repo",
     deps: bool = False,
-    targets: Iterable[str] = None,
-    output_filter: FilterFn = None,
-    rev: str = None,
+    targets: Optional[Iterable[str]] = None,
+    output_filter: Optional[FilterFn] = None,
     recursive: bool = False,
     duplicates: bool = False,
 ) -> Tuple[Outputs, StrPaths]:
@@ -85,6 +73,6 @@ def collect(
         fs_paths: StrPaths = []
         return outs, fs_paths
 
-    target_paths = _collect_paths(repo, targets, recursive=recursive, rev=rev)
+    target_paths = _collect_paths(repo, targets, recursive=recursive)
 
     return _filter_outs(outs, target_paths, duplicates=duplicates)

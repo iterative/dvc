@@ -46,7 +46,7 @@ def add_parser(subparsers, parent_parser):
 
     daemon_subparsers = daemon_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc daemon CMD --help` for command-specific " "help.",
+        help="Use `dvc daemon CMD --help` for command-specific help.",
     )
 
     fix_subparsers(daemon_subparsers)

@@ -7,12 +7,11 @@ import textwrap
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+from dvc.dvcfile import PROJECT_FILE, load_file
 from dvc.exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
     ConfirmRemoveError,
-    DvcException,
     NoOutputOrStageError,
 )
 from dvc.fs import LocalFileSystem, system
@@ -106,9 +105,9 @@ def test_checkout_corrupted_cache_dir(tmp_dir, dvc):
 
     # NOTE: modifying cache file for one of the files inside the directory
     # to check if dvc will detect that the cache is corrupted.
-    obj = load(dvc.odb.local, out.hash_info)
+    obj = load(dvc.cache.local, out.hash_info)
     _, _, entry_oid = list(obj)[0]
-    cache = dvc.odb.local.oid_to_path(entry_oid.value)
+    cache = dvc.cache.local.oid_to_path(entry_oid.value)
 
     os.chmod(cache, 0o644)
     with open(cache, "w+", encoding="utf-8") as fobj:
@@ -139,7 +138,7 @@ def test_remove_files_when_checkout(tmp_dir, dvc, scm):
 
 
 class TestCheckoutCleanWorkingDir:
-    def test(self, mocker, tmp_dir, dvc):  # pylint: disable=unused-argument
+    def test(self, mocker, tmp_dir, dvc):
         mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=True)
         (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
@@ -162,7 +161,7 @@ class TestCheckoutCleanWorkingDir:
 
 def test_checkout_selective_remove(tmp_dir, dvc):
     # Use copy to test for changes in the inodes
-    dvc.odb.local.cache_types = ["copy"]
+    dvc.cache.local.cache_types = ["copy"]
     tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
 
     foo_inode = system.inode(os.path.join("data", "foo"))
@@ -309,33 +308,23 @@ def test_checkout_hook(mocker, tmp_dir, dvc):
 
 
 def test_checkout_suggest_git(tmp_dir, dvc, scm):
-    # pylint: disable=no-member
-    tmp_dir.dvc_gen("foo", "foo")
-    try:
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="gitbranch")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, NoOutputOrStageError)
-        assert isinstance(exc.__cause__.__cause__, StageFileDoesNotExistError)
+    assert isinstance(e.value.__cause__, NoOutputOrStageError)
+    assert isinstance(e.value.__cause__.__cause__, StageFileDoesNotExistError)
 
-    try:
-        dvc.checkout(targets="foo")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, NoOutputOrStageError)
-        assert exc.__cause__.__cause__ is None
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
+        dvc.checkout(targets="foobar")
+    assert isinstance(e.value.__cause__, NoOutputOrStageError)
+    assert isinstance(e.value.__cause__.__cause__, StageFileDoesNotExistError)
 
-    try:
+    with pytest.raises(CheckoutErrorSuggestGit) as e:
         dvc.checkout(targets="looks-like-dvcfile.dvc")
-    except DvcException as exc:
-        assert isinstance(exc, CheckoutErrorSuggestGit)
-        assert isinstance(exc.__cause__, StageFileDoesNotExistError)
-        assert exc.__cause__.__cause__ is None
+    assert isinstance(e.value.__cause__, StageFileDoesNotExistError)
+    assert e.value.__cause__.__cause__ is None
 
 
-def test_checkout_target_recursive_should_not_remove_other_used_files(
-    tmp_dir, dvc
-):
+def test_checkout_target_recursive_should_not_remove_other_used_files(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar", "data": {"file": "file"}})
     assert main(["checkout", "-R", "data"]) == 0
     assert (tmp_dir / "foo").exists()
@@ -347,7 +336,7 @@ def test_checkout_recursive_not_directory(tmp_dir, dvc):
     ret = main(["add", "foo"])
     assert ret == 0
 
-    stats = dvc.checkout(targets=["foo" + ".dvc"], recursive=True)
+    stats = dvc.checkout(targets=["foo.dvc"], recursive=True)
     assert stats == {"added": [], "modified": [], "deleted": []}
 
 
@@ -368,7 +357,7 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
     assert system.is_symlink(os.path.join("data", "file"))
     old_data_link = os.path.realpath(os.path.join("data", "file"))
 
-    old_cache_dir = dvc.odb.local.path
+    old_cache_dir = dvc.cache.local.path
     new_cache_dir = old_cache_dir + "_new"
     os.rename(old_cache_dir, new_cache_dir)
 
@@ -384,9 +373,7 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
     assert system.is_symlink(os.path.join("data", "file"))
     new_data_link = os.path.realpath(os.path.join("data", "file"))
 
-    assert relpath(old_foo_link, old_cache_dir) == relpath(
-        new_foo_link, new_cache_dir
-    )
+    assert relpath(old_foo_link, old_cache_dir) == relpath(new_foo_link, new_cache_dir)
 
     assert relpath(old_data_link, old_cache_dir) == relpath(
         new_data_link, new_cache_dir
@@ -395,9 +382,7 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
 
 def test_checkout_no_checksum(tmp_dir, dvc):
     tmp_dir.gen("file", "file content")
-    stage = dvc.run(
-        outs=["file"], no_exec=True, cmd="somecmd", single_stage=True
-    )
+    stage = dvc.run(outs=["file"], no_exec=True, cmd="somecmd", single_stage=True)
 
     with pytest.raises(CheckoutError):
         dvc.checkout([stage.path], force=True)
@@ -410,7 +395,7 @@ def test_checkout_no_checksum(tmp_dir, dvc):
     [("hardlink", system.is_hardlink), ("symlink", system.is_symlink)],
 )
 def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
-    dvc.odb.local.cache_types = [link]
+    dvc.cache.local.cache_types = [link]
 
     tmp_dir.dvc_gen({"dir": {"data": "text"}})
     dvc.unprotect("dir/data")
@@ -423,7 +408,7 @@ def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_checkout_relink_protected(tmp_dir, dvc, link):
-    dvc.odb.local.cache_types = [link]
+    dvc.cache.local.cache_types = [link]
 
     tmp_dir.dvc_gen("foo", "foo")
     dvc.unprotect("foo")
@@ -504,7 +489,7 @@ def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
-    stage = Dvcfile(dvc, "foo.dvc").stage
+    stage = load_file(dvc, "foo.dvc").stage
     tmp_dir.dvc_gen({"foo": "foobar", "other": "other other"}, commit="second")
 
     # corrupt cache
@@ -575,9 +560,7 @@ def test_stats_on_removed_file_from_tracked_dir(tmp_dir, dvc, scm):
     assert dvc.checkout() == empty_checkout
 
 
-def test_stats_on_show_changes_does_not_show_summary(
-    tmp_dir, dvc, scm, capsys
-):
+def test_stats_on_show_changes_does_not_show_summary(tmp_dir, dvc, scm, capsys):
     tmp_dir.dvc_gen(
         {"dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
@@ -603,7 +586,7 @@ def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, capsys):
     assert main(["checkout", "--summary"]) == 0
 
     out, _ = capsys.readouterr()
-    assert "2 files deleted" == out.rstrip()
+    assert out.rstrip() == "2 files deleted"
 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
@@ -612,7 +595,7 @@ def test_checkout_with_relink_existing(tmp_dir, dvc, link):
     (tmp_dir / "foo").unlink()
 
     tmp_dir.dvc_gen("bar", "bar")
-    dvc.odb.local.cache_types = [link]
+    dvc.cache.local.cache_types = [link]
 
     stats = dvc.checkout(relink=True)
     assert stats == {**empty_checkout, "added": ["foo"]}
@@ -681,7 +664,7 @@ def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
-    assert set(dvc.checkout(PIPELINE_FILE)["added"]) == {"bar", "ipsum"}
+    assert set(dvc.checkout(PROJECT_FILE)["added"]) == {"bar", "ipsum"}
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
@@ -729,7 +712,7 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     assert dvc.checkout(["bar"])["added"] == ["bar"]
 
     (tmp_dir / "bar").unlink()
-    assert set(dvc.checkout([PIPELINE_FILE])["added"]) == {"bar", "ipsum"}
+    assert set(dvc.checkout([PROJECT_FILE])["added"]) == {"bar", "ipsum"}
 
     for out in ["bar", "ipsum"]:
         (tmp_dir / out).unlink()
@@ -776,9 +759,7 @@ def test_checkout_executable(tmp_dir, dvc):
 
 
 def test_checkout_partial(tmp_dir, dvc):
-    tmp_dir.dvc_gen(
-        {"data": {"foo": "foo", "bar": "bar", "sub_dir": {"baz": "baz"}}}
-    )
+    tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar", "sub_dir": {"baz": "baz"}}})
 
     data_dir = tmp_dir / "data"
     shutil.rmtree(data_dir)
@@ -846,9 +827,7 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
 
 
 def test_checkout_partial_subdir(tmp_dir, dvc):
-    tmp_dir.dvc_gen(
-        {"data": {"foo": "foo", "sub_dir": {"bar": "bar", "baz": "baz"}}}
-    )
+    tmp_dir.dvc_gen({"data": {"foo": "foo", "sub_dir": {"bar": "bar", "baz": "baz"}}})
 
     data_dir = tmp_dir / "data"
     sub_dir = data_dir / "sub_dir"

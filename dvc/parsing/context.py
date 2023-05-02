@@ -48,9 +48,7 @@ class MergeError(ContextError):
         self.key = key
         to_node = into[key]
         if not isinstance(to_node, Node) or not isinstance(new, Node):
-            super().__init__(
-                f"cannot merge '{key}' as it already exists in {into}"
-            )
+            super().__init__(f"cannot merge '{key}' as it already exists in {into}")
             return
 
         assert isinstance(to_node, Node)
@@ -138,9 +136,7 @@ class Node:
 @dataclass
 class Value(Node):
     _value: Any
-    meta: Meta = field(
-        compare=False, default_factory=_default_meta, repr=False
-    )
+    meta: Meta = field(compare=False, default_factory=_default_meta, repr=False)
 
     def __repr__(self):
         return repr(self._value)
@@ -159,7 +155,7 @@ class Value(Node):
 PRIMITIVES = (int, float, str, bytes, bool)
 
 
-class Container(Node, ABC):  # noqa: B024
+class Container(Node, ABC):
     meta: Meta
     data: Union[list, dict]
     _key_transform = staticmethod(identity)
@@ -172,7 +168,7 @@ class Container(Node, ABC):  # noqa: B024
         return self._convert_with_meta(value, meta)
 
     @staticmethod
-    def _convert_with_meta(value, meta: Meta = None):
+    def _convert_with_meta(value, meta: Optional[Meta] = None):
         if value is None or isinstance(value, PRIMITIVES):
             assert meta
             return Value(value, meta=meta)
@@ -182,10 +178,7 @@ class Container(Node, ABC):  # noqa: B024
             assert meta
             container = CtxDict if isinstance(value, dict) else CtxList
             return container(value, meta=meta)
-        msg = (
-            "Unsupported value of type "
-            f"'{type(value).__name__}' in '{meta}'"
-        )
+        msg = f"Unsupported value of type '{type(value).__name__}' in '{meta}'"
         raise TypeError(msg)
 
     def __repr__(self):
@@ -219,16 +212,14 @@ class Container(Node, ABC):  # noqa: B024
         try:
             d = self[index]
         except LookupError as exc:
-            raise ValueError(
-                f"Could not find '{index}' in {self.data}"
-            ) from exc
+            raise ValueError(f"Could not find '{index}' in {self.data}") from exc
 
         if not rems:
             return d
 
         rem = rems[0]
         if not isinstance(d, Container):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 f"{index} is a primitive value, cannot get '{rem}'"
             )
         return d.select(rem)
@@ -240,7 +231,7 @@ class Container(Node, ABC):  # noqa: B024
 class CtxList(Container, MutableSequence):
     _key_transform = staticmethod(int)
 
-    def __init__(self, values: Sequence, meta: Meta = None):
+    def __init__(self, values: Sequence, meta: Optional[Meta] = None):
         super().__init__(meta=meta)
         self.data: list = []
         self.extend(values)
@@ -263,7 +254,12 @@ class CtxList(Container, MutableSequence):
 
 
 class CtxDict(Container, MutableMapping):
-    def __init__(self, mapping: Mapping = None, meta: Meta = None, **kwargs):
+    def __init__(
+        self,
+        mapping: Optional[Mapping] = None,
+        meta: Optional[Meta] = None,
+        **kwargs,
+    ):
         super().__init__(meta=meta)
 
         self.data: dict = {}
@@ -301,7 +297,7 @@ class Context(CtxDict):
         """
         super().__init__(*args, **kwargs)
         self._track = False
-        self._tracked_data = defaultdict(dict)
+        self._tracked_data: Dict[str, Dict] = defaultdict(dict)
         self.imports = {}
         self._reserved_keys = {}
 
@@ -375,7 +371,7 @@ class Context(CtxDict):
 
     @classmethod
     def load_from(
-        cls, fs, path: str, select_keys: List[str] = None
+        cls, fs, path: str, select_keys: Optional[List[str]] = None
     ) -> "Context":
         from dvc.utils.serialize import load_path
 
@@ -396,9 +392,7 @@ class Context(CtxDict):
                 data = {key: data[key] for key in select_keys}
             except KeyError as exc:
                 key, *_ = exc.args
-                raise ParamsLoadError(
-                    f"could not find '{key}' in '{path}'"
-                ) from exc
+                raise ParamsLoadError(f"could not find '{key}' in '{path}'") from exc
 
         meta = Meta(source=path, local=False)
         ctx = cls(data, meta=meta)
@@ -435,27 +429,27 @@ class Context(CtxDict):
             self.imports[path].extend(cp)
 
     def check_loaded(self, path, item, keys):
-        if not keys and isinstance(self.imports[path], list):
+        imported = self.imports[path]
+        if not keys and isinstance(imported, list):
             raise VarsAlreadyLoaded(
                 f"cannot load '{item}' as it's partially loaded already"
             )
-        elif keys and self.imports[path] is None:
+        if keys and imported is None:
             raise VarsAlreadyLoaded(
                 f"cannot partially load '{item}' as it's already loaded."
             )
-        elif isinstance(self.imports[path], list):
-            if not set(keys).isdisjoint(set(self.imports[path])):
-                raise VarsAlreadyLoaded(
-                    f"cannot load '{item}' as it's partially loaded already"
-                )
+        if isinstance(imported, list) and set(keys) & set(imported):
+            raise VarsAlreadyLoaded(
+                f"cannot load '{item}' as it's partially loaded already"
+            )
 
     def load_from_vars(
         self,
         fs,
         vars_: List,
         wdir: str,
-        stage_name: str = None,
-        default: str = None,
+        stage_name: Optional[str] = None,
+        default: Optional[str] = None,
     ):
         if default:
             to_import = fs.path.join(wdir, default)
@@ -496,14 +490,12 @@ class Context(CtxDict):
         But for now, just `item` and `key`, this should do.
         """
         # using dict to make the error messages ordered
-        new = dict.fromkeys(
-            [key for key in keys if key not in self._reserved_keys]
-        )
+        new = dict.fromkeys([key for key in keys if key not in self._reserved_keys])
         self._reserved_keys.update(new)
         try:
             yield
         finally:
-            for key in new.keys():
+            for key in new:
                 self._reserved_keys.pop(key)
 
     @contextmanager
@@ -558,9 +550,7 @@ class Context(CtxDict):
         if is_exact_string(src, matches):
             # replace "${enabled}", if `enabled` is a boolean, with it's actual
             # value rather than it's string counterparts.
-            expr = get_expression(
-                matches[0], skip_checks=skip_interpolation_checks
-            )
+            expr = get_expression(matches[0], skip_checks=skip_interpolation_checks)
             value = self.select(expr, unwrap=unwrap)
             validate_value(value, key)
             return value

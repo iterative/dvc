@@ -90,16 +90,13 @@ def test_merge(tmp_dir, dvc, ancestor, our, their, merged):
             {"foo": "foo"},
             {"foo": "bar"},
             {"foo": "baz"},
-            ("unable to auto-merge the following paths:\nfoo"),
+            "unable to auto-merge the following paths:\nfoo",
         ),
         (
             {"common": "common", "foo": "foo"},
             {"common": "common", "bar": "bar"},
             {"baz": "baz"},
-            (
-                "unable to auto-merge the following paths:\n"
-                "both deleted: ('foo',)"
-            ),
+            "unable to auto-merge the following paths:\nboth deleted: ('foo',)",
         ),
     ],
 )
@@ -130,9 +127,7 @@ def test_merge_conflict(tmp_dir, dvc, ancestor, our, their, error, caplog):
 def test_merge_different_output_options(tmp_dir, dvc, caplog):
     (tmp_dir / "ancestor").touch()
 
-    (tmp_dir / "our").write_text(
-        "outs:\n- md5: f123456789.dir\n  path: path\n"
-    )
+    (tmp_dir / "our").write_text("outs:\n- md5: f123456789.dir\n  path: path\n")
 
     (tmp_dir / "their").write_text(
         "outs:\n- md5: f987654321.dir\n  path: path\n  cache: false\n"
@@ -161,9 +156,7 @@ def test_merge_different_output_options(tmp_dir, dvc, caplog):
 def test_merge_file(tmp_dir, dvc, caplog):
     (tmp_dir / "ancestor").touch()
 
-    (tmp_dir / "our").write_text(
-        "outs:\n- md5: f123456789.dir\n  path: path\n"
-    )
+    (tmp_dir / "our").write_text("outs:\n- md5: f123456789.dir\n  path: path\n")
 
     (tmp_dir / "their").write_text("outs:\n- md5: f987654321\n  path: path\n")
 

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Iterator, Optional
 from dvc_ssh import DEFAULT_PORT, SSHFileSystem
 
 from dvc.exceptions import DvcException
-from dvc.utils.fs import makedirs
 
 from .base import BaseMachineBackend
 
@@ -30,7 +29,7 @@ def _sshfs(resource: dict):
 class TerraformBackend(BaseMachineBackend):
     def __init__(self, tmp_dir: "StrPath", **kwargs):
         super().__init__(tmp_dir, **kwargs)
-        makedirs(tmp_dir, exist_ok=True)
+        os.makedirs(tmp_dir, exist_ok=True)
 
     @contextmanager
     def make_tpi(self, name: str):
@@ -39,7 +38,7 @@ class TerraformBackend(BaseMachineBackend):
 
         try:
             working_dir = os.path.join(self.tmp_dir, name)
-            makedirs(working_dir, exist_ok=True)
+            os.makedirs(working_dir, exist_ok=True)
             yield TPIBackend(working_dir=working_dir)
         except TPIError as exc:
             raise DvcException("TPI operation failed") from exc
@@ -57,12 +56,8 @@ class TerraformBackend(BaseMachineBackend):
 
     create = partialmethod(_tpi_func, "create")  # type: ignore[assignment]
     destroy = partialmethod(_tpi_func, "destroy")  # type: ignore[assignment]
-    instances = partialmethod(
-        _tpi_func, "instances"
-    )  # type: ignore[assignment]
-    run_shell = partialmethod(
-        _tpi_func, "run_shell"
-    )  # type: ignore[assignment]
+    instances = partialmethod(_tpi_func, "instances")  # type: ignore[assignment]
+    run_shell = partialmethod(_tpi_func, "run_shell")  # type: ignore[assignment]
 
     def get_executor_kwargs(self, name: str, **config) -> dict:
         with self.make_tpi(name) as tpi:

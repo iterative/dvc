@@ -3,8 +3,14 @@ from collections.abc import Mapping
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
-from dvc.annotations import ANNOTATION_SCHEMA
-from dvc.output import CHECKSUMS_SCHEMA, DIR_FILES_SCHEMA, META_SCHEMA, Output
+from dvc.annotations import ANNOTATION_SCHEMA, ARTIFACT_SCHEMA
+from dvc.output import (
+    CHECKSUMS_SCHEMA,
+    CLOUD_SCHEMA,
+    DIR_FILES_SCHEMA,
+    META_SCHEMA,
+    Output,
+)
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
 from dvc.stage.params import StageParams
@@ -27,6 +33,7 @@ DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     Required("path"): str,
+    Output.PARAM_CLOUD: CLOUD_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
 LOCK_FILE_STAGE_SCHEMA = {
@@ -46,7 +53,7 @@ LOCKFILE_V2_SCHEMA = {
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {
-        **ANNOTATION_SCHEMA,  # type: ignore
+        **ANNOTATION_SCHEMA,  # type: ignore[arg-type]
         Output.PARAM_CACHE: bool,
         Output.PARAM_PERSIST: bool,
         Output.PARAM_CHECKPOINT: bool,
@@ -86,9 +93,7 @@ STAGE_DEFINITION = {
         {str: Any(str, OUT_PSTAGE_DETAILED_SCHEMA)},
         [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     ),
-    Optional(StageParams.PARAM_METRICS): [
-        Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
-    ],
+    Optional(StageParams.PARAM_METRICS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
 }
 
@@ -96,10 +101,7 @@ STAGE_DEFINITION = {
 def either_or(primary, fallback, fallback_includes=None):
     def validator(data):
         schema = primary
-        if (
-            isinstance(data, Mapping)
-            and set(fallback_includes or []) & data.keys()
-        ):
+        if isinstance(data, Mapping) and set(fallback_includes or []) & data.keys():
             schema = fallback
         return Schema(schema)(data)
 
@@ -115,6 +117,9 @@ PLOT_DEFINITION = {
     Output.PARAM_PLOT_TEMPLATE: str,
 }
 SINGLE_PLOT_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
+ARTIFACTS = "artifacts"
+SINGLE_ARTIFACT_SCHEMA = Schema({str: ARTIFACT_SCHEMA})
+ARTIFACTS_SCHEMA = Any(str, SINGLE_ARTIFACT_SCHEMA)
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
@@ -128,6 +133,7 @@ MULTI_STAGE_SCHEMA = {
     VARS_KWD: VARS_SCHEMA,
     StageParams.PARAM_PARAMS: [str],
     StageParams.PARAM_METRICS: [str],
+    ARTIFACTS: ARTIFACTS_SCHEMA,
 }
 
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)

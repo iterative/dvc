@@ -4,7 +4,7 @@ import typing
 from collections import defaultdict
 from typing import Dict
 
-import dpath.util
+import dpath
 from voluptuous import Any
 
 from dvc.exceptions import DvcException
@@ -41,7 +41,10 @@ class ParamsDependency(Dependency):
         self.params = list(params) if params else []
         hash_info = HashInfo()
         if isinstance(params, dict):
-            hash_info = HashInfo(self.PARAM_PARAMS, params)
+            hash_info = HashInfo(
+                self.PARAM_PARAMS,
+                params,  # type: ignore[arg-type]
+            )
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
         super().__init__(stage, path, repo=repo)
@@ -64,7 +67,10 @@ class ParamsDependency(Dependency):
         for param in self.params:
             if param in values:
                 info[param] = values[param]
-        self.hash_info = HashInfo(self.PARAM_PARAMS, info)
+        self.hash_info = HashInfo(
+            self.PARAM_PARAMS,
+            info,  # type: ignore[arg-type]
+        )
 
     def read_params(
         self, flatten: bool = True, **kwargs: typing.Any
@@ -81,17 +87,17 @@ class ParamsDependency(Dependency):
         if flatten:
             for param in self.params:
                 try:
-                    ret[param] = dpath.util.get(config, param, separator=".")
+                    ret[param] = dpath.get(config, param, separator=".")
                 except KeyError:
                     continue
             return ret
 
-        from dpath.util import merge
+        from dpath import merge
 
         for param in self.params:
             merge(
                 ret,
-                dpath.util.search(config, param, separator="."),
+                dpath.search(config, param, separator="."),
                 separator=".",
             )
         return ret
@@ -104,7 +110,8 @@ class ParamsDependency(Dependency):
 
         from funcy import ldistinct
 
-        status = defaultdict(dict)
+        status: Dict[str, Any] = defaultdict(dict)
+        assert isinstance(self.hash_info.value, dict)
         info = self.hash_info.value if self.hash_info else {}
         actual = self.read_params()
 
@@ -119,9 +126,13 @@ class ParamsDependency(Dependency):
             elif param not in info:
                 st = "new"
             elif actual[param] != info[param]:
+                if (
+                    isinstance(actual[param], tuple)
+                    and list(actual[param]) == info[param]
+                ):
+                    continue
                 st = "modified"
             else:
-                assert actual[param] == info[param]
                 continue
 
             status[str(self)][param] = st
@@ -144,9 +155,7 @@ class ParamsDependency(Dependency):
         try:
             return load_path(self.fs_path, self.repo.fs)
         except ParseError as exc:
-            raise BadParamFileError(
-                f"Unable to read parameters from '{self}'"
-            ) from exc
+            raise BadParamFileError(f"Unable to read parameters from '{self}'") from exc
 
     def get_hash(self):
         info = self.read_params()
@@ -159,13 +168,13 @@ class ParamsDependency(Dependency):
                 )
             )
 
-        return HashInfo(self.PARAM_PARAMS, info)
+        return HashInfo(self.PARAM_PARAMS, info)  # type: ignore[arg-type]
 
     def save(self):
         if not self.exists:
             raise self.DoesNotExistError(self)
 
-        if not self.isfile and not self.isdir:
+        if not self.isfile() and not self.isdir():
             raise self.IsNotFileOrDirError(self)
 
         self.ignore()

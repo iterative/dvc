@@ -41,6 +41,7 @@ def test_import_url(mocker):
         labels=None,
         meta=None,
         jobs=4,
+        force=False,
         version_aware=False,
     )
 
@@ -69,7 +70,6 @@ def test_failed_import_url(mocker, caplog):
     ],
 )
 def test_import_url_no_exec_download_flags(mocker, flag, expected):
-
     cli_args = parse_args(
         [
             "import-url",
@@ -95,12 +95,13 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
         remote=None,
         to_remote=False,
         desc="description",
-        jobs=None,
         type=None,
         labels=None,
         meta=None,
+        jobs=None,
+        force=False,
         version_aware=False,
-        **expected
+        **expected,
     )
 
 
@@ -137,11 +138,12 @@ def test_import_url_to_remote(mocker):
         labels=None,
         meta=None,
         jobs=None,
+        force=False,
         version_aware=False,
     )
 
 
-@pytest.mark.parametrize("flag", ["--no-exec", "--no-download"])
+@pytest.mark.parametrize("flag", ["--no-exec", "--no-download", "--version-aware"])
 def test_import_url_to_remote_invalid_combination(dvc, mocker, caplog, flag):
     cli_args = parse_args(
         [
@@ -160,13 +162,13 @@ def test_import_url_to_remote_invalid_combination(dvc, mocker, caplog, flag):
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
         expected_msg = (
-            "--no-exec/--no-download cannot be combined with --to-remote"
+            "--no-exec/--no-download/--version-aware cannot be combined with "
+            "--to-remote"
         )
         assert expected_msg in caplog.text
 
 
 def test_import_url_to_remote_flag(dvc, mocker, caplog):
-
     cli_args = parse_args(
         ["import-url", "s3://bucket/foo", "bar", "--remote", "remote"]
     )

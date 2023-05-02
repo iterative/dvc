@@ -2,13 +2,9 @@ import os
 
 import pytest
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import ReproductionError
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
-from dvc.repo.experiments.queue.tasks import (
-    cleanup_exp,
-    collect_exp,
-    setup_exp,
-)
+from dvc.repo.experiments.queue.tasks import cleanup_exp, collect_exp, setup_exp
 
 
 def test_celery_queue_success_status(dvc, scm, test_queue, exp_stage):
@@ -23,9 +19,7 @@ def test_celery_queue_success_status(dvc, scm, test_queue, exp_stage):
     assert executor_info.status == TaskStatus.PREPARING
 
     cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
-    proc_dict = test_queue.proc.run_signature(
-        cmd, name=queue_entry.stash_rev
-    )()
+    proc_dict = test_queue.proc.run_signature(cmd, name=queue_entry.stash_rev)()
 
     executor_info = ExecutorInfo.load_json(infofile)
     assert executor_info.status == TaskStatus.SUCCESS
@@ -70,9 +64,7 @@ def test_workspace_executor_success_status(dvc, scm, exp_stage, queue_type):
     executor_info = ExecutorInfo.load_json(infofile)
     assert executor_info.status == TaskStatus.SUCCESS
     if exec_result.ref_info:
-        workspace_queue.collect_executor(
-            dvc.experiments, executor, exec_result
-        )
+        workspace_queue.collect_executor(dvc.experiments, executor, exec_result)
     executor.cleanup(infofile)
 
     if queue_type == "tempdir_queue":
@@ -86,9 +78,7 @@ def test_workspace_executor_success_status(dvc, scm, exp_stage, queue_type):
     "queue_type",
     ["workspace_queue", "tempdir_queue"],
 )
-def test_workspace_executor_failed_status(
-    dvc, scm, failed_exp_stage, queue_type
-):
+def test_workspace_executor_failed_status(dvc, scm, failed_exp_stage, queue_type):
     queue = getattr(dvc.experiments, queue_type)
     queue.put(
         params={"params.yaml": ["foo=1"]},
@@ -100,7 +90,7 @@ def test_workspace_executor_failed_status(
     infofile = queue.get_infofile_path(name)
     rev = entry.stash_rev
 
-    with pytest.raises(DvcException):
+    with pytest.raises(ReproductionError):
         executor.reproduce(
             info=executor.info,
             rev=rev,

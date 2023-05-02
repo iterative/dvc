@@ -15,7 +15,7 @@ def test_with(tmp_dir, dvc, mocker):
             pass
 
 
-def test_unlock_lock_failed(tmp_dir, dvc, mocker):
+def test_unlock_lock_failed(tmp_dir, dvc, request, mocker):
     # patching to speedup tests
     mocker.patch("dvc.lock.DEFAULT_TIMEOUT", 0.01)
 
@@ -25,15 +25,17 @@ def test_unlock_lock_failed(tmp_dir, dvc, mocker):
 
     # It's a common scenario now to have lock unlocked and locked back (e.g. in
     # repro of a stage) in with. We should see LockError exception here.
-    with pytest.raises(LockError), lock:
+    with lock:
         lock.unlock()
-        lock_ext.lock()  # imitate an exernal process had time to lock it
-        lock.lock()
+        lock_ext.lock()  # imitate an external process had time to lock it
+        request.addfinalizer(lock_ext.unlock)
+        with pytest.raises(LockError):
+            lock.lock()
 
 
 def test_unlock_unlocked_raises():
     lock = Lock("lock")
-    with pytest.raises(DvcException):
+    with pytest.raises(DvcException, match="Unlock called on an unlocked lock"):
         lock.unlock()
 
 

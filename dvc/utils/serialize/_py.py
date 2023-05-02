@@ -1,5 +1,6 @@
 import ast
 from contextlib import contextmanager
+from typing import Any
 
 from funcy import reraise
 
@@ -23,8 +24,7 @@ def parse_py(text, path):
     with reraise(SyntaxError, PythonFileCorruptedError(path)):
         tree = ast.parse(text, filename=path)
 
-    result = _ast_tree_to_dict(tree)
-    return result
+    return _ast_tree_to_dict(tree)
 
 
 def parse_py_for_update(text, path):
@@ -39,7 +39,6 @@ def parse_py_for_update(text, path):
 
 
 def _dump(data, stream):
-
     old_params = data[_PARAMS_KEY]
     new_params = {
         key: value
@@ -67,7 +66,7 @@ def _dump(data, stream):
     try:
         ast.parse(new_text)
     except SyntaxError:
-        raise PythonFileCorruptedError(
+        raise PythonFileCorruptedError(  # noqa: B904
             stream.name,
             "Python file structure is corrupted after update params",
         )
@@ -82,7 +81,7 @@ def dump_py(path, data, fs=None):
 
 @contextmanager
 def modify_py(path, fs=None):
-    with _modify_data(path, parse_py_for_update, dump_py, fs=fs) as d:
+    with _modify_data(path, parse_py_for_update, _dump, fs=fs) as d:
         yield d
 
 
@@ -98,20 +97,12 @@ def _ast_tree_to_dict(tree, only_self_params=False, lineno=False):
     for _body in tree.body:
         try:
             if isinstance(_body, (ast.Assign, ast.AnnAssign)):
-                result.update(
-                    _ast_assign_to_dict(_body, only_self_params, lineno)
-                )
+                result.update(_ast_assign_to_dict(_body, only_self_params, lineno))
             elif isinstance(_body, ast.ClassDef):
+                result.update({_body.name: _ast_tree_to_dict(_body, lineno=lineno)})
+            elif isinstance(_body, ast.FunctionDef) and _body.name == "__init__":
                 result.update(
-                    {_body.name: _ast_tree_to_dict(_body, lineno=lineno)}
-                )
-            elif (
-                isinstance(_body, ast.FunctionDef) and _body.name == "__init__"
-            ):
-                result.update(
-                    _ast_tree_to_dict(
-                        _body, only_self_params=True, lineno=lineno
-                    )
+                    _ast_tree_to_dict(_body, only_self_params=True, lineno=lineno)
                 )
         except ValueError:
             continue
@@ -120,7 +111,7 @@ def _ast_tree_to_dict(tree, only_self_params=False, lineno=False):
     return result
 
 
-def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):
+def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):  # noqa: PLR0912
     result = {}
 
     if isinstance(assign, ast.AnnAssign):
@@ -130,16 +121,18 @@ def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):
     else:
         raise AttributeError
 
+    value: Any
     if isinstance(assign.value, ast.Dict):
         value = {}
         for key, val in zip(assign.value.keys, assign.value.values):
             if lineno:
-                value[ast.literal_eval(key)] = {
+                value[ast.literal_eval(key)] = {  # type: ignore[arg-type]
                     "lineno": assign.lineno - 1,
                     "value": ast.literal_eval(val),
                 }
             else:
-                value[ast.literal_eval(key)] = ast.literal_eval(val)
+                v = ast.literal_eval(val)
+                value[ast.literal_eval(key)] = v  # type: ignore[arg-type]
     elif isinstance(assign.value, ast.List):
         value = [ast.literal_eval(val) for val in assign.value.elts]
     elif isinstance(assign.value, ast.Set):
@@ -161,9 +154,7 @@ def _ast_assign_to_dict(assign, only_self_params=False, lineno=False):
 
 def _get_ast_name(target, only_self_params=False):
     if hasattr(target, "id") and not only_self_params:
-        result = target.id
-    elif hasattr(target, "attr") and target.value.id == "self":
-        result = target.attr
-    else:
-        raise AttributeError
-    return result
+        return target.id
+    if hasattr(target, "attr") and target.value.id == "self":
+        return target.attr
+    raise AttributeError

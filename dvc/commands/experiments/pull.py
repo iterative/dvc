@@ -11,9 +11,7 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsPull(CmdBase):
     def raise_error_if_all_disabled(self):
-        if not any(
-            [self.args.experiment, self.args.all_commits, self.args.rev]
-        ):
+        if not any([self.args.experiment, self.args.all_commits, self.args.rev]):
             raise InvalidArgumentError(
                 "Either provide an `experiment` argument, or use the "
                 "`--rev` or `--all-commits` flag."
@@ -68,16 +66,13 @@ def add_parser(experiments_subparsers, parent_parser):
         "-f",
         "--force",
         action="store_true",
-        help="Replace local experiment already exists.",
+        help="Replace local experiment if it already exists.",
     )
     experiments_pull_parser.add_argument(
         "--no-cache",
         action="store_false",
         dest="pull_cache",
-        help=(
-            "Do not pull cached outputs for this experiment from DVC remote "
-            "storage."
-        ),
+        help="Do not pull cached outputs for this experiment from DVC remote storage.",
     )
     experiments_pull_parser.add_argument(
         "-r",
@@ -92,8 +87,7 @@ def add_parser(experiments_subparsers, parent_parser):
         type=int,
         metavar="<number>",
         help=(
-            "Number of jobs to run simultaneously when pulling from DVC "
-            "remote storage."
+            "Number of jobs to run simultaneously when pulling from DVC remote storage."
         ),
     )
     experiments_pull_parser.add_argument(

@@ -22,9 +22,7 @@ def log_changes(stats):
             continue
 
         for entry in entries:
-            ui.write(
-                f"[{color}]{state[0].upper()}", entry, styled=True, sep="\t"
-            )
+            ui.write(f"[{color}]{state[0].upper()}", entry, styled=True, sep="\t")
 
 
 class CmdCheckout(CmdBase):
@@ -46,9 +44,7 @@ class CmdCheckout(CmdBase):
 
         if self.args.summary:
             default_message = "No changes."
-            msg = get_summary(
-                sorted(stats.items(), key=operator.itemgetter(0))
-            )
+            msg = get_summary(sorted(stats.items(), key=operator.itemgetter(0)))
             ui.write(msg or default_message)
         else:
             log_changes(stats)

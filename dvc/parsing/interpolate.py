@@ -73,7 +73,7 @@ def embrace(s: str):
 
 def escape_str(value):
     if os.name == "nt":
-        from subprocess import list2cmdline
+        from subprocess import list2cmdline  # nosec B404
 
         return list2cmdline([value])
     from shlex import quote
@@ -92,20 +92,18 @@ def _(obj: bool):
 
 
 @to_str.register(dict)
-def _(obj: dict):
+def _(obj: dict):  # noqa: C901
     from dvc.config import Config
 
-    config = Config().get("parsing", {})
+    config = Config.from_cwd().get("parsing", {})
 
     result = ""
     for k, v in flatten(obj).items():
-
         if isinstance(v, bool):
             if v:
                 result += f"--{k} "
-            else:
-                if config.get("bool", "store_true") == "boolean_optional":
-                    result += f"--no-{k} "
+            elif config.get("bool", "store_true") == "boolean_optional":
+                result += f"--no-{k} "
 
         elif isinstance(v, str):
             result += f"--{k} {escape_str(v)} "
@@ -115,9 +113,7 @@ def _(obj: dict):
                 if isinstance(i, str):
                     i = escape_str(i)
                 elif isinstance(i, Iterable):
-                    raise ParseError(
-                        f"Cannot interpolate nested iterable in '{k}'"
-                    )
+                    raise ParseError(f"Cannot interpolate nested iterable in '{k}'")
 
                 if config.get("list", "nargs") == "append":
                     result += f"--{k} {i} "
@@ -186,7 +182,7 @@ def parse_expr(s: str):
         result = get_parser().parseString(s, parseAll=True)
     except ParseException as exc:
         format_and_raise_parse_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable")  # noqa: B904
 
     joined = result.asList()
     assert len(joined) == 1
@@ -204,12 +200,9 @@ def validate_value(value, key):
     not_primitive = value is not None and not isinstance(value, PRIMITIVES)
     not_foreach = key is not None and "foreach" not in key
     if not_primitive and not_foreach:
-        if isinstance(value, dict):
-            if key == "cmd":
-                return True
-        raise ParseError(
-            f"Cannot interpolate data of type '{type(value).__name__}'"
-        )
+        if isinstance(value, dict) and key == "cmd":
+            return True
+        raise ParseError(f"Cannot interpolate data of type '{type(value).__name__}'")
 
 
 def str_interpolate(

@@ -2,6 +2,7 @@ import hashlib
 import locale
 import logging
 import os
+from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Collection,
@@ -12,35 +13,46 @@ from typing import (
     NamedTuple,
     Optional,
     Set,
+    Union,
 )
 
 from celery.result import AsyncResult
-from funcy import cached_property, first
-from kombu.message import Message
+from funcy import first
 
 from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
+from dvc.repo.experiments.exceptions import (
+    UnresolvedQueueExpNamesError,
+    UnresolvedRunningExpNamesError,
+)
+from dvc.repo.experiments.executor.base import ExecutorInfo
+from dvc.repo.experiments.refs import CELERY_STASH
+from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.ui import ui
+from dvc.utils.objects import cached_property
 
-from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import ExecutorInfo, ExecutorResult
-from ..refs import CELERY_STASH
-from ..utils import EXEC_TMP_DIR, get_exp_rwlock
-from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
+from .base import BaseStashQueue, ExpRefAndQueueEntry, QueueDoneResult, QueueEntry
 from .exceptions import CannotKillTasksError
 from .tasks import run_exp
 from .utils import fetch_running_exp_from_temp_dir
 
 if TYPE_CHECKING:
+    from kombu.message import Message
+
+    from dvc.repo.experiments.executor.base import ExecutorResult
+    from dvc.repo.experiments.refs import ExpRefInfo
+    from dvc.repo.experiments.serialize import ExpRange
     from dvc_task.app import FSApp
     from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
+
+    from .base import QueueGetResult
 
 logger = logging.getLogger(__name__)
 
 
 class _MessageEntry(NamedTuple):
-    msg: Message
+    msg: "Message"
     entry: QueueEntry
 
 
@@ -57,15 +69,14 @@ class LocalCeleryQueue(BaseStashQueue):
 
     CELERY_DIR = "celery"
 
-    _shutdown_task_ids: Set[str] = set()
-
     @cached_property
     def wdir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, self.CELERY_DIR)
 
     @cached_property
     def celery(self) -> "FSApp":
-        from kombu.transport.filesystem import Channel  # type: ignore
+        from kombu.transport.filesystem import Channel
 
         # related to https://github.com/iterative/dvc-task/issues/61
         Channel.QoS.restore_at_shutdown = False
@@ -81,7 +92,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 "dvc_task.proc.tasks",
             ],
         )
-        app.conf.update({"task_acks_late": True})
+        app.conf.update({"task_acks_late": True, "result_expires": None})
         return app
 
     @cached_property
@@ -114,9 +125,10 @@ class LocalCeleryQueue(BaseStashQueue):
             without_mingle=True,
             without_gossip=True,
             timeout=10,
+            loglevel="debug" if logger.getEffectiveLevel() <= logging.DEBUG else "info",
         )
 
-    def spawn_worker(self, num: int = 1):
+    def _spawn_worker(self, num: int = 1):
         """spawn one single worker to process to queued tasks.
 
         Argument:
@@ -129,13 +141,18 @@ class LocalCeleryQueue(BaseStashQueue):
         wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
         node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
         cmd = ["exp", "queue-worker", node_name]
+        if num == 1:
+            # automatically run celery cleanup when primary worker shuts down
+            cmd.append("--clean")
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            cmd.append("-v")
         name = f"dvc-exp-worker-{num}"
 
-        logger.debug(f"start a new worker: {name}, node: {node_name}")
+        logger.debug("start a new worker: %s, node: %s", name, node_name)
         if os.name == "nt":
             daemonize(cmd)
         else:
-            ManagedProcess.spawn(["dvc"] + cmd, wdir=self.wdir, name=name)
+            ManagedProcess.spawn(["dvc", *cmd], wdir=self.wdir, name=name)
 
     def start_workers(self, count: int) -> int:
         """start some workers to process the queued tasks.
@@ -147,33 +164,33 @@ class LocalCeleryQueue(BaseStashQueue):
             newly spawned worker number.
         """
 
-        logger.debug(f"Spawning {count} exp queue workers")
+        logger.debug("Spawning %s exp queue workers", count)
         active_worker: Dict = self.worker_status()
 
         started = 0
         for num in range(1, 1 + count):
-            wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[
-                :6
-            ]
+            wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
             node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
             if node_name in active_worker:
-                logger.debug(f"Exp queue worker {node_name} already exist")
+                logger.debug("Exp queue worker %s already exist", node_name)
                 continue
-            self.spawn_worker(num)
+            self._spawn_worker(num)
             started += 1
 
         return started
 
-    def put(self, *args, **kwargs) -> QueueEntry:
+    def put(
+        self, *args, copy_paths: Optional[List[str]] = None, **kwargs
+    ) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
         with get_exp_rwlock(self.repo, writes=["workspace", CELERY_STASH]):
             entry = self._stash_exp(*args, **kwargs)
-        self.celery.signature(run_exp.s(entry.asdict())).delay()
+        self.celery.signature(run_exp.s(entry.asdict(), copy_paths=copy_paths)).delay()
         return entry
 
     # NOTE: Queue consumption should not be done directly. Celery worker(s)
     # will automatically consume available experiments.
-    def get(self) -> QueueGetResult:
+    def get(self) -> "QueueGetResult":
         raise NotImplementedError
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
@@ -186,7 +203,9 @@ class LocalCeleryQueue(BaseStashQueue):
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
-            logger.debug("Found queued task %s", entry_dict["stash_rev"])
+            logger.trace(  # type: ignore[attr-defined]
+                "Found queued task %s", entry_dict["stash_rev"]
+            )
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_processed(self) -> Generator[_MessageEntry, None, None]:
@@ -198,21 +217,23 @@ class LocalCeleryQueue(BaseStashQueue):
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_active_tasks(self) -> Generator[_TaskEntry, None, None]:
-
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if not result.ready():
-                logger.debug("Found active task %s", entry.stash_rev)
+                logger.trace(  # type: ignore[attr-defined]
+                    "Found active task %s", entry.stash_rev
+                )
                 yield _TaskEntry(result, entry)
 
     def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
-
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if result.ready():
-                logger.debug("Found done task %s", entry.stash_rev)
+                logger.trace(  # type: ignore[attr-defined]
+                    "Found done task %s", entry.stash_rev
+                )
                 yield _TaskEntry(result, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:
@@ -225,10 +246,10 @@ class LocalCeleryQueue(BaseStashQueue):
                 exp_result = self.get_result(entry)
             except FileNotFoundError:
                 if result.status == "SUCCESS":
-                    raise DvcException(
+                    raise DvcException(  # noqa: B904
                         f"Invalid experiment '{entry.stash_rev[:7]}'."
                     )
-                elif result.status == "FAILURE":
+                if result.status == "FAILURE":
                     exp_result = None
             yield QueueDoneResult(entry, exp_result)
 
@@ -242,7 +263,9 @@ class LocalCeleryQueue(BaseStashQueue):
             if exp_result is None:
                 yield QueueDoneResult(queue_entry, exp_result)
 
-    def reproduce(self) -> Mapping[str, Mapping[str, str]]:
+    def reproduce(
+        self, copy_paths: Optional[List[str]] = None
+    ) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 
     def _load_info(self, rev: str) -> ExecutorInfo:
@@ -259,9 +282,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 task_id = msg.headers["id"]
                 result: AsyncResult = AsyncResult(task_id)
                 if not result.ready():
-                    logger.debug(
-                        "Waiting for exp task '%s' to complete", result.id
-                    )
+                    logger.debug("Waiting for exp task '%s' to complete", result.id)
                     try:
                         result.get(timeout=timeout)
                     except _CeleryTimeout as exc:
@@ -275,7 +296,6 @@ class LocalCeleryQueue(BaseStashQueue):
     def get_result(
         self, entry: QueueEntry, timeout: Optional[float] = None
     ) -> Optional["ExecutorResult"]:
-
         try:
             return self._get_done_result(entry, timeout)
         except FileNotFoundError:
@@ -290,6 +310,28 @@ class LocalCeleryQueue(BaseStashQueue):
         # out of the active task list, and needs to be loaded here.
         return self._get_done_result(entry, timeout)
 
+    def wait(self, revs: Collection[str], **kwargs) -> None:
+        """Block until the specified tasks have completed."""
+        revs = [revs] if isinstance(revs, str) else revs
+        results = self.match_queue_entry_by_name(
+            revs, self.iter_queued(), self.iter_done(), self.iter_failed()
+        )
+        for entry in results.values():
+            if not entry:
+                continue
+            self.wait_for_start(entry, **kwargs)
+            try:
+                self.get_result(entry)
+            except FileNotFoundError:
+                pass
+
+    def wait_for_start(self, entry: QueueEntry, sleep_interval: float = 0.001) -> None:
+        """Block until the specified task has been started."""
+        import time
+
+        while not self.proc.get(entry.stash_rev):
+            time.sleep(sleep_interval)
+
     def _get_running_task_ids(self) -> Set[str]:
         running_task_ids: Set[str] = set()
         active_workers = self.worker_status()
@@ -300,21 +342,26 @@ class LocalCeleryQueue(BaseStashQueue):
         return running_task_ids
 
     def _try_to_kill_tasks(
-        self, to_kill: Dict[QueueEntry, str]
+        self, to_kill: Dict[QueueEntry, str], force: bool
     ) -> Dict[QueueEntry, str]:
         fail_to_kill_entries: Dict[QueueEntry, str] = {}
         for queue_entry, rev in to_kill.items():
             try:
-                self.proc.kill(queue_entry.stash_rev)
-                logger.debug(f"Task {rev} had been killed.")
+                if force:
+                    self.proc.kill(queue_entry.stash_rev)
+                else:
+                    self.proc.interrupt(queue_entry.stash_rev)
+                ui.write(f"{rev} has been killed.")
             except ProcessLookupError:
                 fail_to_kill_entries[queue_entry] = rev
         return fail_to_kill_entries
 
-    def _mark_inactive_tasks_failure(self, remained_entries):
+    def _mark_inactive_tasks_failure(
+        self, remained_entries: Dict[QueueEntry, str]
+    ) -> None:
         remained_revs: List[str] = []
         running_ids = self._get_running_task_ids()
-        logger.debug(f"Current running tasks ids: {running_ids}.")
+        logger.debug("Current running tasks ids: %s.", running_ids)
         for msg, entry in self._iter_processed():
             if entry not in remained_entries:
                 continue
@@ -325,44 +372,55 @@ class LocalCeleryQueue(BaseStashQueue):
                 result: AsyncResult = AsyncResult(task_id)
                 if not result.ready():
                     logger.debug(
-                        f"Task id {task_id} rev {remained_entries[entry]} "
-                        "marked as failure."
+                        "Task id %s rev %s marked as failure.",
+                        task_id,
+                        remained_entries[entry],
                     )
-                    self.celery.backend.mark_as_failure(task_id, None)
+                    backend = self.celery.backend
+                    backend.mark_as_failure(task_id, None)  # type: ignore[attr-defined]
 
         if remained_revs:
             raise CannotKillTasksError(remained_revs)
 
-    def kill(self, revs: Collection[str]) -> None:
-        name_dict: Dict[
-            str, Optional[QueueEntry]
-        ] = self.match_queue_entry_by_name(set(revs), self.iter_active())
+    def _kill_entries(self, entries: Dict[QueueEntry, str], force: bool) -> None:
+        logger.debug(
+            "Found active tasks: '%s' to kill",
+            list(entries.values()),
+        )
+        inactive_entries: Dict[QueueEntry, str] = self._try_to_kill_tasks(
+            entries, force
+        )
 
-        to_kill: Dict[QueueEntry, str] = {}
+        if inactive_entries:
+            self._mark_inactive_tasks_failure(inactive_entries)
+
+    def kill(self, revs: Collection[str], force: bool = False) -> None:
+        name_dict: Dict[str, Optional[QueueEntry]] = self.match_queue_entry_by_name(
+            set(revs), self.iter_active()
+        )
+
         missing_revs: List[str] = []
+        to_kill: Dict[QueueEntry, str] = {}
         for rev, queue_entry in name_dict.items():
             if queue_entry is None:
                 missing_revs.append(rev)
             else:
                 to_kill[queue_entry] = rev
+
+        if to_kill:
+            self._kill_entries(to_kill, force)
+
         if missing_revs:
-            raise UnresolvedQueueExpNamesError(missing_revs)
-
-        fail_to_kill_entries: Dict[QueueEntry, str] = self._try_to_kill_tasks(
-            to_kill
-        )
-
-        if fail_to_kill_entries:
-            self._mark_inactive_tasks_failure(fail_to_kill_entries)
+            raise UnresolvedRunningExpNamesError(missing_revs)
 
     def shutdown(self, kill: bool = False):
         self.celery.control.shutdown()
         if kill:
-            for _, task_entry in self._iter_active_tasks():
-                try:
-                    self.proc.kill(task_entry.stash_rev)
-                except ProcessLookupError:
-                    continue
+            to_kill: Dict[QueueEntry, str] = {}
+            for entry in self.iter_active():
+                to_kill[entry] = entry.name or entry.stash_rev
+            if to_kill:
+                self._kill_entries(to_kill, True)
 
     def follow(
         self,
@@ -382,9 +440,7 @@ class LocalCeleryQueue(BaseStashQueue):
             {rev}, self.iter_active(), self.iter_done()
         ).get(rev)
         if queue_entry is None:
-            if rev in self.match_queue_entry_by_name(
-                {rev}, self.iter_queued()
-            ):
+            if self.match_queue_entry_by_name({rev}, self.iter_queued()).get(rev):
                 raise DvcException(
                     f"Experiment '{rev}' is in queue but has not been started"
                 )
@@ -402,7 +458,9 @@ class LocalCeleryQueue(BaseStashQueue):
         try:
             proc_info = self.proc[queue_entry.stash_rev]
         except KeyError:
-            raise DvcException(f"No output logs found for experiment '{rev}'")
+            raise DvcException(  # noqa: B904
+                f"No output logs found for experiment '{rev}'"
+            )
         with open(
             proc_info.stdout,
             encoding=encoding or locale.getpreferredencoding(),
@@ -412,8 +470,7 @@ class LocalCeleryQueue(BaseStashQueue):
     def worker_status(self) -> Dict[str, List[Dict]]:
         """Return the current active celery worker"""
         status = self.celery.control.inspect().active() or {}
-        logger.debug(f"Worker status: {status}")
-
+        logger.debug("Worker status: %s", status)
         return status
 
     def clear(self, *args, **kwargs):
@@ -435,8 +492,155 @@ class LocalCeleryQueue(BaseStashQueue):
         result: Dict[str, Dict] = {}
         for entry in self.iter_active():
             result.update(
-                fetch_running_exp_from_temp_dir(
-                    self, entry.stash_rev, fetch_refs
+                fetch_running_exp_from_temp_dir(self, entry.stash_rev, fetch_refs)
+            )
+        return result
+
+    def get_ref_and_entry_by_names(
+        self,
+        exp_names: Union[str, List[str]],
+        git_remote: Optional[str] = None,
+    ) -> Dict[str, ExpRefAndQueueEntry]:
+        """Find finished ExpRefInfo or queued or failed QueueEntry by name"""
+        from dvc.repo.experiments.utils import resolve_name
+
+        if isinstance(exp_names, str):
+            exp_names = [exp_names]
+        results: Dict[str, ExpRefAndQueueEntry] = {}
+
+        exp_ref_match: Dict[str, Optional["ExpRefInfo"]] = resolve_name(
+            self.scm, exp_names, git_remote
+        )
+        if not git_remote:
+            queue_entry_match: Dict[
+                str, Optional["QueueEntry"]
+            ] = self.match_queue_entry_by_name(
+                exp_names, self.iter_queued(), self.iter_done()
+            )
+
+        for exp_name in exp_names:
+            exp_ref = exp_ref_match[exp_name]
+            queue_entry = None if git_remote else queue_entry_match[exp_name]
+            results[exp_name] = ExpRefAndQueueEntry(exp_ref, queue_entry)
+        return results
+
+    def collect_active_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        fetch_refs: bool = False,
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo import Repo
+        from dvc.repo.experiments.collect import collect_exec_branch
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        for entry in self.iter_active():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            if fetch_refs:
+                fetch_running_exp_from_temp_dir(self, entry.stash_rev, fetch_refs)
+            proc_info = self.proc.get(entry.stash_rev)
+            executor_info = self._load_info(entry.stash_rev)
+            if proc_info:
+                local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                    root=executor_info.root_dir,
+                    log=proc_info.stdout,
+                    pid=proc_info.pid,
+                    task_id=entry.stash_rev,
+                )
+            else:
+                local_exec = None
+            dvc_root = os.path.join(executor_info.root_dir, executor_info.dvc_dir)
+            with Repo(dvc_root) as exec_repo:
+                kwargs["cache"] = self.repo.experiments.cache
+                exps = list(
+                    collect_exec_branch(exec_repo, executor_info.baseline_rev, **kwargs)
+                )
+            exps[0].rev = entry.stash_rev
+            exps[0].name = entry.name
+            result[entry.baseline_rev].append(
+                ExpRange(
+                    exps,
+                    executor=ExpExecutor(
+                        "running",
+                        name=executor_info.location,
+                        local=local_exec,
+                    ),
+                    name=entry.name,
+                )
+            )
+        return result
+
+    def collect_queued_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo.experiments.collect import collect_rev
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        for entry in self.iter_queued():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            exp = collect_rev(self.repo, entry.stash_rev, **kwargs)
+            exp.name = entry.name
+            local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                task_id=entry.stash_rev,
+            )
+            result[entry.baseline_rev].append(
+                ExpRange(
+                    [exp],
+                    executor=ExpExecutor("queued", name="dvc-task", local=local_exec),
+                    name=entry.name,
+                )
+            )
+        return result
+
+    def collect_failed_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        from dvc.repo.experiments.collect import collect_rev
+        from dvc.repo.experiments.serialize import (
+            ExpExecutor,
+            ExpRange,
+            LocalExpExecutor,
+            SerializableError,
+        )
+
+        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        for entry, _ in self.iter_failed():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            proc_info = self.proc.get(entry.stash_rev)
+            if proc_info:
+                local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                    log=proc_info.stdout,
+                    pid=proc_info.pid,
+                    returncode=proc_info.returncode,
+                    task_id=entry.stash_rev,
+                )
+            else:
+                local_exec = None
+            exp = collect_rev(self.repo, entry.stash_rev, **kwargs)
+            exp.name = entry.name
+            exp.error = SerializableError("Experiment run failed")
+            result[entry.baseline_rev].append(
+                ExpRange(
+                    [exp],
+                    executor=ExpExecutor("failed", local=local_exec),
+                    name=entry.name,
                 )
             )
         return result

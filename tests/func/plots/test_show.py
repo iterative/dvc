@@ -1,15 +1,16 @@
+import json
 import os
 
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
 from dvc.repo.plots import PlotMetricTypeError
 from dvc.utils import onerror_collect
 from dvc.utils.fs import remove
-from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError
+from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError, modify_yaml
 from tests.utils.plots import get_plot
 
 
@@ -88,9 +89,7 @@ def test_show_non_plot(tmp_dir, scm, use_dvc):
     assert get_plot(plots, "workspace", file="metric.json") == metric
 
 
-def test_show_non_plot_and_plot_with_params(
-    tmp_dir, scm, dvc, run_copy_metrics
-):
+def test_show_non_plot_and_plot_with_params(tmp_dir, scm, dvc, run_copy_metrics):
     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     (tmp_dir / "metric.json").dump_json(metric, sort_keys=True)
     run_copy_metrics(
@@ -106,10 +105,7 @@ def test_show_non_plot_and_plot_with_params(
 
     assert get_plot(result, "workspace", file="metric.json") == metric
     assert get_plot(result, "workspace", file="metric2.json") == metric
-    assert (
-        get_plot(result, "workspace", file="metric2.json", endkey="props")
-        == props
-    )
+    assert get_plot(result, "workspace", file="metric2.json", endkey="props") == props
 
 
 def test_show_from_subdir(tmp_dir, dvc, capsys):
@@ -128,14 +124,17 @@ def test_show_from_subdir(tmp_dir, dvc, capsys):
     assert (subdir / "dvc_plots" / "index.html").is_file()
 
 
-def test_plots_show_non_existing(tmp_dir, dvc, caplog):
+def test_plots_show_non_existing(tmp_dir, dvc, capsys):
     result = dvc.plots.show(targets=["plot.json"])
     assert isinstance(
         get_plot(result, "workspace", file="plot.json", endkey="error"),
         FileNotFoundError,
     )
 
-    assert "'plot.json' was not found in current workspace." in caplog.text
+    cap = capsys.readouterr()
+    assert (
+        "DVC failed to load some plots for following revisions: 'workspace'" in cap.err
+    )
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])
@@ -163,7 +162,7 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     # so as it works even for optimized cases
     if clear_before_run:
         remove(data_dir)
-        remove(dvc.odb.local.path)
+        remove(dvc.cache.local.path)
 
     dvc._reset()
 
@@ -223,16 +222,14 @@ def test_ignore_parsing_error(tmp_dir, dvc, run_copy_metrics):
 @pytest.mark.parametrize(
     "file,path_kwargs",
     (
-        (PIPELINE_FILE, {"revision": "workspace", "endkey": "error"}),
+        (PROJECT_FILE, {"revision": "workspace", "endkey": "error"}),
         (
             "plot.yaml",
             {"revision": "workspace", "file": "plot.yaml", "endkey": "error"},
         ),
     ),
 )
-def test_log_errors(
-    tmp_dir, scm, dvc, run_copy_metrics, file, path_kwargs, capsys
-):
+def test_log_errors(tmp_dir, scm, dvc, run_copy_metrics, file, path_kwargs, capsys):
     metric = [{"val": 2}, {"val": 3}]
     (tmp_dir / "metric_t.yaml").dump(metric)
     run_copy_metrics(
@@ -252,15 +249,12 @@ def test_log_errors(
 
     assert isinstance(get_plot(result, **path_kwargs), YAMLFileCorruptedError)
     assert (
-        "DVC failed to load some plots for following revisions: 'workspace'."
-        in error
+        "DVC failed to load some plots for following revisions: 'workspace'." in error
     )
 
 
 @pytest.mark.parametrize("ext", ["jpg", "svg"])
-def test_plots_binary(
-    tmp_dir, scm, dvc, run_copy_metrics, custom_template, ext
-):
+def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template, ext):
     file1 = f"image.{ext}"
     file2 = f"plot.{ext}"
     with open(file1, "wb") as fd:
@@ -326,9 +320,7 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
     remove(subdir_stage.outs[0].fs_path)
 
     result = dvc.plots.show()
-    assert get_plot(
-        result, "workspace", typ="definitions", file="", endkey="error"
-    )
+    assert get_plot(result, "workspace", typ="definitions", file="", endkey="error")
     # make sure others gets loaded
     assert get_plot(result, "workspace", file="plot.json") == metric
 
@@ -360,14 +352,11 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
         ),
     ],
 )
-@pytest.mark.parametrize("separate_config", [True, False])
-def test_load_from_config(
+def test_top_level_plots(
     tmp_dir,
     dvc,
     plot_config,
     expected_datafiles,
-    separate_config,
-    run_copy_metrics,
 ):
     data = {
         "data1.json": [
@@ -386,23 +375,11 @@ def test_load_from_config(
             os.makedirs(dirname)
         (tmp_dir / filename).dump_json(content, sort_keys=True)
 
-    config_files = None
-    if separate_config:
-        (tmp_dir / "plot_config.json").dump_json(plot_config, sort_keys=True)
-        config_file = "plot_config.json"
-        config_files = {config_file}
-    else:
-        # TODO we need that to create any stage, as dvc.yaml plots
-        #     collections bases on existing stages - fix collection
-        run_copy_metrics("data1.json", "copy.json", name="train")
+    config_file = "dvc.yaml"
+    with modify_yaml(config_file) as dvcfile_content:
+        dvcfile_content["plots"] = plot_config
 
-        from dvc.utils.serialize import modify_yaml
-
-        config_file = "dvc.yaml"
-        with modify_yaml(config_file) as dvcfile_content:
-            dvcfile_content["plots"] = plot_config
-
-    result = dvc.plots.show(config_files=config_files)
+    result = dvc.plots.show()
 
     assert plot_config == get_plot(
         result, "workspace", typ="definitions", file=config_file
@@ -413,3 +390,36 @@ def test_load_from_config(
             assert content == get_plot(result, "workspace", file=filename)
         else:
             assert filename not in get_plot(result, "workspace")
+
+
+def test_show_plots_defined_with_native_os_path(tmp_dir, dvc, scm, capsys):
+    """Regression test for #8689"""
+    top_level_plot = os.path.join("subdir", "top_level_plot.csv")
+    stage_plot = os.path.join("subdir", "stage_plot.csv")
+    (tmp_dir / "subdir").mkdir()
+    (tmp_dir / top_level_plot).write_text("foo,bar\n1,2")
+    (tmp_dir / stage_plot).write_text("foo,bar\n1,2")
+    (tmp_dir / "dvc.yaml").dump({"plots": [top_level_plot]})
+
+    dvc.stage.add(name="foo", plots=[stage_plot], cmd="echo foo")
+
+    plots = dvc.plots.show()
+
+    # sources are in posixpath format
+    sources = plots["workspace"]["sources"]["data"]
+    assert sources["subdir/top_level_plot.csv"]["data"] == [{"foo": "1", "bar": "2"}]
+    assert sources["subdir/stage_plot.csv"]["data"] == [{"foo": "1", "bar": "2"}]
+    # definitions are in native os format
+    definitions = plots["workspace"]["definitions"]["data"]
+    assert top_level_plot in definitions["dvc.yaml"]["data"]
+    assert stage_plot in definitions[""]["data"]
+
+    capsys.readouterr()
+    assert main(["plots", "show", "--json"]) == 0
+    out, _ = capsys.readouterr()
+    json_out = json.loads(out)
+    assert "errors" not in json_out
+
+    json_data = json_out["data"]
+    assert json_data[f"dvc.yaml::{top_level_plot}"]
+    assert json_data[stage_plot]

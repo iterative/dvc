@@ -2,13 +2,7 @@ import os
 
 import pytest
 
-from dvc.utils import (
-    dict_sha256,
-    fix_env,
-    parse_target,
-    relpath,
-    resolve_output,
-)
+from dvc.utils import dict_sha256, fix_env, parse_target, relpath, resolve_output
 
 
 @pytest.mark.skipif(os.name == "nt", reason="pyenv-win is not supported")
@@ -16,10 +10,7 @@ from dvc.utils import (
     "path, orig",
     [
         (
-            (
-                "/pyenv/bin:/pyenv/libexec:/pyenv/plugins/plugin:"
-                "/orig/path1:/orig/path2"
-            ),
+            "/pyenv/bin:/pyenv/libexec:/pyenv/plugins/plugin:/orig/path1:/orig/path2",
             "/orig/path1:/orig/path2",
         ),
         (
@@ -27,10 +18,7 @@ from dvc.utils import (
             "/orig/path1:/orig/path2",
         ),
         (
-            (
-                "/pyenv/bin:/some/libexec:/pyenv/plugins/plugin:"
-                "/orig/path1:/orig/path2"
-            ),
+            "/pyenv/bin:/some/libexec:/pyenv/plugins/plugin:/orig/path1:/orig/path2",
             "/orig/path1:/orig/path2",
         ),
         ("/orig/path1:/orig/path2", "/orig/path1:/orig/path2"),
@@ -142,9 +130,9 @@ def test_parse_target(inp, out, default):
 
 
 def test_hint_on_lockfile():
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="Did you mean: `dvc.yaml:name`?") as e:
         assert parse_target("dvc.lock:name")
-    assert "dvc.yaml:name" in str(exc.value)
+    assert "dvc.yaml:name" in str(e.value)
 
 
 @pytest.mark.parametrize(

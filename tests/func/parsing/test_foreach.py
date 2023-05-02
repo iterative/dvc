@@ -44,6 +44,23 @@ def test_with_dict_data(tmp_dir, dvc):
     assert not resolver.tracked_vars["build@model2"]
 
 
+def test_with_dict_with_non_str_keys(tmp_dir, dvc):
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
+    context = Context()
+
+    foreach_data = {2021: {"thresh": "foo"}, 2022: {"thresh": "bar"}}
+    data = {"foreach": foreach_data, "do": {"cmd": "echo ${key} ${item.thresh}"}}
+    definition = ForeachDefinition(resolver, context, "build", data)
+
+    assert definition.resolve_one("2021") == {"build@2021": {"cmd": "echo 2021 foo"}}
+    assert definition.resolve_one("2022") == {"build@2022": {"cmd": "echo 2022 bar"}}
+
+    # check that `foreach` item-key replacement didnot leave any leftovers.
+    assert not context
+    assert not resolver.tracked_vars["build@2021"]
+    assert not resolver.tracked_vars["build@2022"]
+
+
 def test_with_composite_list(tmp_dir, dvc):
     resolver = DataResolver(dvc, tmp_dir.fs_path, {})
 
@@ -180,9 +197,7 @@ def test_mixed_vars_for_foreach_data(tmp_dir, dvc):
     (tmp_dir / "params.yaml").dump({"models": {"model1": "foo"}})
     (tmp_dir / "test_params.yaml").dump({"models": {"model2": "bar"}})
 
-    resolver = DataResolver(
-        dvc, tmp_dir.fs_path, {"vars": ["test_params.yaml"]}
-    )
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {"vars": ["test_params.yaml"]})
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
 
@@ -205,9 +220,7 @@ def test_mixed_vars_for_foreach_data_2(tmp_dir, dvc):
         {"models": {"model1": {"epochs": 5}, "model2": {"epochs": 10}}},
     )
 
-    resolver = DataResolver(
-        dvc, tmp_dir.fs_path, {"vars": ["test_params.yaml"]}
-    )
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {"vars": ["test_params.yaml"]})
     data = {
         "foreach": "${models}",
         "do": {"cmd": "echo ${item.thresh} ${item.epochs}"},
@@ -316,12 +329,8 @@ def test_foreach_with_imported_vars(tmp_dir, dvc, local_import):
     }
 
 
-@pytest.mark.parametrize(
-    "local_import", ["params.yaml", "params.yaml:train,prepare"]
-)
-def test_foreach_with_interpolated_wdir_and_local_vars(
-    tmp_dir, dvc, local_import
-):
+@pytest.mark.parametrize("local_import", ["params.yaml", "params.yaml:train,prepare"])
+def test_foreach_with_interpolated_wdir_and_local_vars(tmp_dir, dvc, local_import):
     (tmp_dir / "params.yaml").dump({"models": {"model1": {"thresh": "foo"}}})
 
     for i in range(5):

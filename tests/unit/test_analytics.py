@@ -49,6 +49,7 @@ def test_runtime_info(tmp_global_dir):
             "scm_class": Any("Git", None),
             "user_id": str,
             "system_info": dict,
+            "group_id": Any(str, None),
         },
         required=True,
     )
@@ -109,9 +110,7 @@ def test_is_enabled(dvc, config, result, monkeypatch, tmp_global_dir):
         ("true", "false", False),  # we checking if env is set
     ],
 )
-def test_is_enabled_env_neg(
-    dvc, config, env, result, monkeypatch, tmp_global_dir
-):
+def test_is_enabled_env_neg(dvc, config, env, result, monkeypatch, tmp_global_dir):
     # reset DVC_TEST env var, which affects `is_enabled()`
     monkeypatch.delenv("DVC_TEST")
     monkeypatch.delenv("DVC_NO_ANALYTICS", raising=False)

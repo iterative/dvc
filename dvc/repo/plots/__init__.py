@@ -2,36 +2,45 @@ import csv
 import io
 import logging
 import os
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from copy import deepcopy
 from functools import partial
+from multiprocessing import cpu_count
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
-    Generator,
+    Iterator,
     List,
     Optional,
     Set,
     Union,
 )
 
+import dpath
 import dpath.options
-import dpath.util
-from funcy import cached_property, distinct, first, project
+from funcy import first, ldistinct, project, reraise
 
 from dvc.exceptions import DvcException
 from dvc.utils import error_handler, errored_revisions, onerror_collect
-from dvc.utils.serialize import LOADERS
+from dvc.utils.objects import cached_property
+from dvc.utils.serialize import PARSERS, EncodingError
+from dvc.utils.threadpool import ThreadPoolExecutor
+from dvc_render.image import ImageRenderer
 
 if TYPE_CHECKING:
+    from dvc.fs import FileSystem
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.types import DictStrAny, StrPath
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
 logger = logging.getLogger(__name__)
+
+
+SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS
 
 
 class PlotMetricTypeError(DvcException):
@@ -45,8 +54,7 @@ class PlotMetricTypeError(DvcException):
 class NotAPlotError(DvcException):
     def __init__(self, out):
         super().__init__(
-            f"'{out}' is not a known plot. Use `dvc plots modify` to turn it "
-            "into one."
+            f"'{out}' is not a known plot. Use `dvc plots modify` to turn it into one."
         )
 
 
@@ -56,7 +64,11 @@ class PropsNotFoundError(DvcException):
 
 @error_handler
 def _unpack_dir_files(fs, path, **kwargs):
-    return list(fs.find(path))
+    ret = list(fs.find(path))
+    if not ret:
+        # This will raise FileNotFoundError if it is a broken symlink or TreeError
+        next(iter(fs.ls(path)), None)
+    return ret
 
 
 class Plots:
@@ -65,13 +77,12 @@ class Plots:
 
     def collect(
         self,
-        targets: List[str] = None,
-        revs: List[str] = None,
+        targets: Optional[List[str]] = None,
+        revs: Optional[List[str]] = None,
         recursive: bool = False,
         onerror: Optional[Callable] = None,
         props: Optional[Dict] = None,
-        config_files: Optional[Set[str]] = None,
-    ) -> Generator[Dict, None, None]:
+    ) -> Iterator[Dict]:
         """Collects plots definitions and data sources.
 
         Generator yielding a structure like:
@@ -127,7 +138,6 @@ class Plots:
                 targets=targets,
                 revision=rev,
                 onerror=onerror,
-                config_files=config_files,
                 props=props,
             )
             if definitions:
@@ -136,7 +146,6 @@ class Plots:
                 data_targets = _get_data_targets(definitions)
 
                 res[rev]["sources"] = self._collect_data_sources(
-                    revision=rev,
                     targets=data_targets,
                     recursive=recursive,
                     props=props,
@@ -148,18 +157,15 @@ class Plots:
     def _collect_data_sources(
         self,
         targets: Optional[List[str]] = None,
-        revision: Optional[str] = None,
         recursive: bool = False,
         props: Optional[Dict] = None,
         onerror: Optional[Callable] = None,
     ):
-        from dvc.fs.dvc import DVCFileSystem
-
-        fs = DVCFileSystem(repo=self.repo)
+        fs = self.repo.dvcfs
 
         props = props or {}
 
-        plots = _collect_plots(self.repo, targets, revision, recursive)
+        plots = _collect_plots(self.repo, targets, recursive)
         res: Dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
             joined_props = {**rev_props, **props}
@@ -179,12 +185,11 @@ class Plots:
 
     def show(
         self,
-        targets: List[str] = None,
+        targets: Optional[List[str]] = None,
         revs=None,
         props=None,
         recursive=False,
         onerror=None,
-        config_files: Optional[Set[str]] = None,
     ):
         if onerror is None:
             onerror = onerror_collect
@@ -196,9 +201,11 @@ class Plots:
             recursive,
             onerror=onerror,
             props=props,
-            config_files=config_files,
         ):
-            _resolve_data_sources(data)
+            short_rev = "workspace"
+            if rev := getattr(self.repo.fs, "rev", None):
+                short_rev = rev[:7]
+            _resolve_data_sources(data, short_rev, cache_remote_stream=True)
             result.update(data)
 
         errored = errored_revisions(result)
@@ -229,7 +236,6 @@ class Plots:
             out.plot.pop(prop)
 
     def modify(self, path, props=None, unset=None):
-        from dvc.dvcfile import Dvcfile
         from dvc_render.vega_templates import get_template
 
         props = props or {}
@@ -255,34 +261,61 @@ class Plots:
             out.plot = True
 
         out.verify_metric()
-
-        dvcfile = Dvcfile(self.repo, out.stage.path)
-        dvcfile.dump(out.stage, update_lock=False)
+        out.stage.dump(update_lock=False)
 
     @cached_property
-    def templates_dir(self):
+    def templates_dir(self) -> Optional[str]:
         if self.repo.dvc_dir:
             return os.path.join(self.repo.dvc_dir, "plots")
+        return None
 
 
 def _is_plot(out: "Output") -> bool:
     return bool(out.plot)
 
 
-def _resolve_data_sources(plots_data: Dict):
-    for value in plots_data.values():
+def _resolve_data_sources(
+    plots_data: Dict, rev: str, cache_remote_stream: bool = False
+):
+    from dvc.progress import Tqdm
+
+    values = list(plots_data.values())
+    to_resolve = []
+    while values:
+        value = values.pop()
         if isinstance(value, dict):
             if "data_source" in value:
-                data_source = value.pop("data_source")
-                assert callable(data_source)
-                value.update(data_source())
-            _resolve_data_sources(value)
+                to_resolve.append(value)
+            values.extend(value.values())
+
+    def resolve(value):
+        data_source = value.pop("data_source")
+        assert callable(data_source)
+        value.update(data_source(cache_remote_stream=cache_remote_stream))
+
+    if not to_resolve:
+        return
+
+    executor = ThreadPoolExecutor(
+        max_workers=min(16, 4 * cpu_count()),
+        thread_name_prefix="resolve_data",
+        cancel_on_error=True,
+    )
+    with executor:
+        iterable = executor.imap_unordered(resolve, to_resolve)
+        with Tqdm(
+            iterable,
+            total=len(to_resolve),
+            desc=f"Reading plot's data from {rev}",
+            unit="files",
+            unit_scale=False,
+        ) as progress_iterable:
+            list(progress_iterable)
 
 
 def _collect_plots(
     repo: "Repo",
-    targets: List[str] = None,
-    rev: str = None,
+    targets: Optional[List[str]] = None,
     recursive: bool = False,
 ) -> Dict[str, Dict]:
     from dvc.repo.collect import collect
@@ -291,13 +324,11 @@ def _collect_plots(
         repo,
         output_filter=_is_plot,
         targets=targets,
-        rev=rev,
         recursive=recursive,
     )
 
     result = {
-        repo.dvcfs.from_os_path(plot.fs_path): _plot_props(plot)
-        for plot in plots
+        repo.dvcfs.from_os_path(plot.fs_path): _plot_props(plot) for plot in plots
     }
     result.update({fs_path: {} for fs_path in fs_paths})
     return result
@@ -325,7 +356,7 @@ def infer_data_sources(plot_id, config=None):
     if isinstance(x, dict):
         sources.append(first(x.keys()))
 
-    return distinct(source for source in sources)
+    return ldistinct(source for source in sources)
 
 
 def _matches(targets, config_file, plot_id):
@@ -338,8 +369,7 @@ def _matches(targets, config_file, plot_id):
 
     full_id = get_plot_id(plot_id, config_file)
     if any(
-        (re.match(target, plot_id) or re.match(target, full_id))
-        for target in targets
+        (re.match(target, plot_id) or re.match(target, full_id)) for target in targets
     ):
         return True
     return False
@@ -359,14 +389,10 @@ def _relpath(fs, path):
     # and invoking from some subdir `dvcfile.relpath` returns strange long
     # relative paths
     # ("../../../../../../dvc.yaml") - investigate
-    return fs.path.relpath(
-        fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd()
-    )
+    return fs.path.relpath(fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd())
 
 
-def _collect_output_plots(
-    repo, targets, props, onerror: Optional[Callable] = None
-):
+def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = None):
     fs = repo.dvcfs
     result: Dict[str, Dict] = {}
     for plot in repo.index.plots:
@@ -382,7 +408,7 @@ def _collect_output_plots(
                 onerror=onerror,
             )
 
-            dpath.util.merge(
+            dpath.merge(
                 result,
                 {"": unpacked},
             )
@@ -408,7 +434,12 @@ def _adjust_sources(fs, plot_props, config_dir):
 
 
 def _resolve_definitions(
-    fs, targets, props, config_path, definitions, onerror=None
+    fs: "FileSystem",
+    targets: List[str],
+    props: Dict[str, Any],
+    config_path: "StrPath",
+    definitions: "DictStrAny",
+    onerror: Optional[Callable[[Any], Any]] = None,
 ):
     config_dir = fs.path.dirname(config_path)
     result: Dict[str, Dict] = {}
@@ -424,23 +455,20 @@ def _resolve_definitions(
                     props={**plot_props, **props},
                     onerror=onerror,
                 )
-                dpath.util.merge(
+                dpath.merge(
                     result,
                     unpacked,
                 )
-        else:
-            if _matches(targets, config_path, plot_id):
-                adjusted_props = _adjust_sources(fs, plot_props, config_dir)
-                dpath.util.merge(
-                    result, {"data": {plot_id: {**adjusted_props, **props}}}
-                )
+        elif _matches(targets, config_path, plot_id):
+            adjusted_props = _adjust_sources(fs, plot_props, config_dir)
+            dpath.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
 
     return result
 
 
 def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
     result: Dict[str, Dict] = {}
-    top_plots = repo.index._top_plots  # pylint: disable=protected-access
+    top_plots = repo.index._plots  # pylint: disable=protected-access
     for dvcfile, plots_def in top_plots.items():
         dvcfile_path = _relpath(repo.dvcfs, dvcfile)
         dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
@@ -462,7 +490,7 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
             dvcfile_defs_dict,
             onerror=onerror,
         )
-        dpath.util.merge(
+        dpath.merge(
             result,
             {dvcfile_path: resolved},
         )
@@ -473,59 +501,33 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
 def _collect_definitions(
     repo: "Repo",
     targets=None,
-    config_files: Optional[Set[str]] = None,
-    props: Dict = None,
+    props: Optional[Dict] = None,
     onerror: Optional[Callable] = None,
     **kwargs,
 ) -> Dict:
-
     result: Dict = defaultdict(dict)
     props = props or {}
 
-    from dvc.fs.dvc import DVCFileSystem
+    fs = repo.dvcfs
+    dpath.merge(
+        result,
+        _collect_pipeline_files(repo, targets, props, onerror=onerror),
+    )
 
-    fs = DVCFileSystem(repo=repo)
-
-    if not config_files:
-        dpath.util.merge(
-            result,
-            _collect_pipeline_files(repo, targets, props, onerror=onerror),
-        )
-
-    if targets or (not targets and not config_files):
-        dpath.util.merge(
-            result,
-            _collect_output_plots(repo, targets, props, onerror=onerror),
-        )
-
-    if config_files:
-        for path in config_files:
-            definitions = parse(fs, path).get("data", {})
-            if definitions:
-                resolved = _resolve_definitions(
-                    repo.dvcfs,
-                    targets,
-                    props,
-                    path,
-                    definitions,
-                    onerror=onerror,
-                )
-                dpath.util.merge(
-                    result,
-                    {path: resolved},
-                )
+    dpath.merge(
+        result,
+        _collect_output_plots(repo, targets, props, onerror=onerror),
+    )
 
     for target in targets:
         if not result or fs.exists(target):
             unpacked = unpack_if_dir(fs, target, props=props, onerror=onerror)
-            dpath.util.merge(result[""], unpacked)
+            dpath.merge(result[""], unpacked)
 
     return dict(result)
 
 
-def unpack_if_dir(
-    fs, path, props: Dict[str, str], onerror: Optional[Callable] = None
-):
+def unpack_if_dir(fs, path, props: Dict[str, str], onerror: Optional[Callable] = None):
     result: Dict[str, Dict] = defaultdict(dict)
     if fs.isdir(path):
         unpacked = _unpack_dir_files(fs, path, onerror=onerror)
@@ -542,20 +544,25 @@ def unpack_if_dir(
 
 
 @error_handler
-def parse(fs, path, props=None, **kwargs):
+def parse(fs, path, props=None, **fs_kwargs):
     props = props or {}
     _, extension = os.path.splitext(path)
-    if extension in (".tsv", ".csv"):
-        header = props.get("header", True)
-        if extension == ".csv":
-            return _load_sv(path=path, fs=fs, delimiter=",", header=header)
-        return _load_sv(path=path, fs=fs, delimiter="\t", header=header)
-    if extension in LOADERS or extension in (".yml", ".yaml"):
-        return LOADERS[extension](path=path, fs=fs)
-    if extension in (".jpeg", ".jpg", ".gif", ".png", ".svg"):
-        with fs.open(path, "rb") as fd:
+    if extension in SUPPORTED_IMAGE_EXTENSIONS:
+        with fs.open(path, mode="rb", **fs_kwargs) as fd:
             return fd.read()
-    raise PlotMetricTypeError(path)
+
+    if extension not in PARSERS.keys() | {".yml", ".yaml", ".csv", ".tsv"}:
+        raise PlotMetricTypeError(path)
+
+    with reraise(UnicodeDecodeError, EncodingError(path, "utf8")):
+        with fs.open(path, mode="r", encoding="utf8", **fs_kwargs) as fd:
+            contents = fd.read()
+
+    if extension in (".csv", ".tsv"):
+        header = props.get("header", True)
+        delim = "\t" if extension == ".tsv" else ","
+        return _load_sv(contents, delimiter=delim, header=header)
+    return PARSERS[extension](contents, path)
 
 
 def _plot_props(out: "Output") -> Dict:
@@ -571,25 +578,14 @@ def _plot_props(out: "Output") -> Dict:
     return project(out.plot, PLOT_PROPS)
 
 
-def _load_sv(path, fs, delimiter=",", header=True):
-    with fs.open(path, "r") as fd:
-        content = fd.read()
-
-    first_row = first(csv.reader(io.StringIO(content)))
-
+def _load_sv(content, delimiter=",", header=True):
     if header:
         reader = csv.DictReader(io.StringIO(content), delimiter=delimiter)
     else:
+        first_row = first(csv.reader(io.StringIO(content)))
         reader = csv.DictReader(
             io.StringIO(content),
             delimiter=delimiter,
             fieldnames=[str(i) for i in range(len(first_row))],
         )
-
-    fieldnames = reader.fieldnames
-    data = list(reader)
-
-    return [
-        OrderedDict([(field, data_point[field]) for field in fieldnames])
-        for data_point in data
-    ]
+    return list(reader)

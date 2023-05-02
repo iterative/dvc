@@ -20,12 +20,12 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
     for repo in subrepos:
         make_subrepo(repo, erepo_dir.scm)
 
-    for repo in subrepos + [erepo_dir]:
+    for repo in [*subrepos, erepo_dir]:
         with repo.chdir():
             repo.scm_gen("foo", "foo", commit=f"git add {repo}/foo")
             repo.dvc_gen("bar", "bar", commit=f"dvc add {repo}/bar")
 
-    with external_repo(str(erepo_dir)) as repo:
+    with external_repo(str(erepo_dir), subrepos=True, uninitialized=True) as repo:
         spy = mocker.spy(repo.dvcfs.fs, "repo_factory")
 
         list(repo.dvcfs.walk("", ignore_subrepos=False))  # drain
@@ -55,14 +55,18 @@ def test_subrepo_is_constructed_properly(
 
     subrepo = tmp_dir / "subrepo"
     make_subrepo(subrepo, scm)
-    local_cache = subrepo.dvc.odb.local.path
+    local_cache = subrepo.dvc.cache.local.path
 
     tmp_dir.scm_gen("bar", "bar", commit="add bar")
     subrepo.dvc_gen("foo", "foo", commit="add foo")
 
     cache_dir = make_tmp_dir("temp-cache")
     with external_repo(
-        str(tmp_dir), cache_dir=str(cache_dir), cache_types=["symlink"]
+        str(tmp_dir),
+        subrepos=True,
+        uninitialized=True,
+        cache_dir=str(cache_dir),
+        cache_types=["symlink"],
     ) as repo:
         spy = mocker.spy(repo.dvcfs.fs, "repo_factory")
 
@@ -72,19 +76,16 @@ def test_subrepo_is_constructed_properly(
 
         assert repo.url == str(tmp_dir)
         assert repo.config["cache"]["dir"] == str(cache_dir)
-        assert repo.odb.local.path == str(cache_dir)
-        assert subrepo.odb.local.path == str(cache_dir)
+        assert repo.cache.local.path == str(cache_dir)
+        assert subrepo.cache.local.path == str(cache_dir)
 
         assert repo.config["cache"]["type"] == ["symlink"]
-        assert repo.odb.local.cache_types == ["symlink"]
-        assert subrepo.odb.local.cache_types == ["symlink"]
+        assert repo.cache.local.cache_types == ["symlink"]
+        assert subrepo.cache.local.cache_types == ["symlink"]
 
-        assert (
-            subrepo.config["remote"]["auto-generated-upstream"]["url"]
-            == local_cache
-        )
+        assert subrepo.config["remote"]["auto-generated-upstream"]["url"] == local_cache
         if root_is_dvc:
-            main_cache = tmp_dir.dvc.odb.local.path
-            assert repo.config["remote"]["auto-generated-upstream"][
-                "url"
-            ] == str(main_cache)
+            main_cache = tmp_dir.dvc.cache.local.path
+            assert repo.config["remote"]["auto-generated-upstream"]["url"] == str(
+                main_cache
+            )

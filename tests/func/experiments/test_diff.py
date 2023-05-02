@@ -1,17 +1,6 @@
 from funcy import first
 
 
-def test_diff_no_commits(tmp_dir):
-    from scmrepo.git import Git
-
-    from dvc.repo import Repo
-
-    git = Git.init(tmp_dir.fs_path)
-    assert git.no_commits
-
-    assert Repo.init().experiments.diff() == {}
-
-
 def test_diff_empty(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.diff() == {"params": {}, "metrics": {}}
 

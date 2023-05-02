@@ -1,29 +1,17 @@
 import logging
 import os
-import random
 from datetime import datetime
 from unittest.mock import ANY
 
 import pytest
-from funcy import first, get_in
+from funcy import first
 from scmrepo.exceptions import SCMError
 
 from dvc.cli import main
-from dvc.repo.experiments.executor.base import (
-    BaseExecutor,
-    ExecutorInfo,
-    TaskStatus,
-)
-from dvc.repo.experiments.queue.base import QueueEntry
-from dvc.repo.experiments.refs import CELERY_STASH, ExpRefInfo
-from dvc.repo.experiments.utils import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
-    exp_refs_by_rev,
-)
+from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo, TaskStatus
+from dvc.repo.experiments.refs import CELERY_STASH
+from dvc.repo.experiments.utils import EXEC_PID_DIR, EXEC_TMP_DIR, exp_refs_by_rev
 from dvc.utils import relpath
-from dvc.utils.fs import makedirs
-from dvc.utils.serialize import YAMLFileCorruptedError
 
 LOCK_CONTENTS = {
     "read": {
@@ -49,53 +37,73 @@ def make_executor_info(**kwargs):
     return ExecutorInfo(**kwargs)
 
 
-@pytest.mark.vscode
-def test_show_no_commits(tmp_dir):
-    from scmrepo.git import Git
+def make_executor(local=None, **kwargs):
+    if local:
+        local_executor = {
+            "root": ANY,
+            "log": ANY,
+            "pid": ANY,
+            "returncode": ANY,
+            "task_id": ANY,
+        }
+        local_executor.update(local)
+    else:
+        local_executor = ANY
+    data = {
+        "state": ANY,
+        "local": local_executor,
+        "name": ANY,
+    }
+    data.update(kwargs)
+    return data
 
-    from dvc.repo import Repo
 
-    git = Git.init(tmp_dir.fs_path)
-    assert git.no_commits
-
-    assert Repo.init().experiments.show() == {}
+def make_data(params=None, **kwargs):
+    params = {"data": params or {"foo": 1}}
+    data = {
+        "rev": ANY,
+        "deps": {
+            "copy.py": {
+                "hash": ANY,
+                "size": ANY,
+                "nfiles": None,
+            }
+        },
+        "metrics": {"metrics.yaml": params},
+        "outs": {},
+        "params": {"params.yaml": params},
+        "timestamp": ANY,
+        "meta": ANY,
+    }
+    data.update(kwargs)
+    return data
 
 
 @pytest.mark.vscode
 def test_show_branch_and_tag_name(tmp_dir, scm, dvc, exp_stage):
     with tmp_dir.branch("new/branch", new=True):
         tmp_dir.scm_gen("branch", "branch", "commit")
-        branch_rev = scm.get_rev()
 
     result = dvc.experiments.show(all_branches=True)
-    assert result[branch_rev]["baseline"]["data"]["name"] == "new/branch"
+    expected = [None, "master", "new/branch"]
+    assert [exp.name for exp in result] == expected
 
     scm.tag("new/tag")
     tag_rev = scm.get_rev()
-    result = dvc.experiments.show(all_tags=True)
-    assert result[tag_rev]["baseline"]["data"]["name"] == "new/tag"
+    with scm.detach_head(tag_rev):
+        result = dvc.experiments.show(all_tags=True)
+    expected = [None, "new/tag"]
+    assert [exp.name for exp in result] == expected
 
 
 @pytest.mark.vscode
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
-    assert dvc.experiments.show()["workspace"] == {
-        "baseline": {
-            "data": {
-                "deps": {
-                    "copy.py": {
-                        "hash": ANY,
-                        "size": ANY,
-                        "nfiles": None,
-                    }
-                },
-                "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
-                "outs": {},
-                "params": {"params.yaml": {"data": {"foo": 1}}},
-                "status": "Success",
-                "executor": None,
-                "timestamp": None,
-            }
-        }
+    assert dvc.experiments.show()[0].dumpd() == {
+        "rev": "workspace",
+        "name": None,
+        "data": make_data(rev="workspace"),
+        "error": None,
+        "experiments": None,
     }
 
 
@@ -107,40 +115,33 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
     )
 
-    dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], tmp_dir=not workspace
+    exp_rev = first(
+        dvc.experiments.run(
+            exp_stage.addressing, params=["foo=2"], tmp_dir=not workspace
+        )
     )
     results = dvc.experiments.show()
-
-    expected_baseline = {
-        "data": {
-            "deps": {
-                "copy.py": {
-                    "hash": ANY,
-                    "size": ANY,
-                    "nfiles": None,
-                }
-            },
-            "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
-            "outs": {},
-            "params": {"params.yaml": {"data": {"foo": 1}}},
-            "status": "Success",
-            "executor": None,
-            "timestamp": timestamp,
-            "name": "master",
-        }
+    assert results[1].dumpd() == {
+        "rev": baseline_rev,
+        "name": "master",
+        "data": make_data(rev=baseline_rev, timestamp=timestamp),
+        "error": None,
+        "experiments": [
+            {
+                "revs": [
+                    {
+                        "rev": exp_rev,
+                        "name": ANY,
+                        "data": make_data(rev=exp_rev, params={"foo": 2}),
+                        "error": None,
+                        "experiments": None,
+                    }
+                ],
+                "executor": None,
+                "name": ANY,
+            }
+        ],
     }
-    expected_params = {"data": {"foo": 2}}
-
-    assert set(results.keys()) == {"workspace", baseline_rev}
-    experiments = results[baseline_rev]
-    assert len(experiments) == 2
-    for rev, exp in experiments.items():
-        if rev == "baseline":
-            assert exp == expected_baseline
-        else:
-            assert exp["data"]["metrics"]["metrics.yaml"] == expected_params
-            assert exp["data"]["params"]["params.yaml"] == expected_params
 
 
 @pytest.mark.vscode
@@ -152,12 +153,28 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     )
     exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
 
-    results = dvc.experiments.show()[baseline_rev]
-    assert len(results) == 2
-    exp = results[exp_rev]["data"]
-    assert exp["name"] == "test_name"
-    assert exp["status"] == "Queued"
-    assert exp["params"]["params.yaml"] == {"data": {"foo": 2}}
+    results = dvc.experiments.show()
+    assert results[1].dumpd() == {
+        "rev": baseline_rev,
+        "name": "master",
+        "data": make_data(rev=baseline_rev),
+        "error": None,
+        "experiments": [
+            {
+                "revs": [
+                    {
+                        "rev": exp_rev,
+                        "name": "test_name",
+                        "data": make_data(rev=exp_rev, params={"foo": 2}, metrics=ANY),
+                        "error": None,
+                        "experiments": None,
+                    }
+                ],
+                "executor": make_executor(state="queued"),
+                "name": "test_name",
+            }
+        ],
+    }
 
     # test that only queued experiments for the current baseline are returned
     tmp_dir.gen("foo", "foo")
@@ -168,96 +185,85 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
 
-    results = dvc.experiments.show()[new_rev]
-    assert len(results) == 2
-    exp = results[exp_rev]["data"]
-    assert exp["status"] == "Queued"
-    assert exp["params"]["params.yaml"] == {"data": {"foo": 3}}
+    results = dvc.experiments.show()
+    assert results[1].dumpd() == {
+        "rev": new_rev,
+        "name": "master",
+        "data": make_data(rev=new_rev),
+        "error": None,
+        "experiments": [
+            {
+                "revs": [
+                    {
+                        "rev": exp_rev,
+                        "name": ANY,
+                        "data": make_data(rev=exp_rev, params={"foo": 3}, metrics=ANY),
+                        "error": None,
+                        "experiments": None,
+                    }
+                ],
+                "executor": make_executor(state="queued"),
+                "name": ANY,
+            }
+        ],
+    }
 
 
 @pytest.mark.vscode
-def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
+def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage, test_queue):
     baseline_rev = scm.get_rev()
-    timestamp = datetime.fromtimestamp(
-        scm.gitpython.repo.rev_parse(baseline_rev).committed_date
-    )
-
-    dvc.experiments.run(
-        failed_exp_stage.addressing, params=["foo=2"], queue=True
-    )
+    dvc.experiments.run(failed_exp_stage.addressing, params=["foo=2"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
     dvc.experiments.run(run_all=True)
-    experiments = dvc.experiments.show()[baseline_rev]
 
-    expected_baseline = {
-        "data": {
-            "deps": {
-                "copy.py": {
-                    "hash": ANY,
-                    "size": ANY,
-                    "nfiles": None,
-                }
-            },
-            "metrics": {},
-            "outs": {},
-            "params": {"params.yaml": {"data": {"foo": 1}}},
-            "status": "Success",
-            "executor": None,
-            "timestamp": timestamp,
-            "name": "master",
-        }
+    results = dvc.experiments.show()
+    assert results[1].dumpd() == {
+        "rev": baseline_rev,
+        "name": "master",
+        "data": make_data(rev=baseline_rev, metrics=ANY),
+        "error": None,
+        "experiments": [
+            {
+                "revs": [
+                    {
+                        "rev": exp_rev,
+                        "name": ANY,
+                        "data": make_data(rev=exp_rev, params={"foo": 2}, metrics=ANY),
+                        "error": {"msg": "Experiment run failed", "type": ANY},
+                        "experiments": None,
+                    }
+                ],
+                "executor": make_executor(
+                    state="failed",
+                    local={"returncode": 255},
+                ),
+                "name": ANY,
+            }
+        ],
     }
-
-    expected_failed = {
-        "data": {
-            "timestamp": ANY,
-            "params": {"params.yaml": {"data": {"foo": 2}}},
-            "deps": {"copy.py": {"hash": None, "size": None, "nfiles": None}},
-            "outs": {},
-            "status": "Failed",
-            "executor": None,
-            "error": {
-                "msg": "Experiment run failed.",
-                "type": "",
-            },
-            "name": ANY,
-        }
-    }
-
-    assert len(experiments) == 2
-    for rev, exp in experiments.items():
-        if rev == "baseline":
-            assert exp == expected_baseline
-        else:
-            assert rev == exp_rev
-            assert exp == expected_failed
 
 
 @pytest.mark.vscode
 @pytest.mark.parametrize("workspace", [True, False])
-def test_show_checkpoint(
-    tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
-):
-    baseline_rev = scm.get_rev()
+def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace):
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     exp_rev = first(results)
 
-    results = dvc.experiments.show()[baseline_rev]
-    assert len(results) == checkpoint_stage.iterations + 1
-
-    checkpoints = []
-    for rev, exp in results.items():
-        if rev != "baseline":
-            checkpoints.append(rev)
-            assert exp["data"]["checkpoint_tip"] == exp_rev
+    baseline = dvc.experiments.show()[1]
+    assert baseline.data.meta.get("has_checkpoints")
+    checkpoints = first(baseline.experiments)
+    # 2 checkpoints + final commit
+    assert len(checkpoints) == checkpoint_stage.iterations + 1
+    assert first(checkpoints).rev == exp_rev
 
     capsys.readouterr()
     assert main(["exp", "show", "--no-pager"]) == 0
     cap = capsys.readouterr()
 
-    for i, rev in enumerate(checkpoints):
+    for i, exp in enumerate(checkpoints):
+        rev = exp.rev
         if i == 0:
             name = dvc.experiments.get_exact_name([rev])[rev]
             name = f"{rev[:7]} [{name}]"
@@ -269,46 +275,6 @@ def test_show_checkpoint(
             name = rev[:7]
             fs = "╟"
         assert f"{fs} {name}" in cap.out
-
-
-@pytest.mark.vscode
-@pytest.mark.parametrize("workspace", [True, False])
-def test_show_checkpoint_branch(
-    tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
-):
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
-    )
-    branch_rev = first(results)
-    if not workspace:
-        dvc.experiments.apply(branch_rev)
-
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing,
-        checkpoint_resume=branch_rev,
-        tmp_dir=not workspace,
-    )
-    checkpoint_a = first(results)
-
-    dvc.experiments.apply(branch_rev)
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing,
-        checkpoint_resume=branch_rev,
-        params=["foo=100"],
-        tmp_dir=not workspace,
-    )
-    checkpoint_b = first(results)
-
-    capsys.readouterr()
-    assert main(["exp", "show", "--no-pager"]) == 0
-    cap = capsys.readouterr()
-
-    for rev in (checkpoint_a, checkpoint_b):
-        ref = dvc.experiments.get_branch_by_rev(rev)
-        ref_info = ExpRefInfo.from_ref(ref)
-        name = f"{rev[:7]} [{ref_info.name}]"
-        assert f"╓ {name}" in cap.out
-    assert f"({branch_rev[:7]})" in cap.out
 
 
 def test_show_filter(
@@ -392,19 +358,21 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
 
     dvc.experiments.show(num=-2)
 
-    expected = {"workspace", init_rev, next_rev}
+    expected = ["workspace", next_rev, init_rev]
     results = dvc.experiments.show(num=2)
-    assert set(results.keys()) == expected
+    assert [exp.rev for exp in results] == expected
 
-    expected = {"workspace"} | set(scm.branch_revs("master"))
+    expected = ["workspace", *scm.branch_revs("master")]
     results = dvc.experiments.show(all_commits=True)
-    assert set(results.keys()) == expected
+    assert [exp.rev for exp in results] == expected
 
     results = dvc.experiments.show(num=100)
-    assert set(results.keys()) == expected
+    assert [exp.rev for exp in results] == expected
 
 
 def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+
     with caplog.at_level(logging.ERROR):
         assert main(["exp", "show", "--no-pager", "--sort-by=bar"]) != 0
         assert "Unknown sort column" in caplog.text
@@ -413,13 +381,9 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
         assert main(["exp", "show", "--no-pager", "--sort-by=foo"]) != 0
         assert "Ambiguous sort column" in caplog.text
 
-    assert (
-        main(["exp", "show", "--no-pager", "--sort-by=params.yaml:foo"]) == 0
-    )
+    assert main(["exp", "show", "--no-pager", "--sort-by=params.yaml:foo"]) == 0
 
-    assert (
-        main(["exp", "show", "--no-pager", "--sort-by=metrics.yaml:foo"]) == 0
-    )
+    assert main(["exp", "show", "--no-pager", "--sort-by=metrics.yaml:foo"]) == 0
 
 
 @pytest.mark.vscode
@@ -431,209 +395,65 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
         (TaskStatus.FAILED, False),
     ],
 )
-def test_show_running_workspace(
+def test_show_running(
     tmp_dir, scm, dvc, exp_stage, capsys, caplog, status, pid_exists, mocker
 ):
     from dvc.rwlock import RWLOCK_FILE
+    from dvc_task.proc.process import ProcessInfo
 
+    baseline_rev = scm.get_rev()
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
     lock_file = relpath(os.path.join(dvc.tmp_dir, RWLOCK_FILE), str(tmp_dir))
     info = make_executor_info(
-        location=BaseExecutor.DEFAULT_LOCATION, status=status
+        location=BaseExecutor.DEFAULT_LOCATION,
+        status=status,
+        baseline_rev=baseline_rev,
     )
     pidfile = os.path.join(
         pid_dir,
         "workspace",
         f"workspace{BaseExecutor.INFOFILE_EXT}",
     )
-    makedirs(os.path.dirname(pidfile), True)
+    os.makedirs(os.path.dirname(pidfile), exist_ok=True)
     (tmp_dir / pidfile).dump_json(info.asdict())
     (tmp_dir / lock_file).dump_json(LOCK_CONTENTS)
 
+    mocker.patch.object(ProcessInfo, "load", return_value=mocker.Mock(pid=123))
     mocker.patch("psutil.pid_exists", return_value=pid_exists)
 
-    assert dvc.experiments.show().get("workspace") == {
-        "baseline": {
-            "data": {
-                "deps": {
-                    "copy.py": {
-                        "hash": ANY,
-                        "size": ANY,
-                        "nfiles": None,
-                    }
-                },
-                "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
-                "params": {"params.yaml": {"data": {"foo": 1}}},
-                "outs": {},
-                "status": "Running"
-                if status == TaskStatus.RUNNING and pid_exists
-                else "Success",
-                "executor": info.location
-                if status == TaskStatus.RUNNING and pid_exists
-                else None,
-                "timestamp": None,
+    tempdir_active = mocker.spy(dvc.experiments.tempdir_queue, "collect_active_data")
+    celery_active = mocker.spy(dvc.experiments.celery_queue, "collect_active_data")
+    results = dvc.experiments.show()
+    assert results[1].dumpd() == {
+        "rev": ANY,
+        "name": "master",
+        "data": make_data(),
+        "error": None,
+        "experiments": [
+            {
+                "revs": ANY,
+                "executor": make_executor(state="running"),
+                "name": ANY,
             }
-        }
+        ]
+        if pid_exists
+        else None,
     }
-    capsys.readouterr()
-    assert main(["exp", "show", "--csv"]) == 0
-    cap = capsys.readouterr()
-    if status == TaskStatus.RUNNING:
-        if pid_exists:
-            assert "Running" in cap.out
-            assert info.location in cap.out
-        else:
-            cmd = LOCK_CONTENTS["read"]["data/MNIST"][0]["cmd"]
-            pid = LOCK_CONTENTS["read"]["data/MNIST"][0]["pid"]
-            assert (
-                f"Process '{cmd}' with (Pid {pid}), in RWLock-file "
-                f"'{lock_file}' had been killed."
-            ) in caplog.text
-            assert (
-                f"Delete corrupted RWLock-file '{lock_file}'"
-            ) in caplog.text
-
-
-def test_show_running_tempdir(tmp_dir, scm, dvc, exp_stage, mocker):
-    baseline_rev = scm.get_rev()
-    run_results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], tmp_dir=True
-    )
-    exp_rev = first(run_results)
-    exp_ref = first(exp_refs_by_rev(scm, exp_rev))
-
-    queue = dvc.experiments.tempdir_queue
-    stash_rev = "abc123"
-    entries = [
-        QueueEntry(
-            str(tmp_dir / ".dvc" / "tmp" / "foo"),
-            str(tmp_dir / ".dvc" / "tmp" / "foo"),
-            str(exp_ref),
-            stash_rev,
-            exp_ref.baseline_sha,
-            None,
-            exp_ref.name,
-            None,
-        )
-    ]
-    mocker.patch.object(
-        dvc.experiments.tempdir_queue,
-        "iter_active",
-        return_value=entries,
-    )
-    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
-    pidfile = queue.get_infofile_path(stash_rev)
-    makedirs(os.path.dirname(pidfile), True)
-    (tmp_dir / pidfile).dump_json(info.asdict())
-    mock_fetch = mocker.patch.object(
-        dvc.experiments.tempdir_queue,
-        "get_running_exps",
-        return_value={exp_rev: info.asdict()},
-    )
-
-    results = dvc.experiments.show()
-    mock_fetch.assert_has_calls(
-        [mocker.call(True)],
-    )
-    exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
-    assert exp_data["status"] == "Running"
-    assert exp_data["executor"] == info.location
-
-    assert results["workspace"]["baseline"]["data"]["status"] == "Success"
-
-
-def test_show_running_celery(tmp_dir, scm, dvc, exp_stage, mocker):
-    baseline_rev = scm.get_rev()
-    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
-
-    queue = dvc.experiments.celery_queue
-    entries = list(queue.iter_queued())
-    mocker.patch.object(
-        dvc.experiments.celery_queue,
-        "iter_active",
-        return_value=entries,
-    )
-    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
-    pidfile = queue.get_infofile_path(entries[0].stash_rev)
-    makedirs(os.path.dirname(pidfile), True)
-    (tmp_dir / pidfile).dump_json(info.asdict())
-
-    results = dvc.experiments.show()
-    exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
-    assert exp_data["status"] == "Running"
-    assert exp_data["executor"] == info.location
-
-    assert results["workspace"]["baseline"]["data"]["status"] == "Success"
-
-
-def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
-    from dvc.repo.experiments.executor.local import TempDirExecutor
-
-    baseline_rev = scm.get_rev()
-    dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"], queue=True
-    )
-    queue = dvc.experiments.celery_queue
-    entries = list(queue.iter_queued())
-
-    run_results = dvc.experiments.run(run_all=True)
-    checkpoint_rev = first(run_results)
-    exp_ref = first(exp_refs_by_rev(scm, checkpoint_rev))
-
-    mocker.patch.object(
-        dvc.experiments.celery_queue,
-        "iter_active",
-        return_value=entries,
-    )
-    mocker.patch.object(
-        dvc.experiments.celery_queue,
-        "iter_failed",
-        return_value=[],
-    )
-    pidfile = queue.get_infofile_path(entries[0].stash_rev)
-    info = make_executor_info(
-        git_url="foo.git",
-        baseline_rev=baseline_rev,
-        location=TempDirExecutor.DEFAULT_LOCATION,
-        status=TaskStatus.RUNNING,
-    )
-    makedirs(os.path.dirname(pidfile), True)
-    (tmp_dir / pidfile).dump_json(info.asdict())
-
-    mocker.patch.object(
-        BaseExecutor, "fetch_exps", return_value=[str(exp_ref)]
-    )
-
-    results = dvc.experiments.show()
-
-    checkpoint_res = get_in(results, [baseline_rev, checkpoint_rev, "data"])
-    assert checkpoint_res["status"] == "Running"
-    assert checkpoint_res["executor"] == info.location
-
-    assert results["workspace"]["baseline"]["data"]["status"] == "Success"
+    tempdir_active.assert_called_once()
+    celery_active.assert_called_once()
 
 
 def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):
-    baseline_rev = scm.get_rev()
-    exp1 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
-    exp2 = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
-
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     with open("dvc.yaml", "a", encoding="utf-8") as fd:
         fd.write("breaking the yaml!")
 
-    result = dvc.experiments.show()
-    rev1 = first(exp1)
-    rev2 = first(exp2)
+    results = dvc.experiments.show()
+    assert results[0].error
+    assert results[0].error.type == "YAMLSyntaxError"
 
-    baseline = result[baseline_rev]
-
-    paths = ["data", "params", "params.yaml"]
-    assert get_in(baseline[rev1], paths) == {"data": {"foo": 2}}
-    assert get_in(baseline[rev2], paths) == {"data": {"foo": 3}}
-
-    paths = ["workspace", "baseline", "error"]
-    assert isinstance(get_in(result, paths), YAMLFileCorruptedError)
+    for exp_range in results[1].experiments:
+        assert not any(exp.error for exp in exp_range)
 
 
 def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
@@ -666,8 +486,8 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     assert "metrics.yaml:foo,params.yaml:foo,copy.py" in cap.out
     assert f",workspace,baseline,,,3,3,{data_hash}" in cap.out
     assert (
-        "master,{},baseline,{},,1,1,{}".format(
-            baseline_rev[:7], _get_rev_isotimestamp(baseline_rev), data_hash
+        ",master,baseline,{},,1,1,{}".format(
+            _get_rev_isotimestamp(baseline_rev), data_hash
         )
         in cap.out
     )
@@ -689,14 +509,14 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,
-        "bar": 1,
+        "goobar": 1,
     }
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
-        params=["foo", "bar"],
+        params=["foo", "goobar"],
         name="copy-file",
         deps=["copy.py"],
     )
@@ -717,23 +537,21 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     capsys.readouterr()
     assert main(["exp", "show"]) == 0
     cap = capsys.readouterr()
-    assert "bar" in cap.out
+    assert "goobar" in cap.out
 
     capsys.readouterr()
     assert main(["exp", "show", "--only-changed"]) == 0
     cap = capsys.readouterr()
-    assert "bar" not in cap.out
+    assert "goobar" not in cap.out
 
     capsys.readouterr()
     assert main(["exp", "show", "--only-changed", "--keep=.*bar"]) == 0
     cap = capsys.readouterr()
-    assert "params.yaml:bar" in cap.out
-    assert "metrics.yaml:bar" in cap.out
+    assert "params.yaml:goobar" in cap.out
+    assert "metrics.yaml:goobar" in cap.out
 
 
-def test_show_parallel_coordinates(
-    tmp_dir, dvc, scm, mocker, capsys, copy_script
-):
+def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys, copy_script):
     from dvc.commands.experiments import show
 
     webbroser_open = mocker.patch("webbrowser.open")
@@ -832,35 +650,52 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
 
     scm.commit("init")
 
-    outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
-    assert outs == {
-        "out": {
-            "hash": ANY,
-            "size": ANY,
-            "nfiles": None,
-            "use_cache": True,
-            "is_data_source": False,
-        }
+    results = dvc.experiments.show()
+    assert results[0].dumpd() == {
+        "rev": "workspace",
+        "name": None,
+        "data": make_data(
+            params=ANY,
+            outs={
+                "out": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                    "use_cache": True,
+                    "is_data_source": False,
+                }
+            },
+        ),
+        "error": None,
+        "experiments": None,
     }
 
     tmp_dir.dvc_gen("out_add", "foo", commit="dvc add output")
-
-    outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
-    assert outs == {
-        "out": {
-            "hash": ANY,
-            "size": ANY,
-            "nfiles": None,
-            "use_cache": True,
-            "is_data_source": False,
-        },
-        "out_add": {
-            "hash": ANY,
-            "size": ANY,
-            "nfiles": None,
-            "use_cache": True,
-            "is_data_source": True,
-        },
+    results = dvc.experiments.show()
+    assert results[0].dumpd() == {
+        "rev": "workspace",
+        "name": None,
+        "data": make_data(
+            params=ANY,
+            outs={
+                "out": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                    "use_cache": True,
+                    "is_data_source": False,
+                },
+                "out_add": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                    "use_cache": True,
+                    "is_data_source": True,
+                },
+            },
+        ),
+        "error": None,
+        "experiments": None,
     }
 
     with erepo_dir.chdir():
@@ -868,29 +703,38 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
 
     dvc.imp(os.fspath(erepo_dir), "out", "out_imported")
 
-    outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
-    assert outs == {
-        "out": {
-            "hash": ANY,
-            "size": ANY,
-            "nfiles": None,
-            "use_cache": True,
-            "is_data_source": False,
-        },
-        "out_add": {
-            "hash": ANY,
-            "size": ANY,
-            "nfiles": None,
-            "use_cache": True,
-            "is_data_source": True,
-        },
-        "out_imported": {
-            "hash": ANY,
-            "size": ANY,
-            "nfiles": None,
-            "use_cache": True,
-            "is_data_source": True,
-        },
+    results = dvc.experiments.show()
+    assert results[0].dumpd() == {
+        "rev": "workspace",
+        "name": None,
+        "data": make_data(
+            params=ANY,
+            outs={
+                "out": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                    "use_cache": True,
+                    "is_data_source": False,
+                },
+                "out_add": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                    "use_cache": True,
+                    "is_data_source": True,
+                },
+                "out_imported": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                    "use_cache": True,
+                    "is_data_source": True,
+                },
+            },
+        ),
+        "error": None,
+        "experiments": None,
     }
 
 
@@ -949,12 +793,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
             scm.gitpython.repo.rev_parse(rev).committed_date
         ).isoformat()
 
-    assert (
-        "master,{},baseline,{},,1,,1".format(
-            scores_rev[:7], _get_rev_isotimestamp(scores_rev)
-        )
-        in cap.out
-    )
+    assert f",master,baseline,{_get_rev_isotimestamp(scores_rev)},,1,,1" in cap.out
     assert (
         ",{},baseline,{},,,1,1".format(
             metrics_rev[:7], _get_rev_isotimestamp(metrics_rev)
@@ -983,8 +822,6 @@ def test_show_sorted_deps(tmp_dir, dvc, scm, capsys):
 
 @pytest.mark.vscode
 def test_show_queued_error(tmp_dir, scm, dvc, exp_stage, mocker):
-    baseline_rev = scm.get_rev()
-
     dvc.experiments.run(
         exp_stage.addressing, params=["foo=2"], queue=True, name="test_name"
     )
@@ -997,8 +834,7 @@ def test_show_queued_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == exp_rev_3:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,
@@ -1006,17 +842,16 @@ def test_show_queued_error(tmp_dir, scm, dvc, exp_stage, mocker):
         side_effect=mocker.MagicMock(side_effect=resolve_commit),
     )
 
-    results = dvc.experiments.show()[baseline_rev]
+    results = dvc.experiments.show()[1].experiments
     assert len(results) == 2
-    exp_2 = results[exp_rev_2]["data"]
-    assert exp_2["status"] == "Queued"
-    assert exp_2["params"]["params.yaml"] == {"data": {"foo": 2}}
+    queued = results[0]
+    assert queued.executor.state == "queued"
+    errored = results[1]
+    assert errored.revs[0].error
 
 
 @pytest.mark.vscode
 def test_show_completed_error(tmp_dir, scm, dvc, exp_stage, mocker):
-    baseline_rev = scm.get_rev()
-
     result_2 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_rev_2 = first(result_2)
     commit_2 = scm.resolve_commit(exp_rev_2)
@@ -1026,58 +861,21 @@ def test_show_completed_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == exp_rev_3:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,
         "resolve_commit",
         side_effect=mocker.MagicMock(side_effect=resolve_commit),
     )
-    experiments = dvc.experiments.show()[baseline_rev]
-    assert len(experiments) == 2
-    assert exp_rev_2 in experiments
-
-
-@pytest.mark.vscode
-def test_show_checkpoint_error(tmp_dir, scm, dvc, checkpoint_stage, mocker):
-    baseline_rev = scm.get_rev()
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"]
-    )
-    exp_rev = first(results)
-    exp_ref = str(first(exp_refs_by_rev(scm, exp_rev)))
-
-    results = dvc.experiments.show()[baseline_rev]
-    assert len(results) == checkpoint_stage.iterations + 1
-
-    checkpoints = {}
-    for rev in results:
-        if rev != "baseline":
-            checkpoints[rev] = scm.resolve_commit(rev)
-    checkpoints[exp_ref] = scm.resolve_commit(exp_ref)
-    checkpoints[baseline_rev] = scm.resolve_commit(baseline_rev)
-
-    failed_rev = random.choice(list(checkpoints.keys()))
-
-    def resolve_commit(rev):
-        if rev == failed_rev:
-            raise SCMError
-        return checkpoints[rev]
-
-    mocker.patch.object(
-        scm,
-        "resolve_commit",
-        side_effect=mocker.MagicMock(side_effect=resolve_commit),
-    )
-    results = dvc.experiments.show()[baseline_rev]
+    results = dvc.experiments.show()[1].experiments
     assert len(results) == 1
+    assert not results[0].revs[0].error
 
 
 @pytest.mark.vscode
 def test_show_baseline_error(tmp_dir, scm, dvc, exp_stage, mocker):
     baseline_rev = scm.get_rev()
-    branch = scm.active_branch()
 
     result_2 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_rev_2 = first(result_2)
@@ -1086,15 +884,14 @@ def test_show_baseline_error(tmp_dir, scm, dvc, exp_stage, mocker):
     def resolve_commit(rev):
         if rev == baseline_rev:
             raise SCMError
-        else:
-            return commit_2
+        return commit_2
 
     mocker.patch.object(
         scm,
         "resolve_commit",
         side_effect=mocker.MagicMock(side_effect=resolve_commit),
     )
-    experiments = dvc.experiments.show()[baseline_rev]
-    assert len(experiments) == 1
-    assert experiments["baseline"]["data"] == {"name": branch}
-    assert isinstance(experiments["baseline"]["error"], SCMError)
+
+    results = dvc.experiments.show()
+    assert results[1].error
+    assert len(results[1].experiments) == 1

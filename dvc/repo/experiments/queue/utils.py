@@ -3,15 +3,20 @@ from typing import TYPE_CHECKING, Dict, List
 
 from scmrepo.exceptions import SCMError
 
-from ..executor.base import ExecutorInfo, TaskStatus
-from ..refs import EXEC_CHECKPOINT, EXEC_NAMESPACE, EXPS_NAMESPACE, EXPS_STASH
-from ..utils import get_exp_rwlock, iter_remote_refs
+from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
+from dvc.repo.experiments.refs import (
+    EXEC_CHECKPOINT,
+    EXEC_NAMESPACE,
+    EXPS_NAMESPACE,
+    EXPS_STASH,
+)
+from dvc.repo.experiments.utils import get_exp_rwlock, iter_remote_refs
 
 logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
+    from dvc.scm import Git
 
     from .base import BaseStashQueue
 
@@ -48,10 +53,9 @@ def fetch_running_exp_from_temp_dir(
     Returns:
         Dict[str, Dict]: _description_
     """
+    from dvc.repo.experiments.executor.local import TempDirExecutor
     from dvc.scm import InvalidRemoteSCMRepo
     from dvc.utils.serialize import load_json
-
-    from ..executor.local import TempDirExecutor
 
     result: Dict[str, Dict] = {}
     infofile = queue.get_infofile_path(rev)

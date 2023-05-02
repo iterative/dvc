@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -13,10 +13,15 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property
+import colorama
+
+from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
+    from rich.console import Console as RichConsole
+    from rich.console import JustifyMethod, OverflowMethod
     from rich.status import Status
+    from rich.style import Style
     from rich.text import Text as RichText
 
     from dvc.progress import Tqdm
@@ -24,8 +29,25 @@ if TYPE_CHECKING:
     from dvc.ui.table import Headers, Styles, TableData
 
 
+@contextmanager
+def disable_colorama():
+    import sys
+
+    colorama.deinit()
+    try:
+        yield
+    finally:
+        if sys.stdout:
+            sys.stdout.flush()
+        if sys.stderr:
+            sys.stderr.flush()
+        colorama.reinit()
+
+
 class Formatter:
-    def __init__(self, theme: Dict = None, defaults: Dict = None) -> None:
+    def __init__(
+        self, theme: Optional[Dict] = None, defaults: Optional[Dict] = None
+    ) -> None:
         from collections import defaultdict
 
         theme = theme or {
@@ -35,7 +57,9 @@ class Formatter:
         }
         self.theme = defaultdict(lambda: defaults or {}, theme)
 
-    def format(self, message: str, style: str = None, **kwargs) -> str:
+    def format(  # noqa: A003
+        self, message: str, style: Optional[str] = None, **kwargs
+    ) -> str:
         from dvc.utils import colorize
 
         return colorize(message, **self.theme[style])
@@ -43,15 +67,13 @@ class Formatter:
 
 class Console:
     def __init__(
-        self, formatter: Formatter = None, enable: bool = False
+        self, formatter: Optional[Formatter] = None, enable: bool = False
     ) -> None:
         from contextvars import ContextVar
 
         self.formatter: Formatter = formatter or Formatter()
         self._enabled: bool = enable
-        self._paginate: ContextVar[bool] = ContextVar(
-            "_paginate", default=False
-        )
+        self._paginate: ContextVar[bool] = ContextVar("_paginate", default=False)
 
     def enable(self) -> None:
         self._enabled = True
@@ -68,9 +90,9 @@ class Console:
     def error_write(
         self,
         *objects: Any,
-        style: str = None,
-        sep: str = None,
-        end: str = None,
+        style: Optional[str] = None,
+        sep: Optional[str] = None,
+        end: Optional[str] = None,
         styled: bool = False,
         force: bool = True,
     ) -> None:
@@ -84,11 +106,11 @@ class Console:
             styled=styled,
         )
 
-    def write_json(
+    def write_json(  # noqa: PLR0913
         self,
         data: Any,
-        indent: int = None,
-        highlight: bool = None,
+        indent: Optional[int] = None,
+        highlight: Optional[bool] = None,
         stderr: bool = False,
         skip_keys: bool = False,
         ensure_ascii: bool = True,
@@ -102,8 +124,9 @@ class Console:
         if indent is None and self.isatty():
             indent = 2
 
-        console = self.error_console if stderr else self.rich_console
-        return console.print_json(
+        from rich.json import JSON
+
+        json = JSON.from_data(
             data=data,
             indent=indent,
             highlight=bool(highlight),
@@ -114,17 +137,67 @@ class Console:
             default=default,
             sort_keys=sort_keys,
         )
+        if not highlight:
+            import os
+
+            # we don't need colorama to try to strip ansi codes
+            # when highlighting is disabled
+            ctx = nullcontext() if "DVC_TEST" in os.environ else disable_colorama()
+            with ctx:
+                return self.write(json.text, stderr=stderr)
+        return self.rich_print(json, stderr=stderr, soft_wrap=True)
+
+    def rich_print(
+        self,
+        *objects: Any,
+        sep: str = " ",
+        end: str = "\n",
+        stderr: bool = False,
+        style: Optional[Union[str, "Style"]] = None,
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
+        no_wrap: Optional[bool] = None,
+        emoji: Optional[bool] = None,
+        markup: Optional[bool] = None,
+        highlight: Optional[bool] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        crop: bool = True,
+        soft_wrap: Optional[bool] = None,
+        new_line_start: bool = False,
+    ) -> None:
+        if stderr:
+            console = self.error_console
+        else:
+            console = self.rich_console
+        return console.print(
+            *objects,
+            sep=sep,
+            end=end,
+            style=style,
+            justify=justify,
+            overflow=overflow,
+            no_wrap=no_wrap,
+            emoji=emoji,
+            markup=markup,
+            highlight=highlight,
+            width=width,
+            height=height,
+            crop=crop,
+            soft_wrap=soft_wrap,
+            new_line_start=new_line_start,
+        )
 
     def write(
         self,
         *objects: Any,
-        style: str = None,
-        sep: str = None,
-        end: str = None,
+        style: Optional[str] = None,
+        sep: Optional[str] = None,
+        end: Optional[str] = None,
         stderr: bool = False,
         force: bool = False,
         styled: bool = False,
-        file: TextIO = None,
+        file: Optional[TextIO] = None,
     ) -> None:
         import sys
 
@@ -139,10 +212,21 @@ class Console:
         with Tqdm.external_write_mode(file=file):
             # if we are inside pager context, send the output to rich's buffer
             if styled or self._paginate.get():
-                console = self.error_console if stderr else self.rich_console
                 if styled:
-                    return console.print(*objects, sep=sep, end=end)
-                return console.out(*objects, sep=sep, end=end, highlight=False)
+                    return self.rich_print(*objects, sep=sep, end=end, stderr=stderr)
+                return self.rich_print(
+                    sep.join(str(_object) for _object in objects),
+                    style=None,
+                    highlight=False,
+                    emoji=False,
+                    markup=False,
+                    no_wrap=True,
+                    overflow="ignore",
+                    crop=False,
+                    sep=sep,
+                    end=end,
+                    stderr=stderr,
+                )
 
             values = (self.formatter.format(obj, style) for obj in objects)
             return print(*values, sep=sep, end=end, file=file)
@@ -171,7 +255,10 @@ class Console:
             self._paginate.reset(tok)
 
     def prompt(
-        self, text: str, choices: Iterable[str] = None, password: bool = False
+        self,
+        text: str,
+        choices: Optional[Iterable[str]] = None,
+        password: bool = False,
     ) -> Optional[str]:
         while True:
             try:
@@ -188,10 +275,7 @@ class Console:
             if answer in choices:
                 return answer
 
-            self.write(
-                f"Your response must be one of: {choices}. "
-                "Please try again."
-            )
+            self.write(f"Your response must be one of: {choices}. Please try again.")
 
     def confirm(self, statement: str) -> bool:
         """Ask the user for confirmation about the specified statement.
@@ -206,14 +290,14 @@ class Console:
         return answer.startswith("y")
 
     @cached_property
-    def rich_console(self):
+    def rich_console(self) -> "RichConsole":
         """rich_console is only set to stdout for now."""
         from rich import console
 
         return console.Console()
 
     @cached_property
-    def error_console(self):
+    def error_console(self) -> "RichConsole":
         from rich import console
 
         return console.Console(stderr=True)
@@ -221,13 +305,13 @@ class Console:
     def table(
         self,
         data: "TableData",
-        headers: "Headers" = None,
+        headers: Optional["Headers"] = None,
         markdown: bool = False,
         rich_table: bool = False,
         force: bool = True,
         pager: bool = False,
-        header_styles: Union[Dict[str, "Styles"], Sequence["Styles"]] = None,
-        row_styles: Sequence["Styles"] = None,
+        header_styles: Optional[Union[Dict[str, "Styles"], Sequence["Styles"]]] = None,
+        row_styles: Optional[Sequence["Styles"]] = None,
         borders: Union[bool, str] = False,
     ) -> None:
         from dvc.ui import table as t
@@ -269,18 +353,12 @@ class Console:
         from dvc.utils import relpath
 
         path = Path(file).resolve()
-        url = (
-            relpath(path)
-            if "microsoft" in uname().release.lower()
-            else path.as_uri()
-        )
+        url = relpath(path) if "microsoft" in uname().release.lower() else path.as_uri()
 
         opened = webbrowser.open(url)
 
         if not opened:
-            ui.error_write(
-                f"Failed to open {url}. " "Please try opening it manually."
-            )
+            ui.error_write(f"Failed to open {url}. Please try opening it manually.")
             return 1
 
         return 0
@@ -298,6 +376,4 @@ if __name__ == "__main__":
     ui.error("too few arguments.")
 
     ui.table([("scores.json", "0.5674")], headers=["Path", "auc"])
-    ui.table(
-        [("scores.json", "0.5674")], headers=["Path", "auc"], markdown=True
-    )
+    ui.table([("scores.json", "0.5674")], headers=["Path", "auc"], markdown=True)

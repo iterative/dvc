@@ -4,6 +4,7 @@ import pytest
 
 from dvc.annotations import Annotation
 from dvc.dvcfile import SingleStageFile
+from dvc.exceptions import OutputDuplicationError
 from dvc.fs import LocalFileSystem
 from dvc.output import Output
 from dvc.repo import Repo, lock_repo
@@ -109,9 +110,7 @@ def test_default_wdir_ignored_in_checksum(tmp_dir, dvc):
 
 def test_external_remote_output_resolution(tmp_dir, dvc, make_remote):
     tmp_path = make_remote("tmp", default=False)
-    tmp_dir.add_remote(
-        url="remote://tmp/storage", name="storage", default=False
-    )
+    tmp_dir.add_remote(url="remote://tmp/storage", name="storage", default=False)
     storage = tmp_path / "storage"
     storage.mkdir()
     file_path = storage / "file"
@@ -126,9 +125,7 @@ def test_external_remote_output_resolution(tmp_dir, dvc, make_remote):
 
 def test_external_remote_dependency_resolution(tmp_dir, dvc, make_remote):
     tmp_path = make_remote("tmp", default=False)
-    tmp_dir.add_remote(
-        url="remote://tmp/storage", name="storage", default=False
-    )
+    tmp_dir.add_remote(url="remote://tmp/storage", name="storage", default=False)
     storage = tmp_path / "storage"
     storage.mkdir()
     file_path = storage / "file"
@@ -168,13 +165,7 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
     stage = dvc.stage.load_one("foo.dvc")
     assert compute_md5(stage) == "1822617147b53ae6f9eb4b3c87c0b6f3"
     assert (
-        dict_md5(
-            {
-                "outs": [
-                    {"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}
-                ]
-            }
-        )
+        dict_md5({"outs": [{"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}]})
         == "1822617147b53ae6f9eb4b3c87c0b6f3"
     )
 
@@ -239,13 +230,6 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
     assert deep_subrepo_stages != []
 
 
-def test_collect_repo_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
-    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.dvc"})
-    scm.add([".gitignore"])
-    (stage,) = tmp_dir.dvc_gen({"data/raw/tracked.csv": "5,6,7,8"})
-    assert dvc.stage.collect_repo() == [stage]
-
-
 @pytest.mark.parametrize("with_deps", (False, True))
 def test_collect_symlink(tmp_dir, dvc, with_deps):
     tmp_dir.gen({"data": {"foo": "foo contents"}})
@@ -255,9 +239,7 @@ def test_collect_symlink(tmp_dir, dvc, with_deps):
     data_link = tmp_dir / "data_link"
     data_link.symlink_to("data")
     stage = list(
-        dvc.stage.collect(
-            target=str(data_link / "foo.dvc"), with_deps=with_deps
-        )
+        dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
     )[0]
 
     assert stage.addressing == f"{foo_path}.dvc"
@@ -317,6 +299,8 @@ def test_stage_remove_pipeline_stage(tmp_dir, dvc, run_copy):
 
     with dvc.lock:
         stage.remove()
+
+    dvc_file._reset()
     assert stage.name not in dvc_file.stages
     assert "copy-bar-foobar" in dvc_file.stages
 
@@ -350,3 +334,14 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
     mock_cmd_run.assert_called_with(
         stage, checkpoint_func=callback, dry=False, run_env=None
     )
+
+
+def test_stage_add_duplicated_output(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.add("foo")
+
+    with pytest.raises(
+        OutputDuplicationError,
+        match="Use `dvc remove foo.dvc` to stop tracking the overlapping output.",
+    ):
+        dvc.stage.add(name="duplicated", cmd="echo bar > foo", outs=["foo"])

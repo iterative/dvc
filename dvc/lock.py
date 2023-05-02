@@ -20,9 +20,7 @@ FAILED_TO_LOCK_MESSAGE = (
     "Unable to acquire lock. Most likely another DVC process is running or "
     "was terminated abruptly. Check the page {} for other possible reasons "
     "and to learn how to resolve this."
-).format(
-    format_link("https://dvc.org/doc/user-guide/troubleshooting#lock-issue")
-)
+).format(format_link("https://dvc.org/doc/user-guide/troubleshooting#lock-issue"))
 
 
 class LockError(DvcException):
@@ -61,9 +59,7 @@ class LockBase(ABC):
 
 
 class LockNoop(LockBase):
-    def __init__(
-        self, *args, **kwargs
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         self._lock = False
 
     def lock(self):
@@ -107,16 +103,14 @@ class Lock(LockBase):
             with Tqdm(
                 bar_format="{desc}",
                 disable=not self._friendly,
-                desc=(
-                    "If DVC froze, see `hardlink_lock` in {}".format(
-                        format_link("https://man.dvc.org/config#core")
-                    )
+                desc="If DVC froze, see `hardlink_lock` in {}".format(
+                    format_link("https://man.dvc.org/config#core")
                 ),
             ):
                 self._lock = zc.lockfile.LockFile(self._lockfile)
         except zc.lockfile.LockError:
             self._lock_failed = True
-            raise LockError(FAILED_TO_LOCK_MESSAGE)
+            raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
     def lock(self):
         retries = 6
@@ -131,6 +125,7 @@ class Lock(LockBase):
 
         if not self.is_locked:
             raise DvcException("Unlock called on an unlocked lock")
+        assert self._lock
         self._lock.close()
         self._lock = None
 
@@ -185,14 +180,17 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         try:
             super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:
-            raise LockError(FAILED_TO_LOCK_MESSAGE)
+            raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
     def _set_claimfile(self):
         super()._set_claimfile()
 
         if self._tmp_dir is not None:
             # Under Windows file path length is limited so we hash it
-            filename = hashlib.md5(self._claimfile.encode()).hexdigest()
+            hasher = hashlib.md5(  # nosec B324, B303  # noqa: S324
+                self._claimfile.encode()
+            )
+            filename = hasher.hexdigest()
             self._claimfile = os.path.join(self._tmp_dir, filename + ".lock")
 
 

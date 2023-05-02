@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -9,7 +10,6 @@ from dvc.output import OutputIsIgnoredError
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.testing.tmp_dir import TmpDir
-from dvc.types import List
 from dvc_data.hashfile.build import IgnoreInCollectedDirError
 from dvc_data.hashfile.utils import get_mtime_and_size
 
@@ -64,25 +64,25 @@ def test_walk(tmp_dir, dvc):
     assert result == [
         (
             str(tmp_dir),
-            {"dir": dvc.fs.info(tmp_dir / "dir")},
+            {"dir": dvc.fs.info(str(tmp_dir / "dir"))},
             {
-                "bar": dvc.fs.info(tmp_dir / "bar"),
-                ".dvcignore": dvc.fs.info(tmp_dir / ".dvcignore"),
+                "bar": dvc.fs.info(str(tmp_dir / "bar")),
+                ".dvcignore": dvc.fs.info(str(tmp_dir / ".dvcignore")),
             },
         ),
         (
             str(tmp_dir / "dir"),
             {
-                "subdir": dvc.fs.info(tmp_dir / "dir" / "subdir"),
+                "subdir": dvc.fs.info(str(tmp_dir / "dir" / "subdir")),
             },
             {
-                "baz": dvc.fs.info(tmp_dir / "dir" / "baz"),
+                "baz": dvc.fs.info(str(tmp_dir / "dir" / "baz")),
             },
         ),
         (
             str(tmp_dir / "dir" / "subdir"),
             {},
-            {"qux": dvc.fs.info(tmp_dir / "dir" / "subdir" / "qux")},
+            {"qux": dvc.fs.info(str(tmp_dir / "dir" / "subdir" / "qux"))},
         ),
     ]
 
@@ -98,7 +98,8 @@ def test_rename_ignored_file(tmp_dir, dvc):
     shutil.move("dir/ignored", "dir/ignored_new")
     new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
-    assert new_mtime == mtime and new_size == size
+    assert new_mtime == mtime
+    assert new_size == size
 
 
 def test_rename_file(tmp_dir, dvc):
@@ -108,7 +109,8 @@ def test_rename_file(tmp_dir, dvc):
     shutil.move("dir/foo", "dir/foo_new")
     new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
-    assert new_mtime != mtime and new_size == size
+    assert new_mtime != mtime
+    assert new_size == size
 
 
 def test_remove_ignored_file(tmp_dir, dvc):
@@ -119,9 +121,7 @@ def test_remove_ignored_file(tmp_dir, dvc):
     mtime, size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
     os.remove("dir/ignored")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
-
-    assert new_mtime == mtime and new_size == size
+    assert get_mtime_and_size("dir", dvc.fs, dvc.dvcignore) == (mtime, size)
 
 
 def test_remove_file(tmp_dir, dvc):
@@ -131,7 +131,8 @@ def test_remove_file(tmp_dir, dvc):
     os.remove("dir/foo")
     new_mtime, new_size = get_mtime_and_size("dir", dvc.fs, dvc.dvcignore)
 
-    assert new_mtime != mtime and new_size != size
+    assert new_mtime != mtime
+    assert new_size != size
 
 
 def test_dvcignore_in_out_dir(tmp_dir, dvc):
@@ -224,9 +225,7 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
         (ext_dir / "tmp" / "file").fs_path,
     }
     assert dvc.dvcignore.is_ignored_dir(os.fspath(ext_dir / "tmp")) is False
-    assert (
-        dvc.dvcignore.is_ignored_file(os.fspath(ext_dir / "y.backup")) is False
-    )
+    assert dvc.dvcignore.is_ignored_file(os.fspath(ext_dir / "y.backup")) is False
 
 
 def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
@@ -264,7 +263,7 @@ def test_ignore_blank_line(tmp_dir, dvc):
 
 # It is not possible to re-include a file if a parent directory of
 # that file is excluded.
-# Git doesn’t list excluded directories for performance reasons,
+# Git doesn't list excluded directories for performance reasons,
 # so any patterns on contained files have no effect,
 # no matter where they are defined.
 @pytest.mark.parametrize(
@@ -294,9 +293,7 @@ def test_ignore_file_in_parent_path(
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "\n".join(pattern_list))
     dvc._reset()
     result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
-    assert set(result) == {
-        (tmp_dir / relpath).fs_path for relpath in result_set
-    }
+    assert set(result) == {(tmp_dir / relpath).fs_path for relpath in result_set}
 
 
 # If there is a separator at the end of the pattern then the pattern
@@ -329,9 +326,7 @@ def test_ignore_directory(tmp_dir, dvc):
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "fortz"}})
     dvc._reset()
     result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
-    assert set(result) == {
-        (tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE).fs_path
-    }
+    assert set(result) == {(tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE).fs_path}
 
 
 def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
@@ -366,12 +361,8 @@ def test_pattern_trie_fs(tmp_dir, dvc):
     dvc._reset()
     dvcignore = dvc.dvcignore
 
-    ignore_pattern_top = dvcignore._get_trie_pattern(
-        os.fspath(tmp_dir / "top")
-    )
-    ignore_pattern_other = dvcignore._get_trie_pattern(
-        os.fspath(tmp_dir / "other")
-    )
+    ignore_pattern_top = dvcignore._get_trie_pattern(os.fspath(tmp_dir / "top"))
+    ignore_pattern_other = dvcignore._get_trie_pattern(os.fspath(tmp_dir / "other"))
     ignore_pattern_first = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "top" / "first")
     )
@@ -486,7 +477,7 @@ def test_pull_ignore(tmp_dir, dvc, local_cloud):
     foo_path.unlink()
     assert not foo_path.exists()
 
-    dvc.odb.local.clear()
+    dvc.cache.local.clear()
     dvc.pull()
 
     assert foo_path.exists()

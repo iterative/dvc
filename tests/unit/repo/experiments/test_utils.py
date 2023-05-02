@@ -2,7 +2,7 @@ import pytest
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.refs import EXPS_NAMESPACE, ExpRefInfo
-from dvc.repo.experiments.utils import check_ref_format, resolve_name
+from dvc.repo.experiments.utils import check_ref_format, resolve_name, to_studio_params
 
 
 def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
@@ -32,13 +32,45 @@ def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
 
 
 @pytest.mark.parametrize(
-    "name,result", [("name", True), ("group/name", False), ("na me", False)]
+    "name,result",
+    [
+        ("name", True),
+        ("group/name", False),
+        ("na me", False),
+        ("invalid/.name", False),
+        ("@", pytest.param(False, marks=pytest.mark.xfail)),
+        (":", False),
+        ("^", False),
+        ("*", False),
+        ("~", False),
+        ("?", False),
+    ],
 )
 def test_run_check_ref_format(scm, name, result):
-
     ref = ExpRefInfo("abc123", name)
     if result:
         check_ref_format(scm, ref)
     else:
         with pytest.raises(InvalidArgumentError):
             check_ref_format(scm, ref)
+
+
+@pytest.mark.parametrize(
+    "params,expected",
+    [
+        (
+            {"workspace": {"data": {"params.yaml": {"data": {"foo": 1}}}}},
+            {"params.yaml": {"foo": 1}},
+        ),
+        (
+            {"workspace": {"data": {"params.yaml": {"error": "FileNotFound"}}}},
+            {"params.yaml": {}},
+        ),
+        (
+            {"workspace": {"error": "something went wrong"}},
+            {},
+        ),
+    ],
+)
+def test_to_studio_params(params, expected):
+    assert to_studio_params(params) == expected

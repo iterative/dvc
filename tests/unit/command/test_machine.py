@@ -56,9 +56,7 @@ def test_create(tmp_dir, dvc, mocker):
     assert cli_args.func == CmdMachineCreate
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(
-        cmd.repo.machine, "create", autospec=True, return_value=0
-    )
+    m = mocker.patch.object(cmd.repo.machine, "create", autospec=True, return_value=0)
 
     assert cmd.run() == 0
     m.assert_called_once_with("foo")
@@ -70,17 +68,13 @@ def test_status(tmp_dir, scm, dvc, mocker):
     assert cli_args.func == CmdMachineStatus
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(
-        cmd.repo.machine, "status", autospec=True, return_value=[]
-    )
+    m = mocker.patch.object(cmd.repo.machine, "status", autospec=True, return_value=[])
     assert cmd.run() == 0
     m.assert_called_once_with("foo")
 
     cli_args = parse_args(["machine", "status"])
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(
-        cmd.repo.machine, "status", autospec=True, return_value=[]
-    )
+    m = mocker.patch.object(cmd.repo.machine, "status", autospec=True, return_value=[])
     assert cmd.run() == 0
     assert m.call_count == 2
     m.assert_has_calls([call("foo"), call("myaws")])
@@ -91,9 +85,7 @@ def test_destroy(tmp_dir, dvc, mocker):
     assert cli_args.func == CmdMachineDestroy
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(
-        cmd.repo.machine, "destroy", autospec=True, return_value=0
-    )
+    m = mocker.patch.object(cmd.repo.machine, "destroy", autospec=True, return_value=0)
 
     assert cmd.run() == 0
     m.assert_called_once_with("foo")
@@ -118,7 +110,7 @@ def test_list(tmp_dir, mocker, show_origin):
     from dvc.ui import ui
 
     tmp_dir.gen(DATA)
-    cli_args = parse_args(["machine", "list"] + show_origin + ["foo"])
+    cli_args = parse_args(["machine", "list", *show_origin, "foo"])
     assert cli_args.func == CmdMachineList
     cmd = cli_args.func(cli_args)
     if show_origin:
@@ -168,11 +160,9 @@ def test_rename(tmp_dir, scm, dvc):
     ],
 )
 def test_help_message(tmp_dir, scm, dvc, cmd, use_config, capsys):
-
     try:
         parse_args(["machine", cmd, "--help"])
     except SystemExit:
         pass
     cap = capsys.readouterr()
-    print(cap.out)
     assert ("--global" in cap.out) is use_config

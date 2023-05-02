@@ -17,13 +17,10 @@ class CmdExperimentsRun(CmdRepro):
 
         if self.args.checkpoint_resume:
             if self.args.reset:
-                raise InvalidArgumentError(
-                    "--reset and --rev are mutually exclusive."
-                )
+                raise InvalidArgumentError("--reset and --rev are mutually exclusive.")
             if not (self.args.queue or self.args.tmp_dir):
                 raise InvalidArgumentError(
-                    "--rev can only be used in conjunction with "
-                    "--queue or --temp."
+                    "--rev can only be used in conjunction with --queue or --temp."
                 )
 
         if self.args.reset:
@@ -39,6 +36,7 @@ class CmdExperimentsRun(CmdRepro):
             reset=self.args.reset,
             tmp_dir=self.args.tmp_dir,
             machine=self.args.machine,
+            copy_paths=self.args.copy_paths,
             **self._common_kwargs,
         )
 
@@ -51,7 +49,6 @@ class CmdExperimentsRun(CmdRepro):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-
     EXPERIMENTS_RUN_HELP = "Run or resume an experiment."
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
@@ -139,4 +136,14 @@ def _add_run_common(parser):
         #     "Run this experiment on the specified 'dvc machine' instance."
         # )
         # metavar="<name>",
+    )
+    parser.add_argument(
+        "-C",
+        "--copy-paths",
+        action="append",
+        default=[],
+        help=(
+            "List of ignored or untracked paths to copy into the temp directory."
+            " Only used if `--temp` or `--queue` is specified."
+        ),
     )

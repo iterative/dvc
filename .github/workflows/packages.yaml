@@ -17,9 +17,9 @@ jobs:
     strategy:
       matrix:
         include:
-         - {pkg: "deb",  os: "ubuntu-18.04", asset: "dvc_${{ github.event.release.tag_name }}_amd64.deb"}
-         - {pkg: "rpm", os: "ubuntu-18.04", asset: "dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm"}
-         - {pkg: "osxpkg", os: "macos-10.15", asset: "dvc-${{ github.event.release.tag_name }}.pkg"}
+         - {pkg: "deb",  os: "ubuntu-20.04", asset: "dvc_${{ github.event.release.tag_name }}_amd64.deb"}
+         - {pkg: "rpm", os: "ubuntu-20.04", asset: "dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm"}
+         - {pkg: "osxpkg", os: "macos-11", asset: "dvc-${{ github.event.release.tag_name }}.pkg"}
          - {pkg: "exe",  os: "windows-2019", asset: "dvc-${{ github.event.release.tag_name }}.exe"}
 
     name: ${{ matrix.pkg }}

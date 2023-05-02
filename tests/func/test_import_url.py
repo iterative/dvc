@@ -1,4 +1,3 @@
-import json
 import os
 import textwrap
 from uuid import uuid4
@@ -8,11 +7,10 @@ import pytest
 from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dependency.base import Dependency, DependencyDoesNotExistError
-from dvc.dvcfile import Dvcfile
+from dvc.dvcfile import load_file
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
 from dvc.testing.workspace_tests import TestImport as _TestImport
-from dvc.utils.fs import makedirs
 
 
 def test_cmd_import(tmp_dir, dvc):
@@ -51,6 +49,21 @@ def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
     assert remove_outs_call_counter.mock.call_count == 1
 
 
+def test_import_conflict_and_override(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    tmp_dir.gen("bar", "bar")
+
+    # bar exists, fail
+    ret = main(["import-url", "foo", "bar"])
+    assert ret != 0
+    assert not os.path.exists("bar.dvc")
+
+    # force override
+    ret = main(["import-url", "foo", "bar", "--force"])
+    assert ret == 0
+    assert os.path.exists("bar.dvc")
+
+
 def test_import_filename(tmp_dir, dvc, cloud):
     external_source = cloud / "file"
     (cloud / "file").write_text("content", encoding="utf-8")
@@ -62,9 +75,7 @@ def test_import_filename(tmp_dir, dvc, cloud):
     (tmp_dir / "sub").mkdir()
 
     path = tmp_dir / "sub" / "bar.dvc"
-    ret = main(
-        ["import-url", "--file", path.fs_path, external_source.fs_path, "out"]
-    )
+    ret = main(["import-url", "--file", path.fs_path, external_source.fs_path, "out"])
     assert ret == 0
     assert path.exists()
 
@@ -74,7 +85,7 @@ def test_import_url_to_dir(dname, tmp_dir, dvc):
     tmp_dir.gen({"data_dir": {"file": "file content"}})
     src = os.path.join("data_dir", "file")
 
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     stage = dvc.imp_url(src, dname)
 
@@ -174,74 +185,7 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
     )
 
 
-def test_import_url_to_remote_single_file(
-    tmp_dir, dvc, workspace, local_remote
-):
-    workspace.gen("foo", "foo")
-
-    url = "remote://workspace/foo"
-    stage = dvc.imp_url(url, to_remote=True)
-
-    assert stage.deps[0].hash_info.value is not None
-    assert not (tmp_dir / "foo").exists()
-    assert (tmp_dir / "foo.dvc").exists()
-
-    assert len(stage.deps) == 1
-    assert stage.deps[0].def_path == url
-    assert len(stage.outs) == 1
-
-    hash_info = stage.outs[0].hash_info
-    with open(
-        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
-    ) as fobj:
-        assert fobj.read() == "foo"
-    assert stage.outs[0].meta.size == len("foo")
-
-
-def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
-    workspace.gen(
-        {
-            "data": {
-                "foo": "foo",
-                "bar": "bar",
-                "sub_dir": {"baz": "sub_dir/baz"},
-            }
-        }
-    )
-
-    url = "remote://workspace/data"
-    stage = dvc.imp_url(url, to_remote=True)
-
-    assert not (tmp_dir / "data").exists()
-    assert (tmp_dir / "data.dvc").exists()
-
-    assert len(stage.deps) == 1
-    assert stage.deps[0].def_path == url
-    assert len(stage.outs) == 1
-
-    hash_info = stage.outs[0].hash_info
-    with open(
-        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
-    ) as stream:
-        file_parts = json.load(stream)
-
-    assert len(file_parts) == 3
-    assert {file_part["relpath"] for file_part in file_parts} == {
-        "foo",
-        "bar",
-        "sub_dir/baz",
-    }
-
-    for file_part in file_parts:
-        with open(
-            local_remote.oid_to_path(file_part["md5"]), encoding="utf-8"
-        ) as fobj:
-            assert fobj.read() == file_part["relpath"]
-
-
-def test_import_url_to_remote_absolute(
-    tmp_dir, make_tmp_dir, dvc, local_remote
-):
+def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
     tmp_abs_dir = make_tmp_dir("abs")
     tmp_foo = tmp_abs_dir / "foo"
     tmp_foo.write_text("foo")
@@ -277,9 +221,7 @@ def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
 def test_import_url_no_download(tmp_dir, scm, dvc, local_workspace):
     local_workspace.gen("file", "file content")
     dst = tmp_dir / "file"
-    stage = dvc.imp_url(
-        "remote://workspace/file", os.fspath(dst), no_download=True
-    )
+    stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     assert stage.deps[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
 
@@ -305,7 +247,7 @@ def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):
 
     assert dst.exists()
 
-    stage = Dvcfile(dvc, "file.dvc").stage
+    stage = load_file(dvc, "file.dvc").stage
 
     assert stage.outs[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
     assert stage.outs[0].meta.size == 12

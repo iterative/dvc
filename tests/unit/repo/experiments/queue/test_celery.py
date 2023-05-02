@@ -17,7 +17,7 @@ def test_shutdown_no_tasks(test_queue, mocker):
 
 
 @shared_task
-def _foo(arg=None):  # pylint: disable=unused-argument
+def _foo(arg=None):
     return "foo"
 
 
@@ -28,32 +28,28 @@ def test_shutdown(test_queue, mocker):
 
 
 def test_shutdown_with_kill(test_queue, mocker):
-
-    sig = _foo.s()
-    mock_entry = mocker.Mock(stash_rev=_foo.name)
-
-    result = sig.freeze()
+    mock_entry_foo = mocker.Mock(stash_rev="af12de")
+    mock_entry_foo.name = "foo"
+    mock_entry_bar = mocker.Mock(stash_rev="bar")
+    mock_entry_bar.name = None
 
     shutdown_spy = mocker.patch("celery.app.control.Control.shutdown")
     mocker.patch.object(
         test_queue,
-        "_iter_active_tasks",
-        return_value=[(result, mock_entry)],
+        "iter_active",
+        return_value=[mock_entry_foo, mock_entry_bar],
     )
-    kill_spy = mocker.patch.object(test_queue.proc, "kill")
+    kill_spy = mocker.patch.object(test_queue, "_kill_entries")
 
     test_queue.shutdown(kill=True)
 
-    sig.delay()
-
-    assert result.get() == "foo"
-    assert result.id not in test_queue._shutdown_task_ids
-    kill_spy.assert_called_once_with(mock_entry.stash_rev)
     shutdown_spy.assert_called_once()
+    kill_spy.assert_called_once_with(
+        {mock_entry_foo: "foo", mock_entry_bar: "bar"}, True
+    )
 
 
 def test_post_run_after_kill(test_queue):
-
     from celery import chain
 
     sig_bar = test_queue.proc.run_signature(
@@ -80,8 +76,8 @@ def test_post_run_after_kill(test_queue):
     assert result_foo.get(timeout=10) == "foo"
 
 
-def test_celery_queue_kill(test_queue, mocker):
-
+@pytest.mark.parametrize("force", [True, False])
+def test_celery_queue_kill(test_queue, mocker, force):
     mock_entry_foo = mocker.Mock(stash_rev="foo")
     mock_entry_bar = mocker.Mock(stash_rev="bar")
     mock_entry_foobar = mocker.Mock(stash_rev="foobar")
@@ -91,14 +87,6 @@ def test_celery_queue_kill(test_queue, mocker):
         "iter_active",
         return_value={mock_entry_foo, mock_entry_bar, mock_entry_foobar},
     )
-    mocker.patch.object(
-        test_queue,
-        "match_queue_entry_by_name",
-        return_value={"bar": None},
-    )
-    with pytest.raises(UnresolvedExpNamesError):
-        test_queue.kill("bar")
-
     mocker.patch.object(
         test_queue,
         "match_queue_entry_by_name",
@@ -139,22 +127,43 @@ def test_celery_queue_kill(test_queue, mocker):
 
     kill_mock = mocker.patch.object(
         test_queue.proc,
-        "kill",
+        "kill" if force else "interrupt",
         side_effect=mocker.MagicMock(side_effect=kill_function),
     )
-    with pytest.raises(
-        CannotKillTasksError, match="Task 'foobar' is initializing,"
-    ):
-        test_queue.kill(["bar", "foo", "foobar"])
+    with pytest.raises(CannotKillTasksError, match="Task 'foobar' is initializing,"):
+        test_queue.kill(["bar", "foo", "foobar"], force=force)
     assert kill_mock.called_once_with(mock_entry_foo.stash_rev)
     assert kill_mock.called_once_with(mock_entry_bar.stash_rev)
     assert kill_mock.called_once_with(mock_entry_foobar.stash_rev)
     mark_mocker.assert_called_once_with("bar", None)
 
 
+@pytest.mark.parametrize("force", [True, False])
+def test_celery_queue_kill_invalid(test_queue, mocker, force):
+    mock_entry_foo = mocker.Mock(stash_rev="foo")
+    mock_entry_bar = mocker.Mock(stash_rev="bar")
+
+    mocker.patch.object(
+        test_queue,
+        "match_queue_entry_by_name",
+        return_value={
+            "bar": mock_entry_bar,
+            "foo": mock_entry_foo,
+            "foobar": None,
+        },
+    )
+
+    kill_mock = mocker.patch.object(test_queue, "_kill_entries")
+
+    with pytest.raises(UnresolvedExpNamesError):
+        test_queue.kill(["bar", "foo", "foobar"], force=force)
+    assert kill_mock.called_once_with(
+        {mock_entry_foo: "foo", mock_entry_bar: "bar"}, force
+    )
+
+
 @pytest.mark.parametrize("status", ["FAILURE", "SUCCESS"])
 def test_queue_iter_done_task(test_queue, mocker, status):
-
     mock_entry = mocker.Mock(stash_rev=_foo.name)
 
     result = mocker.Mock(status=status)
@@ -166,12 +175,10 @@ def test_queue_iter_done_task(test_queue, mocker, status):
     )
 
     if status == "FAILURE":
-        assert list(test_queue.iter_failed()) == [
-            QueueDoneResult(mock_entry, None)
-        ]
+        assert list(test_queue.iter_failed()) == [QueueDoneResult(mock_entry, None)]
 
     elif status == "SUCCESS":
-        with pytest.raises(DvcException):
+        with pytest.raises(DvcException, match="Invalid experiment"):
             assert list(test_queue.iter_success())
 
 

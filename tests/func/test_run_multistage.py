@@ -8,29 +8,29 @@ from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
 
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
     from dvc.stage import PipelineStage
 
     tmp_dir.dvc_gen("foo", "foo")
-    assert not os.path.exists(PIPELINE_FILE)
+    assert not os.path.exists(PROJECT_FILE)
     stage = run_copy("foo", "bar", name="copy-foo-to-bar")
     assert isinstance(stage, PipelineStage)
     assert stage.name == "copy-foo-to-bar"
-    assert os.path.exists(PIPELINE_FILE)
-    assert os.path.exists(PIPELINE_LOCK)
+    assert os.path.exists(PROJECT_FILE)
+    assert os.path.exists(LOCK_FILE)
 
 
 def test_run_no_exec(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
     from dvc.stage import PipelineStage
 
     tmp_dir.dvc_gen("foo", "foo")
-    assert not os.path.exists(PIPELINE_FILE)
+    assert not os.path.exists(PROJECT_FILE)
     stage = run_copy("foo", "bar", name="copy-foo-to-bar", no_exec=True)
     assert isinstance(stage, PipelineStage)
     assert stage.name == "copy-foo-to-bar"
-    assert os.path.exists(PIPELINE_FILE)
-    assert not os.path.exists(PIPELINE_LOCK)
+    assert os.path.exists(PROJECT_FILE)
+    assert not os.path.exists(LOCK_FILE)
 
     data, _ = stage.dvcfile._load()
     assert data["stages"]["copy-foo-to-bar"] == {
@@ -55,7 +55,7 @@ def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
 
 
 def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+    from dvc.dvcfile import PROJECT_FILE, load_file
     from dvc.stage import PipelineStage
 
     tmp_dir.dvc_gen("foo", "foo")
@@ -63,7 +63,7 @@ def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     run_copy("foo1", "foo2", name="copy-foo1-foo2")
     run_copy("foo2", "foo3", single_stage=True)
 
-    stages = list(Dvcfile(dvc, PIPELINE_FILE).stages.values())
+    stages = list(load_file(dvc, PROJECT_FILE).stages.values())
     assert len(stages) == 2
     assert all(isinstance(stage, PipelineStage) for stage in stages)
     assert {stage.name for stage in stages} == {
@@ -94,7 +94,7 @@ def test_multistage_dump_on_non_cached_outputs(tmp_dir, dvc):
 
 
 def test_multistage_with_wdir(tmp_dir, dvc):
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import load_file
 
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     stage = dvc.run(
@@ -105,12 +105,12 @@ def test_multistage_with_wdir(tmp_dir, dvc):
         wdir="dir",
     )
 
-    data, _ = Dvcfile(dvc, stage.path)._load()
-    assert "dir" == data["stages"]["copy-foo1-foo2"]["wdir"]
+    data, _ = load_file(dvc, stage.path)._load()
+    assert data["stages"]["copy-foo1-foo2"]["wdir"] == "dir"
 
 
 def test_multistage_always_changed(tmp_dir, dvc):
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import load_file
 
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
     stage = dvc.run(
@@ -121,7 +121,7 @@ def test_multistage_always_changed(tmp_dir, dvc):
         always_changed=True,
     )
 
-    data, _ = Dvcfile(dvc, stage.path)._load()
+    data, _ = load_file(dvc, stage.path)._load()
     assert data["stages"]["copy-foo1-foo2"]["always_changed"]
 
 
@@ -139,7 +139,7 @@ def test_graph(tmp_dir, dvc):
 
 
 def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
-    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+    from dvc.dvcfile import PROJECT_FILE, load_file
 
     tmp_dir.gen(
         {
@@ -159,7 +159,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
         outs_persist=["foo2"],
         always_changed=True,
     )
-    data = Dvcfile(dvc, PIPELINE_FILE)._load()[0]
+    data = load_file(dvc, PROJECT_FILE)._load()[0]
     assert data == {
         "stages": {
             "copy-foo-foo2": {
@@ -182,7 +182,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
         metrics_no_cache=["foobar-1"],
         wdir="dir",
     )
-    assert Dvcfile(dvc, PIPELINE_FILE)._load()[0] == {
+    assert load_file(dvc, PROJECT_FILE)._load()[0] == {
         "stages": {
             "head-files": {
                 "cmd": "python {} foo bar foobar".format(
@@ -198,9 +198,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
     }
 
 
-@pytest.mark.parametrize(
-    "char", ["@:", "#", "$", ":", "/", "\\", ".", ";", ","]
-)
+@pytest.mark.parametrize("char", ["@:", "#", "$", ":", "/", "\\", ".", ";", ","])
 def test_run_with_invalid_stage_name(run_copy, char):
     with pytest.raises(InvalidStageName):
         run_copy("foo", "bar", name=f"copy_name-{char}")
@@ -246,9 +244,7 @@ def test_run_params_default(tmp_dir, dvc):
     }
 
     data, _ = stage.dvcfile._load()
-    assert data["stages"]["read_params"]["params"] == [
-        "nested.nested1.nested2"
-    ]
+    assert data["stages"]["read_params"]["params"] == ["nested.nested1.nested2"]
 
 
 def test_run_params_custom_file(tmp_dir, dvc):
@@ -269,9 +265,7 @@ def test_run_params_custom_file(tmp_dir, dvc):
     }
 
     data, _ = stage.dvcfile._load()
-    assert data["stages"]["read_params"]["params"] == [
-        {"params2.yaml": ["lists"]}
-    ]
+    assert data["stages"]["read_params"]["params"] == [{"params2.yaml": ["lists"]}]
 
 
 def test_run_params_no_exec(tmp_dir, dvc):
@@ -290,9 +284,7 @@ def test_run_params_no_exec(tmp_dir, dvc):
     assert not stage.dvcfile._lockfile.exists()
 
     data, _ = stage.dvcfile._load()
-    assert data["stages"]["read_params"]["params"] == [
-        {"params2.yaml": ["lists"]}
-    ]
+    assert data["stages"]["read_params"]["params"] == [{"params2.yaml": ["lists"]}]
 
 
 @pytest.mark.parametrize(
@@ -305,11 +297,11 @@ def test_run_params_no_exec(tmp_dir, dvc):
 def test_run_without_cmd(tmp_dir, dvc, kwargs):
     with pytest.raises(InvalidArgumentError) as exc:
         dvc.run(**kwargs)
-    assert "command is not specified" == str(exc.value)
+    assert str(exc.value) == "command is not specified"
 
 
 def test_run_overwrite_order(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE
+    from dvc.dvcfile import PROJECT_FILE
 
     tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
     run_copy("foo", "bar", name="copy-foo-bar")
@@ -317,12 +309,12 @@ def test_run_overwrite_order(tmp_dir, dvc, run_copy):
 
     run_copy("foo1", "bar1", name="copy-foo-bar", force=True)
 
-    data = (tmp_dir / PIPELINE_FILE).parse()
+    data = (tmp_dir / PROJECT_FILE).parse()
     assert list(data["stages"].keys()) == ["copy-foo-bar", "copy-bar-foobar"]
 
 
 def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE
+    from dvc.dvcfile import PROJECT_FILE
 
     tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
     text = textwrap.dedent(
@@ -340,14 +332,12 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
               name: meta is preserved too
     """
     )
-    (tmp_dir / PIPELINE_FILE).write_text(text.format(src="foo", dest="bar"))
-    assert dvc.reproduce(PIPELINE_FILE)
+    (tmp_dir / PROJECT_FILE).write_text(text.format(src="foo", dest="bar"))
+    assert dvc.reproduce(PROJECT_FILE)
 
     assert run_copy("foo1", "bar1", name="copy-foo-bar", force=True)
 
-    assert (tmp_dir / PIPELINE_FILE).read_text() == text.format(
-        src="foo1", dest="bar1"
-    )
+    assert (tmp_dir / PROJECT_FILE).read_text() == text.format(src="foo1", dest="bar1")
 
 
 def test_run_external_outputs(

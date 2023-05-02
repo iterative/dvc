@@ -1,11 +1,37 @@
-from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+import os
+
+from dvc.cachemgr import CacheManager
+from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.fs import system
-from dvc.odbmgr import ODBManager
+from dvc.repo import Repo
+from dvc.scm import Git
+
+
+def test_open_bare(tmp_dir, scm, dvc, tmp_path_factory):
+    tmp_dir.dvc_gen(
+        {
+            "dir123": {"foo": "foo content"},
+            "dirextra": {"extrafoo": "extra foo content"},
+        },
+        commit="initial",
+    )
+
+    url = os.fspath(tmp_path_factory.mktemp("bare"))
+    Git.init(url, bare=True).close()
+
+    scm.gitpython.repo.create_remote("origin", url)
+    scm.gitpython.repo.remote("origin").push("master")
+
+    with Repo.open(url) as repo:
+        assert repo.scm.root_dir != url
+
+    with Repo.open(url, uninitialized=True) as repo:
+        assert repo.scm.root_dir != url
 
 
 def test_destroy(tmp_dir, dvc, run_copy):
     dvc.config["cache"]["type"] = ["symlink"]
-    dvc.odb = ODBManager(dvc)
+    dvc.cache = CacheManager(dvc)
 
     tmp_dir.dvc_gen("file", "text")
     tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})
@@ -23,8 +49,8 @@ def test_destroy(tmp_dir, dvc, run_copy):
         "file.dvc",
         "file2.dvc",
         "dir.dvc",
-        PIPELINE_FILE,
-        PIPELINE_LOCK,
+        PROJECT_FILE,
+        LOCK_FILE,
     ]:
         assert not (tmp_dir / path).exists()
 

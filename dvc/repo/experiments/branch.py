@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def branch(repo, exp_rev, branch_name, *args, **kwargs):
+def branch(repo, exp_rev, branch_name=None, **kwargs):
     from dvc.scm import resolve_rev
 
     try:
         rev = resolve_rev(repo.scm, exp_rev)
     except RevError:
-        raise InvalidArgumentError(exp_rev)
+        raise InvalidArgumentError(exp_rev)  # noqa: B904
     ref_info = None
 
     ref_infos = list(exp_refs_by_rev(repo.scm, rev))
@@ -33,9 +33,11 @@ def branch(repo, exp_rev, branch_name, *args, **kwargs):
                 break
         if not ref_info:
             msg = [
-                f"Ambiguous experiment name '{exp_rev}' can refer to "
-                "multiple experiments. To create a branch use a full "
-                "experiment ref:",
+                (
+                    f"Ambiguous experiment name '{exp_rev}' can refer to "
+                    "multiple experiments. To create a branch use a full "
+                    "experiment ref:"
+                ),
                 "",
             ]
             msg.extend([str(info) for info in ref_infos])
@@ -44,11 +46,11 @@ def branch(repo, exp_rev, branch_name, *args, **kwargs):
     if not ref_info:
         raise InvalidExpRevError(exp_rev)
 
+    branch_name = branch_name or f"{ref_info.name}-branch"
+
     branch_ref = f"refs/heads/{branch_name}"
     if repo.scm.get_ref(branch_ref):
-        raise InvalidArgumentError(
-            f"Git branch '{branch_name}' already exists."
-        )
+        raise InvalidArgumentError(f"Git branch '{branch_name}' already exists.")
 
     target = repo.scm.get_ref(str(ref_info))
     repo.scm.set_ref(

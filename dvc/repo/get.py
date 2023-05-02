@@ -1,9 +1,14 @@
 import logging
 import os
+from typing import TYPE_CHECKING, Union
 
 from dvc.exceptions import DvcException
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
+
+if TYPE_CHECKING:
+    from dvc.fs.dvc import DVCFileSystem
+
 
 logger = logging.getLogger(__name__)
 
@@ -11,19 +16,18 @@ logger = logging.getLogger(__name__)
 class GetDVCFileError(DvcException):
     def __init__(self):
         super().__init__(
-            "the given path is a DVC file, you must specify a data file "
-            "or a directory"
+            "the given path is a DVC file, you must specify a data file or a directory"
         )
 
 
-def get(url, path, out=None, rev=None, jobs=None):
+def get(url, path, out=None, rev=None, jobs=None, force=False):
     import shortuuid
 
     from dvc.dvcfile import is_valid_filename
     from dvc.external_repo import external_repo
     from dvc.fs.callbacks import Callback
 
-    out = resolve_output(path, out)
+    out = resolve_output(path, out, force=force)
 
     if is_valid_filename(out):
         raise GetDVCFileError()
@@ -48,12 +52,17 @@ def get(url, path, out=None, rev=None, jobs=None):
     cache_types = ["reflink", "hardlink", "copy"]
     try:
         with external_repo(
-            url=url, rev=rev, cache_dir=tmp_dir, cache_types=cache_types
+            url=url,
+            rev=rev,
+            subrepos=True,
+            uninitialized=True,
+            cache_dir=tmp_dir,
+            cache_types=cache_types,
         ) as repo:
+            from dvc.fs.data import DataFileSystem
 
+            fs: Union[DataFileSystem, "DVCFileSystem"]
             if os.path.isabs(path):
-                from dvc.fs.data import DataFileSystem
-
                 fs = DataFileSystem(index=repo.index.data["local"])
                 fs_path = fs.from_os_path(path)
             else:

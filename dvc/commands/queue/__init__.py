@@ -26,7 +26,7 @@ def add_parser(subparsers, parent_parser):
 
     queue_subparsers = queue_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc queue CMD --help` to display " "command-specific help.",
+        help="Use `dvc queue CMD --help` to display command-specific help.",
     )
 
     fix_subparsers(queue_subparsers)

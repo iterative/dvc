@@ -21,24 +21,18 @@ def save(
 
     Returns the saved experiment's SHAs.
     """
-    queue = repo.experiments.workspace_queue
     logger.debug("Saving workspace in %s", os.getcwd())
 
-    staged, _, _ = repo.scm.status(untracked_files="no")
-    if staged:
-        logger.warning(
-            "Your workspace contains staged Git changes which will be "
-            "unstaged before saving this experiment."
-        )
-        repo.scm.reset()
-
+    queue = repo.experiments.workspace_queue
     entry = repo.experiments.new(queue=queue, name=name, force=force)
     executor = queue.init_executor(repo.experiments, entry)
 
-    save_result = executor.save(
-        executor.info, force=force, include_untracked=include_untracked
-    )
-    result = queue.collect_executor(repo.experiments, executor, save_result)
+    try:
+        save_result = executor.save(
+            executor.info, force=force, include_untracked=include_untracked
+        )
+        result = queue.collect_executor(repo.experiments, executor, save_result)
+    finally:
+        executor.cleanup()
 
-    exp_rev = first(result)
-    return exp_rev
+    return first(result)

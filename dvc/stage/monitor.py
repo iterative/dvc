@@ -1,13 +1,13 @@
 import functools
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List
 
 from dvc.stage.decorators import relock_repo
-from dvc.stage.exceptions import StageCmdFailedError
+from dvc.stage.exceptions import CheckpointKilledError
 
 if TYPE_CHECKING:
     from dvc.stage import Stage
@@ -16,24 +16,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class CheckpointKilledError(StageCmdFailedError):
-    pass
-
-
 @dataclass
 class MonitorTask:
     stage: "Stage"
     execute: Callable
     proc: subprocess.Popen
     done: threading.Event = threading.Event()
-    killed: threading.Event = threading.Event()
+    updated: threading.Event = threading.Event()
 
     @property
     def name(self) -> str:
         raise NotImplementedError
 
     @property
-    def SIGNAL_FILE(self) -> str:
+    def SIGNAL_FILE(self) -> str:  # noqa: N802
         raise NotImplementedError
 
     @property
@@ -53,14 +49,10 @@ class CheckpointTask(MonitorTask):
     SIGNAL_FILE = "DVC_CHECKPOINT"
     error_cls = CheckpointKilledError
 
-    def __init__(
-        self, stage: "Stage", callback_func: Callable, proc: subprocess.Popen
-    ):
+    def __init__(self, stage: "Stage", callback_func: Callable, proc: subprocess.Popen):
         super().__init__(
             stage,
-            functools.partial(
-                CheckpointTask._run_callback, stage, callback_func
-            ),
+            functools.partial(CheckpointTask._run_callback, stage, callback_func),
             proc,
         )
 
@@ -77,7 +69,7 @@ class CheckpointTask(MonitorTask):
 class Monitor:
     AWAIT: float = 1.0
 
-    def __init__(self, tasks: List[MonitorTask]):
+    def __init__(self, tasks: List[CheckpointTask]):
         self.done = threading.Event()
         self.tasks = tasks
         self.monitor_thread = threading.Thread(
@@ -104,7 +96,9 @@ class Monitor:
     def _kill_nt(proc):
         # windows stages are spawned with shell=True, proc is the shell process
         # and not the actual stage process - we have to kill the entire tree
-        subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
+        subprocess.call(  # nosec B607, B603
+            ["taskkill", "/F", "/T", "/PID", str(proc.pid)]
+        )
 
     @staticmethod
     def _loop(tasks: List[MonitorTask], done: threading.Event):
@@ -113,6 +107,7 @@ class Monitor:
                 if os.path.exists(task.signal_path):
                     try:
                         task.execute()
+                        task.updated.set()
                     except Exception:  # pylint: disable=broad-except
                         logger.exception(
                             "Error running '%s' task, '%s' will be aborted",
@@ -120,11 +115,9 @@ class Monitor:
                             task.stage,
                         )
                         Monitor.kill(task.proc)
-                        task.killed.set()
                     finally:
-                        logger.debug(
-                            "Removing signal file for '%s' task", task.name
-                        )
+                        logger.debug("Removing signal file for '%s' task", task.name)
                         os.remove(task.signal_path)
+
             if done.wait(Monitor.AWAIT):
                 return

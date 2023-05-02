@@ -4,7 +4,6 @@ from dvc.repo.experiments.queue.base import QueueDoneResult
 
 
 def test_remove_queued(test_queue, mocker):
-
     queued_test = ["queue1", "queue2", "queue3"]
 
     stash_dict = {}
@@ -21,9 +20,7 @@ def test_remove_queued(test_queue, mocker):
     msg_iter = [(msg_dict[name], entry_dict[name]) for name in queued_test]
     entry_iter = [entry_dict[name] for name in queued_test]
 
-    stash = mocker.patch.object(
-        test_queue, "stash", return_value=mocker.Mock()
-    )
+    stash = mocker.patch.object(test_queue, "stash", return_value=mocker.Mock())
     stash.stash_revs = stash_dict
     mocker.patch.object(test_queue, "_iter_queued", return_value=msg_iter)
     mocker.patch.object(test_queue, "iter_queued", return_value=entry_iter)
@@ -57,30 +54,21 @@ def test_remove_done(test_queue, mocker):
     msg_dict = {}
     entry_dict = {}
     for name in concat(failed_test, success_test):
-        msg_dict[name] = mocker.Mock(
-            delivery_tag=f"msg_{name}", headers={"id": 0}
-        )
+        msg_dict[name] = mocker.Mock(delivery_tag=f"msg_{name}", headers={"id": 0})
         entry_dict[name] = mocker.Mock(stash_rev=name)
         entry_dict[name].name = name
 
     msg_iter = [
-        (msg_dict[name], entry_dict[name])
-        for name in concat(failed_test, success_test)
+        (msg_dict[name], entry_dict[name]) for name in concat(failed_test, success_test)
     ]
     done_iter = [
         QueueDoneResult(entry_dict[name], None)
         for name in concat(failed_test, success_test)
     ]
-    failed_iter = [
-        QueueDoneResult(entry_dict[name], None) for name in failed_test
-    ]
-    success_iter = [
-        QueueDoneResult(entry_dict[name], None) for name in success_test
-    ]
+    failed_iter = [QueueDoneResult(entry_dict[name], None) for name in failed_test]
+    success_iter = [QueueDoneResult(entry_dict[name], None) for name in success_test]
 
-    stash = mocker.patch.object(
-        test_queue, "failed_stash", return_value=mocker.Mock()
-    )
+    stash = mocker.patch.object(test_queue, "failed_stash", return_value=mocker.Mock())
     stash.stash_revs = stash_dict
     mocker.patch.object(test_queue, "_iter_processed", return_value=msg_iter)
     mocker.patch.object(test_queue, "iter_done", return_value=done_iter)
@@ -88,9 +76,7 @@ def test_remove_done(test_queue, mocker):
     mocker.patch.object(test_queue, "iter_failed", return_value=failed_iter)
     mocker.patch("celery.result.AsyncResult", return_value=mocker.Mock())
 
-    remove_revs_mocker = mocker.patch.object(
-        test_queue.failed_stash, "remove_revs"
-    )
+    remove_revs_mocker = mocker.patch.object(test_queue.failed_stash, "remove_revs")
     purge_mocker = mocker.patch.object(test_queue.celery, "purge")
 
     assert test_queue.remove(["failed3", "success2"]) == [
@@ -103,9 +89,9 @@ def test_remove_done(test_queue, mocker):
     remove_revs_mocker.reset_mock()
     purge_mocker.reset_mock()
 
-    assert set(test_queue.clear(success=True, failed=True)) == set(
-        failed_test
-    ) | set(success_test)
+    assert set(test_queue.clear(success=True, failed=True)) == set(failed_test) | set(
+        success_test
+    )
     purge_mocker.assert_has_calls(
         [
             call("msg_failed1"),

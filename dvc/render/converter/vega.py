@@ -1,5 +1,5 @@
-from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Tuple, Union
+import os
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from funcy import first, last
 
@@ -56,7 +56,6 @@ def _verify_field(file2datapoints: Dict[str, List], filename: str, field: str):
         datapoint = first(file2datapoints[filename])
         if field not in datapoint:
             raise FieldNotFoundError(field, datapoint.keys())
-    return
 
 
 def _get_xs(properties: Dict, file2datapoints: Dict[str, List[Dict]]):
@@ -81,9 +80,9 @@ def _is_datapoints(lst: List[Dict]):
     to unexpected behavior
     """
 
-    return all(isinstance(item, dict) for item in lst) and set(
-        first(lst).keys()
-    ) == {key for keys in lst for key in keys}
+    return all(isinstance(item, dict) for item in lst) and set(first(lst).keys()) == {
+        key for keys in lst for key in keys
+    }
 
 
 def get_datapoints(file_content: Dict):
@@ -106,7 +105,10 @@ class VegaConverter(Converter):
     """
 
     def __init__(
-        self, plot_id: str, data: Dict = None, properties: Dict = None
+        self,
+        plot_id: str,
+        data: Optional[Dict] = None,
+        properties: Optional[Dict] = None,
     ):
         super().__init__(plot_id, data, properties)
         self.plot_id = plot_id
@@ -126,25 +128,30 @@ class VegaConverter(Converter):
                     break
 
     def _infer_x_y(self):
-        def _infer_files(from_name, to_name):
-            from_value = self.properties.get(from_name, None)
-            to_value = self.properties.get(to_name, None)
+        x = self.properties.get("x", None)
+        y = self.properties.get("y", None)
 
-            if isinstance(to_value, str):
-                self.inferred_properties[to_name] = {}
-                if isinstance(from_value, dict):
-                    for file in from_value.keys():
-                        self.inferred_properties[to_name][file] = to_value
-                else:
-                    self.inferred_properties[to_name][self.plot_id] = to_value
+        # Infer x.
+        if isinstance(x, str):
+            self.inferred_properties["x"] = {}
+            # If multiple y files, duplicate x for each file.
+            if isinstance(y, dict):
+                for file, fields in y.items():
+                    # Duplicate x for each y.
+                    if isinstance(fields, list):
+                        self.inferred_properties["x"][file] = [x] * len(fields)
+                    else:
+                        self.inferred_properties["x"][file] = x
+            # Otherwise use plot ID as file.
             else:
-                self.inferred_properties[to_name] = to_value
+                self.inferred_properties["x"][self.plot_id] = x
 
-        _infer_files("y", "x")
-        _infer_files("x", "y")
-
-        if self.inferred_properties.get("y", None) is None:
+        # Infer y.
+        if y is None:
             self._infer_y_from_data()
+        # If y files not provided, use plot ID as file.
+        elif not isinstance(y, dict):
+            self.inferred_properties["y"] = {self.plot_id: y}
 
     def _find_datapoints(self):
         result = {}
@@ -156,38 +163,37 @@ class VegaConverter(Converter):
     @staticmethod
     def infer_y_label(properties):
         y_label = properties.get("y_label", None)
-        if y_label is None:
-            y = properties.get("y", None)
-            if isinstance(y, dict):
-                fields = {field for _, field in _file_field(y)}
-                if len(fields) == 1:
-                    y_label = first(fields)
-                else:
-                    y_label = "y"
-            elif isinstance(y, list):
-                y_label = "y"
-            elif isinstance(y, str):
-                y_label = y
+        if y_label is not None:
+            return y_label
+        y = properties.get("y", None)
+        if isinstance(y, str):
+            return y
+        if isinstance(y, list):
+            return "y"
+        if not isinstance(y, dict):
+            return
 
-        return y_label
+        fields = {field for _, field in _file_field(y)}
+        if len(fields) == 1:
+            return first(fields)
+        return "y"
 
     @staticmethod
     def infer_x_label(properties):
         x_label = properties.get("x_label", None)
-        if x_label is None:
-            x = properties.get("x", None)
-            if isinstance(x, dict):
-                fields = {field for _, field in _file_field(x)}
-                if len(fields) == 1:
-                    x_label = first(fields)
-                else:
-                    x_label = "x"
-            else:
-                x_label = INDEX_FIELD
-        return x_label
+        if x_label is not None:
+            return x_label
 
-    def flat_datapoints(self, revision):
+        x = properties.get("x", None)
+        if not isinstance(x, dict):
+            return INDEX_FIELD
 
+        fields = {field for _, field in _file_field(x)}
+        if len(fields) == 1:
+            return first(fields)
+        return "x"
+
+    def flat_datapoints(self, revision):  # noqa: C901, PLR0912
         file2datapoints, properties = self.convert()
 
         props_update = {}
@@ -210,12 +216,18 @@ class VegaConverter(Converter):
         num_ys = len(ys)
         if num_xs > 1 and num_xs != num_ys:
             raise DvcException(
-                f"Cannot have different number of x and y data sources. Found "
+                "Cannot have different number of x and y data sources. Found "
                 f"{num_xs} x and {num_ys} y data sources."
             )
 
         all_datapoints = []
-        all_y_fields = {y_field for _, y_field in ys}
+        if ys:
+            all_y_files, all_y_fields = list(zip(*ys))
+            all_y_fields = set(all_y_fields)
+            all_y_files = set(all_y_files)
+        else:
+            all_y_files = set()
+            all_y_fields = set()
 
         # override to unified y field name if there are different y fields
         if len(all_y_fields) > 1:
@@ -223,10 +235,16 @@ class VegaConverter(Converter):
         else:
             props_update["y"] = first(all_y_fields)
 
+        # get common prefix to drop from file names
+        if len(all_y_files) > 1:
+            common_prefix_len = len(os.path.commonpath(all_y_files))
+        else:
+            common_prefix_len = 0
+
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
                 x_file, x_field = xs[i]
-            datapoints = deepcopy(file2datapoints.get(y_file, []))
+            datapoints = [{**d} for d in file2datapoints.get(y_file, [])]
 
             if props_update.get("y", None) == "dvc_inferred_y_value":
                 _update_from_field(
@@ -246,18 +264,19 @@ class VegaConverter(Converter):
                         source_datapoints=x_datapoints,
                     )
                 except IndexError:
-                    raise DvcException(
+                    raise DvcException(  # noqa: B904
                         f"Cannot join '{x_field}' from '{x_file}' and "
                         f"'{y_field}' from '{y_file}'. "
                         "They have to have same length."
                     )
 
+            y_file_short = y_file[common_prefix_len:].strip("/\\")
             _update_all(
                 datapoints,
                 update_dict={
                     VERSION_FIELD: {
                         "revision": revision,
-                        FILENAME_FIELD: y_file,
+                        FILENAME_FIELD: y_file_short,
                         "field": y_field,
                     }
                 },
@@ -299,8 +318,8 @@ class VegaConverter(Converter):
 def _update_from_field(
     target_datapoints: List[Dict],
     field: str,
-    source_datapoints: List[Dict] = None,
-    source_field: str = None,
+    source_datapoints: Optional[List[Dict]] = None,
+    source_field: Optional[str] = None,
 ):
     if source_datapoints is None:
         source_datapoints = target_datapoints
@@ -308,9 +327,7 @@ def _update_from_field(
         source_field = field
 
     if len(source_datapoints) != len(target_datapoints):
-        raise IndexError(
-            "Source and target datapoints must have the same length"
-        )
+        raise IndexError("Source and target datapoints must have the same length")
 
     for index, datapoint in enumerate(target_datapoints):
         source_datapoint = source_datapoints[index]
@@ -324,6 +341,5 @@ def _update_from_index(datapoints: List[Dict], new_field: str):
 
 
 def _update_all(datapoints: List[Dict], update_dict: Dict):
-
     for datapoint in datapoints:
         datapoint.update(update_dict)

@@ -1,0 +1,10 @@
+# The following commits will be ignored by the GitHub blame view.
+# You can configure `git blame` to use this file as the default ignore file:
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+# or, you can also manually ignore commits from this file by doing:
+#     git blame --ignore-revs-file .git-blame-ignore-revs <filepath>
+# see the `blame.markIgnoredLines` and `blame.markUnblamableLines` options as well.
+# Refer to: https://git-scm.com/docs/git-blame#Documentation/git-blame.txt---ignore-revs-fileltfilegt
+
+# update black to 2023 stable style and change line-length to 88
+a86470ccbc693d6f0a4f8066cbd1357e5191c4ff

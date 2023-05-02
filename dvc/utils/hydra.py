@@ -36,6 +36,8 @@ def compose_and_dump(
     with initialize_config_dir(config_dir, version_base=None):
         cfg = compose(config_name=config_name, overrides=overrides)
 
+    OmegaConf.resolve(cfg)
+
     suffix = Path(output_file).suffix.lower()
     if suffix not in [".yml", ".yaml"]:
         dumper = DUMPERS[suffix]
@@ -106,8 +108,7 @@ def get_hydra_sweeps(path_overrides):
         for override in overrides:
             if override.value_type == ValueType.GLOB_CHOICE_SWEEP:
                 raise InvalidArgumentError(
-                    f"Glob override '{override.input_line}' "
-                    "is not supported."
+                    f"Glob override '{override.input_line}' is not supported."
                 )
         path_sweeps[path] = BasicSweeper.split_arguments(overrides, None)[0]
     return dict_product(path_sweeps)

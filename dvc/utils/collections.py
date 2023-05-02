@@ -1,10 +1,11 @@
 import inspect
 from collections.abc import Mapping
 from functools import wraps
-from typing import Callable, Dict, Iterable, List, TypeVar, Union
+from typing import Callable, Dict, Iterable, List, TypeVar, Union, no_type_check
 
 
-def apply_diff(src, dest):
+@no_type_check
+def apply_diff(src, dest):  # noqa: C901
     """Recursively apply changes from src to dest.
 
     Preserves dest type and hidden info in dest structure,
@@ -13,20 +14,17 @@ def apply_diff(src, dest):
 
     Used in Stage load/dump cycle to preserve comments and custom formatting.
     """
-    Seq = (list, tuple)
-    Container = (Mapping, list, tuple)
+    Seq = (list, tuple)  # noqa: N806
+    Container = (Mapping, list, tuple)  # noqa: N806
 
     def is_same_type(a, b):
         return any(
-            isinstance(a, t) and isinstance(b, t)
-            for t in [str, Mapping, Seq, bool]
+            isinstance(a, t) and isinstance(b, t) for t in [str, Mapping, Seq, bool]
         )
 
     if isinstance(src, Mapping) and isinstance(dest, Mapping):
         for key, value in src.items():
-            if isinstance(value, Container) and is_same_type(
-                value, dest.get(key)
-            ):
+            if isinstance(value, Container) and is_same_type(value, dest.get(key)):
                 apply_diff(value, dest[key])
             elif key not in dest or value != dest[key]:
                 dest[key] = value
@@ -37,14 +35,12 @@ def apply_diff(src, dest):
             dest[:] = src
         else:
             for i, value in enumerate(src):
-                if isinstance(value, Container) and is_same_type(
-                    value, dest[i]
-                ):
+                if isinstance(value, Container) and is_same_type(value, dest[i]):
                     apply_diff(value, dest[i])
                 elif value != dest[i]:
                     dest[i] = value
     else:
-        raise AssertionError(
+        raise AssertionError(  # noqa: TRY004
             "Can't apply diff from {} to {}".format(
                 src.__class__.__name__, dest.__class__.__name__
             )
@@ -58,9 +54,9 @@ def to_omegaconf(item):
     Cast the custom classes to Python primitives.
     """
     if isinstance(item, dict):
-        item = {k: to_omegaconf(v) for k, v in item.items()}
-    elif isinstance(item, list):
-        item = [to_omegaconf(x) for x in item]
+        return {k: to_omegaconf(v) for k, v in item.items()}
+    if isinstance(item, list):
+        return [to_omegaconf(x) for x in item]
     return item
 
 
@@ -155,7 +151,7 @@ def validate(*validators: Callable, post: bool = False):
         def inner(*args, **kwargs):
             ba = sig.bind(*args, **kwargs)
             ba.apply_defaults()
-            ba.arguments = _NamespacedDict(ba.arguments)
+            ba.arguments = _NamespacedDict(ba.arguments)  # type: ignore[assignment]
 
             if not post:
                 for validator in validators:
@@ -177,7 +173,6 @@ def nested_contains(dictionary: Dict, phrase: str) -> bool:
         if key == phrase and val:
             return True
 
-        if isinstance(val, dict):
-            if nested_contains(val, phrase):
-                return True
+        if isinstance(val, dict) and nested_contains(val, phrase):
+            return True
     return False

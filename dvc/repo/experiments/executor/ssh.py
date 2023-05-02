@@ -3,12 +3,12 @@ import os
 import posixpath
 import sys
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Iterable, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional
 
 from dvc_ssh import SSHFileSystem
 from funcy import first
 
-from ..refs import (
+from dvc.repo.experiments.refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
@@ -16,16 +16,16 @@ from ..refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
+
 from .base import BaseExecutor, ExecutorInfo, ExecutorResult, TaskStatus
 
 if TYPE_CHECKING:
     from queue import Queue
 
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments.refs import ExpRefInfo
     from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +80,7 @@ class SSHExecutor(BaseExecutor):
         **kwargs,
     ):
         machine_name: Optional[str] = kwargs.pop("machine_name", None)
+        assert repo.machine
         executor = cls._from_stash_entry(
             repo,
             entry,
@@ -112,22 +113,21 @@ class SSHExecutor(BaseExecutor):
 
     @staticmethod
     def _git_client_args(fs):
-        kwargs = {
+        return {
             "password": fs.fs_args.get("password"),
             "key_filename": first(fs.fs_args.get("client_keys", [])),
         }
-        return kwargs
 
     def init_git(
         self,
-        repo: "Repo",
+        repo: "Repo",  # noqa: ARG002
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
         infofile: Optional[str],
         branch: Optional[str] = None,
     ):
-        from ..utils import push_refspec
+        from dvc.repo.experiments.utils import push_refspec
 
         self.status = TaskStatus.PREPARING
         if infofile:
@@ -137,9 +137,7 @@ class SSHExecutor(BaseExecutor):
             fs.makedirs(self.root_dir)
             self._ssh_cmd(fs, "git init .")
             self._ssh_cmd(fs, "git config user.name dvc-exp")
-            self._ssh_cmd(
-                fs, "git config user.email dvc-exp@noreply.localhost"
-            )
+            self._ssh_cmd(fs, "git config user.email dvc-exp@noreply.localhost")
 
             result = self._ssh_cmd(fs, "pwd")
             path = result.stdout.strip()
@@ -163,19 +161,15 @@ class SSHExecutor(BaseExecutor):
                 push_refspec(scm, self.git_url, [(branch, branch)], **kwargs)
                 self._ssh_cmd(fs, f"git symbolic-ref {EXEC_BRANCH} {branch}")
             else:
-                self._ssh_cmd(
-                    fs, f"git symbolic-ref -d {EXEC_BRANCH}", check=False
-                )
-            self._ssh_cmd(
-                fs, f"git update-ref -d {EXEC_CHECKPOINT}", check=False
-            )
+                self._ssh_cmd(fs, f"git symbolic-ref -d {EXEC_BRANCH}", check=False)
+            self._ssh_cmd(fs, f"git update-ref -d {EXEC_CHECKPOINT}", check=False)
 
             # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
             # committing
             head = EXEC_BRANCH if branch else EXEC_HEAD
             self._ssh_cmd(fs, f"git checkout {head}")
             merge_rev = scm.get_ref(EXEC_MERGE)
-            self._ssh_cmd(fs, f"git merge --squash --no-commit {merge_rev}")
+            self._ssh_cmd(fs, f"git stash apply {merge_rev}")
 
             if self._setup_script:
                 self._init_setup_script(fs)
@@ -223,12 +217,12 @@ class SSHExecutor(BaseExecutor):
 
     @contextmanager
     def get_odb(self):
-        from dvc.odbmgr import ODBManager, get_odb
+        from dvc.cachemgr import CacheManager, get_odb
 
         cache_path = posixpath.join(
             self._repo_abspath,
             self.dvc_dir,
-            ODBManager.CACHE_DIR,
+            CacheManager.CACHE_DIR,
         )
 
         with self.sshfs() as fs:
@@ -243,11 +237,12 @@ class SSHExecutor(BaseExecutor):
     def reproduce(
         cls,
         info: "ExecutorInfo",
-        rev: str,
-        queue: Optional["Queue"] = None,
+        rev: str,  # noqa: ARG003
+        queue: Optional["Queue"] = None,  # noqa: ARG003
         infofile: Optional[str] = None,
         log_errors: bool = True,
         log_level: Optional[int] = None,
+        copy_paths: Optional[List[str]] = None,  # noqa: ARG003
         **kwargs,
     ) -> "ExecutorResult":
         """Reproduce an experiment on a remote machine over SSH.
@@ -266,13 +261,9 @@ class SSHExecutor(BaseExecutor):
 
         with _sshfs(fs_factory) as fs:
             while not fs.exists("/var/log/dvc-machine-init.log"):
-                logger.info(
-                    "Waiting for dvc-machine startup script to complete..."
-                )
+                logger.info("Waiting for dvc-machine startup script to complete...")
                 time.sleep(5)
-            logger.info(
-                "Reproducing experiment on '%s'", fs.fs_args.get("host")
-            )
+            logger.info("Reproducing experiment on '%s'", fs.fs_args.get("host"))
             with TemporaryFile(mode="w+", encoding="utf-8") as fobj:
                 json.dump(info.asdict(), fobj)
                 fobj.seek(0)
@@ -280,9 +271,7 @@ class SSHExecutor(BaseExecutor):
             cmd = ["source ~/.profile"]
             script_path = cls._setup_script_path(info.dvc_dir)
             if fs.exists(posixpath.join(info.root_dir, script_path)):
-                cmd.extend(
-                    [f"pushd {info.root_dir}", f"source {script_path}", "popd"]
-                )
+                cmd.extend([f"pushd {info.root_dir}", f"source {script_path}", "popd"])
             exec_cmd = f"dvc exp exec-run --infofile {infofile}"
             if log_level is not None:
                 if log_level <= logging.TRACE:  # type: ignore[attr-defined]

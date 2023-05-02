@@ -1,19 +1,21 @@
+from contextlib import suppress
 from typing import TYPE_CHECKING, Optional, Sequence
 
+from dvc.config import NoRemoteError
 from dvc.exceptions import InvalidArgumentError, UploadError
+from dvc.utils import glob_targets
 
-from ..utils import glob_targets
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc.cloud import Remote
+    from dvc.data_cloud import Remote
     from dvc.repo import Repo
     from dvc.types import TargetType
-    from dvc_objects.db.base import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 
 @locked
-def push(
+def push(  # noqa: C901, PLR0913
     self,
     targets=None,
     jobs=None,
@@ -29,16 +31,14 @@ def push(
     odb: Optional["ObjectDB"] = None,
     include_imports=False,
 ):
-
     worktree_remote: Optional["Remote"] = None
-    _remote = self.cloud.get_remote(name=remote)
-    if _remote.worktree or _remote.fs.version_aware:
-        worktree_remote = _remote
+    with suppress(NoRemoteError):
+        _remote = self.cloud.get_remote(name=remote)
+        if _remote and (_remote.worktree or _remote.fs.version_aware):
+            worktree_remote = _remote
 
     pushed = 0
-    used_run_cache = (
-        self.stage_cache.push(remote, odb=odb) if run_cache else []
-    )
+    used_run_cache = self.stage_cache.push(remote, odb=odb) if run_cache else []
     pushed += len(used_run_cache)
 
     if isinstance(targets, str):
@@ -55,6 +55,7 @@ def push(
             all_tags=all_tags,
             all_commits=all_commits,
             targets=expanded_targets,
+            jobs=jobs,
             with_deps=with_deps,
             recursive=recursive,
         )
@@ -105,6 +106,7 @@ def _push_worktree(
     all_tags: bool = False,
     all_commits: bool = False,
     targets: Optional["TargetType"] = None,
+    jobs: Optional[int] = None,
     **kwargs,
 ) -> int:
     from dvc.repo.worktree import push_worktree
@@ -114,4 +116,4 @@ def _push_worktree(
             "Multiple rev push is unsupported for cloud versioned remotes"
         )
 
-    return push_worktree(repo, remote, targets=targets, **kwargs)
+    return push_worktree(repo, remote, targets=targets, jobs=jobs, **kwargs)

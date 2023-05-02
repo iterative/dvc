@@ -17,33 +17,37 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property, retry
+from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
+from dvc_studio_client.post_live_metrics import get_studio_token_and_repo_url
+from funcy import retry
 
 from dvc.dependency import ParamsDependency
 from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
-from dvc.ui import ui
-
-from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..executor.base import BaseExecutor, ExecutorResult
-from ..executor.local import WorkspaceExecutor
-from ..refs import ExpRefInfo
-from ..stash import ExpStash, ExpStashEntry
-from ..utils import (
+from dvc.repo.experiments.exceptions import CheckpointExistsError, ExperimentExistsError
+from dvc.repo.experiments.executor.base import BaseExecutor
+from dvc.repo.experiments.executor.local import WorkspaceExecutor
+from dvc.repo.experiments.refs import ExpRefInfo
+from dvc.repo.experiments.stash import ExpStash, ExpStashEntry
+from dvc.repo.experiments.utils import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
     exp_refs_by_rev,
     get_exp_rwlock,
     get_random_exp_name,
 )
+from dvc.ui import ui
+from dvc.utils.objects import cached_property
+
 from .utils import get_remote_executor_refs
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
+    from dvc.repo.experiments.executor.base import ExecutorResult
+    from dvc.repo.experiments.serialize import ExpRange
+    from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +87,12 @@ class QueueGetResult(NamedTuple):
 
 class QueueDoneResult(NamedTuple):
     entry: QueueEntry
-    result: Optional[ExecutorResult]
+    result: Optional["ExecutorResult"]
+
+
+class ExpRefAndQueueEntry(NamedTuple):
+    exp_ref_info: Optional["ExpRefInfo"]
+    queue_entry: Optional["QueueEntry"]
 
 
 class BaseStashQueue(ABC):
@@ -92,9 +101,7 @@ class BaseStashQueue(ABC):
     Maps queued experiments to (Git) stash reflog entries.
     """
 
-    def __init__(
-        self, repo: "Repo", ref: str, failed_ref: Optional[str] = None
-    ):
+    def __init__(self, repo: "Repo", ref: str, failed_ref: Optional[str] = None):
         """Construct a queue.
 
         Arguments:
@@ -103,11 +110,15 @@ class BaseStashQueue(ABC):
             failed_ref: Failed run Git stash ref for this queue.
         """
         self.repo = repo
+        assert self.repo.tmp_dir
         self.ref = ref
         self.failed_ref = failed_ref
 
     @property
     def scm(self) -> "Git":
+        from dvc.scm import Git
+
+        assert isinstance(self.repo.scm, Git)
         return self.repo.scm
 
     @cached_property
@@ -120,10 +131,12 @@ class BaseStashQueue(ABC):
 
     @cached_property
     def pid_dir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
 
     @cached_property
-    def args_file(self):
+    def args_file(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @abstractmethod
@@ -157,9 +170,7 @@ class BaseStashQueue(ABC):
 
         name_to_remove: List[str] = []
         entry_to_remove: List[ExpStashEntry] = []
-        queue_entries = self.match_queue_entry_by_name(
-            revs, self.iter_queued()
-        )
+        queue_entries = self.match_queue_entry_by_name(revs, self.iter_queued())
         for name, entry in queue_entries.items():
             if entry:
                 entry_to_remove.append(self.stash.stash_revs[entry.stash_rev])
@@ -188,7 +199,7 @@ class BaseStashQueue(ABC):
 
         def _format_entry(
             entry: QueueEntry,
-            exp_result: Optional[ExecutorResult] = None,
+            exp_result: Optional["ExecutorResult"] = None,
             status: str = "Unknown",
         ) -> Dict[str, Any]:
             name = entry.name
@@ -242,11 +253,13 @@ class BaseStashQueue(ABC):
         """Iterate over items which been failed."""
 
     @abstractmethod
-    def reproduce(self) -> Mapping[str, Mapping[str, str]]:
+    def reproduce(
+        self, copy_paths: Optional[List[str]] = None
+    ) -> Mapping[str, Mapping[str, str]]:
         """Reproduce queued experiments sequentially."""
 
     @abstractmethod
-    def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+    def get_result(self, entry: QueueEntry) -> Optional["ExecutorResult"]:
         """Return result of the specified item.
 
         This method blocks until the specified item has been collected.
@@ -287,7 +300,7 @@ class BaseStashQueue(ABC):
                 output.
         """
 
-    def _stash_exp(  # noqa: C901
+    def _stash_exp(  # noqa: PLR0915, C901
         self,
         *args,
         params: Optional[Dict[str, List[str]]] = None,
@@ -315,12 +328,12 @@ class BaseStashQueue(ABC):
         .. _Hydra Override:
             https://hydra.cc/docs/next/advanced/override_grammar/basic/
         """
-        with self.scm.detach_head(client="dvc") as orig_head:
-            stash_head = orig_head
-            if baseline_rev is None:
-                baseline_rev = orig_head
+        with self.scm.stash_workspace(reinstate_index=True) as workspace:
+            with self.scm.detach_head(client="dvc") as orig_head:
+                stash_head = orig_head
+                if baseline_rev is None:
+                    baseline_rev = orig_head
 
-            with self.scm.stash_workspace() as workspace:
                 try:
                     if workspace:
                         self.stash.apply(workspace)
@@ -351,19 +364,16 @@ class BaseStashQueue(ABC):
                             branch_name = f"{resume_rev[:7]}"
                         if self.scm.is_dirty(untracked_files=False):
                             ui.write(
-                                "Modified checkpoint experiment based on "
-                                f"'{branch_name}' will be created",
+                                (
+                                    "Modified checkpoint experiment based on "
+                                    f"'{branch_name}' will be created"
+                                ),
                             )
                             branch = None
-                        elif (
-                            not branch
-                            or self.scm.get_ref(branch) != resume_rev
-                        ):
+                        elif not branch or self.scm.get_ref(branch) != resume_rev:
                             err_msg = [
-                                (
-                                    "Nothing to do for unchanged checkpoint "
-                                    f"'{resume_rev[:7]}'. "
-                                )
+                                "Nothing to do for unchanged checkpoint "
+                                f"'{resume_rev[:7]}'. "
                             ]
                             if branch:
                                 err_msg.append(
@@ -379,9 +389,7 @@ class BaseStashQueue(ABC):
                                     )
                                 ]
                                 if len(names) > 3:
-                                    names[3:] = [
-                                        f"... ({len(names) - 3} more)"
-                                    ]
+                                    names[3:] = [f"... ({len(names) - 3} more)"]
                                 err_msg.append(
                                     "To resume an experiment containing this "
                                     "checkpoint, apply one of these heads:\n"
@@ -395,9 +403,11 @@ class BaseStashQueue(ABC):
                             )
                         if name:
                             logger.warning(
-                                "Ignoring option '--name %s' for resumed "
-                                "experiment. Existing experiment name will"
-                                "be preserved instead.",
+                                (
+                                    "Ignoring option '--name %s' for resumed "
+                                    "experiment. Existing experiment name will"
+                                    "be preserved instead."
+                                ),
                                 name,
                             )
 
@@ -410,8 +420,14 @@ class BaseStashQueue(ABC):
                     run_env[DVC_EXP_NAME] = name
                     if resume_rev:
                         run_env[DVCLIVE_RESUME] = "1"
-                    self._pack_args(*args, run_env=run_env, **kwargs)
 
+                    studio_token, studio_repo_url = get_studio_token_and_repo_url()
+                    if studio_token is not None:
+                        run_env[STUDIO_TOKEN] = studio_token
+                    if studio_repo_url is not None:
+                        run_env[STUDIO_REPO_URL] = studio_repo_url
+
+                    self._pack_args(*args, run_env=run_env, **kwargs)
                     # save experiment as a stash commit
                     msg = self._stash_msg(
                         stash_head,
@@ -420,6 +436,7 @@ class BaseStashQueue(ABC):
                         name=name,
                     )
                     stash_rev = self.stash.push(message=msg)
+                    assert stash_rev
                     logger.debug(
                         (
                             "Stashed experiment '%s' with baseline '%s' "
@@ -433,9 +450,7 @@ class BaseStashQueue(ABC):
                         # NOTE: this set_ref + reset() is equivalent to
                         # `git reset orig_head` (our SCM reset() only operates
                         # on HEAD rather than any arbitrary commit)
-                        self.scm.set_ref(
-                            "HEAD", orig_head, message="dvc: restore HEAD"
-                        )
+                        self.scm.set_ref("HEAD", orig_head, message="dvc: restore HEAD")
                         self.scm.reset()
                     # Revert any of our changes before prior unstashing
                     self.scm.reset(hard=True)
@@ -468,6 +483,7 @@ class BaseStashQueue(ABC):
                 force=True,
                 allow_missing=True,
                 data_only=True,
+                relink=False,
             )
 
     @staticmethod
@@ -485,11 +501,9 @@ class BaseStashQueue(ABC):
         return msg
 
     def _pack_args(self, *args, **kwargs) -> None:
-        import pickle
+        import pickle  # nosec B403
 
-        if os.path.exists(self.args_file) and self.scm.is_tracked(
-            self.args_file
-        ):
+        if os.path.exists(self.args_file) and self.scm.is_tracked(self.args_file):
             logger.warning(
                 (
                     "Temporary DVC file '.dvc/tmp/%s' exists and was "
@@ -502,16 +516,14 @@ class BaseStashQueue(ABC):
             )
             with open(self.args_file, "rb") as fobj:
                 try:
-                    data = pickle.load(fobj)
-                except Exception:  # pylint: disable=broad-except
+                    data = pickle.load(fobj)  # noqa: S301  # nosec B301
+                except Exception:  # noqa: BLE001, pylint: disable=broad-except
                     data = {}
             extra = int(data.get("extra", 0)) + 1
         else:
             extra = None
-        BaseExecutor.pack_repro_args(
-            self.args_file, *args, extra=extra, **kwargs
-        )
-        self.scm.add(self.args_file)
+        BaseExecutor.pack_repro_args(self.args_file, *args, extra=extra, **kwargs)
+        self.scm.add(self.args_file, force=True)
 
     @staticmethod
     def _format_new_params_msg(new_params, config_path):
@@ -589,9 +601,7 @@ class BaseStashQueue(ABC):
     ) -> BaseExecutor:
         stash_entry = cls.get_stash_entry(exp, queue_entry)
 
-        executor = executor_cls.from_stash_entry(
-            exp.repo, stash_entry, **kwargs
-        )
+        executor = executor_cls.from_stash_entry(exp.repo, stash_entry, **kwargs)
 
         stash_rev = queue_entry.stash_rev
         infofile = exp.celery_queue.get_infofile_path(stash_rev)
@@ -620,7 +630,7 @@ class BaseStashQueue(ABC):
     def collect_git(
         exp: "Experiments",
         executor: BaseExecutor,
-        exec_result: ExecutorResult,
+        exec_result: "ExecutorResult",
     ) -> Dict[str, str]:
         results = {}
 
@@ -652,7 +662,7 @@ class BaseStashQueue(ABC):
         cls,
         exp: "Experiments",
         executor: BaseExecutor,
-        exec_result: ExecutorResult,
+        exec_result: "ExecutorResult",
     ) -> Dict[str, str]:
         results = cls.collect_git(exp, executor, exec_result)
 
@@ -673,10 +683,7 @@ class BaseStashQueue(ABC):
         for entry in concat(*entries):
             if isinstance(entry, QueueDoneResult):
                 queue_entry: QueueEntry = entry.entry
-                if (
-                    entry.result is not None
-                    and entry.result.ref_info is not None
-                ):
+                if entry.result is not None and entry.result.ref_info is not None:
                     name: Optional[str] = entry.result.ref_info.name
                 else:
                     name = queue_entry.name
@@ -729,4 +736,58 @@ class BaseStashQueue(ABC):
 
         Args:
             fetch_ref (bool): fetch completed checkpoints or not.
+        """
+
+    @abstractmethod
+    def collect_active_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        fetch_refs: bool = False,
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for active (running) experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+            fetch_refs: Whether or not to fetch completed checkpoint commits from Git
+                remote.
+
+        Returns:
+            Dict mapping baseline revision to list of active experiments.
+        """
+
+    @abstractmethod
+    def collect_queued_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for queued experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+
+        Returns:
+            Dict mapping baseline revision to list of queued experiments.
+        """
+
+    @abstractmethod
+    def collect_failed_data(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, List["ExpRange"]]:
+        """Collect data for failed experiments.
+
+        Args:
+            baseline_revs: Optional resolved baseline Git SHAs. If set, only experiments
+                derived from the specified revisions will be collected. Defaults to
+                collecting all experiments.
+
+        Returns:
+            Dict mapping baseline revision to list of queued experiments.
         """

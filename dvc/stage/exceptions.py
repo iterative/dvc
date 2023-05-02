@@ -9,6 +9,14 @@ class StageCmdFailedError(DvcException):
         super().__init__(msg)
 
 
+class CheckpointKilledError(DvcException):
+    def __init__(self, cmd, status=None):
+        msg = f"failed to finish: {cmd}"
+        if status is not None:
+            msg += f", exited with {status}"
+        super().__init__(msg)
+
+
 class StageFileDoesNotExistError(DvcException):
     DVC_IGNORED = "is dvc-ignored"
     DOES_NOT_EXIST = "does not exist"
@@ -62,10 +70,7 @@ class StageExternalOutputsError(DvcException):
 
 class StageUpdateError(DvcException):
     def __init__(self, path):
-        super().__init__(
-            "update is not supported for '{}' that is not an "
-            "import.".format(path)
-        )
+        super().__init__(f"update is not supported for '{path}' that is not an import.")
 
 
 class MissingDataSource(DvcException):
@@ -89,9 +94,7 @@ class StageNotFound(DvcException, KeyError):
     def __init__(self, file, name):
         self.file = file.relpath
         self.name = name
-        super().__init__(
-            f"Stage '{self.name}' not found inside '{self.file}' file"
-        )
+        super().__init__(f"Stage '{self.name}' not found inside '{self.file}' file")
 
     def __str__(self):
         # `KeyError` quotes the message

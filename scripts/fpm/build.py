@@ -12,9 +12,7 @@ build = path / "build"
 install = build / "usr"
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "pkg", choices=["deb", "rpm", "osxpkg"], help="package type"
-)
+parser.add_argument("pkg", choices=["deb", "rpm", "osxpkg"], help="package type")
 args = parser.parse_args()
 
 flags = [

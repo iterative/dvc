@@ -1,4 +1,5 @@
 import logging
+import os
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, List, Set, Tuple, Union
 
@@ -8,7 +9,8 @@ if TYPE_CHECKING:
     from dvc.repo.index import Index, IndexView
     from dvc.stage import Stage
     from dvc.types import TargetType
-    from dvc_data.hashfile import HashInfo
+    from dvc_data.hashfile.hash_info import HashInfo
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +28,7 @@ def unfetched_view(
     changed_deps: List["Dependency"] = []
 
     def need_fetch(stage: "Stage") -> bool:
-        if (
-            not stage.is_import
-            or stage.is_repo_import
-            or (stage.is_partial_import and not unpartial)
-        ):
+        if not stage.is_import or (stage.is_partial_import and not unpartial):
             return False
 
         out = stage.outs[0]
@@ -48,9 +46,7 @@ def unfetched_view(
     return unfetched, changed_deps
 
 
-def partial_view(
-    index: "Index", targets: "TargetType", **kwargs
-) -> "IndexView":
+def partial_view(index: "Index", targets: "TargetType", **kwargs) -> "IndexView":
     return index.targets_view(
         targets,
         stage_filter=lambda s: s.is_partial_import,
@@ -64,6 +60,9 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
     Returns:
         Total number of files which were unpartialed.
     """
+    from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.meta import Meta
+
     updated = 0
     for out in index.outs:
         # we need to use view[key] here and since the out fields have not been
@@ -71,13 +70,9 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
         workspace, key = out.index_key
         entry = index.data[workspace][key]
         if out.stage.is_partial_import:
-            if out.stage.is_repo_import:
-                dep = out.stage.deps[0]
-                out.hash_info = dep.get_obj().hash_info
-                out.meta = dep.get_meta()
-            else:
-                out.hash_info = entry.hash_info
-                out.meta = entry.meta
+            out.hash_info = entry.hash_info or HashInfo()
+            out.meta = entry.meta or Meta()
+            out.stage.md5 = out.stage.compute_md5()
             out.stage.dump()
             updated += out.meta.nfiles if out.meta.nfiles is not None else 1
     return updated
@@ -94,7 +89,6 @@ def save_imports(
         Objects which were downloaded from source location.
     """
     from dvc.stage.exceptions import DataSourceChanged
-    from dvc.utils.fs import makedirs
     from dvc_data.index import checkout, md5, save
     from dvc_objects.fs.callbacks import Callback
 
@@ -108,22 +102,24 @@ def save_imports(
 
     data_view = unfetched.data["repo"]
     if len(data_view):
-        cache = repo.odb.local
+        cache = repo.cache.local
         if not cache.fs.exists(cache.path):
-            makedirs(cache.path)
+            os.makedirs(cache.path)
         with TemporaryDirectory(dir=cache.path) as tmpdir:
             with Callback.as_tqdm_callback(
                 desc="Downloading imports from source",
                 unit="files",
             ) as cb:
-                checkout(data_view, tmpdir, cache.fs, callback=cb)
+                checkout(data_view, tmpdir, cache.fs, callback=cb, storage="data")
             md5(data_view)
             save(data_view, odb=cache, hardlink=True)
 
         downloaded.update(
             entry.hash_info
             for _, entry in data_view.iteritems()
-            if not entry.meta.isdir and entry.hash_info is not None
+            if entry.meta is not None
+            and not entry.meta.isdir
+            and entry.hash_info is not None
         )
 
     if unpartial:

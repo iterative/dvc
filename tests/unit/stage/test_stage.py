@@ -55,18 +55,19 @@ def test_path_conversion(dvc):
     assert stage.dumpd()["wdir"] == "../.."
 
 
-def test_stage_update(mocker):
+def test_stage_update(dvc, mocker):
     dep = RepoDependency({"url": "example.com"}, None, "dep_path")
     mocker.patch.object(dep, "update", return_value=None)
 
-    stage = Stage(None, "path", deps=[dep])
+    stage = Stage(dvc, "path", deps=[dep])
     reproduce = mocker.patch.object(stage, "reproduce")
     is_repo_import = mocker.patch(
         __name__ + ".Stage.is_repo_import", new_callable=mocker.PropertyMock
     )
 
     is_repo_import.return_value = True
-    stage.update()
+    with dvc.lock:
+        stage.update()
     assert reproduce.called_once_with()
 
     is_repo_import.return_value = False
@@ -77,7 +78,7 @@ def test_stage_update(mocker):
 @pytest.mark.skipif(
     not isinstance(
         threading.current_thread(),
-        threading._MainThread,  # noqa, pylint: disable=protected-access
+        threading._MainThread,
     ),
     reason="Not running in the main thread.",
 )
@@ -93,7 +94,6 @@ def test_stage_run_ignore_sigint(dvc, mocker):
     assert popen.called_once()
     assert communicate.called_once_with()
     signal_mock.assert_any_call(signal.SIGINT, signal.SIG_IGN)
-    # pylint: disable=comparison-with-callable
     assert signal.getsignal(signal.SIGINT) == signal.default_int_handler
 
 
@@ -137,7 +137,6 @@ def test_env(dvc, mocker):
     def mock_read_env(out, **kwargs):
         return {"foo": str(out)}
 
-    with pytest.raises(DvcException) as exc:
-        mocker.patch.object(stage, "_read_env", mock_read_env)
+    mocker.patch.object(stage, "_read_env", mock_read_env)
+    with pytest.raises(DvcException, match="Conflicting values for env variable"):
         _ = stage.env()
-        assert exc.value == "Conflicting values for env variable"

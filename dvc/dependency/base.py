@@ -25,11 +25,9 @@ class DependencyIsStageFileError(DvcException):
 class Dependency(Output):
     IS_DEPENDENCY = True
 
-    DoesNotExistError = DependencyDoesNotExistError  # type: Type[DvcException]
-    IsNotFileOrDirError = (
-        DependencyIsNotFileOrDirError
-    )  # type: Type[DvcException]
-    IsStageFileError = DependencyIsStageFileError  # type: Type[DvcException]
+    DoesNotExistError: Type[DvcException] = DependencyDoesNotExistError
+    IsNotFileOrDirError: Type[DvcException] = DependencyIsNotFileOrDirError
+    IsStageFileError: Type[DvcException] = DependencyIsStageFileError
 
     def workspace_status(self) -> Dict[str, str]:
         if self.fs.version_aware:
@@ -49,9 +47,7 @@ class Dependency(Output):
             self.def_path = self.fs.path.version_path(
                 self.def_path, self.meta.version_id
             )
-            self.fs_path = self.fs.path.version_path(
-                self.fs_path, self.meta.version_id
-            )
+            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
 
     def download(self, to, jobs=None):
         fs_download(self.fs, self.fs_path, to, jobs=jobs)
@@ -59,9 +55,7 @@ class Dependency(Output):
     def save(self):
         super().save()
         if self.fs.version_aware:
-            self.fs_path = self.fs.path.version_path(
-                self.fs_path, self.meta.version_id
-            )
+            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
 
     def dumpd(self, **kwargs):
         if self.fs.version_aware:

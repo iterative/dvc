@@ -1,13 +1,14 @@
 import logging
-import typing
 from functools import partial
+from typing import TYPE_CHECKING, Iterator, List
 
 from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.scm_context import scm_context
+from dvc.stage.exceptions import CheckpointKilledError
 
 from . import locked
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from dvc.stage import Stage
 
     from . import Repo
@@ -15,9 +16,9 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _reproduce_stage(stage: "Stage", **kwargs):
+def _reproduce_stage(stage: "Stage", **kwargs) -> List["Stage"]:
     def _run_callback(repro_callback):
-        _dump_stage(stage)
+        stage.dump(update_pipeline=False)
         _track_stage(stage)
         repro_callback([stage])
 
@@ -33,8 +34,7 @@ def _reproduce_stage(stage: "Stage", **kwargs):
 
     if stage.frozen and not stage.is_import:
         logger.warning(
-            "%s is frozen. Its dependencies are"
-            " not going to be reproduced.",
+            "%s is frozen. Its dependencies are not going to be reproduced.",
             stage,
         )
 
@@ -44,29 +44,20 @@ def _reproduce_stage(stage: "Stage", **kwargs):
 
     if not kwargs.get("dry", False):
         track = checkpoint_func is not None
-        _dump_stage(stage)
+        stage.dump(update_pipeline=False)
         if track:
             _track_stage(stage)
 
     return [stage]
 
 
-def _dump_stage(stage):
-    from ..dvcfile import Dvcfile
-
-    dvcfile = Dvcfile(stage.repo, stage.path)
-    dvcfile.dump(stage, update_pipeline=False)
-
-
-def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
+def _get_stage_files(stage: "Stage") -> Iterator[str]:
     yield stage.dvcfile.relpath
     for dep in stage.deps:
         if (
             not dep.use_scm_ignore
             and dep.is_in_repo
-            and not stage.repo.dvcfs.isdvc(
-                stage.repo.dvcfs.from_os_path(str(dep))
-            )
+            and not stage.repo.dvcfs.isdvc(stage.repo.dvcfs.from_os_path(str(dep)))
         ):
             yield dep.fs_path
     for out in stage.outs:
@@ -85,7 +76,7 @@ def _track_stage(stage: "Stage") -> None:
 
 @locked
 @scm_context
-def reproduce(
+def reproduce(  # noqa: C901
     self: "Repo",
     targets=None,
     recursive=False,
@@ -101,9 +92,9 @@ def reproduce(
         targets = [targets]
 
     if not all_pipelines and not targets:
-        from dvc.dvcfile import PIPELINE_FILE
+        from dvc.dvcfile import PROJECT_FILE
 
-        targets = [PIPELINE_FILE]
+        targets = [PROJECT_FILE]
 
     interactive = kwargs.get("interactive", False)
     if not interactive:
@@ -137,8 +128,13 @@ def reproduce(
     return _reproduce_stages(self.index.graph, list(stages), **kwargs)
 
 
-def _reproduce_stages(
-    G, stages, downstream=False, single_item=False, on_unchanged=None, **kwargs
+def _reproduce_stages(  # noqa: C901
+    graph,
+    stages,
+    downstream=False,
+    single_item=False,
+    on_unchanged=None,
+    **kwargs,
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
@@ -175,15 +171,16 @@ def _reproduce_stages(
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
-    steps = _get_steps(G, stages, downstream, single_item)
+    steps = _get_steps(graph, stages, downstream, single_item)
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
-    unchanged = []
+    unchanged: List["Stage"] = []
     # `ret` is used to add a cosmetic newline.
-    ret = []
+    ret: List["Stage"] = []
     checkpoint_func = kwargs.pop("checkpoint_func", None)
-    for stage in steps:
+
+    for i, stage in enumerate(steps):
         if ret:
             logger.info("")
 
@@ -191,8 +188,6 @@ def _reproduce_stages(
             kwargs["checkpoint_func"] = partial(
                 _repro_callback, checkpoint_func, unchanged
             )
-
-        from dvc.stage.monitor import CheckpointKilledError
 
         try:
             ret = _reproduce_stage(stage, **kwargs)
@@ -210,8 +205,21 @@ def _reproduce_stages(
             if ret:
                 result.extend(ret)
         except CheckpointKilledError:
-            raise
-        except Exception as exc:
+            result.append(stage)
+            logger.warning(
+                (
+                    "Checkpoint stage '%s' was interrupted remaining stages in"
+                    " pipeline will not be reproduced."
+                ),
+                stage.addressing,
+            )
+            logger.warning(
+                "skipped stages '%s'",
+                ", ".join(s.addressing for s in steps[i + 1 :]),
+            )
+
+            break
+        except Exception as exc:  # noqa: BLE001
             raise ReproductionError(stage.addressing) from exc
 
     if on_unchanged is not None:
@@ -219,18 +227,18 @@ def _reproduce_stages(
     return result
 
 
-def _get_steps(G, stages, downstream, single_item):
+def _get_steps(graph, stages, downstream, single_item):
     import networkx as nx
 
-    active = G.copy()
+    active = graph.copy()
     if not single_item:
         # NOTE: frozen stages don't matter for single_item
-        for stage in G:
+        for stage in graph:
             if stage.frozen:
                 # NOTE: disconnect frozen stage from its dependencies
-                active.remove_edges_from(G.out_edges(stage))
+                active.remove_edges_from(graph.out_edges(stage))
 
-    all_pipelines = []
+    all_pipelines: List["Stage"] = []
     for stage in stages:
         if downstream:
             # NOTE (py3 only):

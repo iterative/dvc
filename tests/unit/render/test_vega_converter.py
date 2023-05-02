@@ -4,7 +4,7 @@ import pytest
 
 from dvc.exceptions import DvcException
 from dvc.render import VERSION_FIELD
-from dvc.render.converter.vega import VegaConverter, _lists
+from dvc.render.converter.vega import FieldNotFoundError, VegaConverter, _lists
 
 
 @pytest.mark.parametrize(
@@ -274,6 +274,145 @@ def test_finding_lists(dictionary, expected_result):
             {"x": "v", "y": "v2", "x_label": "v", "y_label": "v2"},
             id="multi_file_json",
         ),
+        pytest.param(
+            {"f": {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]}},
+            {"y": ["v", "v2"]},
+            [
+                {
+                    "dvc_inferred_y_value": 1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "step": 0,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "step": 1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "step": 0,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "step": 1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+            ],
+            {
+                "x": "step",
+                "y": "dvc_inferred_y_value",
+                "x_label": "step",
+                "y_label": "y",
+            },
+            id="y_list",
+        ),
+        pytest.param(
+            {
+                "f": {"metric": [{"v": 1, "v2": 0.1, "v3": 0.01}]},
+                "f2": {"metric": [{"v": 1, "v2": 0.1}]},
+            },
+            {"y": {"f": ["v2", "v3"], "f2": ["v2"]}, "x": "v"},
+            [
+                {
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "v3": 0.01,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.01,
+                    "v": 1,
+                    "v2": 0.1,
+                    "v3": 0.01,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v3",
+                    },
+                },
+                {
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f2",
+                        "field": "v2",
+                    },
+                },
+            ],
+            {
+                "x": "v",
+                "y": "dvc_inferred_y_value",
+                "x_label": "v",
+                "y_label": "y",
+            },
+            id="multi_source_y_single_x",
+        ),
+        pytest.param(
+            {
+                "dir/f": {"metric": [{"v": 1, "v2": 0.1}]},
+                "dir/f2": {"metric": [{"v": 1, "v2": 0.1}]},
+            },
+            {"y": {"dir/f": ["v2"], "dir/f2": ["v2"]}, "x": "v"},
+            [
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                },
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f2",
+                        "field": "v2",
+                    },
+                },
+            ],
+            {
+                "x": "v",
+                "y": "v2",
+                "x_label": "v",
+                "y_label": "v2",
+            },
+            id="multi_file_y_same_prefix",
+        ),
     ],
 )
 def test_convert(
@@ -290,7 +429,7 @@ def test_convert(
 
 
 @pytest.mark.parametrize(
-    "input_data,properties",
+    "input_data,properties,exc",
     [
         pytest.param(
             {
@@ -303,6 +442,7 @@ def test_convert(
                 "f2": {"metric": [{"v2": 0.1}]},
             },
             {"x": {"f": "v"}, "y": {"f2": "v2"}},
+            DvcException,
             id="unequal_datapoints",
         ),
         pytest.param(
@@ -320,13 +460,14 @@ def test_convert(
                 },
             },
             {"x": {"f": "v", "f2": "v3"}, "y": {"f": "v2"}},
+            FieldNotFoundError,
             id="unequal_x_y",
         ),
     ],
 )
-def test_convert_fail(input_data, properties):
+def test_convert_fail(input_data, properties, exc):
     converter = VegaConverter("f", input_data, properties)
-    with pytest.raises(DvcException):
+    with pytest.raises(exc):
         converter.flat_datapoints("r")
 
 

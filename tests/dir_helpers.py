@@ -43,14 +43,11 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
-# pylint: disable=redefined-outer-name, attribute-defined-outside-init
 
 import os
 import pathlib
 
 import pytest
-
-from dvc.logger import disable_other_loggers
 
 __all__ = [
     "run_copy",
@@ -60,9 +57,6 @@ __all__ = [
     "git_upstream",
     "git_downstream",
 ]
-
-# see https://github.com/iterative/dvc/issues/3167
-disable_other_loggers()
 
 
 @pytest.fixture

@@ -164,11 +164,13 @@ def test_select_unwrap():
     assert context.select("foo", unwrap=True) == "foo"
 
     node = context.select("dct", unwrap=True)
-    assert isinstance(node, dict) and recurse_not_a_node(node)
+    assert isinstance(node, dict)
+    assert recurse_not_a_node(node)
     assert node == {"foo": "bar"}
 
     node = context.select("lst", unwrap=True)
-    assert isinstance(node, list) and recurse_not_a_node(node)
+    assert isinstance(node, list)
+    assert recurse_not_a_node(node)
     assert node == [1, 2, 3]
 
 
@@ -336,25 +338,19 @@ def test_track_from_multiple_files(tmp_dir):
 
     with context.track() as tracked:
         context.select("Train")
-        assert not (
-            key_tracked(tracked, path1, "Train")
-            or key_tracked(tracked, path2, "Train")
-        )
+        assert not key_tracked(tracked, path1, "Train")
+        assert not key_tracked(tracked, path2, "Train")
 
         context.select("Train.us")
-        assert not (
-            key_tracked(tracked, path1, "Train.us")
-            or key_tracked(tracked, path2, "Train.us")
-        )
+        assert not key_tracked(tracked, path1, "Train.us")
+        assert not key_tracked(tracked, path2, "Train.us")
 
         context.select("Train.us.lr")
-        assert key_tracked(tracked, path1, "Train.us.lr") and not key_tracked(
-            tracked, path2, "Train.us.lr"
-        )
+        assert key_tracked(tracked, path1, "Train.us.lr")
+        assert not key_tracked(tracked, path2, "Train.us.lr")
         context.select("Train.us.layers")
-        assert not key_tracked(
-            tracked, path1, "Train.us.layers"
-        ) and key_tracked(tracked, path2, "Train.us.layers")
+        assert not key_tracked(tracked, path1, "Train.us.layers")
+        assert key_tracked(tracked, path2, "Train.us.layers")
 
     context = Context.clone(context)
     assert not context._tracked_data
@@ -363,19 +359,15 @@ def test_track_from_multiple_files(tmp_dir):
     context["us"] = context["Train"]["us"]
     with context.track() as tracked:
         context.select("us")
-        assert not (
-            key_tracked(tracked, path1, "Train.us")
-            or key_tracked(tracked, path2, "Train.us")
-        )
+        assert not key_tracked(tracked, path1, "Train.us")
+        assert not key_tracked(tracked, path2, "Train.us")
 
         context.select("us.lr")
-        assert key_tracked(tracked, path1, "Train.us.lr") and not key_tracked(
-            tracked, path2, "Train.us.lr"
-        )
+        assert key_tracked(tracked, path1, "Train.us.lr")
+        assert not key_tracked(tracked, path2, "Train.us.lr")
         context.select("Train.us.layers")
-        assert not key_tracked(
-            tracked, path1, "Train.us.layers"
-        ) and key_tracked(tracked, path2, "Train.us.layers")
+        assert not key_tracked(tracked, path1, "Train.us.layers")
+        assert key_tracked(tracked, path2, "Train.us.layers")
 
 
 def test_node_value():

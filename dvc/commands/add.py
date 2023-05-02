@@ -41,10 +41,7 @@ def _add_annotating_args(parser: argparse.ArgumentParser) -> None:
 
 class CmdAdd(CmdBase):
     def run(self):
-        from dvc.exceptions import (
-            DvcException,
-            RecursiveAddingWhileUsingFilename,
-        )
+        from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 
         try:
             if len(self.args.targets) > 1 and self.args.file:
@@ -65,6 +62,7 @@ class CmdAdd(CmdBase):
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 jobs=self.args.jobs,
+                force=self.args.force,
             )
 
         except DvcException:
@@ -142,6 +140,13 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Override local file or folder if exists.",
     )
 
     _add_annotating_args(parser)

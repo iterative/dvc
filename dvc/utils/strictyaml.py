@@ -53,9 +53,7 @@ def _prepare_cause(cause: str) -> "RichText":
     return ui.rich_text(cause, style="bold")
 
 
-def _prepare_code_snippets(
-    code: str, start_line: int = 1, **kwargs: Any
-) -> "Syntax":
+def _prepare_code_snippets(code: str, start_line: int = 1, **kwargs: Any) -> "Syntax":
     from rich.syntax import Syntax
 
     kwargs.setdefault("start_line", start_line)
@@ -87,13 +85,13 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         self.rev: Optional[str] = rev
         super().__init__(self.path)
 
-    def __pretty_exc__(self, **kwargs: Any) -> None:
+    def __pretty_exc__(self, **kwargs: Any) -> None:  # noqa: C901
         from ruamel.yaml.error import MarkedYAMLError
 
         exc = self.exc.__cause__
 
         if not isinstance(exc, MarkedYAMLError):
-            raise ValueError("nothing to pretty-print here. :)")
+            raise ValueError("nothing to pretty-print here.")  # noqa: TRY004
 
         source = self.yaml_text.splitlines()
 
@@ -101,7 +99,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             return f"in line {mark.line + 1}, column {mark.column + 1}"
 
         def prepare_message(
-            message: str, mark: "StreamMark" = None
+            message: str, mark: Optional["StreamMark"] = None
         ) -> "RichText":
             cause = ", ".join(
                 [message.capitalize(), prepare_linecol(mark) if mark else ""]
@@ -116,9 +114,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         lines: List[object] = []
         if hasattr(exc, "context"):
             if exc.context_mark is not None:
-                lines.append(
-                    prepare_message(str(exc.context), exc.context_mark)
-                )
+                lines.append(prepare_message(str(exc.context), exc.context_mark))
             if exc.context_mark is not None and (
                 exc.problem is None
                 or exc.problem_mark is None
@@ -128,9 +124,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             ):
                 lines.extend([prepare_code(exc.context_mark), ""])
             if exc.problem is not None:
-                lines.append(
-                    prepare_message(str(exc.problem), exc.problem_mark)
-                )
+                lines.append(prepare_message(str(exc.problem), exc.problem_mark))
             if exc.problem_mark is not None:
                 lines.append(prepare_code(exc.problem_mark))
 
@@ -175,7 +169,7 @@ def determine_linecol(
     number of steps upward to just 5. If it does not find any linecols, it'll
     abort.
     """
-    from dpath.util import get
+    from dpath import get
 
     step = 1
     line, col = None, None
@@ -183,8 +177,8 @@ def determine_linecol(
         value = get(data, paths, default=None)
         if value is not None:
             with suppress(AttributeError, TypeError):
-                line = value.lc.line + 1
-                col = value.lc.col + 1
+                line = value.lc.line + 1  # type: ignore[attr-defined]
+                col = value.lc.col + 1  # type: ignore[attr-defined]
                 break
         step += 1
         *paths, _ = paths
@@ -196,9 +190,9 @@ class YAMLValidationError(PrettyDvcException):
     def __init__(
         self,
         exc: "MultipleInvalid",
-        path: str = None,
-        text: str = None,
-        rev: str = None,
+        path: Optional[str] = None,
+        text: Optional[str] = None,
+        rev: Optional[str] = None,
     ) -> None:
         self.text = text or ""
         self.exc = exc
@@ -263,9 +257,9 @@ class YAMLValidationError(PrettyDvcException):
 def validate(
     data: _T,
     schema: Callable[[_T], _T],
-    text: str = None,
-    path: str = None,
-    rev: str = None,
+    text: Optional[str] = None,
+    path: Optional[str] = None,
+    rev: Optional[str] = None,
 ) -> _T:
     from voluptuous import MultipleInvalid
 
@@ -277,8 +271,8 @@ def validate(
 
 def load(
     path: str,
-    schema: Callable[[_T], _T] = None,
-    fs: "FileSystem" = None,
+    schema: Optional[Callable[[_T], _T]] = None,
+    fs: Optional["FileSystem"] = None,
     encoding: str = "utf-8",
     round_trip: bool = False,
 ) -> Any:
@@ -286,7 +280,7 @@ def load(
     rev = getattr(fs, "rev", None)
 
     try:
-        with open_fn(path, encoding=encoding) as fd:  # type: ignore
+        with open_fn(path, encoding=encoding) as fd:  # type: ignore[operator]
             text = fd.read()
         data = parse_yaml(text, path, typ="rt" if round_trip else "safe")
     except UnicodeDecodeError as exc:

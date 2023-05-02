@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Mapping
+from typing import Any, Mapping, Set
 
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
@@ -59,7 +59,7 @@ def _merge_params(s_list):
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
 
     # figure out completely tracked params file, and ignore specific keys
-    wholly_tracked = set()
+    wholly_tracked: Set[str] = set()
     for key in s_list:
         if not isinstance(key, dict):
             continue
@@ -74,7 +74,7 @@ def _merge_params(s_list):
         if not isinstance(key, dict):
             msg = "Only list of str/dict is supported. Got: "
             msg += f"'{type(key).__name__}'."
-            raise ValueError(msg)
+            raise ValueError(msg)  # noqa: TRY004
 
         for k, params in key.items():
             if k in wholly_tracked:
@@ -83,13 +83,11 @@ def _merge_params(s_list):
             if not isinstance(params, list):
                 msg = "Expected list of params for custom params file "
                 msg += f"'{k}', got '{type(params).__name__}'."
-                raise ValueError(msg)
+                raise ValueError(msg)  # noqa: TRY004
             d[k].extend(params)
     return d
 
 
 def loads_params(stage, s_list):
     d = _merge_params(s_list)
-    return [
-        ParamsDependency(stage, path, params) for path, params in d.items()
-    ]
+    return [ParamsDependency(stage, path, params) for path, params in d.items()]

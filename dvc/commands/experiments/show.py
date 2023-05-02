@@ -2,9 +2,8 @@ import argparse
 import logging
 import os
 import re
-from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Iterable
 
 from funcy import lmap
 
@@ -12,9 +11,8 @@ from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.commands.metrics import DEFAULT_PRECISION
-from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.exceptions import DvcException
 from dvc.ui import ui
-from dvc.utils.flatten import flatten
 from dvc.utils.serialize import encode_exception
 
 if TYPE_CHECKING:
@@ -28,30 +26,6 @@ FILL_VALUE_ERRORED = "!"
 logger = logging.getLogger(__name__)
 
 
-def _update_names(names, items):
-    for name, item in items:
-        item = item.get("data", {})
-        if isinstance(item, dict):
-            item = flatten(item)
-            names[name].update({key: None for key in item})
-
-
-def _collect_names(all_experiments, **kwargs):
-    metric_names = defaultdict(dict)
-    param_names = defaultdict(dict)
-    deps_names = set()
-
-    for _, experiments in all_experiments.items():
-        for exp_data in experiments.values():
-            exp = exp_data.get("data", {})
-            _update_names(metric_names, exp.get("metrics", {}).items())
-            _update_names(param_names, exp.get("params", {}).items())
-            for dep_name in exp.get("deps", {}):
-                deps_names.add(dep_name)
-
-    return metric_names, param_names, sorted(deps_names)
-
-
 experiment_types = {
     "checkpoint_tip": "│ ╓",
     "checkpoint_commit": "│ ╟",
@@ -60,235 +34,6 @@ experiment_types = {
     "branch_base": "└──",
     "baseline": "",
 }
-
-
-def _collect_rows(
-    base_rev,
-    experiments,
-    all_headers,
-    metric_headers,
-    param_headers,
-    metric_names,
-    param_names,
-    deps_names,
-    precision=DEFAULT_PRECISION,
-    sort_by=None,
-    sort_order=None,
-    fill_value=FILL_VALUE,
-    iso=False,
-):
-    from scmrepo.git import Git
-
-    if sort_by:
-        sort_path, sort_name, sort_type = _sort_column(
-            sort_by, metric_names, param_names
-        )
-        reverse = sort_order == "desc"
-        experiments = _sort_exp(
-            experiments, sort_path, sort_name, sort_type, reverse
-        )
-
-    new_checkpoint = True
-    for i, (rev, results) in enumerate(experiments.items()):
-        fill_value = FILL_VALUE_ERRORED if results.get("error") else fill_value
-        row_dict = {k: fill_value for k in all_headers}
-
-        exp = results.get("data", {})
-
-        state = exp.get("status")
-        if state == "Success":
-            state = fill_value
-
-        is_baseline = rev == "baseline"
-
-        if is_baseline:
-            name_rev = base_rev[:7] if Git.is_sha(base_rev) else base_rev
-        else:
-            name_rev = rev[:7]
-
-        tip = exp.get("checkpoint_tip")
-        parent_rev = exp.get("checkpoint_parent", "")
-        parent_exp = experiments.get(parent_rev, {}).get("data", {})
-        parent_tip = parent_exp.get("checkpoint_tip")
-
-        parent = ""
-        if is_baseline:
-            typ = "baseline"
-        elif tip:
-            if tip == parent_tip:
-                typ = (
-                    "checkpoint_tip" if new_checkpoint else "checkpoint_commit"
-                )
-            elif parent_rev == base_rev:
-                typ = "checkpoint_base"
-            else:
-                typ = "checkpoint_commit"
-                parent = parent_rev[:7]
-        elif i < len(experiments) - 1:
-            typ = "branch_commit"
-        else:
-            typ = "branch_base"
-
-        if not is_baseline:
-            new_checkpoint = not (tip and tip == parent_tip)
-
-        row_dict["Experiment"] = exp.get("name", "")
-        row_dict["rev"] = name_rev
-        row_dict["typ"] = typ
-        row_dict["Created"] = format_time(
-            exp.get("timestamp"), fill_value, iso
-        )
-        row_dict["parent"] = parent
-        row_dict["State"] = state
-        row_dict["Executor"] = exp.get("executor", fill_value)
-
-        _extend_row(
-            row_dict,
-            metric_names,
-            metric_headers,
-            exp.get("metrics", {}).items(),
-            precision,
-            fill_value=fill_value,
-        )
-        _extend_row(
-            row_dict,
-            param_names,
-            param_headers,
-            exp.get("params", {}).items(),
-            precision,
-            fill_value=fill_value,
-        )
-        for dep in deps_names:
-            hash_info = exp.get("deps", {}).get(dep, {}).get("hash")
-            if hash_info is not None:
-                hash_info = hash_info[:7]
-            row_dict[dep] = hash_info
-        yield list(row_dict.values())
-
-
-def _sort_column(sort_by, metric_names, param_names):
-    path, _, sort_name = sort_by.rpartition(":")
-    matches = set()
-
-    if path:
-        if path in metric_names and sort_name in metric_names[path]:
-            matches.add((path, sort_name, "metrics"))
-        if path in param_names and sort_name in param_names[path]:
-            matches.add((path, sort_name, "params"))
-    else:
-        for path in metric_names:
-            if sort_name in metric_names[path]:
-                matches.add((path, sort_name, "metrics"))
-        for path in param_names:
-            if sort_name in param_names[path]:
-                matches.add((path, sort_name, "params"))
-
-    if len(matches) == 1:
-        return matches.pop()
-    if len(matches) > 1:
-        raise InvalidArgumentError(
-            "Ambiguous sort column '{}' matched '{}'".format(
-                sort_by,
-                ", ".join([f"{path}:{name}" for path, name, _ in matches]),
-            )
-        )
-    raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
-
-
-def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
-    def _sort(item):
-        rev, exp = item
-        exp_data = exp.get("data", {})
-        tip = exp_data.get("checkpoint_tip")
-        if tip and tip != rev:
-            # Sort checkpoint experiments by tip commit
-            return _sort((tip, experiments[tip]))
-        data = exp_data.get(typ, {}).get(sort_path, {}).get("data", {})
-        val = flatten(data).get(sort_name)
-        return val is None, val
-
-    ret = OrderedDict()
-    if "baseline" in experiments:
-        ret["baseline"] = experiments.pop("baseline")
-
-    ret.update(sorted(experiments.items(), key=_sort, reverse=reverse))
-    return ret
-
-
-def format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
-    if datetime_obj is None:
-        return fill_value
-
-    if iso:
-        return datetime_obj.isoformat()
-
-    if datetime_obj.date() == date.today():
-        fmt = "%I:%M %p"
-    else:
-        fmt = "%b %d, %Y"
-    return datetime_obj.strftime(fmt)
-
-
-def _extend_row(row, names, headers, items, precision, fill_value=FILL_VALUE):
-    from dvc.compare import _format_field, with_value
-
-    for fname, data in items:
-        item = data.get("data", {})
-        item = flatten(item) if isinstance(item, dict) else {fname: item}
-        for name in names[fname]:
-            value = with_value(
-                item.get(name),
-                FILL_VALUE_ERRORED if data.get("error", None) else fill_value,
-            )
-            # wrap field data in ui.rich_text, otherwise rich may
-            # interpret unescaped braces from list/dict types as rich
-            # markup tags
-            value = ui.rich_text(str(_format_field(value, precision)))
-            if name in headers:
-                row[name] = value
-            else:
-                row[f"{fname}:{name}"] = value
-
-
-def experiments_table(
-    all_experiments,
-    headers,
-    metric_headers,
-    metric_names,
-    param_headers,
-    param_names,
-    deps_names,
-    sort_by=None,
-    sort_order=None,
-    precision=DEFAULT_PRECISION,
-    fill_value=FILL_VALUE,
-    iso=False,
-) -> "TabularData":
-    from funcy import lconcat
-
-    from dvc.compare import TabularData
-
-    all_headers = lconcat(headers, metric_headers, param_headers, deps_names)
-    td = TabularData(all_headers, fill_value=fill_value)
-    for base_rev, experiments in all_experiments.items():
-        rows = _collect_rows(
-            base_rev,
-            experiments,
-            all_headers,
-            metric_headers,
-            param_headers,
-            metric_names,
-            param_names,
-            deps_names,
-            sort_by=sort_by,
-            sort_order=sort_order,
-            precision=precision,
-            fill_value=fill_value,
-            iso=iso,
-        )
-        td.extend(rows)
-
-    return td
 
 
 def prepare_exp_id(kwargs) -> "RichText":
@@ -314,8 +59,9 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(
-    all_experiments,
+def show_experiments(  # noqa: C901, PLR0912
+    td: "TabularData",
+    headers: Dict[str, Iterable[str]],
     keep=None,
     drop=None,
     pager=True,
@@ -324,42 +70,8 @@ def show_experiments(
     pcp=False,
     **kwargs,
 ):
-    from funcy.seqs import flatten as flatten_list
-
-    metric_names, param_names, deps_names = _collect_names(all_experiments)
-
-    headers = [
-        "Experiment",
-        "rev",
-        "typ",
-        "Created",
-        "parent",
-        "State",
-        "Executor",
-    ]
-
-    names = {**metric_names, **param_names}
-    counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
-    counter.update(headers)
-    metric_headers = _normalize_headers(metric_names, counter)
-    param_headers = _normalize_headers(param_names, counter)
-
-    td = experiments_table(
-        all_experiments,
-        headers,
-        metric_headers,
-        metric_names,
-        param_headers,
-        param_names,
-        deps_names,
-        kwargs.get("sort_by"),
-        kwargs.get("sort_order"),
-        kwargs.get("precision"),
-        kwargs.get("fill_value"),
-        kwargs.get("iso"),
-    )
     if keep:
-        for col in td.keys():
+        for col in td.keys():  # noqa: SIM118
             if re.match(keep, col):
                 td.protect(col)
 
@@ -371,16 +83,9 @@ def show_experiments(
 
     if not csv:
         merge_headers = ["Experiment", "rev", "typ", "parent"]
-        td.column("Experiment")[:] = map(
-            prepare_exp_id, td.as_dict(merge_headers)
-        )
+        td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
         td.drop(*merge_headers[1:])
 
-    headers = {
-        "metrics": metric_headers,
-        "params": param_headers,
-        "deps": deps_names,
-    }
     styles = {
         "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
         "Created": {"header_style": "black on grey93"},
@@ -410,13 +115,13 @@ def show_experiments(
 
     cols_to_drop = set()
     if drop is not None:
-        cols_to_drop = {col for col in td.keys() if re.match(drop, col)}
+        cols_to_drop = {col for col in td.keys() if re.match(drop, col)}  # noqa: SIM118
     if pcp:
         cols_to_drop.add("Created")
     td.drop(*cols_to_drop)
 
     if pcp:
-        subset = {x for x in td.keys() if x != "Experiment"}
+        subset = {x for x in td.keys() if x != "Experiment"}  # noqa: SIM118
         td.dropna(
             "rows",
             how="all",
@@ -468,8 +173,10 @@ def _format_json(item):
 
 class CmdExperimentsShow(CmdBase):
     def run(self):
+        from dvc.repo.experiments.show import tabulate
+
         try:
-            all_experiments = self.repo.experiments.show(
+            exps = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
@@ -480,31 +187,36 @@ class CmdExperimentsShow(CmdBase):
                 sha_only=self.args.sha,
                 param_deps=self.args.param_deps,
                 fetch_running=self.args.fetch_running,
+                force=self.args.force,
             )
         except DvcException:
             logger.exception("failed to show experiments")
             return 1
 
         if self.args.json:
-            ui.write_json(all_experiments, default=_format_json)
+            ui.write_json([exp.dumpd() for exp in exps], default=_format_json)
         else:
             precision = (
-                self.args.precision or None
-                if self.args.csv
-                else DEFAULT_PRECISION
+                self.args.precision or None if self.args.csv else DEFAULT_PRECISION
             )
             fill_value = "" if self.args.csv else FILL_VALUE
-            iso = True if self.args.csv else False
+            iso = self.args.csv
+            td, headers = tabulate(
+                exps,
+                precision=precision,
+                fill_value=fill_value,
+                iso=iso,
+                sort_by=self.args.sort_by,
+                sort_order=self.args.sort_order,
+            )
 
             show_experiments(
-                all_experiments,
+                td,
+                headers,
                 keep=self.args.keep,
                 drop=self.args.drop,
                 sort_by=self.args.sort_by,
                 sort_order=self.args.sort_order,
-                precision=precision,
-                fill_value=fill_value,
-                iso=iso,
                 pager=not self.args.no_pager,
                 csv=self.args.csv,
                 markdown=self.args.markdown,
@@ -580,10 +292,7 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_show_parser.add_argument(
         "--sort-order",
-        help=(
-            "Sort order to use with --sort-by."
-            " Defaults to ascending ('asc')."
-        ),
+        help="Sort order to use with --sort-by. Defaults to ascending ('asc').",
         choices=("asc", "desc"),
         default="asc",
     )
@@ -662,5 +371,11 @@ def add_parser(experiments_subparsers, parent_parser):
         dest="fetch_running",
         action="store_false",
         help=argparse.SUPPRESS,
+    )
+    experiments_show_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-collection of experiments instead of loading from exp cache.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)

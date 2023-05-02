@@ -11,11 +11,11 @@ def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
     a_rev = a_rev or "HEAD"
     b_rev = b_rev or "workspace"
 
-    params = repo.params.show(*args, **kwargs, revs=[a_rev, b_rev])
+    params = repo.params.show(
+        *args, **kwargs, revs=[a_rev, b_rev], hide_workspace=False
+    )
 
     old = params.get(a_rev, {}).get("data", {})
     new = params.get(b_rev, {}).get("data", {})
 
-    return _diff(
-        format_dict(old), format_dict(new), with_unchanged=with_unchanged
-    )
+    return _diff(format_dict(old), format_dict(new), with_unchanged=with_unchanged)

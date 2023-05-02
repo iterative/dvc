@@ -8,7 +8,6 @@ from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
     contains_symlink_up_to,
-    makedirs,
     path_isin,
     remove,
 )
@@ -34,9 +33,7 @@ def test_should_return_false_on_path_eq_to_base_path(mocker):
 
 def test_should_return_false_on_no_more_dirs_below_path(mocker):
     mocker.patch.object(system, "is_symlink", return_value=False)
-    dirname_patch = mocker.patch.object(
-        os.path, "dirname", side_effect=lambda arg: arg
-    )
+    dirname_patch = mocker.patch.object(os.path, "dirname", side_effect=lambda arg: arg)
     assert not contains_symlink_up_to(os.path.join("foo", "path"), "foo")
     dirname_patch.assert_called_once()
 
@@ -72,9 +69,7 @@ def test_should_call_recursive_on_no_condition_matched(mocker):
     contains_symlink_spy = mocker.spy(dvc.utils.fs, "contains_symlink_up_to")
 
     # call from full path to match contains_symlink_spy patch path
-    assert not dvc.utils.fs.contains_symlink_up_to(
-        os.path.join("foo", "path"), "foo"
-    )
+    assert not dvc.utils.fs.contains_symlink_up_to(os.path.join("foo", "path"), "foo")
     assert contains_symlink_spy.mock.call_count == 2
 
 
@@ -155,5 +150,5 @@ def test_contains_symlink_case_sensitive_posix():
 def test_makedirs(tmp_dir):
     path = os.path.join(tmp_dir, "directory")
 
-    makedirs(path)
+    os.makedirs(path)
     assert os.path.isdir(path)

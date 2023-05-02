@@ -1,12 +1,8 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, Dict, List, Set
 
-from dvc.exceptions import (
-    CheckoutError,
-    CheckoutErrorSuggestGit,
-    NoOutputOrStageError,
-)
+from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
 from dvc.utils import relpath
 
 from . import locked
@@ -35,18 +31,13 @@ def _remove_unused_links(repo):
 
 
 def get_all_files_numbers(pairs):
-    return sum(
-        stage.get_all_files_number(filter_info) for stage, filter_info in pairs
-    )
+    return sum(stage.get_all_files_number(filter_info) for stage, filter_info in pairs)
 
 
 def _collect_pairs(
     self: "Repo", targets, with_deps: bool, recursive: bool
 ) -> Set["StageInfo"]:
-    from dvc.stage.exceptions import (
-        StageFileBadNameError,
-        StageFileDoesNotExistError,
-    )
+    from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
 
     pairs: Set["StageInfo"] = set()
     for target in targets:
@@ -81,7 +72,12 @@ def checkout(
 ):
     from dvc.fs.callbacks import Callback
 
-    stats = {"added": [], "deleted": [], "modified": [], "failed": []}
+    stats: Dict[str, List[str]] = {
+        "added": [],
+        "deleted": [],
+        "modified": [],
+        "failed": [],
+    }
     if not targets:
         targets = [None]
         stats["deleted"] = _remove_unused_links(self)

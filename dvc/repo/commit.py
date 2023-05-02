@@ -30,8 +30,7 @@ def prompt_to_commit(stage, changes, force=False):
 
     if not (force or prompt.confirm(_prepare_message(stage, changes))):
         raise StageCommitError(
-            "unable to commit changed {}. Use `-f|--force` to "
-            "force.".format(stage)
+            f"unable to commit changed {stage}. Use `-f|--force` to force."
         )
 
 
@@ -44,9 +43,8 @@ def commit(
     force=False,
     allow_missing=False,
     data_only=False,
+    relink=True,
 ):
-    from dvc.dvcfile import Dvcfile
-
     stages_info = [
         info
         for info in self.stage.collect_granular(
@@ -64,8 +62,9 @@ def commit(
                 prompt_to_commit(stage, changes, force=force)
                 stage.save(allow_missing=allow_missing)
         stage.commit(
-            filter_info=stage_info.filter_info, allow_missing=allow_missing
+            filter_info=stage_info.filter_info,
+            allow_missing=allow_missing,
+            relink=relink,
         )
-
-        Dvcfile(self, stage.path).dump(stage, update_pipeline=False)
+        stage.dump(update_pipeline=False)
     return [s.stage for s in stages_info]

@@ -1,15 +1,16 @@
+import errno
 import logging
 import os
 
 import pytest
 
+from dvc.cachemgr import CacheManager
 from dvc.cli import main
+from dvc.exceptions import FileExistsLocallyError
 from dvc.fs import system
-from dvc.odbmgr import ODBManager
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.testing.tmp_dir import make_subrepo
-from dvc.utils.fs import makedirs
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):
@@ -22,20 +23,36 @@ def test_get_repo_file(tmp_dir, erepo_dir):
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
-def test_get_repo_file_replace_without_confirmation(tmp_dir, erepo_dir):
+def test_get_repo_file_no_override(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
-        erepo_dir.dvc_gen("file", "contents", commit="create file")
-        erepo_dir.dvc_gen(
-            "file2", "something different", commit="create file2"
-        )
+        erepo_dir.dvc_gen("file1", "file1 contents", commit="create file")
+        erepo_dir.dvc_gen("file2", "file2 contents", commit="create file2")
 
-    Repo.get(os.fspath(erepo_dir), "file", "file_imported")
+    Repo.get(os.fspath(erepo_dir), "file1", "file_imported")
     # getting another file with a name that already exists in Repo.
-    with pytest.raises(FileExistsError):
+    with pytest.raises(FileExistsLocallyError) as exc_info:
         Repo.get(os.fspath(erepo_dir), "file2", "file_imported")
 
+    # Make sure it's a functional FileExistsError with errno
+    assert isinstance(exc_info.value, FileExistsError)
+    assert exc_info.value.errno == errno.EEXIST
+
     assert os.path.isfile("file_imported")
-    assert (tmp_dir / "file_imported").read_text() == "contents"
+    assert (tmp_dir / "file_imported").read_text() == "file1 contents"
+
+
+def test_get_repo_file_with_override(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file1", "file1 contents", commit="create file")
+        erepo_dir.dvc_gen("file2", "file2 contents", commit="create file2")
+
+    Repo.get(os.fspath(erepo_dir), "file1", "file_imported")
+
+    # override with the 2nd file
+    Repo.get(os.fspath(erepo_dir), "file2", "file_imported", force=True)
+
+    assert os.path.isfile("file_imported")
+    assert (tmp_dir / "file_imported").read_text() == "file2 contents"
 
 
 def test_get_repo_dir(tmp_dir, erepo_dir):
@@ -68,9 +85,7 @@ def test_get_git_dir(tmp_dir, erepo):
     src = "some_directory"
     dst = "some_directory_imported"
 
-    erepo.scm_gen(
-        {src: {"dir": {"file.txt": "hello"}}}, commit="add a regular dir"
-    )
+    erepo.scm_gen({src: {"dir": {"file.txt": "hello"}}}, commit="add a regular dir")
 
     Repo.get(os.fspath(erepo), src, dst)
 
@@ -81,7 +96,7 @@ def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
         with erepo_dir.dvc.config.edit() as conf:
             conf["cache"]["type"] = "symlink"
-        erepo_dir.dvc.odb = ODBManager(erepo_dir.dvc)
+        erepo_dir.dvc.cache = CacheManager(erepo_dir.dvc)
         erepo_dir.scm_add(
             [erepo_dir.dvc.config.files["repo"]], "set cache type to symlinks"
         )
@@ -124,9 +139,7 @@ def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory):
         erepo_dir.dvc.add(os.fspath(external_data), external=True)
         erepo_dir.scm_add("ext_data.dvc", commit="add external data")
 
-    Repo.get(
-        os.fspath(erepo_dir), os.fspath(external_data), "ext_data_imported"
-    )
+    Repo.get(os.fspath(erepo_dir), os.fspath(external_data), "ext_data_imported")
     assert (tmp_dir / "ext_data_imported").read_text() == "ext_data"
 
 
@@ -170,7 +183,7 @@ def test_get_to_dir(tmp_dir, erepo_dir, dname):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "contents", commit="create file")
 
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     Repo.get(os.fspath(erepo_dir), "file", dname)
 
@@ -211,9 +224,7 @@ def test_get_file_from_dir(tmp_dir, erepo_dir):
     assert (tmp_dir / "subdir" / "foo").read_text() == "foo"
     assert (tmp_dir / "subdir" / "bar").read_text() == "bar"
 
-    Repo.get(
-        os.fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X"
-    )
+    Repo.get(os.fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X")
     assert (tmp_dir / "X").read_text() == "foo"
 
 
@@ -226,7 +237,7 @@ def test_get_url_positive(tmp_dir, erepo_dir, caplog, local_cloud):
     caplog.clear()
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert main(["get", os.fspath(erepo_dir), "foo", "--show-url"]) == 0
-        assert caplog.text == ""
+        assert not caplog.text
 
 
 def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
@@ -240,29 +251,25 @@ def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
                     "--show-url",
                 ]
             )
-            == 1
+            != 0
         )
-        assert "failed to show URL" in caplog.text
 
 
 def test_get_url_git_only_repo(tmp_dir, scm, caplog):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
     with caplog.at_level(logging.ERROR):
-        assert main(["get", os.fspath(tmp_dir), "foo", "--show-url"]) == 1
-        assert "failed to show URL" in caplog.text
+        assert main(["get", os.fspath(tmp_dir), "foo", "--show-url"]) != 0
 
 
-def test_get_pipeline_tracked_outs(
-    tmp_dir, dvc, scm, git_dir, run_copy, local_remote
-):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+def test_get_pipeline_tracked_outs(tmp_dir, dvc, scm, git_dir, run_copy, local_remote):
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     dvc.push()
 
-    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.add([PROJECT_FILE, LOCK_FILE])
     dvc.scm.commit("add pipeline stage")
 
     with git_dir.chdir():

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def run(
+def run(  # noqa: C901, PLR0912
     repo,
     targets: Optional[Iterable[str]] = None,
     params: Optional[Iterable[str]] = None,
@@ -19,6 +19,7 @@ def run(
     jobs: int = 1,
     tmp_dir: bool = False,
     queue: bool = False,
+    copy_paths: Optional[Iterable[str]] = None,
     **kwargs,
 ) -> Dict[str, str]:
     """Reproduce the specified targets as an experiment.
@@ -36,6 +37,18 @@ def run(
         from dvc.utils.hydra import to_hydra_overrides
 
         path_overrides = to_path_overrides(params)
+
+        if tmp_dir or queue:
+            untracked = repo.scm.untracked_files()
+            for path in path_overrides:
+                if path in untracked:
+                    logger.debug(
+                        "'%s' is currently untracked but will be modified by DVC. "
+                        "Adding it to git.",
+                        path,
+                    )
+                    repo.scm.add([path])
+
         hydra_sweep = any(
             x.is_sweep_override()
             for param_file in path_overrides
@@ -57,28 +70,32 @@ def run(
 
     if not queue:
         return repo.experiments.reproduce_one(
-            targets=targets, params=path_overrides, tmp_dir=tmp_dir, **kwargs
+            targets=targets,
+            params=path_overrides,
+            tmp_dir=tmp_dir,
+            copy_paths=copy_paths,
+            **kwargs,
         )
 
     if hydra_sweep:
-        if kwargs.get("name"):
-            raise InvalidArgumentError(
-                "Sweep overrides can't be used alongside `--name`"
-            )
         from dvc.utils.hydra import get_hydra_sweeps
 
         sweeps = get_hydra_sweeps(path_overrides)
+        name_prefix = kwargs.get("name")
     else:
         sweeps = [path_overrides]
 
     if not kwargs.get("checkpoint_resume", None):
         kwargs["reset"] = True
 
-    for sweep_overrides in sweeps:
+    for idx, sweep_overrides in enumerate(sweeps):
+        if hydra_sweep and name_prefix is not None:
+            kwargs["name"] = f"{name_prefix}-{idx+1}"
         queue_entry = repo.experiments.queue_one(
             repo.experiments.celery_queue,
             targets=targets,
             params=sweep_overrides,
+            copy_paths=copy_paths,
             **kwargs,
         )
         if sweep_overrides:

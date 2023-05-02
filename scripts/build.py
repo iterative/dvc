@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import sys
 from subprocess import STDOUT, check_call
 
 path = pathlib.Path(__file__).parent.absolute()
@@ -9,9 +10,7 @@ innosetup = path / "innosetup"
 fpm = path / "fpm"
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "pkg", choices=["deb", "rpm", "osxpkg", "exe"], help="package type"
-)
+parser.add_argument("pkg", choices=["deb", "rpm", "osxpkg", "exe"], help="package type")
 parser.add_argument("--sign-application", default=False, action="store_true")
 parser.add_argument("--application-id")
 parser.add_argument("--sign-installer", default=False, action="store_true")
@@ -37,7 +36,7 @@ if args.sign_application:
         raise NotImplementedError
     if not args.application_id:
         print("--sign-application requires --application-id")
-        exit(1)
+        sys.exit(1)
     check_call(
         ["python", "sign.py", "--application-id", args.application_id],
         cwd=pyinstaller,
@@ -60,11 +59,9 @@ else:
 if args.sign_installer:
     if args.pkg != "osxpkg":
         raise NotImplementedError
-    if not all(
-        [args.installer_id, args.apple_id_username, args.apple_id_password]
-    ):
+    if not all([args.installer_id, args.apple_id_username, args.apple_id_password]):
         print("--sign-installer requires --installer-id")
-        exit(1)
+        sys.exit(1)
     check_call(
         ["python", "sign.py", "--installer-id", args.installer_id],
         cwd=fpm,
@@ -75,10 +72,8 @@ if args.notarize:
     if args.pkg != "osxpkg":
         raise NotImplementedError
     if not all([args.apple_id_username, args.apple_id_password]):
-        print(
-            "--notarize requires --apple-id-username and --apple-id-password"
-        )
-        exit(1)
+        print("--notarize requires --apple-id-username and --apple-id-password")
+        sys.exit(1)
     check_call(
         [
             "python",

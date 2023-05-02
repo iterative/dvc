@@ -1,7 +1,5 @@
 import logging
-from itertools import compress
-
-from funcy.py3 import cat
+from itertools import chain, compress
 
 from dvc.exceptions import InvalidArgumentError
 
@@ -14,27 +12,23 @@ def _joint_status(pairs):
     status_info = {}
 
     for stage, filter_info in pairs:
-        if stage.frozen and not (
-            stage.is_repo_import or stage.is_versioned_import
-        ):
+        if stage.frozen and not (stage.is_repo_import or stage.is_versioned_import):
             logger.warning(
-                "%s is frozen. Its dependencies are"
-                " not going to be shown in the status output.",
+                (
+                    "%s is frozen. Its dependencies are"
+                    " not going to be shown in the status output."
+                ),
                 stage,
             )
-        status_info.update(
-            stage.status(check_updates=True, filter_info=filter_info)
-        )
+        status_info.update(stage.status(check_updates=True, filter_info=filter_info))
 
     return status_info
 
 
 def _local_status(self, targets=None, with_deps=False, recursive=False):
     targets = targets or [None]
-    pairs = cat(
-        self.stage.collect_granular(
-            t, with_deps=with_deps, recursive=recursive
-        )
+    pairs = chain.from_iterable(
+        self.stage.collect_granular(t, with_deps=with_deps, recursive=recursive)
         for t in targets
     )
 
@@ -97,9 +91,7 @@ def _cloud_status(
         if odb is not None:
             # ignore imported objects
             continue
-        status_info = self.cloud.status(
-            obj_ids, jobs, remote=remote, log_missing=False
-        )
+        status_info = self.cloud.status(obj_ids, jobs, remote=remote)
         for status_ in ("deleted", "new", "missing"):
             for hash_info in getattr(status_info, status_, []):
                 ret[hash_info.obj_name] = status_
@@ -146,6 +138,4 @@ def status(
         msg = "The following options are meaningless for local status: {}"
         raise InvalidArgumentError(msg.format(", ".join(ignored)))
 
-    return _local_status(
-        self, targets, with_deps=with_deps, recursive=recursive
-    )
+    return _local_status(self, targets, with_deps=with_deps, recursive=recursive)

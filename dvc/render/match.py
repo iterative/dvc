@@ -1,17 +1,20 @@
+import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, DefaultDict, Dict, List, NamedTuple, Optional
 
+import dpath
 import dpath.options
-import dpath.util
-from funcy import last
+from funcy import get_in, last
 
-from dvc.repo.plots import infer_data_sources
+from dvc.repo.plots import _normpath, infer_data_sources
 from dvc.utils.plots import get_plot_id
 
 from .convert import _get_converter
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
+    from dvc_render.base import Renderer
+
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
@@ -43,35 +46,47 @@ class PlotsData:
 
     def get_definition_data(self, target_files, rev):
         result = {}
-        for file in target_files:
+        for definition_file in target_files:
+            if os.name == "nt":
+                source_file = _normpath(definition_file).replace("\\", "/")
+            else:
+                source_file = definition_file
             file_content = (
                 self.data.get(rev, {})
                 .get("sources", {})
                 .get("data", {})
-                .get(file, {})
+                .get(source_file, {})
                 .get("data", {})
             )
             if file_content:
-                result[file] = file_content
-
+                result[definition_file] = file_content
         return result
 
 
-def match_defs_renderers(
+class RendererWithErrors(NamedTuple):
+    renderer: "Renderer"
+    source_errors: Dict[str, Dict[str, Exception]]
+    definition_errors: Dict[str, Exception]
+
+
+def match_defs_renderers(  # noqa: C901, PLR0912
     data,
     out=None,
     templates_dir: Optional["StrPath"] = None,
-):
-
+) -> List[RendererWithErrors]:
     from dvc_render import ImageRenderer, VegaRenderer
 
     plots_data = PlotsData(data)
     renderers = []
     renderer_cls = None
+
     for plot_id, group in plots_data.group_definitions().items():
         plot_datapoints: List[Dict] = []
         props = _squash_plots_properties(group)
         final_props: Dict = {}
+
+        def_errors: Dict[str, Exception] = {}
+        src_errors: DefaultDict[str, Dict[str, Exception]] = defaultdict(dict)
 
         if out is not None:
             props["out"] = out
@@ -80,9 +95,7 @@ def match_defs_renderers(
 
         for rev, inner_id, plot_definition in group:
             plot_sources = infer_data_sources(inner_id, plot_definition)
-            definitions_data = plots_data.get_definition_data(
-                plot_sources, rev
-            )
+            definitions_data = plots_data.get_definition_data(plot_sources, rev)
 
             if ImageRenderer.matches(inner_id, None):
                 renderer_cls = ImageRenderer
@@ -91,19 +104,26 @@ def match_defs_renderers(
                 renderer_cls = VegaRenderer
                 renderer_id = plot_id
 
-            converter = _get_converter(
-                renderer_cls, inner_id, props, definitions_data
-            )
+            converter = _get_converter(renderer_cls, inner_id, props, definitions_data)
 
-            dps, rev_props = converter.flat_datapoints(rev)
+            for src in plot_sources:
+                if error := get_in(data, [rev, "sources", "data", src, "error"]):
+                    src_errors[rev][src] = error
+
+            try:
+                dps, rev_props = converter.flat_datapoints(rev)
+            except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
+                def_errors[rev] = e
+                continue
+
             if not final_props and rev_props:
                 final_props = rev_props
             plot_datapoints.extend(dps)
 
         if "title" not in final_props:
             final_props["title"] = renderer_id
+
         if renderer_cls is not None:
-            renderers.append(
-                renderer_cls(plot_datapoints, renderer_id, **final_props)
-            )
+            renderer = renderer_cls(plot_datapoints, renderer_id, **final_props)
+            renderers.append(RendererWithErrors(renderer, dict(src_errors), def_errors))
     return renderers
