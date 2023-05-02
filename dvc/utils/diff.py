@@ -26,7 +26,7 @@ def _diff_vals(old, new, with_unchanged):
     res = {"old": old, "new": new}
     if isinstance(new, (int, float)) and isinstance(old, (int, float)):
         res["diff"] = new - old
-    
+
     return res
 
 
