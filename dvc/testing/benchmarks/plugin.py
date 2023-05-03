@@ -17,6 +17,7 @@ class DVCBenchConfig:
         self.dvc_bin = DEFAULT_DVC_BIN
         self.dvc_revs = None
         self.dvc_git_repo = DEFAULT_DVC_GIT_REPO
+        self.dvc_install_deps = None
         self.dvc_bench_git_repo = DEFAULT_DVC_BENCH_GIT_REPO
         self.project_rev = None
         self.project_git_repo = DEFAULT_PROJECT_GIT_REPO
@@ -29,6 +30,7 @@ def pytest_configure(config):
     config.bench_config.dvc_bin = config.getoption("--dvc-bin")
     config.bench_config.dvc_revs = config.getoption("--dvc-revs")
     config.bench_config.dvc_git_repo = config.getoption("--dvc-git-repo")
+    config.bench_config.dvc_install_deps = config.getoption("--dvc-install-deps")
     config.bench_config.dvc_bench_git_repo = config.getoption("--dvc-bench-git-repo")
     config.bench_config.project_rev = config.getoption("--project-rev")
     config.bench_config.project_git_repo = config.getoption("--project-git-repo")
@@ -60,6 +62,13 @@ def pytest_addoption(parser):
         type=str,
         default=DEFAULT_DVC_GIT_REPO,
         help="Path or url to dvc git repo",
+    )
+
+    parser.addoption(
+        "--dvc-install-deps",
+        type=str,
+        default="",
+        help="Comma-separated list of DVC installation packages",
     )
 
     parser.addoption(
