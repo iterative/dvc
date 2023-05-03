@@ -55,7 +55,7 @@ dependencies = [
     "pyparsing>=2.4.7",
     "requests>=2.22",
     "rich>=12",
-    "ruamel.yaml>=0.17.11",
+    "ruamel.yaml==0.17.11",
     "scmrepo>=1.0.0,<2",
     "shortuuid>=0.5",
     "shtab<2,>=1.3.4",
