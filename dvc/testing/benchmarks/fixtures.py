@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 from subprocess import check_output  # nosec B404
 
 import pytest
@@ -48,7 +49,7 @@ def dvc_bench_git_repo(tmp_path_factory, bench_config):
     url = bench_config.dvc_bench_git_repo
 
     if os.path.isdir(url):
-        return url
+        return Path(url)
 
     tmp_path = tmp_path_factory.mktemp("dvc-bench-git-repo")
     clone(url, os.fspath(tmp_path))
@@ -70,9 +71,13 @@ def dvc_bin(
         if not venv:
             venv = make_dvc_venv(dvc_rev)
             venv.run("pip install -U pip")
+            if bench_config.dvc_install_deps:
+                egg = f"dvc[{bench_config.dvc_install_deps}]"
+            else:
+                egg = "dvc"
+            venv.run(f"pip install git+file://{dvc_git_repo}@{dvc_rev}#egg={egg}")
             if dvc_rev in ["2.18.1", "2.11.0", "2.6.3"]:
                 venv.run("pip install fsspec==2022.11.0")
-            venv.run(f"pip install git+file://{dvc_git_repo}@{dvc_rev}")
             dvc_venvs[dvc_rev] = venv
         dvc_bin = venv.virtualenv / "bin" / "dvc"
     else:
