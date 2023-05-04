@@ -773,3 +773,19 @@ def test_mixed_git_dvc_out(tmp_dir, scm, dvc, exp_stage):
     assert (tmp_dir / "dir" / "metrics.yaml").exists()
     git_fs = scm.get_fs(exp)
     assert not git_fs.exists("dir/metrics.yaml")
+
+
+@pytest.mark.parametrize("tmp", [True, False])
+def test_custom_commit_message(tmp_dir, scm, dvc, tmp):
+    stage = dvc.stage.add(
+        cmd="echo foo",
+        name="foo",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+
+    exp = first(
+        dvc.experiments.run(
+            stage.addressing, tmp_dir=tmp, message="custom commit message"
+        )
+    )
+    assert scm.gitpython.repo.commit(exp).message == "custom commit message"

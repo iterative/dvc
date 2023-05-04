@@ -461,6 +461,7 @@ class BaseExecutor(ABC):
         log_errors: bool = True,
         log_level: Optional[int] = None,
         copy_paths: Optional[List[str]] = None,
+        message: Optional[str] = None,
         **kwargs,
     ) -> "ExecutorResult":
         """Run dvc repro and return the result.
@@ -570,6 +571,7 @@ class BaseExecutor(ABC):
                     auto_push,
                     git_remote,
                     repro_force,
+                    message=message,
                 )
                 info.result_hash = exp_hash
                 info.result_ref = ref
@@ -590,6 +592,7 @@ class BaseExecutor(ABC):
         auto_push,
         git_remote,
         repro_force,
+        message: Optional[str] = None,
     ) -> Tuple[Optional[str], Optional["ExpRefInfo"], bool]:
         is_checkpoint = any(stage.is_checkpoint for stage in stages)
         cls.commit(
@@ -598,6 +601,7 @@ class BaseExecutor(ABC):
             exp_name=info.name,
             force=repro_force,
             checkpoint=is_checkpoint,
+            message=message,
         )
         if auto_push:
             cls._auto_push(dvc, dvc.scm, git_remote)
@@ -760,6 +764,7 @@ class BaseExecutor(ABC):
         exp_name: Optional[str] = None,
         force: bool = False,
         checkpoint: bool = False,
+        message: Optional[str] = None,
     ):
         """Commit stages as an experiment and return the commit SHA."""
         rev = scm.get_rev()
@@ -789,7 +794,8 @@ class BaseExecutor(ABC):
                 logger.debug("Commit to new experiment branch '%s'", branch)
 
         scm.add([], update=True)
-        scm.commit(f"dvc: commit experiment {exp_hash}", no_verify=True)
+        message = message or f"dvc: commit experiment {exp_hash}"
+        scm.commit(message, no_verify=True)
         new_rev = scm.get_rev()
         if check_conflict:
             new_rev = cls._raise_ref_conflict(scm, branch, new_rev, checkpoint)

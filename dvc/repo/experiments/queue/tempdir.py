@@ -97,6 +97,7 @@ class TempDirQueue(WorkspaceQueue):
         entry: QueueEntry,
         executor: "BaseExecutor",
         copy_paths: Optional[List[str]] = None,
+        message: Optional[str] = None,
         **kwargs,
     ) -> Dict[str, Dict[str, str]]:
         from dvc.stage.monitor import CheckpointKilledError
@@ -113,6 +114,7 @@ class TempDirQueue(WorkspaceQueue):
                 log_level=logger.getEffectiveLevel(),
                 log_errors=True,
                 copy_paths=copy_paths,
+                message=message,
             )
             if not exec_result.exp_hash:
                 raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'")
