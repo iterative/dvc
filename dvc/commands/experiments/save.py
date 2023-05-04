@@ -16,6 +16,7 @@ class CmdExperimentsSave(CmdBase):
                 name=self.args.name,
                 force=self.args.force,
                 include_untracked=self.args.include_untracked,
+                message=self.args.message,
             )
         except DvcException:
             logger.exception("failed to save experiment")
@@ -74,5 +75,12 @@ def add_parser(experiments_subparsers, parent_parser):
         default=[],
         help="List of untracked paths to include in the experiment.",
         metavar="<path>",
+    )
+    save_parser.add_argument(
+        "-M",
+        "--message",
+        type=str,
+        default=None,
+        help="Custom commit message to use when committing the experiment.",
     )
     save_parser.set_defaults(func=CmdExperimentsSave)
