@@ -136,6 +136,7 @@ def test_experiments_run(dvc, scm, mocker):
         "reset": False,
         "machine": None,
         "copy_paths": [],
+        "message": None,
     }
     default_arguments.update(repro_arguments)
 

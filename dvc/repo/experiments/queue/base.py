@@ -254,7 +254,7 @@ class BaseStashQueue(ABC):
 
     @abstractmethod
     def reproduce(
-        self, copy_paths: Optional[List[str]] = None
+        self, copy_paths: Optional[List[str]] = None, message: Optional[str] = None
     ) -> Mapping[str, Mapping[str, str]]:
         """Reproduce queued experiments sequentially."""
 
