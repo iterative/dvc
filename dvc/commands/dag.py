@@ -31,7 +31,7 @@ def _quote_label(node):
     return label
 
 
-DOT_STYLES = {"stage": {"shape": "box"}, "file": {"shape": "parallelogram"}}
+DOT_STYLES = {"stage": {"shape": "box"}, "file": {"shape": "note", "color": "blue"}}
 
 
 def _show_dot(graph: "DiGraph"):
