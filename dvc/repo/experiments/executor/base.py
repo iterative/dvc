@@ -501,6 +501,7 @@ class BaseExecutor(ABC):
             infofile,
             log_errors=log_errors,
             copy_paths=copy_paths,
+            message=message,
             **kwargs,
         ) as dvc:
             if auto_push:
@@ -631,6 +632,7 @@ class BaseExecutor(ABC):
         infofile: Optional[str] = None,
         log_errors: bool = True,
         copy_paths: Optional[List[str]] = None,
+        message: Optional[str] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
         from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
@@ -668,6 +670,7 @@ class BaseExecutor(ABC):
                     params=to_studio_params(dvc.params.show()),
                     studio_token=run_env.get(STUDIO_TOKEN, None),
                     studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
+                    message=message,
                 )
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
