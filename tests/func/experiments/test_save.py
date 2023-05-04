@@ -153,3 +153,10 @@ def test_untracked_dvclock_is_included_in_exp(tmp_dir, scm, dvc):
     exp = dvc.experiments.save()
     fs = scm.get_fs(exp)
     assert fs.exists("dvc.lock")
+
+
+def test_exp_save_custom_message(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
+
+    exp = dvc.experiments.save(message="custom commit message")
+    assert scm.gitpython.repo.commit(exp).message == "custom commit message"

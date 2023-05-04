@@ -628,7 +628,7 @@ def test_experiments_save(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, name="exp-name", force=True, include_untracked=[]
+        cmd.repo, name="exp-name", force=True, include_untracked=[], message=None
     )
 
 
