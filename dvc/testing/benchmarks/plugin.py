@@ -24,8 +24,11 @@ class DVCBenchConfig:
 
 
 def pytest_configure(config):
-    config.bench_config = DVCBenchConfig()
+    config.addinivalue_line(
+        "markers", "requires(minversion): mark a test as requiring minimum DVC version"
+    )
 
+    config.bench_config = DVCBenchConfig()
     config.bench_config.size = config.getoption("--size")
     config.bench_config.dvc_bin = config.getoption("--dvc-bin")
     config.bench_config.dvc_revs = config.getoption("--dvc-revs")
