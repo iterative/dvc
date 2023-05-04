@@ -277,6 +277,7 @@ class BaseExecutor(ABC):
         info: "ExecutorInfo",
         force: bool = False,
         include_untracked: Optional[List[str]] = None,
+        message: Optional[str] = None,
     ) -> ExecutorResult:
         from dvc.dvcfile import LOCK_FILE
         from dvc.repo import Repo
@@ -308,6 +309,7 @@ class BaseExecutor(ABC):
                 exp_hash,
                 exp_name=info.name,
                 force=force,
+                message=message,
             )
             ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
             exp_ref = ExpRefInfo.from_ref(ref) if ref else None

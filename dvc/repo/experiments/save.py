@@ -16,6 +16,7 @@ def save(
     name: Optional[str] = None,
     force: bool = False,
     include_untracked: Optional[List[str]] = None,
+    message: Optional[str] = None,
 ) -> Optional[str]:
     """Save the current workspace status as an experiment.
 
@@ -29,7 +30,10 @@ def save(
 
     try:
         save_result = executor.save(
-            executor.info, force=force, include_untracked=include_untracked
+            executor.info,
+            force=force,
+            include_untracked=include_untracked,
+            message=message,
         )
         result = queue.collect_executor(repo.experiments, executor, save_result)
     finally:
