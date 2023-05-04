@@ -180,12 +180,18 @@ class LocalCeleryQueue(BaseStashQueue):
         return started
 
     def put(
-        self, *args, copy_paths: Optional[List[str]] = None, **kwargs
+        self,
+        *args,
+        copy_paths: Optional[List[str]] = None,
+        message: Optional[str] = None,
+        **kwargs,
     ) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
         with get_exp_rwlock(self.repo, writes=["workspace", CELERY_STASH]):
             entry = self._stash_exp(*args, **kwargs)
-        self.celery.signature(run_exp.s(entry.asdict(), copy_paths=copy_paths)).delay()
+        self.celery.signature(
+            run_exp.s(entry.asdict(), copy_paths=copy_paths, message=message)
+        ).delay()
         return entry
 
     # NOTE: Queue consumption should not be done directly. Celery worker(s)
@@ -264,7 +270,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 yield QueueDoneResult(queue_entry, exp_result)
 
     def reproduce(
-        self, copy_paths: Optional[List[str]] = None
+        self, copy_paths: Optional[List[str]] = None, message: Optional[str] = None
     ) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 

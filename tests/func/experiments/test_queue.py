@@ -69,3 +69,16 @@ def test_copy_paths_queue(tmp_dir, scm, dvc):
     fs = scm.get_fs(exp)
     assert not fs.exists("dir")
     assert not fs.exists("file")
+
+
+def test_custom_commit_message_queue(tmp_dir, scm, dvc):
+    stage = dvc.stage.add(
+        cmd="echo foo",
+        name="foo",
+    )
+    scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
+
+    dvc.experiments.run(stage.addressing, queue=True, message="custom commit message")
+
+    exp = first(dvc.experiments.run(run_all=True))
+    assert scm.gitpython.repo.commit(exp).message == "custom commit message"
