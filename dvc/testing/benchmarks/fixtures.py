@@ -58,7 +58,7 @@ def dvc_bench_git_repo(tmp_path_factory, bench_config):
 
 
 @pytest.fixture(scope="session")
-def dvc_bin(
+def make_dvc_bin(
     dvc_rev,
     dvc_venvs,
     make_dvc_venv,
@@ -87,7 +87,6 @@ def dvc_bin(
         return check_output([dvc_bin, *args], text=True)  # nosec B603
 
     _dvc_bin.version = parse_tuple(_dvc_bin("--version"))  # type: ignore[attr-defined]
-    _skip_if_dvc_version_lt_required(request, _dvc_bin)
     return _dvc_bin
 
 
@@ -99,7 +98,8 @@ def parse_tuple(version_string):
     return (parsed.major, parsed.minor, parsed.micro)
 
 
-def _skip_if_dvc_version_lt_required(request, dvc_bin):
+@pytest.fixture
+def dvc_bin(request, make_dvc_bin):
     if marker := request.node.get_closest_marker("requires"):
         minversion = marker.kwargs.get("minversion") or first(marker.args)
         assert minversion, (
@@ -109,9 +109,10 @@ def _skip_if_dvc_version_lt_required(request, dvc_bin):
         reason = marker.kwargs.get("reason", "")
         if isinstance(minversion, str):
             minversion = parse_tuple(minversion)
-        if dvc_bin.version < minversion:
+        if make_dvc_bin.version < minversion:
             version_repr = ".".join(map(str, minversion))
             pytest.skip(f"requires dvc>={version_repr}: {reason}")
+    return make_dvc_bin
 
 
 @pytest.fixture
