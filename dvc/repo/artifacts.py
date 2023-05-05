@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 SEPARATOR_IN_NAME = ":"
 DIRNAME = r"[a-z0-9-_./]+"  # TODO: re-examine? notice is coupled with GTO
-NAME = r"[a-z]([a-z0-9-/]*[a-z0-9])?"  # just like in GTO now w/o "/"
+NAME = r"[a-z0-9]([a-z0-9-/]*[a-z0-9])?"  # just like in GTO now w/o "/"
 NAME_RE = re.compile(f"^{NAME}$")
 FULLNAME = f"((?P<dirname>{DIRNAME}){SEPARATOR_IN_NAME})?(?P<name>{NAME})"
 FULLNAME_RE = re.compile(f"^{FULLNAME}$")
@@ -32,7 +32,7 @@ def check_name_format(name: str) -> None:
         logger.warning(
             "Can't use '%s' as artifact name (ID)."
             " You can use letters and numbers, and use '-' as separator"
-            " (but not at the start or end). The first character must be a letter.",
+            " (but not at the start or end).",
             name,
         )
 
