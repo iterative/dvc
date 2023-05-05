@@ -74,7 +74,7 @@ gs = ["dvc-gs==2.22.0"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
     "mypy==1.2.0",
-    "pylint==2.17.2",
+    "pylint==2.17.3",
     "types-colorama",
     "types-psutil",
     "types-requests",
