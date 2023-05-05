@@ -172,7 +172,6 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
             repo.index.data["repo"],
             workspace,
             not_in_cache=True,
-            not_in_remote=True,
             **kwargs,
         )
 

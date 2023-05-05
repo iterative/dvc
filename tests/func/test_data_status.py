@@ -402,7 +402,13 @@ def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     tmp_dir.dvc_gen("foobar", "foobar")
 
-    assert dvc.data_status(untracked_files="all") == {
+    assert dvc.data_status() == {
+        **EMPTY_STATUS,
+        "committed": {"added": M.unordered("foobar", join("dir", ""))},
+        "git": M.dict(),
+    }
+
+    assert dvc.data_status(untracked_files="all", not_in_remote=True) == {
         **EMPTY_STATUS,
         "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
         "committed": {"added": M.unordered("foobar", join("dir", ""))},
@@ -410,7 +416,9 @@ def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
         "git": M.dict(),
     }
 
-    assert dvc.data_status(granular=True, untracked_files="all") == {
+    assert dvc.data_status(
+        granular=True, untracked_files="all", not_in_remote=True
+    ) == {
         **EMPTY_STATUS,
         "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
         "committed": {
