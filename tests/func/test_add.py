@@ -713,7 +713,6 @@ def test_escape_gitignore_entries(tmp_dir, scm, dvc):
     assert ignored_fname in get_gitignore_content()
 
 
-@pytest.mark.xfail(reason="error message relpath")
 def test_add_from_data_dir(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"file1": "file1 content"}})
 
@@ -726,6 +725,21 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
         "tracked output: 'dir'.\n"
         "To include '{out}' in 'dir', run 'dvc commit dir.dvc'"
     ).format(out=os.path.join("dir", "file2"))
+
+
+def test_add_parent_dir(tmp_dir, scm, dvc):
+    tmp_dir.gen({"dir": {"file1": "file1 content"}})
+    out_path = os.path.join("dir", "file1")
+    dvc.add(out_path, fname=out_path + ".dvc")
+
+    with pytest.raises(OverlappingOutputPathsError) as e:
+        dvc.add("dir", fname="dir.dvc")
+    assert str(e.value) == (
+        "Cannot add 'dir', because it is overlapping with other DVC "
+        "tracked output: '{out}'.\n"
+        "To include '{out}' in 'dir', run 'dvc remove {out}.dvc' "
+        "and then 'dvc add dir'"
+    ).format(out=os.path.join("dir", "file1"))
 
 
 def test_not_raises_on_re_add(tmp_dir, dvc):

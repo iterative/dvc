@@ -90,9 +90,6 @@ def exp_show(
     repo: Optional[str] = None,
     revs: Optional[Union[str, List[str]]] = None,
     num: int = 1,
-    hide_queued: bool = False,
-    hide_failed: bool = False,
-    sha: bool = False,
     param_deps: bool = False,
     force: bool = False,
 ) -> List[Dict]:
@@ -119,13 +116,6 @@ def exp_show(
             Give a negative value to include all first-parent commits (similar
             to `git log -n`).
             Defaults to 1.
-        hide_queued (bool, optional): hide experiments that are queued for
-            execution.
-            Defaults to `False`.
-        hide_failed (bool, optional): hide experiments that have failed.
-        sha (bool, optional): show the Git commit SHAs of the experiments
-            instead of branch, tag, or experiment names.
-            Defaults to `False`.
         param_deps (bool, optional): include only parameters that are stage
             dependencies.
             Defaults to `False`.
@@ -144,11 +134,8 @@ def exp_show(
     """
     with Repo.open(repo) as _repo:
         experiments = _repo.experiments.show(
-            hide_queued=hide_queued,
-            hide_failed=hide_failed,
             revs=revs,
             num=num,
-            sha_only=sha,
             param_deps=param_deps,
             force=force,
         )

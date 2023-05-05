@@ -95,7 +95,9 @@ def test_cmd_changes_other_orders_are_preserved(tmp_dir, dvc, run_head):
     # let's change cmd in pipeline file
     # it should only change "cmd", otherwise it should be
     # structurally same as cmd
-    stage.cmd = "  ".join(stage.cmd.split())
+    new_cmd = "python head.py foo bar foobar"
+    assert stage.cmd != new_cmd  # sanity check
+    stage.cmd = new_cmd
     stage.dvcfile._dump_pipeline_file(stage)
 
     initial_content["stages"]["copy-first-line"]["cmd"] = stage.cmd
