@@ -125,7 +125,6 @@ def test_check_name_is_valid(name):
         "model@1",
         "model#1",
         "@namespace/model",
-        "namespace/model",
     ],
 )
 def test_check_name_is_invalid(name):
