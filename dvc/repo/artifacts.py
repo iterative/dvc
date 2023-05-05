@@ -15,9 +15,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# Constants are taken from GTO.
+# When we make it a dependency, we can import them instead
 SEPARATOR_IN_NAME = ":"
-DIRNAME = r"[a-z0-9-_./]+"  # TODO: re-examine? notice is coupled with GTO
-NAME = r"[a-z0-9]([a-z0-9-/]*[a-z0-9])?"  # just like in GTO now w/o "/"
+DIRNAME = r"[a-z0-9-_./]+"
+NAME = r"[a-z0-9]([a-z0-9-/]*[a-z0-9])?"
 NAME_RE = re.compile(f"^{NAME}$")
 FULLNAME = f"((?P<dirname>{DIRNAME}){SEPARATOR_IN_NAME})?(?P<name>{NAME})"
 FULLNAME_RE = re.compile(f"^{FULLNAME}$")
