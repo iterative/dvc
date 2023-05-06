@@ -245,7 +245,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
     finally:
         logger.setLevel(outer_log_level)
 
-        from dvc.external_repo import clean_repos
+        from dvc.repo.open_repo import clean_repos
 
         # Remove cached repos in the end of the call, these are anonymous
         # so won't be reused by any other subsequent run anyway.

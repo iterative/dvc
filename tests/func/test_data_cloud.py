@@ -8,7 +8,7 @@ from flaky.flaky_decorator import flaky
 import dvc_data
 from dvc.cli import main
 from dvc.exceptions import CheckoutError
-from dvc.external_repo import clean_repos
+from dvc.repo.open_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-import
 from dvc.utils.fs import remove
