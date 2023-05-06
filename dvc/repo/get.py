@@ -24,8 +24,8 @@ def get(url, path, out=None, rev=None, jobs=None, force=False):
     import shortuuid
 
     from dvc.dvcfile import is_valid_filename
-    from dvc.external_repo import external_repo
     from dvc.fs.callbacks import Callback
+    from dvc.repo.open_repo import external_repo
 
     out = resolve_output(path, out, force=force)
 

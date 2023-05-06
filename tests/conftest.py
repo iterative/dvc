@@ -60,7 +60,7 @@ def enable_ui():
 
 @pytest.fixture(autouse=True)
 def clean_repos():
-    from dvc.external_repo import clean_repos
+    from dvc.repo.open_repo import clean_repos
 
     clean_repos()
 

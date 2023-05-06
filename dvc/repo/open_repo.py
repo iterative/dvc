@@ -13,9 +13,8 @@ from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
+    from dvc.scm import Git
     from dvc.types import StrPath
-
-    from .scm import Git
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +67,19 @@ def external_repo(
         repo.close()
         if for_write:
             _remove(path)
+
+
+def open_repo(url, *args, **kwargs):
+    if url is None:
+        url = os.getcwd()
+
+    if os.path.exists(url):
+        try:
+            return Repo(url, *args, **kwargs)
+        except NotDvcRepoError:
+            pass  # fallthrough to external_repo
+
+    return external_repo(url, *args, **kwargs)
 
 
 def erepo_factory(url, root_dir, cache_config):

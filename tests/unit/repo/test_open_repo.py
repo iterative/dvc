@@ -3,7 +3,7 @@ from unittest.mock import call
 
 import pytest
 
-from dvc.external_repo import external_repo
+from dvc.repo.open_repo import external_repo
 from dvc.testing.tmp_dir import make_subrepo
 
 
