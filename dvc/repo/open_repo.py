@@ -3,7 +3,7 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Tuple
 
 from funcy import retry, wrap_with
 
@@ -14,7 +14,6 @@ from dvc.utils import relpath
 
 if TYPE_CHECKING:
     from dvc.scm import Git
-    from dvc.types import StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +24,6 @@ def external_repo(
     url,
     rev: Optional[str] = None,
     for_write: bool = False,
-    cache_dir: Optional["StrPath"] = None,
-    cache_types: Optional[Collection[str]] = None,
     **kwargs,
 ) -> Iterator["Repo"]:
     logger.debug("Creating external repo %s@%s", url, rev)
@@ -36,12 +33,8 @@ def external_repo(
     # the tip of the default branch
     rev = rev or "refs/remotes/origin/HEAD"
 
-    cache_config = {
-        "cache": {"dir": cache_dir or _get_cache_dir(url), "type": cache_types}
-    }
-
     config = _get_remote_config(url) if os.path.isdir(url) else {}
-    config.update(cache_config)
+    config.update({"cache": {"dir": _get_cache_dir(url)}})
     config.update(kwargs.pop("config", None) or {})
 
     main_root = "/"
@@ -54,7 +47,7 @@ def external_repo(
         root_dir=path,
         url=url,
         config=config,
-        repo_factory=erepo_factory(url, main_root, cache_config),
+        repo_factory=erepo_factory(url, main_root, {"cache": config["cache"]}),
         rev=rev,
         **kwargs,
     )
