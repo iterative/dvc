@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 @map_scm_exception()
-def external_repo(
+def _external_repo(
     url,
     rev: Optional[str] = None,
     for_write: bool = False,
@@ -70,9 +70,9 @@ def open_repo(url, *args, **kwargs):
         try:
             return Repo(url, *args, **kwargs)
         except NotDvcRepoError:
-            pass  # fallthrough to external_repo
+            pass  # fallthrough to _external_repo
 
-    return external_repo(url, *args, **kwargs)
+    return _external_repo(url, *args, **kwargs)
 
 
 def erepo_factory(url, root_dir, cache_config):
