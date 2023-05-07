@@ -83,6 +83,7 @@ class RepoDependency(Dependency):
             url=self.def_repo[self.PARAM_URL],
             rev=rev or self._get_rev(locked=locked),
             subrepos=True,
+            config={"cache": {"dir": self.repo.cache.local.path}},
         )
 
     def _get_rev(self, locked: bool = True):

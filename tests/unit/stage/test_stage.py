@@ -56,7 +56,8 @@ def test_path_conversion(dvc):
 
 
 def test_stage_update(dvc, mocker):
-    dep = RepoDependency({"url": "example.com"}, None, "dep_path")
+    stage = Stage(dvc, "path", "cmd")
+    dep = RepoDependency({"url": "example.com"}, stage, "dep_path")
     mocker.patch.object(dep, "update", return_value=None)
 
     stage = Stage(dvc, "path", deps=[dep])
