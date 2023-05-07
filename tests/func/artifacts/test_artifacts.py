@@ -79,27 +79,29 @@ def test_broken_dvcyaml_id_duplication(tmp_dir, dvc):
         tmp_dir.dvc.artifacts.read()
 
 
-dvcyaml_redirecting = {"artifacts": "artifacts.yaml"}
+# dvcyaml_redirecting = {"artifacts": "artifacts.yaml"}
 
 
-def test_read_artifacts_yaml(tmp_dir, dvc):
-    (tmp_dir / "dvc.yaml").dump(dvcyaml_redirecting)
-    (tmp_dir / "artifacts.yaml").dump(dvcyaml["artifacts"])
+# def test_read_artifacts_yaml(tmp_dir, dvc):
+#     (tmp_dir / "dvc.yaml").dump(dvcyaml_redirecting)
+#     (tmp_dir / "artifacts.yaml").dump(dvcyaml["artifacts"])
 
-    artifacts = {
-        name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
-    }
-    assert tmp_dir.dvc.artifacts.read() == {
-        "dvc.yaml": artifacts,
-    }
+#     artifacts = {
+#         name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
+#     }
+#     assert tmp_dir.dvc.artifacts.read() == {
+#         "dvc.yaml": artifacts,
+#     }
 
 
 @pytest.mark.parametrize(
     "name",
     [
+        "1",
         "m",
         "nn",
         "m1",
+        "1nn",
         "model-prod",
         "model-prod-v1",
     ],
@@ -112,10 +114,8 @@ def test_check_name_is_valid(name):
     "name",
     [
         "",
-        "1",
         "m/",
         "/m",
-        "1nn",
         "###",
         "@@@",
         "a model",

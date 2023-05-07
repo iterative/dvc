@@ -91,9 +91,10 @@ def _update_project_file(project_file, name, artifact):
 
 def parse_name(name, dvcfile=None):
     if not dvcfile:
-        return _parse_name(name)
+        subdir, subname = _parse_name(name)
+        return subdir or "", subname
     dvcfile_from_name, subname = _parse_name(name)
-    if dvcfile_from_name != dvcfile:
+    if dvcfile_from_name is not None and dvcfile_from_name != dvcfile:
         raise ValueError(f"Artifact name {name} doesn't match given dvcfile {dvcfile}")
     return dvcfile_from_name, subname
 
@@ -102,6 +103,6 @@ def _parse_name(name):
     match = FULLNAME_RE.search(name)
     if not match:
         raise ValueError(f"Invalid artifact name: {name}")
-    subdir = match["dirname"] or ""
+    subdir = match["dirname"]
     subname = match.group("name")
     return subdir, subname
