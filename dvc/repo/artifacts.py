@@ -67,15 +67,15 @@ class Artifacts:
         return artifacts
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
-        dvcfile, name = parse_name(name, dvcfile)
         # this doesn't update it "in place": self.read() won't return the updated value
-        dvcfile_dir = os.path.join(self.repo.root_dir, dvcfile or "")
-        Path(dvcfile_dir).mkdir(exist_ok=True)
-        dvcyaml_path = os.path.join(dvcfile_dir, "dvc.yaml")
+        if not dvcfile or dvcfile[-len("dvc.yaml") :] != "dvc.yaml":
+            dvcfile = os.path.join(dvcfile or "", "dvc.yaml")
+        dvcfile_abspath = os.path.join(self.repo.root_dir, dvcfile)
+        Path(os.path.dirname(dvcfile_abspath)).mkdir(exist_ok=True, parents=True)
         _update_project_file(
-            ProjectFile(self.repo, dvcyaml_path), name, artifact.to_dict()
+            ProjectFile(self.repo, dvcfile_abspath), name, artifact.to_dict()
         )
-        return dvcyaml_path
+        return dvcfile_abspath
 
 
 def _update_project_file(project_file, name, artifact):
@@ -87,22 +87,3 @@ def _update_project_file(project_file, name, artifact):
         data["artifacts"].update({name: artifact})
 
     project_file.repo.scm_context.track_file(project_file.relpath)
-
-
-def parse_name(name, dvcfile=None):
-    if not dvcfile:
-        subdir, subname = _parse_name(name)
-        return subdir or "", subname
-    dvcfile_from_name, subname = _parse_name(name)
-    if dvcfile_from_name is not None and dvcfile_from_name != dvcfile:
-        raise ValueError(f"Artifact name {name} doesn't match given dvcfile {dvcfile}")
-    return dvcfile_from_name, subname
-
-
-def _parse_name(name):
-    match = FULLNAME_RE.search(name)
-    if not match:
-        raise ValueError(f"Invalid artifact name: {name}")
-    subdir = match["dirname"]
-    subname = match.group("name")
-    return subdir, subname
