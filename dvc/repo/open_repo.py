@@ -68,6 +68,9 @@ def open_repo(url, *args, **kwargs):
 
     if os.path.exists(url):
         try:
+            config = _get_remote_config(url)
+            config.update(kwargs.get("config") or {})
+            kwargs["config"] = config
             return Repo(url, *args, **kwargs)
         except NotDvcRepoError:
             pass  # fallthrough to _external_repo
