@@ -79,9 +79,7 @@ def check_arg_combinations(args):
             invalid_opt = "--external option"
     else:
         message = "{option} can't be used without --to-remote"
-        if kwargs.get("remote"):
-            invalid_opt = "--remote"
-        elif kwargs.get("jobs"):
+        if kwargs.get("jobs"):
             invalid_opt = "--jobs"
 
     if invalid_opt is not None:
@@ -270,6 +268,7 @@ def create_stages(
         path, wdir, out = resolve_paths(
             repo, target, always_local=transfer and not kwargs.get("out")
         )
+        remote = kwargs.get("remote")
 
         stage = repo.stage.create(
             single_stage=True,
@@ -279,6 +278,7 @@ def create_stages(
             outs=[out],
             external=external,
             force=force,
+            remote=remote
         )
 
         out_obj = stage.outs[0]
