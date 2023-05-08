@@ -80,3 +80,33 @@ def notify_refs(
             "received response: %s (status=%r)", d, r.status_code
         )
     return d
+
+
+def get_studio_config(repo):
+    """update studio config with current env and config values."""
+    import os
+
+    from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
+
+    from dvc.config import to_bool
+    from dvc.env import DVC_STUDIO_OFFLINE, DVC_STUDIO_TOKEN
+
+    config = {}
+
+    token = (
+        os.getenv(DVC_STUDIO_TOKEN)
+        or os.getenv(STUDIO_TOKEN)
+        or repo.config.get("studio", {}).get("token")
+    )
+    if token:
+        config[STUDIO_TOKEN] = token
+
+    if STUDIO_REPO_URL in os.environ:
+        config[STUDIO_REPO_URL] = os.getenv(STUDIO_REPO_URL)
+
+    if DVC_STUDIO_OFFLINE in os.environ:
+        config[DVC_STUDIO_OFFLINE] = to_bool(os.getenv(DVC_STUDIO_OFFLINE))
+    elif "offline" in repo.config["studio"]:
+        config[DVC_STUDIO_OFFLINE] = repo.config["studio"]["offline"]
+
+    return config

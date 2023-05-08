@@ -330,5 +330,6 @@ SCHEMA = {
     "studio": {
         "token": str,
         "url": str,
+        Optional("offline", default=False): Bool,
     },
 }
