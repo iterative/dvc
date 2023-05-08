@@ -97,7 +97,7 @@ class StageCache:
         for value in os.listdir(cache_dir):
             cache = self._load_cache(key, value)
             if cache:
-                return cache
+                yield cache
 
         return None
 
@@ -186,31 +186,33 @@ class StageCache:
             and stage.deps_cached()
             and all(bool(out.hash_info) for out in stage.outs)
         ):
-            cache = to_single_stage_lockfile(stage)
+            caches = [to_single_stage_lockfile(stage)]
         else:
             if not run_cache:  # backward compatibility
                 raise RunCacheNotFoundError(stage)
             if not dry:
                 stage.save_deps()
-            cache = self._load(stage)
-            if not cache:
-                raise RunCacheNotFoundError(stage)
+            caches = self._load(stage)
 
-        cached_stage = self._create_stage(cache, wdir=stage.wdir)
+        for cache in caches:
+            cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
-        if pull and not dry:
-            for objs in cached_stage.get_used_objs().values():
-                self.repo.cloud.pull(objs)
+            if pull and not dry:
+                for objs in cached_stage.get_used_objs().values():
+                    self.repo.cloud.pull(objs)
 
-        if not cached_stage.outs_cached():
-            raise RunCacheNotFoundError(stage)
+            if not cached_stage.outs_cached():
+                continue
 
-        logger.info(
-            "Stage '%s' is cached - skipping run, checking out outputs",
-            stage.addressing,
-        )
-        if not dry:
-            cached_stage.checkout()
+            logger.info(
+                "Stage '%s' is cached - skipping run, checking out outputs",
+                stage.addressing,
+            )
+            if not dry:
+                cached_stage.checkout()
+            return
+
+        raise RunCacheNotFoundError(stage)
 
     def transfer(self, from_odb, to_odb):
         from dvc.fs import HTTPFileSystem, LocalFileSystem

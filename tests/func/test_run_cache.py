@@ -48,7 +48,7 @@ def test_save(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-foo-bar")
     assert _recurse_count_files(run_cache_dir) == 1
-    assert dvc.stage_cache._load(stage)
+    assert list(dvc.stage_cache._load(stage))
 
 
 def test_do_not_save_on_no_exec_and_dry(tmp_dir, dvc, run_copy):
@@ -59,12 +59,12 @@ def test_do_not_save_on_no_exec_and_dry(tmp_dir, dvc, run_copy):
     stage = run_copy("foo", "bar", name="copy-foo-bar", no_exec=True)
 
     assert _recurse_count_files(run_cache_dir) == 0
-    assert not dvc.stage_cache._load(stage)
+    assert not list(dvc.stage_cache._load(stage))
 
     (stage,) = dvc.reproduce("copy-foo-bar", dry=True)
 
     assert _recurse_count_files(run_cache_dir) == 0
-    assert not dvc.stage_cache._load(stage)
+    assert not list(dvc.stage_cache._load(stage))
 
 
 @pytest.mark.parametrize(
