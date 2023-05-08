@@ -278,7 +278,7 @@ def create_stages(
             outs=[out],
             external=external,
             force=force,
-            remote=remote
+            remote=remote,
         )
 
         out_obj = stage.outs[0]
