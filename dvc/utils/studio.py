@@ -82,27 +82,34 @@ def notify_refs(
     return d
 
 
-def get_studio_config(repo):
-    """update studio config with current env and config values."""
+def get_studio_config(repo=None):
+    """update studio config with env and config values."""
     import os
 
     from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
 
     from dvc.config import to_bool
-    from dvc.env import DVC_STUDIO_OFFLINE, DVC_STUDIO_TOKEN
+    from dvc.env import (
+        DVC_STUDIO_OFFLINE,
+        DVC_STUDIO_REPO_URL,
+        DVC_STUDIO_TOKEN,
+        DVC_STUDIO_URL,
+    )
 
     config = {}
 
-    token = (
-        os.getenv(DVC_STUDIO_TOKEN)
-        or os.getenv(STUDIO_TOKEN)
-        or repo.config.get("studio", {}).get("token")
-    )
+    # get token from env
+    token = os.getenv(DVC_STUDIO_TOKEN) or os.getenv(STUDIO_TOKEN)
+    # if no env token, check dvc config
+    if repo and not token:
+        token = repo.config.get("studio", {}).get("token")
     if token:
-        config[STUDIO_TOKEN] = token
+        config[DVC_STUDIO_TOKEN] = token
 
-    if STUDIO_REPO_URL in os.environ:
-        config[STUDIO_REPO_URL] = os.getenv(STUDIO_REPO_URL)
+    # get token from env
+    repo_url = os.getenv(DVC_STUDIO_REPO_URL) or os.getenv(STUDIO_REPO_URL)
+    if repo_url:
+        config[DVC_STUDIO_REPO_URL] = os.getenv(STUDIO_REPO_URL)
 
     if DVC_STUDIO_OFFLINE in os.environ:
         config[DVC_STUDIO_OFFLINE] = to_bool(os.getenv(DVC_STUDIO_OFFLINE))
