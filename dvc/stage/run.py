@@ -133,10 +133,25 @@ def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
         _run(stage, executable, cmd, checkpoint_func=checkpoint_func, **kwargs)
 
 
+def _pull_missing_deps(stage):
+    for dep in stage.deps:
+        if not dep.exists:
+            stage.repo.pull(dep.def_path)
+
+
 def run_stage(
-    stage, dry=False, force=False, checkpoint_func=None, run_env=None, **kwargs
+    stage,
+    dry=False,
+    force=False,
+    checkpoint_func=None,
+    run_env=None,
+    allow_missing: bool = False,
+    **kwargs,
 ):
     if not (force or checkpoint_func):
+        if allow_missing and kwargs.get("pull") and not dry:
+            _pull_missing_deps(stage)
+
         from .cache import RunCacheNotFoundError
 
         try:
