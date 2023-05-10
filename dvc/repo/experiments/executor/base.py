@@ -651,15 +651,15 @@ class BaseExecutor(ABC):
             else:
                 os.chdir(dvc.root_dir)
 
+            args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
+            if os.path.exists(args_path):
+                _, kwargs = cls.unpack_repro_args(args_path)
+            # set env vars using saved config; needed for dvclive to read config
+            for k, v in kwargs.get("run_env", {}).items():
+                os.environ[k] = v
+            dvc_studio_config = get_studio_config(dvc.config.get("studio"))
+
             try:
-                args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
-                if os.path.exists(args_path):
-                    _, kwargs = cls.unpack_repro_args(args_path)
-                # get saved config but override with current config values
-                dvc_studio_config = {
-                    **kwargs.get("studio", {}),
-                    **get_studio_config(dvc.config.get("studio")),
-                }
                 post_live_metrics(
                     "start",
                     info.baseline_rev,
@@ -705,7 +705,6 @@ class BaseExecutor(ABC):
         if os.path.exists(args_path):
             args, kwargs = cls.unpack_repro_args(args_path)
             # studio config options not expected for stage repro
-            kwargs.pop("studio", None)
             remove(args_path)
             # explicitly git rm/unstage the args file
             dvc.scm.add([args_path], force=True)
