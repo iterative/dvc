@@ -88,12 +88,16 @@ def test_add_commit_with_jobs(mocker, dvc):
         no_commit=False,
         glob=False,
         fname=None,
+        force=False,
         external=False,
         out=None,
         remote=None,
         to_remote=False,
         desc="stage description",
         jobs=1,
+        labels=None,
+        meta=None,
+        type=None,
     )
 
     assert called_max_workers == 1
