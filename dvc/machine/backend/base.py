@@ -21,12 +21,10 @@ class BaseMachineBackend(ABC):
         """Stop and destroy all instances of the specified machine."""
 
     @abstractmethod
-    def instances(
-        self, name: Optional[str] = None, **config
-    ) -> Iterator[dict]:
+    def instances(self, name: Optional[str] = None, **config) -> Iterator[dict]:
         """Iterate over status of all instances of the specified machine."""
 
-    def close(self):
+    def close(self):  # noqa: B027
         pass
 
     @abstractmethod

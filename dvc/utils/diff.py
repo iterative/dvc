@@ -1,5 +1,6 @@
 import json
 from collections import defaultdict
+from typing import Dict
 
 from .flatten import flatten
 
@@ -16,11 +17,7 @@ def _parse(raw):
 
 
 def _diff_vals(old, new, with_unchanged):
-    if (
-        isinstance(new, list)
-        and isinstance(old, list)
-        and len(old) == len(new) == 1
-    ):
+    if isinstance(new, list) and isinstance(old, list) and len(old) == len(new) == 1:
         return _diff_vals(old[0], new[0], with_unchanged)
 
     if not with_unchanged and old == new:
@@ -29,6 +26,7 @@ def _diff_vals(old, new, with_unchanged):
     res = {"old": old, "new": new}
     if isinstance(new, (int, float)) and isinstance(old, (int, float)):
         res["diff"] = new - old
+
     return res
 
 
@@ -46,7 +44,7 @@ def _diff_dicts(old_dict, new_dict, with_unchanged):
     new = _flatten(new_dict)
     old = _flatten(old_dict)
 
-    res = defaultdict(dict)
+    res: Dict[str, Dict] = defaultdict(dict)
 
     xpaths = set(old.keys())
     xpaths.update(set(new.keys()))
@@ -77,7 +75,7 @@ def diff(old, new, with_unchanged=False):
     paths = set(old.keys())
     paths.update(set(new.keys()))
 
-    res = defaultdict(dict)
+    res: Dict[str, Dict] = defaultdict(dict)
     for path in paths:
         path_diff = _diff(
             old.get(path, {}).get("data", {}),

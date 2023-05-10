@@ -1,13 +1,10 @@
 import argparse
 
-from dvc.cli.utils import (
-    append_doc_link,
-    fix_plumbing_subparsers,
-    fix_subparsers,
-)
+from dvc.cli.utils import append_doc_link, fix_subparsers, hide_subparsers_from_help
 from dvc.commands.experiments import (
     apply,
     branch,
+    clean,
     diff,
     exec_run,
     gc,
@@ -18,12 +15,14 @@ from dvc.commands.experiments import (
     queue_worker,
     remove,
     run,
+    save,
     show,
 )
 
 SUB_COMMANDS = [
     apply,
     branch,
+    clean,
     diff,
     exec_run,
     gc,
@@ -34,6 +33,7 @@ SUB_COMMANDS = [
     queue_worker,
     remove,
     run,
+    save,
     show,
 ]
 
@@ -52,14 +52,13 @@ def add_parser(subparsers, parent_parser):
 
     experiments_subparsers = experiments_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc experiments CMD --help` to display "
-        "command-specific help.",
+        help="Use `dvc experiments CMD --help` to display command-specific help.",
     )
 
     fix_subparsers(experiments_subparsers)
     for cmd in SUB_COMMANDS:
         cmd.add_parser(experiments_subparsers, parent_parser)
-    fix_plumbing_subparsers(experiments_subparsers)
+    hide_subparsers_from_help(experiments_subparsers)
 
 
 def add_rev_selection_flags(
@@ -83,6 +82,7 @@ def add_rev_selection_flags(
     experiments_subcmd_parser.add_argument(
         "--rev",
         type=str,
+        action="append",
         default=None,
         help=msg,
         metavar="<commit>",

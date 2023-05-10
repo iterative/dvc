@@ -1,7 +1,17 @@
 import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from dvc.exceptions import DvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
@@ -11,21 +21,25 @@ from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileIsNotDvcFileError,
 )
-from dvc.types import AnyPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
+from dvc.utils.objects import cached_property
 from dvc.utils.serialize import dump_yaml, modify_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.types import StrOrBytesPath
+
+    from .parsing import DataResolver
+    from .stage import Stage
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
 
 DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
-PIPELINE_FILE = "dvc.yaml"
-PIPELINE_LOCK = "dvc.lock"
+PROJECT_FILE = "dvc.yaml"
+LOCK_FILE = "dvc.lock"
 
 
 class FileIsGitIgnored(DvcException):
@@ -44,18 +58,16 @@ class ParametrizedDumpError(DvcException):
 def is_valid_filename(path):
     return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
         DVC_FILE,
-        PIPELINE_FILE,
+        PROJECT_FILE,
     ]
 
 
 def is_dvc_file(path):
-    return os.path.isfile(path) and (
-        is_valid_filename(path) or is_lock_file(path)
-    )
+    return os.path.isfile(path) and (is_valid_filename(path) or is_lock_file(path))
 
 
 def is_lock_file(path):
-    return os.path.basename(path) == PIPELINE_LOCK
+    return os.path.basename(path) == LOCK_FILE
 
 
 def is_git_ignored(repo, path):
@@ -63,9 +75,7 @@ def is_git_ignored(repo, path):
     from dvc.scm import NoSCMError
 
     try:
-        return isinstance(repo.fs, LocalFileSystem) and repo.scm.is_ignored(
-            path
-        )
+        return isinstance(repo.fs, LocalFileSystem) and repo.scm.is_ignored(path)
     except NoSCMError:
         return False
 
@@ -75,7 +85,7 @@ def check_dvcfile_path(repo, path):
         raise StageFileBadNameError(
             "bad DVC file name '{}'. DVC files should be named "
             "'{}' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                relpath(path), PIPELINE_FILE, os.path.basename(path)
+                relpath(path), PROJECT_FILE, os.path.basename(path)
             )
         )
 
@@ -138,9 +148,7 @@ class FileMixin:
         # 4. when the file is git ignored
         if not self.exists():
             dvc_ignored = self.repo.dvcignore.is_ignored_file(self.path)
-            raise StageFileDoesNotExistError(
-                self.path, dvc_ignored=dvc_ignored
-            )
+            raise StageFileDoesNotExistError(self.path, dvc_ignored=dvc_ignored)
 
         self._verify_filename()
         if not self.repo.fs.isfile(self.path):
@@ -150,7 +158,7 @@ class FileMixin:
         return self._load_yaml(**kwargs)
 
     @classmethod
-    def validate(cls, d: _T, fname: str = None) -> _T:
+    def validate(cls, d: _T, fname: Optional[str] = None) -> _T:
         from dvc.utils.strictyaml import validate
 
         return validate(d, cls.SCHEMA, path=fname)  # type: ignore[arg-type]
@@ -165,32 +173,38 @@ class FileMixin:
             **kwargs,
         )
 
-    def remove(self, force=False):  # pylint: disable=unused-argument
+    # pylint: disable-next=unused-argument
+    def remove(self, force=False):  # noqa: ARG002
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self.path)
 
     def dump(self, stage, **kwargs):
         raise NotImplementedError
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import SingleStageLoader as LOADER
+    from dvc.stage.loader import SingleStageLoader as LOADER  # noqa: N814
+
+    metrics: List[str] = []
+    plots: Any = {}
+    params: List[str] = []
+    artifacts: Dict[str, Optional[Dict[str, Any]]] = {}
 
     @property
-    def stage(self):
+    def stage(self) -> "Stage":
         data, raw = self._load()
         return self.LOADER.load_stage(self, data, raw)
 
     @property
-    def stages(self):
+    def stages(self) -> LOADER:
         data, raw = self._load()
         return self.LOADER(self, data, raw)
 
-    def dump(self, stage, **kwargs):
+    def dump(self, stage, **kwargs) -> None:
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 
@@ -198,30 +212,37 @@ class SingleStageFile(FileMixin):
         if self.verify:
             check_dvcfile_path(self.repo, self.path)
         logger.debug("Saving information to '%s'.", relpath(self.path))
-        dump_yaml(self.path, serialize.to_single_stage_file(stage))
+        dump_yaml(self.path, serialize.to_single_stage_file(stage, **kwargs))
         self.repo.scm_context.track_file(self.relpath)
 
-    def remove_stage(self, stage):  # pylint: disable=unused-argument
+    # pylint: disable-next=unused-argument
+    def remove_stage(self, stage):  # noqa: ARG002
         self.remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         assert isinstance(ancestor, SingleStageFile)
         assert isinstance(other, SingleStageFile)
 
         stage = self.stage
-        stage.merge(ancestor.stage, other.stage)
+        stage.merge(ancestor.stage, other.stage, allowed=allowed)
         self.dump(stage)
 
 
-class PipelineFile(FileMixin):
+class ProjectFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import StageLoader as LOADER
+    from dvc.stage.loader import StageLoader as LOADER  # noqa: N814
 
     @property
     def _lockfile(self):
         return Lockfile(self.repo, os.path.splitext(self.path)[0] + ".lock")
+
+    def _reset(self):
+        self.__dict__.pop("contents", None)
+        self.__dict__.pop("lockfile_contents", None)
+        self.__dict__.pop("resolver", None)
+        self.__dict__.pop("stages", None)
 
     def dump(
         self, stage, update_pipeline=True, update_lock=True, **kwargs
@@ -237,17 +258,15 @@ class PipelineFile(FileMixin):
             self._dump_pipeline_file(stage)
 
         if update_lock:
-            self._dump_lockfile(stage)
+            self._dump_lockfile(stage, **kwargs)
 
-    def _dump_lockfile(self, stage):
-        self._lockfile.dump(stage)
+    def _dump_lockfile(self, stage, **kwargs):
+        self._lockfile.dump(stage, **kwargs)
 
     @staticmethod
     def _check_if_parametrized(stage, action: str = "dump") -> None:
         if stage.raw_data.parametrized:
-            raise ParametrizedDumpError(
-                f"cannot {action} a parametrized {stage}"
-            )
+            raise ParametrizedDumpError(f"cannot {action} a parametrized {stage}")
 
     def _dump_pipeline_file(self, stage):
         self._check_if_parametrized(stage)
@@ -260,9 +279,7 @@ class PipelineFile(FileMixin):
             data["stages"] = data.get("stages", {})
             existing_entry = stage.name in data["stages"]
             action = "Modifying" if existing_entry else "Adding"
-            logger.info(
-                "%s stage '%s' in '%s'", action, stage.name, self.relpath
-            )
+            logger.info("%s stage '%s' in '%s'", action, stage.name, self.relpath)
 
             if existing_entry:
                 orig_stage_data = data["stages"][stage.name]
@@ -274,15 +291,42 @@ class PipelineFile(FileMixin):
 
     @property
     def stage(self):
-        raise DvcException(
-            "PipelineFile has multiple stages. Please specify it's name."
-        )
+        raise DvcException("ProjectFile has multiple stages. Please specify it's name.")
+
+    @cached_property
+    def contents(self) -> Dict[str, Any]:
+        return self._load()[0]
+
+    @cached_property
+    def lockfile_contents(self) -> Dict[str, Any]:
+        return self._lockfile.load()
+
+    @cached_property
+    def resolver(self) -> "DataResolver":
+        from .parsing import DataResolver
+
+        wdir = self.repo.fs.path.parent(self.path)
+        return DataResolver(self.repo, wdir, self.contents)
+
+    @cached_property
+    def stages(self) -> LOADER:
+        return self.LOADER(self, self.contents, self.lockfile_contents)
 
     @property
-    def stages(self):
-        data, _ = self._load()
-        lockfile_data = self._lockfile.load()
-        return self.LOADER(self, data, lockfile_data)
+    def metrics(self) -> List[str]:
+        return self.contents.get("metrics", [])
+
+    @property
+    def plots(self) -> Any:
+        return self.contents.get("plots", {})
+
+    @property
+    def params(self) -> List[str]:
+        return self.contents.get("params", [])
+
+    @property
+    def artifacts(self) -> Dict[str, Optional[Dict[str, Any]]]:
+        return self.contents.get("artifacts", {})
 
     def remove(self, force=False):
         if not force:
@@ -310,15 +354,12 @@ class PipelineFile(FileMixin):
         else:
             super().remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
 def get_lockfile_schema(d):
-    from dvc.schema import (
-        COMPILED_LOCKFILE_V1_SCHEMA,
-        COMPILED_LOCKFILE_V2_SCHEMA,
-    )
+    from dvc.schema import COMPILED_LOCKFILE_V1_SCHEMA, COMPILED_LOCKFILE_V2_SCHEMA
 
     schema = {
         LOCKFILE_VERSION.V1: COMPILED_LOCKFILE_V1_SCHEMA,
@@ -330,7 +371,7 @@ def get_lockfile_schema(d):
 
 
 def migrate_lock_v1_to_v2(d, version_info):
-    stages = {k: v for k, v in d.items()}
+    stages = dict(d)
 
     for key in stages:
         d.pop(key)
@@ -366,20 +407,17 @@ class Lockfile(FileMixin):
         return {SCHEMA_KWD: version}
 
     def dump(self, stage, **kwargs):
-        stage_data = serialize.to_lockfile(stage)
+        stage_data = serialize.to_lockfile(stage, **kwargs)
 
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             version = LOCKFILE_VERSION.from_dict(data)
             if version == LOCKFILE_VERSION.V1:
-                logger.info(
-                    "Migrating lock file '%s' from v1 to v2", self.relpath
-                )
+                logger.info("Migrating lock file '%s' from v1 to v2", self.relpath)
                 migrate_lock_v1_to_v2(data, self.latest_version_info)
-            else:
-                if not data:
-                    data.update(self.latest_version_info)
-                    # order is important, meta should always be at the top
-                    logger.info("Generating lock file '%s'", self.relpath)
+            elif not data:
+                data.update(self.latest_version_info)
+                # order is important, meta should always be at the top
+                logger.info("Generating lock file '%s'", self.relpath)
 
             data["stages"] = data.get("stages", {})
             modified = data["stages"].get(stage.name, {}) != stage_data.get(
@@ -411,24 +449,14 @@ class Lockfile(FileMixin):
         else:
             self.remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
-class Dvcfile:
-    def __new__(cls, repo: "Repo", path: AnyPath, **kwargs: Any):
-        assert path
-        assert repo
-
-        return make_dvcfile(repo, path, **kwargs)
-
-
-DVCFile = Union["PipelineFile", "SingleStageFile"]
-
-
-def make_dvcfile(repo: "Repo", path: AnyPath, **kwargs: Any) -> DVCFile:
-    _, ext = os.path.splitext(str(path))
-    if ext in [".yaml", ".yml"]:
-        return PipelineFile(repo, path, **kwargs)
-    # fallback to single stage file for better error messages
+def load_file(
+    repo: "Repo", path: "StrOrBytesPath", **kwargs: Any
+) -> Union[ProjectFile, SingleStageFile]:
+    _, ext = os.path.splitext(path)
+    if ext in (".yaml", ".yml"):
+        return ProjectFile(repo, path, **kwargs)
     return SingleStageFile(repo, path, **kwargs)

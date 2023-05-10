@@ -1,10 +1,28 @@
 from contextlib import _GeneratorContextManager as GCM
-from typing import Optional
+from contextlib import contextmanager
+from typing import Any, Dict, Optional
 
 from funcy import reraise
 
-from dvc.exceptions import OutputNotFoundError, PathMissingError
+from dvc.exceptions import FileMissingError, OutputNotFoundError, PathMissingError
 from dvc.repo import Repo
+
+
+@contextmanager
+def _wrap_exceptions(repo, url):
+    from dvc.config import NoRemoteError
+    from dvc.exceptions import NoOutputInExternalRepoError, NoRemoteInExternalRepoError
+
+    try:
+        yield
+    except NoRemoteError as exc:
+        raise NoRemoteInExternalRepoError(url) from exc
+    except OutputNotFoundError as exc:
+        if exc.repo is repo:
+            raise NoOutputInExternalRepoError(exc.output, repo.root_dir, url) from exc
+        raise
+    except FileMissingError as exc:
+        raise PathMissingError(exc.path, url) from exc
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -19,31 +37,33 @@ def get_url(path, repo=None, rev=None, remote=None):
     directory in the remote storage.
     """
     with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
-        fs_path = _repo.dvcfs.from_os_path(path)
-        with reraise(FileNotFoundError, PathMissingError(path, repo)):
-            info = _repo.dvcfs.info(fs_path)
+        with _wrap_exceptions(_repo, path):
+            fs_path = _repo.dvcfs.from_os_path(path)
 
-        dvc_info = info.get("dvc_info")
-        if not dvc_info:
-            raise OutputNotFoundError(path, repo)
+            with reraise(FileNotFoundError, PathMissingError(path, repo)):
+                info = _repo.dvcfs.info(fs_path)
 
-        dvc_repo = info["repo"]
-        md5 = dvc_info["md5"]
+            dvc_info = info.get("dvc_info")
+            if not dvc_info:
+                raise OutputNotFoundError(path, repo)
 
-        return dvc_repo.cloud.get_url_for(remote, checksum=md5)
+            dvc_repo = info["repo"]  # pylint: disable=unsubscriptable-object
+            md5 = dvc_info["md5"]
+
+            return dvc_repo.cloud.get_url_for(remote, checksum=md5)
 
 
 class _OpenContextManager(GCM):
-    def __init__(
-        self, func, args, kwds
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, func, args, kwds):  # pylint: disable=super-init-not-called
         self.gen = func(*args, **kwds)
-        self.func, self.args, self.kwds = func, args, kwds
+        self.func, self.args, self.kwds = (  # type: ignore[assignment]
+            func,
+            args,
+            kwds,
+        )
 
     def __getattr__(self, name):
-        raise AttributeError(
-            "dvc.api.open() should be used in a with statement."
-        )
+        raise AttributeError("dvc.api.open() should be used in a with statement.")
 
 
 def open(  # noqa, pylint: disable=redefined-builtin
@@ -194,11 +214,41 @@ def open(  # noqa, pylint: disable=redefined-builtin
 
 
 def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
-        with _repo.open_by_relpath(
-            path, remote=remote, mode=mode, encoding=encoding
-        ) as fd:
-            yield fd
+    repo_kwargs: Dict[str, Any] = {"subrepos": True, "uninitialized": True}
+    if remote:
+        repo_kwargs["config"] = {"core": {"remote": remote}}
+
+    with Repo.open(repo, rev=rev, **repo_kwargs) as _repo:
+        with _wrap_exceptions(_repo, path):
+            import os
+            from typing import TYPE_CHECKING, Union
+
+            from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
+            from dvc.fs.data import DataFileSystem
+            from dvc.fs.dvc import DVCFileSystem
+
+            if TYPE_CHECKING:
+                from dvc.fs import FileSystem
+
+            fs: Union["FileSystem", DataFileSystem, DVCFileSystem]
+            if os.path.isabs(path):
+                fs = DataFileSystem(index=_repo.index.data["local"])
+                fs_path = path
+            else:
+                fs = DVCFileSystem(repo=_repo, subrepos=True)
+                fs_path = fs.from_os_path(path)
+
+            try:
+                with fs.open(
+                    fs_path,
+                    mode=mode,
+                    encoding=encoding,
+                ) as fobj:
+                    yield fobj
+            except FileNotFoundError as exc:
+                raise FileMissingError(path) from exc
+            except IsADirectoryError as exc:
+                raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):

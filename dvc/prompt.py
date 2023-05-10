@@ -3,11 +3,12 @@
 import logging
 import sys
 from getpass import getpass
+from typing import Collection, Optional
 
 logger = logging.getLogger(__name__)
 
 
-def ask(prompt, limited_to=None):
+def ask(prompt: str, limited_to: Optional[Collection[str]] = None):
     if not sys.stdout.isatty():
         return None
 
@@ -23,13 +24,10 @@ def ask(prompt, limited_to=None):
         if answer in limited_to:
             return answer
 
-        logger.info(
-            "Your response must be one of: {options}. "
-            "Please try again.".format(options=limited_to)
-        )
+        logger.info("Your response must be one of: %s. Please try again.", limited_to)
 
 
-def confirm(statement):
+def confirm(statement: str) -> bool:
     """Ask the user for confirmation about the specified statement.
 
     Args:
@@ -43,7 +41,7 @@ def confirm(statement):
     return answer and answer.startswith("y")
 
 
-def password(statement):
+def password(statement: str) -> str:
     """Ask the user for a password.
 
     Args:

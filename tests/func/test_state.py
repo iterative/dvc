@@ -1,7 +1,5 @@
 import os
-import re
 
-from dvc.repo import Repo
 from dvc_data.hashfile.hash import file_md5
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.state import State
@@ -14,18 +12,18 @@ def test_state(tmp_dir, dvc):
 
     state = State(dvc.root_dir, dvc.tmp_dir, dvc.dvcignore)
 
-    state.save(path, dvc.fs, hash_info)
-    assert state.get(path, dvc.fs)[1] == hash_info
+    state.save(str(path), dvc.fs, hash_info)
+    assert state.get(str(path), dvc.fs)[1] == hash_info
 
     path.unlink()
     path.write_text("1")
 
-    assert state.get(path, dvc.fs) == (None, None)
+    assert state.get(str(path), dvc.fs) == (None, None)
 
     hash_info = HashInfo("md5", file_md5(path, dvc.fs))
-    state.save(path, dvc.fs, hash_info)
+    state.save(str(path), dvc.fs, hash_info)
 
-    assert state.get(path, dvc.fs)[1] == hash_info
+    assert state.get(str(path), dvc.fs)[1] == hash_info
 
 
 def test_state_overflow(tmp_dir, dvc):
@@ -71,17 +69,3 @@ def test_get_unused_links(tmp_dir, dvc):
             dvc.fs,
         )
     ) == {"bar"}
-
-
-def test_state_dir_config(make_tmp_dir, dvc):
-    assert dvc.state.tmp_dir == dvc.tmp_dir
-
-    index_dir = str(make_tmp_dir("tmp_index"))
-    repo = Repo(config={"state": {"dir": index_dir}})
-    assert os.path.dirname(repo.state.tmp_dir) == os.path.join(
-        index_dir, ".dvc"
-    )
-    assert re.match(
-        r"^test_state_dir_config0-([0-9a-f]+)$",
-        os.path.basename(repo.state.tmp_dir),
-    )

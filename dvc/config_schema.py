@@ -1,8 +1,10 @@
+import logging
 import os
 from urllib.parse import urlparse
 
-from funcy import walk_values
+from funcy import once, walk_values
 from voluptuous import (
+    REMOVE_EXTRA,
     All,
     Any,
     Coerce,
@@ -12,6 +14,8 @@ from voluptuous import (
     Range,
     Schema,
 )
+
+logger = logging.getLogger(__name__)
 
 Bool = All(
     Lower,
@@ -34,14 +38,12 @@ def supported_cache_type(types):
 
     unsupported = set(types) - {"reflink", "hardlink", "symlink", "copy"}
     if unsupported:
-        raise Invalid(
-            "Unsupported cache type(s): {}".format(", ".join(unsupported))
-        )
+        raise Invalid("Unsupported cache type(s): {}".format(", ".join(unsupported)))
 
     return types
 
 
-def Choices(*choices):
+def Choices(*choices):  # noqa: N802
     """Checks that value belongs to the specified set of values
 
     Args:
@@ -51,7 +53,7 @@ def Choices(*choices):
     return Any(*choices, msg="expected one of {}".format(", ".join(choices)))
 
 
-def ByUrl(mapping):
+def ByUrl(mapping):  # noqa: N802
     schemas = walk_values(Schema, mapping)
 
     def validate(data):
@@ -60,7 +62,9 @@ def ByUrl(mapping):
 
         parsed = urlparse(data["url"])
         # Windows absolute paths should really have scheme == "" (local)
-        if os.name == "nt" and len(parsed.scheme) == 1 and parsed.netloc == "":
+        if os.name == "nt" and len(parsed.scheme) == 1 and not parsed.netloc:
+            return schemas[""](data)
+        if not parsed.netloc:
             return schemas[""](data)
         if parsed.scheme not in schemas:
             raise Invalid(f"Unsupported URL type {parsed.scheme}://")
@@ -72,6 +76,27 @@ def ByUrl(mapping):
 
 class RelPath(str):
     pass
+
+
+class FeatureSchema(Schema):
+    def __init__(self, schema, required=False):
+        super().__init__(schema, required=required, extra=REMOVE_EXTRA)
+
+    @staticmethod
+    @once
+    def _log_deprecated(keys):
+        # only run this once per session
+        message = "%s config option%s unsupported"
+        paths = ", ".join(f"'feature.{key}'" for key in keys)
+        pluralize = " is" if len(keys) == 1 else "s are"
+        logger.warning(message, paths, pluralize)
+
+    def __call__(self, data):
+        ret = super().__call__(data)
+        extra_keys = data.keys() - ret.keys()
+        if extra_keys:
+            self._log_deprecated(sorted(extra_keys))
+        return ret
 
 
 REMOTE_COMMON = {
@@ -97,6 +122,8 @@ HTTP_COMMON = {
     "ask_password": Bool,
     "ssl_verify": Any(Bool, str),
     "method": str,
+    "connect_timeout": All(Coerce(float), Range(0, min_included=True)),
+    "read_timeout": All(Coerce(float), Range(0, min_included=True)),
     Optional("verify", default=False): Bool,
 }
 WEBDAV_COMMON = {
@@ -104,6 +131,7 @@ WEBDAV_COMMON = {
     "password": str,
     "ask_password": Bool,
     "token": str,
+    "custom_auth_header": str,
     "cert_path": str,
     "key_path": str,
     "timeout": Coerce(int),
@@ -123,6 +151,7 @@ SCHEMA = {
         Optional("autostage", default=False): Bool,
         Optional("experiments"): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
+        "site_cache_dir": str,
         "machine": Lower,
     },
     "cache": {
@@ -181,10 +210,13 @@ SCHEMA = {
                     "user": str,
                     "password": str,
                     "ask_password": Bool,
+                    "passphrase": str,
+                    "ask_passphrase": Bool,
                     "keyfile": str,
                     "timeout": Coerce(int),
                     "gss_auth": Bool,
                     "allow_agent": Bool,
+                    "max_sessions": Coerce(int),
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
@@ -244,19 +276,17 @@ SCHEMA = {
         )
     },
     "state": {
-        "dir": str,
+        "dir": str,  # obsoleted
         "row_limit": All(Coerce(int), Range(1)),  # obsoleted
         "row_cleanup_quota": All(Coerce(int), Range(0, 100)),  # obsoleted
     },
     "index": {
-        "dir": str,
+        "dir": str,  # obsoleted
     },
     "machine": {
         str: {
             "cloud": All(Lower, Choices("aws", "azure")),
-            "region": All(
-                Lower, Choices("us-west", "us-east", "eu-west", "eu-north")
-            ),
+            "region": All(Lower, Choices("us-west", "us-east", "eu-west", "eu-north")),
             "image": str,
             "spot": Bool,
             "spot_price": Coerce(float),
@@ -269,11 +299,12 @@ SCHEMA = {
         },
     },
     # section for experimental features
-    "feature": {
-        Optional("machine", default=False): Bool,
-        # enabled by default. It's of no use, kept for backward compatibility.
-        Optional("parametrization", default=True): Bool,
-    },
+    # only specified keys are validated, others get logged and then ignored/removed
+    "feature": FeatureSchema(
+        {
+            Optional("machine", default=False): Bool,
+        },
+    ),
     "plots": {
         "html_template": str,
         Optional("auto_open", default=False): Bool,
@@ -296,5 +327,9 @@ SCHEMA = {
         Optional("enabled", default=False): Bool,
         "config_dir": str,
         "config_name": str,
+    },
+    "studio": {
+        "token": str,
+        "url": str,
     },
 }

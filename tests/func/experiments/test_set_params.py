@@ -1,8 +1,7 @@
-import sys
-
 import pytest
 
-from ..utils.test_hydra import hydra_setup
+from dvc.exceptions import InvalidArgumentError
+from tests.func.utils.test_hydra import hydra_setup
 
 
 @pytest.mark.parametrize(
@@ -14,23 +13,11 @@ from ..utils.test_hydra import hydra_setup
 )
 def test_modify_params(params_repo, dvc, changes, expected):
     dvc.experiments.run(params=changes)
-    # pylint: disable=unspecified-encoding
-    with open("params.yaml", mode="r") as fobj:
+    with open("params.yaml") as fobj:
         assert fobj.read().strip() == expected
 
 
-@pytest.mark.parametrize(
-    "hydra_enabled",
-    [
-        pytest.param(
-            True,
-            marks=pytest.mark.skipif(
-                sys.version_info >= (3, 11), reason="unsupported on 3.11"
-            ),
-        ),
-        False,
-    ],
-)
+@pytest.mark.parametrize("hydra_enabled", [True, False])
 @pytest.mark.parametrize(
     "config_dir,config_name",
     [
@@ -85,3 +72,73 @@ def test_hydra_compose_and_dump(
             "goo": {"bag": 3.0},
             "lorem": False,
         }
+
+
+@pytest.mark.parametrize(
+    "hydra_enabled,overrides,expected",
+    [
+        (
+            True,
+            ["db=mysql,postgresql"],
+            [
+                {"params.yaml": ["db=mysql"]},
+                {"params.yaml": ["db=postgresql"]},
+            ],
+        ),
+        (
+            False,
+            ["foo=bar,baz"],
+            [{"params.yaml": ["foo=bar"]}, {"params.yaml": ["foo=baz"]}],
+        ),
+        (
+            False,
+            [],
+            [{}],
+        ),
+    ],
+)
+def test_hydra_sweep(
+    tmp_dir, params_repo, dvc, mocker, hydra_enabled, overrides, expected
+):
+    patched = mocker.patch.object(dvc.experiments, "queue_one")
+
+    if hydra_enabled:
+        hydra_setup(
+            tmp_dir,
+            config_dir="conf",
+            config_name="config",
+        )
+        with dvc.config.edit() as conf:
+            conf["hydra"]["enabled"] = True
+
+    dvc.experiments.run(params=overrides, queue=True)
+
+    assert patched.call_count == len(expected)
+    for e in expected:
+        patched.assert_any_call(
+            mocker.ANY,
+            params=e,
+            reset=True,
+            targets=None,
+            copy_paths=None,
+            message=None,
+        )
+
+
+def test_hydra_sweep_requires_queue(params_repo, dvc):
+    with pytest.raises(
+        InvalidArgumentError,
+        match="Sweep overrides can't be used without `--queue`",
+    ):
+        dvc.experiments.run(params=["db=mysql,postgresql"])
+
+
+def test_hydra_sweep_prefix_name(tmp_dir, params_repo, dvc):
+    prefix = "foo"
+    db_values = ["mysql", "postgresql"]
+    param = "+db=" + ",".join(db_values)
+    dvc.experiments.run(params=[param], queue=True, name=prefix)
+    expected_names = [f"{prefix}-{i+1}" for i, _ in enumerate(db_values)]
+    exp_names = [entry.name for entry in dvc.experiments.celery_queue.iter_queued()]
+    for name, expected in zip(exp_names, expected_names):
+        assert name == expected

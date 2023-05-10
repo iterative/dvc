@@ -50,7 +50,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
 
     fs = DataFileSystem(index=dvc.index.data["repo"])
     with fs.open("file", "r") as fobj:
-        # NOTE: Unlike DvcFileSystem, DataFileSystem should not
+        # NOTE: Unlike DVCFileSystem, DataFileSystem should not
         # be affected by a dirty workspace.
         assert fobj.read() == "file"
 
@@ -58,7 +58,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
 def test_open_no_remote(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").unlink()
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
 
     fs = DataFileSystem(index=dvc.index.data["repo"])
     with pytest.raises(FileNotFoundError):
@@ -71,7 +71,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
 
     fs = DataFileSystem(index=dvc.index.data["repo"])
-    # NOTE: Unlike DvcFileSystem, DataFileSystem should not
+    # NOTE: Unlike DVCFileSystem, DataFileSystem should not
     # be affected by a dirty workspace.
     with pytest.raises(FileNotFoundError):
         with fs.open("file", "r"):
@@ -89,10 +89,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
     dvc.scm.add(["foo.dvc", ".gitignore"])
     dvc.scm.commit("foofoo")
 
-    for rev in dvc.brancher(revs=["HEAD~1"]):
-        if rev == "workspace":
-            continue
-
+    with dvc.switch("HEAD~1"):
         fs = DataFileSystem(index=dvc.index.data["repo"])
         with fs.open("foo", "r") as fobj:
             assert fobj.read() == "foo"
@@ -226,9 +223,7 @@ def test_get_hash_file(tmp_dir, dvc):
 
 
 def test_get_hash_dir(tmp_dir, dvc, mocker):
-    tmp_dir.dvc_gen(
-        {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
-    )
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}})
     fs = DataFileSystem(index=dvc.index.data["repo"])
     hash_file_spy = mocker.spy(dvc_data.hashfile.hash, "hash_file")
     assert fs.info("dir")["md5"] == "8761c4e9acad696bee718615e23e22db.dir"
@@ -236,19 +231,15 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
 
 
 def test_get_hash_granular(tmp_dir, dvc):
-    tmp_dir.dvc_gen(
-        {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
-    )
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}})
     fs = DataFileSystem(index=dvc.index.data["repo"])
     subdir = "dir/subdir"
     assert fs.info(subdir).get("md5") is None
-    _, _, obj = build(dvc.odb.local, subdir, fs, "md5", dry_run=True)
-    assert obj.hash_info == HashInfo(
-        "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
-    )
+    _, _, obj = build(dvc.cache.local, subdir, fs, "md5", dry_run=True)
+    assert obj.hash_info == HashInfo("md5", "af314506f1622d107e0ed3f14ec1a3b5.dir")
     data = posixpath.join(subdir, "data")
     assert fs.info(data)["md5"] == "8d777f385d3dfec8815d20f7496026dc"
-    _, _, obj = build(dvc.odb.local, data, fs, "md5", dry_run=True)
+    _, _, obj = build(dvc.cache.local, data, fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
 
 
@@ -259,7 +250,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     fs = DataFileSystem(index=dvc.index.data["repo"])
     expected = "8c7dd922ad47494fc02c388e12c00eac"
     assert fs.info("file").get("md5") == expected
-    _, _, obj = build(dvc.odb.local, "file", fs, "md5", dry_run=True)
+    _, _, obj = build(dvc.cache.local, "file", fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo("md5", expected)
 
 
@@ -270,5 +261,5 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     fs = DataFileSystem(index=dvc.index.data["repo"])
     expected = "5ea40360f5b4ec688df672a4db9c17d1.dir"
     assert fs.info("dir").get("md5") == expected
-    _, _, obj = build(dvc.odb.local, "dir", fs, "md5", dry_run=True)
+    _, _, obj = build(dvc.cache.local, "dir", fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo("md5", expected)

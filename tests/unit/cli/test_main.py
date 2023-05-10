@@ -22,11 +22,11 @@ def test_state_pickle_errors_are_correctly_raised(tmp_dir, caplog, mocker):
 
     assert main() == 255
     assert (
-        f"Could not open pickled 'md5s' cache.\n"
+        "Could not open pickled 'md5s' cache.\n"
         f"Remove the '{path.relative_to(tmp_dir)}' directory "
         "and then retry this command.\n"
-        "See <https://error.dvc.org/pickle> for more information."
-    ) in caplog.text
+        "See <https://error.dvc.org/pickle> for more information." in caplog.text
+    )
 
 
 @pytest.mark.parametrize(
@@ -37,9 +37,7 @@ def test_state_pickle_errors_are_correctly_raised(tmp_dir, caplog, mocker):
         ("conda", "conda install -c conda-forge dvc-proto"),
     ],
 )
-def test_remote_missing_deps_are_correctly_reported(
-    tmp_dir, caplog, mocker, pkg, msg
-):
+def test_remote_missing_deps_are_correctly_reported(tmp_dir, caplog, mocker, pkg, msg):
     error = RemoteMissingDepsError(FileSystem(), "proto", "proto://", ["deps"])
     mocker.patch("dvc.utils.pkg.PKG", pkg)
     mocker.patch(

@@ -1,4 +1,5 @@
 import errno
+import itertools
 import os
 import stat
 from unittest.mock import patch
@@ -10,65 +11,56 @@ from dvc.cli import main
 from dvc.config import Config
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
 from dvc.utils.fs import remove
-from tests.basic_env import TestDvc
 
 
-class TestRemote(TestDvc):
-    def test(self):
-        remotes = ["a", "b", "c"]
+def test_remote(dvc):
+    remotes = ["a", "b", "c"]
 
-        self.assertEqual(main(["remote", "list"]), 0)
-        self.assertNotEqual(main(["remote", "remove", remotes[0]]), 0)
+    assert main(["remote", "list"]) == 0
+    assert main(["remote", "remove", remotes[0]]) != 0
 
-        for r in remotes:
-            self.assertEqual(
-                main(["remote", "add", "--default", r, "s3://bucket/name"]), 0
-            )
+    for r in remotes:
+        assert main(["remote", "add", "--default", r, "s3://bucket/name"]) == 0
 
-        self.assertEqual(main(["remote", "list"]), 0)
+    assert main(["remote", "list"]) == 0
 
-        self.assertEqual(
-            main(["remote", "modify", remotes[0], "checksum_jobs", "1"]), 0
-        )
-        self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
+    assert main(["remote", "modify", remotes[0], "checksum_jobs", "1"]) == 0
+    assert main(["remote", "remove", remotes[0]]) == 0
 
-        self.assertEqual(main(["remote", "list"]), 0)
+    assert main(["remote", "list"]) == 0
 
-    def test_relative_path(self):
-        dname = os.path.join("..", "path", "to", "dir")
-        ret = main(["remote", "add", "mylocal", dname])
-        self.assertEqual(ret, 0)
 
-        # NOTE: we are in the repo's root and config is in .dvc/, so
-        # dir path written to config should be just one level above.
-        rel = os.path.join("..", dname)
-        config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(
-            config['remote "mylocal"']["url"], rel.replace("\\", "/")
-        )
+def test_remote_add_relative_path(dvc):
+    dname = os.path.join("..", "path", "to", "dir")
+    ret = main(["remote", "add", "mylocal", dname])
+    assert ret == 0
 
-    def test_overwrite(self):
-        remote_name = "a"
-        remote_url = "s3://bucket/name"
-        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 0)
-        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 251)
-        self.assertEqual(
-            main(["remote", "add", "-f", remote_name, remote_url]), 0
-        )
+    # NOTE: we are in the repo's root and config is in .dvc/, so
+    # dir path written to config should be just one level above.
+    rel = os.path.join("..", dname)
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "mylocal"']["url"] == rel.replace("\\", "/")
 
-    def test_referencing_other_remotes(self):
-        assert main(["remote", "add", "foo", "ssh://localhost/"]) == 0
-        assert main(["remote", "add", "bar", "remote://foo/dvc-storage"]) == 0
 
-        config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        assert config['remote "bar"']["url"] == "remote://foo/dvc-storage"
+def test_remote_overwrite(dvc):
+    remote_name = "a"
+    remote_url = "s3://bucket/name"
+    assert main(["remote", "add", remote_name, remote_url]) == 0
+    assert main(["remote", "add", remote_name, remote_url]) == 251
+    assert main(["remote", "add", "-f", remote_name, remote_url]) == 0
+
+
+def test_referencing_other_remotes(dvc):
+    assert main(["remote", "add", "foo", "ssh://localhost/"]) == 0
+    assert main(["remote", "add", "bar", "remote://foo/dvc-storage"]) == 0
+
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "bar"']["url"] == "remote://foo/dvc-storage"
 
 
 def test_remove_default(tmp_dir, dvc):
     remote = "mys3"
-    assert (
-        main(["remote", "add", "--default", remote, "s3://bucket/name"]) == 0
-    )
+    assert main(["remote", "add", "--default", remote, "s3://bucket/name"]) == 0
     assert main(["remote", "modify", remote, "profile", "default"]) == 0
     assert main(["config", "--local", "core.remote", remote]) == 0
 
@@ -85,37 +77,35 @@ def test_remove_default(tmp_dir, dvc):
     assert local_config.get("core", {}).get("remote") is None
 
 
-class TestRemoteRemove(TestDvc):
-    def test(self):
-        ret = main(["config", "core.checksum_jobs", "1"])
-        self.assertEqual(ret, 0)
+def test_remote_remove(dvc):
+    ret = main(["config", "core.checksum_jobs", "1"])
+    assert ret == 0
 
-        remote = "mys3"
-        ret = main(["remote", "add", remote, "s3://bucket/name"])
-        self.assertEqual(ret, 0)
+    remote = "mys3"
+    ret = main(["remote", "add", remote, "s3://bucket/name"])
+    assert ret == 0
 
-        ret = main(["remote", "remove", remote])
-        self.assertEqual(ret, 0)
+    ret = main(["remote", "remove", remote])
+    assert ret == 0
 
 
-class TestRemoteDefault(TestDvc):
-    def test(self):
-        remote = "mys3"
-        ret = main(["remote", "add", "mys3", "s3://bucket/path"])
-        self.assertEqual(ret, 0)
+def test_remote_default_cmd(dvc):
+    remote = "mys3"
+    ret = main(["remote", "add", "mys3", "s3://bucket/path"])
+    assert ret == 0
 
-        ret = main(["remote", "default", "mys3"])
-        self.assertEqual(ret, 0)
-        config_file = os.path.join(self.dvc.dvc_dir, Config.CONFIG)
-        config = configobj.ConfigObj(config_file)
-        default = config["core"]["remote"]
-        self.assertEqual(default, remote)
+    ret = main(["remote", "default", "mys3"])
+    assert ret == 0
+    config_file = os.path.join(dvc.dvc_dir, Config.CONFIG)
+    config = configobj.ConfigObj(config_file)
+    default = config["core"]["remote"]
+    assert default == remote
 
-        ret = main(["remote", "default", "--unset"])
-        self.assertEqual(ret, 0)
-        config = configobj.ConfigObj(config_file)
-        default = config.get("core", {}).get("remote")
-        self.assertEqual(default, None)
+    ret = main(["remote", "default", "--unset"])
+    assert ret == 0
+    config = configobj.ConfigObj(config_file)
+    default = config.get("core", {}).get("remote")
+    assert default is None
 
 
 def test_show_default(dvc, capsys):
@@ -146,33 +136,27 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 
     path = (tmp_dir / "data").fs_path
 
-    tree = Tree.from_list(
-        [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
-    )
+    tree = Tree.from_list([{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}])
     tree.digest()
-    with patch(
-        "dvc_data.hashfile.build._build_tree", return_value=(None, tree)
-    ):
-        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+    with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
+        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
         hash1 = obj.hash_info
 
     # remove the raw dir obj to force building the tree on the next build call
-    dvc.odb.local.fs.remove(dvc.odb.local.oid_to_path(hash1.as_raw().value))
+    dvc.cache.local.fs.remove(dvc.cache.local.oid_to_path(hash1.as_raw().value))
 
-    tree = Tree.from_list(
-        [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
-    )
+    tree = Tree.from_list([{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}])
     tree.digest()
-    with patch(
-        "dvc_data.hashfile.build._build_tree", return_value=(None, tree)
-    ):
-        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+    with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
+        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
         hash2 = obj.hash_info
 
     assert hash1 == hash2
 
 
-def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
+def test_partial_push_n_pull(  # noqa: C901
+    tmp_dir, dvc, tmp_path_factory, local_remote
+):
     from dvc_objects.fs import generic
 
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
@@ -184,10 +168,26 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     odb = dvc.cloud.get_remote_odb("upstream")
 
     def unreliable_upload(from_fs, from_info, to_fs, to_info, **kwargs):
-        if os.path.abspath(to_info) == os.path.abspath(
-            odb.get(foo.hash_info.value).path
-        ):
-            raise Exception("stop foo")
+        on_error = kwargs["on_error"]
+        assert on_error
+        if isinstance(from_info, str):
+            from_info = [from_info]
+        else:
+            from_info = list(from_info)
+        if isinstance(to_info, str):
+            to_info = [to_info]
+        else:
+            to_info = list(to_info)
+        for i in range(len(from_info) - 1, -1, -1):
+            from_i = from_info[i]
+            to_i = to_info[i]
+            if os.path.abspath(to_i) == os.path.abspath(
+                odb.get(foo.hash_info.value).path
+            ):
+                if on_error:
+                    on_error(from_i, to_i, Exception("stop foo"))
+                del from_info[i]
+                del to_info[i]
         return original(from_fs, from_info, to_fs, to_info, **kwargs)
 
     with patch.object(generic, "transfer", unreliable_upload):
@@ -201,10 +201,21 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
 
     # Push everything and delete local cache
     dvc.push()
-    remove(dvc.odb.local.path)
+    dvc.cache.local.clear()
 
     baz._collect_used_dir_cache()
-    with patch.object(generic, "transfer", side_effect=Exception):
+
+    def unreliable_download(_from_fs, from_info, _to_fs, to_info, **kwargs):
+        on_error = kwargs["on_error"]
+        assert on_error
+        if isinstance(from_info, str):
+            from_info = [from_info]
+        if isinstance(to_info, str):
+            to_info = [to_info]
+        for from_i, to_i in zip(from_info, to_info):
+            on_error(from_i, to_i, Exception())
+
+    with patch.object(generic, "transfer", unreliable_download):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -222,9 +233,9 @@ def test_raise_on_too_many_open_files(
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
-    with pytest.raises(OSError) as e:
+    with pytest.raises(OSError, match="Too many open files") as e:
         dvc.push()
-        assert e.errno == errno.EMFILE
+    assert e.value.errno == errno.EMFILE
 
 
 def test_modify_missing_remote(tmp_dir, dvc):
@@ -233,12 +244,8 @@ def test_modify_missing_remote(tmp_dir, dvc):
 
 def test_remote_modify_local_on_repo_config(tmp_dir, dvc):
     assert main(["remote", "add", "myremote", "http://example.com/path"]) == 0
-    assert (
-        main(["remote", "modify", "myremote", "user", "xxx", "--local"]) == 0
-    )
-    assert dvc.config.load_one("local")["remote"]["myremote"] == {
-        "user": "xxx"
-    }
+    assert main(["remote", "modify", "myremote", "user", "xxx", "--local"]) == 0
+    assert dvc.config.load_one("local")["remote"]["myremote"] == {"user": "xxx"}
     assert dvc.config.load_one("repo")["remote"]["myremote"] == {
         "url": "http://example.com/path"
     }
@@ -256,7 +263,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     external_dir = tmp_path_factory.mktemp("external_dir")
     file = external_dir / "file"
 
-    dvc.odb.local = None
+    dvc.cache.local = None
     with pytest.raises(RemoteCacheRequiredError):
         dvc.run(
             cmd=f"echo content > {file}",
@@ -279,21 +286,20 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     odb = dvc.cloud.get_remote_odb("upstream")
     foo_path = odb.oid_to_path(foo.hash_info.value)
     bar_path = odb.oid_to_path(foo.obj._trie[("bar",)][1].value)
-    paths = [args[3] for args, _ in mocked_upload.call_args_list]
+    paths = list(
+        itertools.chain.from_iterable(
+            args[3] for args, _ in mocked_upload.call_args_list
+        )
+    )
     assert paths.index(foo_path) > paths.index(bar_path)
 
 
 def test_remote_modify_validation(dvc):
     remote_name = "drive"
     unsupported_config = "unsupported_config"
+    assert main(["remote", "add", "-d", remote_name, "gdrive://test/test"]) == 0
     assert (
-        main(["remote", "add", "-d", remote_name, "gdrive://test/test"]) == 0
-    )
-    assert (
-        main(
-            ["remote", "modify", remote_name, unsupported_config, "something"]
-        )
-        == 251
+        main(["remote", "modify", remote_name, unsupported_config, "something"]) == 251
     )
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert unsupported_config not in config[f'remote "{remote_name}"']
@@ -304,20 +310,14 @@ def test_remote_modify_unset(dvc):
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
 
-    assert (
-        main(["remote", "modify", "myremote", "gdrive_client_id", "something"])
-        == 0
-    )
+    assert main(["remote", "modify", "myremote", "gdrive_client_id", "something"]) == 0
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert config['remote "myremote"'] == {
         "url": "gdrive://test/test",
         "gdrive_client_id": "something",
     }
 
-    assert (
-        main(["remote", "modify", "myremote", "gdrive_client_id", "--unset"])
-        == 0
-    )
+    assert main(["remote", "modify", "myremote", "gdrive_client_id", "--unset"]) == 0
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
 
@@ -426,7 +426,7 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     remote_odb = dvc.cloud.get_remote_odb("upstream")
 
-    odb = dvc.odb.local
+    odb = dvc.cache.local
     out = stage.outs[0]
     file_objs = [entry_obj for _, _, entry_obj in out.obj]
 

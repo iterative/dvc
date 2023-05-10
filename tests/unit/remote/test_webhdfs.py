@@ -1,5 +1,3 @@
-from unittest.mock import Mock, create_autospec
-
 import pytest
 import requests
 from dvc_webhdfs import WebHDFSFileSystem
@@ -42,12 +40,12 @@ def test_init(dvc, webhdfs_config):
     assert fs.fs_args["use_https"] == use_https
 
 
-def test_verify_ssl(dvc, webhdfs_config, monkeypatch):
-    mock_session = create_autospec(requests.Session)
-    monkeypatch.setattr(requests, "Session", Mock(return_value=mock_session))
+def test_verify_ssl(dvc, webhdfs_config, monkeypatch, mocker):
+    mock_session = mocker.create_autospec(requests.Session)
+    monkeypatch.setattr(requests, "Session", mocker.Mock(return_value=mock_session))
     # can't have token at the same time as user or proxy_to
     del webhdfs_config["token"]
     fs = WebHDFSFileSystem(**webhdfs_config)
     # ssl verify can't be set until after the file system is instantiated
-    fs.fs  # pylint: disable=pointless-statement
+    assert fs.fs
     assert mock_session.verify == ssl_verify

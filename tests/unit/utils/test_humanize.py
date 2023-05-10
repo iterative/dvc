@@ -16,12 +16,9 @@ def test_get_summary():
         ]
     )
 
-    assert get_summary(stats.items()) == (
-        "3 files fetched, "
-        "3 files added, "
-        "2 files deleted "
-        "and "
-        "2 files modified"
+    assert (
+        get_summary(stats.items())
+        == "3 files fetched, 3 files added, 2 files deleted and 2 files modified"
     )
 
     del stats["fetched"]
@@ -37,8 +34,8 @@ def test_get_summary():
     del stats["modified"]
     assert get_summary(stats.items()) == "3 files added"
 
-    assert get_summary([]) == ""
-    assert get_summary([("x", 0), ("y", [])]) == ""
+    assert not get_summary([])
+    assert not get_summary([("x", 0), ("y", [])])
     assert get_summary([("x", 1), ("y", [])]) == "1 file x"
 
 

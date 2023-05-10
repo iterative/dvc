@@ -4,10 +4,17 @@ import os
 import re
 from contextlib import contextmanager
 from functools import partial
+from typing import TYPE_CHECKING, Dict, Optional
 
-from funcy import cached_property, compact, memoize, re_find
+from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+
+from .utils.objects import cached_property
+
+if TYPE_CHECKING:
+    from dvc.fs import FileSystem
+    from dvc.types import DictStrAny, StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +91,11 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self, dvc_dir=None, validate=True, fs=None, config=None
+        self,
+        dvc_dir: Optional["StrPath"] = None,
+        validate: bool = True,
+        fs: Optional["FileSystem"] = None,
+        config: Optional["DictStrAny"] = None,
     ):  # pylint: disable=super-init-not-called
         from dvc.fs import LocalFileSystem
 
@@ -92,21 +103,25 @@ class Config(dict):
         self.wfs = LocalFileSystem()
         self.fs = fs or self.wfs
 
-        if not dvc_dir:
-            try:
-                from dvc.repo import Repo
-
-                self.dvc_dir = Repo.find_dvc_dir()
-            except NotDvcRepoError:
-                self.dvc_dir = None
-        else:
+        if dvc_dir:
             self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
 
         self.load(validate=validate, config=config)
 
     @classmethod
+    def from_cwd(cls, fs: Optional["FileSystem"] = None, **kwargs):
+        from dvc.repo import Repo
+
+        try:
+            dvc_dir = Repo.find_dvc_dir(fs=fs)
+        except NotDvcRepoError:
+            dvc_dir = None
+
+        return cls(dvc_dir=dvc_dir, fs=fs, **kwargs)
+
+    @classmethod
     def get_dir(cls, level):
-        from appdirs import site_config_dir, user_config_dir
+        from platformdirs import site_config_dir, user_config_dir
 
         assert level in ("global", "system")
 
@@ -116,7 +131,7 @@ class Config(dict):
             return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
 
     @cached_property
-    def files(self):
+    def files(self) -> Dict[str, str]:
         files = {
             level: os.path.join(self.get_dir(level), self.CONFIG)
             for level in ("system", "global")
@@ -139,10 +154,10 @@ class Config(dict):
             dvc.config.Config: config object.
         """
         config_file = os.path.join(dvc_dir, Config.CONFIG)
-        open(config_file, "w+", encoding="utf-8").close()
-        return Config(dvc_dir)
+        with open(config_file, "w+", encoding="utf-8"):
+            return Config(dvc_dir)
 
-    def load(self, validate=True, config=None):
+    def load(self, validate: bool = True, config: Optional["DictStrAny"] = None):
         """Loads config from all the config files.
 
         Raises:
@@ -159,24 +174,25 @@ class Config(dict):
         self.clear()
         self.update(conf)
 
-        # Add resolved default cache.dir
-        if not self["cache"].get("dir") and self.dvc_dir:
-            self["cache"]["dir"] = os.path.join(self.dvc_dir, "cache")
-
     def _get_fs(self, level):
         # NOTE: this might be a Gitfs, which doesn't see things outside of
         # the repo.
         return self.fs if level == "repo" else self.wfs
 
     def _load_config(self, level):
-        from configobj import ConfigObj
+        from configobj import ConfigObj, ConfigObjError
 
         filename = self.files[level]
         fs = self._get_fs(level)
 
         if fs.exists(filename):
             with fs.open(filename) as fobj:
-                conf_obj = ConfigObj(fobj)
+                try:
+                    conf_obj = ConfigObj(fobj)
+                except UnicodeDecodeError as exc:
+                    raise ConfigError(str(exc)) from exc
+                except ConfigObjError as exc:
+                    raise ConfigError(str(exc)) from exc
         else:
             conf_obj = ConfigObj()
         return _parse_named(_lower_keys(conf_obj.dict()))
@@ -275,7 +291,7 @@ class Config(dict):
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
     def load_config_to_level(self, level=None):
-        merged_conf = {}
+        merged_conf: Dict = {}
         for merge_level in self.LEVELS:
             if merge_level == level:
                 break
@@ -321,7 +337,7 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result = {"remote": {}, "machine": {}}
+    result: Dict[str, Dict] = {"remote": {}, "machine": {}}
 
     for section, val in conf.items():
         match = re_find(r'^\s*(remote|machine)\s*"(.*)"\s*$', section)
@@ -358,6 +374,5 @@ def merge(into, update):
 
 def _lower_keys(data):
     return {
-        k.lower(): _lower_keys(v) if isinstance(v, dict) else v
-        for k, v in data.items()
+        k.lower(): _lower_keys(v) if isinstance(v, dict) else v for k, v in data.items()
     }

@@ -3,9 +3,8 @@ from typing import TYPE_CHECKING
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
+    from dvc.scm import Git
 
 
 def pre_commit_install(scm: "Git") -> None:
@@ -21,16 +20,19 @@ def pre_commit_install(scm: "Git") -> None:
             "hooks": [
                 {
                     "id": "dvc-pre-commit",
+                    "additional_dependencies": [".[all]"],
                     "language_version": "python3",
                     "stages": ["commit"],
                 },
                 {
                     "id": "dvc-pre-push",
+                    "additional_dependencies": [".[all]"],
                     "language_version": "python3",
                     "stages": ["push"],
                 },
                 {
                     "id": "dvc-post-checkout",
+                    "additional_dependencies": [".[all]"],
                     "language_version": "python3",
                     "stages": ["post-checkout"],
                     "always_run": True,
@@ -54,7 +56,9 @@ def install_hooks(scm: "Git") -> None:
             scm.verify_hook(hook)
         except GitHookAlreadyExists as exc:
             link = format_link("https://man.dvc.org/install")
-            raise DvcException(f"{exc}. Please refer to {link} for more info.")
+            raise DvcException(  # noqa: B904
+                f"{exc}. Please refer to {link} for more info."
+            )
 
     for hook in hooks:
         scm.install_hook(hook, f"exec dvc git-hook {hook} $@")
@@ -66,7 +70,7 @@ def install(self: "Repo", use_pre_commit_tool: bool = False) -> None:
     If use_pre_commit_tool is set and pre-commit is installed it will be used
     to install the hooks.
     """
-    from scmrepo.git import Git
+    from dvc.scm import Git
 
     scm = self.scm
     if not isinstance(scm, Git):

@@ -28,7 +28,6 @@ class CmdQueueRemove(CmdBase):
             )
 
     def run(self):
-
         self.check_arguments()
 
         if self.args.all:
@@ -57,7 +56,6 @@ class CmdQueueRemove(CmdBase):
 
 
 def add_parser(queue_subparsers, parent_parser):
-
     QUEUE_REMOVE_HELP = "Remove queued and completed tasks from the queue."
     queue_remove_parser = queue_subparsers.add_parser(
         "remove",

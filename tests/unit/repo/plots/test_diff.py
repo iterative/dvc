@@ -30,9 +30,7 @@ def test_revisions(mocker, arg_revisions, is_dirty, expected_revisions):
         (["v1", "v2"], None, ["v1", "v2"]),
     ],
 )
-def test_revisions_experiment(
-    mocker, arg_revisions, baseline, expected_revisions
-):
+def test_revisions_experiment(mocker, arg_revisions, baseline, expected_revisions):
     mock_scm = mocker.Mock()
     mock_scm.configure_mock(
         **{"is_dirty.return_value": False, "get_ref.return_value": None}

@@ -1,50 +1,29 @@
 name: Tests
 
 on:
-  pull_request: {}
-  push: {}
+  push:
+    branches: [main]
+  pull_request:
   schedule:
     - cron: '5 1 * * *'  # every day at 01:05
+  workflow_dispatch:
 
-env:
-  DVC_TEST: "true"
-  HOMEBREW_NO_AUTO_UPDATE: 1
-  SHELL: /bin/bash
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  lint:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    steps:
-    - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.10.0
-      with:
-        access_token: ${{ github.token }}
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.8
-    - name: Install requirements
-      run: |
-        pip install --upgrade pip setuptools wheel
-        pip install collective.checkdocs==0.2
-        pip install ".[dev]" pre-commit
-    - name: Check README
-      run: python setup.py checkdocs
-    - uses: pre-commit/action@v3.0.0
   tests:
-    timeout-minutes: 45
+    timeout-minutes: 50
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04, windows-latest, macos-latest]
-        pyv: ["3.8", "3.9", "3.10"]
-        include:
-        - {os: ubuntu-latest, pyv: "3.11-dev"}
+        pyv: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
     - uses: actions/checkout@v3
@@ -54,41 +33,36 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.pyv }}
-    - name: get pip cache dir
-      id: pip-cache-dir
-      run: |
-        echo "::set-output name=dir::$(pip cache dir)"
-    - name: set pip cache
-      id: pip-cache
-      uses: actions/cache@v3
-      with:
-        path: ${{ steps.pip-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        cache: pip
+        cache-dependency-path: pyproject.toml
     - name: install
-      if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
-        pip install --upgrade pip setuptools wheel
+        pip install --upgrade pip wheel
         pip install -e ".[dev]"
-      env:
-        AIOHTTP_NO_EXTENSIONS: ${{ matrix.pyv == '3.11-dev' && '1' }}
+    - uses: pre-commit/action@v3.0.0
     - name: run tests
       timeout-minutes: 40
-      run: >-
-        python -m tests -n=auto
-        --cov-report=xml --cov-report=term
-        ${{ env.extra_test_args }}
+      env:
+        PYTHONUTF8: 1
+      run: >
+        pytest -n=logical --timeout=300 --durations=100
+        --cov --cov-report=xml --cov-report=term
     - name: upload coverage report
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+  check:
+    if: always()
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
   notify:
     if: github.ref == 'refs/heads/main' && failure()
-    needs:
-      - lint
-      - tests
+    needs: [tests]
     runs-on: ubuntu-latest
     steps:
     - name: Slack Notification

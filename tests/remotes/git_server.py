@@ -4,16 +4,17 @@ from dvc_ssh.tests.cloud import SSH, TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 class GitSSH(SSH):
     @staticmethod
-    def get_url(host, port):  # pylint: disable=arguments-differ
+    def get_url(host, port):
         return f"ssh://{host}:{port}/tmp/data/git"
 
 
 @pytest.fixture
-def git_server(test_config, docker_compose, docker_services):
+def git_server(request, test_config):
     import asyncssh
     from sshfs import SSHFileSystem
 
     test_config.requires("ssh")
+    docker_services = request.getfixturevalue("docker_services")
     conn_info = {
         "host": "127.0.0.1",
         "port": docker_services.port_for("git-server", 2222),
@@ -44,7 +45,7 @@ def git_server(test_config, docker_compose, docker_services):
 def git_ssh_connection(git_server):
     from sshfs import SSHFileSystem
 
-    yield SSHFileSystem(
+    return SSHFileSystem(
         host=git_server["host"],
         port=git_server["port"],
         username=TEST_SSH_USER,

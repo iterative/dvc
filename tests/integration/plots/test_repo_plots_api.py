@@ -10,10 +10,7 @@ def test_api(tmp_dir, dvc, repo_with_plots):
 
     workspace_data = next(dvc.plots.collect())
 
-    assert (
-        get_plot(workspace_data, "workspace", file="image.png", endkey="props")
-        == {}
-    )
+    assert get_plot(workspace_data, "workspace", file="image.png", endkey="props") == {}
     image_source = get_plot(
         workspace_data, "workspace", file="image.png", endkey="data_source"
     )
@@ -30,9 +27,7 @@ def test_api(tmp_dir, dvc, repo_with_plots):
     assert linear_source() == {"data": linear_v1}
 
     assert (
-        get_plot(
-            workspace_data, "workspace", file="confusion.json", endkey="props"
-        )
+        get_plot(workspace_data, "workspace", file="confusion.json", endkey="props")
         == confusion_params
     )
     confusion_source = get_plot(
@@ -49,10 +44,7 @@ def test_api(tmp_dir, dvc, repo_with_plots):
 
     workspace_data = next(data_generator)
 
-    assert (
-        get_plot(workspace_data, "workspace", file="image.png", endkey="props")
-        == {}
-    )
+    assert get_plot(workspace_data, "workspace", file="image.png", endkey="props") == {}
     image_source = get_plot(
         workspace_data, "workspace", file="image.png", endkey="data_source"
     )
@@ -69,9 +61,7 @@ def test_api(tmp_dir, dvc, repo_with_plots):
     assert linear_source() == {"data": linear_v2}
 
     assert (
-        get_plot(
-            workspace_data, "workspace", file="confusion.json", endkey="props"
-        )
+        get_plot(workspace_data, "workspace", file="confusion.json", endkey="props")
         == confusion_params
     )
     confusion_source = get_plot(
@@ -86,9 +76,7 @@ def test_api(tmp_dir, dvc, repo_with_plots):
     head_data = next(data_generator)
 
     assert get_plot(head_data, "HEAD", file="image.png", endkey="props") == {}
-    image_source = get_plot(
-        head_data, "HEAD", file="image.png", endkey="data_source"
-    )
+    image_source = get_plot(head_data, "HEAD", file="image.png", endkey="data_source")
     assert callable(image_source)
     assert image_source() == {"data": image_v1}
 
@@ -126,8 +114,6 @@ def test_api_with_config_plots(tmp_dir, dvc, capsys, repo_with_config_plots):
     )
 
     for file in plots_state["data"]:
-        data_source = get_plot(
-            plots_data, "workspace", file=file, endkey="data_source"
-        )
+        data_source = get_plot(plots_data, "workspace", file=file, endkey="data_source")
         assert callable(data_source)
         assert data_source() == {"data": plots_state["data"][file]}

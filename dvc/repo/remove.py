@@ -26,8 +26,7 @@ def remove(self: "Repo", target: str, outs: bool = False):
         # give a more helpful error message.
         if self.fs.exists(target + DVC_FILE_SUFFIX):
             raise StageFileIsNotDvcFileError(target) from e
-        else:
-            raise
+        raise
 
     for stage in stages:
         stage.remove(remove_outs=outs, force=outs)

@@ -1,6 +1,10 @@
 import json
+from os.path import join
+
+import pytest
 
 from dvc.cli import main
+from dvc.utils import relpath
 
 
 def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
@@ -22,15 +26,18 @@ def test_metrics_diff_yaml(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         (tmp_dir / "m_temp.yaml").dump(metrics)
-        run_copy_metrics(
-            "m_temp.yaml", "m.yaml", metrics=["m.yaml"], commit=str(val)
-        )
+        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"], commit=str(val))
 
     _gen(1)
     _gen(2)
     _gen(3)
 
-    expected = {"m.yaml": {"a.b.c": {"old": 1, "new": 3, "diff": 2}}}
+    expected = {
+        "m.yaml": {
+            "a.b.e": {"old": "1", "new": "3"},
+            "a.b.c": {"old": 1, "new": 3, "diff": 2},
+        }
+    }
 
     assert dvc.metrics.diff(a_rev="HEAD~2") == expected
 
@@ -39,15 +46,18 @@ def test_metrics_diff_json(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         (tmp_dir / "m_temp.json").dump(metrics)
-        run_copy_metrics(
-            "m_temp.json", "m.json", metrics=["m.json"], commit=str(val)
-        )
+        run_copy_metrics("m_temp.json", "m.json", metrics=["m.json"], commit=str(val))
 
     _gen(1)
     _gen(2)
     _gen(3)
 
-    expected = {"m.json": {"a.b.c": {"old": 1, "new": 3, "diff": 2}}}
+    expected = {
+        "m.json": {
+            "a.b.e": {"old": "1", "new": "3"},
+            "a.b.c": {"old": 1, "new": 3, "diff": 2},
+        }
+    }
     assert dvc.metrics.diff(a_rev="HEAD~2") == expected
 
 
@@ -55,9 +65,7 @@ def test_metrics_diff_json_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         (tmp_dir / "m_temp.json").dump(metrics)
-        run_copy_metrics(
-            "m_temp.json", "m.json", metrics=["m.json"], commit=str(val)
-        )
+        run_copy_metrics("m_temp.json", "m.json", metrics=["m.json"], commit=str(val))
 
     _gen(1)
     _gen(2)
@@ -80,6 +88,7 @@ def test_metrics_diff_broken_json(tmp_dir, scm, dvc, run_copy_metrics):
 
     assert dvc.metrics.diff() == {
         "m.json": {
+            "a.b.e": {"old": "3", "new": None},
             "a.b.c": {"old": 1, "new": None},
             "a.b.d": {"old": 1, "new": None},
         }
@@ -98,6 +107,7 @@ def test_metrics_diff_new_metric(tmp_dir, scm, dvc, run_copy_metrics):
 
     assert dvc.metrics.diff() == {
         "m.json": {
+            "a.b.e": {"old": None, "new": "3"},
             "a.b.c": {"old": None, "new": 1},
             "a.b.d": {"old": None, "new": 1},
         }
@@ -118,6 +128,7 @@ def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc, run_copy_metrics):
 
     assert dvc.metrics.diff() == {
         "m.json": {
+            "a.b.e": {"old": "3", "new": None},
             "a.b.c": {"old": 1, "new": None},
             "a.b.d": {"old": 1, "new": None},
         }
@@ -145,9 +156,8 @@ def test_metrics_diff_with_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
 
 
 def test_no_commits(tmp_dir):
-    from scmrepo.git import Git
-
     from dvc.repo import Repo
+    from dvc.scm import Git
 
     git = Git.init(tmp_dir.fs_path)
     assert git.no_commits
@@ -188,8 +198,8 @@ def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
 
     captured = capsys.readouterr()
 
-    assert captured.out == (
-        "Path    Metric    HEAD~2    workspace    Change\n"
+    assert (
+        captured.out == "Path    Metric    HEAD~2    workspace    Change\n"
         "m.yaml  foo       1.23457   3.45679      2.22222\n"
     )
 
@@ -203,6 +213,40 @@ def test_metrics_diff_non_metrics(tmp_dir, scm, dvc):
     _gen(3)
 
     result = dvc.metrics.diff(targets=["some_file.yaml"], a_rev="HEAD~2")
-    assert result == {
-        "some_file.yaml": {"foo": {"old": 1, "new": 3, "diff": 2}}
+    assert result == {"some_file.yaml": {"foo": {"old": 1, "new": 3, "diff": 2}}}
+
+
+@pytest.mark.parametrize(
+    "dvcfile, metrics_file",
+    [
+        ("dvc.yaml", "my_metrics.yaml"),
+        ("dir/dvc.yaml", "my_metrics.yaml"),
+        ("dir/dvc.yaml", join("..", "my_metrics.yaml")),
+    ],
+)
+def test_diff_top_level_metrics(tmp_dir, dvc, scm, dvcfile, metrics_file):
+    directory = (tmp_dir / dvcfile).parent
+    directory.mkdir(exist_ok=True)
+    (tmp_dir / dvcfile).dump({"metrics": [metrics_file]})
+
+    metrics_file = directory / metrics_file
+    metrics_file.dump({"foo": 3})
+    scm.add_commit([metrics_file, tmp_dir / dvcfile], message="add metrics")
+
+    metrics_file.dump({"foo": 5})
+    assert dvc.metrics.diff() == {
+        relpath(directory / metrics_file): {"foo": {"diff": 2, "new": 5, "old": 3}}
     }
+
+
+def test_metrics_diff_active_branch_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
+    def _gen(val):
+        metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
+        (tmp_dir / "m_temp.yaml").dump(metrics)
+        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"], commit=str(val))
+
+    _gen(1)
+    _gen(2)
+    _gen(1)
+
+    assert dvc.metrics.diff(a_rev=tmp_dir.scm.active_branch()) == {}

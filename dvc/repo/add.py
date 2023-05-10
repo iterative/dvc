@@ -2,22 +2,22 @@ import logging
 import os
 from contextlib import contextmanager
 from itertools import tee
-from typing import TYPE_CHECKING, Any, Iterator, List
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional
 
 import colorama
 
-from dvc.ui import ui
-
-from ..exceptions import (
+from dvc.exceptions import (
     CacheLinkError,
     InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from ..repo.scm_context import scm_context
-from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
-from ..utils.collections import ensure_list, validate
+from dvc.repo.scm_context import scm_context
+from dvc.ui import ui
+from dvc.utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
+from dvc.utils.collections import ensure_list, validate
+
 from . import locked
 
 if TYPE_CHECKING:
@@ -29,11 +29,18 @@ Stages = List["Stage"]
 logger = logging.getLogger(__name__)
 
 
-OVERLAPPING_OUTPUT_FMT = (
+OVERLAPPING_CHILD_FMT = (
     "Cannot add '{out}', because it is overlapping with other "
     "DVC tracked output: '{parent}'.\n"
     "To include '{out}' in '{parent}', run "
     "'dvc commit {parent_stage}'"
+)
+
+OVERLAPPING_PARENT_FMT = (
+    "Cannot add '{parent}', because it is overlapping with other "
+    "DVC tracked output: '{out}'.\n"
+    "To include '{out}' in '{parent}', run "
+    "'dvc remove {out_stage}' and then 'dvc add {parent}'"
 )
 
 
@@ -84,14 +91,23 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
     try:
         yield
     except OverlappingOutputPathsError as exc:
-        msg = OVERLAPPING_OUTPUT_FMT.format(
-            out=exc.overlapping_out.fs_path,
-            parent=exc.parent.fs_path,
-            parent_stage=exc.parent.stage.addressing,
+        if exc.parent in [o for s in stages for o in s.outs]:
+            msg = OVERLAPPING_PARENT_FMT.format(
+                out=exc.overlapping_out,
+                parent=exc.parent,
+                out_stage=exc.overlapping_out.stage.addressing,
+            )
+        else:
+            msg = OVERLAPPING_CHILD_FMT.format(
+                out=exc.overlapping_out,
+                parent=exc.parent,
+                parent_stage=exc.parent.stage.addressing,
+            )
+        raise OverlappingOutputPathsError(  # noqa: B904
+            exc.parent, exc.overlapping_out, msg
         )
-        raise OverlappingOutputPathsError(exc.parent, exc.overlapping_out, msg)
     except OutputDuplicationError as exc:
-        raise OutputDuplicationError(
+        raise OutputDuplicationError(  # noqa: B904
             exc.output, list(set(exc.stages) - set(stages))
         )
 
@@ -99,9 +115,7 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
 def progress_iter(stages: Stages) -> Iterator["Stage"]:
     total = len(stages)
     desc = "Adding..."
-    with ui.progress(
-        stages, total=total, desc=desc, unit="file", leave=True
-    ) as pbar:
+    with ui.progress(stages, total=total, desc=desc, unit="file", leave=True) as pbar:
         if total == 1:
             pbar.bar_format = desc
             pbar.refresh()
@@ -146,12 +160,12 @@ VALIDATORS = (
 @validate(*VALIDATORS)
 @locked
 @scm_context
-def add(  # noqa: C901
+def add(
     repo: "Repo",
     targets: "TargetType",
     recursive: bool = False,
     no_commit: bool = False,
-    fname: str = None,
+    fname: Optional[str] = None,
     to_remote: bool = False,
     **kwargs: Any,
 ):
@@ -171,9 +185,9 @@ def add(  # noqa: C901
     with translate_graph_error(stages), ui.status(msg) as status:
         # remove existing stages that are to-be replaced with these
         # new stages for the graph checks.
-        new_index = repo.index.update(stages)
-        status.update("Checking graph")
-        new_index.check_graph()
+        repo.check_graph(
+            stages=stages, callback=lambda: status.update("Checking graph")
+        )
 
     odb = None
     if to_remote:
@@ -242,14 +256,15 @@ def _find_all_targets(
 def create_stages(
     repo: "Repo",
     targets: Iterator[str],
-    fname: str = None,
+    fname: Optional[str] = None,
     transfer: bool = False,
     external: bool = False,
+    force: bool = False,
     **kwargs: Any,
 ) -> Iterator["Stage"]:
     for target in targets:
         if kwargs.get("out"):
-            target = resolve_output(target, kwargs["out"])
+            target = resolve_output(target, kwargs["out"], force=force)
         path, wdir, out = resolve_paths(
             repo, target, always_local=transfer and not kwargs.get("out")
         )
@@ -261,6 +276,7 @@ def create_stages(
             wdir=wdir,
             outs=[out],
             external=external,
+            force=force,
         )
 
         out_obj = stage.outs[0]

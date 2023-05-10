@@ -3,7 +3,7 @@ from datetime import datetime
 from scmrepo.exceptions import SCMError
 
 from dvc.repo.experiments import ExpRefInfo
-from dvc.scm import GitMergeError, iter_revs
+from dvc.scm import iter_revs
 
 
 def test_iter_revs(
@@ -64,19 +64,32 @@ def test_iter_revs(
     assert gen == {
         rev_new: [rev_new],
         rev_old: [rev_old],
-        rev_root: [rev_root],
     }
 
-    def _func(rev):
+    def _resolve_commit(rev):
+        from scmrepo.git.objects import GitCommit
 
         if rev == rev_root:
-            return mocker.Mock(commit_date=datetime(2022, 6, 28).timestamp())
+            return GitCommit(
+                "dummy",
+                commit_time=datetime(2022, 6, 28).timestamp(),
+                commit_time_offset=0,
+                message="dummy",
+                parents=["dummy"],
+            )
         if rev == rev_old:
             raise SCMError
-        return mocker.Mock(commit_date=datetime(2022, 6, 30).timestamp())
+        return GitCommit(
+            "dummy",
+            commit_time=datetime(2022, 6, 30).timestamp(),
+            commit_time_offset=0,
+            message="dummy",
+            parents=["dummy"],
+        )
 
     mocker.patch(
-        "scmrepo.git.Git.resolve_commit", mocker.MagicMock(side_effect=_func)
+        "scmrepo.git.Git.resolve_commit",
+        mocker.MagicMock(side_effect=_resolve_commit),
     )
 
     gen = iter_revs(scm, commit_date="2022-06-29")
@@ -85,11 +98,3 @@ def test_iter_revs(
         rev_old: [rev_old],
         rev_other: [rev_other],
     }
-
-
-def test_merge_error(tmp_dir, scm):
-    exc = GitMergeError("Merge failed")
-    assert "shallow" not in str(exc)
-    tmp_dir.gen({".git": {"shallow": ""}})
-    exc = GitMergeError("Merge failed", scm=scm)
-    assert "shallow" in str(exc)

@@ -2,8 +2,10 @@ from urllib.parse import urlparse
 
 from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
 
+from dvc.config import ConfigError as RepoConfigError
+from dvc.config_schema import SCHEMA, Invalid
+
 # pylint: disable=unused-import
-from dvc_objects.fs import utils  # noqa: F401
 from dvc_objects.fs import (  # noqa: F401
     LocalFileSystem,
     MemoryFileSystem,
@@ -14,6 +16,7 @@ from dvc_objects.fs import (  # noqa: F401
     localfs,
     registry,
     system,
+    utils,
 )
 from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
 from dvc_objects.fs.errors import (  # noqa: F401
@@ -23,14 +26,15 @@ from dvc_objects.fs.errors import (  # noqa: F401
 )
 from dvc_objects.fs.path import Path  # noqa: F401
 
+from .callbacks import Callback
 from .data import DataFileSystem  # noqa: F401
-from .dvc import DvcFileSystem  # noqa: F401
+from .dvc import DVCFileSystem  # noqa: F401
 from .git import GitFileSystem  # noqa: F401
 
 known_implementations.update(
     {
         "dvc": {
-            "class": "dvc.fs.dvc.DvcFileSystem",
+            "class": "dvc.fs.dvc.DVCFileSystem",
             "err": "dvc is supported, but requires 'dvc' to be installed",
         },
         "git": {
@@ -44,7 +48,23 @@ known_implementations.update(
 # pylint: enable=unused-import
 
 
-def get_fs_config(repo, config, **kwargs):
+def download(fs, fs_path, to, jobs=None):
+    with Callback.as_tqdm_callback(
+        desc=f"Downloading {fs.path.name(fs_path)}",
+        unit="files",
+    ) as cb:
+        fs.get(fs_path, to.fs_path, batch_size=jobs, callback=cb)
+
+
+def parse_external_url(url, config=None):
+    remote_config = dict(config) if config else {}
+    remote_config["url"] = url
+    fs_cls, fs_config, fs_path = get_cloud_fs(None, **remote_config)
+    fs = fs_cls(**fs_config)
+    return fs, fs_path
+
+
+def get_fs_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
         try:
@@ -52,13 +72,13 @@ def get_fs_config(repo, config, **kwargs):
         except KeyError:
             from dvc.config import RemoteNotFoundError
 
-            raise RemoteNotFoundError(f"remote '{name}' doesn't exist")
+            raise RemoteNotFoundError(f"remote '{name}' doesn't exist")  # noqa: B904
     else:
         remote_conf = kwargs
-    return _resolve_remote_refs(repo, config, remote_conf)
+    return _resolve_remote_refs(config, remote_conf)
 
 
-def _resolve_remote_refs(repo, config, remote_conf):
+def _resolve_remote_refs(config, remote_conf):
     # Support for cross referenced remotes.
     # This will merge the settings, shadowing base ref with remote_conf.
     # For example, having:
@@ -84,23 +104,24 @@ def _resolve_remote_refs(repo, config, remote_conf):
     if parsed.scheme != "remote":
         return remote_conf
 
-    base = get_fs_config(repo, config, name=parsed.netloc)
-    cls, _, _ = get_cloud_fs(repo, **base)
+    base = get_fs_config(config, name=parsed.netloc)
+    cls, _, _ = _get_cloud_fs(config, **base)
     relpath = parsed.path.lstrip("/").replace("/", cls.sep)
     url = cls.sep.join((base["url"], relpath))
     return {**base, **remote_conf, "url": url}
 
 
 def get_cloud_fs(repo, **kwargs):
-    from dvc.config import ConfigError as RepoConfigError
-    from dvc.config_schema import SCHEMA, Invalid
-
     repo_config = repo.config if repo else {}
+    return _get_cloud_fs(repo_config, **kwargs)
+
+
+def _get_cloud_fs(repo_config, **kwargs):
     core_config = repo_config.get("core", {})
 
-    remote_conf = get_fs_config(repo, repo_config, **kwargs)
+    remote_conf = get_fs_config(repo_config, **kwargs)
     try:
-        remote_conf = SCHEMA["remote"][str](remote_conf)
+        remote_conf = SCHEMA["remote"][str](remote_conf)  # type: ignore[index]
     except Invalid as exc:
         raise RepoConfigError(str(exc)) from None
 

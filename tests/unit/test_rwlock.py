@@ -1,3 +1,4 @@
+import json
 import os
 
 import pytest
@@ -105,3 +106,37 @@ def test_broken_rwlock(tmp_path):
     with pytest.raises(RWLockFileCorruptedError):
         with _edit_rwlock(dir_path, localfs, False):
             pass
+
+
+@pytest.mark.parametrize("return_value", [True, False])
+def test_corrupted_rwlock(tmp_path, mocker, return_value):
+    dir_path = os.fspath(tmp_path)
+    path = tmp_path / "rwlock"
+
+    foo = "foo"
+    bar = "bar"
+    cmd_foo = "cmd_foo"
+    cmd_bar = "cmd_bar"
+    mocker.patch("psutil.pid_exists", return_value=return_value)
+
+    corrupted_rwlock = {
+        "write": {foo: {"pid": 1234, "cmd": cmd_foo}},
+        "read": {
+            foo: [{"pid": 5555, "cmd": cmd_foo}],
+            bar: [
+                {"pid": 6666, "cmd": cmd_bar},
+                {"pid": 7777, "cmd": cmd_bar},
+            ],
+        },
+    }
+
+    path.write_text(json.dumps(corrupted_rwlock), encoding="utf-8")
+
+    if return_value:
+        with pytest.raises(LockError):
+            with rwlock(dir_path, localfs, "cmd_other", [], [foo, bar], False):
+                pass
+    else:
+        with rwlock(dir_path, localfs, "cmd_other", [], [foo, bar], False):
+            pass
+        assert path.read_text() == """{"read": {}}"""

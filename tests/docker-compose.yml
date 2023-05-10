@@ -10,4 +10,4 @@ services:
       - 2222
     volumes:
       - ./remotes/user.key.pub:/tmp/key
-      - ./remotes/git-init:/config/custom-cont-init.d
+      - ./remotes/git-init:/custom-cont-init.d

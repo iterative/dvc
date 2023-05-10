@@ -1,63 +1,57 @@
 """Manages logging configuration for DVC repo."""
 
+import logging
 import logging.config
 import logging.handlers
+import os
+import sys
 
 import colorama
 
+from dvc.env import DVC_SHOW_TRACEBACK
 from dvc.progress import Tqdm
 
-FOOTER = (
-    "\n{yellow}Having any troubles?{nc}"
-    " Hit us up at {blue}https://dvc.org/support{nc},"
-    " we are always happy to help!"
-).format(
-    blue=colorama.Fore.BLUE,
-    nc=colorama.Fore.RESET,
-    yellow=colorama.Fore.YELLOW,
-)
 
-
-def addLoggingLevel(levelName, levelNum, methodName=None):
+def add_logging_level(level_name, level_num, method_name=None):
     """
     Adds a new logging level to the `logging` module and the
     currently configured logging class.
 
-    Uses the existing numeric levelNum if already defined.
+    Uses the existing numeric level_num if already defined.
 
     Based on https://stackoverflow.com/questions/2183233
     """
-    if methodName is None:
-        methodName = levelName.lower()
+    if method_name is None:
+        method_name = level_name.lower()
 
     # If the level name is already defined as a top-level `logging`
     # constant, then adopt the existing numeric level.
-    if hasattr(logging, levelName):
-        existingLevelNum = getattr(logging, levelName)
-        assert isinstance(existingLevelNum, int)
-        levelNum = existingLevelNum
+    if hasattr(logging, level_name):
+        existing_level_num = getattr(logging, level_name)
+        assert isinstance(existing_level_num, int)
+        level_num = existing_level_num
 
-    def logForLevel(self, message, *args, **kwargs):
-        if self.isEnabledFor(levelNum):
+    def log_for_level(self, message, *args, **kwargs):
+        if self.isEnabledFor(level_num):
             # pylint: disable=protected-access
-            self._log(levelNum, message, args, **kwargs)
+            self._log(level_num, message, args, **kwargs)
 
-    def logToRoot(message, *args, **kwargs):
-        logging.log(levelNum, message, *args, **kwargs)
+    def log_to_root(message, *args, **kwargs):
+        logging.log(level_num, message, *args, **kwargs)
 
     # getLevelName resolves the numeric log level if already defined,
     # otherwise returns a string
-    if not isinstance(logging.getLevelName(levelName), int):
-        logging.addLevelName(levelNum, levelName)
+    if not isinstance(logging.getLevelName(level_name), int):
+        logging.addLevelName(level_num, level_name)
 
-    if not hasattr(logging, levelName):
-        setattr(logging, levelName, levelNum)
+    if not hasattr(logging, level_name):
+        setattr(logging, level_name, level_num)
 
-    if not hasattr(logging.getLoggerClass(), methodName):
-        setattr(logging.getLoggerClass(), methodName, logForLevel)
+    if not hasattr(logging.getLoggerClass(), method_name):
+        setattr(logging.getLoggerClass(), method_name, log_for_level)
 
-    if not hasattr(logging, methodName):
-        setattr(logging, methodName, logToRoot)
+    if not hasattr(logging, method_name):
+        setattr(logging, method_name, log_to_root)
 
 
 class LoggingException(Exception):
@@ -66,12 +60,11 @@ class LoggingException(Exception):
         super().__init__(msg)
 
 
-def excludeFilter(level):
-    class ExcludeLevelFilter(logging.Filter):
-        def filter(self, record):
-            return record.levelno < level
+def exclude_filter(level: int):
+    def filter_fn(record: "logging.LogRecord") -> bool:
+        return record.levelno < level
 
-    return ExcludeLevelFilter
+    return filter_fn
 
 
 class ColorFormatter(logging.Formatter):
@@ -86,7 +79,8 @@ class ColorFormatter(logging.Formatter):
     exception cause, just the message and the traceback.
     """
 
-    color_code = {
+    reset = colorama.Fore.RESET
+    color_codes = {
         "TRACE": colorama.Fore.GREEN,
         "DEBUG": colorama.Fore.BLUE,
         "WARNING": colorama.Fore.YELLOW,
@@ -94,51 +88,53 @@ class ColorFormatter(logging.Formatter):
         "CRITICAL": colorama.Fore.RED,
     }
 
-    def format(self, record):
+    def __init__(self, log_colors: bool = True, show_traceback: bool = False) -> None:
+        super().__init__()
+        self.log_colors = log_colors
+        self.show_traceback = show_traceback
+
+    def format(self, record) -> str:  # noqa: A003, C901
         record.message = record.getMessage()
         msg = self.formatMessage(record)
 
-        if record.levelname == "INFO":
+        if record.levelno == logging.INFO:
             return msg
 
-        if record.exc_info:
-            if getattr(record, "tb_only", False):
-                cause = ""
-            else:
-                cause = ": ".join(_iter_causes(record.exc_info[1]))
+        ei = record.exc_info
+        if ei:
+            cause = ""
+            if not getattr(record, "tb_only", False):
+                cause = ": ".join(_iter_causes(ei[1]))
+            sep = " - " if msg and cause else ""
+            msg = msg + sep + cause
 
-            msg = "{message}{separator}{cause}".format(
-                message=msg or "",
-                separator=" - " if msg and cause else "",
-                cause=cause,
-            )
+        asctime = ""
+        verbose = _is_verbose()
+        if verbose:
+            asctime = self.formatTime(record, self.datefmt)
+        if verbose or self.show_traceback:
+            if ei and not record.exc_text:
+                record.exc_text = self.formatException(ei)
+            if record.exc_text:
+                if msg[-1:] != "\n":
+                    msg = msg + "\n"
+                msg = msg + record.exc_text + "\n"
+            if record.stack_info:
+                if msg[-1:] != "\n":
+                    msg = msg + "\n"
+                msg = msg + self.formatStack(record.stack_info) + "\n"
 
-            if _is_verbose():
-                msg += _stack_trace(record.exc_info)
-
-        return "{asctime}{color}{levelname}{nc}: {msg}".format(
-            asctime=self.formatTime(record, self.datefmt),
-            color=self.color_code[record.levelname],
-            nc=colorama.Fore.RESET,
-            levelname=record.levelname,
-            msg=msg,
-        )
-
-    def formatTime(self, record, datefmt=None):
-        # only show if current level is set to DEBUG
-        # also, skip INFO as it is used for UI
-        if not _is_verbose() or record.levelno == logging.INFO:
-            return ""
-
-        return "{green}{date}{nc} ".format(
-            green=colorama.Fore.GREEN,
-            date=super().formatTime(record, datefmt),
-            nc=colorama.Fore.RESET,
-        )
+        level = record.levelname
+        if self.log_colors:
+            color = self.color_codes[level]
+            if asctime:
+                asctime = color + asctime + self.reset
+            level = color + level + self.reset
+        return asctime + (" " if asctime else "") + level + ": " + msg
 
 
 class LoggerHandler(logging.StreamHandler):
-    def handleError(self, record):
+    def handleError(self, record):  # noqa: N802
         super().handleError(record)
         raise LoggingException(record)
 
@@ -155,13 +151,12 @@ class LoggerHandler(logging.StreamHandler):
                         self.emit_pretty_exception(exc, verbose=_is_verbose())
                         if not _is_verbose():
                             return
-                    except Exception:  # noqa, pylint: disable=broad-except
+                    # pylint: disable-next=broad-except
+                    except Exception:  # noqa: BLE001, S110  # nosec B110
                         pass
 
             msg = self.format(record)
-            Tqdm.write(
-                msg, file=self.stream, end=getattr(self, "terminator", "\n")
-            )
+            Tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
@@ -171,9 +166,7 @@ class LoggerHandler(logging.StreamHandler):
 
 def _is_verbose():
     return (
-        logging.NOTSET
-        < logging.getLogger("dvc").getEffectiveLevel()
-        <= logging.DEBUG
+        logging.NOTSET < logging.getLogger("dvc").getEffectiveLevel() <= logging.DEBUG
     )
 
 
@@ -183,37 +176,46 @@ def _iter_causes(exc):
         exc = exc.__cause__
 
 
-def _stack_trace(exc_info):
-    import traceback
-
-    return (
-        "\n"
-        "{red}{line}{nc}\n"
-        "{trace}"
-        "{red}{line}{nc}".format(
-            red=colorama.Fore.RED,
-            line="-" * 60,
-            trace="".join(traceback.format_exception(*exc_info)),
-            nc=colorama.Fore.RESET,
-        )
-    )
-
-
-def disable_other_loggers():
-    logging.captureWarnings(True)
-    loggerDict = logging.root.manager.loggerDict  # pylint: disable=no-member
-    for logger_name, logger in loggerDict.items():
-        if logger_name != "dvc" and not logger_name.startswith("dvc."):
-            logger.disabled = True
-
-
 def set_loggers_level(level: int = logging.INFO) -> None:
     for name in ["dvc", "dvc_objects", "dvc_data"]:
         logging.getLogger(name).setLevel(level)
 
 
-def setup(level: int = logging.INFO) -> None:
+def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     colorama.init()
+
+    formatter = ColorFormatter(log_colors=log_colors and sys.stdout.isatty())
+
+    console_info = LoggerHandler(sys.stdout)
+    console_info.setLevel(logging.INFO)
+    console_info.setFormatter(formatter)
+    console_info.addFilter(exclude_filter(logging.WARNING))
+
+    console_debug = LoggerHandler(sys.stdout)
+    console_debug.setLevel(logging.DEBUG)
+    console_debug.setFormatter(formatter)
+    console_debug.addFilter(exclude_filter(logging.INFO))
+
+    add_logging_level("TRACE", logging.DEBUG - 5)
+
+    console_trace = LoggerHandler(sys.stdout)
+    console_trace.setLevel(logging.TRACE)  # type: ignore[attr-defined]
+    console_trace.setFormatter(formatter)
+    console_trace.addFilter(exclude_filter(logging.DEBUG))
+
+    show_traceback = bool(os.environ.get(DVC_SHOW_TRACEBACK))
+    err_formatter = ColorFormatter(
+        log_colors=log_colors and sys.stderr.isatty(), show_traceback=show_traceback
+    )
+    console_errors = LoggerHandler(sys.stderr)
+    console_errors.setLevel(logging.WARNING)
+    console_errors.setFormatter(err_formatter)
+
+    for name in ["dvc", "dvc_objects", "dvc_data"]:
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+        for handler in [console_info, console_debug, console_trace, console_errors]:
+            logger.addHandler(handler)
 
     if level >= logging.DEBUG:
         # Unclosed session errors for asyncio/aiohttp are only available
@@ -225,75 +227,3 @@ def setup(level: int = logging.INFO) -> None:
         # action.
         logging.getLogger("asyncio").setLevel(logging.CRITICAL)
         logging.getLogger("aiohttp").setLevel(logging.CRITICAL)
-
-    addLoggingLevel("TRACE", logging.DEBUG - 5)
-    logging.config.dictConfig(
-        {
-            "version": 1,
-            "filters": {
-                "exclude_errors": {"()": excludeFilter(logging.WARNING)},
-                "exclude_info": {"()": excludeFilter(logging.INFO)},
-                "exclude_debug": {"()": excludeFilter(logging.DEBUG)},
-            },
-            "formatters": {"color": {"()": ColorFormatter}},
-            "handlers": {
-                "console_info": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "INFO",
-                    "formatter": "color",
-                    "stream": "ext://sys.stdout",
-                    "filters": ["exclude_errors"],
-                },
-                "console_debug": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "DEBUG",
-                    "formatter": "color",
-                    "stream": "ext://sys.stdout",
-                    "filters": ["exclude_info"],
-                },
-                "console_trace": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "TRACE",
-                    "formatter": "color",
-                    "stream": "ext://sys.stdout",
-                    "filters": ["exclude_debug"],
-                },
-                "console_errors": {
-                    "class": "dvc.logger.LoggerHandler",
-                    "level": "WARNING",
-                    "formatter": "color",
-                    "stream": "ext://sys.stderr",
-                },
-            },
-            "loggers": {
-                "dvc": {
-                    "level": level,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_trace",
-                        "console_errors",
-                    ],
-                },
-                "dvc_objects": {
-                    "level": level,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_trace",
-                        "console_errors",
-                    ],
-                },
-                "dvc_data": {
-                    "level": level,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_trace",
-                        "console_errors",
-                    ],
-                },
-            },
-            "disable_existing_loggers": False,
-        }
-    )

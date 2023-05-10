@@ -13,7 +13,7 @@
 
 |CI| |Python Version| |Coverage| |VS Code| |DOI|
 
-|PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
+|PyPI| |PyPI Downloads| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
 
@@ -82,7 +82,7 @@ To share and back up the *data cache*, DVC supports multiple remote storage plat
 
 |Flowchart|
 
-`DVC pipelines <https://dvc.org/doc/start/data-management/pipelines>`_ (computational graphs) connect code and data together.
+`DVC pipelines <https://dvc.org/doc/start/data-management/data-pipelines>`_ (computational graphs) connect code and data together.
 They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
 
 Last but not least, `DVC Experiment Versioning <https://dvc.org/doc/start/experiments>`_ lets you prepare and run a large number of experiments.
@@ -276,6 +276,10 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://pypi.org/project/dvc
    :alt: PyPI
 
+.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/dvc.svg?color=blue&label=Downloads&logo=pypi&logoColor=gold
+   :target: https://pypi.org/project/dvc
+   :alt: PyPI Downloads
+
 .. |Packages| image:: https://img.shields.io/github/v/release/iterative/dvc?label=deb|pkg|rpm|exe&logo=GitHub
    :target: https://github.com/iterative/dvc/releases/latest
    :alt: deb|pkg|rpm|exe
@@ -292,6 +296,6 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://github.com/iterative/dvc/graphs/contributors
    :alt: Contributors
 
-.. |VS Code| image:: https://vsmarketplacebadge.apphb.com/version/Iterative.dvc.svg
+.. |VS Code| image:: https://img.shields.io/visual-studio-marketplace/v/Iterative.dvc?color=blue&label=VSCode&logo=visualstudiocode&logoColor=blue
    :target: https://marketplace.visualstudio.com/items?itemName=Iterative.dvc
    :alt: VS Code Extension

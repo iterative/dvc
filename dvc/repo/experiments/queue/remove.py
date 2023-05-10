@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.stash import ExpStashEntry
 
 
-def remove_tasks(
+def remove_tasks(  # noqa: C901, PLR0912
     celery_queue: "LocalCeleryQueue",
     queue_entries: Iterable["QueueEntry"],
 ):
@@ -24,7 +24,9 @@ def remove_tasks(
     failed_stash_revs: List["ExpStashEntry"] = []
     done_entry_set: Set["QueueEntry"] = set()
     stash_rev_all = celery_queue.stash.stash_revs
-    failed_rev_all = celery_queue.failed_stash.stash_revs
+    failed_rev_all: Dict[str, "ExpStashEntry"] = {}
+    if celery_queue.failed_stash:
+        failed_rev_all = celery_queue.failed_stash.stash_revs
     for entry in queue_entries:
         if entry.stash_rev in stash_rev_all:
             stash_revs[entry.stash_rev] = stash_rev_all[entry.stash_rev]
@@ -38,7 +40,7 @@ def remove_tasks(
             msg,
             queue_entry,
         ) in celery_queue._iter_queued():  # pylint: disable=protected-access
-            if queue_entry.stash_rev in stash_revs:
+            if queue_entry.stash_rev in stash_revs and msg.delivery_tag:
                 celery_queue.celery.reject(msg.delivery_tag)
     finally:
         celery_queue.stash.remove_revs(list(stash_revs.values()))
@@ -47,18 +49,18 @@ def remove_tasks(
         for (
             msg,
             queue_entry,
-        ) in (
-            celery_queue._iter_processed()  # pylint: disable=protected-access
-        ):
+        ) in celery_queue._iter_processed():  # pylint: disable=protected-access
             if queue_entry not in done_entry_set:
                 continue
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if result is not None:
                 result.forget()
-            celery_queue.celery.purge(msg.delivery_tag)
+            if msg.delivery_tag:
+                celery_queue.celery.purge(msg.delivery_tag)
     finally:
-        celery_queue.failed_stash.remove_revs(failed_stash_revs)
+        if celery_queue.failed_stash:
+            celery_queue.failed_stash.remove_revs(failed_stash_revs)
 
 
 def _get_names(entries: Iterable[Union["QueueEntry", "QueueDoneResult"]]):

@@ -40,11 +40,11 @@ class TestInstall:
     def test_fail_if_hook_exists(self, scm, dvc):
         self._hook("post-checkout").write_text("hook content")
 
-        with pytest.raises(DvcException) as exc_info:
+        with pytest.raises(DvcException) as exc_info:  # noqa: PT011
             dvc.install()
 
-        assert escape_ansi(str(exc_info.value)) == (
-            "Hook 'post-checkout' already exists. "
+        assert (
+            escape_ansi(str(exc_info.value)) == "Hook 'post-checkout' already exists. "
             "Please refer to <https://man.dvc.org/install> for more info."
         )
 
@@ -77,9 +77,7 @@ class TestInstall:
         tmp_dir.dvc_gen("file", "file_content", "commit message")
 
         file_checksum = file_md5("file", dvc.fs)
-        expected_storage_path = (
-            storage_path / file_checksum[:2] / file_checksum[2:]
-        )
+        expected_storage_path = storage_path / file_checksum[:2] / file_checksum[2:]
 
         scm.gitpython.repo.clone(os.fspath(git_remote))
         scm.gitpython.repo.create_remote("origin", os.fspath(git_remote))
@@ -109,9 +107,7 @@ def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
     dvc.install()
     (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
 
-    scm.gitpython.repo.git.merge(
-        "one", m="merged", no_gpg_sign=True, no_signoff=True
-    )
+    scm.gitpython.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
 
     # NOTE: dvc shouldn't checkout automatically as it might take a long time
     assert (tmp_dir / "data").read_text() == {"bar": "bar"}
@@ -146,9 +142,7 @@ def test_merge_driver(tmp_dir, scm, dvc):
     dvc.install()
     (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
 
-    scm.gitpython.repo.git.merge(
-        "one", m="merged", no_gpg_sign=True, no_signoff=True
-    )
+    scm.gitpython.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
 
     # NOTE: dvc shouldn't checkout automatically as it might take a long time
     assert (tmp_dir / "data").read_text() == {"master": "master", "two": "two"}

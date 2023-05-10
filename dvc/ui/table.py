@@ -1,7 +1,7 @@
 from collections import abc
 from contextlib import ExitStack, contextmanager
 from itertools import zip_longest
-from typing import TYPE_CHECKING, Dict, Iterator, Sequence, Union
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Sequence, Union
 
 from dvc.types import DictStrAny
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 SHOW_MAX_WIDTH = 1024
 
 
-CellT = Union[str, "RichText"]  # RichText is mostly compatible with str
+CellT = Union[str, "RichText", None]  # RichText is mostly compatible with str
 Row = Sequence[CellT]
 TableData = Sequence[Row]
 Headers = Sequence[str]
@@ -24,7 +24,7 @@ Styles = DictStrAny
 def plain_table(
     ui: "Console",
     data: TableData,
-    headers: Headers = None,
+    headers: Optional[Headers] = None,
     markdown: bool = False,
     pager: bool = False,
     force: bool = True,
@@ -50,9 +50,7 @@ def plain_table(
 
 
 @contextmanager
-def console_width(
-    table: "Table", console: "RichConsole", val: int
-) -> Iterator[None]:
+def console_width(table: "Table", console: "RichConsole", val: int) -> Iterator[None]:
     # NOTE: rich does not have native support for unlimited width
     # via pager. we override rich table compression by setting
     # console width to the full width of the table
@@ -76,10 +74,10 @@ def console_width(
 def rich_table(
     ui: "Console",
     data: TableData,
-    headers: Headers = None,
+    headers: Optional[Headers] = None,
     pager: bool = False,
-    header_styles: Union[Dict[str, Styles], Sequence[Styles]] = None,
-    row_styles: Sequence[Styles] = None,
+    header_styles: Optional[Union[Dict[str, Styles], Sequence[Styles]]] = None,
+    row_styles: Optional[Sequence[Styles]] = None,
     borders: Union[bool, str] = False,
 ) -> None:
     from rich import box
@@ -110,9 +108,7 @@ def rich_table(
 
     stack = ExitStack()
     if pager:
-        stack.enter_context(
-            console_width(table, ui.rich_console, SHOW_MAX_WIDTH)
-        )
+        stack.enter_context(console_width(table, ui.rich_console, SHOW_MAX_WIDTH))
         stack.enter_context(ui.pager())
 
     with stack:

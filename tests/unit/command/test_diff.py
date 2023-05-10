@@ -39,7 +39,7 @@ def test_default(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     assert (
         "Added:\n"
         "    file\n"
@@ -77,17 +77,17 @@ def test_show_hash(mocker, capsys):
         "not in cache": [],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
 
     out, _ = capsys.readouterr()
     assert (
-        "Deleted:\n"
-        "    XXXXXXXX  " + os.path.join("data", "") + "\n"
-        "    00000000  " + os.path.join("data", "bar") + "\n"
-        "    11111111  " + os.path.join("data", "foo") + "\n"
-        "\n"
-        "Renamed:\n"
-        "    11111111  "
+        "Deleted:\n    XXXXXXXX  "
+        + os.path.join("data", "")
+        + "\n    00000000  "
+        + os.path.join("data", "bar")
+        + "\n    11111111  "
+        + os.path.join("data", "foo")
+        + "\n\nRenamed:\n    11111111  "
         + os.path.join("data", "file_old")
         + " -> "
         + os.path.join("data", "file_new")
@@ -115,7 +115,7 @@ def test_show_json(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert '"added": [{"path": "file1"}, {"path": "file2"}]' in out
     assert '"deleted": []' in out
@@ -145,7 +145,7 @@ def test_show_json_and_hash(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert (
         '"added": [{"path": "file1", "hash": "11111111"}, '
@@ -180,7 +180,7 @@ def test_show_json_hide_missing(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert '"added": [{"path": "file1"}, {"path": "file2"}]' in out
     assert '"deleted": []' in out
@@ -200,7 +200,7 @@ def test_diff_show_markdown_and_hash(mocker, show_hash):
     mock_show_markdown = mocker.patch("dvc.commands.diff._show_markdown")
     mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     mock_show_markdown.assert_called_once_with(diff, show_hash, False)
 
 
@@ -226,7 +226,7 @@ def test_no_changes(mocker, capsys, opts, show, expected):
     cmd = args.func(args)
     mocker.patch("dvc.repo.Repo.diff", return_value={})
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert expected == out.strip()
 
@@ -270,9 +270,7 @@ def test_show_markdown_with_hash(capsys):
             {"path": os.path.join("data", "foo"), "hash": "11111111"},
             {"path": os.path.join("data", "bar"), "hash": "00000000"},
         ],
-        "modified": [
-            {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
-        ],
+        "modified": [{"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}],
         "added": [{"path": "file", "hash": "00000000"}],
         "renamed": [
             {
@@ -349,7 +347,7 @@ def test_hide_missing(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert (
         "Added:\n"
@@ -358,6 +356,6 @@ def test_hide_missing(mocker, capsys):
         "Renamed:\n"
         "    file_old -> file_new\n"
         "\n"
-        "files summary: 1 added, 1 renamed"
-    ) in out
+        "files summary: 1 added, 1 renamed" in out
+    )
     assert "not in cache" not in out

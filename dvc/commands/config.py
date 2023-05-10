@@ -17,9 +17,7 @@ def _name_type(value):
     match = re.match(NAME_REGEX, value)
     if not match:
         raise argparse.ArgumentTypeError(
-            "name argument should look like "
-            "remote.name.option or "
-            "section.option"
+            "name argument should look like remote.name.option or section.option"
         )
     return (
         bool(match.group("remote")),
@@ -34,16 +32,15 @@ class CmdConfig(CmdBaseNoRepo):
 
         super().__init__(args)
 
-        self.config = Config(validate=False)
+        self.config = Config.from_cwd(validate=False)
 
     def run(self):
-        if self.args.show_origin:
-            if any((self.args.value, self.args.unset)):
-                logger.error(
-                    "--show-origin can't be used together with any of these "
-                    "options: -u/--unset, value"
-                )
-                return 1
+        if self.args.show_origin and (self.args.value or self.args.unset):
+            logger.error(
+                "--show-origin can't be used together with any of these "
+                "options: -u/--unset, value"
+            )
+            return 1
 
         if self.args.list:
             return self._list()
@@ -71,9 +68,7 @@ class CmdConfig(CmdBaseNoRepo):
 
         for level in levels:
             conf = self.config.read(level)
-            prefix = self._config_file_prefix(
-                self.args.show_origin, self.config, level
-            )
+            prefix = self._config_file_prefix(self.args.show_origin, self.config, level)
             configs = list(self._format_config(conf, prefix))
             if configs:
                 ui.write("\n".join(configs))
@@ -132,9 +127,7 @@ class CmdConfig(CmdBaseNoRepo):
             raise ConfigError(f"{name} '{section}' doesn't exist")
 
         if opt and opt not in conf[section]:
-            raise ConfigError(
-                f"option '{opt}' doesn't exist in {name} '{section}'"
-            )
+            raise ConfigError(f"option '{opt}' doesn't exist in {name} '{section}'")
 
     def _get_appropriate_levels(self, levels):
         if levels:

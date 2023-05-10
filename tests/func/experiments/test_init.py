@@ -61,8 +61,8 @@ def test_when_stage_already_exists_with_same_name(tmp_dir, dvc, interactive):
             defaults=CmdExperimentsInit.DEFAULTS,
         )
     assert (
-        str(exc.value) == "Stage 'train' already exists in 'dvc.yaml'. "
-        "Use '--force' to overwrite."
+        str(exc.value)
+        == "Stage 'train' already exists in 'dvc.yaml'. Use '--force' to overwrite."
     )
 
 
@@ -95,9 +95,7 @@ def test_creates_params_file_by_default(tmp_dir, dvc, interactive):
 
 def test_with_a_custom_name(tmp_dir, dvc):
     init(dvc, name="custom", overrides={"cmd": "cmd"})
-    assert (tmp_dir / "dvc.yaml").parse() == {
-        "stages": {"custom": {"cmd": "cmd"}}
-    }
+    assert (tmp_dir / "dvc.yaml").parse() == {"stages": {"custom": {"cmd": "cmd"}}}
 
 
 def test_init_with_no_defaults_non_interactive(tmp_dir, scm, dvc):
@@ -154,9 +152,7 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
     (tmp_dir / "params.yaml").dump({"foo": 1})
     inp = io.StringIO("python script.py\nscript.py\ndata\nn")
 
-    init(
-        dvc, interactive=True, stream=inp, defaults=CmdExperimentsInit.DEFAULTS
-    )
+    init(dvc, interactive=True, stream=inp, defaults=CmdExperimentsInit.DEFAULTS)
 
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
@@ -170,7 +166,7 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
@@ -184,9 +180,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
     (tmp_dir / "params.yaml").dump({"foo": 1})
     inp = io.StringIO("python script.py\nscript.py\ndata\ndata")
 
-    init(
-        dvc, stream=inp, interactive=True, defaults=CmdExperimentsInit.DEFAULTS
-    )
+    init(dvc, stream=inp, interactive=True, defaults=CmdExperimentsInit.DEFAULTS)
 
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
@@ -200,7 +194,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
             }
         }
     }
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
 
     out, err = capsys.readouterr()
@@ -232,7 +226,7 @@ def test_init_with_no_defaults_interactive(tmp_dir, dvc):
             }
         }
     }
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
 
 
@@ -281,7 +275,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
@@ -304,9 +298,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
         (
             True,
             {},
-            io.StringIO(
-                "python script.py\nscript.py\ndata\nparams.yaml\nmodels\ny"
-            ),
+            io.StringIO("python script.py\nscript.py\ndata\nparams.yaml\nmodels\ny"),
         ),
         (
             True,
@@ -326,9 +318,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
         "interactive-cmd-models-provided",
     ],
 )
-def test_init_interactive_live(
-    tmp_dir, scm, dvc, interactive, overrides, inp, capsys
-):
+def test_init_interactive_live(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
     overrides["live"] = "dvclive"
 
     (tmp_dir / "params.yaml").dump({"foo": {"bar": 1}})
@@ -345,17 +335,17 @@ def test_init_interactive_live(
             "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
-                "metrics": [{"dvclive.json": {"cache": False}}],
+                "metrics": [
+                    {os.path.join("dvclive", "metrics.json"): {"cache": False}}
+                ],
                 "outs": ["models"],
                 "params": [{"params.yaml": None}],
-                "plots": [
-                    {os.path.join("dvclive", "scalars"): {"cache": False}}
-                ],
+                "plots": [{os.path.join("dvclive", "plots"): {"cache": False}}],
             }
         }
     }
     assert not (tmp_dir / "dvc.lock").exists()
-    assert (tmp_dir / "script.py").read_text() == ""
+    assert not (tmp_dir / "script.py").read_text()
     assert (tmp_dir / "data").is_dir()
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
@@ -417,9 +407,7 @@ def test_init_with_type_checkpoint_and_models_plots_provided(
         (True, io.StringIO()),
     ],
 )
-def test_init_with_type_default_and_live_provided(
-    tmp_dir, dvc, interactive, inp
-):
+def test_init_with_type_default_and_live_provided(tmp_dir, dvc, interactive, inp):
     (tmp_dir / "params.yaml").dump({"foo": 1})
     init(
         dvc,
@@ -434,12 +422,12 @@ def test_init_with_type_default_and_live_provided(
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "metrics": [
-                    {"live.json": {"cache": False}},
+                    {os.path.join("live", "metrics.json"): {"cache": False}},
                 ],
                 "outs": ["models"],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {os.path.join("live", "scalars"): {"cache": False}},
+                    {os.path.join("live", "plots"): {"cache": False}},
                 ],
             }
         }
@@ -455,9 +443,7 @@ def test_init_with_type_default_and_live_provided(
         (True, io.StringIO()),
     ],
 )
-def test_init_with_live_and_metrics_plots_provided(
-    tmp_dir, dvc, interactive, inp
-):
+def test_init_with_live_and_metrics_plots_provided(tmp_dir, dvc, interactive, inp):
     (tmp_dir / "params.yaml").dump({"foo": 1})
     init(
         dvc,
@@ -477,13 +463,13 @@ def test_init_with_live_and_metrics_plots_provided(
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "metrics": [
-                    {"live.json": {"cache": False}},
+                    {os.path.join("live", "metrics.json"): {"cache": False}},
                     {"metrics.json": {"cache": False}},
                 ],
                 "outs": ["models"],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {os.path.join("live", "scalars"): {"cache": False}},
+                    {os.path.join("live", "plots"): {"cache": False}},
                     {"plots": {"cache": False}},
                 ],
             }

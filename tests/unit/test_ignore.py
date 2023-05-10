@@ -13,11 +13,7 @@ def mock_dvcignore(dvcignore_path, patterns):
     fs.path = localfs.path
     fs.sep = localfs.sep
     with patch.object(fs, "open", mock_open(read_data="\n".join(patterns))):
-        ignore_patterns = DvcIgnorePatterns.from_file(
-            dvcignore_path, fs, "mocked"
-        )
-
-    return ignore_patterns
+        return DvcIgnorePatterns.from_file(dvcignore_path, fs, "mocked")
 
 
 @pytest.mark.parametrize(
@@ -45,7 +41,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         ("to_ignore.txt", ["!to_ignore.txt", "to_ignore*"], True),
         # It is not possible to re-include a file if a parent directory of
         # that file is excluded.
-        # Git doesn’t list excluded directories for performance reasons,
+        # Git doesn't list excluded directories for performance reasons,
         # so any patterns on contained files have no effect,
         # no matter where they are defined.
         # see (`tests/func/test_ignore.py::test_ignore_parent_path`)
@@ -91,7 +87,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         ("to_ignore.txt", ["/*.txt"], True),
         (os.path.join("path", "to_ignore.txt"), ["/*.txt"], False),
         (os.path.join("data", "file.txt"), ["data/*"], True),
-        (os.path.join("data", "subdir", "file.txt"), ["data/*"], False),
+        (os.path.join("data", "subdir", "file.txt"), ["data/*"], True),
         (os.path.join("data", "file.txt"), ["data/"], True),
         (os.path.join("data", "subdir", "file.txt"), ["data/"], True),
         (os.path.join("data", "subdir", "file.txt"), ["subdir/"], True),
@@ -178,10 +174,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         ),
     ],
 )
-def test_match_ignore_from_file(
-    file_to_ignore_relpath, patterns, expected_match
-):
-
+def test_match_ignore_from_file(file_to_ignore_relpath, patterns, expected_match):
     dvcignore_path = os.path.join(
         os.path.sep, "full", "path", "to", "ignore", "file", ".dvcignore"
     )
@@ -190,8 +183,7 @@ def test_match_ignore_from_file(
     ignore_file = mock_dvcignore(dvcignore_path, patterns)
 
     assert (
-        ignore_file.matches(dvcignore_dirname, file_to_ignore_relpath)
-        == expected_match
+        ignore_file.matches(dvcignore_dirname, file_to_ignore_relpath) == expected_match
     )
 
 

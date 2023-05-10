@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 from dvc.dependency.base import DependencyDoesNotExistError
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
 
@@ -119,9 +119,7 @@ def test_commit_changed_md5(tmp_dir, dvc):
 
 def test_commit_no_exec(tmp_dir, dvc):
     tmp_dir.gen({"dep": "dep", "out": "out"})
-    stage = dvc.run(
-        name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
-    )
+    stage = dvc.run(name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True)
 
     assert dvc.status(stage.path)
     dvc.commit(stage.path, force=True)
@@ -140,9 +138,7 @@ def test_commit_granular_output(tmp_dir, dvc):
     assert not list(cache.glob("*/*"))
 
     dvc.commit("foo")
-    assert list(cache.glob("*/*")) == [
-        cache / "d3" / "b07384d113edec49eaa6238ad5ff00"
-    ]
+    assert list(cache.glob("*/*")) == [cache / "d3" / "b07384d113edec49eaa6238ad5ff00"]
 
 
 def test_commit_granular_output_file(tmp_dir, dvc):
@@ -208,9 +204,7 @@ def test_commit_granular_dir(tmp_dir, dvc):
 
 
 def test_commit_no_exec_missing_dep(tmp_dir, dvc):
-    stage = dvc.run(
-        name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
-    )
+    stage = dvc.run(name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True)
     assert dvc.status(stage.path)
 
     with pytest.raises(DependencyDoesNotExistError):
@@ -234,8 +228,8 @@ def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):
 
     # just to confirm different variants work
     assert dvc.commit(f":{stage.addressing}") == [stage]
-    assert dvc.commit(f"{PIPELINE_FILE}:{stage.addressing}") == [stage]
-    assert dvc.commit(PIPELINE_FILE) == [stage]
+    assert dvc.commit(f"{PROJECT_FILE}:{stage.addressing}") == [stage]
+    assert dvc.commit(PROJECT_FILE) == [stage]
 
 
 def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):
@@ -245,3 +239,61 @@ def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):
     stage = dvc.imp(os.fspath(erepo_dir), "file")
 
     assert stage.changed_entries() == ([], [], None)
+
+
+def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
+    data_dvc = tmp_dir / "data.dvc"
+    data_dvc.dump(
+        {
+            "outs": [
+                {
+                    "path": "data",
+                    "files": [
+                        {
+                            "size": 3,
+                            "version_id": "WYRG4BglP7pD.gEoJP6a4AqOhl.FRA.h",
+                            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "relpath": "bar",
+                        },
+                        {
+                            "size": 3,
+                            "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+                            "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                            "relpath": "foo",
+                        },
+                    ],
+                }
+            ]
+        }
+    )
+
+    data = tmp_dir / "data"
+    data.mkdir()
+    (data / "foo").write_text("foo")
+    (data / "bar").write_text("bar2")
+
+    dvc.commit("data", force=True)
+
+    assert (tmp_dir / "data.dvc").parse() == {
+        "outs": [
+            {
+                "path": "data",
+                "files": [
+                    {
+                        "size": 4,
+                        "md5": "224e2539f52203eb33728acd228b4432",
+                        "relpath": "bar",
+                    },
+                    {
+                        "size": 3,
+                        "version_id": "0vL53tFVY5vVAoJ4HG2jCS1mEcohDPE0",
+                        "etag": "acbd18db4cc2f85cedef654fccc4a4d8",
+                        "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                        "relpath": "foo",
+                    },
+                ],
+            }
+        ]
+    }

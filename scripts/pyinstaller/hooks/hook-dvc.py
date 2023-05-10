@@ -1,6 +1,4 @@
-from PyInstaller.utils.hooks import (  # pylint:disable=import-error
-    copy_metadata,
-)
+from PyInstaller.utils.hooks import copy_metadata  # pylint:disable=import-error
 
 # needed for `dvc doctor` to show dep versions
 datas = copy_metadata("adlfs", recursive=True)

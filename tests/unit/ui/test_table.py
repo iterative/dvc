@@ -1,14 +1,12 @@
 import textwrap
 
 import pytest
-from pytest import CaptureFixture
-from pytest_mock import MockerFixture
 from rich.style import Style
 
 from dvc.ui import ui
 
 
-def test_plain(capsys: CaptureFixture[str]):
+def test_plain(capsys):
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
         headers=["first", "second"],
@@ -24,7 +22,7 @@ def test_plain(capsys: CaptureFixture[str]):
     )
 
 
-def test_plain_md(capsys: CaptureFixture[str]):
+def test_plain_md(capsys):
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
         headers=["first", "second"],
@@ -42,7 +40,7 @@ def test_plain_md(capsys: CaptureFixture[str]):
     )
 
 
-def test_plain_pager(mocker: MockerFixture):
+def test_plain_pager(mocker):
     pager_mock = mocker.patch("dvc.ui.pager.pager")
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
@@ -62,7 +60,7 @@ def test_plain_pager(mocker: MockerFixture):
     )
 
 
-def test_plain_headerless(capsys: CaptureFixture[str]):
+def test_plain_headerless(capsys):
     ui.table([("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")])
     captured = capsys.readouterr()
     assert captured.out == textwrap.dedent(
@@ -74,7 +72,7 @@ def test_plain_headerless(capsys: CaptureFixture[str]):
     )
 
 
-def test_rich_simple(capsys: CaptureFixture[str]):
+def test_rich_simple(capsys):
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
         headers=["first", "second"],
@@ -82,22 +80,25 @@ def test_rich_simple(capsys: CaptureFixture[str]):
     )
     # not able to test the actual style for now
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == ["first  second", "foo    bar", "foo1   bar1", "foo2   bar2"]
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
+        "first  second",
+        "foo    bar",
+        "foo1   bar1",
+        "foo2   bar2",
+    ]
 
 
-def test_rich_headerless(capsys: CaptureFixture[str]):
-    ui.table(
-        [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")], rich_table=True
-    )
+def test_rich_headerless(capsys):
+    ui.table([("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")], rich_table=True)
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == ["foo   bar", "foo1  bar1", "foo2  bar2"]
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
+        "foo   bar",
+        "foo1  bar1",
+        "foo2  bar2",
+    ]
 
 
-def test_rich_border(capsys: CaptureFixture[str]):
+def test_rich_border(capsys):
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
         headers=["first", "second"],
@@ -105,9 +106,7 @@ def test_rich_border(capsys: CaptureFixture[str]):
         borders="simple",
     )
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == [
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
         "first   second",
         "────────────────",
         "foo     bar",
@@ -124,21 +123,24 @@ def test_rich_border(capsys: CaptureFixture[str]):
         {"row_styles": [{"style": Style(bold=True)}]},
     ],
 )
-def test_rich_styles(capsys: CaptureFixture[str], extra_opts):
+def test_rich_styles(capsys, extra_opts):
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
         headers=["first", "second"],
         rich_table=True,
-        **extra_opts
+        **extra_opts,
     )
     # not able to test the actual style for now
     captured = capsys.readouterr()
-    assert [
-        row.strip() for row in captured.out.splitlines() if row.strip()
-    ] == ["first  second", "foo    bar", "foo1   bar1", "foo2   bar2"]
+    assert [row.strip() for row in captured.out.splitlines() if row.strip()] == [
+        "first  second",
+        "foo    bar",
+        "foo1   bar1",
+        "foo2   bar2",
+    ]
 
 
-def test_rich_pager(mocker: MockerFixture):
+def test_rich_pager(mocker):
     pager_mock = mocker.patch("dvc.ui.pager.pager")
 
     ui.table(
@@ -148,19 +150,22 @@ def test_rich_pager(mocker: MockerFixture):
         pager=True,
     )
     received_text = pager_mock.call_args[0][0]
-    assert [
-        row.strip() for row in received_text.splitlines() if row.strip()
-    ] == ["first  second", "foo    bar", "foo1   bar1", "foo2   bar2"]
+    assert [row.strip() for row in received_text.splitlines() if row.strip()] == [
+        "first  second",
+        "foo    bar",
+        "foo1   bar1",
+        "foo2   bar2",
+    ]
 
 
 @pytest.mark.parametrize("rich_table", [True, False])
-def test_empty(capsys: CaptureFixture[str], rich_table: str):
+def test_empty(capsys, rich_table):
     ui.table([], rich_table=rich_table)
     out, err = capsys.readouterr()
     assert (out, err) == ("", "")
 
 
-def test_empty_markdown(capsys: CaptureFixture[str]):
+def test_empty_markdown(capsys):
     ui.table([], headers=["Col1", "Col2"], markdown=True)
     out, err = capsys.readouterr()
     assert (out, err) == ("| Col1   | Col2   |\n|--------|--------|\n\n", "")

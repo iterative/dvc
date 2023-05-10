@@ -1,8 +1,8 @@
 import os
 import pathlib
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from funcy import concat, first, lsplit, rpartial, without
+from funcy import concat, first, lsplit, rpartial
 
 from dvc.annotations import ANNOTATION_FIELDS
 from dvc.exceptions import InvalidArgumentError
@@ -17,6 +17,7 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:
+    from dvc.dependency import Dependency, ParamsDependency
     from dvc.repo import Repo
 
     from . import PipelineStage, Stage
@@ -66,8 +67,6 @@ def fill_stage_outputs(stage, **kwargs):
 
     stage.outs = []
 
-    stage.outs += _load_live_output(stage, **kwargs)
-
     for key in keys:
         stage.outs += loads_from(
             stage,
@@ -80,40 +79,12 @@ def fill_stage_outputs(stage, **kwargs):
         )
 
 
-def _load_live_output(
-    stage,
-    live=None,
-    live_no_cache=None,
-    live_summary=False,
-    live_html=False,
-    **kwargs,
-):
-    from dvc.output import Output, loads_from
-
-    outs = []
-    if live or live_no_cache:
-        assert bool(live) != bool(live_no_cache)
-
-        path = live or live_no_cache
-        outs += loads_from(
-            stage,
-            [path],
-            use_cache=not bool(live_no_cache),
-            live={
-                Output.PARAM_LIVE_SUMMARY: live_summary,
-                Output.PARAM_LIVE_HTML: live_html,
-            },
-        )
-
-    return outs
-
-
-def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
+def fill_stage_dependencies(stage, deps=None, erepo=None, params=None, fs_config=None):
     from dvc.dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
-    stage.deps += loads_from(stage, deps or [], erepo=erepo)
+    stage.deps += loads_from(stage, deps or [], erepo=erepo, fs_config=fs_config)
     stage.deps += loads_params(stage, params or [])
 
 
@@ -139,8 +110,7 @@ def check_no_externals(stage):
     str_outs = ", ".join(outs)
     link = format_link("https://dvc.org/doc/user-guide/managing-external-data")
     raise StageExternalOutputsError(
-        f"Output(s) outside of DVC project: {str_outs}. "
-        f"See {link} for more info."
+        f"Output(s) outside of DVC project: {str_outs}. See {link} for more info."
     )
 
 
@@ -175,8 +145,7 @@ def check_missing_outputs(stage):
 
 def compute_md5(stage):
     from dvc.output import Output
-
-    from ..utils import dict_md5
+    from dvc.utils import dict_md5
 
     d = stage.dumpd()
 
@@ -209,7 +178,7 @@ def compute_md5(stage):
 
 
 def resolve_wdir(wdir, path):
-    from ..utils import relpath
+    from dvc.utils import relpath
 
     rel_wdir = relpath(wdir, os.path.dirname(path))
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
@@ -222,7 +191,7 @@ def resolve_paths(fs, path, wdir=None):
     return path, wdir
 
 
-def get_dump(stage):
+def get_dump(stage: "Stage", **kwargs):
     return {
         key: value
         for key, value in {
@@ -231,8 +200,8 @@ def get_dump(stage):
             stage.PARAM_CMD: stage.cmd,
             stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),
             stage.PARAM_FROZEN: stage.frozen,
-            stage.PARAM_DEPS: [d.dumpd() for d in stage.deps],
-            stage.PARAM_OUTS: [o.dumpd() for o in stage.outs],
+            stage.PARAM_DEPS: [d.dumpd(**kwargs) for d in stage.deps],
+            stage.PARAM_OUTS: [o.dumpd(**kwargs) for o in stage.outs],
             stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
             stage.PARAM_META: stage.meta,
         }.items()
@@ -240,19 +209,21 @@ def get_dump(stage):
     }
 
 
-def split_params_deps(stage):
-    from ..dependency import ParamsDependency
+def split_params_deps(
+    stage: "Stage",
+) -> Tuple[List["ParamsDependency"], List["Dependency"]]:
+    from dvc.dependency import ParamsDependency
 
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
 
 
-def is_valid_name(name: str):
+def is_valid_name(name: str) -> bool:
     from . import INVALID_STAGENAME_CHARS
 
     return not INVALID_STAGENAME_CHARS & set(name)
 
 
-def prepare_file_path(kwargs):
+def prepare_file_path(kwargs) -> str:
     """Determine file path from the first output name.
 
     Used in creating .dvc files.
@@ -270,43 +241,35 @@ def prepare_file_path(kwargs):
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
             kwargs.get("checkpoints", []),
-            without([kwargs.get("live", None)], None),
         )
     )
 
     return (
-        os.path.basename(os.path.normpath(out)) + DVC_FILE_SUFFIX
-        if out
-        else DVC_FILE
+        os.path.basename(os.path.normpath(out)) + DVC_FILE_SUFFIX if out else DVC_FILE
     )
 
 
-def check_stage_exists(
-    repo: "Repo", stage: Union["Stage", "PipelineStage"], path: str
-):
-    from dvc.dvcfile import make_dvcfile
+def check_stage_exists(repo: "Repo", stage: Union["Stage", "PipelineStage"], path: str):
+    from dvc.dvcfile import load_file
     from dvc.stage import PipelineStage
-    from dvc.stage.exceptions import (
-        DuplicateStageName,
-        StageFileAlreadyExistsError,
-    )
+    from dvc.stage.exceptions import DuplicateStageName, StageFileAlreadyExistsError
 
-    dvcfile = make_dvcfile(repo, path)
+    dvcfile = load_file(repo, path)
     if not dvcfile.exists():
         return
 
     hint = "Use '--force' to overwrite."
     if not isinstance(stage, PipelineStage):
-        raise StageFileAlreadyExistsError(
-            f"'{stage.relpath}' already exists. {hint}"
-        )
-    elif stage.name and stage.name in dvcfile.stages:
+        raise StageFileAlreadyExistsError(f"'{stage.relpath}' already exists. {hint}")
+    if stage.name and stage.name in dvcfile.stages:
         raise DuplicateStageName(
             f"Stage '{stage.name}' already exists in '{stage.relpath}'. {hint}"
         )
 
 
-def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
+def validate_kwargs(
+    single_stage: bool = False, fname: Optional[str] = None, **kwargs
+) -> Dict[str, Any]:
     """Prepare, validate and process kwargs passed from cli"""
     cmd = kwargs.get("cmd")
     if not cmd and not single_stage:
@@ -314,9 +277,7 @@ def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
 
     stage_name = kwargs.get("name")
     if stage_name and single_stage:
-        raise InvalidArgumentError(
-            "`-n|--name` is incompatible with `--single-stage`"
-        )
+        raise InvalidArgumentError("`-n|--name` is incompatible with `--single-stage`")
     if stage_name and fname:
         raise InvalidArgumentError(
             "`--file` is currently incompatible with `-n|--name` "
@@ -328,15 +289,4 @@ def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
     if single_stage:
         kwargs.pop("name", None)
 
-    if kwargs.get("live") and kwargs.get("live_no_cache"):
-        raise InvalidArgumentError(
-            "cannot specify both `--live` and `--live-no-cache`"
-        )
-
-    kwargs.update(
-        {
-            "live_summary": not kwargs.pop("live_no_summary", False),
-            "live_html": not kwargs.pop("live_no_html", False),
-        }
-    )
     return kwargs

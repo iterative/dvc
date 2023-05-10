@@ -59,8 +59,7 @@ class AsciiCanvas:
     def draw(self):
         """Draws ASCII canvas on the screen."""
         lines = map("".join, self.canvas)
-        joined_lines = os.linesep.join(lines)
-        return joined_lines
+        return os.linesep.join(lines)
 
     def point(self, x, y, char):
         """Create a point on ASCII canvas.
@@ -81,7 +80,7 @@ class AsciiCanvas:
 
         self.canvas[y][x] = char
 
-    def line(self, x0, y0, x1, y1, char):
+    def line(self, x0, y0, x1, y1, char):  # noqa: C901, PLR0912
         """Create a line on ASCII canvas.
 
         Args:
@@ -214,8 +213,8 @@ def draw(vertices, edges):
     # pylint: disable=too-many-locals
     # NOTE: coordinates might me negative, so we need to shift
     # everything to the positive plane before we actually draw it.
-    Xs = []  # pylint: disable=invalid-name
-    Ys = []  # pylint: disable=invalid-name
+    Xs = []  # noqa: N806, pylint: disable=invalid-name
+    Ys = []  # noqa: N806, pylint: disable=invalid-name
 
     sug = _build_sugiyama_layout(vertices, edges)
 
@@ -273,8 +272,6 @@ def draw(vertices, edges):
             vertex.view.h,
         )
 
-        canvas.text(
-            int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data
-        )
+        canvas.text(int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data)
 
     return canvas.draw()

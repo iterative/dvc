@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 class CmdImport(CmdBase):
     def run(self):
+        from dvc.scm import CloneError
+
         try:
             self.repo.imp(
                 self.args.url,
@@ -26,11 +28,14 @@ class CmdImport(CmdBase):
                 meta=self.args.meta,
                 jobs=self.args.jobs,
             )
+        except CloneError:
+            logger.exception("failed to import '%s'", self.args.path)
+            return 1
         except DvcException:
             logger.exception(
-                "failed to import '{}' from '{}'.".format(
-                    self.args.path, self.args.url
-                )
+                "failed to import '%s' from '%s'.",
+                self.args.path,
+                self.args.url,
             )
             return 1
         return 0
@@ -86,8 +91,10 @@ def add_parser(subparsers, parent_parser):
         "--no-download",
         action="store_true",
         default=False,
-        help="Create .dvc file including target data hash value(s)"
-        " but do not actually download the file(s).",
+        help=(
+            "Create .dvc file including target data hash value(s)"
+            " but do not actually download the file(s)."
+        ),
     )
     import_parser.add_argument(
         "-j",

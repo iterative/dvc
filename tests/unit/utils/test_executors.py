@@ -49,7 +49,7 @@ def test_cancel_futures(wait, cancel_futures):
 def test_cancel_on_error_context_manager(mocker):
     executor = ThreadPoolExecutor(max_workers=2, cancel_on_error=True)
     spy = mocker.spy(executor, "shutdown")
-    with pytest.raises(RuntimeError), executor:
+    with pytest.raises(RuntimeError), executor:  # noqa: PT012
         future1 = executor.submit(operator.mul, 2, 21)
         future2 = executor.submit(time.sleep, 0.1)
         future3 = executor.submit(raiser(RuntimeError), "This is an error")

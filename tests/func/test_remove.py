@@ -4,10 +4,7 @@ import pytest
 
 from dvc.cli import main
 from dvc.fs import system
-from dvc.stage.exceptions import (
-    StageFileDoesNotExistError,
-    StageFileIsNotDvcFileError,
-)
+from dvc.stage.exceptions import StageFileDoesNotExistError, StageFileIsNotDvcFileError
 from dvc.utils.fs import remove
 from dvc_objects.errors import ObjectDBError
 from tests.utils import get_gitignore_content
@@ -26,7 +23,7 @@ def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
     for stage in [stage1, stage2, stage3]:
         dvc.remove(stage.addressing, outs=remove_outs)
         out_exists = (out.exists for out in stage.outs)
-        assert stage not in dvc.stage.collect_repo()
+        assert stage not in dvc.index.stages
         if remove_outs:
             assert not any(out_exists)
         else:
@@ -56,10 +53,10 @@ def test_remove_non_existent_file(tmp_dir, dvc):
 
 def test_remove_broken_symlink(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
-    dvc.odb.local.cache_types = ["symlink"]
+    dvc.cache.local.cache_types = ["symlink"]
 
     (stage,) = dvc.add("foo")
-    remove(dvc.odb.local.path)
+    remove(dvc.cache.local.path)
     assert system.is_symlink("foo")
 
     with pytest.raises(ObjectDBError):

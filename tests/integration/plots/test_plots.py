@@ -5,21 +5,20 @@ from typing import Dict, List
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-import dpath.util
+import dpath
 import pytest
 from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.cli import main
+from dvc.render import REVISION_FIELD, VERSION_FIELD
 
 JSON_OUT = "vis_data"
 
 
 def call(capsys, subcommand="show"):
     capsys.readouterr()
-    assert (
-        main(["plots", subcommand, "--json", "-o", JSON_OUT, "--split"]) == 0
-    )
+    assert main(["plots", subcommand, "--json", "-o", JSON_OUT, "--split"]) == 0
     split_json_out, _ = capsys.readouterr()
 
     split_json_result = json.loads(split_json_out)
@@ -43,32 +42,19 @@ def extract_vega_specs(html_path, plots_ids):
 
     result = {}
 
-    with open(html_path, "r", encoding="utf-8") as fd:
+    with open(html_path, encoding="utf-8") as fd:
         content = fd.read()
 
     reader = BeautifulSoup(content, features="html.parser")
     for plot_id in plots_ids:
         script = _remove_blanks(
-            reader.find(
-                "div", id=Renderer.remove_special_chars(plot_id)
-            ).script.text
+            reader.find("div", id=Renderer.remove_special_chars(plot_id)).script.text
         )
         result[plot_id] = json.loads(
             script.split("; vegaEmbed")[0].replace("var spec = ", "")
         )
 
     return result
-
-
-def filter_fields(datapoints: List[Dict], fields: List[str]):
-
-    tmp = deepcopy(datapoints)
-    for datapoint in tmp:
-        keys = set(datapoint.keys())
-        for key in keys:
-            if key not in fields:
-                datapoint.pop(key)
-    return tmp
 
 
 def drop_fields(datapoints: List[Dict], fields: List[str]):
@@ -104,18 +90,11 @@ def verify_image(path, version, filename, content, html_path, json_result):
     # there should be no absolute paths in produced HTML
     # TODO uncomment once dvc-render is adjusted
     # assert str(path) not in html_content
-    assert (
-        path / "dvc_plots" / "static" / output_name
-    ).read_bytes() == content
+    assert (path / "dvc_plots" / "static" / output_name).read_bytes() == content
 
 
 def _remove_blanks(text: str):
     return " ".join(text.replace("\t", "").replace("\n", "").split())
-
-
-class hashabledict(dict):
-    def __hash__(self):
-        return hash(tuple(sorted(self.items())))
 
 
 def verify_vega(
@@ -137,22 +116,17 @@ def verify_vega(
 
     assert json_result[0]["content"]["data"]["values"]
     assert html_result["data"]["values"]
-    assert (
-        split_json_result[0]["content"]["data"]["values"]
-        == "<DVC_METRIC_DATA>"
-    )
+    assert split_json_result[0]["content"]["data"]["values"] == "<DVC_METRIC_DATA>"
 
-    def _assert_templates_equal(
-        html_template, filled_template, split_template
-    ):
+    def _assert_templates_equal(html_template, filled_template, split_template):
         # besides data, json and split json should be equal
         path = ["data", "values"]
         tmp1 = deepcopy(html_template)
         tmp2 = deepcopy(filled_template)
         tmp3 = deepcopy(split_template)
-        dpath.util.set(tmp1, path, {})
-        dpath.util.set(tmp2, path, {})
-        dpath.util.set(tmp3, path, {})
+        dpath.set(tmp1, path, {})
+        dpath.set(tmp2, path, {})
+        dpath.set(tmp3, path, {})
 
         assert tmp1 == tmp2 == tmp3
 
@@ -166,25 +140,17 @@ def verify_vega_props(plot_id, json_result, title, x, y, **kwargs):
     assert len(data) == 1
     data = first(data)
 
-    assert dpath.util.get(data, ["content", "title"]) == title
+    assert dpath.get(data, ["content", "title"]) == title
 
     try:
         # TODO confusion_matrix_plot - need to find better way of asserting
         #      encoding as its place is not constant in vega
-        plot_x = dpath.util.get(
-            data, ["content", "spec", "encoding", "x", "field"]
-        )
-        plot_y = dpath.util.get(
-            data, ["content", "spec", "encoding", "y", "field"]
-        )
+        plot_x = dpath.get(data, ["content", "spec", "encoding", "x", "field"])
+        plot_y = dpath.get(data, ["content", "spec", "encoding", "y", "field"])
     except KeyError:
         # default plot
-        plot_x = dpath.util.get(
-            data, ["content", "layer", 0, "encoding", "x", "field"]
-        )
-        plot_y = dpath.util.get(
-            data, ["content", "layer", 0, "encoding", "y", "field"]
-        )
+        plot_x = dpath.get(data, ["content", "layer", 0, "encoding", "x", "field"])
+        plot_y = dpath.get(data, ["content", "layer", 0, "encoding", "y", "field"])
 
     assert plot_x == x
     assert plot_y == y
@@ -208,102 +174,166 @@ def test_no_plots(tmp_dir, scm, dvc, capsys):
 
 
 @pytest.mark.vscode
-def test_repo_with_plots(
-    tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_plots
-):
+def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_plots):
     repo_state = repo_with_plots()
 
     image_v1, linear_v1, confusion_v1, confusion_props = next(repo_state)
 
     html_path, json_result, split_json_result = call(capsys)
-    html_result = extract_vega_specs(
-        html_path, ["linear.json", "confusion.json"]
+    html_result = extract_vega_specs(html_path, ["linear.json", "confusion.json"])
+
+    assert "errors" not in json_result
+    assert "errors" not in split_json_result
+
+    json_data = json_result["data"]
+    split_json_data = split_json_result["data"]
+
+    assert json_data["linear.json"][0]["content"]["data"][
+        "values"
+    ] == _update_datapoints(
+        linear_v1,
+        {
+            VERSION_FIELD: {
+                "revision": "workspace",
+                "filename": "linear.json",
+                "field": "y",
+            },
+        },
     )
     assert html_result["linear.json"]["data"]["values"] == _update_datapoints(
         linear_v1,
         {
-            "rev": "workspace",
+            REVISION_FIELD: "workspace",
         },
     )
-    assert html_result["confusion.json"]["data"][
+    assert json_data["confusion.json"][0]["content"]["data"][
         "values"
     ] == _update_datapoints(
         confusion_v1,
         {
-            "rev": "workspace",
+            VERSION_FIELD: {
+                "revision": "workspace",
+                "filename": "confusion.json",
+                "field": "actual",
+            },
         },
     )
-
-    verify_image(
-        tmp_dir, "workspace", "image.png", image_v1, html_path, json_result
+    assert html_result["confusion.json"]["data"]["values"] == _update_datapoints(
+        confusion_v1,
+        {
+            REVISION_FIELD: "workspace",
+        },
     )
+    verify_image(tmp_dir, "workspace", "image.png", image_v1, html_path, json_data)
 
     for plot in ["linear.json", "confusion.json"]:
         verify_vega(
             "workspace",
             html_result[plot],
-            json_result[plot],
-            split_json_result[plot],
+            json_data[plot],
+            split_json_data[plot],
         )
 
-    verify_vega_props("confusion.json", json_result, **confusion_props)
+    verify_vega_props("confusion.json", json_data, **confusion_props)
 
     image_v2, linear_v2, confusion_v2, confusion_props = next(repo_state)
 
     html_path, json_result, split_json_result = call(capsys, subcommand="diff")
-    html_result = extract_vega_specs(
-        html_path, ["linear.json", "confusion.json"]
-    )
+    html_result = extract_vega_specs(html_path, ["linear.json", "confusion.json"])
 
-    verify_image(
-        tmp_dir, "workspace", "image.png", image_v2, html_path, json_result
-    )
-    verify_image(
-        tmp_dir, "HEAD", "image.png", image_v1, html_path, json_result
-    )
+    assert "errors" not in json_result
+    assert "errors" not in split_json_result
+
+    json_data = json_result["data"]
+    split_json_data = split_json_result["data"]
+
+    verify_image(tmp_dir, "workspace", "image.png", image_v2, html_path, json_data)
+    verify_image(tmp_dir, "HEAD", "image.png", image_v1, html_path, json_data)
 
     for plot in ["linear.json", "confusion.json"]:
         verify_vega(
             ["HEAD", "workspace"],
             html_result[plot],
-            json_result[plot],
-            split_json_result[plot],
+            json_data[plot],
+            split_json_data[plot],
         )
-    verify_vega_props("confusion.json", json_result, **confusion_props)
+    verify_vega_props("confusion.json", json_data, **confusion_props)
     path = tmp_dir / "subdir"
     path.mkdir()
     with path.chdir():
-        html_path, json_result, split_json_result = call(
-            capsys, subcommand="diff"
-        )
+        html_path, json_result, split_json_result = call(capsys, subcommand="diff")
         html_result = extract_vega_specs(
             html_path,
             ["../linear.json", "../confusion.json"],
         )
-        assert html_result["../linear.json"]["data"][
+
+        assert "errors" not in json_result
+        assert "errors" not in split_json_result
+
+        json_data = json_result["data"]
+        split_json_data = split_json_result["data"]
+        assert json_data["../linear.json"][0]["content"]["data"][
             "values"
         ] == _update_datapoints(
             linear_v2,
             {
-                "rev": "workspace",
+                VERSION_FIELD: {
+                    "revision": "workspace",
+                    "filename": "../linear.json",
+                    "field": "y",
+                },
             },
         ) + _update_datapoints(
             linear_v1,
             {
-                "rev": "HEAD",
+                VERSION_FIELD: {
+                    "revision": "HEAD",
+                    "filename": "../linear.json",
+                    "field": "y",
+                },
             },
         )
-        assert html_result["../confusion.json"]["data"][
+        assert html_result["../linear.json"]["data"]["values"] == _update_datapoints(
+            linear_v2,
+            {
+                REVISION_FIELD: "workspace",
+            },
+        ) + _update_datapoints(
+            linear_v1,
+            {
+                REVISION_FIELD: "HEAD",
+            },
+        )
+        assert json_data["../confusion.json"][0]["content"]["data"][
             "values"
         ] == _update_datapoints(
             confusion_v2,
             {
-                "rev": "workspace",
+                VERSION_FIELD: {
+                    "revision": "workspace",
+                    "filename": "../confusion.json",
+                    "field": "actual",
+                },
             },
         ) + _update_datapoints(
             confusion_v1,
             {
-                "rev": "HEAD",
+                VERSION_FIELD: {
+                    "revision": "HEAD",
+                    "filename": "../confusion.json",
+                    "field": "actual",
+                },
+            },
+        )
+        assert html_result["../confusion.json"]["data"]["values"] == _update_datapoints(
+            confusion_v2,
+            {
+                REVISION_FIELD: "workspace",
+            },
+        ) + _update_datapoints(
+            confusion_v1,
+            {
+                REVISION_FIELD: "HEAD",
             },
         )
 
@@ -314,8 +344,8 @@ def test_repo_with_plots(
             verify_vega(
                 ["HEAD", "workspace"],
                 html_result[plot],
-                json_result[plot],
-                split_json_result[plot],
+                json_data[plot],
+                split_json_data[plot],
             )
         verify_image(
             path,
@@ -323,7 +353,7 @@ def test_repo_with_plots(
             "../image.png",
             image_v2,
             html_path,
-            json_result,
+            json_data,
         )
         verify_image(
             path,
@@ -331,7 +361,7 @@ def test_repo_with_plots(
             "../image.png",
             image_v1,
             html_path,
-            json_result,
+            json_data,
         )
 
 
@@ -349,13 +379,30 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
 
     for s in {"show", "diff"}:
         _, json_result, split_json_result = call(capsys, subcommand=s)
-        for p in {
-            "linear.json",
-            "confusion.json",
-            "image.png",
-        }:
-            assert json_result[p] == []
-            assert split_json_result[p] == []
+        errors = [
+            {
+                "name": p,
+                "source": p,
+                "rev": "workspace",
+                "type": "FileNotFoundError",
+                "msg": "",
+            }
+            for p in [
+                "linear.json",
+                "confusion.json",
+                "image.png",
+            ]
+        ]
+        expected_result = {
+            "errors": errors,
+            "data": {
+                "image.png": [],
+                "confusion.json": [],
+                "linear.json": [],
+            },
+        }
+        assert json_result == expected_result
+        assert split_json_result == expected_result
 
 
 def test_config_output_dir(tmp_dir, dvc, capsys):
@@ -374,10 +421,7 @@ def test_config_output_dir(tmp_dir, dvc, capsys):
     assert (subdir / "index.html").is_file()
 
     cli_arg_subdir = tmp_dir / "cli_option"
-    assert (
-        main(["plots", "show", "-o", os.fspath(cli_arg_subdir), "metric.json"])
-        == 0
-    )
+    assert main(["plots", "show", "-o", os.fspath(cli_arg_subdir), "metric.json"]) == 0
 
     out, _ = capsys.readouterr()
     assert cli_arg_subdir.as_uri() in out
@@ -390,11 +434,9 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     repo_state = repo_with_config_plots()
     plots = next(repo_state)
 
-    html_path, json_result, split_json_result = call(capsys)
+    html_path, _, __ = call(capsys)
 
     assert os.path.exists(html_path)
-    assert json_result == {}
-    assert split_json_result == {}
     html_result = extract_vega_specs(
         html_path,
         [
@@ -402,12 +444,17 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
             "dvc.yaml::confusion_train_vs_test",
         ],
     )
-    assert html_result["dvc.yaml::linear_train_vs_test"]["data"][
-        "values"
-    ] == _update_datapoints(
-        plots["data"]["linear_train.json"], {"rev": "linear_train.json"}
+    ble = _update_datapoints(
+        plots["data"]["linear_train.json"],
+        {
+            REVISION_FIELD: "linear_train.json",
+        },
     ) + _update_datapoints(
-        plots["data"]["linear_test.json"], {"rev": "linear_test.json"}
+        plots["data"]["linear_test.json"],
+        {
+            REVISION_FIELD: "linear_test.json",
+        },
     )
 
+    assert html_result["dvc.yaml::linear_train_vs_test"]["data"]["values"] == ble
     # TODO check json results once vscode is able to handle flexible plots

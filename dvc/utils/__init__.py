@@ -32,9 +32,7 @@ def dict_filter(d, exclude=()):
     if isinstance(d, list):
         return [dict_filter(e, exclude) for e in d]
 
-    return {
-        k: dict_filter(v, exclude) for k, v in d.items() if k not in exclude
-    }
+    return {k: dict_filter(v, exclude) for k, v in d.items() if k not in exclude}
 
 
 def dict_hash(d, typ, exclude=()):
@@ -196,13 +194,11 @@ def boxify(message, border_color=None):
         for line in lines
     ]
 
-    box_str = "{margin}{padding}{content}{padding}{margin}".format(
+    return "{margin}{padding}{content}{padding}{margin}".format(
         margin=colorize(margin, color=border_color),
         padding="".join(padding_lines),
         content="".join(content_lines),
     )
-
-    return box_str
 
 
 def _visual_width(line):
@@ -259,9 +255,10 @@ def env2bool(var, undefined=False):
     return bool(re.search("1|y|yes|true", var, flags=re.I))
 
 
-def resolve_output(inp, out):
-    import errno
+def resolve_output(inp, out, force=False):
     from urllib.parse import urlparse
+
+    from dvc.exceptions import FileExistsLocallyError
 
     name = os.path.basename(os.path.normpath(urlparse(inp).path))
     if not out:
@@ -271,8 +268,9 @@ def resolve_output(inp, out):
     else:
         ret = out
 
-    if os.path.exists(ret):
-        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), ret)
+    if os.path.exists(ret) and not force:
+        hint = "\nTo override it, re-run with '--force'."
+        raise FileExistsLocallyError(ret, hint=hint)
 
     return ret
 
@@ -280,10 +278,10 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
+    from dvc.dvcfile import DVC_FILE_SUFFIX
+    from dvc.exceptions import DvcException
     from dvc.fs import localfs
 
-    from ..dvcfile import DVC_FILE_SUFFIX
-    from ..exceptions import DvcException
     from .fs import contains_symlink_up_to
 
     abspath = os.path.abspath(out)
@@ -305,9 +303,7 @@ def resolve_paths(repo, out, always_local=False):
             "Cannot add files inside symlinked directories to DVC. "
             "See {} for more information."
         ).format(
-            format_link(
-                "https://dvc.org/doc/user-guide/troubleshooting#add-symlink"
-            )
+            format_link("https://dvc.org/doc/user-guide/troubleshooting#add-symlink")
         )
         raise DvcException(msg)
     else:
@@ -333,16 +329,16 @@ def error_link(name):
 
 
 def parse_target(
-    target: str, default: str = None, isa_glob: bool = False
+    target: str, default: Optional[str] = None, isa_glob: bool = False
 ) -> Tuple[Optional[str], Optional[str]]:
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE, is_valid_filename
     from dvc.exceptions import DvcException
     from dvc.parsing import JOIN
 
     if not target:
         return None, None
 
-    default = default or PIPELINE_FILE
+    default = default or PROJECT_FILE
     if isa_glob:
         path, _, glob = target.rpartition(":")
         return path or default, glob or None
@@ -362,26 +358,22 @@ def parse_target(
         name += f"{JOIN}{key}"
 
     if path:
-        if os.path.basename(path) == PIPELINE_LOCK:
+        if os.path.basename(path) == LOCK_FILE:
             raise DvcException(
-                "Did you mean: `{}`?".format(
-                    target.replace(".lock", ".yaml", 1)
-                )
+                "Did you mean: `{}`?".format(target.replace(".lock", ".yaml", 1))
             )
         if not name:
             ret = (target, None)
             return ret if is_valid_filename(target) else ret[::-1]
 
     if not path:
-        logger.trace(  # type: ignore[attr-defined]
-            "Assuming file to be '%s'", default
-        )
+        logger.trace("Assuming file to be '%s'", default)  # type: ignore[attr-defined]
 
     return path or default, name
 
 
 def glob_targets(targets, glob=True, recursive=True):
-    from ..exceptions import DvcException
+    from dvc.exceptions import DvcException
 
     if not glob:
         return targets
@@ -410,7 +402,7 @@ def error_handler(func):
             vals = func(*args, **kwargs)
             if vals:
                 result["data"] = vals
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
             if onerror is not None:
                 onerror(result, e, **kwargs)
         return result

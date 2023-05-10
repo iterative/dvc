@@ -21,22 +21,20 @@ def update_import(
     stage, rev=None, to_remote=False, remote=None, no_download=None, jobs=None
 ):
     stage.deps[0].update(rev=rev)
-    outs = stage.outs
-    deps = stage.deps
 
     frozen = stage.frozen
     stage.frozen = False
+    changed = stage.changed()
 
-    if stage.outs:
-        stage.outs[0].clear()
     try:
         if to_remote:
             _update_import_on_remote(stage, remote, jobs)
         else:
             stage.reproduce(no_download=no_download, jobs=jobs)
     finally:
-        if deps == stage.deps:
-            stage.outs = outs
+        if no_download and changed:
+            # Avoid retaining stale information
+            stage.outs[0].clear()
         stage.frozen = frozen
 
 
@@ -56,7 +54,10 @@ def sync_import(
         stage.outs[0].checkout()
     else:
         stage.save_deps()
-        if not no_download:
+        if no_download:
+            if stage.is_repo_import:
+                stage.deps[0].update()
+        else:
             stage.deps[0].download(
                 stage.outs[0],
                 jobs=jobs,

@@ -2,8 +2,9 @@
 import argparse
 import logging
 import os
-import sys
+from functools import lru_cache
 
+from dvc import __version__
 from dvc.commands import (
     add,
     cache,
@@ -29,6 +30,7 @@ from dvc.commands import (
     init,
     install,
     ls,
+    ls_url,
     machine,
     metrics,
     move,
@@ -75,6 +77,7 @@ COMMANDS = [
     install,
     root,
     ls,
+    ls_url,
     freeze,
     dag,
     daemon,
@@ -126,17 +129,6 @@ class DvcParser(argparse.ArgumentParser):
         return args
 
 
-class VersionAction(argparse.Action):  # pragma: no cover
-    # pylint: disable=too-few-public-methods
-    """Shows DVC version and exits."""
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        from dvc import __version__
-
-        print(__version__)
-        sys.exit(0)
-
-
 def get_parent_parser():
     """Create instances of a parser containing common arguments shared among
     all the commands.
@@ -159,6 +151,7 @@ def get_parent_parser():
     return parent_parser
 
 
+@lru_cache(maxsize=1)
 def get_main_parser():
     parent_parser = get_parent_parser()
 
@@ -184,13 +177,11 @@ def get_main_parser():
         help="Show this help message and exit.",
     )
 
-    # NOTE: On some python versions action='version' prints to stderr
-    # instead of stdout https://bugs.python.org/issue18920
     parser.add_argument(
         "-V",
         "--version",
-        action=VersionAction,
-        nargs=0,
+        action="version",
+        version=__version__,
         help="Show program's version.",
     )
 

@@ -10,9 +10,7 @@ class CmdRepro(CmdBase):
     def run(self):
         from dvc.ui import ui
 
-        stages = self.repo.reproduce(
-            **self._common_kwargs, **self._repro_kwargs
-        )
+        stages = self.repo.reproduce(**self._common_kwargs, **self._repro_kwargs)
         if len(stages) == 0:
             ui.write(CmdDataStatus.UP_TO_DATE_MSG)
         else:
@@ -55,7 +53,14 @@ def add_arguments(repro_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help="Stages to reproduce. 'dvc.yaml' by default.",
+        help="""\
+Stages to reproduce. 'dvc.yaml' by default.
+The targets can be path to a dvc.yaml file or `.dvc` file,
+or a stage name from dvc.yaml file from
+current working directory. To run a stage from dvc.yaml
+from other directories, the target must be a path followed by colon `:`
+and then the stage name name.
+""",
     ).complete = completion.DVCFILES_AND_STAGE
     repro_parser.add_argument(
         "-f",
@@ -76,16 +81,14 @@ def add_arguments(repro_parser):
         "--single-item",
         action="store_true",
         default=False,
-        help="Reproduce only single data item without recursive dependencies "
-        "check.",
+        help="Reproduce only single data item without recursive dependencies check.",
     )
     repro_parser.add_argument(
         "-p",
         "--pipeline",
         action="store_true",
         default=False,
-        help="Reproduce the whole pipeline that the specified targets "
-        "belong to.",
+        help="Reproduce the whole pipeline that the specified targets belong to.",
     )
     repro_parser.add_argument(
         "-P",
@@ -118,8 +121,10 @@ def add_arguments(repro_parser):
         "--force-downstream",
         action="store_true",
         default=False,
-        help="Reproduce all descendants of a changed stage even if their "
-        "direct dependencies didn't change.",
+        help=(
+            "Reproduce all descendants of a changed stage even if their "
+            "direct dependencies didn't change."
+        ),
     )
     repro_parser.add_argument(
         "--pull",
@@ -134,15 +139,14 @@ def add_arguments(repro_parser):
         "--dry",
         action="store_true",
         default=False,
-        help="Only print the commands that would be executed without "
-        "actually executing.",
+        help=(
+            "Only print the commands that would be executed without actually executing."
+        ),
     )
 
 
 def add_parser(subparsers, parent_parser):
-    REPRO_HELP = (
-        "Reproduce complete or partial pipelines by executing their stages."
-    )
+    REPRO_HELP = "Reproduce complete or partial pipelines by executing their stages."
     repro_parser = subparsers.add_parser(
         "repro",
         parents=[parent_parser],

@@ -19,12 +19,11 @@ from funcy import compact, lremove, lsplit
 
 from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
-from dvc.types import OptStr
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
-    from dvc.dvcfile import DVCFile
     from dvc.dependency import Dependency
+    from dvc.dvcfile import ProjectFile, SingleStageFile
+    from dvc.repo import Repo
 
 from dvc.ui import ui
 
@@ -41,11 +40,11 @@ PROMPTS = {
 
 def _prompts(
     keys: Iterable[str],
-    defaults: Dict[str, str] = None,
-    validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
+    defaults: Optional[Dict[str, str]] = None,
+    validator: Optional[Callable[[str, str], Union[str, Tuple[str, str]]]] = None,
     allow_omission: bool = True,
     stream: Optional[TextIO] = None,
-) -> Dict[str, OptStr]:
+) -> Dict[str, Optional[str]]:
     from dvc.ui.prompt import Prompt
 
     defaults = defaults or {}
@@ -77,7 +76,7 @@ def _disable_logging(highest_level=logging.CRITICAL):
 def init_interactive(
     defaults: Dict[str, str],
     provided: Dict[str, str],
-    validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
+    validator: Optional[Callable[[str, str], Union[str, Tuple[str, str]]]] = None,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, str]:
     command_prompts = lremove(provided.keys(), ["cmd"])
@@ -112,20 +111,18 @@ def init_interactive(
 
 
 def _check_stage_exists(
-    dvcfile: "DVCFile", name: str, force: bool = False
+    dvcfile: Union["ProjectFile", "SingleStageFile"],
+    name: str,
+    force: bool = False,
 ) -> None:
     if not force and dvcfile.exists() and name in dvcfile.stages:
         from dvc.stage.exceptions import DuplicateStageName
 
         hint = "Use '--force' to overwrite."
-        raise DuplicateStageName(
-            f"Stage '{name}' already exists in 'dvc.yaml'. {hint}"
-        )
+        raise DuplicateStageName(f"Stage '{name}' already exists in 'dvc.yaml'. {hint}")
 
 
-def validate_prompts(
-    repo: "Repo", key: str, value: str
-) -> Union[Any, Tuple[Any, str]]:
+def validate_prompts(repo: "Repo", key: str, value: str) -> Union[Any, Tuple[Any, str]]:
     from dvc.ui.prompt import InvalidResponse
 
     msg_format = "[yellow]'{0}' does not exist, the {1} will be created.[/]"
@@ -142,14 +139,13 @@ def validate_prompts(
         except MissingParamsFile:
             return value, msg_format.format(value, "file")
         except ParamsIsADirectoryError:
-            raise InvalidResponse(
+            raise InvalidResponse(  # noqa: B904
                 f"[prompt.invalid]'{value}' is a directory. "
                 "Please retry with an existing parameters file."
             )
-    elif key in ("code", "data"):
-        if not os.path.exists(value):
-            typ = "file" if is_file(value) else "directory"
-            return value, msg_format.format(value, typ)
+    elif key in ("code", "data") and not os.path.exists(value):
+        typ = "file" if is_file(value) else "directory"
+        return value, msg_format.format(value, typ)
     return value
 
 
@@ -200,16 +196,16 @@ def init_out_dirs(stage: PipelineStage) -> List[str]:
 def init(
     repo: "Repo",
     name: str = "train",
-    type: str = "default",  # pylint: disable=redefined-builtin
-    defaults: Dict[str, str] = None,
-    overrides: Dict[str, str] = None,
+    type: str = "default",  # noqa: A002, pylint: disable=redefined-builtin
+    defaults: Optional[Dict[str, str]] = None,
+    overrides: Optional[Dict[str, str]] = None,
     interactive: bool = False,
     force: bool = False,
     stream: Optional[TextIO] = None,
 ) -> Tuple[PipelineStage, List["Dependency"], List[str]]:
-    from dvc.dvcfile import make_dvcfile
+    from dvc.dvcfile import PROJECT_FILE, load_file
 
-    dvcfile = make_dvcfile(repo, "dvc.yaml")
+    dvcfile = load_file(repo, PROJECT_FILE)
     _check_stage_exists(dvcfile, name, force=force)
 
     defaults = defaults.copy() if defaults else {}
@@ -222,13 +218,12 @@ def init(
             provided=overrides,
             stream=stream,
         )
+    elif "live" in overrides:
+        # suppress `metrics`/`plots` if live is selected.
+        defaults.pop("metrics", None)
+        defaults.pop("plots", None)
     else:
-        if "live" in overrides:
-            # suppress `metrics`/`plots` if live is selected.
-            defaults.pop("metrics", None)
-            defaults.pop("plots", None)
-        else:
-            defaults.pop("live", None)  # suppress live otherwise
+        defaults.pop("live", None)  # suppress live otherwise
 
     context: Dict[str, str] = {**defaults, **overrides}
     assert "cmd" in context
@@ -244,14 +239,9 @@ def init(
         try:
             ParamsDependency(None, params, repo=repo).validate_filepath()
         except ParamsIsADirectoryError as exc:
-            raise DvcException(f"{exc}.")  # swallow cause for display
+            raise DvcException(f"{exc}.")  # noqa: B904  # swallow cause for display
         except MissingParamsFile:
             pass
-
-    models = context.get("models")
-    live_path = context.pop("live", None)
-    live_metrics = f"{live_path}.json" if live_path else None
-    live_plots = os.path.join(live_path, "scalars") if live_path else None
 
     if type == "checkpoint":
         outs_key = "checkpoints"
@@ -262,6 +252,13 @@ def init(
         metrics_key = "metrics_no_cache"
         plots_key = "plots_no_cache"
 
+    models = [context.get("models")]
+    metrics = [context.get("metrics")]
+    plots = [context.get("plots")]
+    if live_path := context.pop("live", None):
+        metrics.append(os.path.join(live_path, "metrics.json"))
+        plots.append(os.path.join(live_path, "plots"))
+
     stage = repo.stage.create(
         name=name,
         cmd=context["cmd"],
@@ -269,11 +266,12 @@ def init(
         params=[{params: None}] if params else None,
         force=force,
         **{
-            outs_key: compact([models]),
-            metrics_key: compact([context.get("metrics"), live_metrics]),
-            plots_key: compact([context.get("plots"), live_plots]),
+            outs_key: compact(models),
+            metrics_key: compact(metrics),
+            plots_key: compact(plots),
         },
     )
+    assert isinstance(stage, PipelineStage)
 
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
         stage.dump(update_lock=False)
@@ -283,5 +281,4 @@ def init(
         if params:
             repo.scm_context.track_file(params)
 
-    assert isinstance(stage, PipelineStage)
     return stage, initialized_deps, initialized_out_dirs

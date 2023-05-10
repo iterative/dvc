@@ -1,5 +1,6 @@
 import argparse
 import logging
+from typing import Any, Dict
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
@@ -12,43 +13,79 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsPush(CmdBase):
     def raise_error_if_all_disabled(self):
-        if not any(
-            [self.args.experiment, self.args.all_commits, self.args.rev]
-        ):
+        if not any([self.args.experiment, self.args.all_commits, self.args.rev]):
             raise InvalidArgumentError(
                 "Either provide an `experiment` argument, or use the "
                 "`--rev` or `--all-commits` flag."
             )
 
+    @staticmethod
+    def log_result(result: Dict[str, Any], remote: str):
+        from dvc.utils import humanize
+
+        def join_exps(exps):
+            return humanize.join([f"[bold]{e}[/]" for e in exps])
+
+        if diverged_exps := result.get("diverged"):
+            exps = join_exps(diverged_exps)
+            ui.error_write(
+                f"[yellow]Local experiment {exps} has diverged "
+                "from remote experiment with the same name.\n"
+                "To override the remote experiment re-run with '--force'.",
+                styled=True,
+            )
+        if uptodate_exps := result.get("up_to_date"):
+            exps = join_exps(uptodate_exps)
+            verb = "are" if len(uptodate_exps) > 1 else "is"
+            ui.write(
+                f"Experiment {exps} {verb} up to date on Git remote {remote!r}.",
+                styled=True,
+            )
+        if pushed_exps := result.get("success"):
+            exps = join_exps(pushed_exps)
+            ui.write(f"Pushed experiment {exps} to Git remote {remote!r}.", styled=True)
+        if not uptodate_exps and not pushed_exps:
+            ui.write("No experiments to push.")
+
+        if uploaded := result.get("uploaded"):
+            stats = {"uploaded": uploaded}
+            ui.write(humanize.get_summary(stats.items()))
+
+        if project_url := result.get("url"):
+            ui.rich_print(
+                "View your experiments at", project_url, style="yellow", soft_wrap=True
+            )
+
     def run(self):
+        from dvc.repo.experiments.push import UploadError
 
         self.raise_error_if_all_disabled()
 
-        pushed_exps = self.repo.experiments.push(
-            self.args.git_remote,
-            self.args.experiment,
-            all_commits=self.args.all_commits,
-            rev=self.args.rev,
-            num=self.args.num,
-            force=self.args.force,
-            push_cache=self.args.push_cache,
-            dvc_remote=self.args.dvc_remote,
-            jobs=self.args.jobs,
-            run_cache=self.args.run_cache,
-        )
-
-        if pushed_exps:
-            ui.write(
-                f"Pushed experiment '{pushed_exps}'"
-                f"to Git remote '{self.args.git_remote}'."
+        try:
+            result = self.repo.experiments.push(
+                self.args.git_remote,
+                self.args.experiment,
+                all_commits=self.args.all_commits,
+                rev=self.args.rev,
+                num=self.args.num,
+                force=self.args.force,
+                push_cache=self.args.push_cache,
+                dvc_remote=self.args.dvc_remote,
+                jobs=self.args.jobs,
+                run_cache=self.args.run_cache,
             )
-        else:
-            ui.write("No experiments to push.")
+        except UploadError as e:
+            self.log_result(e.result, self.args.git_remote)
+            raise
+
+        self.log_result(result, self.args.git_remote)
         if not self.args.push_cache:
             ui.write(
                 "To push cached outputs",
-                "for this experiment to DVC remote storage,"
-                "re-run this command without '--no-cache'.",
+                (
+                    "for this experiment to DVC remote storage,"
+                    "re-run this command without '--no-cache'."
+                ),
             )
 
         return 0
@@ -76,10 +113,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "--no-cache",
         action="store_false",
         dest="push_cache",
-        help=(
-            "Do not push cached outputs for this experiment to DVC remote "
-            "storage."
-        ),
+        help="Do not push cached outputs for this experiment to DVC remote storage.",
     )
     experiments_push_parser.add_argument(
         "-r",
@@ -93,10 +127,7 @@ def add_parser(experiments_subparsers, parent_parser):
         "--jobs",
         type=int,
         metavar="<number>",
-        help=(
-            "Number of jobs to run simultaneously when pushing to DVC remote "
-            "storage."
-        ),
+        help="Number of jobs to run simultaneously when pushing to DVC remote storage.",
     )
     experiments_push_parser.add_argument(
         "--run-cache",

@@ -44,9 +44,7 @@ def generate_description(stage: "Stage") -> str:
     return "; ".join(desc)
 
 
-def prepare_description(
-    stage: "Stage", max_length: int = MAX_TEXT_LENGTH
-) -> str:
+def prepare_description(stage: "Stage", max_length: int = MAX_TEXT_LENGTH) -> str:
     desc = stage.short_description() or generate_description(stage)
     return truncate_text(desc, max_length)
 
@@ -57,9 +55,9 @@ def prepare_stages_data(
     max_length: int = MAX_TEXT_LENGTH,
 ) -> Dict[str, str]:
     return {
-        stage.addressing: prepare_description(stage, max_length=max_length)
-        if description
-        else ""
+        stage.addressing: (
+            prepare_description(stage, max_length=max_length) if description else ""
+        )
         for stage in stages
     }
 
@@ -67,7 +65,7 @@ def prepare_stages_data(
 class CmdStageList(CmdBase):
     def _get_stages(self) -> Iterable["Stage"]:
         if self.args.all:
-            stages: List["Stage"] = self.repo.index.stages  # type: ignore
+            stages: List["Stage"] = self.repo.index.stages
             logger.trace(  # type: ignore[attr-defined]
                 "%d no. of stages found", len(stages)
             )
@@ -75,9 +73,7 @@ class CmdStageList(CmdBase):
 
         # removing duplicates while maintaining order
         collected = chain.from_iterable(
-            self.repo.stage.collect(
-                target=target, recursive=self.args.recursive
-            )
+            self.repo.stage.collect(target=target, recursive=self.args.recursive)
             for target in self.args.targets
         )
         return dict.fromkeys(collected).keys()
@@ -95,7 +91,7 @@ class CmdStageList(CmdBase):
 
         stages = self._get_stages()
         data = prepare_stages_data(stages, description=not self.args.name_only)
-        ui.table(data.items())
+        ui.table(list(data.items()))
 
         return 0
 
@@ -173,8 +169,7 @@ def _add_common_args(parser):
         "--outs-no-cache",
         action="append",
         default=[],
-        help="Declare output file or directory "
-        "(do not put into DVC cache).",
+        help="Declare output file or directory (do not put into DVC cache).",
         metavar="<filename>",
     ).complete = completion.FILE
     parser.add_argument(
@@ -182,8 +177,10 @@ def _add_common_args(parser):
         "--checkpoints",
         action="append",
         default=[],
-        help="Declare checkpoint output file or directory for 'dvc exp run'. "
-        "Not compatible with 'dvc repro'.",
+        help=(
+            "Declare checkpoint output file or directory for 'dvc exp run'. "
+            "Not compatible with 'dvc repro'."
+        ),
         metavar="<filename>",
     ).complete = completion.FILE
     parser.add_argument(
@@ -196,16 +193,17 @@ def _add_common_args(parser):
         "--outs-persist",
         action="append",
         default=[],
-        help="Declare output file or directory that will not be "
-        "removed upon repro.",
+        help="Declare output file or directory that will not be removed upon repro.",
         metavar="<filename>",
     )
     parser.add_argument(
         "--outs-persist-no-cache",
         action="append",
         default=[],
-        help="Declare output file or directory that will not be "
-        "removed upon repro (do not put into DVC cache).",
+        help=(
+            "Declare output file or directory that will not be "
+            "removed upon repro (do not put into DVC cache)."
+        ),
         metavar="<filename>",
     )
     parser.add_argument(
@@ -237,26 +235,6 @@ def _add_common_args(parser):
         default=[],
         help="Declare output plot file (do not put into DVC cache).",
         metavar="<path>",
-    )
-    parser.add_argument(
-        "--live", help="Declare output as dvclive.", metavar="<path>"
-    )
-    parser.add_argument(
-        "--live-no-cache",
-        help="Declare output as dvclive (do not put into DVC cache).",
-        metavar="<path>",
-    )
-    parser.add_argument(
-        "--live-no-summary",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--live-no-html",
-        action="store_true",
-        default=False,
-        help="Signal dvclive logger to not produce training report.",
     )
     parser.add_argument(
         "-w",

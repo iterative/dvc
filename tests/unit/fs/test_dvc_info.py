@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.fs.dvc import DvcFileSystem
+from dvc.fs.dvc import DVCFileSystem
 from dvc.testing.tmp_dir import make_subrepo
 
 
@@ -38,7 +38,7 @@ def dvcfs(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(fs_structure, commit="repo init")
     tmp_dir.dvc_gen(dvc_structure, commit="use dvc")
 
-    yield DvcFileSystem(repo=dvc, subrepos=True)
+    return DVCFileSystem(repo=dvc, subrepos=True)
 
 
 def test_info_not_existing(dvcfs):

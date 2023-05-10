@@ -47,7 +47,7 @@ def is_enabled():
     enabled = not os.getenv(DVC_NO_ANALYTICS)
     if enabled:
         enabled = to_bool(
-            Config(validate=False).get("core", {}).get("analytics", "true")
+            Config.from_cwd(validate=False).get("core", {}).get("analytics", "true")
         )
 
     logger.debug("Analytics is %sabled.", "en" if enabled else "dis")
@@ -82,10 +82,9 @@ def send(path):
 
 
 def _scm_in_use():
-    from scmrepo.noscm import NoSCM
-
     from dvc.exceptions import NotDvcRepoError
     from dvc.repo import Repo
+    from dvc.scm import NoSCM
 
     from .scm import SCM, SCMError
 
@@ -102,15 +101,24 @@ def _runtime_info():
     """
     Gather information from the environment where DVC runs to fill a report.
     """
+    from iterative_telemetry import _generate_ci_id, find_or_create_user_id
+
     from dvc import __version__
     from dvc.utils import is_binary
+
+    ci_id = _generate_ci_id()
+    if ci_id:
+        group_id, user_id = ci_id
+    else:
+        group_id, user_id = None, find_or_create_user_id()
 
     return {
         "dvc_version": __version__,
         "is_binary": is_binary(),
         "scm_class": _scm_in_use(),
         "system_info": _system_info(),
-        "user_id": _find_or_create_user_id(),
+        "user_id": user_id,
+        "group_id": group_id,
     }
 
 
@@ -123,7 +131,7 @@ def _system_info():
     system = platform.system()
 
     if system == "Windows":
-        version = sys.getwindowsversion()
+        version = sys.getwindowsversion()  # type: ignore[attr-defined]
 
         return {
             "os": "windows",
@@ -146,45 +154,3 @@ def _system_info():
 
     # We don't collect data for any other system.
     raise NotImplementedError
-
-
-def _find_or_create_user_id():
-    """
-    The user's ID is stored on a file under the global config directory.
-
-    The file should contain a JSON with a "user_id" key:
-
-        {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
-
-    IDs are generated randomly with UUID.
-    """
-    import uuid
-
-    from dvc.config import Config
-    from dvc.lock import Lock, LockError
-    from dvc.utils.fs import makedirs
-
-    config_dir = Config.get_dir("global")
-    fname = os.path.join(config_dir, "user_id")
-    lockfile = os.path.join(config_dir, "user_id.lock")
-
-    # Since the `fname` and `lockfile` are under the global config,
-    # we need to make sure such directory exist already.
-    makedirs(config_dir, exist_ok=True)
-
-    try:
-        with Lock(lockfile):
-            try:
-                with open(fname, encoding="utf-8") as fobj:
-                    user_id = json.load(fobj)["user_id"]
-
-            except (FileNotFoundError, ValueError, KeyError):
-                user_id = str(uuid.uuid4())
-
-                with open(fname, "w", encoding="utf-8") as fobj:
-                    json.dump({"user_id": user_id}, fobj)
-
-            return user_id
-
-    except LockError:
-        logger.debug("Failed to acquire '%s'", lockfile)

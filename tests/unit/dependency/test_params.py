@@ -71,9 +71,18 @@ def test_loads_params_without_any_specific_targets(dvc):
     assert not deps[2].hash_info
 
 
-@pytest.mark.parametrize("params", [[3], [{"b_file": "cat"}]])
-def test_params_error(dvc, params):
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    "params, errmsg",
+    [
+        ([3], "Only list of str/dict is supported. Got: 'int'"),
+        (
+            [{"b_file": "cat"}],
+            "Expected list of params for custom params file 'b_file', got 'str'.",
+        ),
+    ],
+)
+def test_params_error(dvc, params, errmsg):
+    with pytest.raises(ValueError, match=errmsg):
         loads_params(Stage(dvc), params)
 
 
@@ -113,9 +122,7 @@ def test_read_params_unsupported_format(tmp_dir, dvc):
 
 
 def test_read_params_nested(tmp_dir, dvc):
-    dump_yaml(
-        DEFAULT_PARAMS_FILE, {"some": {"path": {"foo": ["val1", "val2"]}}}
-    )
+    dump_yaml(DEFAULT_PARAMS_FILE, {"some": {"path": {"foo": ["val1", "val2"]}}})
     dep = ParamsDependency(Stage(dvc), None, ["some.path.foo"])
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 
@@ -146,15 +153,17 @@ def test_read_params_py(tmp_dir, dvc):
     parameters_file = "parameters.py"
     tmp_dir.gen(
         parameters_file,
-        "INT: int = 5\n"
-        "FLOAT = 0.001\n"
-        "STR = 'abc'\n"
-        "BOOL: bool = True\n"
-        "DICT = {'a': 1}\n"
-        "LIST = [1, 2, 3]\n"
-        "SET = {4, 5, 6}\n"
-        "TUPLE = (10, 100)\n"
-        "NONE = None\n",
+        (
+            "INT: int = 5\n"
+            "FLOAT = 0.001\n"
+            "STR = 'abc'\n"
+            "BOOL: bool = True\n"
+            "DICT = {'a': 1}\n"
+            "LIST = [1, 2, 3]\n"
+            "SET = {4, 5, 6}\n"
+            "TUPLE = (10, 100)\n"
+            "NONE = None\n"
+        ),
     )
     dep = ParamsDependency(
         Stage(dvc),
@@ -183,9 +192,7 @@ def test_read_params_py(tmp_dir, dvc):
         "NONE": None,
     }
 
-    tmp_dir.gen(
-        parameters_file, "class Train:\n    foo = 'val1'\n    bar = 'val2'\n"
-    )
+    tmp_dir.gen(parameters_file, "class Train:\n    foo = 'val1'\n    bar = 'val2'\n")
     dep = ParamsDependency(Stage(dvc), parameters_file, ["Train.foo"])
     assert dep.read_params() == {"Train.foo": "val1"}
 
@@ -194,17 +201,35 @@ def test_read_params_py(tmp_dir, dvc):
 
     tmp_dir.gen(
         parameters_file,
-        "x = 4\n"
-        "config.x = 3\n"
-        "class Klass:\n"
-        "    def __init__(self):\n"
-        "        self.a = 'val1'\n"
-        "        container.a = 2\n"
-        "        self.container.a = 1\n"
-        "        a = 'val2'\n",
+        (
+            "x = 4\n"
+            "config.x = 3\n"
+            "class Klass:\n"
+            "    def __init__(self):\n"
+            "        self.a = 'val1'\n"
+            "        container.a = 2\n"
+            "        self.container.a = 1\n"
+            "        a = 'val2'\n"
+        ),
     )
     dep = ParamsDependency(Stage(dvc), parameters_file, ["x", "Klass.a"])
     assert dep.read_params() == {"x": 4, "Klass.a": "val1"}
+
+
+def test_params_py_tuple_status(tmp_dir, dvc):
+    """https://github.com/iterative/dvc/issues/8803"""
+    parameters_file = "parameters.py"
+    tmp_dir.gen(parameters_file, "TUPLE = (10, 100)\n")
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["TUPLE"])
+    # lock file uses YAML so the tuple will be loaded as a list
+    dep.fill_values({"TUPLE": [10, 100]})
+    assert dep.status() == {}
+    dep.fill_values({"TUPLE": [11, 100]})
+    assert dep.status() == {"parameters.py": {"TUPLE": "modified"}}
+    dep.fill_values({"TUPLE": [10]})
+    assert dep.status() == {"parameters.py": {"TUPLE": "modified"}}
+    dep.fill_values({"TUPLE": {10: "foo", 100: "bar"}})
+    assert dep.status() == {"parameters.py": {"TUPLE": "modified"}}
 
 
 def test_get_hash_missing_config(dvc):

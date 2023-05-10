@@ -47,5 +47,5 @@ def dump_toml(path, data, fs=None, **kwargs):
 
 @contextmanager
 def modify_toml(path, fs=None):
-    with _modify_data(path, parse_toml_for_update, dump_toml, fs=fs) as d:
+    with _modify_data(path, parse_toml_for_update, _dump, fs=fs) as d:
         yield d

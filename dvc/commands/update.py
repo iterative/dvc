@@ -60,8 +60,10 @@ def add_parser(subparsers, parent_parser):
         "--no-download",
         action="store_true",
         default=False,
-        help="Update .dvc file hash value(s)"
-        " but do not download the file(s).",
+        help=(
+            "Update .dvc file git revision/hash value(s)"
+            " but do not download the file(s)."
+        ),
     )
     update_parser.add_argument(
         "--to-remote",

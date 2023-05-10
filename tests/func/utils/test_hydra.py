@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
@@ -93,16 +91,16 @@ from dvc.exceptions import InvalidArgumentError
 def test_apply_overrides(tmp_dir, suffix, overrides, expected):
     from dvc.utils.hydra import apply_overrides
 
-    if suffix == "toml":
-        if overrides in [
-            ["foo=baz"],
-            ["foo.0=bar"],
-            ["foo=baz", "goo=bar"],
-            ["lorem=null"],
-        ]:
-            # TOML dumper breaks when overriding a list/dict with other type
-            # or when handling `null` values.
-            pytest.xfail()
+    if suffix == "toml" and overrides in [
+        ["foo=baz"],
+        ["foo.0=bar"],
+        ["foo=baz", "goo=bar"],
+        ["lorem=null"],
+    ]:
+        pytest.skip(
+            "TOML dumper breaks when overriding a list/dict with other type or"
+            " when handling `null` values."
+        )
 
     params_file = tmp_dir / f"params.{suffix}"
     params_file.dump(
@@ -140,7 +138,6 @@ def hydra_setup(tmp_dir, config_dir, config_name):
     return str(config_dir)
 
 
-@pytest.mark.skipif(sys.version_info >= (3, 11), reason="unsupported on 3.11")
 @pytest.mark.parametrize("suffix", ["yaml", "toml", "json"])
 @pytest.mark.parametrize(
     "overrides,expected",
@@ -174,7 +171,100 @@ def test_compose_and_dump(tmp_dir, suffix, overrides, expected):
     from dvc.utils.hydra import compose_and_dump
 
     config_name = "config"
-    config_dir = hydra_setup(tmp_dir, "conf", "config")
     output_file = tmp_dir / f"params.{suffix}"
+    config_dir = hydra_setup(tmp_dir, "conf", "config")
     compose_and_dump(output_file, config_dir, config_name, overrides)
     assert output_file.parse() == expected
+
+
+def test_compose_and_dump_yaml_handles_string(tmp_dir):
+    """Regression test for https://github.com/iterative/dvc/issues/8583"""
+    from dvc.utils.hydra import compose_and_dump
+
+    config = tmp_dir / "conf" / "config.yaml"
+    config.parent.mkdir()
+    config.write_text("foo: 'no'\n")
+    output_file = tmp_dir / "params.yaml"
+    compose_and_dump(output_file, str(config.parent), "config", [])
+    assert output_file.read_text() == "foo: 'no'\n"
+
+
+def test_compose_and_dump_resolves_interpolation(tmp_dir):
+    """Regression test for https://github.com/iterative/dvc/issues/9196"""
+    from dvc.utils.hydra import compose_and_dump
+
+    config = tmp_dir / "conf" / "config.yaml"
+    config.parent.mkdir()
+    config.dump({"data": {"root": "path/to/root", "raw": "${.root}/raw"}})
+    output_file = tmp_dir / "params.yaml"
+    compose_and_dump(output_file, str(config.parent), "config", [])
+    assert output_file.parse() == {
+        "data": {"root": "path/to/root", "raw": "path/to/root/raw"}
+    }
+
+
+@pytest.mark.parametrize(
+    "overrides, expected",
+    [
+        (
+            {"params.yaml": ["defaults/foo=1,2"]},
+            [
+                {"params.yaml": ["defaults/foo=1"]},
+                {"params.yaml": ["defaults/foo=2"]},
+            ],
+        ),
+        (
+            {"params.yaml": ["+foo=1,2", "~bar", "++foobar=5,6"]},
+            [
+                {"params.yaml": ["+foo=1", "~bar=null", "++foobar=5"]},
+                {"params.yaml": ["+foo=1", "~bar=null", "++foobar=6"]},
+                {"params.yaml": ["+foo=2", "~bar=null", "++foobar=5"]},
+                {"params.yaml": ["+foo=2", "~bar=null", "++foobar=6"]},
+            ],
+        ),
+        (
+            {"params.yaml": ["foo=1,2", "bar=3,4"]},
+            [
+                {"params.yaml": ["foo=1", "bar=3"]},
+                {"params.yaml": ["foo=1", "bar=4"]},
+                {"params.yaml": ["foo=2", "bar=3"]},
+                {"params.yaml": ["foo=2", "bar=4"]},
+            ],
+        ),
+        (
+            {"params.yaml": ["foo=choice(1,2)"]},
+            [{"params.yaml": ["foo=1"]}, {"params.yaml": ["foo=2"]}],
+        ),
+        (
+            {"params.yaml": ["foo=range(1, 3)"]},
+            [{"params.yaml": ["foo=1"]}, {"params.yaml": ["foo=2"]}],
+        ),
+        (
+            {"params.yaml": ["foo=1,2"], "others.yaml": ["bar=3"]},
+            [
+                {"params.yaml": ["foo=1"], "others.yaml": ["bar=3"]},
+                {"params.yaml": ["foo=2"], "others.yaml": ["bar=3"]},
+            ],
+        ),
+        (
+            {"params.yaml": ["foo=1,2"], "others.yaml": ["bar=3,4"]},
+            [
+                {"params.yaml": ["foo=1"], "others.yaml": ["bar=3"]},
+                {"params.yaml": ["foo=1"], "others.yaml": ["bar=4"]},
+                {"params.yaml": ["foo=2"], "others.yaml": ["bar=3"]},
+                {"params.yaml": ["foo=2"], "others.yaml": ["bar=4"]},
+            ],
+        ),
+    ],
+)
+def test_hydra_sweeps(overrides, expected):
+    from dvc.utils.hydra import get_hydra_sweeps
+
+    assert get_hydra_sweeps(overrides) == expected
+
+
+def test_invalid_sweep():
+    from dvc.utils.hydra import get_hydra_sweeps
+
+    with pytest.raises(InvalidArgumentError):
+        get_hydra_sweeps({"params.yaml": ["foo=glob(*)"]})

@@ -1,4 +1,7 @@
 """Exceptions raised by the dvc."""
+import errno
+from typing import Dict, List
+
 from dvc.utils import format_link
 
 
@@ -29,14 +32,19 @@ class OutputDuplicationError(DvcException):
 
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
+        msg = ""
+        stage_names = [s.addressing for s in stages]
+        stages_str = " ".join(stage_names)
         if len(stages) == 1:
-            msg = "output '{}' is already specified in {}.".format(
-                output, first(stages)
-            )
+            stage_name = first(stages)
+            msg = f"output '{output}' is already specified in {stage_name}."
         else:
             msg = "output '{}' is already specified in stages:\n{}".format(
-                output, "\n".join(f"\t- {s.addressing}" for s in stages)
+                output, "\n".join(f"\t- {s}" for s in stage_names)
             )
+        msg += (
+            f"\nUse `dvc remove {stages_str}` to stop tracking the overlapping output."
+        )
         super().__init__(msg)
         self.stages = stages
         self.output = output
@@ -132,17 +140,25 @@ class NotDvcRepoError(DvcException):
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
-        msg = "Pipeline has a cycle involving: {}.".format(
-            ", ".join(s.addressing for s in stages)
+        stage_part = "stage" if len(stages) == 1 else "stages"
+        msg = (
+            "Same item(s) are defined as both a dependency and an output "
+            "in {stage_part}: {stage}."
         )
-        super().__init__(msg)
+        super().__init__(
+            msg.format(
+                stage_part=stage_part,
+                stage=", ".join(s.addressing for s in stages),
+            )
+        )
 
 
 class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "unable to remove '{}' without a confirmation. Use "
-            "`-f` to force.".format(path)
+            "unable to remove '{}' without a confirmation. Use `-f` to force.".format(
+                path
+            )
         )
 
 
@@ -168,9 +184,7 @@ class BadMetricError(DvcException):
 
 class RecursiveAddingWhileUsingFilename(DvcException):
     def __init__(self):
-        super().__init__(
-            "cannot use `fname` with multiple targets or `-R|--recursive`"
-        )
+        super().__init__("cannot use `fname` with multiple targets or `-R|--recursive`")
 
 
 class OverlappingOutputPathsError(DvcException):
@@ -193,13 +207,23 @@ class ETagMismatchError(DvcException):
         )
 
 
+class FileExistsLocallyError(FileExistsError, DvcException):
+    def __init__(self, path, hint=None):
+        import os.path
+
+        self.path = path
+        hint = "" if hint is None else f". {hint}"
+        path_typ = "directory" if os.path.isdir(path) else "file"
+        msg = f"The {path_typ} '{path}' already exists locally{hint}"
+        super().__init__(msg)
+        self.errno = errno.EEXIST
+
+
 class FileMissingError(DvcException):
     def __init__(self, path, hint=None):
         self.path = path
         hint = "" if hint is None else f". {hint}"
-        super().__init__(
-            f"Can't find '{path}' neither locally nor on remote{hint}"
-        )
+        super().__init__(f"Can't find '{path}' neither locally nor on remote{hint}")
 
 
 class FileTransferError(DvcException):
@@ -220,7 +244,7 @@ class UploadError(FileTransferError):
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos, stats=None):
+    def __init__(self, target_infos: List[str], stats: Dict[str, List[str]]):
         from dvc.utils import error_link
 
         self.target_infos = target_infos
@@ -241,9 +265,7 @@ class CollectCacheError(DvcException):
 
 class NoRemoteInExternalRepoError(DvcException):
     def __init__(self, url):
-        super().__init__(
-            f"No DVC remote is specified in target repository '{url}'."
-        )
+        super().__init__(f"No DVC remote is specified in target repository '{url}'.")
 
 
 class NoOutputInExternalRepoError(DvcException):
@@ -268,8 +290,7 @@ class PathMissingError(DvcException):
         " neither as a DVC output nor as a Git-tracked file."
     )
     default_msg_dvc_only = (
-        "The path '{}' does not exist in the target repository '{}'"
-        " as an DVC output."
+        "The path '{}' does not exist in the target repository '{}' as an DVC output."
     )
 
     def __init__(self, path, repo, dvc_only=False):
@@ -278,9 +299,13 @@ class PathMissingError(DvcException):
         self.dvc_only = dvc_only
 
 
+class URLMissingError(DvcException):
+    def __init__(self, url):
+        super().__init__(f"The path '{url}' does not exist")
+
+
 class RemoteCacheRequiredError(DvcException):
     def __init__(self, scheme, fs_path):
-
         super().__init__(
             (
                 "Current operation was unsuccessful because '{}' requires "
@@ -305,8 +330,7 @@ class NoOutputOrStageError(DvcException):
 
     def __init__(self, target, file):
         super().__init__(
-            f"'{target}' "
-            f"does not exist as an output or a stage name in '{file}'"
+            f"'{target}' does not exist as an output or a stage name in '{file}'"
         )
 
 
@@ -315,11 +339,8 @@ class MergeError(DvcException):
 
 
 class CacheLinkError(DvcException):
-
     SUPPORT_LINK = "See {} for more information.".format(
-        format_link(
-            "https://dvc.org/doc/user-guide/troubleshooting#cache-types"
-        )
+        format_link("https://dvc.org/doc/user-guide/troubleshooting#cache-types")
     )
 
     def __init__(self, fs_paths):
@@ -328,14 +349,6 @@ class CacheLinkError(DvcException):
         )
         super().__init__(msg)
         self.fs_paths = fs_paths
-
-
-class CircularImportError(DvcException):
-    def __init__(self, dep, a, b):
-        super().__init__(
-            f"'{dep}' contains invalid circular import. "
-            f"DVC repo '{a}' already imports from '{b}'."
-        )
 
 
 class PrettyDvcException(DvcException):

@@ -1,20 +1,18 @@
 import filecmp
 import os
-from unittest.mock import patch
 
 import pytest
 from funcy import first
-from scmrepo.git import Git
 
 from dvc.annotations import Annotation
+from dvc.cachemgr import CacheManager
 from dvc.config import NoRemoteError
-from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError, PathMissingError
+from dvc.dvcfile import load_file
 from dvc.fs import system
-from dvc.odbmgr import ODBManager
+from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
-from dvc.utils.fs import makedirs, remove
+from dvc.utils.fs import remove
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -30,6 +28,7 @@ def test_import(tmp_dir, scm, dvc, erepo_dir):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+    assert stage.deps[0].fs.repo.cache.local.path == dvc.cache.local.path
 
 
 @pytest.mark.parametrize("src_is_dvc", [True, False])
@@ -49,7 +48,7 @@ def test_import_git_file(tmp_dir, scm, dvc, git_dir, src_is_dvc):
     }
 
 
-def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
+def test_import_cached_file(mocker, erepo_dir, tmp_dir, dvc, scm, monkeypatch):
     src = "some_file"
     dst = "some_file_imported"
 
@@ -60,10 +59,8 @@ def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
     (tmp_dir / dst).unlink()
 
     remote_exception = NoRemoteError("dvc import")
-    with patch.object(
-        dvc.cloud, "get_remote_odb", side_effect=remote_exception
-    ):
-        tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
+    mocker.patch.object(dvc.cloud, "get_remote_odb", side_effect=remote_exception)
+    tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).is_file()
     assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
@@ -131,9 +128,7 @@ def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
     assert (tmp_dir / "subdir" / "bar").read_text() == "bar"
     assert (tmp_dir / "subdir.dvc").exists()
 
-    dvc.imp(
-        os.fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X"
-    )
+    dvc.imp(os.fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X")
     assert (tmp_dir / "X").read_text() == "foo"
     assert (tmp_dir / "X.dvc").exists()
 
@@ -169,9 +164,7 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
             cmd=f"echo hello > {src}", outs_no_cache=[src], single_stage=True
         )
 
-    erepo_dir.scm_add(
-        [os.fspath(erepo_dir / src)], commit="add a non-cached out"
-    )
+    erepo_dir.scm_add([os.fspath(erepo_dir / src)], commit="add a non-cached out")
 
     stage = tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
 
@@ -206,7 +199,7 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
 
-    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
+    dst_stage = load_file(dvc, "foo_imported.dvc").stage
     dst_cache = dst_stage.outs[0].cache_path
 
     remove("foo_imported")
@@ -217,11 +210,71 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
     assert os.path.isfile(dst_cache)
 
 
+def test_import_no_download(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
+
+    assert not os.path.exists("foo_imported")
+
+    dst_stage = load_file(dvc, "foo_imported.dvc").stage
+
+    assert dst_stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }
+    assert scm.is_ignored("foo_imported")
+
+
+def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.scm_gen(os.path.join("foo", "bar"), b"bar", commit="add bar")
+        erepo_dir.dvc_gen(os.path.join("foo", "baz"), b"baz contents", commit="add baz")
+        size = (
+            len(b"bar")
+            + len(b"baz contents")
+            + len((erepo_dir / "foo" / ".gitignore").read_bytes())
+        )
+
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
+
+    dvc.pull(["foo_imported.dvc"])
+    assert (tmp_dir / "foo_imported").exists
+    assert (tmp_dir / "foo_imported" / "bar").read_bytes() == b"bar"
+    assert (tmp_dir / "foo_imported" / "baz").read_bytes() == b"baz contents"
+
+    stage = load_file(dvc, "foo_imported.dvc").stage
+
+    assert stage.outs[0].hash_info.value == "bdb8641831d8fcb03939637e09011c21.dir"
+
+    assert stage.outs[0].meta.size == size
+    assert stage.outs[0].meta.nfiles == 3
+    assert stage.outs[0].meta.isdir
+
+
+def test_pull_import_no_download_rev_lock(
+    tmp_dir,
+    dvc,
+    erepo_dir,
+):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="add")
+
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "modified foo content", commit="modify foo")
+
+    dvc.pull(["foo_imported.dvc"])
+    assert (tmp_dir / "foo_imported").read_text() == "foo content"
+
+
 def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
         with erepo_dir.dvc.config.edit() as conf:
             conf["cache"]["type"] = "symlink"
-        erepo_dir.dvc.odb = ODBManager(erepo_dir.dvc)
+        erepo_dir.dvc.cache = CacheManager(erepo_dir.dvc)
         erepo_dir.scm_add(
             [erepo_dir.dvc.config.files["repo"]],
             "set source repo cache type to symlink",
@@ -243,7 +296,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     remove("dir_imported")
-    remove(dvc.odb.local.path)
+    dvc.cache.local.clear()
 
     dvc.pull(["dir_imported.dvc"])
 
@@ -252,14 +305,12 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
 
 def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
-        erepo_dir.dvc_gen(
-            {"dir123": {"foo": "foo content"}}, commit="create dir"
-        )
+        erepo_dir.dvc_gen({"dir123": {"foo": "foo content"}}, commit="create dir")
 
     dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
 
     remove("dir_imported123")
-    remove(dvc.odb.local.path)
+    dvc.cache.local.clear()
 
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
@@ -280,9 +331,7 @@ def test_push_wildcard_from_bare_git_repo(
             },
             commit="initial",
         )
-    erepo_dir.dvc.push(
-        [os.path.join(os.fspath(erepo_dir), "dire*")], glob=True
-    )
+    erepo_dir.dvc.push([os.path.join(os.fspath(erepo_dir), "dire*")], glob=True)
 
     erepo_dir.scm.gitpython.repo.create_remote("origin", os.fspath(tmp_dir))
     erepo_dir.scm.gitpython.repo.remote("origin").push("master")
@@ -291,30 +340,12 @@ def test_push_wildcard_from_bare_git_repo(
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
 
-        with pytest.raises(PathMissingError):
-            dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
-
-
-def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
-    with erepo_dir.chdir():
-        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
-    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
-
-    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
-    dst_cache = dst_stage.outs[0].cache_path
-
-    remove("foo_imported")
-    remove(dst_cache)
-
-    with patch(
-        "dvc_objects.fs.generic.transfer", side_effect=Exception
-    ), pytest.raises(DownloadError):
-        dvc.pull(["foo_imported.dvc"])
+        dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
 def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir):
-    makedirs(dname, exist_ok=True)
+    os.makedirs(dname, exist_ok=True)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
@@ -349,11 +380,11 @@ def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
 
 
 def test_import_non_existing(erepo_dir, tmp_dir, dvc):
-    with pytest.raises(PathMissingError):
+    with pytest.raises(FileNotFoundError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "invalid_output")
 
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-    with pytest.raises(PathMissingError):
+    with pytest.raises(FileNotFoundError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "/root/", "root")
 
 
@@ -365,7 +396,7 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
     assert "rev" not in stage.deps[0].def_repo
     stage.deps[0].def_repo.pop("rev_lock")
 
-    Dvcfile(dvc, stage.path).dump(stage)
+    load_file(dvc, stage.path).dump(stage)
 
     remove(stage.outs[0].cache_path)
     (tmp_dir / "foo_imported").unlink()
@@ -376,9 +407,7 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
     assert (tmp_dir / "foo_imported").read_text() == "contents"
 
 
-def test_import_from_bare_git_repo(
-    tmp_dir, make_tmp_dir, erepo_dir, local_cloud
-):
+def test_import_from_bare_git_repo(tmp_dir, make_tmp_dir, erepo_dir, local_cloud):
     Git.init(tmp_dir.fs_path, bare=True).close()
 
     erepo_dir.add_remote(config=local_cloud.config)
@@ -397,13 +426,13 @@ def test_import_from_bare_git_repo(
 def test_import_pipeline_tracked_outs(
     tmp_dir, dvc, scm, erepo_dir, run_copy, local_remote
 ):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     dvc.push()
 
-    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.add([PROJECT_FILE, LOCK_FILE])
     dvc.scm.commit("add pipeline stage")
 
     with erepo_dir.chdir():
@@ -470,9 +499,7 @@ def test_granular_import_from_subrepos(tmp_dir, dvc, erepo_dir):
 
 @pytest.mark.parametrize("is_dvc", [True, False])
 @pytest.mark.parametrize("files", [{"foo": "foo"}, {"dir": {"bar": "bar"}}])
-def test_pull_imported_stage_from_subrepos(
-    tmp_dir, dvc, erepo_dir, is_dvc, files
-):
+def test_pull_imported_stage_from_subrepos(tmp_dir, dvc, erepo_dir, is_dvc, files):
     subrepo = erepo_dir / "subrepo"
     make_subrepo(subrepo, erepo_dir.scm)
     gen = subrepo.dvc_gen if is_dvc else subrepo.scm_gen
@@ -484,9 +511,8 @@ def test_pull_imported_stage_from_subrepos(
     dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     # clean everything
-    remove(dvc.odb.local.path)
+    dvc.cache.local.clear()
     remove("out")
-    makedirs(dvc.odb.local.path)
 
     stats = dvc.pull(["out.dvc"])
 
@@ -555,7 +581,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
     erepo_dir.dvc.push()
-    remove(erepo_dir.dvc.odb.local.path)
+    remove(erepo_dir.dvc.cache.local.path)
     remove(os.fspath(erepo_dir / "dir"))
 
     erepo2 = make_tmp_dir("erepo2", scm=True, dvc=True)
@@ -563,7 +589,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
         erepo2.dvc.imp(os.fspath(erepo_dir), "dir")
         erepo2.scm.add("dir.dvc")
         erepo2.scm.commit("import")
-    remove(erepo2.dvc.odb.local.path)
+    remove(erepo2.dvc.cache.local.path)
     remove(os.fspath(erepo2 / "dir"))
 
     dvc.imp(os.fspath(erepo2), "dir", "dir_imported")
@@ -571,33 +597,16 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 
-    remove(dvc.odb.local.path)
+    dvc.cache.local.clear()
     remove("dir_imported")
 
     # pulled objects should come from the original upstream repo's remote,
     # no cache or remote should be needed from the intermediate repo
     dvc.pull(["dir_imported.dvc"])
-    assert not os.path.exists(erepo_dir.dvc.odb.local.path)
-    assert not os.path.exists(erepo2.dvc.odb.local.path)
+    assert not os.path.exists(erepo_dir.dvc.cache.local.path)
+    assert not os.path.exists(erepo2.dvc.cache.local.path)
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
-
-
-def test_circular_import(tmp_dir, dvc, scm, erepo_dir):
-    from dvc.exceptions import CircularImportError
-
-    with erepo_dir.chdir():
-        erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
-
-    dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
-    scm.add("dir_imported.dvc")
-    scm.commit("import")
-
-    with erepo_dir.chdir():
-        with pytest.raises(CircularImportError):
-            erepo_dir.dvc.imp(
-                os.fspath(tmp_dir), "dir_imported", "circular_import"
-            )
 
 
 @pytest.mark.parametrize("paths", ([], ["dir"]))
@@ -646,8 +655,6 @@ def test_import_with_annotations(M, tmp_dir, scm, dvc, erepo_dir):
 
     # try to selectively update/overwrite some annotations
     annot = {**annot, "type": "t2"}
-    stage = dvc.imp(
-        os.fspath(erepo_dir), "foo", "foo", no_exec=True, type="t2"
-    )
+    stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo", no_exec=True, type="t2")
     assert stage.outs[0].annot == Annotation(**annot)
     assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

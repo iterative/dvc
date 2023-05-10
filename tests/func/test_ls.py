@@ -5,7 +5,6 @@ from operator import itemgetter
 
 import pytest
 
-from dvc.exceptions import PathMissingError
 from dvc.repo import Repo
 from dvc.scm import CloneError
 
@@ -42,13 +41,11 @@ def create_dvc_pipeline(tmp_dir, dvc):
     tmp_dir.scm_gen({"script.py": script}, commit="init")
     tmp_dir.dvc_gen({"dep": "content"}, commit="init dvc")
     dvc.run(
-        **{
-            "cmd": "python script.py {}".format(os.path.join("out", "file")),
-            "outs": [os.path.join("out", "file")],
-            "deps": ["dep"],
-            "fname": "out.dvc",
-            "single_stage": True,
-        }
+        cmd="python script.py {}".format(os.path.join("out", "file")),
+        outs=[os.path.join("out", "file")],
+        deps=["dep"],
+        fname="out.dvc",
+        single_stage=True,
     )
     tmp_dir.scm_add(["out.dvc"], commit="run")
     shutil.rmtree("out")
@@ -153,17 +150,14 @@ def test_ls_repo_with_path_dir_dvc_only_empty(tmp_dir, dvc, scm):
     tmp_dir.scm_gen({"empty_scm_folder/": {}}, commit="add scm empty")
     tmp_dir.dvc_gen({"empty_dvc_folder": {}}, commit="empty dvc folder")
 
-    with pytest.raises(PathMissingError):
+    with pytest.raises(FileNotFoundError):
         Repo.ls(os.fspath(tmp_dir), path="not_exist_folder")
 
     assert Repo.ls(os.fspath(tmp_dir), path="empty_scm_folder") == []
 
     assert Repo.ls(os.fspath(tmp_dir), path="folder", dvc_only=True) == []
 
-    assert (
-        Repo.ls(os.fspath(tmp_dir), path="empty_dvc_folder", dvc_only=True)
-        == []
-    )
+    assert Repo.ls(os.fspath(tmp_dir), path="empty_dvc_folder", dvc_only=True) == []
 
 
 def test_ls_repo_with_path_subdir(tmp_dir, dvc, scm):
@@ -198,9 +192,7 @@ def test_ls_repo_with_path_subdir_dvc_only_recursive(tmp_dir, dvc, scm):
 
     path = os.path.join("data", "subcontent")
     files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True, recursive=True)
-    match_files(
-        files, ((("data.xml",), True), (("statistics", "data.csv"), True))
-    )
+    match_files(files, ((("data.xml",), True), (("statistics", "data.csv"), True)))
 
 
 def test_ls_repo_with_path_file_out(tmp_dir, dvc, scm):
@@ -225,23 +217,21 @@ def test_ls_repo_with_missed_path(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    with pytest.raises(PathMissingError) as exc_info:
+    with pytest.raises(FileNotFoundError):
         Repo.ls(os.fspath(tmp_dir), path="missed_path")
-    assert not exc_info.value.dvc_only
 
 
 def test_ls_repo_with_missed_path_dvc_only(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    with pytest.raises(PathMissingError) as exc_info:
+    with pytest.raises(FileNotFoundError):
         Repo.ls(
             os.fspath(tmp_dir),
             path="missed_path",
             recursive=True,
             dvc_only=True,
         )
-    assert exc_info.value.dvc_only
 
 
 def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):
@@ -458,11 +448,11 @@ def test_ls_not_existed_url():
 
 
 def test_ls_shows_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
-    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.add([PROJECT_FILE, LOCK_FILE])
     dvc.scm.commit("add pipeline stage")
 
     files = Repo.ls(os.curdir, dvc_only=True)
@@ -492,7 +482,7 @@ def test_ls_granular(erepo_dir):
     assert entries == [
         {"isout": True, "isdir": False, "isexec": False, "path": "1"},
         {"isout": True, "isdir": False, "isexec": False, "path": "2"},
-        {"isout": False, "isdir": True, "isexec": False, "path": "subdir"},
+        {"isout": True, "isdir": True, "isexec": False, "path": "subdir"},
     ]
 
 
@@ -557,9 +547,7 @@ def test_subrepo(dvc_top_level, erepo):
     dvc_files = {"dvc_dir", "foo.txt", "foo.txt.dvc", "dvc_dir.dvc"}
     common_outputs = git_tracked_outputs | extras | dvc_files
 
-    top_level_outputs = (
-        common_outputs if dvc_top_level else git_tracked_outputs
-    )
+    top_level_outputs = common_outputs if dvc_top_level else git_tracked_outputs
     assert _list_files(erepo) == top_level_outputs
     assert _list_files(erepo, "scm_dir") == {"ipsum"}
     if dvc_top_level:
@@ -586,5 +574,11 @@ def test_broken_symlink(tmp_dir, dvc):
             "isdir": False,
             "isexec": False,
             "path": ".dvcignore",
+        },
+        {
+            "isout": False,
+            "isdir": False,
+            "isexec": False,
+            "path": "link",
         },
     ]

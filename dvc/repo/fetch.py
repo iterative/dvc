@@ -1,51 +1,25 @@
 import logging
 from contextlib import suppress
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Sequence
 
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError, FileTransferError
+from dvc.exceptions import DownloadError
 from dvc.fs import Schemes
 
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc_objects.db.base import ObjectDB
+    from dvc.data_cloud import Remote
+    from dvc.repo import Repo
+    from dvc.types import TargetType
+    from dvc_data.hashfile.db import HashFileDB
+    from dvc_data.hashfile.transfer import TransferResult
 
 logger = logging.getLogger(__name__)
 
 
-def _fetch_worktree(repo, remote):
-    from dvc_data.index import save
-
-    index = repo.index.data["repo"]
-    for key, entry in index.iteritems():
-        entry.fs = remote.fs
-        entry.path = remote.fs.path.join(
-            remote.path,
-            *key,
-        )
-    save(index)
-
-    for stage in repo.index.stages:
-        for out in stage.outs:
-            if not out.use_cache:
-                continue
-
-            if not out.is_in_repo:
-                continue
-
-            key = repo.fs.path.relparts(out.fs_path, repo.root_dir)
-            entry = repo.index.data["repo"][key]
-            out.hash_info = entry.hash_info
-            out.meta = entry.meta
-
-        stage.dvcfile.dump(stage)
-
-    return len(index)
-
-
 @locked
-def fetch(
+def fetch(  # noqa: C901, PLR0913
     self,
     targets=None,
     jobs=None,
@@ -57,8 +31,8 @@ def fetch(
     all_commits=False,
     run_cache=False,
     revs=None,
-    odb: Optional["ObjectDB"] = None,
-):
+    odb: Optional["HashFileDB"] = None,
+) -> int:
     """Download data items from a cloud and imported repositories
 
     Returns:
@@ -71,118 +45,154 @@ def fetch(
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
+    from dvc.repo.imports import save_imports
+    from dvc_data.hashfile.transfer import TransferResult
+
     if isinstance(targets, str):
         targets = [targets]
 
+    worktree_remote: Optional["Remote"] = None
     with suppress(NoRemoteError):
         _remote = self.cloud.get_remote(name=remote)
-        if _remote.worktree:
-            return _fetch_worktree(self, _remote)
+        if _remote.worktree or _remote.fs.version_aware:
+            worktree_remote = _remote
 
-    used = self.used_objs(
-        targets,
-        all_branches=all_branches,
-        all_tags=all_tags,
-        all_commits=all_commits,
-        with_deps=with_deps,
-        force=True,
-        remote=remote,
-        jobs=jobs,
-        recursive=recursive,
-        revs=revs,
-    )
-
-    downloaded = 0
-    failed = 0
+    failed_count = 0
+    transferred_count = 0
 
     try:
         if run_cache:
             self.stage_cache.pull(remote)
     except DownloadError as exc:
-        failed += exc.amount
+        failed_count += exc.amount
 
+    no_remote_msg: Optional[str] = None
+    result = TransferResult(set(), set())
+    try:
+        if worktree_remote is not None:
+            transferred_count += _fetch_worktree(
+                self,
+                worktree_remote,
+                revs=revs,
+                all_branches=all_branches,
+                all_tags=all_tags,
+                all_commits=all_commits,
+                targets=targets,
+                jobs=jobs,
+                with_deps=with_deps,
+                recursive=recursive,
+            )
+        else:
+            d, f = _fetch(
+                self,
+                targets,
+                all_branches=all_branches,
+                all_tags=all_tags,
+                all_commits=all_commits,
+                with_deps=with_deps,
+                force=True,
+                remote=remote,
+                jobs=jobs,
+                recursive=recursive,
+                revs=revs,
+                odb=odb,
+            )
+            result.transferred.update(d)
+            result.failed.update(f)
+    except NoRemoteError as exc:
+        no_remote_msg = str(exc)
+
+    for rev in self.brancher(
+        revs=revs,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+    ):
+        imported = save_imports(
+            self,
+            targets,
+            unpartial=not rev or rev == "workspace",
+            recursive=recursive,
+        )
+        result.transferred.update(imported)
+        result.failed.difference_update(imported)
+
+    failed_count += len(result.failed)
+
+    if failed_count:
+        if no_remote_msg:
+            logger.error(no_remote_msg)
+        raise DownloadError(failed_count)
+
+    transferred_count += len(result.transferred)
+    return transferred_count
+
+
+def _fetch(
+    repo: "Repo",
+    targets: "TargetType",
+    remote: Optional[str] = None,
+    jobs: Optional[int] = None,
+    odb: Optional["HashFileDB"] = None,
+    **kwargs,
+) -> "TransferResult":
+    from dvc_data.hashfile.transfer import TransferResult
+
+    result = TransferResult(set(), set())
+    used = repo.used_objs(
+        targets,
+        remote=remote,
+        jobs=jobs,
+        **kwargs,
+    )
     if odb:
         all_ids = set()
         for _odb, obj_ids in used.items():
             all_ids.update(obj_ids)
-        d, f = _fetch(
-            self,
+        d, f = repo.cloud.pull(
             all_ids,
             jobs=jobs,
             remote=remote,
             odb=odb,
         )
-        downloaded += d
-        failed += f
+        result.transferred.update(d)
+        result.failed.update(f)
     else:
         for src_odb, obj_ids in sorted(
             used.items(),
             key=lambda item: item[0] is not None
             and item[0].fs.protocol == Schemes.MEMORY,
         ):
-            d, f = _fetch(
-                self,
+            d, f = repo.cloud.pull(
                 obj_ids,
                 jobs=jobs,
                 remote=remote,
                 odb=src_odb,
             )
-            downloaded += d
-            failed += f
+            result.transferred.update(d)
+            result.failed.update(f)
+    return result
 
-    d, f = _fetch_partial_imports(
-        self,
-        targets,
+
+def _fetch_worktree(
+    repo: "Repo",
+    remote: "Remote",
+    revs: Optional[Sequence[str]] = None,
+    all_branches: bool = False,
+    all_tags: bool = False,
+    all_commits: bool = False,
+    targets: Optional["TargetType"] = None,
+    jobs: Optional[int] = None,
+    **kwargs,
+) -> int:
+    from dvc.repo.worktree import fetch_worktree
+
+    downloaded = 0
+    for _ in repo.brancher(
+        revs=revs,
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
-        recursive=recursive,
-        revs=revs,
-    )
-    downloaded += d
-    failed += f
-
-    if failed:
-        raise DownloadError(failed)
-
+    ):
+        downloaded += fetch_worktree(repo, remote, targets=targets, jobs=jobs, **kwargs)
     return downloaded
-
-
-def _fetch(repo, obj_ids, **kwargs):
-    downloaded = 0
-    failed = 0
-    try:
-        downloaded += repo.cloud.pull(obj_ids, **kwargs)
-    except FileTransferError as exc:
-        failed += exc.amount
-    return downloaded, failed
-
-
-def _fetch_partial_imports(repo, targets, **kwargs):
-    from dvc.stage.exceptions import DataSourceChanged
-
-    downloaded = 0
-    failed = 0
-    for stage in repo.partial_imports(targets, **kwargs):
-        dep = stage.deps[0]
-        out = stage.outs[0]
-        try:
-            if dep.changed_checksum():
-                raise DataSourceChanged(f"{stage} ({dep})")
-
-            logger.info("Importing '%s' -> '%s'", dep, out)
-            out.transfer(
-                dep.def_path, jobs=kwargs.get("jobs"), odb=repo.odb.local
-            )
-        except DataSourceChanged as exc:
-            logger.warning(f"{exc}")
-            failed += 1
-            continue
-        if not any(
-            kwargs.get(kw, None)
-            for kw in ("all_branches", "all_tags", "all_commits", "revs")
-        ):
-            stage.dump()
-
-        downloaded += 1
-    return downloaded, failed

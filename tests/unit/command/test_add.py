@@ -43,6 +43,7 @@ def test_add(mocker, dvc):
         labels=None,
         meta=None,
         jobs=None,
+        force=False,
     )
 
 
@@ -134,13 +135,12 @@ def test_add_to_remote(mocker):
         labels=None,
         meta=None,
         jobs=None,
+        force=False,
     )
 
 
 def test_add_to_remote_invalid_combinations(mocker, caplog):
-    cli_args = parse_args(
-        ["add", "s3://bucket/foo", "s3://bucket/bar", "--to-remote"]
-    )
+    cli_args = parse_args(["add", "s3://bucket/foo", "s3://bucket/bar", "--to-remote"])
     assert cli_args.func == CmdAdd
 
     cmd = cli_args.func(cli_args)
@@ -160,9 +160,7 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
 
 
 def test_add_to_cache_invalid_combinations(mocker, caplog):
-    cli_args = parse_args(
-        ["add", "s3://bucket/foo", "s3://bucket/bar", "-o", "foo"]
-    )
+    cli_args = parse_args(["add", "s3://bucket/foo", "s3://bucket/bar", "-o", "foo"])
     assert cli_args.func == CmdAdd
 
     cmd = cli_args.func(cli_args)

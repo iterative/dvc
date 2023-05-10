@@ -59,10 +59,9 @@ def find_pager():
     if not pager:
         pager = os.getenv(PAGER_ENV)
     if not pager:
-        if os.system(f"({DEFAULT_PAGER}) 2>{os.devnull}") != 0:
+        if os.system(f"({DEFAULT_PAGER}) 2>{os.devnull}") != 0:  # nosec B605
             logger.warning(
-                "Unable to find `less` in the PATH. Check out "
-                "%s for more info.",
+                "Unable to find `less` in the PATH. Check out %s for more info.",
                 format_link("https://man.dvc.org/pipeline/show"),
             )
         else:
@@ -73,7 +72,7 @@ def find_pager():
         # `-R` is required to render ansi escape sequences for exp show
         # and, `-S` is required for horizontal scrolling.
         less_env = bool(os.getenv(LESS))
-        pager = prepare_default_pager(
+        return prepare_default_pager(
             ansi_escapes=True,
             chop_long_lines=True,
             quit_if_one_screen=not less_env,

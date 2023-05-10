@@ -76,12 +76,14 @@ def test_status_quiet(dvc, mocker, caplog, capsys, status, ret):
 
 
 def test_status_empty(dvc, mocker, capsys):
+    from dvc.repo.index import Index
+
     cli_args = parse_args(["status"])
     assert cli_args.func == CmdDataStatus
 
     cmd = cli_args.func(cli_args)
 
-    spy = mocker.spy(cmd.repo.stage, "_collect_repo")
+    spy = mocker.spy(Index, "from_repo")
 
     assert cmd.run() == 0
 
@@ -100,6 +102,8 @@ def test_status_empty(dvc, mocker, capsys):
     ],
 )
 def test_status_up_to_date(dvc, mocker, capsys, cloud_opts, expected_message):
+    from dvc.repo.index import Index
+
     cli_args = parse_args(["status", *cloud_opts])
     assert cli_args.func == CmdDataStatus
 
@@ -107,9 +111,8 @@ def test_status_up_to_date(dvc, mocker, capsys, cloud_opts, expected_message):
 
     mocker.patch.dict(cmd.repo.config, {"core": {"remote": "default"}})
     mocker.patch.object(cmd.repo, "status", autospec=True, return_value={})
-    mocker.patch.object(
-        cmd.repo.stage, "_collect_repo", return_value=[object()], autospec=True
-    )
+    mocker.patch("dvc.repo.Repo.index", return_value=Index(dvc, [object()]))
+    cmd.repo._reset = mocker.Mock()
 
     assert cmd.run() == 0
     captured = capsys.readouterr()

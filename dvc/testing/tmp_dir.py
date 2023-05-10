@@ -52,7 +52,6 @@ from contextlib import contextmanager
 from functools import partialmethod
 
 from dvc.utils import serialize
-from dvc.utils.fs import makedirs
 
 
 class TmpDir(pathlib.Path):
@@ -77,9 +76,8 @@ class TmpDir(pathlib.Path):
             )
         # init parameter and `_init` method has been removed in Python 3.10.
         kw = {"init": False} if sys.version_info < (3, 10) else {}
-        self = cls._from_parts(  # pylint: disable=unexpected-keyword-arg
-            args, **kw
-        )
+        # pylint: disable-next=unexpected-keyword-arg
+        self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
         if not self._flavour.is_supported:
             raise NotImplementedError(
                 f"cannot instantiate {cls.__name__!r} on your system"
@@ -89,9 +87,8 @@ class TmpDir(pathlib.Path):
         return self
 
     def init(self, *, scm=False, dvc=False, subdir=False):
-        from scmrepo.git import Git
-
         from dvc.repo import Repo
+        from dvc.scm import Git
 
         assert not scm or not hasattr(self, "scm")
         assert not dvc or not hasattr(self, "dvc")
@@ -105,9 +102,7 @@ class TmpDir(pathlib.Path):
                 subdir=subdir,
             )
         if scm:
-            self.scm = (
-                self.dvc.scm if hasattr(self, "dvc") else Git(self.fs_path)
-            )
+            self.scm = self.dvc.scm if hasattr(self, "dvc") else Git(self.fs_path)
         if dvc and hasattr(self, "scm"):
             self.scm.commit("init dvc")
 
@@ -138,11 +133,11 @@ class TmpDir(pathlib.Path):
 
             if isinstance(contents, dict):
                 if not contents:
-                    makedirs(path, exist_ok=True)
+                    os.makedirs(path, exist_ok=True)
                 else:
                     self._gen(contents, prefix=path)
             else:
-                makedirs(path.parent, exist_ok=True)
+                os.makedirs(path.parent, exist_ok=True)
                 if isinstance(contents, bytes):
                     path.write_bytes(contents)
                 else:
@@ -154,22 +149,20 @@ class TmpDir(pathlib.Path):
         paths = self.gen(struct, text)
         return self.dvc_add(paths, commit=commit)
 
-    def scm_gen(self, struct, text="", commit=None):
+    def scm_gen(self, struct, text="", commit=None, force=False):
         paths = self.gen(struct, text)
-        return self.scm_add(paths, commit=commit)
+        return self.scm_add(paths, commit=commit, force=force)
 
-    def commit(self, output_paths, msg):
+    def commit(self, output_paths, msg, force=False):
         def to_gitignore(stage_path):
-            from scmrepo.git import Git
+            from dvc.scm import Git
 
             return os.path.join(os.path.dirname(stage_path), Git.GITIGNORE)
 
         gitignores = [
-            to_gitignore(s)
-            for s in output_paths
-            if os.path.exists(to_gitignore(s))
+            to_gitignore(s) for s in output_paths if os.path.exists(to_gitignore(s))
         ]
-        return self.scm_add(output_paths + gitignores, commit=msg)
+        return self.scm_add(output_paths + gitignores, commit=msg, force=force)
 
     def dvc_add(self, filenames, commit=None):
         self._require("dvc")
@@ -180,16 +173,17 @@ class TmpDir(pathlib.Path):
             self.commit([s.path for s in stages], msg=commit)
         return stages
 
-    def scm_add(self, filenames, commit=None):
+    def scm_add(self, filenames, commit=None, force=False):
+        from dvc.scm import Git
+
         self._require("scm")
         filenames = _coerce_filenames(filenames)
-        self.scm.add(filenames)
+        assert isinstance(self.scm, Git)
+        self.scm.add(filenames, force=force)
         if commit:
             self.scm.commit(commit)
 
-    def add_remote(
-        self, *, url=None, config=None, name="upstream", default=True
-    ):
+    def add_remote(self, *, url=None, config=None, name="upstream", default=True):
         self._require("dvc")
 
         assert bool(url) ^ bool(config)
@@ -234,10 +228,10 @@ class TmpDir(pathlib.Path):
         # rely on exception flow control
         if self.is_dir():
             return {
-                path.name: path.read_text(*args, **kwargs)
-                for path in self.iterdir()
+                path.name: path.read_text(*args, **kwargs) for path in self.iterdir()
             }
-        return super().read_text(*args, encoding="utf-8", **kwargs)
+        kwargs.setdefault("encoding", "utf-8")  # type: ignore[call-overload]
+        return super().read_text(*args, **kwargs)
 
     def oid_to_path(self, hash_):
         return str(self / hash_[0:2] / hash_[2:])

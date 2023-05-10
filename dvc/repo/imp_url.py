@@ -1,17 +1,21 @@
 import os
+from typing import TYPE_CHECKING
 
+from dvc.exceptions import InvalidArgumentError, OutputDuplicationError
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
 from dvc.utils.fs import path_isin
 
-from ..exceptions import InvalidArgumentError, OutputDuplicationError
+if TYPE_CHECKING:
+    from . import Repo
+
 from . import locked
 
 
 @locked
 @scm_context
-def imp_url(
-    self,
+def imp_url(  # noqa: C901, PLR0913
+    self: "Repo",
     url,
     out=None,
     fname=None,
@@ -22,28 +26,25 @@ def imp_url(
     remote=None,
     to_remote=False,
     desc=None,
-    type=None,  # pylint: disable=redefined-builtin
+    type=None,  # noqa: A002, pylint: disable=redefined-builtin
     labels=None,
     meta=None,
     jobs=None,
+    force=False,
+    fs_config=None,
+    version_aware: bool = False,
 ):
-    from dvc.dvcfile import Dvcfile
-    from dvc.stage import Stage, create_stage, restore_fields
+    out = resolve_output(url, out, force=force)
+    path, wdir, out = resolve_paths(self, out, always_local=to_remote and not out)
 
-    out = resolve_output(url, out)
-    path, wdir, out = resolve_paths(
-        self, out, always_local=to_remote and not out
-    )
-
-    if to_remote and (no_exec or no_download):
+    if to_remote and (no_exec or no_download or version_aware):
         raise InvalidArgumentError(
-            "--no-exec/--no-download cannot be combined with --to-remote"
+            "--no-exec/--no-download/--version-aware cannot be combined with "
+            "--to-remote"
         )
 
     if not to_remote and remote:
-        raise InvalidArgumentError(
-            "--remote can't be used without --to-remote"
-        )
+        raise InvalidArgumentError("--remote can't be used without --to-remote")
 
     # NOTE: when user is importing something from within their own repository
     if (
@@ -53,27 +54,31 @@ def imp_url(
     ):
         url = relpath(url, wdir)
 
-    stage = create_stage(
-        Stage,
-        self,
-        fname or path,
+    if version_aware:
+        if fs_config is None:
+            fs_config = {}
+        fs_config["version_aware"] = True
+
+    stage = self.stage.create(
+        single_stage=True,
+        validate=False,
+        fname=fname or path,
         wdir=wdir,
         deps=[url],
         outs=[out],
         erepo=erepo,
+        fs_config=fs_config,
     )
-    restore_fields(stage)
 
     out_obj = stage.outs[0]
     out_obj.annot.update(desc=desc, type=type, labels=labels, meta=meta)
-    dvcfile = Dvcfile(self, stage.path)
-    dvcfile.remove()
 
     try:
-        new_index = self.index.add(stage)
-        new_index.check_graph()
+        self.check_graph(stages={stage})
     except OutputDuplicationError as exc:
-        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
+        raise OutputDuplicationError(  # noqa: B904
+            exc.output, set(exc.stages) - {stage}
+        )
 
     if no_exec:
         stage.ignore_outs()
@@ -83,10 +88,10 @@ def imp_url(
         stage.save_deps()
         stage.md5 = stage.compute_md5()
     else:
+        if stage.deps[0].fs.version_aware:
+            stage.outs[0].can_push = False
         stage.run(jobs=jobs, no_download=no_download)
 
     stage.frozen = frozen
-
-    dvcfile.dump(stage)
-
+    stage.dump()
     return stage

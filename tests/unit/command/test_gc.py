@@ -48,6 +48,7 @@ def test_(dvc, scm, mocker):
         repos=["project1", "project2"],
         rev=None,
         num=None,
+        not_in_remote=False,
     )
 
     cli_args = parse_args(["gc"])

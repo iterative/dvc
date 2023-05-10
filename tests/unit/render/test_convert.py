@@ -1,14 +1,24 @@
-from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
+from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY, VERSION_FIELD
 from dvc.render.convert import to_json
 
 
 def test_to_json_vega(mocker):
     vega_renderer = mocker.MagicMock()
     vega_renderer.TYPE = "vega"
-    vega_renderer.get_filled_template.return_value = '{"this": "is vega"}'
+    vega_renderer.get_filled_template.return_value = {"this": "is vega"}
     vega_renderer.datapoints = [
-        {"x": 1, "y": 2, REVISION_FIELD: "foo", "filename": "foo.json"},
-        {"x": 2, "y": 1, REVISION_FIELD: "bar", "filename": "foo.json"},
+        {
+            "x": 1,
+            "y": 2,
+            VERSION_FIELD: {"revision": "foo"},
+            "filename": "foo.json",
+        },
+        {
+            "x": 2,
+            "y": 1,
+            VERSION_FIELD: {"revision": "bar"},
+            "filename": "foo.json",
+        },
     ]
     result = to_json(vega_renderer)
     assert result[0] == {
@@ -17,10 +27,20 @@ def test_to_json_vega(mocker):
         "content": {"this": "is vega"},
         "datapoints": {
             "foo": [
-                {"x": 1, "y": 2, "filename": "foo.json"},
+                {
+                    "x": 1,
+                    "y": 2,
+                    "filename": "foo.json",
+                    VERSION_FIELD: {"revision": "foo"},
+                },
             ],
             "bar": [
-                {"x": 2, "y": 1, "filename": "foo.json"},
+                {
+                    "x": 2,
+                    "y": 1,
+                    "filename": "foo.json",
+                    VERSION_FIELD: {"revision": "bar"},
+                },
             ],
         },
     }
@@ -30,12 +50,20 @@ def test_to_json_vega(mocker):
 def test_to_json_vega_split(mocker):
     vega_renderer = mocker.MagicMock()
     vega_renderer.TYPE = "vega"
-    vega_renderer.get_filled_template.return_value = (
-        '{"this": "is split vega"}'
-    )
+    vega_renderer.get_filled_template.return_value = {"this": "is split vega"}
     vega_renderer.datapoints = [
-        {"x": 1, "y": 2, REVISION_FIELD: "foo", "filename": "foo.json"},
-        {"x": 2, "y": 1, REVISION_FIELD: "bar", "filename": "foo.json"},
+        {
+            "x": 1,
+            "y": 2,
+            VERSION_FIELD: {"revision": "foo"},
+            "filename": "foo.json",
+        },
+        {
+            "x": 2,
+            "y": 1,
+            VERSION_FIELD: {"revision": "bar"},
+            "filename": "foo.json",
+        },
     ]
     result = to_json(vega_renderer, split=True)
     assert result[0] == {
@@ -43,11 +71,27 @@ def test_to_json_vega_split(mocker):
         REVISIONS_KEY: ["bar", "foo"],
         "content": {"this": "is split vega"},
         "datapoints": {
-            "foo": [{"x": 1, "y": 2, "filename": "foo.json"}],
-            "bar": [{"x": 2, "y": 1, "filename": "foo.json"}],
+            "foo": [
+                {
+                    "x": 1,
+                    "y": 2,
+                    "filename": "foo.json",
+                    VERSION_FIELD: {"revision": "foo"},
+                }
+            ],
+            "bar": [
+                {
+                    "x": 2,
+                    "y": 1,
+                    "filename": "foo.json",
+                    VERSION_FIELD: {"revision": "bar"},
+                }
+            ],
         },
     }
-    vega_renderer.get_filled_template.assert_called_with(skip_anchors=["data"])
+    vega_renderer.get_filled_template.assert_called_with(
+        as_string=False, skip_anchors=["data"]
+    )
 
 
 def test_to_json_image(mocker):

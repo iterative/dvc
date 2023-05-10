@@ -20,21 +20,20 @@ colors = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def dt(mocker):
     mocker.patch(
         "time.time", return_value=time.mktime(datetime(2020, 2, 2).timetuple())
     )
-    yield "2020-02-02 00:00:00,000"
+    return "2020-02-02 00:00:00,000"
 
 
 class TestColorFormatter:
-    # pylint: disable=broad-except
     def test_debug(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
 
-            expected = "{green}{datetime}{nc} {blue}DEBUG{nc}: message".format(
+            expected = "{blue}{datetime}{nc} {blue}DEBUG{nc}: message".format(
                 **colors, datetime=dt
             )
 
@@ -44,7 +43,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             logger.info("message")
 
-            assert "message" == formatter.format(caplog.records[0])
+            assert formatter.format(caplog.records[0]) == "message"
 
     def test_warning(self, caplog):
         with caplog.at_level(logging.INFO, logger="dvc"):
@@ -95,8 +94,6 @@ class TestColorFormatter:
 
             assert expected == formatter.format(caplog.records[0])
 
-    # pylint: disable=used-before-assignment
-
     def test_exception_under_verbose(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
@@ -106,12 +103,9 @@ class TestColorFormatter:
                 logger.exception("")
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: description\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -124,17 +118,14 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 stack_trace = traceback.format_exc()
                 logger.debug("", exc_info=True)
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{blue}{datetime}{nc} "
                 "{blue}DEBUG{nc}: description\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     datetime=dt,
                     **colors,
@@ -152,12 +143,9 @@ class TestColorFormatter:
                 logger.exception("something", extra={"tb_only": True})
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: something\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -170,7 +158,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("first")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 try:
                     raise DvcException("second") from exc
                 except DvcException:
@@ -178,12 +166,9 @@ class TestColorFormatter:
                     logger.exception("message")
 
             expected = (
-                "{green}{datetime}{nc} "
+                "{red}{datetime}{nc} "
                 "{red}ERROR{nc}: message - second: first\n"
-                "{red}{line}{nc}\n"
-                "{stack_trace}"
-                "{red}{line}{nc}".format(
-                    line="-" * 60,
+                "{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -192,8 +177,6 @@ class TestColorFormatter:
             assert expected == formatter.format(caplog.records[0])
             assert "Exception: first" in stack_trace
             assert "dvc.exceptions.DvcException: second" in stack_trace
-
-    # pylint: enable=used-before-assignment
 
     def test_progress_awareness(self, mocker, capsys, caplog):
         from dvc.progress import Tqdm
@@ -217,13 +200,13 @@ class TestColorFormatter:
 
                 formatter.format(debug_record)
                 captured = capsys.readouterr()
-                assert captured.out == ""
+                assert not captured.out
 
             #  when the message is actually visible
             with caplog.at_level(logging.INFO, logger="dvc"):
                 logger.info("some info")
                 captured = capsys.readouterr()
-                assert captured.out == ""
+                assert not captured.out
 
 
 def test_handlers():
@@ -251,7 +234,7 @@ def test_info_with_debug_loglevel_shows_no_datetime(caplog, dt):
     with caplog.at_level(logging.DEBUG, logger="dvc"):
         logger.info("message")
 
-        assert "message" == formatter.format(caplog.records[0])
+        assert formatter.format(caplog.records[0]) == "message"
 
 
 def test_add_existing_level(caplog, dt):
@@ -259,11 +242,11 @@ def test_add_existing_level(caplog, dt):
     # eg:
     # https://github.com/bokeh/bokeh/blob/04bb30fef2e72e64baaa8b2f330806d5bfdd3b11/
     # bokeh/util/logconfig.py#L79-L85
-    TRACE2 = 4
+    TRACE2 = 4  # noqa: N806
     logging.addLevelName(TRACE2, "TRACE2")
     logging.TRACE2 = TRACE2
 
-    dvc.logger.addLoggingLevel("TRACE2", 2)
+    dvc.logger.add_logging_level("TRACE2", 2)
 
     # DVC sets all expected entrypoints, but doesn't override the level
     assert logging.TRACE2 == 4

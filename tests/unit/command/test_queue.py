@@ -92,6 +92,7 @@ def test_experiments_kill(dvc, scm, mocker):
         [
             "queue",
             "kill",
+            "--force",
             "exp1",
             "exp2",
         ]
@@ -105,7 +106,7 @@ def test_experiments_kill(dvc, scm, mocker):
     )
 
     assert cmd.run() == 0
-    m.assert_called_once_with(revs=["exp1", "exp2"])
+    m.assert_called_once_with(revs=["exp1", "exp2"], force=True)
 
 
 def test_experiments_start(dvc, scm, mocker):
@@ -114,7 +115,7 @@ def test_experiments_start(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.spawn_worker",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue._spawn_worker",
     )
 
     assert cmd.run() == 0
@@ -162,7 +163,6 @@ def test_experiments_stop(dvc, scm, mocker):
     ],
 )
 def test_worker_status(dvc, scm, worker_status, output, mocker, capsys):
-
     cli_args = parse_args(
         [
             "queue",

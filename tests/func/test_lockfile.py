@@ -5,7 +5,7 @@ from operator import itemgetter
 
 import pytest
 
-from dvc.dvcfile import PIPELINE_LOCK, Lockfile
+from dvc.dvcfile import LOCK_FILE, Lockfile
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
@@ -22,7 +22,7 @@ FS_STRUCTURE = {
 }
 
 
-def read_lock_file(file=PIPELINE_LOCK):
+def read_lock_file(file=LOCK_FILE):
     with open(file, encoding="utf-8") as f:
         data = parse_yaml_for_update(f.read(), file)
     assert isinstance(data, OrderedDict)
@@ -49,12 +49,8 @@ def test_deps_outs_are_sorted_by_path(tmp_dir, dvc, run_head):
     assert list(lock.keys()) == ["cmd", "deps", "outs"]
 
     # `path` key appear first and then the `md5`
-    assert all(
-        list(dep.keys()) == ["path", "md5", "size"] for dep in lock["deps"]
-    )
-    assert all(
-        list(out.keys()) == ["path", "md5", "size"] for out in lock["outs"]
-    )
+    assert all(list(dep.keys()) == ["path", "md5", "size"] for dep in lock["deps"])
+    assert all(list(out.keys()) == ["path", "md5", "size"] for out in lock["outs"])
 
     # deps are always sorted by the file path naming
     assert list(map(itemgetter("path"), lock["deps"])) == sorted(deps)
@@ -65,9 +61,7 @@ def test_deps_outs_are_sorted_by_path(tmp_dir, dvc, run_head):
     ]
 
 
-def test_order_is_preserved_when_pipeline_order_changes(
-    tmp_dir, dvc, run_head
-):
+def test_order_is_preserved_when_pipeline_order_changes(tmp_dir, dvc, run_head):
     tmp_dir.gen(FS_STRUCTURE)
     deps = ["foo", "bar", "foobar"]
     stage = run_head(*deps, name="copy-first-line")
@@ -86,7 +80,7 @@ def test_order_is_preserved_when_pipeline_order_changes(
         new_lock_content = read_lock_file()
         assert_eq_lockfile(new_lock_content, initial_content)
 
-        (tmp_dir / PIPELINE_LOCK).unlink()
+        (tmp_dir / LOCK_FILE).unlink()
         assert dvc.reproduce(stage.addressing) == [stage]
         new_lock_content = read_lock_file()
         assert_eq_lockfile(new_lock_content, initial_content)
@@ -101,7 +95,9 @@ def test_cmd_changes_other_orders_are_preserved(tmp_dir, dvc, run_head):
     # let's change cmd in pipeline file
     # it should only change "cmd", otherwise it should be
     # structurally same as cmd
-    stage.cmd = "  ".join(stage.cmd.split())
+    new_cmd = "python head.py foo bar foobar"
+    assert stage.cmd != new_cmd  # sanity check
+    stage.cmd = new_cmd
     stage.dvcfile._dump_pipeline_file(stage)
 
     initial_content["stages"]["copy-first-line"]["cmd"] = stage.cmd
@@ -152,12 +148,12 @@ def test_params_dump(tmp_dir, dvc, run_head):
     stage.dvcfile._dump_pipeline_file(stage)
     assert not dvc.reproduce(stage.addressing)
 
-    (tmp_dir / PIPELINE_LOCK).unlink()
+    (tmp_dir / LOCK_FILE).unlink()
     assert dvc.reproduce(stage.addressing) == [stage]
     assert_eq_lockfile(initial_content, read_lock_file())
 
     # remove build-cache and check if the same structure is built
-    for item in [dvc.stage_cache.cache_dir, PIPELINE_LOCK]:
+    for item in [dvc.stage_cache.cache_dir, LOCK_FILE]:
         remove(item)
     assert dvc.reproduce(stage.addressing) == [stage]
     assert_eq_lockfile(initial_content, read_lock_file())
@@ -178,7 +174,7 @@ def v1_repo_lock(tmp_dir, dvc):
     dvc.run(cmd="echo foo", name="foo", no_exec=True)
     dvc.run(cmd="echo bar>bar.txt", outs=["bar.txt"], name="bar", no_exec=True)
     (tmp_dir / "dvc.lock").dump(v1_lockdata)
-    yield v1_lockdata
+    return v1_lockdata
 
 
 def test_can_read_v1_lockfile(tmp_dir, dvc, v1_repo_lock):
@@ -188,9 +184,7 @@ def test_can_read_v1_lockfile(tmp_dir, dvc, v1_repo_lock):
     }
 
 
-def test_migrates_v1_lockfile_to_v2_during_dump(
-    tmp_dir, dvc, v1_repo_lock, caplog
-):
+def test_migrates_v1_lockfile_to_v2_during_dump(tmp_dir, dvc, v1_repo_lock, caplog):
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="dvc.dvcfile"):
         assert dvc.reproduce()

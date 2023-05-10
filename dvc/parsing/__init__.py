@@ -14,10 +14,11 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property, collecting, first, isa, join, reraise
+from funcy import collecting, first, isa, join, reraise
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import ParseError
+from dvc.utils.objects import cached_property
 
 from .context import (
     Context,
@@ -25,7 +26,6 @@ from .context import (
     KeyNotInContext,
     MergeError,
     Node,
-    SeqOrMap,
     VarsAlreadyLoaded,
 )
 from .interpolate import (
@@ -36,9 +36,13 @@ from .interpolate import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import NoReturn
+    from typing import NoReturn
 
     from dvc.repo import Repo
+    from dvc.types import DictStrAny
+
+    from .context import SeqOrMap
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +56,6 @@ DO_KWD = "do"
 DEFAULT_PARAMS_FILE = "params.yaml"
 
 JOIN = "@"
-DictStr = Dict[str, Any]
 
 
 class ResolveError(DvcException):
@@ -69,9 +72,7 @@ def _format_preamble(msg: str, path: str, spacing: str = " ") -> str:
 
 def format_and_raise(exc: Exception, msg: str, path: str) -> "NoReturn":
     spacing = (
-        "\n"
-        if isinstance(exc, (ParseError, MergeError, VarsAlreadyLoaded))
-        else " "
+        "\n" if isinstance(exc, (ParseError, MergeError, VarsAlreadyLoaded)) else " "
     )
     message = _format_preamble(msg, path, spacing) + str(exc)
 
@@ -81,7 +82,7 @@ def format_and_raise(exc: Exception, msg: str, path: str) -> "NoReturn":
 
 
 def _reraise_err(
-    exc_cls: Type[Exception], *args, from_exc: Exception = None
+    exc_cls: Type[Exception], *args, from_exc: Optional[Exception] = None
 ) -> "NoReturn":
     err = exc_cls(*args)
     if from_exc and logger.isEnabledFor(logging.DEBUG):
@@ -90,7 +91,7 @@ def _reraise_err(
 
 
 def check_syntax_errors(
-    definition: DictStr, name: str, path: str, where: str = "stages"
+    definition: "DictStrAny", name: str, path: str, where: str = "stages"
 ):
     for key, d in definition.items():
         try:
@@ -109,12 +110,11 @@ def split_foreach_name(name: str) -> Tuple[str, Optional[str]]:
     return group, first(keys)
 
 
-def check_interpolations(data: DictStr, where: str, path: str):
-    def func(s: DictStr) -> None:
+def check_interpolations(data: "DictStrAny", where: str, path: str):
+    def func(s: "DictStrAny") -> None:
         if is_interpolated_string(s):
             raise ResolveError(
-                _format_preamble(f"'{where}'", path)
-                + "interpolating is not allowed"
+                _format_preamble(f"'{where}'", path) + "interpolating is not allowed"
             )
 
     return recurse(func)(data)
@@ -124,7 +124,7 @@ Definition = Union["ForeachDefinition", "EntryDefinition"]
 
 
 def make_definition(
-    resolver: "DataResolver", name: str, definition: DictStr, **kwargs
+    resolver: "DataResolver", name: str, definition: "DictStrAny", **kwargs
 ) -> Definition:
     args = resolver, resolver.context, name, definition
     if FOREACH_KWD in definition:
@@ -185,24 +185,22 @@ class DataResolver:
     def resolve(self):
         """Used for testing purposes, otherwise use resolve_one()."""
         data = join(map(self.resolve_one, self.get_keys()))
-        logger.trace(  # type: ignore[attr-defined]
-            "Resolved dvc.yaml:\n%s", data
-        )
+        logger.trace("Resolved dvc.yaml:\n%s", data)  # type: ignore[attr-defined]
         return {STAGES_KWD: data}
 
     def has_key(self, key: str):
         return self._has_group_and_key(*split_foreach_name(key))
 
-    def _has_group_and_key(self, group: str, key: str = None):
+    def _has_group_and_key(self, group: str, key: Optional[str] = None):
         try:
             definition = self.definitions[group]
         except KeyError:
             return False
 
         if key:
-            return isinstance(
-                definition, ForeachDefinition
-            ) and definition.has_member(key)
+            return isinstance(definition, ForeachDefinition) and definition.has_member(
+                key
+            )
         return not isinstance(definition, ForeachDefinition)
 
     @collecting
@@ -223,7 +221,7 @@ class EntryDefinition:
         resolver: DataResolver,
         context: Context,
         name: str,
-        definition: DictStr,
+        definition: "DictStrAny",
         where: str = STAGES_KWD,
     ):
         self.resolver = resolver
@@ -235,7 +233,7 @@ class EntryDefinition:
         self.where = where
 
     def _resolve_wdir(
-        self, context: Context, name: str, wdir: str = None
+        self, context: Context, name: str, wdir: Optional[str] = None
     ) -> str:
         if not wdir:
             return self.wdir
@@ -252,7 +250,7 @@ class EntryDefinition:
         except ContextError as exc:
             format_and_raise(exc, f"stage '{self.name}'", self.relpath)
 
-    def resolve_stage(self, skip_checks: bool = False) -> DictStr:
+    def resolve_stage(self, skip_checks: bool = False) -> "DictStrAny":
         context = self.context
         name = self.name
         if not skip_checks:
@@ -300,15 +298,13 @@ class EntryDefinition:
 
     def _resolve(
         self, context: "Context", value: Any, key: str, skip_checks: bool
-    ) -> DictStr:
+    ) -> "DictStrAny":
         try:
             return context.resolve(
                 value, skip_interpolation_checks=skip_checks, key=key
             )
         except (ParseError, KeyNotInContext) as exc:
-            format_and_raise(
-                exc, f"'{self.where}.{self.name}.{key}'", self.relpath
-            )
+            format_and_raise(exc, f"'{self.where}.{self.name}.{key}'", self.relpath)
 
 
 class IterationPair(NamedTuple):
@@ -322,7 +318,7 @@ class ForeachDefinition:
         resolver: DataResolver,
         context: Context,
         name: str,
-        definition: DictStr,
+        definition: "DictStrAny",
         where: str = STAGES_KWD,
     ):
         self.resolver = resolver
@@ -347,13 +343,11 @@ class ForeachDefinition:
     def resolved_iterable(self):
         return self._resolve_foreach_data()
 
-    def _resolve_foreach_data(self) -> SeqOrMap:
+    def _resolve_foreach_data(self) -> "SeqOrMap":
         try:
             iterable = self.context.resolve(self.foreach_data, unwrap=False)
         except (ContextError, ParseError) as exc:
-            format_and_raise(
-                exc, f"'{self.where}.{self.name}.foreach'", self.relpath
-            )
+            format_and_raise(exc, f"'{self.where}.{self.name}.foreach'", self.relpath)
 
         # foreach data can be a resolved dictionary/list.
         self._check_is_map_or_seq(iterable)
@@ -378,8 +372,10 @@ class ForeachDefinition:
         if warn_for:
             linking_verb = "is" if len(warn_for) == 1 else "are"
             logger.warning(
-                "%s %s already specified, "
-                "will be overwritten for stages generated from '%s'",
+                (
+                    "%s %s already specified, "
+                    "will be overwritten for stages generated from '%s'"
+                ),
                 " and ".join(warn_for),
                 linking_verb,
                 self.name,
@@ -396,7 +392,7 @@ class ForeachDefinition:
         """Convert sequence to Mapping with keys normalized."""
         iterable = self.resolved_iterable
         if isinstance(iterable, Mapping):
-            return iterable
+            return {to_str(k): v for k, v in iterable.items()}
 
         assert isinstance(iterable, Sequence)
         if any(map(is_map_or_seq, iterable)):
@@ -415,13 +411,13 @@ class ForeachDefinition:
     def _generate_name(self, key: str) -> str:
         return f"{self.name}{JOIN}{key}"
 
-    def resolve_all(self) -> DictStr:
+    def resolve_all(self) -> "DictStrAny":
         return join(map(self.resolve_one, self.normalized_iterable))
 
-    def resolve_one(self, key: str) -> DictStr:
+    def resolve_one(self, key: str) -> "DictStrAny":
         return self._each_iter(key)
 
-    def _each_iter(self, key: str) -> DictStr:
+    def _each_iter(self, key: str) -> "DictStrAny":
         err_message = f"Could not find '{key}' in foreach group '{self.name}'"
         with reraise(KeyError, EntryNotFound(err_message)):
             value = self.normalized_iterable[key]

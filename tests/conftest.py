@@ -9,7 +9,7 @@ from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
 
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
 from .remotes import *  # noqa, pylint: disable=wildcard-import
-from .utils.scriptify import scriptify
+from .scripts import *  # noqa, pylint: disable=wildcard-import
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -60,8 +60,7 @@ def enable_ui():
 
 @pytest.fixture(autouse=True)
 def clean_repos():
-    # pylint: disable=redefined-outer-name
-    from dvc.external_repo import clean_repos
+    from dvc.repo.open_repo import clean_repos
 
     clean_repos()
 
@@ -119,10 +118,7 @@ def pytest_runtest_setup(item):
     for marker in item.iter_markers():
         item.config.dvc_config.apply_marker(marker)
 
-    if (
-        "CI" in os.environ
-        and item.get_closest_marker("needs_internet") is not None
-    ):
+    if "CI" in os.environ and item.get_closest_marker("needs_internet") is not None:
         # remotes that need internet connection might be flaky,
         # so we rerun them in case it fails.
         item.add_marker(pytest.mark.flaky(max_runs=5, min_passes=1))
@@ -172,30 +168,25 @@ def custom_template(tmp_dir, dvc):
     return template
 
 
-scriptify_fixture = pytest.fixture(lambda: scriptify, name="scriptify")
-
-
 @pytest.fixture(autouse=True)
 def mocked_webbrowser_open(mocker):
     mocker.patch("webbrowser.open")
 
 
-@pytest.fixture(autouse=True)
-def isolate(tmp_path_factory, monkeypatch) -> None:
+@pytest.fixture(scope="session", autouse=True)
+def isolate(tmp_path_factory):
     path = tmp_path_factory.mktemp("mock")
     home_dir = path / "home"
     home_dir.mkdir()
 
+    monkeypatch = pytest.MonkeyPatch()
     if sys.platform == "win32":
         home_drive, home_path = os.path.splitdrive(home_dir)
         monkeypatch.setenv("USERPROFILE", str(home_dir))
         monkeypatch.setenv("HOMEDRIVE", home_drive)
         monkeypatch.setenv("HOMEPATH", home_path)
 
-        for env_var, sub_path in (
-            ("APPDATA", "Roaming"),
-            ("LOCALAPPDATA", "Local"),
-        ):
+        for env_var, sub_path in (("APPDATA", "Roaming"), ("LOCALAPPDATA", "Local")):
             path = home_dir / "AppData" / sub_path
             path.mkdir(parents=True)
             monkeypatch.setenv(env_var, os.fspath(path))
@@ -215,10 +206,12 @@ defaultBranch=master
     import pygit2
 
     pygit2.settings.search_path[pygit2.GIT_CONFIG_LEVEL_GLOBAL] = str(home_dir)
+    yield
+    monkeypatch.undo()
 
 
 @pytest.fixture
-def run_copy_metrics(tmp_dir, run_copy):
+def run_copy_metrics(tmp_dir, copy_script):
     def run(
         file1,
         file2,
@@ -250,15 +243,3 @@ def run_copy_metrics(tmp_dir, run_copy):
         return stage
 
     return run
-
-
-@pytest.fixture(autouse=True)
-def mock_hydra_conf(mocker):
-    if sys.version_info < (3, 11):
-        return
-
-    # `hydra.conf` fails to import in 3.11, it raises ValueError due to changes
-    # in dataclasses. See https://github.com/python/cpython/pull/29867.
-    # NOTE: using sentinel here so that any imports from `hydra.conf`
-    # return a mock.
-    sys.modules["hydra.conf"] = mocker.sentinel

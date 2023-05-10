@@ -14,9 +14,7 @@ parser.add_argument(
     nargs="?",
     help="Path to the osxpkg to notarize. If not specified - try to find one.",
 )
-parser.add_argument(
-    "--apple-id-username", required=True, help="Apple ID username."
-)
+parser.add_argument("--apple-id-username", required=True, help="Apple ID username.")
 parser.add_argument(
     "--apple-id-password",
     required=True,
@@ -36,11 +34,11 @@ else:
     pkgs = list(path.glob("*.pkg"))
     if not pkgs:
         print("No pkgs found")
-        exit(1)
+        sys.exit(1)
 
     if len(pkgs) > 1:
         print("Too many packages")
-        exit(1)
+        sys.exit(1)
 
     (pkg,) = pkgs
 

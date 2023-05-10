@@ -1,7 +1,15 @@
 from collections import OrderedDict
-from functools import partial
 from operator import attrgetter
-from typing import TYPE_CHECKING, List, no_type_check
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Union,
+    no_type_check,
+)
 
 from funcy import post_processing
 
@@ -29,11 +37,9 @@ PARAM_PERSIST = Output.PARAM_PERSIST
 PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
 PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
+PARAM_PUSH = Output.PARAM_PUSH
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
-
-
-sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 
 @post_processing(OrderedDict)
@@ -52,10 +58,10 @@ def _get_flags(out):
         # `out.plot` is in the same order as is in the file when read
         # and, should be dumped as-is without any sorting
         yield from out.plot.items()
-    if out.live and isinstance(out.live, dict):
-        yield from out.live.items()
     if out.remote:
         yield PARAM_REMOTE, out.remote
+    if not out.can_push:
+        yield PARAM_PUSH, False
 
 
 def _serialize_out(out):
@@ -65,22 +71,18 @@ def _serialize_out(out):
 
 @no_type_check
 def _serialize_outs(outputs: List[Output]):
-    outs, metrics, plots, live = [], [], [], None
-    for out in sort_by_path(outputs):
+    outs, metrics, plots = [], [], []
+    for out in sorted(outputs, key=attrgetter("def_path")):
         bucket = outs
         if out.plot:
             bucket = plots
         elif out.metric:
             bucket = metrics
-        elif out.live:
-            assert live is None
-            live = _serialize_out(out)
-            continue
         bucket.append(_serialize_out(out))
-    return outs, metrics, plots, live
+    return outs, metrics, plots
 
 
-def _serialize_params_keys(params):
+def _serialize_params_keys(params: Iterable["ParamsDependency"]):
     """
     Returns the following format of data:
      ['lr', 'train', {'params2.yaml': ['lr']}]
@@ -89,12 +91,12 @@ def _serialize_params_keys(params):
     at the first, and then followed by entry of other files in lexicographic
     order. The keys of those custom files are also sorted in the same order.
     """
-    keys = []
-    for param_dep in sort_by_path(params):
+    keys: List[Union[str, Dict[str, Optional[List[str]]]]] = []
+    for param_dep in sorted(params, key=attrgetter("def_path")):
         # when on no_exec, params are not filled and are saved as list
-        k = sorted(param_dep.params)
+        k: List[str] = sorted(param_dep.params)
         if k and param_dep.def_path == DEFAULT_PARAMS_FILE:
-            keys = k + keys
+            keys = k + keys  # type: ignore[operator,assignment]
         else:
             keys.append({param_dep.def_path: k or None})
     return keys
@@ -109,7 +111,7 @@ def _serialize_params_values(params: List[ParamsDependency]):
     alphabetical order. The param values are sorted too(not recursively though)
     """
     key_vals = OrderedDict()
-    for param_dep in sort_by_path(params):
+    for param_dep in sorted(params, key=attrgetter("def_path")):
         dump = param_dep.dumpd()
         path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
         if isinstance(params, dict):
@@ -122,11 +124,11 @@ def _serialize_params_values(params: List[ParamsDependency]):
 
 def to_pipeline_file(stage: "PipelineStage"):
     wdir = resolve_wdir(stage.wdir, stage.path)
-    params, deps = split_params_deps(stage)
-    deps = sorted(d.def_path for d in deps)
-    params = _serialize_params_keys(params)
+    param_objs, deps_objs = split_params_deps(stage)
+    deps = sorted(d.def_path for d in deps_objs)
+    params = _serialize_params_keys(param_objs)
 
-    outs, metrics, plots, live = _serialize_outs(stage.outs)
+    outs, metrics, plots = _serialize_outs(stage.outs)
 
     cmd = stage.cmd
     assert cmd, (
@@ -142,32 +144,40 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_OUTS, outs),
         (stage.PARAM_METRICS, metrics),
         (stage.PARAM_PLOTS, plots),
-        (stage.PARAM_LIVE, live),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
         (stage.PARAM_META, stage.meta),
     ]
-    return {
-        stage.name: OrderedDict([(key, value) for key, value in res if value])
-    }
+    return {stage.name: OrderedDict([(key, value) for key, value in res if value])}
 
 
-def to_single_stage_lockfile(stage: "Stage") -> dict:
+def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
+    from dvc.output import _serialize_tree_obj_to_files, split_file_meta_from_cloud
+    from dvc_data.hashfile.tree import Tree
+
     assert stage.cmd
 
-    def _dumpd(item):
-        ret = [
-            (item.PARAM_PATH, item.def_path),
-            *item.hash_info.to_dict().items(),
-            *item.meta.to_dict().items(),
-        ]
-
-        return OrderedDict(ret)
+    def _dumpd(item: "Output"):
+        ret: Dict[str, Any] = {item.PARAM_PATH: item.def_path}
+        if item.hash_info.isdir and kwargs.get("with_files"):
+            obj = item.obj or item.get_obj()
+            if obj:
+                assert isinstance(obj, Tree)
+                ret[item.PARAM_FILES] = [
+                    split_file_meta_from_cloud(f)
+                    for f in _serialize_tree_obj_to_files(obj)
+                ]
+        else:
+            meta_d = item.meta.to_dict()
+            meta_d.pop("isdir", None)
+            ret.update(item.hash_info.to_dict())
+            ret.update(split_file_meta_from_cloud(meta_d))
+        return ret
 
     res = OrderedDict([("cmd", stage.cmd)])
     params, deps = split_params_deps(stage)
     deps, outs = (
-        [_dumpd(item) for item in sort_by_path(items)]
+        [_dumpd(item) for item in sorted(items, key=attrgetter("def_path"))]
         for items in [deps, stage.outs]
     )
     params = _serialize_params_values(params)
@@ -181,13 +191,13 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
     return res
 
 
-def to_lockfile(stage: "PipelineStage") -> dict:
+def to_lockfile(stage: "PipelineStage", **kwargs) -> dict:
     assert stage.name
-    return {stage.name: to_single_stage_lockfile(stage)}
+    return {stage.name: to_single_stage_lockfile(stage, **kwargs)}
 
 
-def to_single_stage_file(stage: "Stage"):
-    state = stage.dumpd()
+def to_single_stage_file(stage: "Stage", **kwargs):
+    state = stage.dumpd(**kwargs)
 
     # When we load a stage we parse yaml with a fast parser, which strips
     # off all the comments and formatting. To retain those on update we do
@@ -195,9 +205,10 @@ def to_single_stage_file(stage: "Stage"):
     # - reparse the same yaml text with a slow but smart ruamel yaml parser
     # - apply changes to a returned structure
     # - serialize it
-    text = stage._stage_text  # noqa, pylint: disable=protected-access
-    if text is not None:
-        saved_state = parse_yaml_for_update(text, stage.path)
-        apply_diff(state, saved_state)
-        state = saved_state
-    return state
+    text = stage._stage_text  # pylint: disable=protected-access
+    if text is None:
+        return state
+
+    saved_state = parse_yaml_for_update(text, stage.path)
+    apply_diff(state, saved_state)
+    return saved_state

@@ -1,12 +1,10 @@
-import os
 from itertools import chain
 
 import pytest
 from pygtrie import Trie
 
 from dvc.repo.index import Index
-from dvc.stage import PipelineStage, Stage
-from dvc.utils import relpath
+from dvc.stage import Stage
 
 
 def test_index(tmp_dir, scm, dvc, run_copy):
@@ -14,18 +12,12 @@ def test_index(tmp_dir, scm, dvc, run_copy):
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
     tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
 
-    index = Index(dvc)
-    assert index.fs == dvc.fs
+    index = Index.from_repo(dvc)
 
-    assert len(index) == len(index.stages) == 2
-    assert set(index.stages) == set(index) == {stage1, stage2}
-    assert stage1 in index
-    assert stage2 in index
-
+    assert set(index.stages) == {stage1, stage2}
     assert index.outs_graph
     assert index.graph
     assert isinstance(index.outs_trie, Trie)
-    assert index.identifier
     index.check_graph()
 
 
@@ -40,41 +32,6 @@ def test_repr(tmp_dir, scm, dvc):
     rev = next(brancher)
     assert rev == scm.get_rev()
     assert repr(Index(dvc)) == f"Index({dvc}, fs@{rev[:7]})"
-
-
-def test_filter_index(tmp_dir, dvc, run_copy):
-    tmp_dir.dvc_gen("foo", "foo")
-    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
-
-    def filter_pipeline(stage):
-        return bool(stage.cmd)
-
-    filtered_index = Index(dvc).filter(filter_pipeline)
-    assert list(filtered_index) == [stage2]
-
-
-def test_slice_index(tmp_dir, dvc):
-    tmp_dir.gen({"dir1": {"foo": "foo"}, "dir2": {"bar": "bar"}})
-    with (tmp_dir / "dir1").chdir():
-        (stage1,) = dvc.add("foo")
-    with (tmp_dir / "dir2").chdir():
-        (stage2,) = dvc.add("bar")
-
-    index = Index(dvc)
-
-    sliced = index.slice("dir1")
-    assert set(sliced) == {stage1}
-    assert sliced.stages is not index.stages  # sanity check
-
-    sliced = index.slice(tmp_dir / "dir1")
-    assert set(sliced) == {stage1}
-
-    sliced = index.slice("dir2")
-    assert set(sliced) == {stage2}
-
-    with (tmp_dir / "dir1").chdir():
-        sliced = index.slice(relpath(tmp_dir / "dir2"))
-        assert set(sliced) == {stage2}
 
 
 def outputs_equal(actual, expected):
@@ -111,7 +68,7 @@ def test_deps_outs_getters(tmp_dir, dvc, run_copy_metrics):
         name="copy-metrics2",
     )
 
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
 
     stages = [foo_stage, run_stage1, run_stage2]
     (metrics,) = run_stage1.outs
@@ -129,16 +86,16 @@ def test_deps_outs_getters(tmp_dir, dvc, run_copy_metrics):
     assert outputs_equal(index.params, [params])
 
 
-def test_add_update(dvc):
-    """Test that add/update overwrites existing stages with the new ones.
+def test_update(dvc):
+    """Test that update overwrites existing stages with the new ones.
 
     The old stages and the new ones might have same hash, so we are
     making sure that the old stages were removed and replaced by new ones
     using `id`/`is` checks.
     """
-    index = Index(dvc)
+    index = Index.from_repo(dvc)
     new_stage = Stage(dvc, path="path1")
-    new_index = index.add(new_stage)
+    new_index = index.update({new_stage})
 
     assert not index.stages
     assert new_index.stages == [new_stage]
@@ -147,7 +104,7 @@ def test_add_update(dvc):
     dup_stage2 = Stage(dvc, path="path2")
     dup_index = index.update([dup_stage1, dup_stage2])
     assert not index.stages
-    assert len(new_index) == 1
+    assert len(new_index.stages) == 1
     assert new_index.stages[0] is new_stage
     assert set(map(id, dup_index.stages)) == {id(dup_stage1), id(dup_stage2)}
 
@@ -163,67 +120,6 @@ def assert_index_equal(first, second, strict=True, ordered=True):
         assert set(map(id, first)) == set(
             map(id, second)
         ), "Index is not strictly equal"
-
-
-def test_discard_remove(dvc):
-    stage = Stage(dvc, path="path1")
-    index = Index(dvc, stages=[stage])
-
-    assert list(index.discard(Stage(dvc, "path2"))) == list(index)
-    new_index = index.discard(stage)
-    assert len(new_index) == 0
-
-    with pytest.raises(ValueError):
-        index.remove(Stage(dvc, "path2"))
-    assert index.stages == [stage]
-    assert list(index.remove(stage)) == []
-
-
-def test_difference(dvc):
-    stages = [Stage(dvc, path=f"path{i}") for i in range(10)]
-    index = Index(dvc, stages=stages)
-
-    new_index = index.difference([*stages[:5], Stage(dvc, path="path100")])
-    assert index.stages == stages
-    assert set(new_index) == set(stages[5:])
-
-
-def test_dumpd(dvc):
-    stages = [
-        PipelineStage(dvc, "dvc.yaml", name="stage1"),
-        Stage(dvc, "path"),
-    ]
-    index = Index(dvc, stages=stages)
-    assert index.dumpd() == {"dvc.yaml:stage1": {}, "path": {}}
-    assert index.identifier == "d43da84e9001540c26abf2bf4541c275"
-
-
-def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
-    dvc.scm_context.autostage = True
-    tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar", name="copy-foo-bar")
-
-    revs = []
-    n_commits = 5
-    for i in range(n_commits):
-        # create a few empty commits
-        scm.commit(f"commit {i}")
-        revs.append(scm.get_rev())
-    assert len(set(revs)) == n_commits  # the commit revs should be unique
-
-    ids = []
-    for _ in dvc.brancher(revs=revs):
-        index = Index(dvc)
-        assert index.stages
-        ids.append(index.identifier)
-
-    # we get "workspace" as well from the brancher by default
-    assert len(revs) + 1 == len(ids)
-    possible_ids = {
-        True: "2ba7c7c5b395d4211348d6274b869fc7",
-        False: "8406970ad2fcafaa84d9310330a67576",
-    }
-    assert set(ids) == {possible_ids[os.name == "posix"]}
 
 
 def test_skip_graph_checks(dvc, mocker):
@@ -253,14 +149,14 @@ def get_index(dvc, rev):
         if rev != "workspace":
             assert next(brancher) == "workspace"
         next(brancher)
-    return Index(dvc)
+    return Index.from_repo(dvc)
 
 
 @pytest.mark.parametrize("rev", ["workspace", "HEAD"])
 def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
     from dvc_data.hashfile.hash_info import HashInfo
 
-    dvc.config["core"]["autostage"] = True
+    dvc.scm_context.autostage = True
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}}, "foo": "foo"})
     run_copy("foo", "bar", name="copy-foo-bar")
     scm.commit("commit")
@@ -288,18 +184,143 @@ def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
     assert index.used_objs() == {None: set(expected_objs)}
     assert index.used_objs("dir") == {None: set(expected_objs[1:])}
     assert index.used_objs(".", recursive=True) == {None: set(expected_objs)}
-    assert index.used_objs("copy-foo-bar", with_deps=True) == {
-        None: {expected_objs[0]}
+    assert index.used_objs("copy-foo-bar", with_deps=True) == {None: {expected_objs[0]}}
+
+
+def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.dvc_gen(
+        {"dir": {"subdir": {"in-subdir": "in-subdir"}, "in-dir": "in-dir"}},
+        commit="init",
+    )
+    index = Index.from_repo(dvc)
+
+    # view should include the specific target, parent dirs, and children
+    # view should exclude any siblings of the target
+    view = index.targets_view("dir/subdir")
+
+    assert view.data_keys == {
+        "repo": {
+            ("dir", "subdir"),
+        }
     }
 
+    data_index = view.data["repo"]
+    assert ("dir",) in data_index
+    assert (
+        "dir",
+        "subdir",
+    ) in data_index
+    assert ("dir", "subdir", "in-subdir") in data_index
+    assert (
+        "dir",
+        "in-dir",
+    ) not in data_index
 
-def test_getitem(tmp_dir, dvc, run_copy):
+
+def test_view_onerror(tmp_dir, scm, dvc):
+    from dvc.exceptions import NoOutputOrStageError
+
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    with pytest.raises(NoOutputOrStageError):
+        index.targets_view(["foo", "missing"])
+
+    failed = []
+
+    def onerror(target, exc):
+        failed.append((target, exc))
+
+    view = index.targets_view(["foo", "missing"], onerror=onerror)
+    data = view.data["repo"]
+
+    assert len(failed) == 1
+    target, exc = failed[0]
+    assert target == "missing"
+    assert isinstance(exc, NoOutputOrStageError)
+    assert len(data) == 1
+    assert data[("foo",)]
+
+
+def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
+    index = Index.from_repo(dvc)
 
-    index = Index(dvc)
-    assert index["foo.dvc"] == stage1
-    assert index["copy-foo-bar"] == stage2
+    view = index.targets_view(None)
+    assert set(view.stages) == {stage1, stage2}
+    assert {out.fs_path for out in view.outs} == {
+        out.fs_path for out in (stage1.outs + stage2.outs)
+    }
 
-    with pytest.raises(KeyError):
-        _ = index["no-valid-stage-name"]
+    view = index.targets_view(
+        None, stage_filter=lambda s: getattr(s, "name", "").startswith("copy")
+    )
+    assert set(view.stages) == {stage2}
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage2.outs}
+
+
+def test_view_outs_filter(tmp_dir, scm, dvc, run_copy):
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
+    index = Index.from_repo(dvc)
+
+    view = index.targets_view(None, outs_filter=lambda o: o.def_path == "foo")
+    assert set(view.stages) == {stage1, stage2}
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage1.outs}
+
+
+def test_view_combined_filter(tmp_dir, scm, dvc, run_copy):
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    tmp_dir.commit([s.outs[0].fspath for s in (stage1, stage2)], msg="add")
+    index = Index.from_repo(dvc)
+
+    view = index.targets_view(
+        None,
+        stage_filter=lambda s: getattr(s, "name", "").startswith("copy"),
+        outs_filter=lambda o: o.def_path == "foo",
+    )
+    assert set(view.stages) == {stage2}
+    assert set(view.outs) == set()
+
+    view = index.targets_view(
+        None,
+        stage_filter=lambda s: getattr(s, "name", "").startswith("copy"),
+        outs_filter=lambda o: o.def_path == "bar",
+    )
+    assert set(view.stages) == {stage2}
+    assert {out.fs_path for out in view.outs} == {out.fs_path for out in stage2.outs}
+
+
+def test_view_brancher(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="init")
+    index = Index.from_repo(dvc)
+
+    for _ in dvc.brancher(revs=["HEAD"]):
+        view = index.targets_view("foo")
+        data = view.data["repo"]
+        assert data[("foo",)]
+
+
+def test_with_gitignore(tmp_dir, dvc, scm):
+    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    index = Index.from_repo(dvc)
+    assert index.stages == [stage]
+
+    scm.ignore(stage.path)
+    scm._reset()
+
+    index = Index.from_repo(dvc)
+    assert not index.stages
+
+
+def test_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
+    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.dvc"})
+    scm.add([".gitignore"])
+    (stage,) = tmp_dir.dvc_gen({"data/raw/tracked.csv": "5,6,7,8"})
+    index = Index.from_repo(dvc)
+    assert index.stages == [stage]

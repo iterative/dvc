@@ -1,6 +1,3 @@
-from PyInstaller.utils.hooks import (  # pylint:disable=import-error
-    copy_metadata,
-)
+from PyInstaller.utils.hooks import copy_metadata  # pylint:disable=import-error
 
 datas = copy_metadata("pydrive2")
-datas += copy_metadata("google-api-python-client")

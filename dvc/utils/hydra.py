@@ -1,17 +1,9 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-from hydra import compose, initialize_config_dir
-from hydra._internal.config_loader_impl import ConfigLoaderImpl
-from hydra.core.override_parser.overrides_parser import OverridesParser
-from hydra.errors import ConfigCompositionException, OverrideParseException
-from hydra.types import RunMode
-from omegaconf import OmegaConf
-
 from dvc.exceptions import InvalidArgumentError
 
 from .collections import merge_dicts, remove_missing_keys, to_omegaconf
-from .serialize import DUMPERS, MODIFIERS
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
@@ -36,11 +28,22 @@ def compose_and_dump(
     .. _Hydra Override:
         https://hydra.cc/docs/advanced/override_grammar/basic/
     """
+    from hydra import compose, initialize_config_dir
+    from omegaconf import OmegaConf
+
+    from .serialize import DUMPERS
+
     with initialize_config_dir(config_dir, version_base=None):
         cfg = compose(config_name=config_name, overrides=overrides)
 
-    dumper = DUMPERS[Path(output_file).suffix.lower()]
-    dumper(output_file, OmegaConf.to_object(cfg))
+    OmegaConf.resolve(cfg)
+
+    suffix = Path(output_file).suffix.lower()
+    if suffix not in [".yml", ".yaml"]:
+        dumper = DUMPERS[suffix]
+        dumper(output_file, OmegaConf.to_object(cfg))
+    else:
+        Path(output_file).write_text(OmegaConf.to_yaml(cfg), encoding="utf-8")
 
 
 def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
@@ -52,6 +55,12 @@ def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
     .. _Hydra Override:
         https://hydra.cc/docs/next/advanced/override_grammar/basic/
     """
+    from hydra._internal.config_loader_impl import ConfigLoaderImpl
+    from hydra.errors import ConfigCompositionException, OverrideParseException
+    from omegaconf import OmegaConf
+
+    from .serialize import MODIFIERS
+
     suffix = Path(path).suffix.lower()
 
     hydra_errors = (ConfigCompositionException, OverrideParseException)
@@ -59,11 +68,7 @@ def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
     modify_data = MODIFIERS[suffix]
     with modify_data(path) as original_data:
         try:
-            parser = OverridesParser.create()
-            parsed = parser.parse_overrides(overrides=overrides)
-            ConfigLoaderImpl.validate_sweep_overrides_legal(
-                parsed, run_mode=RunMode.RUN, from_shell=True
-            )
+            parsed = to_hydra_overrides(overrides)
 
             new_data = OmegaConf.create(
                 to_omegaconf(original_data),
@@ -78,3 +83,32 @@ def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
 
         merge_dicts(original_data, new_data)
         remove_missing_keys(original_data, new_data)
+
+
+def to_hydra_overrides(path_overrides):
+    from hydra.core.override_parser.overrides_parser import OverridesParser
+
+    parser = OverridesParser.create()
+    return parser.parse_overrides(overrides=path_overrides)
+
+
+def dict_product(dicts):
+    import itertools
+
+    return [dict(zip(dicts, x)) for x in itertools.product(*dicts.values())]
+
+
+def get_hydra_sweeps(path_overrides):
+    from hydra._internal.core_plugins.basic_sweeper import BasicSweeper
+    from hydra.core.override_parser.types import ValueType
+
+    path_sweeps = {}
+    for path, overrides in path_overrides.items():
+        overrides = to_hydra_overrides(overrides)
+        for override in overrides:
+            if override.value_type == ValueType.GLOB_CHOICE_SWEEP:
+                raise InvalidArgumentError(
+                    f"Glob override '{override.input_line}' is not supported."
+                )
+        path_sweeps[path] = BasicSweeper.split_arguments(overrides, None)[0]
+    return dict_product(path_sweeps)

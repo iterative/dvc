@@ -12,7 +12,7 @@ from tests.utils import ANY
 def test_daemon_analytics(mocker, tmp_path):
     mock_send = mocker.patch("dvc.analytics.send")
     report = os.fspath(tmp_path)
-    assert 0 == main(["daemon", "analytics", report])
+    assert main(["daemon", "analytics", report]) == 0
 
     mock_send.assert_called_with(report)
 
@@ -21,7 +21,7 @@ def test_main_analytics(mocker, tmp_dir, dvc):
     mock_is_enabled = mocker.patch("dvc.analytics.collect_and_send_report")
     mock_report = mocker.patch("dvc.analytics.is_enabled", return_value=True)
     tmp_dir.gen("foo", "text")
-    assert 0 == main(["add", "foo"])
+    assert main(["add", "foo"]) == 0
     assert mock_is_enabled.called
     assert mock_report.called
 
@@ -31,8 +31,7 @@ def mock_daemon(mocker):
     def func(argv):
         return main(["daemon", *argv])
 
-    m = mocker.patch("dvc.daemon.daemon", mocker.MagicMock(side_effect=func))
-    yield m
+    return mocker.patch("dvc.daemon.daemon", mocker.MagicMock(side_effect=func))
 
 
 def test_collect_and_send_report(mocker, dvc, mock_daemon):

@@ -28,9 +28,7 @@ class Tqdm(tqdm):
         "{postfix[info]}{n_fmt}/{total_fmt}"
         " [{elapsed}<{remaining}, {rate_fmt:>11}]"
     )
-    BAR_FMT_NOTOTAL = (
-        "{desc}{bar:b}|{postfix[info]}{n_fmt} [{elapsed}, {rate_fmt:>11}]"
-    )
+    BAR_FMT_NOTOTAL = "{desc}{bar:b}|{postfix[info]}{n_fmt} [{elapsed}, {rate_fmt:>11}]"
     BYTES_DEFAULTS = {
         "unit": "B",
         "unit_scale": True,
@@ -38,7 +36,7 @@ class Tqdm(tqdm):
         "miniters": 1,
     }
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         iterable=None,
         disable=None,
@@ -46,7 +44,7 @@ class Tqdm(tqdm):
         desc=None,
         leave=False,
         bar_format=None,
-        bytes=False,  # pylint: disable=redefined-builtin
+        bytes=False,  # noqa: A002, pylint: disable=redefined-builtin
         file=None,
         total=None,
         postfix=None,
@@ -75,11 +73,7 @@ class Tqdm(tqdm):
         if not disable:
             disable = logger.getEffectiveLevel() > level
         # auto-disable based on TTY
-        if (
-            not disable
-            and not env2bool(DVC_IGNORE_ISATTY)
-            and hasattr(file, "isatty")
-        ):
+        if not disable and not env2bool(DVC_IGNORE_ISATTY) and hasattr(file, "isatty"):
             disable = not file.isatty()
         super().__init__(
             iterable=iterable,
@@ -95,9 +89,7 @@ class Tqdm(tqdm):
         if bar_format is None:
             if self.__len__():
                 self.bar_format = (
-                    self.BAR_FMT_DEFAULT_NESTED
-                    if self.pos
-                    else self.BAR_FMT_DEFAULT
+                    self.BAR_FMT_DEFAULT_NESTED if self.pos else self.BAR_FMT_DEFAULT
                 )
             else:
                 self.bar_format = self.BAR_FMT_NOTOTAL
@@ -147,10 +139,16 @@ class Tqdm(tqdm):
     def format_dict(self):
         """inject `ncols_desc` to fill the display width (`ncols`)"""
         d = super().format_dict
-        ncols = d["ncols"] or 80
+        ncols: int = d["ncols"] or 80
         # assumes `bar_format` has max one of ("ncols_desc" & "ncols_info")
         ncols_left = (
-            ncols - len(self.format_meter(ncols_desc=1, ncols_info=1, **d)) + 1
+            ncols
+            - len(
+                self.format_meter(  # type: ignore[call-arg]
+                    ncols_desc=1, ncols_info=1, **d
+                )
+            )
+            + 1
         )
         ncols_left = max(ncols_left, 0)
         if ncols_left:

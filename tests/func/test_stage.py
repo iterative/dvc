@@ -1,11 +1,10 @@
 import os
-import tempfile
 
 import pytest
 
 from dvc.annotations import Annotation
-from dvc.cli import main
 from dvc.dvcfile import SingleStageFile
+from dvc.exceptions import OutputDuplicationError
 from dvc.fs import LocalFileSystem
 from dvc.output import Output
 from dvc.repo import Repo, lock_repo
@@ -15,7 +14,6 @@ from dvc.stage.utils import compute_md5
 from dvc.utils import dict_md5
 from dvc.utils.serialize import dump_yaml, load_yaml
 from dvc.utils.strictyaml import YAMLValidationError
-from tests.basic_env import TestDvc
 
 
 def test_cmd_obj():
@@ -71,90 +69,70 @@ def test_list():
     SingleStageFile.validate(d)
 
 
-class TestReload(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
+def test_reload(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    d = load_yaml(stage.relpath)
 
-        d = load_yaml(stage.relpath)
+    # NOTE: checking that reloaded stage didn't change its checksum
+    md5 = "11111111111111111111111111111111"
+    d[stage.PARAM_MD5] = md5
+    dump_yaml(stage.relpath, d)
 
-        # NOTE: checking that reloaded stage didn't change its checksum
-        md5 = "11111111111111111111111111111111"
-        d[stage.PARAM_MD5] = md5
-        dump_yaml(stage.relpath, d)
+    dvcfile = SingleStageFile(dvc, stage.relpath)
+    stage = dvcfile.stage
 
-        dvcfile = SingleStageFile(self.dvc, stage.relpath)
-        stage = dvcfile.stage
+    assert stage is not None
+    dvcfile.dump(stage)
 
-        self.assertTrue(stage is not None)
-        dvcfile.dump(stage)
-
-        d = load_yaml(stage.relpath)
-        self.assertEqual(d[stage.PARAM_MD5], md5)
+    d = load_yaml(stage.relpath)
+    assert d[stage.PARAM_MD5] == md5
 
 
-class TestDefaultWorkingDirectory(TestDvc):
-    def test_ignored_in_checksum(self):
-        stage = self.dvc.run(
-            cmd=f"echo test > {self.FOO}",
-            deps=[self.BAR],
-            outs=[self.FOO],
-            single_stage=True,
-        )
+def test_default_wdir_ignored_in_checksum(tmp_dir, dvc):
+    tmp_dir.gen("bar", "bar")
+    stage = dvc.run(
+        cmd="cp bar foo",
+        deps=["bar"],
+        outs=["foo"],
+        single_stage=True,
+    )
 
-        d = stage.dumpd()
-        self.assertNotIn(Stage.PARAM_WDIR, d.keys())
+    d = stage.dumpd()
+    assert Stage.PARAM_WDIR not in d.keys()
 
-        d = load_yaml(stage.relpath)
-        self.assertNotIn(Stage.PARAM_WDIR, d.keys())
+    d = load_yaml(stage.relpath)
+    assert Stage.PARAM_WDIR not in d.keys()
 
-        with self.dvc.lock:
-            stage = SingleStageFile(self.dvc, stage.relpath).stage
-            self.assertFalse(stage.changed())
+    with dvc.lock:
+        stage = SingleStageFile(dvc, stage.relpath).stage
+        assert not stage.changed()
 
 
-class TestExternalRemoteResolution(TestDvc):
-    def test_remote_output(self):
-        tmp_path = tempfile.mkdtemp()
-        storage = os.path.join(tmp_path, "storage")
-        file_path = os.path.join(storage, "file")
+def test_external_remote_output_resolution(tmp_dir, dvc, make_remote):
+    tmp_path = make_remote("tmp", default=False)
+    tmp_dir.add_remote(url="remote://tmp/storage", name="storage", default=False)
+    storage = tmp_path / "storage"
+    storage.mkdir()
+    file_path = storage / "file"
 
-        os.makedirs(storage)
+    dvc.run(
+        cmd=f"echo file > {file_path}",
+        outs_no_cache=["remote://storage/file"],
+        single_stage=True,
+    )
+    assert os.path.exists(file_path)
 
-        assert main(["remote", "add", "tmp", tmp_path]) == 0
-        assert main(["remote", "add", "storage", "remote://tmp/storage"]) == 0
-        assert (
-            main(
-                [
-                    "run",
-                    "--single-stage",
-                    "-O",
-                    "remote://storage/file",
-                    f"echo file > {file_path}",
-                ]
-            )
-            == 0
-        )
 
-        assert os.path.exists(file_path)
+def test_external_remote_dependency_resolution(tmp_dir, dvc, make_remote):
+    tmp_path = make_remote("tmp", default=False)
+    tmp_dir.add_remote(url="remote://tmp/storage", name="storage", default=False)
+    storage = tmp_path / "storage"
+    storage.mkdir()
+    file_path = storage / "file"
+    file_path.write_text("Isle of Dogs", encoding="utf-8")
 
-    def test_remote_dependency(self):
-        tmp_path = tempfile.mkdtemp()
-        storage = os.path.join(tmp_path, "storage")
-        file_path = os.path.join(storage, "file")
-
-        os.makedirs(storage)
-
-        with open(file_path, "w", encoding="utf-8") as fobj:
-            fobj.write("Isle of Dogs")
-
-        assert main(["remote", "add", "tmp", tmp_path]) == 0
-        assert main(["remote", "add", "storage", "remote://tmp/storage"]) == 0
-        assert main(["import-url", "remote://storage/file", "movie.txt"]) == 0
-
-        assert os.path.exists("movie.txt")
+    dvc.imp_url("remote://storage/file", "movie.txt")
+    assert (tmp_dir / "movie.txt").read_text() == "Isle of Dogs"
 
 
 def test_md5_ignores_comments(tmp_dir, dvc):
@@ -187,13 +165,7 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
     stage = dvc.stage.load_one("foo.dvc")
     assert compute_md5(stage) == "1822617147b53ae6f9eb4b3c87c0b6f3"
     assert (
-        dict_md5(
-            {
-                "outs": [
-                    {"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}
-                ]
-            }
-        )
+        dict_md5({"outs": [{"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}]})
         == "1822617147b53ae6f9eb4b3c87c0b6f3"
     )
 
@@ -258,11 +230,19 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
     assert deep_subrepo_stages != []
 
 
-def test_collect_repo_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
-    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.dvc"})
-    scm.add([".gitignore"])
-    (stage,) = tmp_dir.dvc_gen({"data/raw/tracked.csv": "5,6,7,8"})
-    assert dvc.stage.collect_repo() == [stage]
+@pytest.mark.parametrize("with_deps", (False, True))
+def test_collect_symlink(tmp_dir, dvc, with_deps):
+    tmp_dir.gen({"data": {"foo": "foo contents"}})
+    foo_path = os.path.join("data", "foo")
+    dvc.add(foo_path)
+
+    data_link = tmp_dir / "data_link"
+    data_link.symlink_to("data")
+    stage = list(
+        dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
+    )[0]
+
+    assert stage.addressing == f"{foo_path}.dvc"
 
 
 def test_stage_strings_representation(tmp_dir, dvc, run_copy):
@@ -319,6 +299,8 @@ def test_stage_remove_pipeline_stage(tmp_dir, dvc, run_copy):
 
     with dvc.lock:
         stage.remove()
+
+    dvc_file._reset()
     assert stage.name not in dvc_file.stages
     assert "copy-bar-foobar" in dvc_file.stages
 
@@ -352,3 +334,14 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
     mock_cmd_run.assert_called_with(
         stage, checkpoint_func=callback, dry=False, run_env=None
     )
+
+
+def test_stage_add_duplicated_output(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.add("foo")
+
+    with pytest.raises(
+        OutputDuplicationError,
+        match="Use `dvc remove foo.dvc` to stop tracking the overlapping output.",
+    ):
+        dvc.stage.add(name="duplicated", cmd="echo bar > foo", outs=["foo"])

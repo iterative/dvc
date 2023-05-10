@@ -1,13 +1,8 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, Dict, List, Set
 
-from dvc.exceptions import (
-    CheckoutError,
-    CheckoutErrorSuggestGit,
-    NoOutputOrStageError,
-)
-from dvc.progress import Tqdm
+from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
 from dvc.utils import relpath
 
 from . import locked
@@ -36,18 +31,13 @@ def _remove_unused_links(repo):
 
 
 def get_all_files_numbers(pairs):
-    return sum(
-        stage.get_all_files_number(filter_info) for stage, filter_info in pairs
-    )
+    return sum(stage.get_all_files_number(filter_info) for stage, filter_info in pairs)
 
 
 def _collect_pairs(
     self: "Repo", targets, with_deps: bool, recursive: bool
 ) -> Set["StageInfo"]:
-    from dvc.stage.exceptions import (
-        StageFileBadNameError,
-        StageFileDoesNotExistError,
-    )
+    from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
 
     pairs: Set["StageInfo"] = set()
     for target in targets:
@@ -80,8 +70,14 @@ def checkout(
     allow_missing=False,
     **kwargs,
 ):
+    from dvc.fs.callbacks import Callback
 
-    stats = {"added": [], "deleted": [], "modified": [], "failed": []}
+    stats: Dict[str, List[str]] = {
+        "added": [],
+        "deleted": [],
+        "modified": [],
+        "failed": [],
+    }
     if not targets:
         targets = [None]
         stats["deleted"] = _remove_unused_links(self)
@@ -91,13 +87,16 @@ def checkout(
 
     pairs = _collect_pairs(self, targets, with_deps, recursive)
     total = get_all_files_numbers(pairs)
-    with Tqdm(
-        total=total, unit="file", desc="Checkout", disable=total == 0
-    ) as pbar:
+    with Callback.as_tqdm_callback(
+        unit="file",
+        desc="Checkout",
+        disable=total == 0,
+    ) as cb:
+        cb.set_size(total)
         for stage, filter_info in pairs:
             result = stage.checkout(
                 force=force,
-                progress_callback=pbar.update_msg,
+                progress_callback=cb,
                 relink=relink,
                 filter_info=filter_info,
                 allow_missing=allow_missing,

@@ -15,7 +15,7 @@ class CmdCompletion(CmdBaseNoRepo):
 
         shell = self.args.shell
         parser = self.args.parser
-        script = shtab.complete(parser, shell=shell, preamble=PREAMBLE)
+        script = shtab.complete(parser, shell=shell, preamble=PREAMBLE)  # nosec B604
         ui.write(script, force=True)
         return 0
 

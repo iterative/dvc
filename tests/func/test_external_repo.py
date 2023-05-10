@@ -1,12 +1,12 @@
 import os
 from unittest.mock import ANY
 
-from scmrepo.git import Git
-
-from dvc.external_repo import CLONES, external_repo
+from dvc.repo.open_repo import CLONES
+from dvc.repo.open_repo import _external_repo as external_repo
+from dvc.scm import Git
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils import relpath
-from dvc.utils.fs import makedirs, remove
+from dvc.utils.fs import remove
 from dvc_data.hashfile.build import build
 from dvc_data.hashfile.transfer import transfer
 
@@ -22,11 +22,11 @@ def test_external_repo(erepo_dir, mocker):
     clone_spy = mocker.spy(Git, "clone")
 
     with external_repo(url) as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "master"
 
     with external_repo(url, rev="branch") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "branch"
 
     assert clone_spy.call_count == 1
@@ -116,14 +116,14 @@ def test_relative_remote(erepo_dir, tmp_dir):
     erepo_dir.dvc.push()
 
     (erepo_dir / "file").unlink()
-    remove(erepo_dir.dvc.odb.local.path)
+    remove(erepo_dir.dvc.cache.local.path)
 
     url = os.fspath(erepo_dir)
 
     with external_repo(url) as repo:
         assert os.path.isabs(repo.config["remote"]["upstream"]["url"])
         assert os.path.isdir(repo.config["remote"]["upstream"]["url"])
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "contents"
 
 
@@ -137,19 +137,17 @@ def test_shallow_clone_branch(erepo_dir, mocker):
     clone_spy = mocker.spy(Git, "clone")
 
     with external_repo(url, rev="branch") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "branch"
 
-    clone_spy.assert_called_with(
-        url, ANY, shallow_branch="branch", progress=ANY
-    )
+    clone_spy.assert_called_with(url, ANY, shallow_branch="branch", progress=ANY)
 
     path, _ = CLONES[url]
     CLONES[url] = (path, True)
 
     mock_fetch = mocker.patch.object(Git, "fetch")
     with external_repo(url) as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "master"
     mock_fetch.assert_called_with(unshallow=True)
 
@@ -164,7 +162,7 @@ def test_shallow_clone_tag(erepo_dir, mocker):
 
     clone_spy = mocker.spy(Git, "clone")
     with external_repo(url, rev="v1") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "foo"
 
     clone_spy.assert_called_with(url, ANY, shallow_branch="v1", progress=ANY)
@@ -174,7 +172,7 @@ def test_shallow_clone_tag(erepo_dir, mocker):
 
     mock_fetch = mocker.patch.object(Git, "fetch")
     with external_repo(url, rev="master") as repo:
-        with repo.open_by_relpath("file") as fd:
+        with repo.dvcfs.open("file") as fd:
             assert fd.read() == "bar"
     mock_fetch.assert_called_with(unshallow=True)
 
@@ -198,12 +196,12 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         assert (tmp_dir / "out").read_text() == expected_files
 
         # clear cache to test saving to cache
-        cache_dir = tmp_dir / repo.odb.local.path
+        cache_dir = tmp_dir / repo.cache.local.path
         remove(cache_dir)
-        makedirs(cache_dir)
+        os.makedirs(cache_dir)
 
         staging, _, obj = build(
-            repo.odb.local,
+            repo.cache.local,
             "dir",
             repo.dvcfs,
             "md5",
@@ -211,7 +209,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         )
         transfer(
             staging,
-            repo.odb.local,
+            repo.cache.local,
             {obj.hash_info},
             shallow=False,
             hardlink=True,

@@ -1,9 +1,10 @@
+import logging
 import os
 import textwrap
 
 import pytest
 
-from dvc.config import Config
+from dvc.config import Config, ConfigError
 from dvc.fs import LocalFileSystem
 
 
@@ -24,7 +25,7 @@ def test_get_fs(tmp_dir, scm):
     tmp_dir.scm_gen("foo", "foo", commit="add foo")
 
     fs = scm.get_fs("master")
-    config = Config(fs=fs)
+    config = Config.from_cwd(fs=fs)
 
     assert config.fs == fs
     assert config.wfs != fs
@@ -37,7 +38,7 @@ def test_get_fs(tmp_dir, scm):
 
 
 def test_s3_ssl_verify(tmp_dir, dvc):
-    config = Config(validate=False)
+    config = Config.from_cwd(validate=False)
     with config.edit() as conf:
         conf["remote"]["remote-name"] = {"url": "s3://bucket/dvc"}
 
@@ -70,3 +71,46 @@ def test_s3_ssl_verify(tmp_dir, dvc):
             ssl_verify = /path/to/custom/cabundle.pem
         """
     )
+
+
+def test_load_unicode_error(tmp_dir, dvc, mocker):
+    config = Config.from_cwd(validate=False)
+    mocker.patch(
+        "configobj.ConfigObj",
+        side_effect=UnicodeDecodeError("", b"", 0, 0, ""),
+    )
+    with pytest.raises(ConfigError):
+        with config.edit():
+            pass
+
+
+def test_load_configob_error(tmp_dir, dvc, mocker):
+    from configobj import ConfigObjError
+
+    config = Config.from_cwd(validate=False)
+    mocker.patch(
+        "configobj.ConfigObj",
+        side_effect=ConfigObjError(),
+    )
+    with pytest.raises(ConfigError):
+        with config.edit():
+            pass
+
+
+def test_feature_section_supports_arbitrary_values(caplog):
+    with caplog.at_level(logging.WARNING, logger="dvc.config_schema"):
+        data = Config.validate(
+            {
+                "feature": {
+                    "random_key_1": "random_value_1",
+                    "random_key_2": 42,
+                }
+            }
+        )
+
+    assert "random_key_1" not in data
+    assert "random_key_2" not in data
+    assert (
+        "'feature.random_key_1', 'feature.random_key_2' "
+        "config options are unsupported"
+    ) in caplog.text

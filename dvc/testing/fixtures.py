@@ -1,7 +1,10 @@
 import os
-import subprocess
+import subprocess  # nosec B404
+from typing import Dict, Tuple
 
 import pytest
+
+# pylint: disable=redefined-outer-name,unused-argument
 
 __all__ = [
     "make_tmp_dir",
@@ -9,42 +12,44 @@ __all__ = [
     "scm",
     "dvc",
     "make_cloud",
+    "make_cloud_version_aware",
     "make_local",
     "cloud",
     "local_cloud",
     "make_remote",
+    "make_remote_version_aware",
+    "make_remote_worktree",
     "remote",
+    "remote_version_aware",
+    "remote_worktree",
     "local_remote",
     "workspace",
     "make_workspace",
     "local_workspace",
-    "docker",
-    "docker_compose",
     "docker_compose_project_name",
     "docker_services",
 ]
 
-CACHE = {}  # type: ignore
+CACHE: Dict[Tuple[bool, bool, bool], str] = {}
 
 
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request, worker_id):
-    def make(
-        name, *, scm=False, dvc=False, subdir=False
-    ):  # pylint: disable=W0621
+    def make(name, *, scm=False, dvc=False, subdir=False):  # pylint: disable=W0621
         from shutil import copytree, ignore_patterns
 
-        from scmrepo.git import Git
-
         from dvc.repo import Repo
+        from dvc.scm import Git
 
         from .tmp_dir import TmpDir
 
         cache = CACHE.get((scm, dvc, subdir))
         if not cache:
-            cache = tmp_path_factory.mktemp("dvc-test-cache" + worker_id)
-            TmpDir(cache).init(scm=scm, dvc=dvc, subdir=subdir)
-            CACHE[(scm, dvc, subdir)] = os.fspath(cache)
+            cache_dir = tmp_path_factory.mktemp("dvc-test-cache" + worker_id)
+            TmpDir(cache_dir).init(scm=scm, dvc=dvc, subdir=subdir)
+            CACHE[(scm, dvc, subdir)] = cache = os.fspath(cache_dir)
+
+        assert cache
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
 
         # ignore sqlite files from .dvc/tmp. We might not be closing the cache
@@ -56,9 +61,7 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
         if dvc:
             new_dir.dvc = Repo(str_path)
         if scm:
-            new_dir.scm = (
-                new_dir.dvc.scm if hasattr(new_dir, "dvc") else Git(str_path)
-            )
+            new_dir.scm = new_dir.dvc.scm if hasattr(new_dir, "dvc") else Git(str_path)
         request.addfinalizer(new_dir.close)
         return new_dir
 
@@ -100,6 +103,14 @@ def make_cloud(request):
 
 
 @pytest.fixture
+def make_cloud_version_aware(request):
+    def _make_cloud(typ):
+        return request.getfixturevalue(f"make_{typ}_version_aware")()
+
+    return _make_cloud
+
+
+@pytest.fixture
 def cloud(make_cloud, request):
     typ = getattr(request, "param", "local")
     return make_cloud(typ)
@@ -111,10 +122,34 @@ def local_cloud(make_cloud):
 
 
 @pytest.fixture
-def make_remote(tmp_dir, dvc, make_cloud):
+def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
         cloud = make_cloud(typ)  # pylint: disable=W0621
         tmp_dir.add_remote(name=name, config=cloud.config, **kwargs)
+        return cloud
+
+    return _make_remote
+
+
+@pytest.fixture
+def make_remote_version_aware(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
+    def _make_remote(name, typ="local", **kwargs):
+        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        config = dict(cloud.config)
+        config["version_aware"] = True
+        tmp_dir.add_remote(name=name, config=config, **kwargs)
+        return cloud
+
+    return _make_remote
+
+
+@pytest.fixture
+def make_remote_worktree(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
+    def _make_remote(name, typ="local", **kwargs):
+        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        config = dict(cloud.config)
+        config["worktree"] = True
+        tmp_dir.add_remote(name=name, config=config, **kwargs)
         return cloud
 
     return _make_remote
@@ -127,6 +162,18 @@ def remote(make_remote, request):
 
 
 @pytest.fixture
+def remote_version_aware(make_remote_version_aware, request):
+    typ = getattr(request, "param", "local")
+    return make_remote_version_aware("upstream", typ=typ)
+
+
+@pytest.fixture
+def remote_worktree(make_remote_worktree, request):
+    typ = getattr(request, "param", "local")
+    return make_remote_worktree("upstream", typ=typ)
+
+
+@pytest.fixture
 def local_remote(make_remote):
     return make_remote("upstream", typ="local")
 
@@ -134,7 +181,7 @@ def local_remote(make_remote):
 @pytest.fixture
 def make_workspace(tmp_dir, dvc, make_cloud):
     def _make_workspace(name, typ="local"):
-        from dvc.odbmgr import ODBManager
+        from dvc.cachemgr import CacheManager
 
         cloud = make_cloud(typ)  # pylint: disable=W0621
 
@@ -148,7 +195,7 @@ def make_workspace(tmp_dir, dvc, make_cloud):
             with dvc.config.edit() as conf:
                 conf["cache"][scheme] = f"{name}-cache"
 
-            dvc.odb = ODBManager(dvc)
+            dvc.cache = CacheManager(dvc)
 
         return cloud
 
@@ -167,49 +214,48 @@ def local_workspace(make_workspace):
 
 
 @pytest.fixture(scope="session")
-def docker():
-    # See https://travis-ci.community/t/docker-linux-containers-on-windows/301
-    if os.environ.get("CI") and os.name == "nt":
-        pytest.skip("disabled for Windows on Github Actions")
-
-    try:
-        subprocess.check_output("docker ps", shell=True)
-    except (subprocess.CalledProcessError, OSError):
-        pytest.skip("no docker installed")
-
-
-@pytest.fixture(scope="session")
-def docker_compose(docker):
-    try:
-        subprocess.check_output("docker-compose version", shell=True)
-    except (subprocess.CalledProcessError, OSError):
-        pytest.skip("no docker-compose installed")
-
-
-@pytest.fixture(scope="session")
 def docker_compose_project_name():
     return "pytest-dvc-test"
 
 
 @pytest.fixture(scope="session")
 def docker_services(
-    docker_compose_file, docker_compose_project_name, tmp_path_factory
+    tmp_path_factory,
+    docker_compose_command,
+    docker_compose_file,
+    docker_compose_project_name,
+    docker_setup,
 ):
-    # overriding `docker_services` fixture from `pytest_docker` plugin to
-    # only launch docker images once.
-
     from filelock import FileLock
     from pytest_docker.plugin import DockerComposeExecutor, Services
 
+    if os.environ.get("CI") and os.name == "nt":
+        pytest.skip("disabled for Windows on CI")
+
+    try:
+        subprocess.check_output(  # nosec B607, B602
+            "docker ps", stderr=subprocess.STDOUT, shell=True
+        )
+    except subprocess.CalledProcessError as err:
+        out = (err.output or b"").decode("utf-8")
+        pytest.skip(f"docker is not installed or the daemon is not running: {out}")
+
+    try:
+        cmd = "docker-compose version"
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)  # nosec
+    except subprocess.CalledProcessError as err:
+        out = (err.output or b"").decode("utf-8")
+        pytest.skip(f"docker-compose is not installed: {out}")
+
     executor = DockerComposeExecutor(
-        docker_compose_file, docker_compose_project_name
+        docker_compose_command, docker_compose_file, docker_compose_project_name
     )
 
     # making sure we don't accidentally launch docker-compose in parallel,
     # as it might result in network conflicts. Inspired by:
     # https://github.com/pytest-dev/pytest-xdist#making-session-scoped-fixtures-execute-only-once
     lockfile = tmp_path_factory.getbasetemp().parent / "docker-compose.lock"
-    with FileLock(str(lockfile)):  # pylint:disable=abstract-class-instantiated
-        executor.execute("up --build -d")
-
-    return Services(executor)
+    with FileLock(os.fspath(lockfile)):
+        executor.execute(docker_setup)
+        # note: we are not tearing down the containers here
+        return Services(executor)

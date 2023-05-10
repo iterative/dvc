@@ -2,13 +2,11 @@ import datetime
 import textwrap
 
 import pytest
-from pytest import CaptureFixture
-from pytest_mock import MockerFixture
 
 from dvc.ui import Console
 
 
-def test_write(capsys: CaptureFixture[str]):
+def test_write(capsys):
     """Test that ui.write works."""
     console = Console(enable=True)
     message = "hello world"
@@ -44,9 +42,7 @@ def test_write(capsys: CaptureFixture[str]):
         ),
     ],
 )
-def test_write_json(
-    capsys: CaptureFixture[str], mocker: MockerFixture, isatty, expected_output
-):
+def test_write_json(capsys, mocker, isatty, expected_output):
     """Test that ui.write_json works."""
 
     console = Console(enable=True)
@@ -57,7 +53,7 @@ def test_write_json(
     assert captured.out == expected_output
 
 
-def test_capsys_works(capsys: CaptureFixture[str]):
+def test_capsys_works(capsys):
     """Sanity check that capsys can capture outputs from a global ui."""
     from dvc.ui import ui
 

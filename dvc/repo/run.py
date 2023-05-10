@@ -19,12 +19,9 @@ def run(
     no_commit: bool = False,
     run_cache: bool = True,
     force: bool = True,
-    **kwargs
+    **kwargs,
 ) -> Union["Stage", "PipelineStage"]:
-
-    kwargs.update(
-        {"force": force, "params": parse_params(kwargs.get("params", []))}
-    )
+    kwargs.update({"force": force, "params": parse_params(kwargs.get("params", []))})
     stage = self.stage.create(**kwargs)
 
     if no_exec:

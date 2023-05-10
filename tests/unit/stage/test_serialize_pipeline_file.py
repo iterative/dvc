@@ -4,12 +4,12 @@ import pytest
 from voluptuous import Schema as _Schema
 
 from dvc import output
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PROJECT_FILE
 from dvc.schema import SINGLE_PIPELINE_STAGE_SCHEMA
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import to_pipeline_file as _to_pipeline_file
 
-kwargs = {"name": "something", "cmd": "command", "path": PIPELINE_FILE}
+kwargs = {"name": "something", "cmd": "command", "path": PROJECT_FILE}
 Schema = _Schema(SINGLE_PIPELINE_STAGE_SCHEMA)
 
 
@@ -153,9 +153,7 @@ def test_plot_props(dvc):
 
 
 def test_frozen(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs
-    )
+    stage = create_stage(PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs)
     assert stage.PARAM_FROZEN not in to_pipeline_file(stage)["something"]
 
     stage = create_stage(PipelineStage, dvc, **kwargs, frozen=True)
@@ -163,18 +161,11 @@ def test_frozen(dvc):
 
 
 def test_always_changed(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs
-    )
-    assert (
-        stage.PARAM_ALWAYS_CHANGED not in to_pipeline_file(stage)["something"]
-    )
+    stage = create_stage(PipelineStage, dvc, outs=["output"], deps=["input"], **kwargs)
+    assert stage.PARAM_ALWAYS_CHANGED not in to_pipeline_file(stage)["something"]
 
     stage = create_stage(PipelineStage, dvc, **kwargs, always_changed=True)
-    assert (
-        to_pipeline_file(stage)["something"][stage.PARAM_ALWAYS_CHANGED]
-        is True
-    )
+    assert to_pipeline_file(stage)["something"][stage.PARAM_ALWAYS_CHANGED] is True
 
 
 def test_order(dvc):
@@ -199,9 +190,7 @@ def test_order(dvc):
     ]
 
 
-@pytest.mark.parametrize(
-    "typ", ["outs", "metrics", "plots", "params", "deps", None]
-)
+@pytest.mark.parametrize("typ", ["outs", "metrics", "plots", "params", "deps", None])
 def test_order_deps_outs(dvc, typ):
     all_types = ["deps", "params", "outs", "metrics", "plots"]
     all_types = [item for item in all_types if item != typ]
@@ -209,7 +198,7 @@ def test_order_deps_outs(dvc, typ):
 
     stage = create_stage(PipelineStage, dvc, **kwargs, **extra)
     assert typ not in to_pipeline_file(stage)["something"]
-    assert (
-        list(to_pipeline_file(stage)["something"].keys())
-        == ["cmd"] + all_types
-    )
+    assert list(to_pipeline_file(stage)["something"].keys()) == [
+        "cmd",
+        *all_types,
+    ]

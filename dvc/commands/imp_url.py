@@ -25,13 +25,16 @@ class CmdImportUrl(CmdBase):
                 labels=self.args.labels,
                 meta=self.args.meta,
                 jobs=self.args.jobs,
+                force=self.args.force,
+                version_aware=self.args.version_aware,
             )
         except DvcException:
             logger.exception(
-                "failed to import {}. You could also try downloading "
-                "it manually, and adding it with `dvc add`.".format(
-                    self.args.url
-                )
+                (
+                    "failed to import %s. You could also try downloading "
+                    "it manually, and adding it with `dvc add`."
+                ),
+                self.args.url,
             )
             return 1
         return 0
@@ -40,9 +43,7 @@ class CmdImportUrl(CmdBase):
 def add_parser(subparsers, parent_parser):
     from .add import _add_annotating_args
 
-    IMPORT_HELP = (
-        "Download or copy file from URL and take it under DVC control."
-    )
+    IMPORT_HELP = "Download or copy file from URL and take it under DVC control."
 
     import_parser = subparsers.add_parser(
         "import-url",
@@ -53,16 +54,18 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "url",
-        help="Location of the data to download. Supported URLs:\n"
-        "/absolute/path/to/file/or/dir\n"
-        "relative/path/to/file/or/dir\n"
-        "C:\\\\path\\to\\file\\or\\dir\n"
-        "https://example.com/path/to/file\n"
-        "s3://bucket/key/path\n"
-        "gs://bucket/path/to/file/or/dir\n"
-        "hdfs://example.com/path/to/file\n"
-        "ssh://example.com/absolute/path/to/file/or/dir\n"
-        "remote://remote_name/path/to/file/or/dir (see `dvc remote`)",
+        help=(
+            "Location of the data to download. Supported URLs:\n"
+            "/absolute/path/to/file/or/dir\n"
+            "relative/path/to/file/or/dir\n"
+            "C:\\\\path\\to\\file\\or\\dir\n"
+            "https://example.com/path/to/file\n"
+            "s3://bucket/key/path\n"
+            "gs://bucket/path/to/file/or/dir\n"
+            "hdfs://example.com/path/to/file\n"
+            "ssh://example.com/absolute/path/to/file/or/dir\n"
+            "remote://remote_name/path/to/file/or/dir (see `dvc remote`)"
+        ),
     )
     import_parser.add_argument(
         "out", nargs="?", help="Destination path to put files to."
@@ -72,20 +75,6 @@ def add_parser(subparsers, parent_parser):
         help="Specify name of the .dvc file this command will generate.",
         metavar="<filename>",
     ).complete = completion.DIR
-    no_download_exec_group = import_parser.add_mutually_exclusive_group()
-    no_download_exec_group.add_argument(
-        "--no-exec",
-        action="store_true",
-        default=False,
-        help="Only create .dvc file without actually importing target data.",
-    )
-    no_download_exec_group.add_argument(
-        "--no-download",
-        action="store_true",
-        default=False,
-        help="Create .dvc file including target data hash value(s)"
-        " but do not actually download the file(s).",
-    )
     import_parser.add_argument(
         "--to-remote",
         action="store_true",
@@ -98,6 +87,22 @@ def add_parser(subparsers, parent_parser):
         help="Remote storage to download to",
         metavar="<name>",
     )
+    no_download_exec_group = import_parser.add_mutually_exclusive_group()
+    no_download_exec_group.add_argument(
+        "--no-exec",
+        action="store_true",
+        default=False,
+        help="Only create .dvc file without actually importing target data.",
+    )
+    no_download_exec_group.add_argument(
+        "--no-download",
+        action="store_true",
+        default=False,
+        help=(
+            "Create .dvc file including target data hash value(s)"
+            " but do not actually download the file(s)."
+        ),
+    )
     import_parser.add_argument(
         "-j",
         "--jobs",
@@ -107,6 +112,19 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    import_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Override local file or folder if exists.",
+    )
+    import_parser.add_argument(
+        "--version-aware",
+        action="store_true",
+        default=False,
+        help="Import using cloud versioning. Implied if the URL contains a version ID.",
     )
     _add_annotating_args(import_parser)
     import_parser.set_defaults(func=CmdImportUrl)
