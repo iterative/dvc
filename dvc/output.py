@@ -726,7 +726,7 @@ class Output:
             if granular:
                 obj = self._commit_granular_dir(filter_info, hardlink, jobs=jobs)
             else:
-                jobs = jobs or min((self.fs.jobs, self.odb.fs.jobs))
+                jobs = jobs or min((self.fs.jobs, self.cache.fs.jobs))
                 staging, _, obj = build(
                     self.cache,
                     filter_info or self.fs_path,
@@ -758,7 +758,7 @@ class Output:
         self, filter_info, hardlink, jobs=None
     ) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
-        jobs = jobs or min((self.fs.jobs, self.odb.fs.jobs))
+        jobs = jobs or min((self.fs.jobs, self.cache.fs.jobs))
         staging, _, obj = build(
             self.cache,
             self.fs_path,
