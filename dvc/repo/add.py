@@ -201,7 +201,7 @@ def add(
                 try:
                     stage.save()
                     if not no_commit:
-                        stage.commit(**kwargs)
+                        stage.commit(jobs=kwargs.get("jobs"))
                 except CacheLinkError:
                     link_failures.append(str(stage.relpath))
             stage.dump()
