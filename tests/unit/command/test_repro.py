@@ -12,6 +12,7 @@ common_arguments = {
     "recursive": False,
     "force_downstream": False,
     "pull": False,
+    "allow_missing": False,
     "targets": [],
 }
 repro_arguments = {

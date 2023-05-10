@@ -319,20 +319,22 @@ class Stage(params.StageParams):
             env.update(current)
         return env
 
-    def changed_deps(self) -> bool:
+    def changed_deps(self, allow_missing: bool = False) -> bool:
         if self.frozen:
             return False
 
         if self.is_callback or self.always_changed or self.is_checkpoint:
             return True
 
-        return self._changed_deps()
+        return self._changed_deps(allow_missing=allow_missing)
 
     @rwlocked(read=["deps"])
-    def _changed_deps(self) -> bool:
+    def _changed_deps(self, allow_missing: bool = False) -> bool:
         for dep in self.deps:
             status = dep.status()
             if status:
+                if allow_missing and status[str(dep)] == "deleted":
+                    continue
                 logger.debug(
                     "Dependency '%s' of %s changed because it is '%s'.",
                     dep,
@@ -343,10 +345,12 @@ class Stage(params.StageParams):
         return False
 
     @rwlocked(read=["outs"])
-    def changed_outs(self) -> bool:
+    def changed_outs(self, allow_missing: bool = False) -> bool:
         for out in self.outs:
             status = out.status()
             if status:
+                if allow_missing and status[str(out)] == "not in cache":
+                    continue
                 logger.debug(
                     "Output '%s' of %s changed because it is '%s'.",
                     out,
@@ -364,13 +368,13 @@ class Stage(params.StageParams):
         return changed
 
     @rwlocked(read=["deps", "outs"])
-    def changed(self) -> bool:
+    def changed(self, allow_missing: bool = False) -> bool:
         is_changed = (
             # Short-circuit order: stage md5 is fast,
             # deps are expected to change
             self.changed_stage()
-            or self.changed_deps()
-            or self.changed_outs()
+            or self.changed_deps(allow_missing=allow_missing)
+            or self.changed_outs(allow_missing=allow_missing)
         )
         if is_changed:
             logger.debug("%s changed.", self)
@@ -421,7 +425,10 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs) -> Optional["Stage"]:
-        if not (kwargs.get("force", False) or self.changed()):
+        if not (
+            kwargs.get("force", False)
+            or self.changed(kwargs.get("allow_missing", False))
+        ):
             if not isinstance(self, PipelineStage) and self.is_data_source:
                 logger.info("'%s' didn't change, skipping", self.addressing)
             else:
@@ -601,7 +608,7 @@ class Stage(params.StageParams):
         ) or self.is_partial_import:
             self._sync_import(dry, force, kwargs.get("jobs", None), no_download)
         elif not self.frozen and self.cmd:
-            self._run_stage(dry, force, **kwargs)
+            self._run_stage(dry, force, allow_missing=allow_missing, **kwargs)
         elif kwargs.get("pull"):
             logger.info("Pulling data for %s", self)
             self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))

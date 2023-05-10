@@ -38,6 +38,7 @@ class CmdRepro(CmdBase):
             "recursive": self.args.recursive,
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
+            "allow_missing": self.args.allow_missing,
         }
 
     @property
@@ -134,6 +135,12 @@ and then the stage name name.
             "Try automatically pulling missing cache for outputs restored "
             "from the run-cache."
         ),
+    )
+    repro_parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        default=False,
+        help=("Skip stages with missing data but no other changes."),
     )
     repro_parser.add_argument(
         "--dry",
