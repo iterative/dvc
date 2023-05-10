@@ -754,7 +754,9 @@ class Output:
                 )
                 self.set_exec()
 
-    def _commit_granular_dir(self, filter_info, hardlink, jobs=None) -> Optional["HashFile"]:
+    def _commit_granular_dir(
+        self, filter_info, hardlink, jobs=None
+    ) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
         jobs = jobs or min((self.fs.jobs, self.odb.fs.jobs))
         staging, _, obj = build(
