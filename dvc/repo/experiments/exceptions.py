@@ -99,3 +99,10 @@ class UnresolvedRunningExpNamesError(UnresolvedExpNamesError):
 
 class ExpQueueEmptyError(DvcException):
     pass
+
+
+class ExpNotStartedError(DvcException):
+    def __init__(self, name: str):
+        super().__init__(
+            f"Queued experiment '{name}' exists but has not started running yet"
+        )

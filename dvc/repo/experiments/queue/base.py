@@ -710,3 +710,26 @@ class BaseStashQueue(ABC):
         Returns:
             Dict mapping baseline revision to list of queued experiments.
         """
+
+    def active_repo(self, name: str) -> "Repo":
+        """Return a Repo for the specified active experiment if it exists."""
+        from dvc.repo import Repo
+        from dvc.repo.experiments.exceptions import (
+            ExpNotStartedError,
+            InvalidExpRevError,
+        )
+        from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
+
+        for entry in self.iter_active():
+            if entry.name != name:
+                continue
+            infofile = self.get_infofile_path(entry.stash_rev)
+            executor_info = ExecutorInfo.load_json(infofile)
+            if executor_info.status < TaskStatus.RUNNING:
+                raise ExpNotStartedError(name)
+            dvc_root = os.path.join(executor_info.root_dir, executor_info.dvc_dir)
+            try:
+                return Repo(dvc_root)
+            except (FileNotFoundError, DvcException) as exc:
+                raise InvalidExpRevError(name) from exc
+        raise InvalidExpRevError(name)
