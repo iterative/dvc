@@ -627,13 +627,13 @@ class BaseExecutor(ABC):
         copy_paths: Optional[List[str]] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
-        from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
-        from dvc_studio_client.post_live_metrics import post_live_metrics
+        from dvc_studio_client.post_live_metrics import (
+            get_studio_config,
+            post_live_metrics,
+        )
 
-        from dvc.env import DVC_STUDIO_OFFLINE
         from dvc.repo import Repo
         from dvc.stage.monitor import CheckpointKilledError
-        from dvc.utils.studio import get_studio_config
 
         with Repo(os.path.join(info.root_dir, info.dvc_dir)) as dvc:
             info.status = TaskStatus.RUNNING
@@ -655,17 +655,19 @@ class BaseExecutor(ABC):
                 args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
                 if os.path.exists(args_path):
                     _, kwargs = cls.unpack_repro_args(args_path)
-                run_env = {**kwargs.get("run_env", {}), **get_studio_config(dvc)}
-                if not run_env.get(DVC_STUDIO_OFFLINE):
-                    post_live_metrics(
-                        "start",
-                        info.baseline_rev,
-                        info.name,
-                        "dvc",
-                        params=to_studio_params(dvc.params.show()),
-                        studio_token=run_env.get(STUDIO_TOKEN, None),
-                        studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
-                    )
+                # get saved config but override with current config values
+                dvc_studio_config = {
+                    **kwargs.get("studio", {}),
+                    **get_studio_config(dvc.config.get("studio")),
+                }
+                post_live_metrics(
+                    "start",
+                    info.baseline_rev,
+                    info.name,  # type: ignore[arg-type]
+                    "dvc",
+                    params=to_studio_params(dvc.params.show()),
+                    dvc_studio_config=dvc_studio_config,
+                )
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
                 info.status = TaskStatus.SUCCESS
@@ -683,17 +685,15 @@ class BaseExecutor(ABC):
                 info.status = TaskStatus.FAILED
                 raise
             finally:
-                if not run_env.get(DVC_STUDIO_OFFLINE):
-                    post_live_metrics(
-                        "done",
-                        info.baseline_rev,
-                        info.name,
-                        "dvc",
-                        experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
-                        metrics=get_in(dvc.metrics.show(), ["", "data"]),
-                        studio_token=run_env.get(STUDIO_TOKEN, None),
-                        studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
-                    )
+                post_live_metrics(
+                    "done",
+                    info.baseline_rev,
+                    info.name,  # type: ignore[arg-type]
+                    "dvc",
+                    experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
+                    metrics=get_in(dvc.metrics.show(), ["", "data"]),
+                    dvc_studio_config=dvc_studio_config,
+                )
 
                 if infofile is not None:
                     info.dump_json(infofile)
@@ -704,6 +704,8 @@ class BaseExecutor(ABC):
         args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
         if os.path.exists(args_path):
             args, kwargs = cls.unpack_repro_args(args_path)
+            # studio config options not expected for stage repro
+            kwargs.pop("studio", None)
             remove(args_path)
             # explicitly git rm/unstage the args file
             dvc.scm.add([args_path], force=True)

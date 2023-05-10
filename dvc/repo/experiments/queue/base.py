@@ -17,8 +17,7 @@ from typing import (
     Union,
 )
 
-from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
-from dvc_studio_client.post_live_metrics import get_studio_token_and_repo_url
+from dvc_studio_client.post_live_metrics import get_studio_config
 from funcy import retry
 
 from dvc.dependency import ParamsDependency
@@ -421,11 +420,9 @@ class BaseStashQueue(ABC):
                     if resume_rev:
                         run_env[DVCLIVE_RESUME] = "1"
 
-                    studio_token, studio_repo_url = get_studio_token_and_repo_url()
-                    if studio_token is not None:
-                        run_env[STUDIO_TOKEN] = studio_token
-                    if studio_repo_url is not None:
-                        run_env[STUDIO_REPO_URL] = studio_repo_url
+                    kwargs["studio"] = get_studio_config(
+                        dvc_studio_config=self.repo.config.get("studio")
+                    )
 
                     self._pack_args(*args, run_env=run_env, **kwargs)
                     # save experiment as a stash commit

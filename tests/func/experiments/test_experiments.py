@@ -606,16 +606,11 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     dump_run_env = dedent(
         """\
         import os
-        from dvc_studio_client.env import STUDIO_REPO_URL
         from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
-        for v in (DVC_EXP_BASELINE_REV, DVC_EXP_NAME, STUDIO_REPO_URL):
+        for v in (DVC_EXP_BASELINE_REV, DVC_EXP_NAME):
             with open(v, "w") as f:
                 f.write(os.environ.get(v, ""))
         """
-    )
-    mocker.patch(
-        "dvc.repo.experiments.queue.base.get_studio_token_and_repo_url",
-        return_value=("REPO_TOKEN", "REPO_URL"),
     )
     (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
     baseline = scm.get_rev()
@@ -626,12 +621,10 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     dvc.experiments.run()
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
     assert (tmp_dir / "DVC_EXP_NAME").read_text().strip()
-    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
 
     dvc.experiments.run(name="foo")
     assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
     assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == "foo"
-    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
 
 
 def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):

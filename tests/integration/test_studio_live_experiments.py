@@ -26,15 +26,16 @@ def test_post_to_studio(
     )
     name = dvc.experiments.get_exact_name([exp_rev])[exp_rev]
 
+    assert live_metrics.call_count == 2
+    start_call, done_call = live_metrics.call_args_list
+
     if offline:
-        assert live_metrics.call_count == 0
+        assert mocked_post.call_count == 0
 
     else:
-        assert live_metrics.call_count == 2
-
         start_call, done_call = live_metrics.call_args_list
-        assert start_call.kwargs["studio_token"] == "STUDIO_TOKEN"
-        assert start_call.kwargs["studio_repo_url"] == "STUDIO_REPO_URL"
+        assert start_call.kwargs["dvc_studio_config"]["token"] == "STUDIO_TOKEN"
+        assert start_call.kwargs["dvc_studio_config"]["repo_url"] == "STUDIO_REPO_URL"
 
         assert mocked_post.call_count == 2
 
