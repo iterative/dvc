@@ -27,20 +27,25 @@ def name_is_compatible(name: str) -> bool:
     return bool(NAME_RE.search(name))
 
 
+wrong_name_message = (
+    "Can't use '%s' as artifact name (ID)."
+    " You can use letters and numbers, and use '-' as separator"
+    " (but not at the start or end)."
+)
+
+
 def check_name_format(name: str) -> None:
     if not name_is_compatible(name):
         logger.warning(
-            "Can't use '%s' as artifact name (ID)."
-            " You can use letters and numbers, and use '-' as separator"
-            " (but not at the start or end).",
+            wrong_name_message,
             name,
         )
 
 
-def check_for_nested_dvc_repo(dvcfile):
-    if Path(dvcfile).is_absolute():
+def check_for_nested_dvc_repo(dvcfile: Path):
+    if dvcfile.is_absolute():
         raise InvalidArgumentError("Use relative path to dvc.yaml.")
-    path = Path(dvcfile).parent
+    path = dvcfile.parent
     while path.name:
         if (path / Repo.DVC_DIR).is_dir():
             raise InvalidArgumentError(
@@ -68,11 +73,14 @@ class Artifacts:
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
         # this doesn't update it "in place": self.read() won't return the updated value
-        if dvcfile:
-            check_for_nested_dvc_repo(dvcfile)
-        dvcfile = dvcfile or PROJECT_FILE
+        if not name_is_compatible(name):
+            raise InvalidArgumentError(wrong_name_message % name)
+        dvcyaml = Path(dvcfile or PROJECT_FILE)
+        if dvcyaml.is_absolute():
+            dvcyaml = dvcyaml.relative_to(self.repo.root_dir)
+        check_for_nested_dvc_repo(dvcyaml)
 
-        with modify_yaml(dvcfile) as data:
+        with modify_yaml(dvcyaml) as data:
             artifacts = data.setdefault("artifacts", {})
             artifacts.update({name: artifact.to_dict()})
 

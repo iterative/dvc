@@ -57,6 +57,20 @@ def test_artifacts_add_subdir(tmp_dir, dvc):
     }
 
 
+def test_artifacts_add_abspath(tmp_dir, dvc):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+
+    new_art = Artifact(path="path")
+    tmp_dir.dvc.artifacts.add(
+        "new", new_art, dvcfile=os.path.abspath("subdir/dvc.yaml")
+    )
+
+    assert tmp_dir.dvc.artifacts.read() == {
+        f"subdir{os.path.sep}dvc.yaml": {"new": new_art},
+    }
+
+
 def test_artifacts_add_fails_on_dvc_subrepo(tmp_dir, dvc):
     # adding artifact to the DVC subrepo from the parent DVC repo
     # shouldn't work
