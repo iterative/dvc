@@ -73,15 +73,20 @@ class Artifacts:
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
         # this doesn't update it "in place": self.read() won't return the updated value
-        if not name_is_compatible(name):
-            raise InvalidArgumentError(wrong_name_message % name)
-        dvcyaml = Path(dvcfile or PROJECT_FILE)
-        if dvcyaml.is_absolute():
-            dvcyaml = dvcyaml.relative_to(self.repo.root_dir)
-        check_for_nested_dvc_repo(dvcyaml)
+        with self.repo.scm_context(quiet=True):
+            if not name_is_compatible(name):
+                raise InvalidArgumentError(wrong_name_message % name)
+            dvcyaml = Path(dvcfile or PROJECT_FILE)
+            check_for_nested_dvc_repo(
+                dvcyaml.relative_to(self.repo.root_dir)
+                if dvcyaml.is_absolute()
+                else dvcyaml
+            )
 
-        with modify_yaml(dvcyaml) as data:
-            artifacts = data.setdefault("artifacts", {})
-            artifacts.update({name: artifact.to_dict()})
+            with modify_yaml(dvcyaml) as data:
+                artifacts = data.setdefault("artifacts", {})
+                artifacts.update({name: artifact.to_dict()})
+
+            self.repo.scm_context.track_file(dvcfile)
 
         return artifacts.get(name)
