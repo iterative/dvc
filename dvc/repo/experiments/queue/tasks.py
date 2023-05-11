@@ -91,7 +91,11 @@ def cleanup_exp(executor: TempDirExecutor, infofile: str) -> None:
 
 
 @shared_task
-def run_exp(entry_dict: Dict[str, Any], copy_paths: Optional[List[str]] = None) -> None:
+def run_exp(
+    entry_dict: Dict[str, Any],
+    copy_paths: Optional[List[str]] = None,
+    message: Optional[str] = None,
+) -> None:
     """Run a full experiment.
 
     Experiment subtasks are executed inline as one atomic operation.
@@ -111,6 +115,8 @@ def run_exp(entry_dict: Dict[str, Any], copy_paths: Optional[List[str]] = None) 
         if copy_paths:
             for path in copy_paths:
                 cmd.extend(["--copy-paths", path])
+        if message:
+            cmd.extend(["--message", message])
         proc_dict = queue.proc.run_signature(cmd, name=entry.stash_rev)()
         collect_exp.s(proc_dict, entry_dict)()
     finally:

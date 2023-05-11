@@ -20,6 +20,7 @@ class CmdExecutorRun(CmdBaseNoRepo):
             log_level=logger.getEffectiveLevel(),
             infofile=self.args.infofile,
             copy_paths=self.args.copy_paths,
+            message=self.args.message,
         )
         return 0
 
@@ -46,5 +47,12 @@ def add_parser(experiments_subparsers, parent_parser):
             "List of ignored or untracked paths to copy into the temp directory."
             " Only used if `--temp` or `--queue` is specified."
         ),
+    )
+    exec_run_parser.add_argument(
+        "-M",
+        "--message",
+        type=str,
+        default=None,
+        help="Custom commit message to use when committing the experiment.",
     )
     exec_run_parser.set_defaults(func=CmdExecutorRun)

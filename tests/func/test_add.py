@@ -19,7 +19,6 @@ from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
     InvalidArgumentError,
-    OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
@@ -388,25 +387,25 @@ def test_should_update_state_entry_for_directory_after_add(mocker, dvc, tmp_dir)
 
     ret = main(["add", "data"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 5
+    assert file_md5_counter.mock.call_count == 4
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 6
+    assert file_md5_counter.mock.call_count == 5
 
     ls = "dir" if os.name == "nt" else "ls"
     ret = main(["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 8
+    assert file_md5_counter.mock.call_count == 7
 
     os.rename("data", "data.back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 8
+    assert file_md5_counter.mock.call_count == 7
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 10
+    assert file_md5_counter.mock.call_count == 9
 
 
 def test_add_commit(tmp_dir, dvc):
@@ -427,15 +426,15 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     counter = mocker.spy(dvc_data.hashfile.build, "_build_tree")
     ret = main(["add", "data"])
     assert ret == 0
+    assert counter.mock.call_count == 2
+
+    ret = main(["status"])
+    assert ret == 0
     assert counter.mock.call_count == 3
 
     ret = main(["status"])
     assert ret == 0
     assert counter.mock.call_count == 4
-
-    ret = main(["status"])
-    assert ret == 0
-    assert counter.mock.call_count == 5
 
 
 def test_should_place_stage_in_data_dir_if_repository_below_symlink(
@@ -718,13 +717,7 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
 
     tmp_dir.gen({"dir": {"file2": "file2 content"}})
 
-    with pytest.raises(OverlappingOutputPathsError) as e:
-        dvc.add(os.path.join("dir", "file2"), fname="file2.dvc")
-    assert str(e.value) == (
-        "Cannot add '{out}', because it is overlapping with other DVC "
-        "tracked output: 'dir'.\n"
-        "To include '{out}' in 'dir', run 'dvc commit dir.dvc'"
-    ).format(out=os.path.join("dir", "file2"))
+    dvc.add(os.path.join("dir", "file2"))
 
 
 def test_add_parent_dir(tmp_dir, scm, dvc):
@@ -782,10 +775,10 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
         assert os.path.exists(stage.outs[0].cache_path)
 
 
-def test_output_duplication_for_pipeline_tracked(tmp_dir, dvc, run_copy):
+def test_try_adding_pipeline_tracked_output(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
-    with pytest.raises(OutputDuplicationError):
+    with pytest.raises(DvcException, match="cannot update 'bar': not a data source"):
         dvc.add("bar")
 
 
@@ -1102,8 +1095,7 @@ def test_add_on_not_existing_file_should_not_remove_stage_file(tmp_dir, dvc):
     "target",
     [
         "dvc.repo.index.Index.check_graph",
-        "dvc.stage.Stage.save",
-        "dvc.stage.Stage.commit",
+        "dvc.stage.Stage.add_outs",
     ],
 )
 def test_add_does_not_remove_stage_file_on_failure(tmp_dir, dvc, mocker, target):

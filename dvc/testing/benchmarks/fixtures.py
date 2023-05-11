@@ -20,10 +20,15 @@ def bench_config(request):
 @pytest.fixture(scope="session")
 def make_dvc_venv(tmp_path_factory):
     def _make_dvc_venv(name):
+        name = _sanitize_venv_name(name)
         venv_dir = tmp_path_factory.mktemp(f"dvc-venv-{name}")
         return VirtualEnv(workspace=venv_dir)
 
     return _make_dvc_venv
+
+
+def _sanitize_venv_name(name):
+    return name.replace("/", "-").replace("\\", "-")
 
 
 @pytest.fixture(scope="session")

@@ -136,6 +136,7 @@ def test_experiments_run(dvc, scm, mocker):
         "reset": False,
         "machine": None,
         "copy_paths": [],
+        "message": None,
     }
     default_arguments.update(repro_arguments)
 
@@ -627,7 +628,7 @@ def test_experiments_save(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, name="exp-name", force=True, include_untracked=[]
+        cmd.repo, name="exp-name", force=True, include_untracked=[], message=None
     )
 
 

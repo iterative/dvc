@@ -10,6 +10,7 @@ from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.stage import PipelineStage
 from dvc.stage.exceptions import StageNotFound
+from dvc.utils.fs import remove
 
 
 def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
@@ -397,3 +398,44 @@ def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc, mult
         dvc.reproduce(targets=["multi"])
     assert (tmp_dir / "foo").read_text() == "foo\n"
     assert not (tmp_dir / "bar").exists()
+
+
+def test_repro_pulls_mising_data_source(tmp_dir, dvc, mocker, local_remote):
+    (foo,) = tmp_dir.dvc_gen("foo", "foo")
+
+    dvc.push()
+
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    remove("foo")
+    remove(foo.outs[0].cache_path)
+
+    assert dvc.reproduce(pull=True)
+
+
+def test_repro_pulls_mising_import(tmp_dir, dvc, mocker, erepo_dir, local_remote):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo", commit="first")
+
+    foo_import = dvc.imp(os.fspath(erepo_dir), "foo")
+
+    dvc.push()
+
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    remove("foo")
+    remove(foo_import.outs[0].cache_path)
+
+    assert dvc.reproduce(pull=True)
+
+
+def test_repro_pulls_intermediate_out(tmp_dir, dvc, mocker, local_remote):
+    tmp_dir.gen("fixed", "fixed")
+    dvc.stage.add(name="create-foo", cmd="echo foo > foo", deps=["fixed"], outs=["foo"])
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    (create_foo,) = dvc.reproduce("create-foo")
+
+    dvc.push()
+
+    remove("foo")
+    remove(create_foo.outs[0].cache_path)
+
+    assert dvc.reproduce(pull=True)

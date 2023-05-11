@@ -37,6 +37,7 @@ class CmdExperimentsRun(CmdRepro):
             tmp_dir=self.args.tmp_dir,
             machine=self.args.machine,
             copy_paths=self.args.copy_paths,
+            message=self.args.message,
             **self._common_kwargs,
         )
 
@@ -146,4 +147,11 @@ def _add_run_common(parser):
             "List of ignored or untracked paths to copy into the temp directory."
             " Only used if `--temp` or `--queue` is specified."
         ),
+    )
+    parser.add_argument(
+        "-M",
+        "--message",
+        type=str,
+        default=None,
+        help="Custom commit message to use when committing the experiment.",
     )
