@@ -116,7 +116,7 @@ def test_experiments_show(dvc, scm, mocker):
         hide_queued=True,
         hide_failed=True,
         num=1,
-        revs="foo",
+        revs=["foo"],
         sha_only=True,
         param_deps=True,
         fetch_running=True,
@@ -136,6 +136,7 @@ def test_experiments_run(dvc, scm, mocker):
         "reset": False,
         "machine": None,
         "copy_paths": [],
+        "message": None,
     }
     default_arguments.update(repro_arguments)
 
@@ -226,7 +227,7 @@ def test_experiments_list(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo,
         git_remote="origin",
-        rev="foo",
+        rev=["foo"],
         all_commits=True,
         num=-1,
     )
@@ -265,7 +266,7 @@ def test_experiments_push(dvc, scm, mocker):
         cmd.repo,
         "origin",
         ["experiment1", "experiment2"],
-        rev="foo",
+        rev=["foo"],
         all_commits=True,
         num=2,
         force=True,
@@ -322,7 +323,7 @@ def test_experiments_pull(dvc, scm, mocker):
         cmd.repo,
         "origin",
         ["experiment"],
-        rev="foo",
+        rev=["foo"],
         all_commits=True,
         num=1,
         force=True,
@@ -371,7 +372,7 @@ def test_experiments_remove_flag(dvc, scm, mocker, capsys, caplog):
         cmd.repo,
         exp_names=[],
         all_commits=True,
-        rev="foo",
+        rev=["foo"],
         num=2,
         queue=False,
         git_remote="myremote",
@@ -627,7 +628,7 @@ def test_experiments_save(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, name="exp-name", force=True, include_untracked=[]
+        cmd.repo, name="exp-name", force=True, include_untracked=[], message=None
     )
 
 

@@ -14,6 +14,7 @@ import pytest
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires 3.10 glob.glob")
 def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):
+    random.seed(4231)
     # Move some files to create a partial dataset
     os.makedirs("partial-copy")
     for f in glob.glob("*", root_dir=dataset, recursive=True):  # type: ignore[call-arg]
@@ -36,6 +37,7 @@ def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires 3.10 glob.glob")
 def test_partial_remove(bench_dvc, tmp_dir, dvc, dataset, remote):
+    random.seed(5232)
     # Add/push full dataset
     dvc.add(str(dataset))
     dvc.push()

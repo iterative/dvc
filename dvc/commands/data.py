@@ -117,6 +117,7 @@ class CmdDataStatus(CmdBase):
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
+                not_in_remote=self.args.not_in_remote,
                 remote_refresh=self.args.remote_refresh,
             )
 
@@ -244,10 +245,16 @@ def add_parser(subparsers, parent_parser):
         help="Show untracked files.",
     )
     data_status_parser.add_argument(
-        "--remote-refresh",
+        "--not-in-remote",
         action="store_true",
         default=False,
-        help="Refresh remote index.",
+        help="Show files not in remote.",
+    )
+    data_status_parser.add_argument(
+        "--no-remote-refresh",
+        dest="remote_refresh",
+        action="store_false",
+        help="Use cached remote index (don't check remote).",
     )
     data_status_parser.set_defaults(func=CmdDataStatus)
 

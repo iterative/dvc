@@ -3,7 +3,7 @@ from unittest.mock import call
 
 import pytest
 
-from dvc.external_repo import external_repo
+from dvc.repo.open_repo import _external_repo as external_repo
 from dvc.testing.tmp_dir import make_subrepo
 
 
@@ -65,8 +65,7 @@ def test_subrepo_is_constructed_properly(
         str(tmp_dir),
         subrepos=True,
         uninitialized=True,
-        cache_dir=str(cache_dir),
-        cache_types=["symlink"],
+        config={"cache": {"dir": str(cache_dir), "type": ["symlink"]}},
     ) as repo:
         spy = mocker.spy(repo.dvcfs.fs, "repo_factory")
 

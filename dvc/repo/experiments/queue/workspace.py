@@ -82,14 +82,16 @@ class WorkspaceQueue(BaseStashQueue):
         raise NotImplementedError
 
     def reproduce(
-        self, copy_paths: Optional[List[str]] = None
+        self, copy_paths: Optional[List[str]] = None, message: Optional[str] = None
     ) -> Dict[str, Dict[str, str]]:
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
         try:
             while True:
                 entry, executor = self.get()
                 results.update(
-                    self._reproduce_entry(entry, executor, copy_paths=copy_paths)
+                    self._reproduce_entry(
+                        entry, executor, copy_paths=copy_paths, message=message
+                    )
                 )
         except ExpQueueEmptyError:
             pass
@@ -117,6 +119,7 @@ class WorkspaceQueue(BaseStashQueue):
                 infofile=infofile,
                 log_level=logger.getEffectiveLevel(),
                 log_errors=not isinstance(executor, WorkspaceExecutor),
+                message=kwargs.get("message"),
             )
             if not exec_result.exp_hash:
                 raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'")

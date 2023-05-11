@@ -64,7 +64,9 @@ class CmdAdd(CmdBase):
                 jobs=self.args.jobs,
                 force=self.args.force,
             )
-
+        except FileNotFoundError:
+            logger.exception("")
+            return 1
         except DvcException:
             logger.exception("")
             return 1

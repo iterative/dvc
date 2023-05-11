@@ -83,6 +83,10 @@ def _postprocess(exp_rows):
                     exp_row[k] = float(v_str)
                 except ValueError:
                     exp_row[k] = v_str
+
+            if not exp_row[k]:
+                exp_row[k] = None
+
     return exp_rows
 
 

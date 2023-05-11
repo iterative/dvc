@@ -287,18 +287,9 @@ class Repo:
 
     @staticmethod
     def open(url, *args, **kwargs):  # noqa: A003
-        if url is None:
-            url = os.getcwd()
+        from .open_repo import open_repo
 
-        if os.path.exists(url):
-            try:
-                return Repo(url, *args, **kwargs)
-            except NotDvcRepoError:
-                pass  # fallthrough to external_repo
-
-        from dvc.external_repo import external_repo
-
-        return external_repo(url, *args, **kwargs)
+        return open_repo(url, *args, **kwargs)
 
     @cached_property
     def scm(self) -> Union["Git", "NoSCM"]:

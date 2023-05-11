@@ -28,6 +28,7 @@ def test_import(tmp_dir, scm, dvc, erepo_dir):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+    assert stage.deps[0].fs.repo.cache.local.path == dvc.cache.local.path
 
 
 @pytest.mark.parametrize("src_is_dvc", [True, False])
