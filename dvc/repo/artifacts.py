@@ -1,16 +1,14 @@
 import logging
-import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import Dict, Optional
 
 from dvc.annotations import Artifact
-from dvc.dvcfile import FileMixin, ProjectFile
+from dvc.dvcfile import PROJECT_FILE
+from dvc.exceptions import InvalidArgumentError
+from dvc.repo import Repo
 from dvc.utils import relpath
 from dvc.utils.serialize import modify_yaml
-
-if TYPE_CHECKING:
-    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +37,16 @@ def check_name_format(name: str) -> None:
         )
 
 
-class ArtifactsFile(FileMixin):
-    from dvc.schema import SINGLE_ARTIFACT_SCHEMA as SCHEMA
-
-    def dump(self, stage, **kwargs):
-        raise NotImplementedError
-
-    def merge(self, ancestor, other, allowed=None):
-        raise NotImplementedError
+def check_for_nested_dvc_repo(dvcfile):
+    if Path(dvcfile).is_absolute():
+        raise InvalidArgumentError("Use relative path to dvc.yaml.")
+    path = Path(dvcfile).parent
+    while path.name:
+        if (path / Repo.DVC_DIR).is_dir():
+            raise InvalidArgumentError(
+                f"Nested DVC repos like {path} are not supported."
+            )
+        path = path.parent
 
 
 class Artifacts:
@@ -68,23 +68,12 @@ class Artifacts:
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
         # this doesn't update it "in place": self.read() won't return the updated value
-        dvcfile = dvcfile or ""
-        if not dvcfile.endswith(PROJECT_FILE):
-            dvcfile = os.path.join(dvcfile or "", PROJECT_FILE)
-        dvcfile_abspath = os.path.join(self.repo.root_dir, dvcfile)
-        Path(os.path.dirname(dvcfile_abspath)).mkdir(exist_ok=True, parents=True)
-        _update_project_file(
-            ProjectFile(self.repo, dvcfile_abspath), name, artifact.to_dict()
-        )
-        return dvcfile_abspath
+        if dvcfile:
+            check_for_nested_dvc_repo(dvcfile)
+        dvcfile = dvcfile or PROJECT_FILE
 
+        with modify_yaml(dvcfile) as data:
+            artifacts = data.setdefault("artifacts", {})
+            artifacts.update({name: artifact.to_dict()})
 
-def _update_project_file(project_file, name, artifact):
-    with modify_yaml(project_file.path, fs=project_file.repo.fs) as data:
-        if not data:
-            logger.info("Creating '%s'", project_file.relpath)
-
-        data["artifacts"] = data.get("artifacts", {})
-        data["artifacts"].update({name: artifact})
-
-    project_file.repo.scm_context.track_file(project_file.relpath)
+        return artifacts.get(name)

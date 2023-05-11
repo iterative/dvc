@@ -41,12 +41,6 @@ class Artifact:
     labels: List[str] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
 
-    def update(self, **kwargs) -> "Artifact":
-        for attr, value in kwargs.items():
-            if value and hasattr(self, attr):
-                setattr(self, attr, value)
-        return self
-
     def to_dict(self) -> Dict[str, str]:
         return compact(asdict(self))
 

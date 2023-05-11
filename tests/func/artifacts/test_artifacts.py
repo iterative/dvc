@@ -22,7 +22,7 @@ dvcyaml = {
 }
 
 
-def test_reading_artifacts_subdir(tmp_dir, dvc):
+def test_artifacts_read_subdir(tmp_dir, dvc):
     (tmp_dir / "dvc.yaml").dump(dvcyaml)
 
     subdir = tmp_dir / "subdir"
@@ -39,7 +39,7 @@ def test_reading_artifacts_subdir(tmp_dir, dvc):
     }
 
 
-def test_adding_artifacts_subdir(tmp_dir, dvc):
+def test_artifacts_add_subdir(tmp_dir, dvc):
     subdir = tmp_dir / "subdir"
     subdir.mkdir()
 
@@ -57,15 +57,7 @@ def test_adding_artifacts_subdir(tmp_dir, dvc):
     }
 
 
-def test_adding_artifacts_mkdir(tmp_dir, dvc):
-    tmp_dir.dvc.artifacts.add("new", Artifact(path="path"), dvcfile="subdir/dvc.yaml")
-
-    assert tmp_dir.dvc.artifacts.read() == {
-        f"subdir{os.path.sep}dvc.yaml": {"new": Artifact(path="path")},
-    }
-
-
-def test_adding_artifacts_fails_on_dvc_subrepo(tmp_dir, dvc):
+def test_artifacts_add_fails_on_dvc_subrepo(tmp_dir, dvc):
     # adding artifact to the DVC subrepo from the parent DVC repo
     # shouldn't work
     subdir = tmp_dir / "subdir"
@@ -115,7 +107,7 @@ artifacts:
 """
 
 
-def test_broken_dvcyaml_id_duplication(tmp_dir, dvc):
+def test_artifacts_read_fails_on_id_duplication(tmp_dir, dvc):
     with open(tmp_dir / "dvc.yaml", "w") as f:
         f.write(bad_dvcyaml_id_duplication)
 
@@ -135,7 +127,7 @@ def test_broken_dvcyaml_id_duplication(tmp_dir, dvc):
         "model-prod-v1",
     ],
 )
-def test_check_name_is_valid(name):
+def test_name_is_compatible(name):
     assert name_is_compatible(name)
 
 
@@ -156,5 +148,5 @@ def test_check_name_is_valid(name):
         "@namespace/model",
     ],
 )
-def test_check_name_is_invalid(name):
+def test_name_is_compatible_fails(name):
     assert not name_is_compatible(name)
