@@ -68,8 +68,9 @@ class Artifacts:
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
         # this doesn't update it "in place": self.read() won't return the updated value
-        if not dvcfile or dvcfile[-len("dvc.yaml") :] != "dvc.yaml":
-            dvcfile = os.path.join(dvcfile or "", "dvc.yaml")
+        dvcfile = dvcfile or ""
+        if not dvcfile.endswith(PROJECT_FILE):
+            dvcfile = os.path.join(dvcfile or "", PROJECT_FILE)
         dvcfile_abspath = os.path.join(self.repo.root_dir, dvcfile)
         Path(os.path.dirname(dvcfile_abspath)).mkdir(exist_ok=True, parents=True)
         _update_project_file(
