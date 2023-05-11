@@ -2,14 +2,16 @@ import logging
 import os
 from contextlib import contextmanager
 from itertools import tee
-from typing import TYPE_CHECKING, Any, Iterator, List, Optional
+from typing import TYPE_CHECKING, Any, Iterator, List, NamedTuple, Optional
 
 import colorama
 
 from dvc.exceptions import (
     CacheLinkError,
+    DvcException,
     InvalidArgumentError,
     OutputDuplicationError,
+    OutputNotFoundError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
@@ -27,6 +29,11 @@ if TYPE_CHECKING:
 
 Stages = List["Stage"]
 logger = logging.getLogger(__name__)
+
+
+class StageInfo(NamedTuple):
+    stage: "Stage"
+    output_exists: bool
 
 
 OVERLAPPING_CHILD_FMT = (
@@ -114,7 +121,7 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
         )
 
 
-def progress_iter(stages: Stages) -> Iterator["Stage"]:
+def progress_iter(stages: List[StageInfo]) -> Iterator["StageInfo"]:
     total = len(stages)
     desc = "Adding..."
     with ui.progress(stages, total=total, desc=desc, unit="file", leave=True) as pbar:
@@ -122,10 +129,10 @@ def progress_iter(stages: Stages) -> Iterator["Stage"]:
             pbar.bar_format = desc
             pbar.refresh()
 
-        for stage in pbar:
+        for item in pbar:
             if total > 1:
-                pbar.set_msg(f"{stage.outs[0]}")
-            yield stage
+                pbar.set_msg(f"{item.stage.outs[0]}")
+            yield item
             if total == 1:  # restore bar format for stats
                 # pylint: disable=no-member
                 pbar.bar_format = pbar.BAR_FMT_DEFAULT
@@ -183,12 +190,14 @@ def add(
     desc = "Collecting targets"
     stages_it = create_stages(repo, add_targets, fname, transfer, **kwargs)
     stages = list(ui.progress(stages_it, desc=desc, unit="file"))
+
+    stages_list = [stage for stage, _ in stages]
     msg = "Collecting stages from the workspace"
-    with translate_graph_error(stages), ui.status(msg) as status:
+    with translate_graph_error(stages_list), ui.status(msg) as status:
         # remove existing stages that are to-be replaced with these
         # new stages for the graph checks.
         repo.check_graph(
-            stages=stages, callback=lambda: status.update("Checking graph")
+            stages=stages_list, callback=lambda: status.update("Checking graph")
         )
 
     odb = None
@@ -196,18 +205,18 @@ def add(
         odb = repo.cloud.get_remote_odb(kwargs.get("remote"), "add")
 
     with warn_link_failures() as link_failures:
-        for stage, source in zip(progress_iter(stages), sources):
+        for (stage, output_exists), source in zip(progress_iter(stages), sources):
+            out = stage.outs[0]
             if to_remote or to_cache:
                 stage.transfer(source, to_remote=to_remote, odb=odb, **kwargs)
             else:
                 try:
-                    stage.save()
-                    if not no_commit:
-                        stage.commit()
+                    path = out.fs.path.abspath(source) if output_exists else None
+                    stage.add_outs(path, no_commit=no_commit)
                 except CacheLinkError:
                     link_failures.append(str(stage.relpath))
             stage.dump()
-    return stages
+    return stages_list
 
 
 LARGE_DIR_RECURSIVE_ADD_WARNING = (
@@ -263,7 +272,7 @@ def create_stages(
     external: bool = False,
     force: bool = False,
     **kwargs: Any,
-) -> Iterator["Stage"]:
+) -> Iterator[StageInfo]:
     for target in targets:
         if kwargs.get("out"):
             target = resolve_output(target, kwargs["out"], force=force)
@@ -271,16 +280,24 @@ def create_stages(
             repo, target, always_local=transfer and not kwargs.get("out")
         )
 
-        stage = repo.stage.create(
-            single_stage=True,
-            validate=False,
-            fname=fname or path,
-            wdir=wdir,
-            outs=[out],
-            external=external,
-            force=force,
-        )
+        try:
+            (out_obj,) = repo.find_outs_by_path(target, strict=False)
+            stage = out_obj.stage
+            if not stage.is_data_source:
+                raise DvcException(f"cannot update {out!r}: not a data source")
+            output_exists = True
+        except OutputNotFoundError:
+            stage = repo.stage.create(
+                single_stage=True,
+                validate=False,
+                fname=fname or path,
+                wdir=wdir,
+                outs=[out],
+                external=external,
+                force=force,
+            )
+            output_exists = False
 
         out_obj = stage.outs[0]
         out_obj.annot.update(**kwargs)
-        yield stage
+        yield StageInfo(stage, output_exists)

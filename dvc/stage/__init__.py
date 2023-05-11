@@ -495,34 +495,34 @@ class Stage(params.StageParams):
                 if not allow_missing:
                     raise
 
-    def save_outs(self, allow_missing: bool = False):
-        from dvc.output import OutputDoesNotExistError
-
+    def get_versioned_outs(self) -> Dict[str, "Output"]:
         from .exceptions import StageFileDoesNotExistError, StageNotFound
 
         try:
             old = self.reload()
-            old_outs = {out.def_path: out for out in old.outs}
-            merge_versioned = any(
-                (
-                    out.files is not None
-                    or (out.meta is not None and out.meta.version_id is not None)
-                )
-                for out in old_outs.values()
-            )
         except (StageFileDoesNotExistError, StageNotFound):
-            merge_versioned = False
+            return {}
 
+        return {
+            out.def_path: out
+            for out in old.outs
+            if out.files is not None
+            or (out.meta is not None and out.meta.version_id is not None)
+        }
+
+    def save_outs(self, allow_missing: bool = False):
+        from dvc.output import OutputDoesNotExistError
+
+        old_versioned_outs = self.get_versioned_outs()
         for out in self.outs:
             try:
                 out.save()
             except OutputDoesNotExistError:
                 if not (allow_missing or out.checkpoint):
                     raise
-            if merge_versioned:
-                old_out = old_outs.get(out.def_path)
-                if old_out is not None:
-                    out.merge_version_meta(old_out)
+
+            if old_out := old_versioned_outs.get(out.def_path):
+                out.merge_version_meta(old_out)
 
     def ignore_outs(self) -> None:
         for out in self.outs:
@@ -557,6 +557,29 @@ class Stage(params.StageParams):
                     raise
             except CacheLinkError:
                 link_failures.append(out.fs_path)
+        if link_failures:
+            raise CacheLinkError(link_failures)
+
+    @rwlocked(write=["outs"])
+    def add_outs(  # noqa: C901
+        self, filter_info=None, allow_missing: bool = False, **kwargs
+    ):
+        from dvc.output import OutputDoesNotExistError
+
+        link_failures = []
+        old_versioned_outs = self.get_versioned_outs()
+        for out in self.filter_outs(filter_info):
+            try:
+                out.add(filter_info, **kwargs)
+            except (FileNotFoundError, OutputDoesNotExistError):
+                if not (allow_missing or out.checkpoint):
+                    raise
+            except CacheLinkError:
+                link_failures.append(filter_info or out.fs_path)
+
+            if old_out := old_versioned_outs.get(out.def_path):
+                out.merge_version_meta(old_out)
+
         if link_failures:
             raise CacheLinkError(link_failures)
 
