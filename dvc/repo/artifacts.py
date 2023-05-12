@@ -27,18 +27,12 @@ def name_is_compatible(name: str) -> bool:
     return bool(NAME_RE.search(name))
 
 
-wrong_name_message = (
-    "Can't use '%s' as artifact name (ID)."
-    " You can use letters and numbers, and use '-' as separator"
-    " (but not at the start or end)."
-)
-
-
 def check_name_format(name: str) -> None:
     if not name_is_compatible(name):
-        logger.warning(
-            wrong_name_message,
-            name,
+        raise InvalidArgumentError(
+            f"Can't use '{name}' as artifact name (ID)."
+            " You can use letters and numbers, and use '-' as separator"
+            " (but not at the start or end)."
         )
 
 
@@ -67,15 +61,17 @@ class Artifacts:
             dvcyaml = relpath(dvcfile, self.repo.root_dir)
             artifacts[dvcyaml] = {}
             for name, value in dvcfile_artifacts.items():
-                check_name_format(name)
+                try:
+                    check_name_format(name)
+                except InvalidArgumentError as e:
+                    logger.warning(e.msg)
                 artifacts[dvcyaml][name] = Artifact(**value)
         return artifacts
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
         # this doesn't update it "in place": self.read() won't return the updated value
         with self.repo.scm_context(quiet=True):
-            if not name_is_compatible(name):
-                raise InvalidArgumentError(wrong_name_message % name)
+            check_name_format(name)
             dvcyaml = Path(dvcfile or PROJECT_FILE)
             check_for_nested_dvc_repo(
                 dvcyaml.relative_to(self.repo.root_dir)
