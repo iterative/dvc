@@ -173,7 +173,7 @@ def push_worktree(
         ) as cb:
             cb.set_size(total)
             try:
-                pushed += checkout(
+                stats = checkout(
                     new_index,
                     remote_obj.path,
                     remote_obj.fs,
@@ -184,6 +184,7 @@ def push_worktree(
                     jobs=jobs,
                     **diff_kwargs,
                 )
+                pushed += sum(len(changes) for changes in stats.values())
             except VersioningNotSupported:
                 logger.exception("")
                 raise DvcException(

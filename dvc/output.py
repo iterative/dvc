@@ -36,7 +36,7 @@ from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
-from .fs.callbacks import DEFAULT_CALLBACK
+from .fs.callbacks import DEFAULT_CALLBACK, Callback
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -45,7 +45,6 @@ if TYPE_CHECKING:
     from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
 
-    from .fs.callbacks import Callback
     from .ignore import DvcIgnoreFilter
 
 logger = logging.getLogger(__name__)
@@ -740,15 +739,20 @@ class Output:
                     hardlink=hardlink,
                 )
             if relink:
-                self._checkout(
-                    filter_info or self.fs_path,
-                    self.fs,
-                    obj,
-                    self.cache,
-                    relink=True,
-                    state=self.repo.state,
-                    prompt=prompt.confirm,
-                )
+                rel = self.fs.path.relpath(filter_info or self.fs_path)
+                with Callback.as_tqdm_callback(
+                    desc=f"Checking out {rel}", unit="files"
+                ) as callback:
+                    self._checkout(
+                        filter_info or self.fs_path,
+                        self.fs,
+                        obj,
+                        self.cache,
+                        relink=True,
+                        state=self.repo.state,
+                        prompt=prompt.confirm,
+                        progress_callback=callback,
+                    )
                 self.set_exec()
 
     def _commit_granular_dir(self, filter_info, hardlink) -> Optional["HashFile"]:
@@ -890,9 +894,19 @@ class Output:
         checkpoint_reset: bool = False,
         **kwargs,
     ) -> Optional[Tuple[bool, Optional[bool]]]:
+        # callback passed act as a aggregate callback.
+        # do not let checkout to call set_size and change progressbar.
+        class CallbackProxy(Callback):
+            def relative_update(self, inc: int = 1) -> None:
+                progress_callback.relative_update(inc)
+                return super().relative_update(inc)
+
+            def branch(self, *args, **kwargs):
+                return progress_callback.branch(*args, **kwargs)
+
+        callback = CallbackProxy()
         if not self.use_cache:
-            if progress_callback != DEFAULT_CALLBACK:
-                progress_callback.relative_update(self.get_files_number(filter_info))
+            callback.relative_update(self.get_files_number(filter_info))
             return None
 
         obj = self.get_obj(filter_info=filter_info)
@@ -914,7 +928,7 @@ class Output:
                 obj,
                 self.cache,
                 force=force,
-                progress_callback=progress_callback,
+                progress_callback=callback,
                 relink=relink,
                 state=self.repo.state,
                 prompt=prompt.confirm,
@@ -1342,15 +1356,20 @@ class Output:
         otransfer(staging, self.cache, {obj.hash_info}, hardlink=relink, shallow=False)
 
         if relink:
-            self._checkout(
-                path,
-                self.fs,
-                obj,
-                self.cache,
-                relink=True,
-                state=self.repo.state,
-                prompt=prompt.confirm,
-            )
+            rel = self.fs.path.relpath(path)
+            with Callback.as_tqdm_callback(
+                desc=f"Checking out {rel}", unit="files"
+            ) as callback:
+                self._checkout(
+                    path,
+                    self.fs,
+                    obj,
+                    self.cache,
+                    relink=True,
+                    state=self.repo.state,
+                    prompt=prompt.confirm,
+                    progress_callback=callback,
+                )
             self.set_exec()
         return obj
 
