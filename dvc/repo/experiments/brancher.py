@@ -29,6 +29,10 @@ def switch_repo(
         orig_exc = exc
     exps = repo.experiments
 
+    if rev == exps.workspace_queue.get_running_exp():
+        yield repo, "workspace"
+        return
+
     for queue in (exps.tempdir_queue, exps.celery_queue):
         try:
             active_repo = queue.active_repo(rev)
