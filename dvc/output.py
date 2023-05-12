@@ -36,7 +36,7 @@ from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
-from .fs.callbacks import DEFAULT_CALLBACK, Callback
+from .fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -274,6 +274,11 @@ class OutputIsIgnoredError(DvcException):
     def __init__(self, match):
         lines = "\n".join(match.patterns)
         super().__init__(f"Path '{match.file}' is ignored by\n{lines}")
+
+
+class CheckoutCallback(TqdmCallback):
+    # disable branching for checkouts
+    branch = Callback.branch  # type: ignore[assignment]
 
 
 class Output:
@@ -740,9 +745,7 @@ class Output:
                 )
             if relink:
                 rel = self.fs.path.relpath(filter_info or self.fs_path)
-                with Callback.as_tqdm_callback(
-                    desc=f"Checking out {rel}", unit="files"
-                ) as callback:
+                with CheckoutCallback(desc=f"Checking out {rel}", unit="files") as cb:
                     self._checkout(
                         filter_info or self.fs_path,
                         self.fs,
@@ -751,7 +754,7 @@ class Output:
                         relink=True,
                         state=self.repo.state,
                         prompt=prompt.confirm,
-                        progress_callback=callback,
+                        progress_callback=cb,
                     )
                 self.set_exec()
 
@@ -900,9 +903,6 @@ class Output:
             def relative_update(self, inc: int = 1) -> None:
                 progress_callback.relative_update(inc)
                 return super().relative_update(inc)
-
-            def branch(self, *args, **kwargs):
-                return progress_callback.branch(*args, **kwargs)
 
         callback = CallbackProxy()
         if not self.use_cache:
@@ -1357,9 +1357,7 @@ class Output:
 
         if relink:
             rel = self.fs.path.relpath(path)
-            with Callback.as_tqdm_callback(
-                desc=f"Checking out {rel}", unit="files"
-            ) as callback:
+            with CheckoutCallback(desc=f"Checking out {rel}", unit="files") as callback:
                 self._checkout(
                     path,
                     self.fs,
