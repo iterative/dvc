@@ -191,33 +191,18 @@ class WorkspaceQueue(BaseStashQueue):
     ):
         raise NotImplementedError
 
-    def get_running_exps(
-        self,
-        fetch_refs: bool = True,  # noqa: ARG002
-    ) -> Dict[str, Dict]:
+    def get_running_exp(self) -> Optional[str]:
+        """Return the name of the exp running in workspace (if it exists)."""
         assert self._EXEC_NAME
-        result: Dict[str, Dict] = {}
         if self._active_pid is None:
-            return result
+            return None
 
         infofile = self.get_infofile_path(self._EXEC_NAME)
-
         try:
             info = ExecutorInfo.from_dict(load_json(infofile))
         except OSError:
-            return result
-
-        if info.status < TaskStatus.FAILED:
-            # If we are appending to a checkpoint branch in a workspace
-            # run, show the latest checkpoint as running.
-            if info.status == TaskStatus.SUCCESS:
-                return result
-            last_rev = self.scm.get_ref(EXEC_BRANCH)
-            if last_rev:
-                result[last_rev] = info.asdict()
-            else:
-                result[self._EXEC_NAME] = info.asdict()
-        return result
+            return None
+        return info.name
 
     def collect_active_data(
         self,
