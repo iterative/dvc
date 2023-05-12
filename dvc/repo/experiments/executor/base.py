@@ -497,6 +497,9 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
+        if info.name:
+            ui.write(f"Reproducing experiment '{info.name}'")
+
         with cls._repro_dvc(
             info,
             infofile,
