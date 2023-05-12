@@ -489,19 +489,6 @@ class LocalCeleryQueue(BaseStashQueue):
 
         return celery_remove(self, *args, **kwargs)
 
-    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
-        """Get the execution info of the currently running experiments
-
-        Args:
-            fetch_ref (bool): fetch completed checkpoints or not.
-        """
-        result: Dict[str, Dict] = {}
-        for entry in self.iter_active():
-            result.update(
-                fetch_running_exp_from_temp_dir(self, entry.stash_rev, fetch_refs)
-            )
-        return result
-
     def get_ref_and_entry_by_names(
         self,
         exp_names: Union[str, List[str]],

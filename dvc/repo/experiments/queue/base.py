@@ -730,14 +730,6 @@ class BaseStashQueue(ABC):
             )
 
     @abstractmethod
-    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
-        """Get the execution info of the currently running experiments
-
-        Args:
-            fetch_ref (bool): fetch completed checkpoints or not.
-        """
-
-    @abstractmethod
     def collect_active_data(
         self,
         baseline_revs: Optional[Collection[str]],
