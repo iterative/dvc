@@ -449,17 +449,6 @@ class Experiments:
             result[rev] = name
         return result
 
-    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
-        """Return info for running experiments."""
-        result = {}
-        for queue in (
-            self.workspace_queue,
-            self.tempdir_queue,
-            self.celery_queue,
-        ):
-            result.update(queue.get_running_exps(fetch_refs))
-        return result
-
     def apply(self, *args, **kwargs):
         from dvc.repo.experiments.apply import apply
 
