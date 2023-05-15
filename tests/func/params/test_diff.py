@@ -259,6 +259,27 @@ def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file):
     }
 
 
+def test_diff_top_level_params_dict(tmp_dir, dvc, scm):
+    dvcfile = "dvc.yaml"
+    params_dir = "dir"
+    params_files = ["params1.yaml", "params2.yaml", "params3.yaml"]
+    (tmp_dir / params_dir).mkdir(exist_ok=True)
+    (tmp_dir / dvcfile).dump({"params": [params_dir]})
+
+    (tmp_dir / params_dir / params_files[0]).dump({"foo": 1})
+    (tmp_dir / params_dir / params_files[1]).dump({"bar": 2})
+    scm.add_commit([tmp_dir / params_dir, tmp_dir / dvcfile], message="add params")
+
+    (tmp_dir / params_dir / params_files[0]).dump({"foo": 3})
+    (tmp_dir / params_dir / params_files[1]).unlink()
+    (tmp_dir / params_dir / params_files[2]).dump({"baz": 4})
+    assert dvc.params.diff() == {
+        "dir/params1.yaml": {"foo": {"diff": 2, "new": 3, "old": 1}},
+        "dir/params2.yaml": {"bar": {"new": None, "old": 2}},
+        "dir/params3.yaml": {"baz": {"new": 4, "old": None}},
+    }
+
+
 def test_diff_active_branch_no_changes(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
     dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)

@@ -239,6 +239,27 @@ def test_diff_top_level_metrics(tmp_dir, dvc, scm, dvcfile, metrics_file):
     }
 
 
+def test_diff_top_level_metrics_dict(tmp_dir, dvc, scm):
+    dvcfile = "dvc.yaml"
+    metrics_dir = "dir"
+    metrics_files = ["metrics1.yaml", "metrics2.yaml", "metrics3.yaml"]
+    (tmp_dir / metrics_dir).mkdir(exist_ok=True)
+    (tmp_dir / dvcfile).dump({"metrics": [metrics_dir]})
+
+    (tmp_dir / metrics_dir / metrics_files[0]).dump({"foo": 1})
+    (tmp_dir / metrics_dir / metrics_files[1]).dump({"bar": 2})
+    scm.add_commit([tmp_dir / metrics_dir, tmp_dir / dvcfile], message="add metrics")
+
+    (tmp_dir / metrics_dir / metrics_files[0]).dump({"foo": 3})
+    (tmp_dir / metrics_dir / metrics_files[1]).unlink()
+    (tmp_dir / metrics_dir / metrics_files[2]).dump({"baz": 4})
+    assert dvc.metrics.diff() == {
+        "dir/metrics1.yaml": {"foo": {"diff": 2, "new": 3, "old": 1}},
+        "dir/metrics2.yaml": {"bar": {"new": None, "old": 2}},
+        "dir/metrics3.yaml": {"baz": {"new": 4, "old": None}},
+    }
+
+
 def test_metrics_diff_active_branch_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}

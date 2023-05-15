@@ -36,7 +36,8 @@ def _collect_top_level_metrics(repo):
         wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
         for file in metrics:
             path = repo.fs.path.join(wdir, as_posix(file))
-            yield repo.fs.path.normpath(path)
+            for subpath in repo.fs.find(path):
+                yield repo.fs.path.normpath(subpath)
 
 
 def _collect_metrics(repo, targets, recursive):
