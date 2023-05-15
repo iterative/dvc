@@ -79,9 +79,6 @@ class Config(dict):
         ConfigError: thrown if config has an invalid format.
     """
 
-    APPNAME = "dvc"
-    APPAUTHOR = "iterative"
-
     SYSTEM_LEVELS = ("system", "global")
     REPO_LEVELS = ("repo", "local")
     # In the order they shadow each other
@@ -121,14 +118,14 @@ class Config(dict):
 
     @classmethod
     def get_dir(cls, level):
-        from platformdirs import site_config_dir, user_config_dir
+        from dvc.dirs import global_config_dir, system_config_dir
 
         assert level in ("global", "system")
 
         if level == "global":
-            return user_config_dir(cls.APPNAME, cls.APPAUTHOR)
+            return global_config_dir()
         if level == "system":
-            return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
+            return system_config_dir()
 
     @cached_property
     def files(self) -> Dict[str, str]:
