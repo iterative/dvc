@@ -69,7 +69,6 @@ class Artifacts:
         return artifacts
 
     def add(self, name: str, artifact: Artifact, dvcfile: Optional[str] = None):
-        # this doesn't update it "in place": self.read() won't return the updated value
         with self.repo.scm_context(quiet=True):
             check_name_format(name)
             dvcyaml = Path(dvcfile or PROJECT_FILE)
