@@ -243,6 +243,7 @@ class SSHExecutor(BaseExecutor):
         log_errors: bool = True,
         log_level: Optional[int] = None,
         copy_paths: Optional[List[str]] = None,  # noqa: ARG003
+        message: Optional[str] = None,  # noqa: ARG003
         **kwargs,
     ) -> "ExecutorResult":
         """Reproduce an experiment on a remote machine over SSH.

@@ -30,3 +30,5 @@ def test_exp_show(tmp_dir, dvc, scm, exp_stage):  # noqa: F811
     assert exps[0]["metrics.yaml:foo"] == 1.0
     # Postprocessing using `None` as fill value
     assert exps[0]["State"] is None
+    # Postprocessing empty string as `None`
+    assert exps[0]["Experiment"] is None

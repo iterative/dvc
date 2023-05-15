@@ -20,6 +20,7 @@ def run(  # noqa: C901, PLR0912
     tmp_dir: bool = False,
     queue: bool = False,
     copy_paths: Optional[Iterable[str]] = None,
+    message: Optional[str] = None,
     **kwargs,
 ) -> Dict[str, str]:
     """Reproduce the specified targets as an experiment.
@@ -74,6 +75,7 @@ def run(  # noqa: C901, PLR0912
             params=path_overrides,
             tmp_dir=tmp_dir,
             copy_paths=copy_paths,
+            message=message,
             **kwargs,
         )
 
@@ -96,6 +98,7 @@ def run(  # noqa: C901, PLR0912
             targets=targets,
             params=sweep_overrides,
             copy_paths=copy_paths,
+            message=message,
             **kwargs,
         )
         if sweep_overrides:

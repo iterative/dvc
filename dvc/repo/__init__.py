@@ -554,12 +554,10 @@ class Repo:
         import getpass
         import hashlib
 
-        import platformdirs
-
+        from dvc.dirs import site_cache_dir
         from dvc.fs import GitFileSystem
 
-        default = platformdirs.site_cache_dir("dvc", "iterative", opinion=True)
-        cache_dir = self.config["core"].get("site_cache_dir") or default
+        cache_dir = self.config["core"].get("site_cache_dir") or site_cache_dir()
 
         if isinstance(self.fs, GitFileSystem):
             relparts = ()

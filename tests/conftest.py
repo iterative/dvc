@@ -5,6 +5,7 @@ from contextlib import suppress
 
 import pytest
 
+from dvc import env
 from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
 
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
@@ -206,7 +207,13 @@ defaultBranch=master
     import pygit2
 
     pygit2.settings.search_path[pygit2.GIT_CONFIG_LEVEL_GLOBAL] = str(home_dir)
+
+    monkeypatch.setenv(env.DVC_SYSTEM_CONFIG_DIR, os.fspath(path / "system"))
+    monkeypatch.setenv(env.DVC_GLOBAL_CONFIG_DIR, os.fspath(path / "global"))
+    monkeypatch.setenv(env.DVC_SITE_CACHE_DIR, os.fspath(path / "site_cache_dir"))
+
     yield
+
     monkeypatch.undo()
 
 
