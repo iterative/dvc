@@ -142,7 +142,7 @@ def _add_run_common(parser):
         ),
     )
     parser.add_argument(
-        "-M",
+        "-m",
         "--message",
         type=str,
         default=None,
