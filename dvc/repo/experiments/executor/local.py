@@ -17,7 +17,7 @@ from dvc.repo.experiments.refs import (
     EXEC_HEAD,
     EXEC_MERGE,
     EXEC_NAMESPACE,
-    EXPS_TEMP,
+    TEMP_NAMESPACE,
 )
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.scm import SCM, Git
@@ -90,9 +90,9 @@ class TempDirExecutor(BaseLocalExecutor):
         if infofile:
             self.info.dump_json(infofile)
 
-        temp_head = f"{EXPS_TEMP}/head-{uuid()}"
-        temp_merge = f"{EXPS_TEMP}/merge-{uuid()}"
-        temp_baseline = f"{EXPS_TEMP}/baseline-{uuid()}"
+        temp_head = f"{TEMP_NAMESPACE}/head-{uuid()}"
+        temp_merge = f"{TEMP_NAMESPACE}/merge-{uuid()}"
+        temp_baseline = f"{TEMP_NAMESPACE}/baseline-{uuid()}"
 
         temp_ref_dict = {
             temp_head: entry.head_rev,
