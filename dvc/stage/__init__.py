@@ -584,7 +584,7 @@ class Stage(params.StageParams):
             raise CacheLinkError(link_failures)
 
     @rwlocked(read=["deps", "outs"])
-    def run(
+    def run(  # noqa: C901
         self,
         dry=False,
         no_commit=False,
@@ -596,15 +596,20 @@ class Stage(params.StageParams):
         if (self.cmd or self.is_import) and not self.frozen and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
-        if (not self.frozen and self.is_import) or self.is_partial_import:
+        if (
+            self.is_import and (not self.frozen or kwargs.get("pull"))
+        ) or self.is_partial_import:
             self._sync_import(dry, force, kwargs.get("jobs", None), no_download)
         elif not self.frozen and self.cmd:
             self._run_stage(dry, force, **kwargs)
-        else:
+        elif kwargs.get("pull"):
+            logger.info("Pulling data for %s", self)
+            self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
+            self.checkout()
+        elif not dry:
             args = ("outputs", "frozen ") if self.frozen else ("data sources", "")
             logger.info("Verifying %s in %s%s", *args, self)
-            if not dry:
-                self._check_missing_outputs()
+            self._check_missing_outputs()
 
         if not dry:
             if kwargs.get("checkpoint_func", None) or no_download:

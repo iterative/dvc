@@ -182,7 +182,7 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
 
     mock_restore.assert_called_once_with(stage, pull=True, dry=False)
     mock_run.assert_not_called()
-    assert mock_checkout.call_count == 3
+    assert mock_checkout.call_count == 2
     assert (tmp_dir / "bar").exists()
     assert not (tmp_dir / "foo").unlink()
     assert (tmp_dir / LOCK_FILE).exists()
