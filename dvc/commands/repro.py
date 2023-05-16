@@ -16,12 +16,6 @@ class CmdRepro(CmdBase):
         else:
             ui.write("Use `dvc push` to send your updates to remote storage.")
 
-        if self.args.metrics:
-            from dvc.compare import show_metrics
-
-            metrics = self.repo.metrics.show()
-            show_metrics(metrics)
-
         return 0
 
     @property
@@ -103,13 +97,6 @@ and then the stage name name.
         action="store_true",
         default=False,
         help="Reproduce all stages in the specified directory.",
-    )
-    repro_parser.add_argument(
-        "-m",
-        "--metrics",
-        action="store_true",
-        default=False,
-        help="Show metrics after reproduction.",
     )
     repro_parser.add_argument(
         "--downstream",
