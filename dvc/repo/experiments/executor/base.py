@@ -43,6 +43,7 @@ from dvc.stage.serialize import to_lockfile
 from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
+from dvc.utils.studio import env_to_config
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -635,10 +636,7 @@ class BaseExecutor(ABC):
         message: Optional[str] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
-        from dvc_studio_client.post_live_metrics import (
-            get_studio_config,
-            post_live_metrics,
-        )
+        from dvc_studio_client.post_live_metrics import post_live_metrics
 
         from dvc.repo import Repo
         from dvc.stage.monitor import CheckpointKilledError
@@ -662,11 +660,11 @@ class BaseExecutor(ABC):
             args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
             if os.path.exists(args_path):
                 _, kwargs = cls.unpack_repro_args(args_path)
-            # set env vars using saved config; needed for dvclive to read config
-            for k, v in kwargs.get("run_env", {}).items():
-                os.environ[k] = v
-            dvc_studio_config = get_studio_config(dvc.config.get("studio"))
-
+            dvc_studio_config = dvc.config.get("studio")
+            # set missing config options using saved config
+            # inferring repo url will fail if not set here
+            run_env_config = env_to_config(kwargs.get("run_env", {}))
+            dvc_studio_config = {**run_env_config, **dvc_studio_config}
             try:
                 post_live_metrics(
                     "start",
@@ -713,7 +711,6 @@ class BaseExecutor(ABC):
         args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
         if os.path.exists(args_path):
             args, kwargs = cls.unpack_repro_args(args_path)
-            # studio config options not expected for stage repro
             remove(args_path)
             # explicitly git rm/unstage the args file
             dvc.scm.add([args_path], force=True)

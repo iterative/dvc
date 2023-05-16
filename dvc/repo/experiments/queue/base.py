@@ -21,15 +21,7 @@ from dvc_studio_client.post_live_metrics import get_studio_config
 from funcy import retry
 
 from dvc.dependency import ParamsDependency
-from dvc.env import (
-    DVC_EXP_BASELINE_REV,
-    DVC_EXP_NAME,
-    DVC_STUDIO_OFFLINE,
-    DVC_STUDIO_REPO_URL,
-    DVC_STUDIO_TOKEN,
-    DVC_STUDIO_URL,
-    DVCLIVE_RESUME,
-)
+from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
 from dvc.repo.experiments.exceptions import CheckpointExistsError, ExperimentExistsError
@@ -46,6 +38,7 @@ from dvc.repo.experiments.utils import (
 )
 from dvc.ui import ui
 from dvc.utils.objects import cached_property
+from dvc.utils.studio import config_to_env
 
 from .utils import get_remote_executor_refs
 
@@ -428,19 +421,11 @@ class BaseStashQueue(ABC):
                     if resume_rev:
                         run_env[DVCLIVE_RESUME] = "1"
 
+                    # save studio config to read later by dvc and dvclive
                     studio_config = get_studio_config(
                         dvc_studio_config=self.repo.config.get("studio")
                     )
-
-                    if "offline" in studio_config:
-                        run_env[DVC_STUDIO_OFFLINE] = studio_config["offline"]
-                    if "repo_url" in studio_config:
-                        run_env[DVC_STUDIO_REPO_URL] = studio_config["repo_url"]
-                    if "token" in studio_config:
-                        run_env[DVC_STUDIO_TOKEN] = studio_config["token"]
-                    if "url" in studio_config:
-                        run_env[DVC_STUDIO_URL] = studio_config["url"]
-
+                    run_env = {**config_to_env(studio_config), **run_env}
                     self._pack_args(*args, run_env=run_env, **kwargs)
                     # save experiment as a stash commit
                     msg = self._stash_msg(
