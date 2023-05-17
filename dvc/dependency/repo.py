@@ -79,11 +79,14 @@ class RepoDependency(Dependency):
     ) -> "DVCFileSystem":
         from dvc.fs import DVCFileSystem
 
+        config = {"cache": self.repo.config["cache"]}
+        config["cache"]["dir"] = self.repo.cache.local.path
+
         return DVCFileSystem(
             url=self.def_repo[self.PARAM_URL],
             rev=rev or self._get_rev(locked=locked),
             subrepos=True,
-            config={"cache": {"dir": self.repo.cache.local.path}},
+            config=config,
         )
 
     def _get_rev(self, locked: bool = True):

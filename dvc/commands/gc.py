@@ -175,7 +175,7 @@ def add_parser(subparsers, parent_parser):
         "--cloud",
         action="store_true",
         default=False,
-        help="Collect garbage in remote repository.",
+        help="Collect garbage in remote storage in addition to local cache.",
     )
     gc_parser.add_argument(
         "-r",

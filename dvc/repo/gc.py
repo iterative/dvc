@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 def _validate_args(**kwargs):
     not_in_remote = kwargs.pop("not_in_remote", None)
     cloud = kwargs.pop("cloud", None)
+    remote = kwargs.pop("remote", None)
+    if remote and not (cloud or not_in_remote):
+        raise InvalidArgumentError("`--remote` requires `--cloud` or `--not-in-remote`")
     if not_in_remote and cloud:
         raise InvalidArgumentError(
             "`--not-in-remote` and `--cloud` are mutually exclusive"
