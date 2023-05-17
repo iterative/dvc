@@ -1222,10 +1222,12 @@ class Output:
         assert isinstance(self.fs.path, Path)
         rel_key = tuple(self.fs.path.parts(self.fs.path.relpath(path, self.fs_path)))
 
-        if not self.hash_info:
-            tree = Tree()
+        if self.hash_info:
+            tree = self.get_dir_cache()
+            if tree is None:
+                raise DvcException(f"could not read {self.hash_info.value!r}")
         else:
-            tree = self.get_dir_cache() or Tree()
+            tree = Tree()
 
         trie = tree.as_trie()
         assert isinstance(trie, Trie)
@@ -1257,10 +1259,12 @@ class Output:
         append_only = True
         rel_key = tuple(self.fs.path.parts(self.fs.path.relpath(path, self.fs_path)))
 
-        if not self.hash_info:
-            tree = Tree()
+        if self.hash_info:
+            tree = self.get_dir_cache()
+            if tree is None:
+                raise DvcException(f"could not read {self.hash_info.value!r}")
         else:
-            tree = self.get_dir_cache() or Tree()
+            tree = Tree()
 
         trie = tree.as_trie()
         assert isinstance(trie, Trie)
