@@ -9,6 +9,14 @@ from configobj import ConfigObj
 from funcy import first
 
 from dvc.dvcfile import PROJECT_FILE
+from dvc.env import (
+    DVC_EXP_BASELINE_REV,
+    DVC_EXP_NAME,
+    DVC_STUDIO_OFFLINE,
+    DVC_STUDIO_REPO_URL,
+    DVC_STUDIO_TOKEN,
+    DVC_STUDIO_URL,
+)
 from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
@@ -606,16 +614,34 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     dump_run_env = dedent(
         """\
         import os
-        from dvc_studio_client.env import STUDIO_REPO_URL
-        from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
-        for v in (DVC_EXP_BASELINE_REV, DVC_EXP_NAME, STUDIO_REPO_URL):
+        from dvc.env import (
+            DVC_EXP_BASELINE_REV,
+            DVC_EXP_NAME,
+            DVC_STUDIO_OFFLINE,
+            DVC_STUDIO_REPO_URL,
+            DVC_STUDIO_TOKEN,
+            DVC_STUDIO_URL
+        )
+        for v in (
+            DVC_EXP_BASELINE_REV,
+            DVC_EXP_NAME,
+            DVC_STUDIO_OFFLINE,
+            DVC_STUDIO_REPO_URL,
+            DVC_STUDIO_TOKEN,
+            DVC_STUDIO_URL
+        ):
             with open(v, "w") as f:
                 f.write(os.environ.get(v, ""))
         """
     )
     mocker.patch(
-        "dvc.repo.experiments.queue.base.get_studio_token_and_repo_url",
-        return_value=("REPO_TOKEN", "REPO_URL"),
+        "dvc.repo.experiments.queue.base.get_studio_config",
+        return_value={
+            "token": "TOKEN",
+            "repo_url": "REPO_URL",
+            "url": "BASE_URL",
+            "offline": "false",
+        },
     )
     (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
     baseline = scm.get_rev()
@@ -624,14 +650,16 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
         name="run_env",
     )
     dvc.experiments.run()
-    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
-    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip()
-    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
+    assert (tmp_dir / DVC_EXP_BASELINE_REV).read_text().strip() == baseline
+    assert (tmp_dir / DVC_EXP_NAME).read_text().strip()
+    assert (tmp_dir / DVC_STUDIO_TOKEN).read_text().strip() == "TOKEN"
+    assert (tmp_dir / DVC_STUDIO_REPO_URL).read_text().strip() == "REPO_URL"
+    assert (tmp_dir / DVC_STUDIO_URL).read_text().strip() == "BASE_URL"
+    assert (tmp_dir / DVC_STUDIO_OFFLINE).read_text().strip() == "false"
 
     dvc.experiments.run(name="foo")
-    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
-    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == "foo"
-    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
+    assert (tmp_dir / DVC_EXP_BASELINE_REV).read_text().strip() == baseline
+    assert (tmp_dir / DVC_EXP_NAME).read_text().strip() == "foo"
 
 
 def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):

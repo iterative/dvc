@@ -43,6 +43,7 @@ from dvc.stage.serialize import to_lockfile
 from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
+from dvc.utils.studio import env_to_config
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -635,7 +636,6 @@ class BaseExecutor(ABC):
         message: Optional[str] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
-        from dvc_studio_client.env import STUDIO_REPO_URL, STUDIO_TOKEN
         from dvc_studio_client.post_live_metrics import post_live_metrics
 
         from dvc.repo import Repo
@@ -657,19 +657,22 @@ class BaseExecutor(ABC):
             else:
                 os.chdir(dvc.root_dir)
 
+            args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
+            if os.path.exists(args_path):
+                _, kwargs = cls.unpack_repro_args(args_path)
+            dvc_studio_config = dvc.config.get("studio")
+            # set missing config options using saved config
+            # inferring repo url will fail if not set here
+            run_env_config = env_to_config(kwargs.get("run_env", {}))
+            dvc_studio_config = {**run_env_config, **dvc_studio_config}
             try:
-                args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
-                if os.path.exists(args_path):
-                    _, kwargs = cls.unpack_repro_args(args_path)
-                run_env = kwargs.get("run_env", {})
                 post_live_metrics(
                     "start",
                     info.baseline_rev,
-                    info.name,
+                    info.name,  # type: ignore[arg-type]
                     "dvc",
                     params=to_studio_params(dvc.params.show()),
-                    studio_token=run_env.get(STUDIO_TOKEN, None),
-                    studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
+                    dvc_studio_config=dvc_studio_config,
                     message=message,
                 )
                 logger.debug("Running repro in '%s'", os.getcwd())
@@ -692,12 +695,11 @@ class BaseExecutor(ABC):
                 post_live_metrics(
                     "done",
                     info.baseline_rev,
-                    info.name,
+                    info.name,  # type: ignore[arg-type]
                     "dvc",
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
                     metrics=get_in(dvc.metrics.show(), ["", "data"]),
-                    studio_token=run_env.get(STUDIO_TOKEN, None),
-                    studio_repo_url=run_env.get(STUDIO_REPO_URL, None),
+                    dvc_studio_config=dvc_studio_config,
                 )
 
                 if infofile is not None:
