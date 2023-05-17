@@ -48,9 +48,8 @@ def compose_and_dump(
         dumper(output_file, OmegaConf.to_object(cfg))
     else:
         Path(output_file).write_text(OmegaConf.to_yaml(cfg), encoding="utf-8")
-    contents = Path(output_file).read_text(encoding="utf-8")
-    logger.debug(
-        "Hydra composition enabled. Contents dumped to %s:\n %s", output_file, contents
+    logger.trace(  # type: ignore[attr-defined]
+        "Hydra composition enabled. Contents dumped to %s:\n %s", output_file, cfg
     )
 
 
