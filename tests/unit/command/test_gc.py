@@ -60,3 +60,13 @@ def test_(dvc, scm, mocker):
     cmd = cli_args.func(cli_args)
     with pytest.raises(InvalidArgumentError):
         cmd.run()
+
+    cli_args = parse_args(["gc", "--cloud", "--not-in-remote"])
+    cmd = cli_args.func(cli_args)
+    with pytest.raises(InvalidArgumentError):
+        cmd.run()
+
+    cli_args = parse_args(["gc", "--remote", "myremote"])
+    cmd = cli_args.func(cli_args)
+    with pytest.raises(InvalidArgumentError):
+        cmd.run()

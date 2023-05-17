@@ -73,6 +73,8 @@ jobs:
 
   pip:
     runs-on: ubuntu-20.04
+    permissions:
+      id-token: write
     steps:
     - uses: actions/checkout@v3
       with:
@@ -100,13 +102,10 @@ jobs:
     - name: Publish packages to PyPI
       if: github.event_name == 'release'
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_TOKEN }}
 
     - name: Publish to Test PyPI
       if: ${{ github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        password: ${{ secrets.TEST_PYPI_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
         skip_existing: true

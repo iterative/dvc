@@ -427,7 +427,22 @@ def test_repro_pulls_mising_import(tmp_dir, dvc, mocker, erepo_dir, local_remote
     assert dvc.reproduce(pull=True)
 
 
-def test_repro_pulls_intermediate_out(tmp_dir, dvc, mocker, local_remote):
+def test_repro_allow_missing(tmp_dir, dvc):
+    tmp_dir.gen("fixed", "fixed")
+    dvc.stage.add(name="create-foo", cmd="echo foo > foo", deps=["fixed"], outs=["foo"])
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    (create_foo, copy_foo) = dvc.reproduce()
+
+    remove("foo")
+    remove(create_foo.outs[0].cache_path)
+    remove(dvc.stage_cache.cache_dir)
+
+    ret = dvc.reproduce(allow_missing=True)
+    # both stages are skipped
+    assert not ret
+
+
+def test_repro_allow_missing_and_pull(tmp_dir, dvc, mocker, local_remote):
     tmp_dir.gen("fixed", "fixed")
     dvc.stage.add(name="create-foo", cmd="echo foo > foo", deps=["fixed"], outs=["foo"])
     dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
@@ -437,5 +452,8 @@ def test_repro_pulls_intermediate_out(tmp_dir, dvc, mocker, local_remote):
 
     remove("foo")
     remove(create_foo.outs[0].cache_path)
+    remove(dvc.stage_cache.cache_dir)
 
-    assert dvc.reproduce(pull=True)
+    ret = dvc.reproduce(pull=True, allow_missing=True)
+    # create-foo is skipped ; copy-foo pulls missing dep
+    assert len(ret) == 1
