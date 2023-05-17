@@ -1,3 +1,4 @@
+import datetime
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -152,7 +153,7 @@ class Value(Node):
         return self._value
 
 
-PRIMITIVES = (int, float, str, bytes, bool)
+PRIMITIVES = (int, float, str, bytes, bool, datetime.date)
 
 
 class Container(Node, ABC):
