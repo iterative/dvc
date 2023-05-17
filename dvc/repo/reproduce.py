@@ -194,10 +194,6 @@ def _reproduce_stages(  # noqa: C901
             )
 
         try:
-            if kwargs.get("pull") and stage.changed():
-                logger.debug("Pulling %s", stage.addressing)
-                stage.repo.pull(stage.addressing, allow_missing=True)
-
             ret = _reproduce_stage(stage, **kwargs)
 
             if len(ret) == 0:
