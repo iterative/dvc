@@ -66,6 +66,29 @@ def test_push_args(tmp_dir, scm, dvc, git_upstream, exp_stage, all_, rev, result
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info3)) == result3
 
 
+def test_push_multi_rev(tmp_dir, scm, dvc, git_upstream, exp_stage):
+    remote = git_upstream.url
+    baseline = scm.get_rev()
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    exp1 = first(results)
+    ref_info1 = first(exp_refs_by_rev(scm, exp1))
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp2 = first(results)
+    ref_info2 = first(exp_refs_by_rev(scm, exp2))
+
+    scm.commit("new_baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp3 = first(results)
+    ref_info3 = first(exp_refs_by_rev(scm, exp3))
+
+    dvc.experiments.push(remote, [], rev=[baseline, scm.get_rev()])
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info2)) == exp2
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info3)) == exp3
+
+
 def test_push_diverged(tmp_dir, scm, dvc, git_upstream, exp_stage):
     git_upstream.tmp_dir.scm_gen("foo", "foo", commit="init")
     remote_rev = git_upstream.tmp_dir.scm.get_rev()
