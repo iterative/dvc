@@ -316,21 +316,18 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_show_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Print output in JSON format instead of a human-readable table.",
     )
     experiments_show_parser.add_argument(
         "--csv",
-        "--show-csv",
         action="store_true",
         default=False,
         help="Print output in csv format instead of a human-readable table.",
     )
     experiments_show_parser.add_argument(
         "--md",
-        "--show-md",
         action="store_true",
         default=False,
         dest="markdown",

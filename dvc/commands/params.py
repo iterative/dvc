@@ -105,14 +105,12 @@ def add_parser(subparsers, parent_parser):
     )
     params_diff_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     params_diff_parser.add_argument(
         "--md",
-        "--show-md",
         action="store_true",
         default=False,
         dest="markdown",
