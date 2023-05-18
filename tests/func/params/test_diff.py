@@ -244,14 +244,21 @@ def test_diff_without_targets_specified(tmp_dir, dvc, scm, file):
         ("dir/dvc.yaml", join("..", "my_params.yaml")),
     ],
 )
-def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file):
+@pytest.mark.parametrize("cache", [True, False])
+def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file, cache):
     directory = (tmp_dir / dvcfile).parent
     directory.mkdir(exist_ok=True)
     (tmp_dir / dvcfile).dump({"params": [params_file]})
 
     params_file = directory / params_file
     params_file.dump({"foo": 3})
-    scm.add_commit([params_file, tmp_dir / dvcfile], message="add params")
+    if cache:
+        dvc.add(relpath(directory / params_file))
+        scm.add_commit(
+            [str(params_file) + ".dvc", tmp_dir / dvcfile], message="add params"
+        )
+    else:
+        scm.add_commit([params_file, tmp_dir / dvcfile], message="add params")
 
     params_file.dump({"foo": 5})
     assert dvc.params.diff() == {

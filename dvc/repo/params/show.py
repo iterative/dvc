@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Optional, Tupl
 from scmrepo.exceptions import SCMError
 
 from dvc.dependency.param import ParamsDependency
+from dvc.fs.dvc import DVCFileSystem
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
@@ -74,6 +75,7 @@ def _read_params(
 ):
     res: Dict[str, Dict] = defaultdict(lambda: defaultdict(dict))
     fs_paths = copy(params_fs_paths)
+    fs = DVCFileSystem(repo=repo)
 
     if deps or stages:
         for param in params:
@@ -88,10 +90,10 @@ def _read_params(
                 if name in fs_paths:
                     fs_paths.remove(name)
     else:
-        fs_paths += [param.fs_path for param in params]
+        fs_paths += [fs.path.relpath(param.fs_path, repo.root_dir) for param in params]
 
     for fs_path in fs_paths:
-        from_path = _read_fs_path(repo.fs, fs_path, onerror=onerror)
+        from_path = _read_fs_path(fs, fs_path, onerror=onerror)
         if from_path:
             name = os.sep.join(repo.fs.path.relparts(fs_path))
             res[name] = from_path
