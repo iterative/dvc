@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from voluptuous import Any, Optional, Required, Schema
+from voluptuous import Any, Equal, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.annotations import ANNOTATION_SCHEMA, ARTIFACT_SCHEMA
@@ -12,7 +12,6 @@ from dvc.output import (
     Output,
 )
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
-from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -44,11 +43,9 @@ LOCK_FILE_STAGE_SCHEMA = {
 }
 
 LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
-
-LOCKFILE_V1_SCHEMA = LOCKFILE_STAGES_SCHEMA
-LOCKFILE_V2_SCHEMA = {
+LOCKFILE_SCHEMA = {
+    Required("schema"): Equal("2.0", "invalid schema version"),
     STAGES: LOCKFILE_STAGES_SCHEMA,
-    Required(SCHEMA_KWD): lockfile_version_schema,
 }
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
@@ -135,5 +132,4 @@ MULTI_STAGE_SCHEMA = {
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)
 COMPILED_MULTI_STAGE_SCHEMA = Schema(MULTI_STAGE_SCHEMA)
 COMPILED_LOCK_FILE_STAGE_SCHEMA = Schema(LOCK_FILE_STAGE_SCHEMA)
-COMPILED_LOCKFILE_V1_SCHEMA = Schema(LOCKFILE_V1_SCHEMA)
-COMPILED_LOCKFILE_V2_SCHEMA = Schema(LOCKFILE_V2_SCHEMA)
+COMPILED_LOCKFILE_SCHEMA = Schema(LOCKFILE_SCHEMA)

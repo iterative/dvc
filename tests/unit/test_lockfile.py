@@ -17,7 +17,7 @@ def test_stage_dump_no_outs_deps(tmp_dir, dvc):
 
 def test_stage_dump_when_already_exists(tmp_dir, dvc):
     data = {"s1": {"cmd": "command", "deps": [], "outs": []}}
-    (tmp_dir / "path.lock").dump(data)
+    (tmp_dir / "path.lock").dump({"schema": "2.0", "stages": data})
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile = Lockfile(dvc, "path.lock")
     lockfile.dump(stage)
@@ -35,7 +35,7 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
             "outs": [{"md5": "2.txt", "path": "checksum"}],
         }
     }
-    (tmp_dir / "path.lock").dump(data)
+    (tmp_dir / "path.lock").dump({"schema": "2.0", "stages": data})
     lockfile = Lockfile(dvc, "path.lock")
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile.dump(stage)
