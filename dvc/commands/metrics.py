@@ -140,14 +140,12 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_show_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     metrics_show_parser.add_argument(
         "--md",
-        "--show-md",
         action="store_true",
         default=False,
         dest="markdown",
@@ -223,14 +221,12 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_diff_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     metrics_diff_parser.add_argument(
         "--md",
-        "--show-md",
         action="store_true",
         default=False,
         dest="markdown",

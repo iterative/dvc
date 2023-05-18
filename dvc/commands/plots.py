@@ -430,7 +430,6 @@ def _add_ui_arguments(parser):
     )
     parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,

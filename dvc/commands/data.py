@@ -218,13 +218,6 @@ def add_parser(subparsers, parent_parser):
         help="Show output in JSON format.",
     )
     data_status_parser.add_argument(
-        "--show-json",
-        action="store_true",
-        default=False,
-        dest="json",
-        help=argparse.SUPPRESS,
-    )
-    data_status_parser.add_argument(
         "--granular",
         action="store_true",
         default=False,
@@ -269,7 +262,6 @@ def add_parser(subparsers, parent_parser):
     )
     data_ls_parser.add_argument(
         "--md",
-        "--show-md",
         dest="markdown",
         action="store_true",
         default=False,

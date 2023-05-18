@@ -403,7 +403,6 @@ def add_parser(subparsers, _parent_parser):
     )
     status_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show status in JSON format.",

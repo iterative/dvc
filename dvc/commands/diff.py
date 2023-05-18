@@ -184,7 +184,6 @@ def add_parser(subparsers, parent_parser):
     )
     diff_parser.add_argument(
         "--json",
-        "--show-json",
         help="Format the output into a JSON",
         action="store_true",
         default=False,
@@ -197,7 +196,6 @@ def add_parser(subparsers, parent_parser):
     )
     diff_parser.add_argument(
         "--md",
-        "--show-md",
         help="Show tabulated output in the Markdown format (GFM).",
         action="store_true",
         dest="markdown",

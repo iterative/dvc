@@ -53,7 +53,6 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     save_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",

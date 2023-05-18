@@ -71,7 +71,6 @@ def add_parser(subparsers, parent_parser):
     )
     list_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         help="Show output in JSON format.",
     )
