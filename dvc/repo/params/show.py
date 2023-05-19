@@ -2,6 +2,7 @@ import logging
 import os
 from collections import defaultdict
 from copy import copy
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Optional, Tuple
 
 from scmrepo.exceptions import SCMError
@@ -90,9 +91,11 @@ def _read_params(
                 if name in fs_paths:
                     fs_paths.remove(name)
     else:
-        fs_paths += [fs.path.relpath(param.fs_path, repo.root_dir) for param in params]
+        fs_paths += [param.fs_path for param in params]
 
     for fs_path in fs_paths:
+        if Path(fs_path).is_relative_to(repo.root_dir):
+            fs_path = fs.path.relpath(fs_path, repo.root_dir)
         from_path = _read_fs_path(fs, fs_path, onerror=onerror)
         if from_path:
             name = os.sep.join(repo.fs.path.relparts(fs_path))
