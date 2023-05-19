@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Optional, Tupl
 from scmrepo.exceptions import SCMError
 
 from dvc.dependency.param import ParamsDependency
-from dvc.fs.dvc import DVCFileSystem
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
@@ -94,7 +93,7 @@ def _read_params(
         fs_paths += [param.fs_path for param in params]
 
     for fs_path in fs_paths:
-        if Path(fs_path).is_relative_to(repo.root_dir):  # pylint: disable=E1101
+        if Path(fs_path).is_relative_to(repo.root_dir):  # type: ignore[attr-defined]
             fs_path = fs.path.relpath(fs_path, repo.root_dir)
         from_path = _read_fs_path(fs, fs_path, onerror=onerror)
         if from_path:
