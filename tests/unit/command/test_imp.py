@@ -14,8 +14,6 @@ def test_import(mocker):
             "file",
             "--rev",
             "version",
-            "--desc",
-            "description",
             "--jobs",
             "3",
         ]
@@ -35,10 +33,6 @@ def test_import(mocker):
         rev="version",
         no_exec=False,
         no_download=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=3,
     )
 
@@ -56,8 +50,6 @@ def test_import_no_exec(mocker):
             "--rev",
             "version",
             "--no-exec",
-            "--desc",
-            "description",
         ]
     )
 
@@ -74,10 +66,6 @@ def test_import_no_exec(mocker):
         rev="version",
         no_exec=True,
         no_download=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
     )
 
@@ -95,8 +83,6 @@ def test_import_no_download(mocker):
             "--rev",
             "version",
             "--no-download",
-            "--desc",
-            "description",
         ]
     )
 
@@ -113,9 +99,5 @@ def test_import_no_download(mocker):
         rev="version",
         no_exec=False,
         no_download=True,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
     )

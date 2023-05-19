@@ -14,8 +14,6 @@ def test_add(mocker, dvc):
             "--glob",
             "--file",
             "file",
-            "--desc",
-            "stage description",
             "data",
         ]
     )
@@ -36,10 +34,6 @@ def test_add(mocker, dvc):
         out=None,
         remote=None,
         to_remote=False,
-        desc="stage description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
         force=False,
     )
@@ -74,10 +68,6 @@ def test_add_to_remote(mocker):
         out="bar",
         remote="remote",
         to_remote=True,
-        desc=None,
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
         force=False,
     )
