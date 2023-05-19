@@ -1,17 +1,6 @@
 import os
 import posixpath
-from itertools import chain
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    TypedDict,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, TypedDict, Union
 
 from dvc.ui import ui
 
@@ -251,17 +240,3 @@ def status(
         unchanged=list(unchanged),
         git=git_info,
     )
-
-
-def ls(
-    repo: "Repo",
-    targets: Optional[List[Optional[str]]] = None,
-    recursive: bool = False,
-) -> Iterator[Dict[str, Any]]:
-    targets = targets or [None]
-    pairs = chain.from_iterable(
-        repo.stage.collect_granular(target, recursive=recursive) for target in targets
-    )
-    for stage, filter_info in pairs:
-        for out in stage.filter_outs(filter_info):
-            yield {"path": str(out), **out.annot.to_dict()}
