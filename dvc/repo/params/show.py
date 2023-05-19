@@ -76,7 +76,7 @@ def _read_params(
 ):
     res: Dict[str, Dict] = defaultdict(lambda: defaultdict(dict))
     fs_paths = copy(params_fs_paths)
-    fs = DVCFileSystem(repo=repo)
+    fs = repo.dvcfs
 
     if deps or stages:
         for param in params:
