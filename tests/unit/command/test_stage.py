@@ -86,3 +86,15 @@ def test_stage_add(mocker, dvc, command, parsed_command):
         cmd=parsed_command,
         force=True,
     )
+
+
+def test_stage_add_and_run(mocker, dvc):
+    cli_args = parse_args(["stage", "add", "--run", "-n", "foo", "-o", "foo", "cmd"])
+    cmd = cli_args.func(cli_args)
+    add_mock = mocker.patch.object(cmd.repo.stage, "add")
+
+    assert cmd.run() == 0
+
+    assert called_once_with_subset(add_mock, name="foo", outs=["foo"], cmd="cmd")
+    add_mock.return_value.run.assert_called_once()
+    add_mock.return_value.dump.assert_called_once_with(update_pipeline=False)

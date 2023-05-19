@@ -121,6 +121,8 @@ def parse_cmd(commands: List[str]) -> str:
 
 class CmdStageAdd(CmdBase):
     def run(self):
+        from dvc.repo import lock_repo
+
         kwargs = vars(self.args)
         kwargs.update(
             {
@@ -128,7 +130,13 @@ class CmdStageAdd(CmdBase):
                 "params": parse_params(self.args.params),
             }
         )
-        self.repo.stage.add(**kwargs)
+
+        with self.repo.scm_context, lock_repo(self.repo):
+            stage = self.repo.stage.add(**kwargs)
+            if self.args.run:
+                stage.run()
+                stage.dump(update_pipeline=False)
+
         return 0
 
 
@@ -256,6 +264,12 @@ def _add_common_args(parser):
             "User description of the stage (optional). "
             "This doesn't affect any DVC operations."
         ),
+    )
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        default=False,
+        help="Execute the stage after generating it.",
     )
     parser.add_argument(
         "command",
