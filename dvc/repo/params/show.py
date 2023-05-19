@@ -94,7 +94,7 @@ def _read_params(
         fs_paths += [param.fs_path for param in params]
 
     for fs_path in fs_paths:
-        if Path(fs_path).is_relative_to(repo.root_dir):
+        if Path(fs_path).is_relative_to(repo.root_dir):  # pylint: disable=E1101
             fs_path = fs.path.relpath(fs_path, repo.root_dir)
         from_path = _read_fs_path(fs, fs_path, onerror=onerror)
         if from_path:
