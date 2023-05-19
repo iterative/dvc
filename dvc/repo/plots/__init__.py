@@ -472,15 +472,12 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
     for dvcfile, plots_def in top_plots.items():
         dvcfile_path = _relpath(repo.dvcfs, dvcfile)
         dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
-        if isinstance(plots_def, list):
-            for elem in plots_def:
-                if isinstance(elem, str):
-                    dvcfile_defs_dict[elem] = None
-                else:
-                    k, v = list(elem.items())[0]
-                    dvcfile_defs_dict[k] = v
-        else:
-            dvcfile_defs_dict = plots_def
+        for elem in plots_def:
+            if isinstance(elem, str):
+                dvcfile_defs_dict[elem] = None
+            else:
+                k, v = list(elem.items())[0]
+                dvcfile_defs_dict[k] = v
 
         resolved = _resolve_definitions(
             repo.dvcfs,

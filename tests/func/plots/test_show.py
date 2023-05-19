@@ -377,7 +377,7 @@ def test_top_level_plots(
 
     config_file = "dvc.yaml"
     with modify_yaml(config_file) as dvcfile_content:
-        dvcfile_content["plots"] = plot_config
+        dvcfile_content["plots"] = [plot_config]
 
     result = dvc.plots.show()
 
