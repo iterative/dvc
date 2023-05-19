@@ -1,14 +1,11 @@
-import pathlib
-
 import pytest
 
-from dvc.cli import DvcParserError, parse_args
+from dvc.cli import parse_args
 from dvc.commands.experiments.apply import CmdExperimentsApply
 from dvc.commands.experiments.branch import CmdExperimentsBranch
 from dvc.commands.experiments.clean import CmdExperimentsClean
 from dvc.commands.experiments.diff import CmdExperimentsDiff
 from dvc.commands.experiments.gc import CmdExperimentsGC
-from dvc.commands.experiments.init import CmdExperimentsInit
 from dvc.commands.experiments.ls import CmdExperimentsList
 from dvc.commands.experiments.pull import CmdExperimentsPull
 from dvc.commands.experiments.push import CmdExperimentsPush
@@ -17,9 +14,6 @@ from dvc.commands.experiments.run import CmdExperimentsRun
 from dvc.commands.experiments.save import CmdExperimentsSave
 from dvc.commands.experiments.show import CmdExperimentsShow
 from dvc.exceptions import InvalidArgumentError
-from dvc.repo import Repo
-from tests.utils import ANY
-from tests.utils.asserts import called_once_with_subset
 
 from .test_repro import common_arguments as repro_arguments
 
@@ -418,204 +412,6 @@ def test_experiments_remove_invalid(dvc, scm, mocker, capsys, caplog):
         str(excinfo.value) == "Either provide an `experiment` argument"
         ", or use the `--rev` or `--all-commits` or `--queue` flag."
     )
-
-
-@pytest.mark.parametrize("extra_args", [(), ("--run",)])
-def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
-    stage = mocker.Mock(outs=[], addressing="train")
-    m = mocker.patch("dvc.repo.experiments.init.init", return_value=(stage, [], []))
-    runner = mocker.patch("dvc.repo.experiments.run.run", return_value=0)
-    cli_args = parse_args(["exp", "init", *extra_args, "cmd"])
-    cmd = cli_args.func(cli_args)
-
-    assert isinstance(cmd, CmdExperimentsInit)
-    assert cmd.run() == 0
-    m.assert_called_once_with(
-        ANY(Repo),
-        name="train",
-        type="default",
-        defaults={
-            "code": "src",
-            "models": "models",
-            "data": "data",
-            "metrics": "metrics.json",
-            "params": "params.yaml",
-            "plots": "plots",
-        },
-        overrides={"cmd": "cmd"},
-        interactive=False,
-        force=False,
-    )
-
-    if extra_args:
-        # `parse_args` creates a new `Repo` object
-        runner.assert_called_once_with(ANY(Repo), targets=["train"])
-
-
-def test_experiments_init_config(dvc, scm, mocker):
-    with dvc.config.edit() as conf:
-        conf["exp"] = {"code": "new_src", "models": "new_models"}
-
-    stage = mocker.Mock(outs=[])
-    m = mocker.patch("dvc.repo.experiments.init.init", return_value=(stage, [], []))
-    cli_args = parse_args(["exp", "init", "cmd"])
-    cmd = cli_args.func(cli_args)
-
-    assert isinstance(cmd, CmdExperimentsInit)
-    assert cmd.run() == 0
-
-    m.assert_called_once_with(
-        ANY(Repo),
-        name="train",
-        type="default",
-        defaults={
-            "code": "new_src",
-            "models": "new_models",
-            "data": "data",
-            "metrics": "metrics.json",
-            "params": "params.yaml",
-            "plots": "plots",
-        },
-        overrides={"cmd": "cmd"},
-        interactive=False,
-        force=False,
-    )
-
-
-def test_experiments_init_explicit(dvc, mocker):
-    stage = mocker.Mock(outs=[])
-    m = mocker.patch("dvc.repo.experiments.init.init", return_value=(stage, [], []))
-    cli_args = parse_args(["exp", "init", "--explicit", "cmd"])
-    cmd = cli_args.func(cli_args)
-
-    assert cmd.run() == 0
-    m.assert_called_once_with(
-        ANY(Repo),
-        name="train",
-        type="default",
-        defaults={},
-        overrides={"cmd": "cmd"},
-        interactive=False,
-        force=False,
-    )
-
-
-def test_experiments_init_cmd_required_for_non_interactive_mode(dvc):
-    cli_args = parse_args(["exp", "init"])
-    cmd = cli_args.func(cli_args)
-    assert isinstance(cmd, CmdExperimentsInit)
-
-    with pytest.raises(InvalidArgumentError) as exc:
-        cmd.run()
-    assert str(exc.value) == "command is not specified"
-
-
-def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
-    cli_args = parse_args(["exp", "init", "--interactive"])
-    cmd = cli_args.func(cli_args)
-    assert isinstance(cmd, CmdExperimentsInit)
-
-    stage = mocker.Mock(outs=[])
-    m = mocker.patch("dvc.repo.experiments.init.init", return_value=(stage, [], []))
-    assert cmd.run() == 0
-    assert called_once_with_subset(m, ANY(Repo), interactive=True)
-
-
-@pytest.mark.parametrize(
-    "extra_args, expected_kw",
-    [
-        (["--type", "default"], {"type": "default", "name": "train"}),
-        (["--type", "checkpoint"], {"type": "checkpoint", "name": "train"}),
-        (["--force"], {"force": True, "name": "train"}),
-        (
-            ["--name", "name", "--type", "checkpoint"],
-            {"name": "name", "type": "checkpoint"},
-        ),
-        (
-            [
-                "--plots",
-                "p",
-                "--models",
-                "m",
-                "--code",
-                "c",
-                "--metrics",
-                "m.json",
-                "--params",
-                "p.yaml",
-                "--data",
-                "d",
-                "--live",
-                "live",
-            ],
-            {
-                "name": "train",
-                "overrides": {
-                    "plots": "p",
-                    "models": "m",
-                    "code": "c",
-                    "metrics": "m.json",
-                    "params": "p.yaml",
-                    "data": "d",
-                    "live": "live",
-                    "cmd": "cmd",
-                },
-            },
-        ),
-    ],
-)
-def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
-    cli_args = parse_args(["exp", "init", *extra_args, "cmd"])
-    cmd = cli_args.func(cli_args)
-    assert isinstance(cmd, CmdExperimentsInit)
-
-    stage = mocker.Mock(outs=[])
-    m = mocker.patch("dvc.repo.experiments.init.init", return_value=(stage, [], []))
-    assert cmd.run() == 0
-    assert called_once_with_subset(m, ANY(Repo), **expected_kw)
-
-
-def test_experiments_init_type_invalid_choice():
-    with pytest.raises(DvcParserError):
-        parse_args(["exp", "init", "--type=invalid", "cmd"])
-
-
-@pytest.mark.parametrize("args", [[], ["--run"]])
-def test_experiments_init_displays_output_on_no_run(dvc, mocker, capsys, args):
-    model_dir = pathlib.Path("models")
-    model_path = str(model_dir / "predict.h5")
-    stage = dvc.stage.create(
-        name="train",
-        cmd=["cmd"],
-        deps=["code", "data"],
-        params=["params.yaml"],
-        outs=["metrics.json", "plots", model_path],
-    )
-    mocker.patch(
-        "dvc.repo.experiments.init.init",
-        return_value=(stage, stage.deps, [model_dir]),
-    )
-    mocker.patch("dvc.repo.experiments.run.run", return_value=0)
-    cli_args = parse_args(["exp", "init", "cmd", *args])
-    cmd = cli_args.func(cli_args)
-    assert cmd.run() == 0
-
-    expected_lines = [
-        "Creating dependencies: code, data and params.yaml",
-        "Creating output directories: models",
-        "Creating train stage in dvc.yaml",
-        "",
-        "Ensure your experiment command creates metrics.json, plots and ",
-        f"{model_path}.",
-    ]
-    if not cli_args.run:
-        expected_lines += [
-            'You can now run your experiment using "dvc exp run".',
-        ]
-
-    out, err = capsys.readouterr()
-    assert not err
-    assert out.splitlines() == expected_lines
 
 
 def test_experiments_save(dvc, scm, mocker):
