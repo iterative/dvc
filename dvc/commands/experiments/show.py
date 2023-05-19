@@ -1,13 +1,11 @@
 import argparse
 import logging
-import os
 import re
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Dict, Iterable
 
 from funcy import lmap
 
-from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.commands.metrics import DEFAULT_PRECISION
@@ -59,7 +57,7 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(  # noqa: C901, PLR0912
+def show_experiments(  # noqa: C901
     td: "TabularData",
     headers: Dict[str, Iterable[str]],
     keep=None,
@@ -67,7 +65,6 @@ def show_experiments(  # noqa: C901, PLR0912
     pager=True,
     csv=False,
     markdown=False,
-    pcp=False,
     **kwargs,
 ):
     if keep:
@@ -110,51 +107,23 @@ def show_experiments(  # noqa: C901, PLR0912
         }
     )
 
-    if kwargs.get("only_changed", False) or pcp:
+    if kwargs.get("only_changed", False):
         td.drop_duplicates("cols", ignore_empty=False)
 
     cols_to_drop = set()
     if drop is not None:
         cols_to_drop = {col for col in td.keys() if re.match(drop, col)}  # noqa: SIM118
-    if pcp:
-        cols_to_drop.add("Created")
     td.drop(*cols_to_drop)
 
-    if pcp:
-        subset = {x for x in td.keys() if x != "Experiment"}  # noqa: SIM118
-        td.dropna(
-            "rows",
-            how="all",
-            subset=subset,
-        )
-        td.drop_duplicates("rows", subset=subset)
-        if "Experiment" in td:
-            td.column("Experiment")[:] = [
-                # remove tree characters
-                str(x).encode("ascii", "ignore").strip().decode()
-                for x in td.column("Experiment")
-            ]
-        out = kwargs.get("out") or "dvc_plots"
-        output_file = os.path.join(out, "index.html")
-        ui.write(
-            td.to_parallel_coordinates(
-                output_path=os.path.abspath(output_file),
-                color_by=kwargs.get("sort_by") or "Experiment",
-            )
-        )
-        if kwargs.get("open"):
-            return ui.open_browser(output_file)
-
-    else:
-        td.render(
-            pager=pager,
-            borders="horizontals",
-            rich_table=True,
-            header_styles=styles,
-            row_styles=row_styles,
-            csv=csv,
-            markdown=markdown,
-        )
+    td.render(
+        pager=pager,
+        borders="horizontals",
+        rich_table=True,
+        header_styles=styles,
+        row_styles=row_styles,
+        csv=csv,
+        markdown=markdown,
+    )
 
 
 def _normalize_headers(names, count):
@@ -221,9 +190,6 @@ class CmdExperimentsShow(CmdBase):
                 csv=self.args.csv,
                 markdown=self.args.markdown,
                 only_changed=self.args.only_changed,
-                pcp=self.args.pcp,
-                out=self.args.out,
-                open=self.args.open,
             )
         return 0
 
@@ -341,27 +307,6 @@ def add_parser(experiments_subparsers, parent_parser):
             f"point. Rounds to {DEFAULT_PRECISION} digits by default."
         ),
         metavar="<n>",
-    )
-    experiments_show_parser.add_argument(
-        "--parallel-coordinates-plot",
-        "--pcp",
-        dest="pcp",
-        action="store_true",
-        default=False,
-        help="Generate a Parallel Coordinates Plot from the tabulated output.",
-    )
-    experiments_show_parser.add_argument(
-        "-o",
-        "--out",
-        default=None,
-        help="Destination folder to save the Parallel Coordinates Plot to",
-        metavar="<path>",
-    ).complete = completion.DIR
-    experiments_show_parser.add_argument(
-        "--open",
-        action="store_true",
-        default=False,
-        help="Open the Parallel Coordinates Plot directly in the browser.",
     )
     experiments_show_parser.add_argument(
         "--no-fetch",

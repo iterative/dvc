@@ -374,21 +374,3 @@ def test_drop_duplicates_invalid_axis():
 
     with pytest.raises(ValueError, match="Invalid 'axis' value foo."):
         td.drop_duplicates("foo")
-
-
-def test_to_parallel_coordinates(tmp_dir, mocker):
-    (tmp_dir / "foo").mkdir()
-    td = TabularData(["categorical", "scalar"])
-    td.extend([["foo", "0.1"], ["bar", "2"]])
-
-    write = mocker.patch("dvc_render.html.render_html")
-    renderer_class = mocker.patch("dvc_render.plotly.ParallelCoordinatesRenderer")
-    renderer = renderer_class.return_value
-
-    td.to_parallel_coordinates(output_path="foo")
-
-    renderer_class.assert_called_with(
-        td.as_dict(), color_by=None, fill_value=td._fill_value
-    )
-
-    write.assert_called_with(renderers=[renderer], output_file="foo")

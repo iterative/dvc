@@ -1,16 +1,10 @@
-import logging
-import os
 from collections import OrderedDict
 from operator import itemgetter
 
-import pytest
-
-from dvc.dvcfile import LOCK_FILE, Lockfile
+from dvc.dvcfile import LOCK_FILE
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
-from dvc.utils.strictyaml import YAMLValidationError, make_relpath
-from dvc_data.hashfile.hash_info import HashInfo
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {
@@ -157,57 +151,3 @@ def test_params_dump(tmp_dir, dvc, run_head):
         remove(item)
     assert dvc.reproduce(stage.addressing) == [stage]
     assert_eq_lockfile(initial_content, read_lock_file())
-
-
-@pytest.fixture
-def v1_repo_lock(tmp_dir, dvc):
-    """Generates a repo having v1 format lockfile"""
-    size = 5 if os.name == "nt" else 4
-    hi = HashInfo(name="md5", value="c157a79031e1c40f85931829bc5fc552")
-    v1_lockdata = {
-        "foo": {"cmd": "echo foo"},
-        "bar": {
-            "cmd": "echo bar>bar.txt",
-            "outs": [{"path": "bar.txt", **hi.to_dict(), "size": size}],
-        },
-    }
-    dvc.run(cmd="echo foo", name="foo", no_exec=True)
-    dvc.run(cmd="echo bar>bar.txt", outs=["bar.txt"], name="bar", no_exec=True)
-    (tmp_dir / "dvc.lock").dump(v1_lockdata)
-    return v1_lockdata
-
-
-def test_can_read_v1_lockfile(tmp_dir, dvc, v1_repo_lock):
-    assert dvc.status() == {
-        "bar": [{"changed outs": {"bar.txt": "not in cache"}}],
-        "foo": ["always changed"],
-    }
-
-
-def test_migrates_v1_lockfile_to_v2_during_dump(tmp_dir, dvc, v1_repo_lock, caplog):
-    caplog.clear()
-    with caplog.at_level(logging.INFO, logger="dvc.dvcfile"):
-        assert dvc.reproduce()
-
-    assert "Migrating lock file 'dvc.lock' from v1 to v2" in caplog.messages
-    d = (tmp_dir / "dvc.lock").parse()
-    assert d == {"stages": v1_repo_lock, "schema": "2.0"}
-
-
-@pytest.mark.parametrize(
-    "version_info", [{"schema": "1.1"}, {"schema": "2.1"}, {"schema": "3.0"}]
-)
-def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
-    lockdata = {**version_info, "stages": {"foo": {"cmd": "echo foo"}}}
-    (tmp_dir / "dvc.lock").dump(lockdata)
-    with pytest.raises(YAMLValidationError) as exc_info:
-        Lockfile(dvc, (tmp_dir / "dvc.lock").fs_path).load()
-
-    rel = make_relpath("dvc.lock")
-    assert f"'{rel}' validation failed" in str(exc_info.value)
-    assert (
-        str(exc_info.value.__cause__)
-        == f"invalid schema version {version_info['schema']}, "
-        "expected one of ['2.0'] for dictionary value @ "
-        "data['schema']"
-    )

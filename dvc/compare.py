@@ -22,7 +22,6 @@ from typing import (
 from funcy import reraise
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
     from dvc.ui.table import CellT
 
 
@@ -160,24 +159,6 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         for row in self:
             writer.writerow(row)
         return buff.getvalue()
-
-    def to_parallel_coordinates(
-        self, output_path: "StrPath", color_by: Optional[str] = None
-    ) -> "StrPath":
-        from dvc_render.html import render_html
-        from dvc_render.plotly import ParallelCoordinatesRenderer
-
-        render_html(
-            renderers=[
-                ParallelCoordinatesRenderer(
-                    self.as_dict(),
-                    color_by=color_by,
-                    fill_value=self._fill_value,
-                )
-            ],
-            output_file=output_path,
-        )
-        return output_path
 
     def add_column(self, name: str) -> None:
         self._columns[name] = Column([self._fill_value] * len(self))
