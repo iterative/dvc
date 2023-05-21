@@ -23,7 +23,7 @@ def pull(  # noqa: C901
     git_remote: str,
     exp_names: Union[Iterable[str], str],
     all_commits=False,
-    rev: Optional[str] = None,
+    rev: Optional[Union[List[str], str]] = None,
     num=1,
     force: bool = False,
     pull_cache: bool = False,
@@ -49,7 +49,9 @@ def pull(  # noqa: C901
                 raise UnresolvedExpNamesError(unresolved_exp_names)
 
         if rev:
-            rev_dict = iter_revs(repo.scm, [rev], num)
+            if isinstance(rev, str):
+                rev = [rev]
+            rev_dict = iter_revs(repo.scm, rev, num)
             rev_set = set(rev_dict.keys())
             ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
             for _, ref_info_list in ref_info_dict.items():
