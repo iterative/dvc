@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import Optional
+from typing import List, Optional, Union
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
@@ -15,14 +15,17 @@ logger = logging.getLogger(__name__)
 @scm_context
 def ls(
     repo,
-    rev: Optional[str] = None,
+    rev: Optional[Union[List[str], str]] = None,
     all_commits: bool = False,
     num: int = 1,
     git_remote: Optional[str] = None,
 ):
     rev_set = None
     if not all_commits:
-        revs = iter_revs(repo.scm, [rev or "HEAD"], num)
+        rev = rev or "HEAD"
+        if isinstance(rev, str):
+            rev = [rev]
+        revs = iter_revs(repo.scm, rev, num)
         rev_set = set(revs.keys())
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
 
