@@ -889,33 +889,6 @@ class TestReproAlreadyCached:
         assert spy_checkout.call_count == 0
 
 
-def test_should_display_metrics_on_repro_with_metrics_option(caplog, capsys, dvc):
-    metrics_file = "metrics_file"
-    metrics_value = 0.123489015
-    ret = main(
-        [
-            "run",
-            "--single-stage",
-            "-m",
-            metrics_file,
-            f"echo {metrics_value} >> {metrics_file}",
-        ]
-    )
-    assert ret == 0
-
-    caplog.clear()
-    capsys.readouterr()  # clearing the buffer
-
-    from dvc.dvcfile import DVC_FILE_SUFFIX
-
-    ret = main(["repro", "--force", "--metrics", metrics_file + DVC_FILE_SUFFIX])
-    assert ret == 0
-
-    expected_metrics_display = f"Path\n{metrics_file}  {metrics_value}\n"
-    actual, _ = capsys.readouterr()
-    assert expected_metrics_display in actual
-
-
 @pytest.fixture
 def repro_dir(tmp_dir, dvc, run_copy):
     # Creates repo with following structure:
