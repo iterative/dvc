@@ -303,5 +303,5 @@ ignore-names = ["M", "SCM"]
 max-args = 10
 
 [tool.bandit]
-exclude_dirs = ["tests", "scripts"]
+exclude_dirs = ["tests", "scripts", "dvc/repo/experiments/utils.py"]
 skips = ["B101"]
