@@ -490,11 +490,6 @@ class Experiments:
 
         return save(self.repo, *args, **kwargs)
 
-    def gc(self, *args, **kwargs):
-        from dvc.repo.experiments.gc import gc
-
-        return gc(self.repo, *args, **kwargs)
-
     def push(self, *args, **kwargs):
         from dvc.repo.experiments.push import push
 
