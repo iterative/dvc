@@ -1,10 +1,8 @@
 import logging
-from functools import partial
 from typing import TYPE_CHECKING, Iterator, List
 
-from dvc.exceptions import DvcException, ReproductionError
+from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
-from dvc.stage.exceptions import CheckpointKilledError
 
 from . import locked
 
@@ -17,21 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 def _reproduce_stage(stage: "Stage", **kwargs) -> List["Stage"]:
-    def _run_callback(repro_callback):
-        stage.dump(update_pipeline=False)
-        _track_stage(stage)
-        repro_callback([stage])
-
-    checkpoint_func = kwargs.pop("checkpoint_func", None)
-    if stage.is_checkpoint:
-        if checkpoint_func:
-            kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
-        else:
-            raise DvcException(
-                "Checkpoint stages are not supported in 'dvc repro'. "
-                "Checkpoint stages must be reproduced with 'dvc exp run'. "
-            )
-
     if stage.frozen and not stage.is_import:
         logger.warning(
             "%s is frozen. Its dependencies are not going to be reproduced.",
@@ -43,10 +26,8 @@ def _reproduce_stage(stage: "Stage", **kwargs) -> List["Stage"]:
         return []
 
     if not kwargs.get("dry", False):
-        track = checkpoint_func is not None
         stage.dump(update_pipeline=False)
-        if track:
-            _track_stage(stage)
+        _track_stage(stage)
 
     return [stage]
 
@@ -182,16 +163,10 @@ def _reproduce_stages(  # noqa: C901
     unchanged: List["Stage"] = []
     # `ret` is used to add a cosmetic newline.
     ret: List["Stage"] = []
-    checkpoint_func = kwargs.pop("checkpoint_func", None)
 
-    for i, stage in enumerate(steps):
+    for stage in steps:
         if ret:
             logger.info("")
-
-        if checkpoint_func:
-            kwargs["checkpoint_func"] = partial(
-                _repro_callback, checkpoint_func, unchanged
-            )
 
         try:
             ret = _reproduce_stage(stage, **kwargs)
@@ -208,21 +183,6 @@ def _reproduce_stages(  # noqa: C901
 
             if ret:
                 result.extend(ret)
-        except CheckpointKilledError:
-            result.append(stage)
-            logger.warning(
-                (
-                    "Checkpoint stage '%s' was interrupted remaining stages in"
-                    " pipeline will not be reproduced."
-                ),
-                stage.addressing,
-            )
-            logger.warning(
-                "skipped stages '%s'",
-                ", ".join(s.addressing for s in steps[i + 1 :]),
-            )
-
-            break
         except Exception as exc:  # noqa: BLE001
             raise ReproductionError(stage.addressing) from exc
 

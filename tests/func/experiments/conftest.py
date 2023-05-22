@@ -1,9 +1,7 @@
 import pytest
 
 from tests.unit.repo.experiments.conftest import (  # noqa, pylint disable=unused-argument
-    checkpoint_stage,
     exp_stage,
-    failed_checkpoint_stage,
     failed_exp_stage,
     session_app,
     session_queue,

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
 
 from funcy import chain, first
 
-from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
@@ -22,7 +21,6 @@ from .refs import (
     CELERY_FAILED_STASH,
     CELERY_STASH,
     EXEC_APPLY,
-    EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     WORKSPACE_STASH,
@@ -48,10 +46,7 @@ class Experiments:
         repo (dvc.repo.Repo): repo instance that these experiments belong to.
     """
 
-    BRANCH_RE = re.compile(
-        r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)"
-        r"(?P<checkpoint>-checkpoint)?$"
-    )
+    BRANCH_RE = re.compile(r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)")
 
     def __init__(self, repo):
         from dvc.scm import NoSCMError
@@ -138,46 +133,17 @@ class Experiments:
     def queue_one(
         self,
         queue: "BaseStashQueue",
-        checkpoint_resume: Optional[str] = None,
-        reset: bool = False,
         **kwargs,
     ) -> "QueueEntry":
         """Queue a single experiment."""
-        if reset:
-            self.reset_checkpoints()
-
         if kwargs.pop("machine", None) is not None:
             # TODO: decide how to handle queued remote execution
             raise NotImplementedError
 
-        if checkpoint_resume:
-            from dvc.scm import resolve_rev
-
-            resume_rev = resolve_rev(self.scm, checkpoint_resume)
-            try:
-                self.check_baseline(resume_rev)
-                checkpoint_resume = resume_rev
-            except BaselineMismatchError as exc:
-                raise DvcException(
-                    f"Cannot resume from '{checkpoint_resume}' as it is not "
-                    "derived from your current workspace."
-                ) from exc
-        else:
-            checkpoint_resume = self._workspace_resume_rev()
-
         return self.new(
             queue,
-            checkpoint_resume=checkpoint_resume,
-            reset=reset,
             **kwargs,
         )
-
-    def _workspace_resume_rev(self) -> Optional[str]:
-        last_checkpoint = self._get_last_checkpoint()
-        last_applied = self._get_last_applied()
-        if last_checkpoint and last_applied:
-            return last_applied
-        return None
 
     def reproduce_celery(  # noqa: C901
         self, entries: Optional[Iterable["QueueEntry"]] = None, **kwargs
@@ -257,17 +223,12 @@ class Experiments:
         self,
         queue: "BaseStashQueue",
         *args,
-        checkpoint_resume: Optional[str] = None,
         **kwargs,
     ) -> "QueueEntry":
         """Create and enqueue a new experiment.
 
         Experiment will be derived from the current workspace.
         """
-        if checkpoint_resume is not None:
-            return self._resume_checkpoint(
-                queue, *args, resume_rev=checkpoint_resume, **kwargs
-            )
 
         name = kwargs.get("name", None)
         baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
@@ -281,59 +242,6 @@ class Experiments:
 
         return queue.put(*args, **kwargs)
 
-    def _resume_checkpoint(
-        self,
-        queue: "BaseStashQueue",
-        *args,
-        resume_rev: Optional[str] = None,
-        **kwargs,
-    ) -> "QueueEntry":
-        """Create and queue a resumed checkpoint experiment."""
-        assert resume_rev
-
-        branch: Optional[str] = None
-        try:
-            allow_multiple = bool(kwargs.get("params", None))
-            branch = self.get_branch_by_rev(resume_rev, allow_multiple=allow_multiple)
-            if not branch:
-                raise DvcException(
-                    f"Could not find checkpoint experiment '{resume_rev[:7]}'"
-                )
-            baseline_rev = self._get_baseline(branch)
-        except MultipleBranchError as exc:
-            baselines = {
-                info.baseline_sha for info in exc.ref_infos if info.baseline_sha
-            }
-            if len(baselines) == 1:
-                baseline_rev = baselines.pop()
-            else:
-                raise
-
-        logger.debug(
-            "Checkpoint run from '%s' with baseline '%s'",
-            resume_rev[:7],
-            baseline_rev,
-        )
-        return queue.put(
-            *args,
-            resume_rev=resume_rev,
-            baseline_rev=baseline_rev,
-            branch=branch,
-            **kwargs,
-        )
-
-    def _get_last_checkpoint(self) -> Optional[str]:
-        try:
-            last_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
-            if last_checkpoint:
-                self.check_baseline(last_checkpoint)
-            return last_checkpoint
-        except BaselineMismatchError:
-            # If HEAD has moved since the the last checkpoint run,
-            # the specified checkpoint is no longer relevant
-            self.scm.remove_ref(EXEC_CHECKPOINT)
-        return None
-
     def _get_last_applied(self) -> Optional[str]:
         try:
             last_applied = self.scm.get_ref(EXEC_APPLY)
@@ -345,10 +253,6 @@ class Experiments:
             # the applied experiment is no longer relevant
             self.scm.remove_ref(EXEC_APPLY)
         return None
-
-    def reset_checkpoints(self):
-        self.scm.remove_ref(EXEC_CHECKPOINT)
-        self.scm.remove_ref(EXEC_APPLY)
 
     @unlocked_repo
     def _reproduce_queue(

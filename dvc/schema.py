@@ -53,7 +53,6 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
         **ANNOTATION_SCHEMA,  # type: ignore[arg-type]
         Output.PARAM_CACHE: bool,
         Output.PARAM_PERSIST: bool,
-        Output.PARAM_CHECKPOINT: bool,
         Output.PARAM_REMOTE: str,
         Output.PARAM_PUSH: bool,
     }

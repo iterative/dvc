@@ -31,21 +31,6 @@ class ExperimentExistsError(DvcException):
         self.name = name
 
 
-class CheckpointExistsError(DvcException):
-    def __init__(self, name: str):
-        msg = (
-            "Reproduced checkpoint experiment conflicts with existing "
-            f"experiment '{name}'. To restart (and overwrite) the existing "
-            "experiment run:\n\n"
-            "\tdvc exp run -f ...\n\n"
-            "To resume the existing experiment, run:\n\n"
-            f"\tdvc exp apply {name}\n"
-            "\tdvc exp run\n"
-        )
-        super().__init__(msg)
-        self.name = name
-
-
 class InvalidExpRefError(DvcException):
     def __init__(self, ref):
         super().__init__(f"'{ref}' is not a valid experiment refname.")

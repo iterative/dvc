@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from enum import IntEnum
-from functools import partial
 from itertools import chain
 from typing import (
     TYPE_CHECKING,
@@ -29,18 +28,12 @@ from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
-from dvc.repo.experiments.exceptions import CheckpointExistsError, ExperimentExistsError
-from dvc.repo.experiments.refs import (
-    EXEC_BASELINE,
-    EXEC_BRANCH,
-    EXEC_CHECKPOINT,
-    ExpRefInfo,
-)
+from dvc.repo.experiments.exceptions import ExperimentExistsError
+from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH, ExpRefInfo
 from dvc.repo.experiments.utils import to_studio_params
 from dvc.repo.metrics.show import _collect_top_level_metrics
 from dvc.repo.params.show import _collect_top_level_params
 from dvc.stage.serialize import to_lockfile
-from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 from dvc.utils.studio import env_to_config
@@ -381,7 +374,7 @@ class BaseExecutor(ABC):
         dest_scm: "Git",
         refs: List[str],
         force: bool = False,
-        on_diverged: Optional[Callable[[str, bool], None]] = None,
+        on_diverged: Optional[Callable[[str], None]] = None,
         **kwargs,
     ) -> Iterable[str]:
         """Fetch reproduced experiment refs into the specified SCM.
@@ -390,17 +383,11 @@ class BaseExecutor(ABC):
             dest_scm: Destination Git instance.
             refs: reference names to be fetched from the remotes.
             force: If True, diverged refs will be overwritten
-            on_diverged: Callback in the form on_diverged(ref, is_checkpoint)
+            on_diverged: Callback in the form on_diverged(ref)
                 to be called when an experiment ref has diverged.
 
         Extra kwargs will be passed into the remote git client.
         """
-
-        if EXEC_CHECKPOINT in refs:
-            refs.remove(EXEC_CHECKPOINT)
-            has_checkpoint = True
-        else:
-            has_checkpoint = False
 
         def on_diverged_ref(orig_ref: str, new_rev: str):
             if force:
@@ -408,23 +395,20 @@ class BaseExecutor(ABC):
                 return True
 
             if on_diverged:
-                return on_diverged(orig_ref, has_checkpoint)
+                return on_diverged(orig_ref)
 
-            self._raise_ref_conflict(dest_scm, orig_ref, new_rev, has_checkpoint)
+            self._raise_ref_conflict(dest_scm, orig_ref, new_rev)
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
         # fetch experiments
         try:
             refspecs = [f"{ref}:{ref}" for ref in refs]
-            # update last run checkpoint (if it exists)
-            if has_checkpoint:
-                refspecs.append(f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}")
             dest_scm.fetch_refspecs(
                 self.git_url,
                 refspecs,
                 on_diverged=on_diverged_ref,
-                force=force or has_checkpoint,
+                force=force,
                 **kwargs,
             )
         except SCMError:
@@ -521,19 +505,6 @@ class BaseExecutor(ABC):
 
             repro_dry = kwargs.get("dry")
 
-            # NOTE: checkpoint outs are handled as a special type of persist
-            # out:
-            #
-            # - checkpoint out may not yet exist if this is the first time this
-            #   experiment has been run, this is not an error condition for
-            #   experiments
-            # - if experiment was run with --reset, the checkpoint out will be
-            #   removed at the start of the experiment (regardless of any
-            #   dvc.lock entry for the checkpoint out)
-            # - if run without --reset, the checkpoint out will be checked out
-            #   using any hash present in dvc.lock (or removed if no entry
-            #   exists in dvc.lock)
-            checkpoint_reset: bool = kwargs.pop("reset", False)
             if not repro_dry:
                 dvc_checkout(
                     dvc,
@@ -542,23 +513,13 @@ class BaseExecutor(ABC):
                     force=True,
                     quiet=True,
                     allow_missing=True,
-                    checkpoint_reset=checkpoint_reset,
                     recursive=kwargs.get("recursive", False),
                 )
-
-            checkpoint_func = partial(
-                cls.checkpoint_callback,
-                dvc,
-                dvc.scm,
-                info.name,
-                repro_force or checkpoint_reset,
-            )
 
             stages = dvc_reproduce(
                 dvc,
                 *args,
                 on_unchanged=filter_pipeline,
-                checkpoint_func=checkpoint_func,
                 **kwargs,
             )
             if paths := cls._get_top_level_paths(dvc):
@@ -570,7 +531,6 @@ class BaseExecutor(ABC):
                 ref, exp_ref, repro_force = cls._repro_commit(
                     dvc,
                     info,
-                    stages,
                     exp_hash,
                     auto_push,
                     git_remote,
@@ -591,20 +551,17 @@ class BaseExecutor(ABC):
         cls,
         dvc,
         info,
-        stages,
         exp_hash,
         auto_push,
         git_remote,
         repro_force,
         message: Optional[str] = None,
     ) -> Tuple[Optional[str], Optional["ExpRefInfo"], bool]:
-        is_checkpoint = any(stage.is_checkpoint for stage in stages)
         cls.commit(
             dvc.scm,
             exp_hash,
             exp_name=info.name,
             force=repro_force,
-            checkpoint=is_checkpoint,
             message=message,
         )
         if auto_push:
@@ -639,7 +596,6 @@ class BaseExecutor(ABC):
         from dvc_studio_client.post_live_metrics import post_live_metrics
 
         from dvc.repo import Repo
-        from dvc.stage.monitor import CheckpointKilledError
 
         with Repo(os.path.join(info.root_dir, info.dvc_dir)) as dvc:
             info.status = TaskStatus.RUNNING
@@ -678,9 +634,6 @@ class BaseExecutor(ABC):
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
                 info.status = TaskStatus.SUCCESS
-            except CheckpointKilledError:
-                info.status = TaskStatus.FAILED
-                raise
             except DvcException:
                 if log_errors:
                     logger.exception("")
@@ -746,31 +699,12 @@ class BaseExecutor(ABC):
             )
 
     @classmethod
-    def checkpoint_callback(
-        cls,
-        dvc: "Repo",
-        scm: "Git",
-        name: Optional[str],
-        force: bool,
-        unchanged: Iterable["PipelineStage"],
-        stages: Iterable["PipelineStage"],
-    ):
-        exp_hash = cls.hash_exp(list(stages) + list(unchanged))
-        exp_rev = cls.commit(scm, exp_hash, exp_name=name, force=force, checkpoint=True)
-
-        if env2bool(DVC_EXP_AUTO_PUSH):
-            git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
-            cls._auto_push(dvc, scm, git_remote)
-        ui.write(f"Checkpoint experiment iteration '{exp_rev[:7]}'.")
-
-    @classmethod
     def commit(
         cls,
         scm: "Git",
         exp_hash: str,
         exp_name: Optional[str] = None,
         force: bool = False,
-        checkpoint: bool = False,
         message: Optional[str] = None,
     ):
         """Commit stages as an experiment and return the commit SHA."""
@@ -805,23 +739,20 @@ class BaseExecutor(ABC):
         scm.commit(message, no_verify=True)
         new_rev = scm.get_rev()
         if check_conflict:
-            new_rev = cls._raise_ref_conflict(scm, branch, new_rev, checkpoint)
+            new_rev = cls._raise_ref_conflict(scm, branch, new_rev)
         else:
             scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
-        if checkpoint:
-            scm.set_ref(EXEC_CHECKPOINT, new_rev)
+
         return new_rev
 
     @staticmethod
-    def _raise_ref_conflict(scm, ref, new_rev, checkpoint):
+    def _raise_ref_conflict(scm, ref, new_rev):
         # If this commit is a duplicate of the existing commit at 'ref', return
         # the existing commit. Otherwise, error out and require user to re-run
         # with --force as needed
         orig_rev = scm.get_ref(ref)
         if scm.diff(orig_rev, new_rev):
-            if checkpoint:
-                raise CheckpointExistsError(ref)
             raise ExperimentExistsError(ref)
         return orig_rev
 
