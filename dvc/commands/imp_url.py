@@ -20,10 +20,6 @@ class CmdImportUrl(CmdBase):
                 no_download=self.args.no_download,
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
-                desc=self.args.desc,
-                type=self.args.type,
-                labels=self.args.labels,
-                meta=self.args.meta,
                 jobs=self.args.jobs,
                 force=self.args.force,
                 version_aware=self.args.version_aware,
@@ -41,8 +37,6 @@ class CmdImportUrl(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    from .add import _add_annotating_args
-
     IMPORT_HELP = "Download or copy file from URL and take it under DVC control."
 
     import_parser = subparsers.add_parser(
@@ -126,5 +120,4 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Import using cloud versioning. Implied if the URL contains a version ID.",
     )
-    _add_annotating_args(import_parser)
     import_parser.set_defaults(func=CmdImportUrl)

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def remove(  # noqa: C901, PLR0912
     repo: "Repo",
     exp_names: Union[None, str, List[str]] = None,
-    rev: Optional[str] = None,
+    rev: Optional[Union[List[str], str]] = None,
     all_commits: bool = False,
     num: int = 1,
     queue: bool = False,
@@ -60,6 +60,8 @@ def remove(  # noqa: C901, PLR0912
         if remained:
             raise UnresolvedExpNamesError(remained, git_remote=git_remote)
     elif rev:
+        if isinstance(rev, str):
+            rev = [rev]
         exp_ref_dict = _resolve_exp_by_baseline(repo, rev, num, git_remote)
         removed.extend(exp_ref_dict.keys())
         exp_ref_list.extend(exp_ref_dict.values())
@@ -85,14 +87,14 @@ def remove(  # noqa: C901, PLR0912
 
 def _resolve_exp_by_baseline(
     repo: "Repo",
-    rev: str,
+    rev: List[str],
     num: int,
     git_remote: Optional[str] = None,
 ) -> Dict[str, "ExpRefInfo"]:
     assert isinstance(repo.scm, Git)
 
     commit_ref_dict: Dict[str, "ExpRefInfo"] = {}
-    rev_dict = iter_revs(repo.scm, [rev], num)
+    rev_dict = iter_revs(repo.scm, rev, num)
     rev_set = set(rev_dict.keys())
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
     for _, ref_info_list in ref_info_dict.items():

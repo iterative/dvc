@@ -17,8 +17,6 @@ def test_import_url(mocker):
             "file",
             "--jobs",
             "4",
-            "--desc",
-            "description",
         ]
     )
     assert cli_args.func == CmdImportUrl
@@ -36,10 +34,6 @@ def test_import_url(mocker):
         no_download=False,
         remote=None,
         to_remote=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=4,
         force=False,
         version_aware=False,
@@ -78,8 +72,6 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
             "out",
             "--file",
             "file",
-            "--desc",
-            "description",
         ]
     )
 
@@ -94,10 +86,6 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
         fname="file",
         remote=None,
         to_remote=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
         force=False,
         version_aware=False,
@@ -114,8 +102,6 @@ def test_import_url_to_remote(mocker):
             "--to-remote",
             "--remote",
             "remote",
-            "--desc",
-            "description",
         ]
     )
     assert cli_args.func == CmdImportUrl
@@ -133,10 +119,6 @@ def test_import_url_to_remote(mocker):
         no_download=False,
         remote="remote",
         to_remote=True,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
         force=False,
         version_aware=False,

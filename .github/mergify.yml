@@ -7,3 +7,4 @@ pull_request_rules:
       backport:
         branches:
           - "2.x"
+        title: ({{ destination_branch }}) {{ title }} (backport #{{ number }})

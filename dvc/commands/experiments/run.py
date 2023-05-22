@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        from dvc.compare import show_metrics
-
         if self.args.checkpoint_resume:
             if self.args.reset:
                 raise InvalidArgumentError("--reset and --rev are mutually exclusive.")
@@ -26,7 +24,7 @@ class CmdExperimentsRun(CmdRepro):
         if self.args.reset:
             ui.write("Any existing checkpoints will be reset and re-run.")
 
-        results = self.repo.experiments.run(
+        self.repo.experiments.run(
             name=self.args.name,
             queue=self.args.queue,
             run_all=self.args.run_all,
@@ -40,11 +38,6 @@ class CmdExperimentsRun(CmdRepro):
             message=self.args.message,
             **self._common_kwargs,
         )
-
-        if self.args.metrics and results:
-            metrics = self.repo.metrics.show(revs=list(results))
-            metrics.pop("workspace", None)
-            show_metrics(metrics)
 
         return 0
 
@@ -149,7 +142,7 @@ def _add_run_common(parser):
         ),
     )
     parser.add_argument(
-        "-M",
+        "-m",
         "--message",
         type=str,
         default=None,

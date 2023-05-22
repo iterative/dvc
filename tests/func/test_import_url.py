@@ -4,7 +4,6 @@ from uuid import uuid4
 
 import pytest
 
-from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dependency.base import Dependency, DependencyDoesNotExistError
 from dvc.dvcfile import load_file
@@ -251,35 +250,6 @@ def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):
 
     assert stage.outs[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
     assert stage.outs[0].meta.size == 12
-
-
-def test_imp_url_with_annotations(M, tmp_dir, dvc, local_workspace):
-    local_workspace.gen("foo", "foo")
-    annot = {
-        "desc": "foo desc",
-        "labels": ["l1", "l2"],
-        "type": "t1",
-        "meta": {"key": "value"},
-    }
-    stage = dvc.imp_url(
-        "remote://workspace/foo",
-        os.fspath(tmp_dir / "foo"),
-        no_exec=True,
-        **annot,
-    )
-    assert stage.outs[0].annot == Annotation(**annot)
-    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
-
-    # try to selectively update/overwrite some annotations
-    annot = {**annot, "type": "t2"}
-    stage = dvc.imp_url(
-        "remote://workspace/foo",
-        os.fspath(tmp_dir / "foo"),
-        no_exec=True,
-        type="t2",
-    )
-    assert stage.outs[0].annot == Annotation(**annot)
-    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
 
 
 def test_import_url_fs_config(tmp_dir, dvc, workspace, mocker):

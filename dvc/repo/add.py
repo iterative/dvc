@@ -297,7 +297,4 @@ def create_stages(
                 force=force,
             )
             output_exists = False
-
-        out_obj = stage.outs[0]
-        out_obj.annot.update(**kwargs)
         yield StageInfo(stage, output_exists)
