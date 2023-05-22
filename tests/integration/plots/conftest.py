@@ -153,21 +153,25 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
             outs=["confusion_test.json"],
             commit="confusion_test",
         )
-        plots_config = {
-            "linear_train_vs_test": {
-                "x": "x",
-                "y": {"linear_train.json": "y", "linear_test.json": "y"},
-                "title": "linear plot",
+        plots_config = [
+            {
+                "linear_train_vs_test": {
+                    "x": "x",
+                    "y": {"linear_train.json": "y", "linear_test.json": "y"},
+                    "title": "linear plot",
+                }
             },
-            "confusion_train_vs_test": {
-                "x": "actual",
-                "y": {
-                    "confusion_train.json": "predicted",
-                    "confusion_test.json": "predicted",
-                },
-                "template": "confusion",
+            {
+                "confusion_train_vs_test": {
+                    "x": "actual",
+                    "y": {
+                        "confusion_train.json": "predicted",
+                        "confusion_test.json": "predicted",
+                    },
+                    "template": "confusion",
+                }
             },
-        }
+        ]
 
         from dvc.utils.serialize import modify_yaml
 

@@ -1,4 +1,5 @@
 import pytest
+from funcy import merge
 
 from tests.utils.plots import get_plot
 
@@ -108,10 +109,9 @@ def test_api_with_config_plots(tmp_dir, dvc, capsys, repo_with_config_plots):
 
     plots_data = next(dvc.plots.collect())
 
-    assert (
-        get_plot(plots_data, "workspace", typ="definitions", file="dvc.yaml")
-        == plots_state["configs"]["dvc.yaml"]
-    )
+    assert get_plot(
+        plots_data, "workspace", typ="definitions", file="dvc.yaml"
+    ) == merge(*plots_state["configs"]["dvc.yaml"])
 
     for file in plots_state["data"]:
         data_source = get_plot(plots_data, "workspace", file=file, endkey="data_source")

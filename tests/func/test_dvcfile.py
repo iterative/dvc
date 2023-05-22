@@ -407,17 +407,8 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
     assert (tmp_dir / "dvc.yaml").parse() == data
 
 
-@pytest.mark.parametrize(
-    "data",
-    (
-        {
-            "plots": {
-                "path/to/plot": {"x": "value", "y": "value"},
-                "path/to/another/plot": {"x": "value", "y": "value"},
-                "path/to/empty/plot": None,
-            },
-            "stages": STAGE_EXAMPLE,
-        },
+def test_dvcfile_load_with_plots(tmp_dir, dvc):
+    (tmp_dir / "dvc.yaml").dump(
         {
             "plots": [
                 {"path/to/plot": {"x": "value", "y": "value"}},
@@ -427,10 +418,7 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
             ],
             "stages": STAGE_EXAMPLE,
         },
-    ),
-)
-def test_dvcfile_load_with_plots(tmp_dir, dvc, data):
-    (tmp_dir / "dvc.yaml").dump(data)
+    )
     plots = list(dvc.plots.collect())
     top_level_plots = plots[0]["workspace"]["definitions"]["data"]["dvc.yaml"]["data"]
     assert all(
