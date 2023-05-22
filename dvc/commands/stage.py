@@ -1,5 +1,6 @@
 import argparse
 import logging
+from contextlib import contextmanager
 from itertools import chain, filterfalse
 from typing import TYPE_CHECKING, Dict, Iterable, List
 
@@ -119,6 +120,18 @@ def parse_cmd(commands: List[str]) -> str:
     return " ".join(map(quote_argument, commands))
 
 
+@contextmanager
+def _disable_logging(highest_level=logging.CRITICAL):
+    previous_level = logging.root.manager.disable
+
+    logging.disable(highest_level)
+
+    try:
+        yield
+    finally:
+        logging.disable(previous_level)
+
+
 class CmdStageAdd(CmdBase):
     def run(self):
         from dvc.repo import lock_repo
@@ -132,7 +145,9 @@ class CmdStageAdd(CmdBase):
         )
 
         with self.repo.scm_context, lock_repo(self.repo):
-            stage = self.repo.stage.add(**kwargs)
+            with _disable_logging(logging.INFO):
+                stage = self.repo.stage.add(**kwargs)
+            logger.info("Added stage %r in %r", stage.addressing, stage.relpath)
             if self.args.run:
                 stage.run()
                 stage.dump(update_pipeline=False)
