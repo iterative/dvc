@@ -2,7 +2,6 @@ import logging
 import os
 from collections import defaultdict
 from copy import copy
-from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Optional, Tuple
 
 from scmrepo.exceptions import SCMError
@@ -75,7 +74,6 @@ def _read_params(
 ):
     res: Dict[str, Dict] = defaultdict(lambda: defaultdict(dict))
     fs_paths = copy(params_fs_paths)
-    fs = repo.dvcfs
 
     if deps or stages:
         for param in params:
@@ -93,9 +91,8 @@ def _read_params(
         fs_paths += [param.fs_path for param in params]
 
     for fs_path in fs_paths:
-        if Path(fs_path).is_relative_to(repo.root_dir):  # type: ignore[attr-defined]
-            fs_path = fs.path.relpath(fs_path, repo.root_dir)
-        from_path = _read_fs_path(fs, fs_path, onerror=onerror)
+        path = repo.dvcfs.from_os_path(fs_path)
+        from_path = _read_fs_path(repo.dvcfs, path, onerror=onerror)
         if from_path:
             name = os.sep.join(repo.fs.path.relparts(fs_path))
             res[name] = from_path
