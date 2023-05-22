@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class CmdExperimentsList(CmdBase):
     def run(self):
         name_only = self.args.name_only
+        sha_only = self.args.sha_only
         exps = self.repo.experiments.ls(
             all_commits=self.args.all_commits,
             rev=self.args.rev,
@@ -19,11 +20,15 @@ class CmdExperimentsList(CmdBase):
         )
 
         for baseline in exps:
-            if not name_only:
+            if not (name_only or sha_only):
                 ui.write(f"{baseline}:")
-            for exp_name in exps[baseline]:
-                indent = "" if name_only else "\t"
-                ui.write(f"{indent}{exp_name}")
+            for exp_name, rev in exps[baseline]:
+                if name_only:
+                    ui.write(exp_name)
+                elif sha_only:
+                    ui.write(rev)
+                else:
+                    ui.write(f"\t{exp_name}\t{rev}")
 
         return 0
 
@@ -40,11 +45,18 @@ def add_parser(experiments_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_rev_selection_flags(experiments_list_parser, "List")
-    experiments_list_parser.add_argument(
+    display_group = experiments_list_parser.add_mutually_exclusive_group()
+    display_group.add_argument(
         "--name-only",
         "--names-only",
         action="store_true",
-        help="Only output experiment names (without parent commits).",
+        help="Only output experiment names (without SHAs or parent commits).",
+    )
+    display_group.add_argument(
+        "--sha-only",
+        "--shas-only",
+        action="store_true",
+        help="Only output experiment commit SHAs (without names or parent commits).",
     )
     experiments_list_parser.add_argument(
         "git_remote",

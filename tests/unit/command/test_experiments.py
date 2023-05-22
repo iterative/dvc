@@ -188,6 +188,31 @@ def test_experiments_list(dvc, scm, mocker):
     )
 
 
+@pytest.mark.parametrize("args", [["--name-only"], ["--sha-only"], []])
+def test_experiments_list_format(mocker, capsys, args):
+    mocker.patch(
+        "dvc.repo.experiments.ls.ls",
+        return_value={
+            "main": [
+                ("exp-a", "sha-a"),
+            ]
+        },
+    )
+    cli_args = parse_args(
+        [
+            "experiments",
+            "list",
+        ]
+    )
+
+    cmd = cli_args.func(cli_args)
+
+    capsys.readouterr()
+    assert cmd.run() == 0
+    cap = capsys.readouterr()
+    assert cap.out == "main:\n\texp-a\tsha-a"
+
+
 def test_experiments_push(dvc, scm, mocker):
     cli_args = parse_args(
         [
