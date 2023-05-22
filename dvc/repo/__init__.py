@@ -8,7 +8,6 @@ from typing import (
     Callable,
     ContextManager,
     Iterable,
-    List,
     Optional,
     Tuple,
     Union,
@@ -499,12 +498,6 @@ class Repo:
                 used[odb].update(objs)
 
         return used
-
-    @property
-    def stages(
-        self,
-    ) -> List["Stage"]:  # obsolete, only for backward-compatibility
-        return self.index.stages
 
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
         # using `outs_graph` to ensure graph checks are run
