@@ -210,7 +210,7 @@ def test_experiments_list_format(mocker, capsys, args):
     capsys.readouterr()
     assert cmd.run() == 0
     cap = capsys.readouterr()
-    assert cap.out == "main:\n\texp-a\tsha-a"
+    assert cap.out == "main:\n\texp-a\tsha-a\n"
 
 
 def test_experiments_push(dvc, scm, mocker):

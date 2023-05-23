@@ -28,7 +28,10 @@ class CmdExperimentsList(CmdBase):
                 elif sha_only:
                     ui.write(rev)
                 else:
-                    ui.write(f"\t{exp_name}\t{rev}")
+                    exp_out = f"\t{exp_name}"
+                    if rev:
+                        exp_out += f"\t{rev}"
+                    ui.write(exp_out)
 
         return 0
 

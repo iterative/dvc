@@ -19,7 +19,7 @@ def ls(
     all_commits: bool = False,
     num: int = 1,
     git_remote: Optional[str] = None,
-) -> Dict[str, List[Tuple[str, str]]]:
+) -> Dict[str, List[Tuple[str, Optional[str]]]]:
     """List experiments.
 
     Returns a dict mapping baseline revs to a list of (exp_name, exp_sha) tuples.
@@ -44,7 +44,10 @@ def ls(
         if tags[baseline] or ref_heads[baseline]:
             name = tags[baseline] or ref_heads[baseline][len(base) + 1 :]
         for info in ref_info_dict[baseline]:
-            exp_rev = next(repo.scm.branch_revs(str(info), info.baseline_sha))[:7]
+            if git_remote:
+                exp_rev = None
+            else:
+                exp_rev = next(repo.scm.branch_revs(str(info), info.baseline_sha))[:7]
             results[name].append((info.name, exp_rev))
 
     return results
