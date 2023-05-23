@@ -1,37 +1,21 @@
 import argparse
 import logging
 
-from dvc.cli import completion
 from dvc.cli.utils import append_doc_link
 from dvc.commands.repro import CmdRepro
 from dvc.commands.repro import add_arguments as add_repro_arguments
-from dvc.exceptions import InvalidArgumentError
-from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        if self.args.checkpoint_resume:
-            if self.args.reset:
-                raise InvalidArgumentError("--reset and --rev are mutually exclusive.")
-            if not (self.args.queue or self.args.tmp_dir):
-                raise InvalidArgumentError(
-                    "--rev can only be used in conjunction with --queue or --temp."
-                )
-
-        if self.args.reset:
-            ui.write("Any existing checkpoints will be reset and re-run.")
-
         self.repo.experiments.run(
             name=self.args.name,
             queue=self.args.queue,
             run_all=self.args.run_all,
             jobs=self.args.jobs,
             params=self.args.set_param,
-            checkpoint_resume=self.args.checkpoint_resume,
-            reset=self.args.reset,
             tmp_dir=self.args.tmp_dir,
             machine=self.args.machine,
             copy_paths=self.args.copy_paths,
@@ -52,22 +36,6 @@ def add_parser(experiments_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     _add_run_common(experiments_run_parser)
-    experiments_run_parser.add_argument(
-        "-r",
-        "--rev",
-        type=str,
-        dest="checkpoint_resume",
-        help=(
-            "Continue the specified checkpoint experiment. Can only be used "
-            "in conjunction with --queue or --temp."
-        ),
-        metavar="<experiment_rev>",
-    ).complete = completion.EXPERIMENT
-    experiments_run_parser.add_argument(
-        "--reset",
-        action="store_true",
-        help="Reset existing checkpoints and restart the experiment.",
-    )
     experiments_run_parser.set_defaults(func=CmdExperimentsRun)
 
 

@@ -22,7 +22,6 @@ class CmdRun(CmdBase):
                 self.args.plots_no_cache,
                 self.args.outs_persist,
                 self.args.outs_persist_no_cache,
-                self.args.checkpoints,
                 self.args.params,
                 self.args.command,
             ]
@@ -39,7 +38,7 @@ class CmdRun(CmdBase):
             {
                 "cmd": parse_cmd(self.args.command),
                 "fname": kwargs.pop("file"),
-                "no_exec": self.args.no_exec or bool(self.args.checkpoints),
+                "no_exec": self.args.no_exec,
                 "run_cache": not kwargs.pop("no_run_cache"),
             }
         )

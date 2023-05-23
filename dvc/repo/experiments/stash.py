@@ -21,7 +21,7 @@ class ExpStashEntry(NamedTuple):
         is not pushed onto the stash ref.
     head_rev: HEAD Git commit to be checked out for this experiment.
     baseline_rev: Experiment baseline commit.
-    branch: Optional exp (checkpoint) branch name for this experiment.
+    branch: Optional branch name for this experiment.
     name: Optional exp name.
     """
 

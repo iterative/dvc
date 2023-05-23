@@ -101,7 +101,6 @@ class WorkspaceQueue(BaseStashQueue):
         self, entry: QueueEntry, executor: "BaseExecutor", **kwargs
     ) -> Dict[str, Dict[str, str]]:
         kwargs.pop("copy_paths", None)
-        from dvc.stage.monitor import CheckpointKilledError
         from dvc_task.proc.process import ProcessInfo
 
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
@@ -127,9 +126,6 @@ class WorkspaceQueue(BaseStashQueue):
                 results[rev].update(
                     self.collect_executor(self.repo.experiments, executor, exec_result)
                 )
-        except CheckpointKilledError:
-            # Checkpoint errors have already been logged
-            return {}
         except DvcException:
             raise
         except Exception as exc:  # noqa: BLE001

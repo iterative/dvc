@@ -9,14 +9,6 @@ class StageCmdFailedError(DvcException):
         super().__init__(msg)
 
 
-class CheckpointKilledError(DvcException):
-    def __init__(self, cmd, status=None):
-        msg = f"failed to finish: {cmd}"
-        if status is not None:
-            msg += f", exited with {status}"
-        super().__init__(msg)
-
-
 class StageFileDoesNotExistError(DvcException):
     DVC_IGNORED = "is dvc-ignored"
     DOES_NOT_EXIST = "does not exist"
