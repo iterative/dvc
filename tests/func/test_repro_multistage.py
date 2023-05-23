@@ -9,6 +9,7 @@ from dvc.cli import main
 from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.stage import PipelineStage
+from dvc.stage.cache import RunCacheNotSupported
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils.fs import remove
 
@@ -457,3 +458,17 @@ def test_repro_allow_missing_and_pull(tmp_dir, dvc, mocker, local_remote):
     ret = dvc.reproduce(pull=True, allow_missing=True)
     # create-foo is skipped ; copy-foo pulls missing dep
     assert len(ret) == 1
+
+
+def test_repro_pulls_continue_without_run_cache(tmp_dir, dvc, mocker, local_remote):
+    (foo,) = tmp_dir.dvc_gen("foo", "foo")
+
+    dvc.push()
+    mocker.patch.object(
+        dvc.stage_cache, "pull", side_effect=RunCacheNotSupported("foo")
+    )
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    remove("foo")
+    remove(foo.outs[0].cache_path)
+
+    assert dvc.reproduce(pull=True)
