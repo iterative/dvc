@@ -705,6 +705,7 @@ class BaseStashQueue(ABC):
 
     def active_repo(self, name: str) -> "Repo":
         """Return a Repo for the specified active experiment if it exists."""
+        from dvc.exceptions import DvcException
         from dvc.repo import Repo
         from dvc.repo.experiments.exceptions import (
             ExpNotStartedError,

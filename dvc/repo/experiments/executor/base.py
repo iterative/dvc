@@ -461,6 +461,7 @@ class BaseExecutor(ABC):
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.repo.reproduce import reproduce as dvc_reproduce
         from dvc.stage import PipelineStage
+        from dvc.ui import ui
 
         auto_push = env2bool(DVC_EXP_AUTO_PUSH)
         git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
