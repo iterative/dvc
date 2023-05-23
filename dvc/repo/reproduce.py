@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Iterator, List
 
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
+from dvc.stage.cache import RunCacheNotSupported
 
 from . import locked
 
@@ -108,7 +109,10 @@ def reproduce(  # noqa: C901, PLR0912
 
     if kwargs.get("pull", False):
         logger.debug("Pulling run cache")
-        self.stage_cache.pull(None)
+        try:
+            self.stage_cache.pull(None)
+        except RunCacheNotSupported:
+            logger.debug("Failed to pull run cache")
 
     return _reproduce_stages(self.index.graph, list(stages), **kwargs)
 
