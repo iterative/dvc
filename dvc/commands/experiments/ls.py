@@ -3,6 +3,7 @@ import logging
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.exceptions import InvalidArgumentError
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
@@ -12,11 +13,14 @@ class CmdExperimentsList(CmdBase):
     def run(self):
         name_only = self.args.name_only
         sha_only = self.args.sha_only
+        git_remote = self.args.git_remote
+        if sha_only and git_remote:
+            raise InvalidArgumentError("--sha-only not supported with git_remote.")
         exps = self.repo.experiments.ls(
             all_commits=self.args.all_commits,
             rev=self.args.rev,
             num=self.args.num,
-            git_remote=self.args.git_remote,
+            git_remote=git_remote,
         )
 
         for baseline in exps:
@@ -27,11 +31,10 @@ class CmdExperimentsList(CmdBase):
                     ui.write(exp_name)
                 elif sha_only:
                     ui.write(rev)
+                elif rev:
+                    ui.write(f"\t{rev} [{exp_name}]")
                 else:
-                    exp_out = f"\t{exp_name}"
-                    if rev:
-                        exp_out += f"\t{rev}"
-                    ui.write(exp_out)
+                    ui.write(f"\t{exp_name}")
 
         return 0
 
