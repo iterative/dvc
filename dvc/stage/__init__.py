@@ -277,14 +277,6 @@ class Stage(params.StageParams):
     def is_versioned_import(self) -> bool:
         return self.is_import and self.deps[0].fs.version_aware
 
-    @property
-    def is_checkpoint(self) -> bool:
-        """
-        A stage containing checkpoint outs is always considered as changed
-        since the checkpoint out is a circular dependency.
-        """
-        return any(out.checkpoint for out in self.outs)
-
     def short_description(self) -> Optional["str"]:
         desc: Optional["str"] = None
         if self.desc:
@@ -294,36 +286,20 @@ class Stage(params.StageParams):
                 return line.strip()
         return desc
 
-    def _read_env(self, out, checkpoint_func=None) -> Env:
-        env: Env = {}
-        if out.checkpoint and checkpoint_func:
-            from dvc.env import DVC_CHECKPOINT
-
-            env.update({DVC_CHECKPOINT: "1"})
-        return env
-
-    def env(self, checkpoint_func=None) -> Env:
+    def env(self) -> Env:
         from dvc.env import DVC_ROOT
 
         env: Env = {}
         if self.repo:
             env.update({DVC_ROOT: self.repo.root_dir})
 
-        for out in self.outs:
-            current = self._read_env(out, checkpoint_func=checkpoint_func)
-            if any(
-                env.get(key) != current.get(key)
-                for key in set(env.keys()).intersection(current.keys())
-            ):
-                raise DvcException("Conflicting values for env variable")
-            env.update(current)
         return env
 
     def changed_deps(self, allow_missing: bool = False) -> bool:
         if self.frozen:
             return False
 
-        if self.is_callback or self.always_changed or self.is_checkpoint:
+        if self.is_callback or self.always_changed:
             return True
 
         return self._changed_deps(allow_missing=allow_missing)
@@ -384,7 +360,7 @@ class Stage(params.StageParams):
     def remove_outs(self, ignore_remove=False, force=False) -> None:
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            if (out.persist or out.checkpoint) and not force:
+            if out.persist and not force:
                 out.unprotect()
                 continue
 
@@ -525,7 +501,7 @@ class Stage(params.StageParams):
             try:
                 out.save()
             except OutputDoesNotExistError:
-                if not (allow_missing or out.checkpoint):
+                if not allow_missing:
                     raise
 
             if old_out := old_versioned_outs.get(out.def_path):
@@ -560,7 +536,7 @@ class Stage(params.StageParams):
             try:
                 out.commit(filter_info=filter_info, **kwargs)
             except OutputDoesNotExistError:
-                if not (allow_missing or out.checkpoint):
+                if not allow_missing:
                     raise
             except CacheLinkError:
                 link_failures.append(out.fs_path)
@@ -579,7 +555,7 @@ class Stage(params.StageParams):
             try:
                 out.add(filter_info, **kwargs)
             except (FileNotFoundError, OutputDoesNotExistError):
-                if not (allow_missing or out.checkpoint):
+                if not allow_missing:
                     raise
             except CacheLinkError:
                 link_failures.append(filter_info or out.fs_path)
@@ -619,7 +595,7 @@ class Stage(params.StageParams):
             self._check_missing_outputs()
 
         if not dry:
-            if kwargs.get("checkpoint_func", None) or no_download:
+            if no_download:
                 allow_missing = True
 
             no_cache_outs = any(
@@ -666,7 +642,7 @@ class Stage(params.StageParams):
         for out in self.filter_outs(kwargs.get("filter_info")):
             key, outs = self._checkout(
                 out,
-                allow_missing=allow_missing or self.is_checkpoint,
+                allow_missing=allow_missing,
                 **kwargs,
             )
             if key:
@@ -721,7 +697,7 @@ class Stage(params.StageParams):
             ret.append({"changed outs": outs_status})
 
     def _status_always_changed(self, ret) -> None:
-        if self.is_callback or self.always_changed or self.is_checkpoint:
+        if self.is_callback or self.always_changed:
             ret.append("always changed")
 
     def _status_stage(self, ret) -> None:

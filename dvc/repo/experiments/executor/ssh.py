@@ -11,7 +11,6 @@ from funcy import first
 from dvc.repo.experiments.refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
-    EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
     EXEC_NAMESPACE,
@@ -162,7 +161,6 @@ class SSHExecutor(BaseExecutor):
                 self._ssh_cmd(fs, f"git symbolic-ref {EXEC_BRANCH} {branch}")
             else:
                 self._ssh_cmd(fs, f"git symbolic-ref -d {EXEC_BRANCH}", check=False)
-            self._ssh_cmd(fs, f"git update-ref -d {EXEC_CHECKPOINT}", check=False)
 
             # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
             # committing

@@ -34,7 +34,6 @@ PARAM_CACHE = Output.PARAM_CACHE
 PARAM_METRIC = Output.PARAM_METRIC
 PARAM_PLOT = Output.PARAM_PLOT
 PARAM_PERSIST = Output.PARAM_PERSIST
-PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
 PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
 PARAM_PUSH = Output.PARAM_PUSH
@@ -49,8 +48,6 @@ def _get_flags(out):
 
     if not out.use_cache:
         yield PARAM_CACHE, False
-    if out.checkpoint:
-        yield PARAM_CHECKPOINT, True
     if out.persist:
         yield PARAM_PERSIST, True
     if out.plot and isinstance(out.plot, dict):

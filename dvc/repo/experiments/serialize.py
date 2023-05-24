@@ -69,7 +69,6 @@ class SerializableExp:
                 onerror=onerror_collect,
             )
         )
-        meta = cls._gather_meta(repo)
         return cls(
             rev=rev,
             params=params,
@@ -94,15 +93,8 @@ class SerializableExp:
                 for out in repo.index.outs
                 if not (out.is_metric or out.is_plot)
             },
-            meta=meta,
             **kwargs,
         )
-
-    @staticmethod
-    def _gather_meta(repo: "Repo") -> Dict[str, Any]:
-        return {
-            "has_checkpoints": any(stage.is_checkpoint for stage in repo.index.stages)
-        }
 
     def dumpd(self) -> Dict[str, Any]:
         return asdict(self)

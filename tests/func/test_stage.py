@@ -7,9 +7,8 @@ from dvc.dvcfile import SingleStageFile
 from dvc.exceptions import OutputDuplicationError
 from dvc.fs import LocalFileSystem
 from dvc.output import Output
-from dvc.repo import Repo, lock_repo
+from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
-from dvc.stage.run import run_stage
 from dvc.stage.utils import compute_md5
 from dvc.utils import dict_md5
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -316,24 +315,6 @@ def test_stage_remove_pointer_stage(tmp_dir, dvc, run_copy):
     with dvc.lock:
         stage.remove()
     assert not (tmp_dir / stage.relpath).exists()
-
-
-@pytest.mark.parametrize("checkpoint", [True, False])
-def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
-    stage = Stage(dvc, "stage.dvc", cmd="mycmd arg1 arg2")
-    mocker.patch.object(stage, "save")
-
-    mock_cmd_run = mocker.patch("dvc.stage.run.cmd_run")
-    if checkpoint:
-        callback = mocker.Mock()
-    else:
-        callback = None
-
-    with lock_repo(dvc):
-        run_stage(stage, checkpoint_func=callback)
-    mock_cmd_run.assert_called_with(
-        stage, checkpoint_func=callback, dry=False, run_env=None
-    )
 
 
 def test_stage_add_duplicated_output(tmp_dir, dvc):

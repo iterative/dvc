@@ -118,7 +118,6 @@ def test_hydra_sweep(
         patched.assert_any_call(
             mocker.ANY,
             params=e,
-            reset=True,
             targets=None,
             copy_paths=None,
             message=None,

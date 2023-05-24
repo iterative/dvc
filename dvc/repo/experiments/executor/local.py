@@ -10,10 +10,8 @@ from shortuuid import uuid
 
 from dvc.lock import LockError
 from dvc.repo.experiments.refs import (
-    EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
-    EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
     EXEC_NAMESPACE,
@@ -124,9 +122,6 @@ class TempDirExecutor(BaseLocalExecutor):
                 if self.scm.get_ref(EXEC_BRANCH):
                     self.scm.remove_ref(EXEC_BRANCH)
 
-            if self.scm.get_ref(EXEC_CHECKPOINT):
-                self.scm.remove_ref(EXEC_CHECKPOINT)
-
         # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
         # committing
         assert isinstance(self.scm, Git)
@@ -189,7 +184,6 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._detach_stack = ExitStack()
-        self._orig_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
 
     @classmethod
     def from_stash_entry(
@@ -251,6 +245,3 @@ class WorkspaceExecutor(BaseLocalExecutor):
             self.scm.remove_ref(EXEC_MERGE)
             if self.scm.get_ref(EXEC_BRANCH):
                 self.scm.remove_ref(EXEC_BRANCH)
-            checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
-            if checkpoint and checkpoint != self._orig_checkpoint:
-                self.scm.set_ref(EXEC_APPLY, checkpoint)

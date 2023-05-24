@@ -196,17 +196,6 @@ def _add_common_args(parser):
         metavar="<filename>",
     ).complete = completion.FILE
     parser.add_argument(
-        "-c",
-        "--checkpoints",
-        action="append",
-        default=[],
-        help=(
-            "Declare checkpoint output file or directory for 'dvc exp run'. "
-            "Not compatible with 'dvc repro'."
-        ),
-        metavar="<filename>",
-    ).complete = completion.FILE
-    parser.add_argument(
         "--external",
         action="store_true",
         default=False,

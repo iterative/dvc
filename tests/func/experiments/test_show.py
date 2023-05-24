@@ -243,40 +243,6 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage, test_queue)
     }
 
 
-@pytest.mark.vscode
-@pytest.mark.parametrize("workspace", [True, False])
-def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace):
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
-    )
-    exp_rev = first(results)
-
-    baseline = dvc.experiments.show()[1]
-    assert baseline.data.meta.get("has_checkpoints")
-    checkpoints = first(baseline.experiments)
-    # 2 checkpoints + final commit
-    assert len(checkpoints) == checkpoint_stage.iterations + 1
-    assert first(checkpoints).rev == exp_rev
-
-    capsys.readouterr()
-    assert main(["exp", "show", "--no-pager"]) == 0
-    cap = capsys.readouterr()
-
-    for i, exp in enumerate(checkpoints):
-        rev = exp.rev
-        if i == 0:
-            name = dvc.experiments.get_exact_name([rev])[rev]
-            name = f"{rev[:7]} [{name}]"
-            fs = "╓"
-        elif i == len(checkpoints) - 1:
-            name = rev[:7]
-            fs = "╨"
-        else:
-            name = rev[:7]
-            fs = "╟"
-        assert f"{fs} {name}" in cap.out
-
-
 def test_show_filter(
     tmp_dir,
     scm,
