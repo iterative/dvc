@@ -25,14 +25,14 @@ class CmdExperimentsList(CmdBase):
 
         for baseline in exps:
             if not (name_only or sha_only):
-                ui.write(f"{baseline}:")
+                ui.write(f"{baseline[:7]}:")
             for exp_name, rev in exps[baseline]:
                 if name_only:
                     ui.write(exp_name)
                 elif sha_only:
                     ui.write(rev)
                 elif rev:
-                    ui.write(f"\t{rev} [{exp_name}]")
+                    ui.write(f"\t{rev[:7]} [{exp_name}]")
                 else:
                     ui.write(f"\t{exp_name}")
 

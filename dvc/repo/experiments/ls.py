@@ -40,14 +40,14 @@ def ls(
 
     results = defaultdict(list)
     for baseline in ref_info_dict:
-        name = baseline[:7]
+        name = baseline
         if tags[baseline] or ref_heads[baseline]:
             name = tags[baseline] or ref_heads[baseline][len(base) + 1 :]
         for info in ref_info_dict[baseline]:
             if git_remote:
                 exp_rev = None
             else:
-                exp_rev = next(repo.scm.branch_revs(str(info), info.baseline_sha))[:7]
+                exp_rev = repo.scm.get_ref(str(info))
             results[name].append((info.name, exp_rev))
 
     return results

@@ -179,12 +179,12 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     git_downstream.tmp_dir.scm.fetch_refspecs(remote, ["master:master"])
     exp_list = downstream_exp.ls(rev=baseline_a, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a[:7]: {(ref_info_a.name, None), (ref_info_b.name, None)}
+        baseline_a: {(ref_info_a.name, None), (ref_info_b.name, None)}
     }
 
     exp_list = downstream_exp.ls(all_commits=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a[:7]: {(ref_info_a.name, None), (ref_info_b.name, None)},
+        baseline_a: {(ref_info_a.name, None), (ref_info_b.name, None)},
         "master": {(ref_info_c.name, None)},
     }
 

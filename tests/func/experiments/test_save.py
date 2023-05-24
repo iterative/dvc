@@ -70,7 +70,7 @@ def test_exp_save_after_commit(tmp_dir, dvc, scm):
     dvc.experiments.save(name="exp-2", force=True)
 
     all_exps = dvc.experiments.ls(all_commits=True)
-    assert all_exps[baseline[:7]][0][0] == "exp-1"
+    assert all_exps[baseline][0][0] == "exp-1"
     assert all_exps["master"][0][0] == "exp-2"
 
 
