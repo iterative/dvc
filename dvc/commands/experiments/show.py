@@ -25,9 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 experiment_types = {
-    "checkpoint_tip": "│ ╓",
-    "checkpoint_commit": "│ ╟",
-    "checkpoint_base": "├─╨",
     "branch_commit": "├──",
     "branch_base": "└──",
     "baseline": "",

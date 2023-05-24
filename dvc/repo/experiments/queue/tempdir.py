@@ -100,8 +100,6 @@ class TempDirQueue(WorkspaceQueue):
         message: Optional[str] = None,
         **kwargs,
     ) -> Dict[str, Dict[str, str]]:
-        from dvc.stage.monitor import CheckpointKilledError
-
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
         exec_name = self._EXEC_NAME or entry.stash_rev
         infofile = self.get_infofile_path(exec_name)
@@ -122,12 +120,6 @@ class TempDirQueue(WorkspaceQueue):
                 results[rev].update(
                     self.collect_executor(self.repo.experiments, executor, exec_result)
                 )
-        except CheckpointKilledError:
-            results[rev].update(
-                self.collect_executor(self.repo.experiments, executor, exec_result)
-            )
-
-            return results
         except DvcException:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -143,14 +135,6 @@ class TempDirQueue(WorkspaceQueue):
         exec_result: "ExecutorResult",
     ) -> Dict[str, str]:
         return BaseStashQueue.collect_executor(exp, executor, exec_result)
-
-    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
-        result: Dict[str, Dict] = {}
-        for entry in self.iter_active():
-            result.update(
-                fetch_running_exp_from_temp_dir(self, entry.stash_rev, fetch_refs)
-            )
-        return result
 
     def collect_active_data(
         self,

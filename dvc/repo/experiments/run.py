@@ -87,9 +87,6 @@ def run(  # noqa: C901, PLR0912
     else:
         sweeps = [path_overrides]
 
-    if not kwargs.get("checkpoint_resume", None):
-        kwargs["reset"] = True
-
     for idx, sweep_overrides in enumerate(sweeps):
         if hydra_sweep and name_prefix is not None:
             kwargs["name"] = f"{name_prefix}-{idx+1}"

@@ -26,7 +26,6 @@ from .refs import (
     EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
-    EXEC_CHECKPOINT,
     EXPS_NAMESPACE,
     ITER_SKIP_NAMESPACES,
     STASHES,
@@ -221,7 +220,6 @@ def exp_commits(
 def remove_exp_refs(scm: "Git", ref_infos: Iterable[ExpRefInfo]):
     exec_branch = scm.get_ref(EXEC_BRANCH, follow=False)
     exec_apply = scm.get_ref(EXEC_APPLY)
-    exec_checkpoint = scm.get_ref(EXEC_CHECKPOINT)
 
     for ref_info in ref_infos:
         ref = scm.get_ref(str(ref_info))
@@ -229,8 +227,6 @@ def remove_exp_refs(scm: "Git", ref_infos: Iterable[ExpRefInfo]):
             scm.remove_ref(EXEC_BRANCH)
         if exec_apply and exec_apply == ref:
             scm.remove_ref(EXEC_APPLY)
-        if exec_checkpoint and exec_checkpoint == ref:
-            scm.remove_ref(EXEC_CHECKPOINT)
         scm.remove_ref(str(ref_info))
 
 

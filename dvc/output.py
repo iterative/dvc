@@ -91,7 +91,6 @@ def loadd_from(stage, d_list):
         metric = d.pop(Output.PARAM_METRIC, False)
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
-        checkpoint = d.pop(Output.PARAM_CHECKPOINT, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
@@ -105,7 +104,6 @@ def loadd_from(stage, d_list):
                 metric=metric,
                 plot=plot,
                 persist=persist,
-                checkpoint=checkpoint,
                 remote=remote,
                 **annot,
                 files=files,
@@ -122,7 +120,6 @@ def loads_from(
     metric=False,
     plot=False,
     persist=False,
-    checkpoint=False,
     remote=None,
     push=True,
 ):
@@ -135,7 +132,6 @@ def loads_from(
             metric=metric,
             plot=plot,
             persist=persist,
-            checkpoint=checkpoint,
             remote=remote,
             push=push,
         )
@@ -191,7 +187,6 @@ def load_from_pipeline(stage, data, typ="outs"):
             [
                 Output.PARAM_CACHE,
                 Output.PARAM_PERSIST,
-                Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
                 Output.PARAM_PUSH,
                 *ANNOTATION_FIELDS,
@@ -286,7 +281,6 @@ class Output:
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
-    PARAM_CHECKPOINT = "checkpoint"
     PARAM_FILES = "files"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
@@ -327,7 +321,6 @@ class Output:
         metric=False,
         plot=False,
         persist=False,
-        checkpoint=False,
         desc=None,
         type=None,  # noqa: A002, pylint: disable=redefined-builtin
         labels=None,
@@ -394,7 +387,6 @@ class Output:
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
-        self.checkpoint = checkpoint
         self.can_push = push
 
         self.fs_path = self._parse_path(self.fs, fs_path)
@@ -822,9 +814,6 @@ class Output:
             if self.persist:
                 ret[self.PARAM_PERSIST] = self.persist
 
-            if self.checkpoint:
-                ret[self.PARAM_CHECKPOINT] = self.checkpoint
-
             if self.remote:
                 ret[self.PARAM_REMOTE] = self.remote
 
@@ -894,7 +883,6 @@ class Output:
         relink: bool = False,
         filter_info: Optional[str] = None,
         allow_missing: bool = False,
-        checkpoint_reset: bool = False,
         **kwargs,
     ) -> Optional[Tuple[bool, Optional[bool]]]:
         # callback passed act as a aggregate callback.
@@ -914,11 +902,6 @@ class Output:
             # backward compatibility
             return None
 
-        if self.checkpoint and checkpoint_reset:
-            if self.exists:
-                self.remove()
-            return None
-
         added = not self.exists
 
         try:
@@ -935,7 +918,7 @@ class Output:
                 **kwargs,
             )
         except CheckoutError:
-            if allow_missing or self.checkpoint:
+            if allow_missing:
                 return None
             raise
         self.set_exec()
@@ -1436,7 +1419,6 @@ ARTIFACT_SCHEMA = {
     Required(Output.PARAM_PATH): str,
     Output.PARAM_PLOT: bool,
     Output.PARAM_PERSIST: bool,
-    Output.PARAM_CHECKPOINT: bool,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
 }
 
