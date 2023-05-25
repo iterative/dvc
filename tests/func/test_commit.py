@@ -5,13 +5,14 @@ import pytest
 
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dvcfile import PROJECT_FILE
+from dvc.fs import localfs
 from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
 
 
 def test_commit_recursive(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"file": "text1", "subdir": {"file2": "text2"}}})
-    stages = dvc.add("dir", recursive=True, no_commit=True)
+    stages = dvc.add(localfs.find("dir"), no_commit=True)
 
     assert len(stages) == 2
     assert dvc.status() != {}

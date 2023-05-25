@@ -390,13 +390,14 @@ class Stage(params.StageParams):
         source: str,
         odb: Optional["ObjectDB"] = None,
         to_remote: bool = False,
-        **kwargs: Any,
+        jobs: Optional[int] = None,
+        force: bool = False,
     ) -> None:
         assert len(self.outs) == 1
         (out,) = self.outs
-        out.transfer(source, odb=odb, jobs=kwargs.get("jobs"))
+        out.transfer(source, odb=odb, jobs=jobs)
         if not to_remote:
-            out.checkout(force=kwargs.get("force"))
+            out.checkout(force=force)
             out.ignore()
 
     @rwlocked(read=["deps"], write=["outs"])

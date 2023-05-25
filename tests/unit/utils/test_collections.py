@@ -4,11 +4,9 @@ import pytest
 
 from dvc.utils.collections import (
     apply_diff,
-    chunk_dict,
     merge_dicts,
     remove_missing_keys,
     to_omegaconf,
-    validate,
 )
 from dvc.utils.serialize import dumps_yaml
 
@@ -59,88 +57,6 @@ def test_apply_diff_seq():
     dest = {"l": inner}
     apply_diff(src, dest)
     assert dest["l"] is inner, "Updates inner lists"
-
-
-def test_chunk_dict():
-    assert chunk_dict({}) == []
-
-    d = {"a": 1, "b": 2, "c": 3}
-    assert chunk_dict(d) == [{"a": 1}, {"b": 2}, {"c": 3}]
-    assert chunk_dict(d, 2) == [{"a": 1, "b": 2}, {"c": 3}]
-    assert chunk_dict(d, 3) == [d]
-    assert chunk_dict(d, 4) == [d]
-
-
-def _test_func(x, y, *args, j=3, k=5, **kwargs):
-    pass
-
-
-def test_pre_validate_decorator_required_args(mocker):
-    mock = mocker.MagicMock()
-
-    func_mock = mocker.create_autospec(_test_func)
-    func = validate(mock)(func_mock)
-
-    func("x", "y")
-
-    func_mock.assert_called_once_with("x", "y", j=3, k=5)
-    mock.assert_called_once()
-
-    (args,) = mock.call_args[0]
-    assert args.x == "x"
-    assert args.y == "y"
-    assert args.args == ()
-    assert args.j == 3
-    assert args.k == 5
-    assert args.kwargs == {}
-
-
-def test_pre_validate_decorator_kwargs_args(mocker):
-    mock = mocker.MagicMock()
-    func_mock = mocker.create_autospec(_test_func)
-    func = validate(mock)(func_mock)
-
-    func("x", "y", "part", "of", "args", j=1, k=10, m=100, n=1000)
-
-    func_mock.assert_called_once_with(
-        "x", "y", "part", "of", "args", j=1, k=10, m=100, n=1000
-    )
-    mock.assert_called_once()
-    (args,) = mock.call_args[0]
-    assert args.x == "x"
-    assert args.y == "y"
-    assert args.args == ("part", "of", "args")
-    assert args.j == 1
-    assert args.k == 10
-    assert args.kwargs == {"m": 100, "n": 1000}
-
-
-def test_pre_validate_update_args(mocker):
-    def test_validator(args):
-        args.w += 50
-        del args.x
-        args.y = 100
-
-    def test_func(w=1, x=5, y=10, z=15):
-        pass
-
-    mock = mocker.create_autospec(test_func)
-    func = validate(test_validator)(mock)
-
-    func(100, 100)
-    mock.assert_called_once_with(w=150, y=100, z=15)
-
-
-def test_post_validate_decorator(mocker):
-    def none_filter(result):
-        return list(filter(None, result))
-
-    test_func = mocker.MagicMock(return_value=[1, None, 2])
-    func = validate(none_filter, post=True)(test_func)
-
-    result = func()
-    test_func.assert_called_once()
-    assert result == [1, 2]
 
 
 def is_serializable(d):

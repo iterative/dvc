@@ -4,6 +4,7 @@ import shutil
 import pytest
 
 import dvc_data
+from dvc.fs import localfs
 from dvc.fs.data import DataFileSystem
 from dvc.utils.fs import remove
 from dvc_data.hashfile.build import build
@@ -137,7 +138,7 @@ def test_walk(tmp_dir, dvc):
         }
     )
 
-    dvc.add("dir", recursive=True)
+    dvc.add(localfs.find("dir"))
     fs = DataFileSystem(index=dvc.index.data["repo"])
 
     expected = [
