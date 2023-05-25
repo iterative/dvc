@@ -362,10 +362,6 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
     assert ret == 0
     assert file_md5_counter.mock.call_count == 1
 
-    ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
-    assert ret == 0
-    assert file_md5_counter.mock.call_count == 1
-
     os.rename("foo", "foo.back")
     ret = main(["checkout"])
     assert ret == 0
@@ -392,19 +388,14 @@ def test_should_update_state_entry_for_directory_after_add(mocker, dvc, tmp_dir)
     assert ret == 0
     assert file_md5_counter.mock.call_count == 5
 
-    ls = "dir" if os.name == "nt" else "ls"
-    ret = main(["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")])
-    assert ret == 0
-    assert file_md5_counter.mock.call_count == 7
-
     os.rename("data", "data.back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 7
+    assert file_md5_counter.mock.call_count == 5
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 9
+    assert file_md5_counter.mock.call_count == 6
 
 
 def test_add_commit(tmp_dir, dvc):
