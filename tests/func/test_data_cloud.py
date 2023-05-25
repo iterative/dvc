@@ -147,8 +147,6 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     assert ret == 0
     ret = main(["push"])
     assert ret == 0
-    ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
-    assert ret == 0
     assert test_file_md5.mock.call_count == 1
 
 

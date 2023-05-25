@@ -335,9 +335,10 @@ def test_repro_dry_no_exec(tmp_dir, dvc):
 
         ret = main(
             [
-                "run",
-                "--no-exec",
-                "--single-stage",
+                "stage",
+                "add",
+                "-n",
+                f"copy-{idir}-{odir}",
                 "-d",
                 idir,
                 "-o",
@@ -351,18 +352,17 @@ def test_repro_dry_no_exec(tmp_dir, dvc):
 
     ret = main(
         [
-            "run",
-            "--no-exec",
-            "--single-stage",
-            "--file",
-            DVC_FILE,
+            "stage",
+            "add",
+            "-n",
+            "ls",
             *deps,
             "ls {}".format(" ".join(dep for i, dep in enumerate(deps) if i % 2)),
         ]
     )
     assert ret == 0
 
-    ret = main(["repro", "--dry", DVC_FILE])
+    ret = main(["repro", "--dry", "ls"])
     assert ret == 0
 
 
@@ -1114,14 +1114,27 @@ def test_downstream(dvc):
     #    \ /
     #     A
     #
-    assert main(["run", "--single-stage", "-o", "A", "echo A>A"]) == 0
-    assert main(["run", "--single-stage", "-d", "A", "-o", "B", "echo B>B"]) == 0
-    assert main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
+    assert main(["stage", "add", "-n", "stage-A", "--run", "-o", "A", "echo A>A"]) == 0
+    assert (
+        main(
+            ["stage", "add", "-n", "stage-B", "--run", "-d", "A", "-o", "B", "echo B>B"]
+        )
+        == 0
+    )
+    assert (
+        main(
+            ["stage", "add", "-n", "stage-C", "--run", "-d", "A", "-o", "C", "echo C>C"]
+        )
+        == 0
+    )
     assert (
         main(
             [
-                "run",
-                "--single-stage",
+                "stage",
+                "add",
+                "-n",
+                "stage-D",
+                "--run",
                 "-d",
                 "B",
                 "-d",
@@ -1133,13 +1146,21 @@ def test_downstream(dvc):
         )
         == 0
     )
-    assert main(["run", "--single-stage", "-o", "G", "echo G>G"]) == 0
-    assert main(["run", "--single-stage", "-d", "G", "-o", "F", "echo F>F"]) == 0
+    assert main(["stage", "add", "-n", "stage-G", "--run", "-o", "G", "echo G>G"]) == 0
+    assert (
+        main(
+            ["stage", "add", "-n", "stage-F", "--run", "-d", "G", "-o", "F", "echo F>F"]
+        )
+        == 0
+    )
     assert (
         main(
             [
-                "run",
-                "--single-stage",
+                "stage",
+                "add",
+                "-n",
+                "stage-E",
+                "--run",
                 "-d",
                 "D",
                 "-d",
@@ -1160,22 +1181,25 @@ def test_downstream(dvc):
     #    /
     #   B
     #
-    evaluation = dvc.reproduce("B.dvc", downstream=True, force=True)
+    evaluation = dvc.reproduce("stage-B", downstream=True, force=True)
 
     assert len(evaluation) == 3
-    assert evaluation[0].relpath == "B.dvc"
-    assert evaluation[1].relpath == "D.dvc"
-    assert evaluation[2].relpath == "E.dvc"
+    assert evaluation[0].addressing == "stage-B"
+    assert evaluation[1].addressing == "stage-D"
+    assert evaluation[2].addressing == "stage-E"
 
     # B, C should be run (in any order) before D
     # See https://github.com/iterative/dvc/issues/3602
-    evaluation = dvc.reproduce("A.dvc", downstream=True, force=True)
+    evaluation = dvc.reproduce("stage-A", downstream=True, force=True)
 
     assert len(evaluation) == 5
-    assert evaluation[0].relpath == "A.dvc"
-    assert {evaluation[1].relpath, evaluation[2].relpath} == {"B.dvc", "C.dvc"}
-    assert evaluation[3].relpath == "D.dvc"
-    assert evaluation[4].relpath == "E.dvc"
+    assert evaluation[0].addressing == "stage-A"
+    assert {evaluation[1].addressing, evaluation[2].addressing} == {
+        "stage-B",
+        "stage-C",
+    }
+    assert evaluation[3].addressing == "stage-D"
+    assert evaluation[4].addressing == "stage-E"
 
 
 def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
