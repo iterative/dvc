@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
@@ -19,7 +19,11 @@ def ls(
     all_commits: bool = False,
     num: int = 1,
     git_remote: Optional[str] = None,
-):
+) -> Dict[str, List[Tuple[str, Optional[str]]]]:
+    """List experiments.
+
+    Returns a dict mapping baseline revs to a list of (exp_name, exp_sha) tuples.
+    """
     rev_set = None
     if not all_commits:
         rev = rev or "HEAD"
@@ -36,9 +40,14 @@ def ls(
 
     results = defaultdict(list)
     for baseline in ref_info_dict:
-        name = baseline[:7]
+        name = baseline
         if tags[baseline] or ref_heads[baseline]:
             name = tags[baseline] or ref_heads[baseline][len(base) + 1 :]
-        results[name] = [info.name for info in ref_info_dict[baseline]]
+        for info in ref_info_dict[baseline]:
+            if git_remote:
+                exp_rev = None
+            else:
+                exp_rev = repo.scm.get_ref(str(info))
+            results[name].append((info.name, exp_rev))
 
     return results
