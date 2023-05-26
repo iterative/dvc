@@ -10,6 +10,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -369,12 +370,13 @@ def _describe(
 
 
 def _sorted_ranges(exp_ranges: Iterable["ExpRange"]) -> List["ExpRange"]:
-    """Return list of ExpRange sorted by timestamp."""
+    """Return list of ExpRange sorted by (timestamp, rev)."""
 
-    def _head_timestamp(exp_range: "ExpRange") -> datetime:
+    def _head_timestamp(exp_range: "ExpRange") -> Tuple[datetime, str]:
         head_exp = first(exp_range.revs)
         if head_exp and head_exp.data and head_exp.data.timestamp:
-            return head_exp.data.timestamp
-        return datetime.fromtimestamp(0)
+            return head_exp.data.timestamp, head_exp.rev
+
+        return datetime.fromtimestamp(0), ""
 
     return sorted(exp_ranges, key=_head_timestamp, reverse=True)
