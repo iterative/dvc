@@ -284,7 +284,8 @@ def create_stages(
             (out_obj,) = repo.find_outs_by_path(target, strict=False)
             stage = out_obj.stage
             if not stage.is_data_source:
-                raise DvcException(f"cannot update {out!r}: not a data source")
+                msg = f"cannot update {out!r}: overlaps with an output of {stage}."
+                raise DvcException(msg)
             output_exists = True
         except OutputNotFoundError:
             stage = repo.stage.create(
