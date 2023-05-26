@@ -186,6 +186,62 @@ def test_experiments_list(dvc, scm, mocker):
     )
 
 
+@pytest.mark.parametrize(
+    "args,expected",
+    [
+        ([], "main:\n\tsha-a [exp-a]\n"),
+        (["--name-only"], "exp-a\n"),
+        (["--sha-only"], "sha-a\n"),
+    ],
+)
+def test_experiments_list_format(mocker, capsys, args, expected):
+    mocker.patch(
+        "dvc.repo.experiments.ls.ls",
+        return_value={
+            "main": [
+                ("exp-a", "sha-a"),
+            ]
+        },
+    )
+    raw_args = ["experiments", "list", *args]
+    cli_args = parse_args(raw_args)
+
+    cmd = cli_args.func(cli_args)
+
+    capsys.readouterr()
+    assert cmd.run() == 0
+    cap = capsys.readouterr()
+    assert cap.out == expected
+
+
+def test_experiments_list_remote(mocker, capsys):
+    mocker.patch(
+        "dvc.repo.experiments.ls.ls",
+        return_value={
+            "main": [
+                ("exp-a", None),
+            ]
+        },
+    )
+    cli_args = parse_args(["experiments", "list", "git_remote"])
+
+    cmd = cli_args.func(cli_args)
+
+    capsys.readouterr()
+    assert cmd.run() == 0
+    cap = capsys.readouterr()
+    assert cap.out == "main:\n\texp-a\n"
+
+    cli_args = parse_args(["experiments", "list", "git_remote", "--sha-only"])
+
+    cmd = cli_args.func(cli_args)
+
+    capsys.readouterr()
+
+    with pytest.raises(InvalidArgumentError):
+        cmd.run()
+
+
 def test_experiments_push(dvc, scm, mocker):
     cli_args = parse_args(
         [

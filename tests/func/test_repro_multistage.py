@@ -9,6 +9,7 @@ from dvc.cli import main
 from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.stage import PipelineStage
+from dvc.stage.cache import RunCacheNotSupported
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils.fs import remove
 
@@ -36,7 +37,7 @@ def test_repro_frozen(tmp_dir, dvc, run_copy):
     assert stages == [data_stage, stage0]
 
 
-def test_downstream(tmp_dir, dvc):
+def test_downstream(M, tmp_dir, dvc):
     # The dependency graph should look like this:
     #
     #       E
@@ -47,19 +48,60 @@ def test_downstream(tmp_dir, dvc):
     #    \ /
     #     A
     #
-    assert main(["run", "-n", "A-gen", "-o", "A", "echo A>A"]) == 0
-    assert main(["run", "-n", "B-gen", "-d", "A", "-o", "B", "echo B>B"]) == 0
-    assert main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
+    assert main(["stage", "add", "--run", "-n", "A-gen", "-o", "A", "echo A>A"]) == 0
     assert (
-        main(["run", "-n", "D-gen", "-d", "B", "-d", "C", "-o", "D", "echo D>D"]) == 0
+        main(["stage", "add", "--run", "-n", "B-gen", "-d", "A", "-o", "B", "echo B>B"])
+        == 0
     )
-    assert main(["run", "--single-stage", "-o", "G", "echo G>G"]) == 0
-    assert main(["run", "-n", "F-gen", "-d", "G", "-o", "F", "echo F>F"]) == 0
     assert (
         main(
             [
-                "run",
-                "--single-stage",
+                "stage",
+                "add",
+                "--run",
+                "-n",
+                "C-gen",
+                "-d",
+                "A",
+                "-o",
+                "C",
+                "echo C>C",
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "stage",
+                "add",
+                "--run",
+                "-n",
+                "D-gen",
+                "-d",
+                "B",
+                "-d",
+                "C",
+                "-o",
+                "D",
+                "echo D>D",
+            ]
+        )
+        == 0
+    )
+    assert main(["stage", "add", "--run", "-n", "G-gen", "-o", "G", "echo G>G"]) == 0
+    assert (
+        main(["stage", "add", "--run", "-n", "F-gen", "-d", "G", "-o", "F", "echo F>F"])
+        == 0
+    )
+    assert (
+        main(
+            [
+                "stage",
+                "add",
+                "--run",
+                "-n",
+                "E-gen",
                 "-d",
                 "D",
                 "-d",
@@ -83,41 +125,24 @@ def test_downstream(tmp_dir, dvc):
     evaluation = dvc.reproduce(PROJECT_FILE + ":B-gen", downstream=True, force=True)
 
     assert len(evaluation) == 3
-    assert isinstance(evaluation[0], PipelineStage)
-    assert evaluation[0].relpath == PROJECT_FILE
-    assert evaluation[0].name == "B-gen"
-
-    assert isinstance(evaluation[1], PipelineStage)
-    assert evaluation[1].relpath == PROJECT_FILE
-    assert evaluation[1].name == "D-gen"
-
-    assert not isinstance(evaluation[2], PipelineStage)
-    assert evaluation[2].relpath == "E.dvc"
+    assert all(isinstance(stage, PipelineStage) for stage in evaluation)
+    assert all(stage.relpath == PROJECT_FILE for stage in evaluation)
+    assert [stage.name for stage in evaluation] == ["B-gen", "D-gen", "E-gen"]
 
     # B, C should be run (in any order) before D
     # See https://github.com/iterative/dvc/issues/3602
     evaluation = dvc.reproduce(PROJECT_FILE + ":A-gen", downstream=True, force=True)
 
     assert len(evaluation) == 5
-    assert isinstance(evaluation[0], PipelineStage)
-    assert evaluation[0].relpath == PROJECT_FILE
-    assert evaluation[0].name == "A-gen"
-
-    names = set()
-    for stage in evaluation[1:3]:
-        if isinstance(stage, PipelineStage):
-            assert stage.relpath == PROJECT_FILE
-            names.add(stage.name)
-        else:
-            names.add(stage.relpath)
-    assert names == {"B-gen", "C.dvc"}
-
-    assert isinstance(evaluation[3], PipelineStage)
-    assert evaluation[3].relpath == PROJECT_FILE
-    assert evaluation[3].name == "D-gen"
-
-    assert not isinstance(evaluation[4], PipelineStage)
-    assert evaluation[4].relpath == "E.dvc"
+    assert all(isinstance(stage, PipelineStage) for stage in evaluation)
+    assert all(stage.relpath == PROJECT_FILE for stage in evaluation)
+    assert [stage.name for stage in evaluation] == [
+        "A-gen",
+        M.any_of("B-gen", "C-gen"),
+        M.any_of("B-gen", "C-gen"),
+        "D-gen",
+        "E-gen",
+    ]
 
 
 def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
@@ -457,3 +482,30 @@ def test_repro_allow_missing_and_pull(tmp_dir, dvc, mocker, local_remote):
     ret = dvc.reproduce(pull=True, allow_missing=True)
     # create-foo is skipped ; copy-foo pulls missing dep
     assert len(ret) == 1
+
+
+def test_repro_pulls_continue_without_run_cache(tmp_dir, dvc, mocker, local_remote):
+    (foo,) = tmp_dir.dvc_gen("foo", "foo")
+
+    dvc.push()
+    mocker.patch.object(
+        dvc.stage_cache, "pull", side_effect=RunCacheNotSupported("foo")
+    )
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    remove("foo")
+    remove(foo.outs[0].cache_path)
+
+    assert dvc.reproduce(pull=True)
+
+
+def test_repro_skip_pull_if_no_run_cache_is_passed(tmp_dir, dvc, mocker, local_remote):
+    (foo,) = tmp_dir.dvc_gen("foo", "foo")
+
+    dvc.push()
+    spy_pull = mocker.spy(dvc.stage_cache, "pull")
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    remove("foo")
+    remove(foo.outs[0].cache_path)
+
+    assert dvc.reproduce(pull=True, run_cache=False)
+    assert not spy_pull.called

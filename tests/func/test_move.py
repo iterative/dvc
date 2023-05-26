@@ -141,7 +141,7 @@ def test_should_move_to_dir_on_non_default_stage_file(tmp_dir, dvc):
     stage_file_name = "stage.dvc"
     tmp_dir.gen({"file": "file_content"})
 
-    dvc.add("file", fname=stage_file_name)
+    dvc.add("file", file=stage_file_name)
     os.mkdir("directory")
 
     dvc.move("file", "directory")

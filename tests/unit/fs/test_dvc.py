@@ -5,6 +5,7 @@ from unittest import mock
 
 import pytest
 
+from dvc.fs import localfs
 from dvc.fs.dvc import DVCFileSystem
 from dvc.testing.tmp_dir import make_subrepo
 from dvc_data.hashfile.build import build
@@ -185,7 +186,7 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
             }
         }
     )
-    dvc.add(str(tmp_dir / "dir"), recursive=True)
+    dvc.add(localfs.find("dir"))
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     fs = DVCFileSystem(repo=dvc)
 

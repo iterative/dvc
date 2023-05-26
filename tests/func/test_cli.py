@@ -11,7 +11,6 @@ from dvc.commands.data_sync import CmdDataPull, CmdDataPush
 from dvc.commands.init import CmdInit
 from dvc.commands.remove import CmdRemove
 from dvc.commands.repro import CmdRepro
-from dvc.commands.run import CmdRun
 from dvc.commands.status import CmdDataStatus
 from dvc.exceptions import NotDvcRepoError
 
@@ -19,54 +18,6 @@ from dvc.exceptions import NotDvcRepoError
 def test_argparse(dvc):
     args = parse_args(["init"])
     assert isinstance(args.func(args), CmdInit)
-
-
-def test_run(dvc):
-    dep1 = "dep1"
-    dep2 = "dep2"
-
-    out1 = "out1"
-    out2 = "out2"
-
-    out_no_cache1 = "out_no_cache1"
-    out_no_cache2 = "out_no_cache2"
-
-    fname = "dvc.dvc"
-    cmd = "cmd"
-    arg1 = "arg1"
-    arg2 = "arg2"
-
-    args = parse_args(
-        [
-            "run",
-            "-d",
-            dep1,
-            "--deps",
-            dep2,
-            "-o",
-            out1,
-            "--outs",
-            out2,
-            "-O",
-            out_no_cache1,
-            "--outs-no-cache",
-            out_no_cache2,
-            "--file",
-            fname,
-            cmd,
-            arg1,
-            arg2,
-        ]
-    )
-    cmd_cls = args.func(args)
-    assert isinstance(cmd_cls, CmdRun)
-    assert args.deps == [dep1, dep2]
-    assert args.outs == [out1, out2]
-    assert args.outs_no_cache == [out_no_cache1, out_no_cache2]
-    assert args.file == fname
-    assert args.command == [cmd, arg1, arg2]
-
-    cmd_cls.repo.close()
 
 
 def test_pull(dvc):

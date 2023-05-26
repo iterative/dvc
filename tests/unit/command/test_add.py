@@ -8,7 +8,6 @@ def test_add(mocker, dvc):
     cli_args = parse_args(
         [
             "add",
-            "--recursive",
             "--no-commit",
             "--external",
             "--glob",
@@ -26,10 +25,9 @@ def test_add(mocker, dvc):
 
     m.assert_called_once_with(
         ["data"],
-        recursive=True,
         no_commit=True,
         glob=True,
-        fname="file",
+        file="file",
         external=True,
         out=None,
         remote=None,
@@ -60,10 +58,9 @@ def test_add_to_remote(mocker):
 
     m.assert_called_once_with(
         ["s3://bucket/foo"],
-        recursive=False,
         no_commit=False,
         glob=False,
-        fname=None,
+        file=None,
         external=False,
         out="bar",
         remote="remote",
