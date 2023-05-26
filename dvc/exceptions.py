@@ -182,11 +182,6 @@ class BadMetricError(DvcException):
         )
 
 
-class RecursiveAddingWhileUsingFilename(DvcException):
-    def __init__(self):
-        super().__init__("cannot use `fname` with multiple targets or `-R|--recursive`")
-
-
 class OverlappingOutputPathsError(DvcException):
     def __init__(self, parent, overlapping_out, message):
         self.parent = parent

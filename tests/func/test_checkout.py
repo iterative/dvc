@@ -624,7 +624,7 @@ def test_checkout_with_deps(tmp_dir, dvc):
 
 def test_checkout_recursive(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    dvc.add("dir", recursive=True)
+    dvc.add("dir/*", glob=True)
 
     (tmp_dir / "dir" / "foo").unlink()
     (tmp_dir / "dir" / "bar").unlink()

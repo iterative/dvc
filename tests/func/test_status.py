@@ -1,6 +1,7 @@
 import os
 
 from dvc.cli import main
+from dvc.fs import localfs
 
 
 def test_quiet(tmp_dir, dvc, capsys):
@@ -96,7 +97,7 @@ def test_status_on_pipeline_stages(tmp_dir, dvc, run_copy):
 
 def test_status_recursive(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"file": "text1", "subdir": {"file2": "text2"}}})
-    stages = dvc.add("dir", recursive=True, no_commit=True)
+    stages = dvc.add(localfs.find("dir"), no_commit=True)
 
     assert len(stages) == 2
 

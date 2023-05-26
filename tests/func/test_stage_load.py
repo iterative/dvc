@@ -58,7 +58,7 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
 
 def test_collect_dir_recursive(tmp_dir, dvc, run_head):
     tmp_dir.gen({"dir": {"foo": "foo"}})
-    (stage1,) = dvc.add("dir", recursive=True)
+    (stage1,) = dvc.add("dir/*", glob=True)
     with (tmp_dir / "dir").chdir():
         stage2 = run_head("foo", name="copy-foo-bar")
         stage3 = run_head("foo-1", single_stage=True)
@@ -260,7 +260,7 @@ def test_collect_granular_same_output_name_stage_name(tmp_dir, dvc, run_copy):
 
 def test_collect_granular_priority_on_collision(tmp_dir, dvc, run_copy):
     tmp_dir.gen({"dir": {"foo": "foo"}, "foo": "foo"})
-    (stage1,) = dvc.add("dir", recursive=True)
+    (stage1,) = dvc.add("dir/*", glob=True)
     stage2 = run_copy("foo", "bar", name="dir")
 
     assert dvc.stage.collect_granular("dir") == [(stage2, None)]

@@ -6,10 +6,8 @@ import stat
 import textwrap
 from unittest.mock import call
 
-import colorama
 import pytest
 
-import dvc as dvc_module
 import dvc_data
 from dvc.cachemgr import CacheManager
 from dvc.cli import main
@@ -19,7 +17,6 @@ from dvc.exceptions import (
     DvcException,
     InvalidArgumentError,
     OverlappingOutputPathsError,
-    RecursiveAddingWhileUsingFilename,
 )
 from dvc.fs import LocalFileSystem, system
 from dvc.output import (
@@ -30,7 +27,6 @@ from dvc.output import (
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageExternalOutputsError, StagePathNotFoundError
 from dvc.testing.workspace_tests import TestAdd
-from dvc.utils import LARGE_DIR_SIZE
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError
 from dvc_data.hashfile.hash import file_md5
@@ -39,7 +35,8 @@ from tests.utils import get_gitignore_content
 
 
 def test_add(tmp_dir, dvc):
-    (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
+    tmp_dir.gen("foo", "foo")
+    (stage,) = dvc.add("foo")
     md5 = file_md5("foo", dvc.fs)
 
     assert stage is not None
@@ -112,32 +109,6 @@ def test_add_directory(tmp_dir, dvc):
     for key, _, _ in obj:
         for part in key:
             assert "\\" not in part
-
-
-def test_add_directory_recursive(tmp_dir, dvc):
-    tmp_dir.gen("data", {"file1": "file1", "sub": {"file2": "file2"}})
-    stages = dvc.add("data", recursive=True)
-    assert len(stages) == 2
-
-
-def test_add_cmd_directory_recursive(tmp_dir, dvc):
-    tmp_dir.gen("data", {"file1": "file1", "sub": {"file2": "file2"}})
-    assert main(["add", "--recursive", "data"]) == 0
-
-
-def test_warn_about_large_directories_recursive_add(tmp_dir, dvc, capsys):
-    warning = (
-        "You are adding a large directory 'large-dir' recursively."
-        "\nConsider tracking it as a whole instead with "
-        "`{cyan}dvc add large-dir{nc}`"
-    ).format(
-        cyan=colorama.Fore.CYAN,
-        nc=colorama.Style.RESET_ALL,
-    )
-
-    tmp_dir.gen("large-dir", {f"{i}": f"{i}" for i in range(LARGE_DIR_SIZE + 1)})
-    assert main(["add", "--recursive", "large-dir"]) == 0
-    assert warning in capsys.readouterr()[1]
 
 
 def test_add_directory_with_forward_slash(tmp_dir, dvc):
@@ -484,12 +455,6 @@ def test_add_filename(tmp_dir, dvc):
     ret = main(["add", "foo", "bar", "--file", "error.dvc"])
     assert ret != 0
 
-    ret = main(["add", "-R", "data", "--file", "error.dvc"])
-    assert ret != 0
-
-    with pytest.raises(RecursiveAddingWhileUsingFilename):
-        dvc.add("data", recursive=True, fname="error.dvc")
-
     ret = main(["add", "data", "--file", "data_directory.dvc"])
     assert ret == 0
     assert (tmp_dir / "data_directory.dvc").exists()
@@ -521,17 +486,6 @@ def test_failed_add_cleanup(tmp_dir, scm, dvc):
 
     gitignore_content = get_gitignore_content()
     assert "/bar" not in gitignore_content
-
-
-def test_should_not_track_git_internal_files(mocker, dvc, tmp_dir):
-    stage_creator_spy = mocker.spy(dvc_module.repo.add, "create_stages")
-
-    ret = main(["add", "-R", dvc.root_dir])
-    assert ret == 0
-
-    created_stages_filenames = stage_creator_spy.mock.call_args[0][1]
-    for fname in created_stages_filenames:
-        assert ".git" not in fname
 
 
 def test_add_unprotected(tmp_dir, dvc):
@@ -713,10 +667,10 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
 def test_add_parent_dir(tmp_dir, scm, dvc):
     tmp_dir.gen({"dir": {"file1": "file1 content"}})
     out_path = os.path.join("dir", "file1")
-    dvc.add(out_path, fname=out_path + ".dvc")
+    dvc.add(out_path, file=out_path + ".dvc")
 
     with pytest.raises(OverlappingOutputPathsError) as e:
-        dvc.add("dir", fname="dir.dvc")
+        dvc.add("dir", file="dir.dvc")
     assert str(e.value) == (
         "Cannot add 'dir', because it is overlapping with other DVC "
         "tracked output: '{out}'.\n"
@@ -943,7 +897,6 @@ def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, remote):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        ("--recursive", {"targets": ["foo"], "recursive": True}),
         ("--external", {"targets": ["foo"], "external": True}),
     ],
 )
@@ -1032,7 +985,6 @@ def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        ("--recursive", {"targets": ["foo"], "recursive": True}),
     ],
 )
 def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
@@ -1103,15 +1055,6 @@ def test_add_does_not_remove_stage_file_on_failure(tmp_dir, dvc, mocker, target)
         dvc.add("foo")
     assert (tmp_dir / "foo.dvc").exists()
     assert (tmp_dir / stage.path).read_text() == dvcfile_contents
-
-
-def test_add_ignore_duplicated_targets(tmp_dir, dvc, capsys):
-    tmp_dir.gen({"foo": "foo", "bar": "bar", "foobar": "foobar"})
-    stages = dvc.add(["foo", "bar", "foobar", "bar", "foo"])
-
-    _, err = capsys.readouterr()
-    assert len(stages) == 3
-    assert "ignoring duplicated targets: foo, bar" in err
 
 
 def test_add_updates_to_cloud_versioning_dir(tmp_dir, dvc):
