@@ -74,6 +74,12 @@ def validate_args(targets: List[str], **kwargs: Any) -> None:
         raise InvalidArgumentError(message.format(option=invalid_opt))
 
 
+PIPELINE_TRACKED_UPDATE_FMT = (
+    "Cannot update {out!r}: it is defined and tracked in '{path}'.\n"
+    "Run the pipeline or use 'dvc commit' to force update it."
+)
+
+
 def get_or_create_stage(
     repo: "Repo",
     target: str,
@@ -91,7 +97,8 @@ def get_or_create_stage(
         (out_obj,) = repo.find_outs_by_path(target, strict=False)
         stage = out_obj.stage
         if not stage.is_data_source:
-            raise DvcException(f"cannot update {out!r}: not a data source")
+            msg = PIPELINE_TRACKED_UPDATE_FMT.format(out=out, path=stage.relpath)
+            raise DvcException(msg)
         return StageInfo(stage, output_exists=True)
     except OutputNotFoundError:
         stage = repo.stage.create(

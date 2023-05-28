@@ -722,7 +722,13 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
 def test_try_adding_pipeline_tracked_output(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
-    with pytest.raises(DvcException, match="cannot update 'bar': not a data source"):
+    with pytest.raises(
+        DvcException,
+        match=(
+            "Cannot update 'bar': it is defined and tracked in 'dvc.yaml'.\n"
+            "Run the pipeline or use 'dvc commit' to force update it."
+        ),
+    ):
         dvc.add("bar")
 
 
