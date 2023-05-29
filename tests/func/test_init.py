@@ -120,3 +120,8 @@ def test_init_when_ignored_by_git(tmp_dir, scm, caplog):
         )
         in caplog.text
     )
+
+
+def test_init_legacy_md5(scm):
+    with DvcRepo.init() as repo:
+        assert repo.config["core"].get("legacy_md5") is False

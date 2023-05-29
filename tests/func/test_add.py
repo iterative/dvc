@@ -8,6 +8,7 @@ from unittest.mock import call
 
 import pytest
 
+import dvc.output as output_module
 import dvc_data
 from dvc.cachemgr import CacheManager
 from dvc.cli import main
@@ -1113,3 +1114,24 @@ def test_add_updates_to_cloud_versioning_dir(tmp_dir, dvc):
             }
         ]
     }
+
+
+@pytest.mark.parametrize(
+    "legacy_md5,expected_hash",
+    [
+        (False, "3dbec9c1b92200eb56349835275e00b9"),
+        (True, "f47c75614087a8dd938ba4acff252494"),
+    ],
+)
+def test_add_legacy_md5(tmp_dir, dvc, mocker, legacy_md5, expected_hash):
+    with dvc.config.edit() as conf:
+        conf["core"]["legacy_md5"] = legacy_md5
+    expected_text = None if legacy_md5 else False
+    tmp_dir.gen("foo", "foo\r\nbar\r\n")
+
+    build_spy = mocker.spy(output_module, "build")
+    (stage,) = dvc.add("foo")
+    build_spy.assert_called()
+    for _args, kwargs in build_spy.call_args_list:
+        assert kwargs["text"] is expected_text
+    assert stage.outs[0].hash_info == HashInfo("md5", expected_hash)

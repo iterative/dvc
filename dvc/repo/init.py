@@ -67,8 +67,9 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):  # noqa: 
 
     config = Config.init(dvc_dir)
 
-    if no_scm:
-        with config.edit() as conf:
+    with config.edit() as conf:
+        conf["core"]["legacy_md5"] = False
+        if no_scm:
             conf["core"]["no_scm"] = True
 
     dvcignore = init_dvcignore(root_dir)

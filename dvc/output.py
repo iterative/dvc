@@ -515,6 +515,12 @@ class Output:
             self.cache.oid_to_path(self.hash_info.value)
         )
 
+    @cached_property
+    def _is_text(self) -> Optional[bool]:
+        if self.repo.config["core"].get("legacy_md5", True):
+            return None
+        return False
+
     def get_hash(self):
         _, hash_info = self._get_hash_meta()
         return hash_info
@@ -531,6 +537,7 @@ class Output:
             self.hash_name,
             ignore=self.dvcignore,
             dry_run=not self.use_cache,
+            text=self._is_text,
         )
         return meta, obj.hash_info
 
@@ -671,6 +678,7 @@ class Output:
                 self.fs,
                 self.hash_name,
                 ignore=self.dvcignore,
+                text=self._is_text,
             )
         else:
             _, self.meta, self.obj = build(
@@ -680,6 +688,7 @@ class Output:
                 self.hash_name,
                 ignore=self.dvcignore,
                 dry_run=True,
+                text=self._is_text,
             )
             if not self.IS_DEPENDENCY:
                 logger.debug("Output '%s' doesn't use cache. Skipping saving.", self)
@@ -727,6 +736,7 @@ class Output:
                     self.fs,
                     self.hash_name,
                     ignore=self.dvcignore,
+                    text=self._is_text,
                 )
                 otransfer(
                     staging,
@@ -758,6 +768,7 @@ class Output:
             self.fs,
             self.hash_name,
             ignore=self.dvcignore,
+            text=self._is_text,
         )
         assert isinstance(obj, Tree)
         save_obj = obj.filter(prefix)
@@ -973,6 +984,7 @@ class Output:
             "md5",
             upload=upload,
             no_progress_bar=no_progress_bar,
+            text=self._is_text,
         )
         otransfer(
             staging,
@@ -1305,6 +1317,7 @@ class Output:
                 self.hash_name,
                 ignore=self.dvcignore,
                 dry_run=not self.use_cache,
+                text=self._is_text,
             )
         except FileNotFoundError as exc:
             if self.fs_path == path:

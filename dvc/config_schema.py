@@ -152,6 +152,7 @@ SCHEMA = {
         Optional("check_update", default=True): Bool,
         "site_cache_dir": str,
         "machine": Lower,
+        Optional("legacy_md5", default=True): Bool,
     },
     "cache": {
         "local": str,

@@ -101,6 +101,7 @@ def save_imports(
         logger.warning(str(DataSourceChanged(f"{dep.stage} ({dep})")))
 
     data_view = unfetched.data["repo"]
+    is_text = None if repo.config["core"].get("legacy_md5", True) else False
     if len(data_view):
         cache = repo.cache.local
         if not cache.fs.exists(cache.path):
@@ -111,7 +112,7 @@ def save_imports(
                 unit="files",
             ) as cb:
                 checkout(data_view, tmpdir, cache.fs, callback=cb, storage="data")
-            md5(data_view)
+            md5(data_view, text=is_text)
             save(data_view, odb=cache, hardlink=True)
 
         downloaded.update(
