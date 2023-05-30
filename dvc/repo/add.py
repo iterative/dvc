@@ -68,7 +68,7 @@ def validate_args(targets: List[str], **kwargs: Any) -> None:
         if kwargs.get("remote"):
             invalid_opt = "--remote"
         elif kwargs.get("jobs"):
-            invalid_opt = "--jobs"
+            invalid_opt = "--remote-jobs"
 
     if invalid_opt is not None:
         raise InvalidArgumentError(message.format(option=invalid_opt))
