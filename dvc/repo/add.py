@@ -32,6 +32,12 @@ if TYPE_CHECKING:
     from dvc.stage import Stage
 
 
+PIPELINE_TRACKED_UPDATE_FMT = (
+    "cannot update {out!r}: overlaps with an output of {stage} in '{path}'.\n"
+    "Run the pipeline or use 'dvc commit' to force update it."
+)
+
+
 class StageInfo(NamedTuple):
     stage: "Stage"
     output_exists: bool
@@ -91,7 +97,9 @@ def get_or_create_stage(
         (out_obj,) = repo.find_outs_by_path(target, strict=False)
         stage = out_obj.stage
         if not stage.is_data_source:
-            msg = f"cannot update {out!r}: overlaps with an output of {stage}."
+            msg = PIPELINE_TRACKED_UPDATE_FMT.format(
+                out=out, stage=stage, path=stage.relpath
+            )
             raise DvcException(msg)
         return StageInfo(stage, output_exists=True)
     except OutputNotFoundError:
