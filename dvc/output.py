@@ -405,9 +405,9 @@ class Output:
             self.meta.version_id = version_id
 
         if self.is_in_repo:
-            name = DEFAULT_ALGORITHM
+            self.hash_name = DEFAULT_ALGORITHM
             for name in algorithms_available:
-                if hasattr(self.meta, name):
+                if getattr(self.meta, name, None):
                     self.hash_name = name
                     break
         else:

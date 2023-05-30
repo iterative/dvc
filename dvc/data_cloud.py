@@ -30,11 +30,20 @@ class Remote:
     @cached_property
     def odb(self) -> "HashFileDB":
         from dvc_data.hashfile.db import get_odb
+        from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
 
         path = self.path
         if self.worktree:
             path = self.fs.path.join(path, ".dvc", "cache")
+        else:
+            path = self.fs.path.join(path, DEFAULT_ALGORITHM)
+        return get_odb(self.fs, path, hash_name=DEFAULT_ALGORITHM, **self.config)
 
+    @cached_property
+    def legacy_odb(self) -> "HashFileDB":
+        from dvc_data.hashfile.db import get_odb
+
+        path = self.path
         return get_odb(self.fs, path, hash_name="md5", **self.config)
 
 
@@ -101,12 +110,17 @@ class DataCloud:
         self,
         name: Optional[str] = None,
         command: str = "<command>",
+        hash_name: str = "md5raw",
     ) -> "HashFileDB":
+        from dvc_data.hashfile.hash import LEGACY_HASH_NAMES
+
         remote = self.get_remote(name=name, command=command)
         if remote.fs.version_aware or remote.worktree:
             raise NoRemoteError(
                 f"'{command}' is unsupported for cloud versioned remotes"
             )
+        if hash_name in LEGACY_HASH_NAMES:
+            return remote.legacy_odb
         return remote.odb
 
     def _log_missing(self, status: "CompareStatusResult"):

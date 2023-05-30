@@ -4,7 +4,7 @@ from dvc.fs import GitFileSystem, Schemes
 from dvc_data.hashfile.db import get_odb
 
 
-def _get_odb(repo, settings, fs=None):
+def _get_odb(repo, settings, fs=None, **kwargs):
     from dvc.fs import get_cloud_fs
 
     if not settings:
@@ -42,12 +42,17 @@ class CacheManager:
             settings = None
         else:
             from dvc.config_schema import LOCAL_COMMON
+            from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
 
-            url = config.get("dir") or default
-            settings = {"url": url}
+            base_url = config.get("dir") or default
+            assert base_url
+            settings = {}
             for opt in LOCAL_COMMON:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
+            legacy_settings = dict(settings)
+            legacy_settings["url"] = base_url
+            settings["url"] = os.path.join(base_url, DEFAULT_ALGORITHM)
 
         kwargs = {}
         if not isinstance(repo.fs, GitFileSystem):
@@ -56,6 +61,9 @@ class CacheManager:
         odb = _get_odb(repo, settings, **kwargs)
         self._odb["repo"] = odb
         self._odb[Schemes.LOCAL] = odb
+        legacy_odb = _get_odb(repo, legacy_settings, **kwargs)
+        legacy_odb.hash_name = "md5"
+        self._odb["legacy"] = legacy_odb
 
     def _init_odb(self, schemes):
         for scheme in schemes:
