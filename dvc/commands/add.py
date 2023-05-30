@@ -22,7 +22,7 @@ class CmdAdd(CmdBase):
                 out=self.args.out,
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
-                jobs=self.args.jobs,
+                jobs=self.args.remote_jobs,
                 force=self.args.force,
             )
         except FileNotFoundError:
@@ -86,8 +86,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<name>",
     )
     parser.add_argument(
-        "-j",
-        "--jobs",
+        "--remote-jobs",
         type=int,
         help=(
             "Only used along with '--to-remote'. "

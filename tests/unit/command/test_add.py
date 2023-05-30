@@ -80,7 +80,7 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
         expected_msg = "multiple targets can't be used with --to-remote"
         assert expected_msg in caplog.text
 
-    for option, value in (("--remote", "remote"), ("--jobs", "4")):
+    for option, value in (("--remote", "remote"), ("--remote-jobs", "4")):
         cli_args = parse_args(["add", "foo", option, value])
 
         cmd = cli_args.func(cli_args)
