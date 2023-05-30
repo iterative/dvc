@@ -27,6 +27,7 @@ from dvc_data.hashfile import load as oload
 from dvc_data.hashfile.build import build
 from dvc_data.hashfile.checkout import checkout
 from dvc_data.hashfile.db import HashFileDB, add_update_tree
+from dvc_data.hashfile.hash import DEFAULT_ALGORITHM, algorithms_available
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
@@ -62,18 +63,20 @@ CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
     And(Any(str, And(int, Coerce(str))), Length(min=3)),
 )
 
-# NOTE: currently there are only 3 possible checksum names:
+# NOTE: currently there are only 4 possible checksum names:
 #
-#    1) md5 (LOCAL, SSH);
+#    1) md5raw (LOCAL, SSH)
 #    2) etag (S3, GS, OSS, AZURE, HTTP);
 #    3) checksum (HDFS);
+#    4) md5 (legacy DVC dos2unix md5);
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 HDFS_PARAM_CHECKSUM = "checksum"
 S3_PARAM_CHECKSUM = "etag"
 CHECKSUMS_SCHEMA = {
-    LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    "md5": CHECKSUM_SCHEMA,
+    "md5raw": CHECKSUM_SCHEMA,
     HDFS_PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     S3_PARAM_CHECKSUM: CASE_SENSITIVE_CHECKSUM_SCHEMA,
 }
@@ -402,7 +405,11 @@ class Output:
             self.meta.version_id = version_id
 
         if self.is_in_repo:
-            self.hash_name = "md5"
+            name = DEFAULT_ALGORITHM
+            for name in algorithms_available:
+                if hasattr(self.meta, name):
+                    self.hash_name = name
+                    break
         else:
             self.hash_name = self.fs.PARAM_CHECKSUM
 
@@ -426,10 +433,12 @@ class Output:
             self.meta.remote = first(f.get("remote") for f in self.files)
         elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
-            if not self.hash_info and self.hash_name != "md5":
-                md5 = getattr(self.meta, "md5", None)
-                if md5:
-                    self.hash_info = HashInfo("md5", md5)
+            if not self.hash_info and self.hash_name not in algorithms_available:
+                for name in algorithms_available:
+                    value = getattr(self.meta, name, None)
+                    if value:
+                        self.hash_info = HashInfo(name, value)
+                        break
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
@@ -503,7 +512,12 @@ class Output:
 
     @property
     def cache(self):
-        odb_name = "repo" if self.is_in_repo else self.protocol
+        from dvc_data.hashfile.hash import LEGACY_HASH_NAMES
+
+        if self.is_in_repo:
+            odb_name = "legacy" if self.hash_name in LEGACY_HASH_NAMES else "repo"
+        else:
+            odb_name = self.protocol
         odb = getattr(self.repo.cache, odb_name)
         if self.use_cache and odb is None:
             raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
@@ -970,7 +984,7 @@ class Output:
             odb,
             from_info,
             from_fs,
-            "md5",
+            DEFAULT_ALGORITHM,
             upload=upload,
             no_progress_bar=no_progress_bar,
         )
@@ -1111,7 +1125,9 @@ class Output:
             return {}
 
         if self.remote:
-            remote = self.repo.cloud.get_remote_odb(name=self.remote)
+            remote = self.repo.cloud.get_remote_odb(
+                name=self.remote, hash_name=self.hash_name
+            )
         else:
             remote = None
 

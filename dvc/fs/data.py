@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class DataFileSystem(FileSystem):
     protocol = "local"
 
-    PARAM_CHECKSUM = "md5"
+    PARAM_CHECKSUM = "md5raw"
 
     def _prepare_credentials(self, **config):
         return config

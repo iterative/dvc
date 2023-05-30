@@ -47,8 +47,9 @@ def _merge_info(repo, fs_info, dvc_info):
         ret["dvc_info"] = dvc_info
         ret["type"] = dvc_info["type"]
         ret["size"] = dvc_info["size"]
-        if not fs_info and "md5" in dvc_info:
-            ret["md5"] = dvc_info["md5"]
+        for name in ("md5", "md5raw"):
+            if not fs_info and name in dvc_info:
+                ret[name] = dvc_info[name]
 
     if fs_info:
         ret["type"] = fs_info["type"]
@@ -390,7 +391,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
 class DVCFileSystem(FileSystem):
     protocol = "local"
-    PARAM_CHECKSUM = "md5"
+    PARAM_CHECKSUM = "md5raw"
 
     def _prepare_credentials(self, **config) -> Dict[str, Any]:
         return config
