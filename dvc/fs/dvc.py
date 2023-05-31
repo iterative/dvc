@@ -38,12 +38,17 @@ def _is_dvc_file(fname):
     return is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
 
 
-def _merge_info(repo, fs_info, dvc_info):
+def _merge_info(repo, key, fs_info, dvc_info):
     from . import utils
 
     ret = {"repo": repo}
 
     if dvc_info:
+        dvc_info["isout"] = any(
+            (len(out_key) <= len(key) and key[: len(out_key)] == out_key)
+            for out_key in repo.index.data_keys["repo"]
+        )
+        dvc_info["isdvc"] = dvc_info["isout"]
         ret["dvc_info"] = dvc_info
         ret["type"] = dvc_info["type"]
         ret["size"] = dvc_info["size"]
@@ -263,10 +268,10 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     def isdvc(self, path, **kwargs) -> bool:
         """Is this entry dvc-tracked?"""
-        key = self._get_key_from_relative(path)
-        _, dvc_fs, subkey = self._get_subrepo_info(key)
-        dvc_path = _get_dvc_path(dvc_fs, subkey)
-        return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
+        try:
+            return self.info(path).get("dvc_info", {}).get("isout", False)
+        except FileNotFoundError:
+            return False
 
     def ls(  # pylint: disable=arguments-differ # noqa: C901
         self, path, detail=True, dvc_only=False, **kwargs
@@ -314,7 +319,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 continue
 
             entry_path = self.path.join(path, name)
-            info = _merge_info(repo, fs_infos.get(name), dvc_infos.get(name))
+            info = _merge_info(
+                repo, (*subkey, name), fs_infos.get(name), dvc_infos.get(name)
+            )
             info["name"] = entry_path
             infos.append(info)
             paths.append(entry_path)
@@ -370,7 +377,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if not dvc_info and not fs_info:
             raise FileNotFoundError
 
-        info = _merge_info(repo, fs_info, dvc_info)
+        info = _merge_info(repo, subkey, fs_info, dvc_info)
         info["name"] = path
         return info
 

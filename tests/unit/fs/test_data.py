@@ -209,14 +209,6 @@ def test_walk_not_a_dir(tmp_dir, dvc):
         pass
 
 
-def test_isdvc(tmp_dir, dvc):
-    tmp_dir.gen({"foo": "foo", "bar": "bar"})
-    dvc.add("foo")
-    fs = DataFileSystem(index=dvc.index.data["repo"])
-    assert fs.isdvc("foo")
-    assert not fs.isdvc("bar")
-
-
 def test_get_hash_file(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
     fs = DataFileSystem(index=dvc.index.data["repo"])
