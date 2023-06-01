@@ -722,7 +722,11 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
 def test_try_adding_pipeline_tracked_output(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
-    with pytest.raises(DvcException, match="cannot update 'bar': not a data source"):
+    msg = (
+        "cannot update 'bar': overlaps with an output of stage: 'copy-foo-bar' in "
+        "'dvc.yaml'.\nRun the pipeline or use 'dvc commit' to force update it."
+    )
+    with pytest.raises(DvcException, match=msg):
         dvc.add("bar")
 
 
