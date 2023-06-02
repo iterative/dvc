@@ -163,7 +163,7 @@ def _reproduce_stages(  # noqa: C901
     steps = _get_steps(graph, stages, downstream, single_item)
 
     force_downstream = kwargs.pop("force_downstream", False)
-    result = []
+    result: List["Stage"] = []
     unchanged: List["Stage"] = []
     # `ret` is used to add a cosmetic newline.
     ret: List["Stage"] = []
@@ -173,6 +173,7 @@ def _reproduce_stages(  # noqa: C901
             logger.info("")
 
         try:
+            kwargs["upstream"] = result + unchanged
             ret = _reproduce_stage(stage, **kwargs)
 
             if len(ret) == 0:
