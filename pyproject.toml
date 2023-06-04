@@ -107,6 +107,7 @@ tests = [
     "pytest-timeout>=2",
     "pytest-xdist>=3.2",
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
+    'tzdata; sys_platform == "win32"',  # for testing with celery
 ]
 webdav = ["dvc-webdav==2.19.1"]
 webhdfs = ["dvc-webhdfs==2.19"]
