@@ -374,7 +374,10 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
     stage = dvc.imp_url("remote://workspace/foo", to_remote=True)
 
     workspace.gen("foo", "bar")
-    stage = dvc.update(stage.path, to_remote=True)
+    (updated,) = dvc.update(stage.path, to_remote=True)
+
+    assert stage.deps[0].hash_info != updated.deps[0].hash_info
+    assert stage.outs[0].hash_info != updated.outs[0].hash_info
 
     dvc.pull("foo")
     assert (tmp_dir / "foo").read_text() == "bar"
@@ -400,7 +403,10 @@ def test_update_import_url_to_remote_directory(
         }
     )
 
-    stage = dvc.update(stage.path, to_remote=True)
+    (updated,) = dvc.update(stage.path, to_remote=True)
+
+    assert stage.deps[0].hash_info != updated.deps[0].hash_info
+    assert stage.outs[0].hash_info != updated.outs[0].hash_info
 
     dvc.pull("data")
     assert (tmp_dir / "data").read_text() == {
@@ -424,7 +430,10 @@ def test_update_import_url_to_remote_directory_changed_contents(
     local_workspace.gen(
         {"data": {"foo": "not_foo", "foo2": "foo", "bar": {"baz2": "baz2"}}}
     )
-    stage = dvc.update(stage.path, to_remote=True)
+    (updated,) = dvc.update(stage.path, to_remote=True)
+
+    assert stage.deps[0].hash_info != updated.deps[0].hash_info
+    assert stage.outs[0].hash_info != updated.outs[0].hash_info
 
     dvc.pull("data")
     assert (tmp_dir / "data").read_text() == {
@@ -441,7 +450,10 @@ def test_update_import_url_to_remote_directory_same_hash(
     stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
     local_workspace.gen({"data": {"foo": "baz", "bar": {"baz": "foo"}, "same": "same"}})
-    stage = dvc.update(stage.path, to_remote=True)
+    (updated,) = dvc.update(stage.path, to_remote=True)
+
+    assert stage.deps[0].hash_info != updated.deps[0].hash_info
+    assert stage.outs[0].hash_info != updated.outs[0].hash_info
 
     dvc.pull("data")
     assert (tmp_dir / "data").read_text() == {
