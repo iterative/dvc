@@ -99,6 +99,7 @@ tests = [
     "dvc-ssh",
     "filelock",
     "flaky",
+    "pydantic>=1.10,<3",
     "pytest<8,>=7",
     "pytest-cov>=4.1.0",
     "pytest-docker>=1,<2",
@@ -241,6 +242,9 @@ module = [
 
 [tool.codespell]
 ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
+
+[tool.pylint.master]
+extension-pkg-whitelist = ["pydantic"]
 
 [tool.pylint.message_control]
 disable = [
