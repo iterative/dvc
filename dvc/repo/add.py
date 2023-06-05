@@ -21,7 +21,6 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
 )
 from dvc.repo.scm_context import scm_context
-from dvc.types import StrOrBytesPath
 from dvc.ui import ui
 from dvc.utils import glob_targets, resolve_output, resolve_paths
 
@@ -30,12 +29,7 @@ from . import locked
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.stage import Stage
-
-
-PIPELINE_TRACKED_UPDATE_FMT = (
-    "cannot update {out!r}: overlaps with an output of {stage} in '{path}'.\n"
-    "Run the pipeline or use 'dvc commit' to force update it."
-)
+    from dvc.types import StrOrBytesPath
 
 
 class StageInfo(NamedTuple):
@@ -44,7 +38,7 @@ class StageInfo(NamedTuple):
 
 
 def find_targets(
-    targets: Union[StrOrBytesPath, Iterator[StrOrBytesPath]], glob: bool = False
+    targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]], glob: bool = False
 ) -> List[str]:
     if isinstance(targets, (str, bytes, os.PathLike)):
         targets_list = [os.fsdecode(targets)]
@@ -80,18 +74,24 @@ def validate_args(targets: List[str], **kwargs: Any) -> None:
         raise InvalidArgumentError(message.format(option=invalid_opt))
 
 
+PIPELINE_TRACKED_UPDATE_FMT = (
+    "cannot update {out!r}: overlaps with an output of {stage} in '{path}'.\n"
+    "Run the pipeline or use 'dvc commit' to force update it."
+)
+
+
 def get_or_create_stage(
     repo: "Repo",
     target: str,
     file: Optional[str] = None,
-    transfer: bool = False,
     external: bool = False,
-    force: bool = False,
     out: Optional[str] = None,
+    to_remote: bool = False,
+    force: bool = False,
 ) -> StageInfo:
     if out:
         target = resolve_output(target, out, force=force)
-    path, wdir, out = resolve_paths(repo, target, always_local=transfer and not out)
+    path, wdir, out = resolve_paths(repo, target, always_local=to_remote and not out)
 
     try:
         (out_obj,) = repo.find_outs_by_path(target, strict=False)
@@ -227,7 +227,7 @@ def _add(stage: "Stage", source: Optional[str] = None, no_commit: bool = False) 
 @scm_context
 def add(  # noqa: PLR0913
     repo: "Repo",
-    targets: Union[StrOrBytesPath, Iterator[StrOrBytesPath]],
+    targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]],
     no_commit: bool = False,
     file: Optional[str] = None,
     external: bool = False,
@@ -238,7 +238,6 @@ def add(  # noqa: PLR0913
     jobs: Optional[int] = None,
     force: bool = False,
 ) -> List["Stage"]:
-    transfer = to_remote or bool(out)
     add_targets = find_targets(targets, glob=glob)
     if not add_targets:
         return []
@@ -258,10 +257,10 @@ def add(  # noqa: PLR0913
             repo,
             target,
             file=file,
-            transfer=transfer,
             external=external,
-            force=force,
             out=out,
+            to_remote=to_remote,
+            force=force,
         )
         for target in add_targets
     }
@@ -271,8 +270,8 @@ def add(  # noqa: PLR0913
     with translate_graph_error(stages), ui.status(msg) as st:
         repo.check_graph(stages=stages, callback=lambda: st.update("Checking graph"))
 
-    if transfer:
-        assert stages_with_targets
+    if to_remote or out:
+        assert len(stages_with_targets) == 1
         (source, (stage, _)) = next(iter(stages_with_targets.items()))
         _add_transfer(stage, source, remote, to_remote, jobs=jobs, force=force)
         return [stage]
