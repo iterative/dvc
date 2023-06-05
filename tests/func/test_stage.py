@@ -139,6 +139,7 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
             {
                 "md5": "d3b07384d113edec49eaa6238ad5ff00",
                 "size": 4,
+                "hash": "md5",
                 "path": "foo",
                 "desc": "foo desc",
                 "type": "mytype",
@@ -149,10 +150,20 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
     }
     (tmp_dir / "foo.dvc").dump(data)
     stage = dvc.stage.load_one("foo.dvc")
-    assert compute_md5(stage) == "1822617147b53ae6f9eb4b3c87c0b6f3"
+    assert compute_md5(stage) == "cde267b60ef5a00e9a35cc1999ab83a3"
     assert (
-        dict_md5({"outs": [{"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}]})
-        == "1822617147b53ae6f9eb4b3c87c0b6f3"
+        dict_md5(
+            {
+                "outs": [
+                    {
+                        "md5": "d3b07384d113edec49eaa6238ad5ff00",
+                        "hash": "md5",
+                        "path": "foo",
+                    }
+                ]
+            }
+        )
+        == "cde267b60ef5a00e9a35cc1999ab83a3"
     )
 
 
@@ -164,6 +175,7 @@ def test_meta_desc_is_preserved(tmp_dir, dvc):
             {
                 "md5": "d3b07384d113edec49eaa6238ad5ff00",
                 "size": 4,
+                "hash": "md5",
                 "path": "foo",
                 "desc": "foo desc",
                 "type": "mytype",

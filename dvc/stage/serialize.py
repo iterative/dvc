@@ -149,13 +149,20 @@ def to_pipeline_file(stage: "PipelineStage"):
 
 
 def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
-    from dvc.output import _serialize_tree_obj_to_files, split_file_meta_from_cloud
+    from dvc.cachemgr import LEGACY_HASH_NAMES
+    from dvc.output import (
+        _serialize_hi_to_dict,
+        _serialize_tree_obj_to_files,
+        split_file_meta_from_cloud,
+    )
     from dvc_data.hashfile.tree import Tree
 
     assert stage.cmd
 
     def _dumpd(item: "Output"):
         ret: Dict[str, Any] = {item.PARAM_PATH: item.def_path}
+        if item.hash_name not in LEGACY_HASH_NAMES:
+            ret[item.PARAM_HASH] = "md5"
         if item.hash_info.isdir and kwargs.get("with_files"):
             obj = item.obj or item.get_obj()
             if obj:
@@ -167,7 +174,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
         else:
             meta_d = item.meta.to_dict()
             meta_d.pop("isdir", None)
-            ret.update(item.hash_info.to_dict())
+            ret.update(_serialize_hi_to_dict(item.hash_info))
             ret.update(split_file_meta_from_cloud(meta_d))
         return ret
 

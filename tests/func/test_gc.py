@@ -428,6 +428,7 @@ def test_gc_not_in_remote_with_remote_field(
         outs:
         - path: foo
           remote: other_remote
+          hash: md5
     """
     )
     tmp_dir.gen("foo.dvc", text)
@@ -459,6 +460,7 @@ def test_gc_cloud_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
         outs:
         - path: foo
           remote: other_remote
+          hash: md5
     """
     )
     tmp_dir.gen("foo.dvc", text)

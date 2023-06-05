@@ -33,6 +33,7 @@ DATA_SCHEMA = {
     Required("path"): str,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
+    Output.PARAM_HASH: str,
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): Any(str, list),

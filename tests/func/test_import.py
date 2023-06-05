@@ -247,7 +247,11 @@ def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
 
     stage = load_file(dvc, "foo_imported.dvc").stage
 
-    assert stage.outs[0].hash_info.value == "bdb8641831d8fcb03939637e09011c21.dir"
+    if os.name == "nt":
+        expected_hash = "2e798234df5f782340ac3ce046f8dfae.dir"
+    else:
+        expected_hash = "bdb8641831d8fcb03939637e09011c21.dir"
+    assert stage.outs[0].hash_info.value == expected_hash
 
     assert stage.outs[0].meta.size == size
     assert stage.outs[0].meta.nfiles == 3

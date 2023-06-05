@@ -46,6 +46,7 @@ class ParamsDependency(Dependency):
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
         super().__init__(stage, path, repo=repo)
+        self.hash_name = self.PARAM_PARAMS
         self.hash_info = hash_info
 
     def dumpd(self, **kwargs):

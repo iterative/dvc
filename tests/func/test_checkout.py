@@ -329,8 +329,8 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
     assert system.is_symlink(os.path.join("data", "file"))
     old_data_link = os.path.realpath(os.path.join("data", "file"))
 
-    old_cache_dir = dvc.cache.local.path
-    new_cache_dir = old_cache_dir + "_new"
+    old_cache_dir = str(tmp_dir / ".dvc" / "cache")
+    new_cache_dir = str(tmp_dir / ".dvc" / "cache_new")
     os.rename(old_cache_dir, new_cache_dir)
 
     ret = main(["cache", "dir", new_cache_dir])
@@ -801,6 +801,7 @@ def test_checkout_dir_compat(tmp_dir, dvc):
             f"""\
         outs:
         - md5: {stage.outs[0].hash_info.value}
+          hash: md5
           path: data
         """
         ),

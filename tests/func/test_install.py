@@ -118,6 +118,7 @@ def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
         "- md5: 5ea40360f5b4ec688df672a4db9c17d1.dir\n"
         "  size: 6\n"
         "  nfiles: 2\n"
+        "  hash: md5\n"
         "  path: data\n"
     )
 
@@ -153,6 +154,7 @@ def test_merge_driver(tmp_dir, scm, dvc):
         "- md5: 839ef9371606817569c1ee0e5f4ed233.dir\n"
         "  size: 12\n"
         "  nfiles: 3\n"
+        "  hash: md5\n"
         "  path: data\n"
     )
 

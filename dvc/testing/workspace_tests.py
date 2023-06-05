@@ -54,11 +54,13 @@ class TestImport:
                 f"- md5: {dir_md5}\n"
                 "  size: 11\n"
                 "  nfiles: 2\n"
+                "  hash: md5\n"
                 "  path: remote://workspace/dir\n"
                 "outs:\n"
                 "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
                 "  size: 11\n"
                 "  nfiles: 2\n"
+                "  hash: md5\n"
                 "  path: dir\n"
             )
 
@@ -177,6 +179,7 @@ class TestAdd:
             "outs:\n"
             f"- {hash_name}: {hash_value}\n"
             "  size: 4\n"
+            "  hash: md5\n"
             "  path: remote://workspace/file\n"
         )
         assert (workspace / "file").read_text() == "file"

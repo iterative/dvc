@@ -33,7 +33,10 @@ def test_lock_deps(dvc):
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
-            ("deps", [OrderedDict([("path", "input"), ("md5", "md-five")])]),
+            (
+                "deps",
+                [OrderedDict([("hash", "md5"), ("path", "input"), ("md5", "md-five")])],
+            ),
         ]
     )
 
@@ -48,8 +51,12 @@ def test_lock_deps_order(dvc):
             (
                 "deps",
                 [
-                    OrderedDict([("path", "input0"), ("md5", "md-zer0")]),
-                    OrderedDict([("path", "input1"), ("md5", "md-one1")]),
+                    OrderedDict(
+                        [("hash", "md5"), ("path", "input0"), ("md5", "md-zer0")]
+                    ),
+                    OrderedDict(
+                        [("hash", "md5"), ("path", "input1"), ("md5", "md-one1")]
+                    ),
                 ],
             ),
         ]
@@ -134,7 +141,10 @@ def test_lock_outs(dvc, typ):
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
-            ("outs", [OrderedDict([("path", "input"), ("md5", "md-five")])]),
+            (
+                "outs",
+                [OrderedDict([("hash", "md5"), ("path", "input"), ("md5", "md-five")])],
+            ),
         ]
     )
 
@@ -152,6 +162,7 @@ def test_lock_outs_isexec(dvc, typ):
                 [
                     OrderedDict(
                         [
+                            ("hash", "md5"),
                             ("path", "input"),
                             ("md5", "md-five"),
                             ("isexec", True),
@@ -174,8 +185,12 @@ def test_lock_outs_order(dvc, typ):
             (
                 "outs",
                 [
-                    OrderedDict([("path", "input0"), ("md5", "md-zer0")]),
-                    OrderedDict([("path", "input1"), ("md5", "md-one1")]),
+                    OrderedDict(
+                        [("hash", "md5"), ("path", "input0"), ("md5", "md-zer0")]
+                    ),
+                    OrderedDict(
+                        [("hash", "md5"), ("path", "input1"), ("md5", "md-one1")]
+                    ),
                 ],
             ),
         ]
@@ -190,7 +205,15 @@ def test_dump_nondefault_hash(dvc):
             ("cmd", "command"),
             (
                 "deps",
-                [OrderedDict([("path", "s3://dvc-temp/file"), ("md5", "value")])],
+                [
+                    OrderedDict(
+                        [
+                            ("hash", "md5"),
+                            ("path", "s3://dvc-temp/file"),
+                            ("md5", "value"),
+                        ]
+                    )
+                ],
             ),
         ]
     )
@@ -214,9 +237,9 @@ def test_order(dvc):
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
-            ("deps", [{"path": "input", "md5": "md-five"}]),
+            ("deps", [{"hash": "md5", "path": "input", "md5": "md-five"}]),
             ("params", {"params.yaml": {"foo-param": "value"}}),
-            ("outs", [{"path": "output", "md5": "md5-output"}]),
+            ("outs", [{"hash": "md5", "path": "output", "md5": "md5-output"}]),
         ]
     )
 
@@ -231,7 +254,7 @@ def test_to_lockfile(dvc):
         "something": OrderedDict(
             [
                 ("cmd", "command"),
-                ("deps", [{"path": "input", "md5": "md-five"}]),
+                ("deps", [{"hash": "md5", "path": "input", "md5": "md-five"}]),
             ]
         )
     }
@@ -259,4 +282,4 @@ def test_to_single_stage_lockfile_cloud_versioning_dir(dvc):
     stage.outs[0].files = files
     e = _to_single_stage_lockfile(stage, with_files=True)
     assert Schema(e)
-    assert e["outs"][0] == {"path": "dir", "files": files}
+    assert e["outs"][0] == {"hash": "md5", "path": "dir", "files": files}
