@@ -27,6 +27,7 @@ from dvc_data.hashfile import load as oload
 from dvc_data.hashfile.build import build
 from dvc_data.hashfile.checkout import checkout
 from dvc_data.hashfile.db import HashFileDB, add_update_tree
+from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
@@ -64,7 +65,7 @@ CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
 
 # NOTE: currently there are only 3 possible checksum names:
 #
-#    1) md5 (LOCAL, SSH);
+#    1) md5 (LOCAL, SSH) (actually DVC 2.x md5-dos2unix)
 #    2) etag (S3, GS, OSS, AZURE, HTTP);
 #    3) checksum (HDFS);
 #
@@ -73,7 +74,7 @@ CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
 HDFS_PARAM_CHECKSUM = "checksum"
 S3_PARAM_CHECKSUM = "etag"
 CHECKSUMS_SCHEMA = {
-    LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    "md5": CHECKSUM_SCHEMA,  # DVC 2.x md5-dos2unix
     HDFS_PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     S3_PARAM_CHECKSUM: CASE_SENSITIVE_CHECKSUM_SCHEMA,
 }
@@ -95,6 +96,7 @@ def loadd_from(stage, d_list):
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
         push = d.pop(Output.PARAM_PUSH, True)
+        hash_name = d.pop(Output.PARAM_HASH, None)
         ret.append(
             _get(
                 stage,
@@ -108,6 +110,7 @@ def loadd_from(stage, d_list):
                 **annot,
                 files=files,
                 push=push,
+                hash_name=hash_name,
             )
         )
     return ret
@@ -227,15 +230,27 @@ def merge_file_meta_from_cloud(entry: Dict) -> Dict:
     return entry
 
 
-def _serialize_tree_obj_to_files(obj: "Tree") -> List[Dict[str, Any]]:
+def _serialize_tree_obj_to_files(obj: Tree) -> List[Dict[str, Any]]:
     key = obj.PARAM_RELPATH
     return sorted(
         (
-            {key: posixpath.sep.join(parts), **hi.to_dict(), **meta.to_dict()}
+            {
+                key: posixpath.sep.join(parts),
+                **_serialize_hi_to_dict(hi),
+                **meta.to_dict(),
+            }
             for parts, meta, hi in obj
         ),
         key=itemgetter(key),
     )
+
+
+def _serialize_hi_to_dict(hash_info: Optional[HashInfo]) -> Dict[str, Any]:
+    if hash_info:
+        if hash_info.name == "md5-dos2unix":
+            return {"md5": hash_info.value}
+        return hash_info.to_dict()
+    return {}
 
 
 class OutputDoesNotExistError(DvcException):
@@ -297,6 +312,7 @@ class Output:
     PARAM_REMOTE = "remote"
     PARAM_PUSH = "push"
     PARAM_CLOUD = "cloud"
+    PARAM_HASH = "hash"
 
     DoesNotExistError: Type[DvcException] = OutputDoesNotExistError
     IsNotFileOrDirError: Type[DvcException] = OutputIsNotFileOrDirError
@@ -321,6 +337,7 @@ class Output:
         fs_config=None,
         files: Optional[List[Dict[str, Any]]] = None,
         push: bool = True,
+        hash_name: Optional[str] = DEFAULT_ALGORITHM,
     ):
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
@@ -392,16 +409,29 @@ class Output:
             )
             self.meta.version_id = version_id
 
-        if self.is_in_repo:
-            self.hash_name = "md5"
-        else:
-            self.hash_name = self.fs.PARAM_CHECKSUM
-
-        self.hash_info = HashInfo(
-            name=self.hash_name,
-            value=getattr(self.meta, self.hash_name, None),
-        )
+        self.hash_name, self.hash_info = self._compute_hash_info_from_meta(hash_name)
         self._compute_meta_hash_info_from_files()
+
+    def _compute_hash_info_from_meta(
+        self, hash_name: Optional[str]
+    ) -> Tuple[str, HashInfo]:
+        if self.is_in_repo:
+            if hash_name is None:
+                # Legacy 2.x output, use "md5-dos2unix" but read "md5" from
+                # file meta
+                hash_name = "md5-dos2unix"
+                meta_name = "md5"
+            else:
+                meta_name = hash_name
+        else:
+            hash_name = meta_name = self.fs.PARAM_CHECKSUM
+        assert hash_name
+
+        hash_info = HashInfo(
+            name=hash_name,
+            value=getattr(self.meta, meta_name, None),
+        )
+        return hash_name, hash_info
 
     def _compute_meta_hash_info_from_files(self) -> None:
         if self.files:
@@ -417,7 +447,7 @@ class Output:
             self.meta.remote = first(f.get("remote") for f in self.files)
         elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
-            if not self.hash_info and self.hash_name != "md5":
+            if not self.hash_info and self.hash_name not in ("md5", "md5-dos2unix"):
                 md5 = getattr(self.meta, "md5", None)
                 if md5:
                     self.hash_info = HashInfo("md5", md5)
@@ -494,7 +524,12 @@ class Output:
 
     @property
     def cache(self):
-        odb_name = "repo" if self.is_in_repo else self.protocol
+        from dvc.cachemgr import LEGACY_HASH_NAMES
+
+        if self.is_in_repo:
+            odb_name = "legacy" if self.hash_name in LEGACY_HASH_NAMES else "repo"
+        else:
+            odb_name = self.protocol
         odb = getattr(self.repo.cache, odb_name)
         if self.use_cache and odb is None:
             raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
@@ -663,6 +698,8 @@ class Output:
         if self.metric:
             self.verify_metric()
 
+        if self.hash_name == "md5-dos2unix":
+            self.hash_name = "md5"
         if self.use_cache:
             _, self.meta, self.obj = build(
                 self.cache,
@@ -772,6 +809,8 @@ class Output:
         return checkout_obj
 
     def dumpd(self, **kwargs):  # noqa: C901, PLR0912
+        from dvc.cachemgr import LEGACY_HASH_NAMES
+
         ret: Dict[str, Any] = {}
         with_files = (
             (not self.IS_DEPENDENCY or self.stage.is_import)
@@ -782,13 +821,21 @@ class Output:
         if not with_files:
             meta_d = self.meta.to_dict()
             meta_d.pop("isdir", None)
-            ret.update(self.hash_info.to_dict())
+            if self.hash_name in LEGACY_HASH_NAMES:
+                # 2.x checksums get serialized with file meta
+                name = "md5" if self.hash_name == "md5-dos2unix" else self.hash_name
+                ret.update({name: self.hash_info.value})
+            else:
+                ret.update(self.hash_info.to_dict())
             ret.update(split_file_meta_from_cloud(meta_d))
 
         if self.is_in_repo:
             path = self.fs.path.as_posix(relpath(self.fs_path, self.stage.wdir))
         else:
             path = self.def_path
+
+        if self.hash_name not in LEGACY_HASH_NAMES:
+            ret[self.PARAM_HASH] = "md5"
 
         ret[self.PARAM_PATH] = path
 
@@ -969,7 +1016,7 @@ class Output:
             odb,
             from_info,
             from_fs,
-            "md5",
+            DEFAULT_ALGORITHM,
             upload=upload,
             no_progress_bar=no_progress_bar,
         )
@@ -1110,7 +1157,9 @@ class Output:
             return {}
 
         if self.remote:
-            remote = self.repo.cloud.get_remote_odb(name=self.remote)
+            remote = self.repo.cloud.get_remote_odb(
+                name=self.remote, hash_name=self.hash_name
+            )
         else:
             remote = None
 
@@ -1149,13 +1198,14 @@ class Output:
             self.hash_name,
             Meta.PARAM_SIZE,
             Meta.PARAM_NFILES,
+            Output.PARAM_HASH,
         ]
 
         for opt in ignored:
             my.pop(opt, None)
             other.pop(opt, None)
 
-        if my != other:
+        if my != other or self.hash_name != out.hash_name:
             raise MergeError("unable to auto-merge outputs with different options")
 
         if not out.is_dir_checksum:
@@ -1418,6 +1468,7 @@ ARTIFACT_SCHEMA = {
     Required(Output.PARAM_PATH): str,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
+    Output.PARAM_HASH: str,
 }
 
 DIR_FILES_SCHEMA: Dict[str, Any] = {

@@ -9,7 +9,6 @@ from funcy import get_in, lcat, once, project
 from dvc import dependency, output
 from dvc.parsing import FOREACH_KWD, JOIN, EntryNotFound
 from dvc.utils.objects import cached_property
-from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 
 from . import PipelineStage, Stage, loads_from
@@ -19,7 +18,6 @@ from .utils import fill_stage_dependencies, resolve_paths
 
 if TYPE_CHECKING:
     from dvc.dvcfile import ProjectFile, SingleStageFile
-    from dvc.output import Output
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +50,7 @@ class StageLoader(Mapping):
         if not lock_data:
             return
 
-        from dvc.output import merge_file_meta_from_cloud
+        from dvc.output import Output, merge_file_meta_from_cloud
 
         assert isinstance(lock_data, dict)
         items: Iterable[Tuple[str, "Output"]] = chain(
@@ -73,9 +71,12 @@ class StageLoader(Mapping):
             info = info.copy()
             info.pop("path", None)
 
+            hash_name = info.pop(Output.PARAM_HASH, None)
             item.meta = Meta.from_dict(merge_file_meta_from_cloud(info))
-            hash_value = getattr(item.meta, item.hash_name, None)
-            item.hash_info = HashInfo(item.hash_name, hash_value)
+            # pylint: disable-next=protected-access
+            item.hash_name, item.hash_info = item._compute_hash_info_from_meta(
+                hash_name
+            )
             files = get_in(checksums, [key, path, item.PARAM_FILES], None)
             if files:
                 item.files = [merge_file_meta_from_cloud(f) for f in files]

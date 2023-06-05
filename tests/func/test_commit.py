@@ -56,6 +56,7 @@ def test_commit_preserve_fields(tmp_dir, dvc):
             key1: value1
             key2: value2
           remote: testremote
+          hash: md5
         meta: some metadata
     """
     )
@@ -77,6 +78,7 @@ def test_commit_preserve_fields(tmp_dir, dvc):
             key1: value1
             key2: value2
           remote: testremote
+          hash: md5
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta: some metadata
@@ -129,7 +131,10 @@ def test_commit_no_exec(tmp_dir, dvc):
 def test_commit_granular_output(tmp_dir, dvc):
     dvc.run(
         name="mystage",
-        cmd=["echo foo>foo", "echo bar>bar"],
+        cmd=[
+            "python -c \"open('foo', 'wb').write(b'foo\\n')\"",
+            "python -c \"open('bar', 'wb').write(b'bar\\n')\"",
+        ],
         outs=["foo", "bar"],
         no_commit=True,
     )
@@ -248,6 +253,7 @@ def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
             "outs": [
                 {
                     "path": "data",
+                    "hash": "md5",
                     "files": [
                         {
                             "size": 3,
@@ -280,6 +286,7 @@ def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
         "outs": [
             {
                 "path": "data",
+                "hash": "md5",
                 "files": [
                     {
                         "size": 4,
@@ -297,3 +304,21 @@ def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
             }
         ]
     }
+
+
+def test_commit_dos2unix(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    (tmp_dir / "foo.dvc").dump(
+        {
+            "outs": [
+                {"path": "foo", "md5": "acbd18db4cc2f85cedef654fccc4a4d8", "size": 3},
+            ]
+        }
+    )
+    legacy_content = (tmp_dir / "foo.dvc").read_text()
+
+    dvc.commit("foo.dvc")
+    assert (tmp_dir / "foo.dvc").read_text() == legacy_content
+    dvc.commit("foo.dvc", force=True)
+    content = (tmp_dir / "foo.dvc").read_text()
+    assert "hash: md5" in content

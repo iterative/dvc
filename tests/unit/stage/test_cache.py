@@ -27,12 +27,12 @@ def test_stage_cache(tmp_dir, dvc, mocker):
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
-        "4b",
-        "4b495dc2b14e1ca5bd5f2765a99ddd8785523a8342efe6bcadac012c2db01165",
+        "c7",
+        "c7a85d71de1912c43d9c5b6218c71630d6277e8fc11e4ccf5e12b3c202234838",
     )
     cache_file = os.path.join(
         cache_dir,
-        "78c427104a8e20216031c36d9c7620733066fff33ada254ad3fca551c1f8152b",
+        "5e2824029f8da9ef6c57131a638ceb65f27c02f16c85d71e85671c27daed0501",
     )
 
     assert os.path.isdir(cache_dir)
@@ -79,7 +79,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
     )
     cache_file = os.path.join(
         cache_dir,
-        "202ea269108bf98bea3e15f978e7929864728956c9df8d927a5c7d74fc4fedc8",
+        "9ce1963a69beb1299800188647cd960b7afff101be19fd46226e32bb8be8ee44",
     )
 
     assert os.path.isdir(cache_dir)
@@ -122,12 +122,12 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
-        "b5",
-        "b5d5548c43725139aa3419eb50717e062fe9b81f866f401fd6fd778d2a97822d",
+        "6a",
+        "6ad5cce3347e9e96c77d4353d84e5c8cae8c9151c486c4ea3d3d79e9051800f1",
     )
     cache_file = os.path.join(
         cache_dir,
-        "e0a59f6a5bd193032a4d1500abd89c9b08a2e9b26c724015e0bc6374295a3b9f",
+        "1fa3e1a9f785f8364ad185d62bd0813ce8794afcfc79410e985eac0443cc5462",
     )
 
     assert os.path.isdir(cache_dir)
@@ -162,14 +162,14 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
 
     run_copy("foo", "bar", name="copy-foo-bar")
 
-    parent_cache_dir = os.path.join(dvc.stage_cache.cache_dir, "fd")
+    parent_cache_dir = os.path.join(dvc.stage_cache.cache_dir, "6d")
     cache_dir = os.path.join(
         parent_cache_dir,
-        "fdbe7847136ebe88f59a29ee5a568f893cab031f74f7d3ab050828b53fd0033a",
+        "6d4c6de74e7c0d60d2122e2063b4724a8c78a6799def6c7cf5093f45e7f2f3b7",
     )
     cache_file = os.path.join(
         cache_dir,
-        "8716052b2074f5acf1a379529d47d6ef1c1f50c2281a7489b8d7ce251f234f86",
+        "435e34f80692059e79ec53346cbfe29fd9ee65b62f5f06f17f5950ce5a7408ea",
     )
 
     # sanity check

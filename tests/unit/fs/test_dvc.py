@@ -542,7 +542,11 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
     fs = DVCFileSystem(repo=dvc)
     _, _, obj = build(dvc.cache.local, "dir", fs, "md5")
-    assert obj.hash_info == HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
+    if os.name == "nt":
+        expected_hash = "0d2086760aea091f1504eafc8843bb18.dir"
+    else:
+        expected_hash = "e1d9e8eae5374860ae025ec84cfd85c7.dir"
+    assert obj.hash_info == HashInfo("md5", expected_hash)
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):

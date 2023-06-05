@@ -402,3 +402,15 @@ def test_dvcfile_load_with_plots(tmp_dir, dvc):
     assert all(
         name in top_level_plots for name in ("path/to/plot", "path/to/another/plot")
     )
+
+
+def test_dvcfile_dos2unix(tmp_dir, dvc):
+    from dvc_data.hashfile.hash import HashInfo
+
+    (tmp_dir / "foo.dvc").dump({"outs": [{"md5": "abc123", "size": 3, "path": "foo"}]})
+    orig_content = (tmp_dir / "foo.dvc").read_text()
+    stage = dvc.stage.load_one("foo.dvc")
+    assert stage.outs[0].hash_name == "md5-dos2unix"
+    assert stage.outs[0].hash_info == HashInfo("md5-dos2unix", "abc123")
+    stage.dump()
+    assert (tmp_dir / "foo.dvc").read_text() == orig_content

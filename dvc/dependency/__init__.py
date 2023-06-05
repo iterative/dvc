@@ -35,7 +35,8 @@ def loadd_from(stage, d_list):
     for d in d_list:
         p = d.pop(Output.PARAM_PATH, None)
         files = d.pop(Output.PARAM_FILES, None)
-        ret.append(_get(stage, p, d, files=files))
+        hash_name = d.pop(Output.PARAM_HASH, None)
+        ret.append(_get(stage, p, d, files=files, hash_name=hash_name))
     return ret
 
 

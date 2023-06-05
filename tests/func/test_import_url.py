@@ -108,7 +108,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
 class TestImport(_TestImport):
     @pytest.fixture
     def stage_md5(self):
-        return "dc24e1271084ee317ac3c2656fb8812b"
+        return "7033ee831f78a4dfec2fc71405516067"
 
     @pytest.fixture
     def dir_md5(self):
@@ -150,6 +150,7 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
         - path: foo # dep comment
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
+          hash: md5
         outs:
         - path: bar # out comment
           desc: out desc
@@ -161,8 +162,9 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
             key: value
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
+          hash: md5
         meta: some metadata
-        md5: be7ade0aa89cc8d56e320867a9de9740
+        md5: 8fc199641730e3f512deac0bd9a0e0b6
         frozen: true
     """
     )

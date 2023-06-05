@@ -51,6 +51,7 @@ def test_add(tmp_dir, dvc):
                 "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
                 "path": "foo",
                 "size": 3,
+                "hash": "md5",
             }
         ]
     }
@@ -70,6 +71,7 @@ def test_add_executable(tmp_dir, dvc):
                 "path": "foo",
                 "size": 3,
                 "isexec": True,
+                "hash": "md5",
             }
         ]
     }
@@ -258,6 +260,7 @@ def test_add_external_relpath(tmp_dir, dvc, local_cloud):
         "outs:\n"
         "- md5: 8c7dd922ad47494fc02c388e12c00eac\n"
         "  size: 4\n"
+        "  hash: md5\n"
         f"  path: {rel}\n"
     )
     assert fpath.read_text() == "file"

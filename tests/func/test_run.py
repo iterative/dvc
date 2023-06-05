@@ -562,10 +562,12 @@ def test_run_external_outputs(
         "    cmd: mycmd\n"
         "    deps:\n"
         "    - path: remote://workspace/foo\n"
+        "      hash: md5\n"
         f"      {hash_name}: {foo_hash}\n"
         "      size: 3\n"
         "    outs:\n"
         "    - path: remote://workspace/bar\n"
+        "      hash: md5\n"
         f"      {hash_name}: {bar_hash}\n"
         "      size: 3\n"
     )

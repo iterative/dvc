@@ -175,7 +175,7 @@ def test_dumpd_cloud_versioning_dir(mocker):
     out = Output(stage, "path", files=files)
 
     dumpd = out.dumpd()
-    assert dumpd == {"path": "path", "files": files}
+    assert dumpd == {"path": "path", "hash": "md5", "files": files}
 
 
 def test_version_aware_is_set_based_on_files(mocker):

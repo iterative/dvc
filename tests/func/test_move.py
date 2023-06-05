@@ -194,6 +194,7 @@ def test_move_meta(tmp_dir, dvc):
         outs:
         - md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
+          hash: md5
           path: bar
         meta:
           custom_key: 42

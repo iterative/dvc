@@ -9,11 +9,13 @@ if os.path.isfile(sys.argv[1]):
     shutil.copyfile(sys.argv[1], sys.argv[2])
 else:
     shutil.copytree(sys.argv[1], sys.argv[2])
-"""
+""".replace(
+    "\r\n", "\n"
+)
 
 
 def _add_script(tmp_dir, path, contents=""):
-    script, *_ = tmp_dir.gen(path, contents)
+    script, *_ = tmp_dir.gen(path, contents.encode("utf-8"))
     if hasattr(tmp_dir, "scm"):
         tmp_dir.scm_add(path, commit=f"add {path}")
     return script.fs_path
@@ -30,7 +32,9 @@ from pathlib import Path
 
 with Path(sys.argv[1]).open("a+", encoding="utf-8") as f:
     f.write("foo")
-""",
+""".replace(
+            "\r\n", "\n"
+        ),
     )
 
 
@@ -55,5 +59,7 @@ import sys
 for file in sys.argv[1:]:
     with open(file) as f, open(file +"-1","w+") as w:
         w.write(f.readline())
-""",
+""".replace(
+            "\r\n", "\n"
+        ),
     )
