@@ -45,7 +45,7 @@ def find_supported_remotes(string):
 def test_info_in_repo(scm_init, tmp_dir):
     tmp_dir.init(scm=scm_init, dvc=True)
     # Create `.dvc/cache`, that is needed to check supported link types.
-    os.mkdir(tmp_dir.dvc.cache.local.path)
+    os.makedirs(tmp_dir.dvc.cache.local.path)
 
     dvc_info = get_dvc_info()
 
@@ -113,7 +113,7 @@ def test_remotes(tmp_dir, dvc, caplog):
 
 
 def test_fs_info_in_repo(tmp_dir, dvc, caplog):
-    os.mkdir(dvc.cache.local.path)
+    os.makedirs(dvc.cache.local.path)
     dvc_info = get_dvc_info()
 
     assert re.search(r"Cache directory: .* on .*", dvc_info)

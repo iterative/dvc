@@ -89,7 +89,7 @@ def test_remote_cache_references(tmp_dir, dvc):
 
     dvc.cache = CacheManager(dvc)
 
-    assert dvc.cache.ssh.path == "/tmp"
+    assert dvc.cache.ssh.path == "/tmp/files/md5"
 
 
 def test_shared_cache_dir(tmp_dir):
@@ -113,13 +113,13 @@ def test_shared_cache_dir(tmp_dir):
     assert not os.path.exists(os.path.join("dir1", ".dvc", "cache"))
     assert not os.path.exists(os.path.join("dir2", ".dvc", "cache"))
     assert os.path.exists(
-        os.path.join(cache_dir, "dc", "f6c2fa538b445a3a095255c3641dfc")
+        os.path.join(cache_dir, "files", "md5", "dc", "f6c2fa538b445a3a095255c3641dfc")
     )
     assert os.path.exists(
-        os.path.join(cache_dir, "b4", "333c8cfa2ebba7ef20ec6c3265902b")
+        os.path.join(cache_dir, "files", "md5", "b4", "333c8cfa2ebba7ef20ec6c3265902b")
     )
     assert os.path.exists(
-        os.path.join(cache_dir, "9e", "fab2399c7c560b34de477b9aa0a465")
+        os.path.join(cache_dir, "files", "md5", "9e", "fab2399c7c560b34de477b9aa0a465")
     )
 
 
@@ -165,7 +165,7 @@ def test_cmd_cache_relative_path(tmp_dir, scm, dvc, make_tmp_dir):
     tmp_dir.dvc_gen({"foo": "foo"})
 
     assert os.path.exists(
-        os.path.join(cache_dir, "ac", "bd18db4cc2f85cedef654fccc4a4d8")
+        os.path.join(cache_dir, "files", "md5", "ac", "bd18db4cc2f85cedef654fccc4a4d8")
     )
 
 

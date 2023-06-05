@@ -134,7 +134,7 @@ def test_commit_granular_output(tmp_dir, dvc):
         no_commit=True,
     )
 
-    cache = tmp_dir / ".dvc" / "cache"
+    cache = tmp_dir / ".dvc" / "cache" / "files" / "md5"
     assert not list(cache.glob("*/*"))
 
     dvc.commit("foo")
@@ -175,7 +175,7 @@ def test_commit_granular_dir(tmp_dir, dvc):
     )
     dvc.add("data", no_commit=True)
 
-    cache = tmp_dir / ".dvc" / "cache"
+    cache = tmp_dir / ".dvc" / "cache" / "files" / "md5"
 
     assert set(cache.glob("*/*")) == set()
 

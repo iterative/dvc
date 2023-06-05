@@ -67,7 +67,7 @@ def _get_caches(cache):
     caches = (
         cache_type
         for cache_type, cache_instance in cache.by_scheme()
-        if cache_instance and cache_type != "repo"
+        if cache_instance and cache_type not in ("repo", "legacy")
     )
 
     # Caches will be always non-empty including the local cache

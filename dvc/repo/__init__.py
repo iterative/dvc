@@ -420,8 +420,8 @@ class Repo:
         flist = [self.config.files["local"]]
         if tmp_dir := self.tmp_dir:
             flist.append(tmp_dir)
-        if path_isin(self.cache.repo.path, self.root_dir):
-            flist.append(self.cache.repo.path)
+        if path_isin(self.cache.legacy.path, self.root_dir):
+            flist.append(self.cache.legacy.path)
 
         for file in flist:
             self.scm_context.ignore(file)

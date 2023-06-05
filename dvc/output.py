@@ -501,6 +501,14 @@ class Output:
         return odb
 
     @property
+    def local_cache(self):
+        from dvc.cachemgr import LEGACY_HASH_NAMES
+
+        if self.hash_name in LEGACY_HASH_NAMES:
+            return self.repo.cache.legacy
+        return self.repo.cache.local
+
+    @property
     def cache_path(self):
         return self.cache.fs.unstrip_protocol(
             self.cache.oid_to_path(self.hash_info.value)
@@ -514,7 +522,7 @@ class Output:
         if self.use_cache:
             odb = self.cache
         else:
-            odb = self.repo.cache.local
+            odb = self.local_cache
         _, meta, obj = build(
             odb,
             self.fs_path,
@@ -665,7 +673,7 @@ class Output:
             )
         else:
             _, self.meta, self.obj = build(
-                self.repo.cache.local,
+                self.local_cache,
                 self.fs_path,
                 self.fs,
                 self.hash_name,
@@ -1283,7 +1291,7 @@ class Output:
             )
 
         assert self.repo
-        cache = self.cache if self.use_cache else self.repo.cache.local
+        cache = self.cache if self.use_cache else self.local_cache
         assert isinstance(cache, HashFileDB)
 
         new: "HashFile"

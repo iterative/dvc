@@ -60,7 +60,7 @@ def _get_stage_hash(stage):
 class StageCache:
     def __init__(self, repo):
         self.repo = repo
-        self.cache_dir = os.path.join(self.repo.cache.local.path, "runs")
+        self.cache_dir = os.path.join(self.repo.cache.legacy.path, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
@@ -119,12 +119,12 @@ class StageCache:
 
     @contextmanager
     def _cache_type_copy(self):
-        cache_types = self.repo.cache.local.cache_types
-        self.repo.cache.local.cache_types = ["copy"]
+        cache_types = self.repo.cache.legacy.cache_types
+        self.repo.cache.legacy.cache_types = ["copy"]
         try:
             yield
         finally:
-            self.repo.cache.local.cache_types = cache_types
+            self.repo.cache.legacy.cache_types = cache_types
 
     def _uncached_outs(self, stage, cache):
         # NOTE: using temporary stage to avoid accidentally modifying original
@@ -166,14 +166,14 @@ class StageCache:
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
         path = self._get_cache_path(cache_key, cache_value)
-        local_fs = self.repo.cache.local.fs
+        local_fs = self.repo.cache.legacy.fs
         parent = local_fs.path.parent(path)
-        self.repo.cache.local.makedirs(parent)
+        self.repo.cache.legacy.makedirs(parent)
         tmp = local_fs.path.join(parent, fs.utils.tmp_fname())
         assert os.path.exists(parent)
         assert os.path.isdir(parent)
         dump_yaml(tmp, cache)
-        self.repo.cache.local.move(tmp, path)
+        self.repo.cache.legacy.move(tmp, path)
 
     def restore(self, stage, run_cache=True, pull=False, dry=False):
         from .serialize import to_single_stage_lockfile
@@ -258,12 +258,16 @@ class StageCache:
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        dest_odb = odb or self.repo.cloud.get_remote_odb(remote, "push --run-cache")
-        return self.transfer(self.repo.cache.local, dest_odb)
+        dest_odb = odb or self.repo.cloud.get_remote_odb(
+            remote, "push --run-cache", hash_name="md5-dos2unix"
+        )
+        return self.transfer(self.repo.cache.legacy, dest_odb)
 
     def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        odb = odb or self.repo.cloud.get_remote_odb(remote, "fetch --run-cache")
-        return self.transfer(odb, self.repo.cache.local)
+        odb = odb or self.repo.cloud.get_remote_odb(
+            remote, "fetch --run-cache", hash_name="md5-dos2unix"
+        )
+        return self.transfer(odb, self.repo.cache.legacy)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):
         """Return used cache for the specified run-cached stages."""
