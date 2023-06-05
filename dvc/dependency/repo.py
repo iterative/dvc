@@ -80,7 +80,7 @@ class RepoDependency(Dependency):
         from dvc.fs import DVCFileSystem
 
         config = {"cache": self.repo.config["cache"]}
-        config["cache"]["dir"] = self.repo.cache.local.path
+        config["cache"]["dir"] = self.repo.cache.local_cache_dir
 
         return DVCFileSystem(
             url=self.def_repo[self.PARAM_URL],

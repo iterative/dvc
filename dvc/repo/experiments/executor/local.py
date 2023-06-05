@@ -152,7 +152,7 @@ class TempDirExecutor(BaseLocalExecutor):
         self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
     ):
         """Initialize DVC cache."""
-        self._update_config({"cache": {"dir": repo.cache.repo.path}})
+        self._update_config({"cache": {"dir": repo.cache.local_cache_dir}})
 
     def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)

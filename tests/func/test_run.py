@@ -573,7 +573,7 @@ def test_run_external_outputs(
     assert (local_workspace / "foo").read_text() == "foo"
     assert (local_workspace / "bar").read_text() == "bar"
     assert (
-        local_workspace / "cache" / bar_hash[:2] / bar_hash[2:]
+        local_workspace / "cache" / "files" / "md5" / bar_hash[:2] / bar_hash[2:]
     ).read_text() == "bar"
 
 

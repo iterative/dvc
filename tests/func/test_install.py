@@ -77,7 +77,9 @@ class TestInstall:
         tmp_dir.dvc_gen("file", "file_content", "commit message")
 
         file_checksum = file_md5("file", dvc.fs)
-        expected_storage_path = storage_path / file_checksum[:2] / file_checksum[2:]
+        expected_storage_path = (
+            storage_path / "files" / "md5" / file_checksum[:2] / file_checksum[2:]
+        )
 
         scm.gitpython.repo.clone(os.fspath(git_remote))
         scm.gitpython.repo.create_remote("origin", os.fspath(git_remote))

@@ -260,15 +260,23 @@ def test_gc_external_output(tmp_dir, dvc, workspace):
     foo_hash = foo_stage.outs[0].hash_info.value
     bar_hash = bar_stage.outs[0].hash_info.value
 
-    assert (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).read_text() == "foo"
-    assert (workspace / "cache" / bar_hash[:2] / bar_hash[2:]).read_text() == "bar"
+    assert (
+        workspace / "cache" / "files" / "md5" / foo_hash[:2] / foo_hash[2:]
+    ).read_text() == "foo"
+    assert (
+        workspace / "cache" / "files" / "md5" / bar_hash[:2] / bar_hash[2:]
+    ).read_text() == "bar"
 
     (tmp_dir / "foo.dvc").unlink()
 
     dvc.gc(workspace=True)
 
-    assert not (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
-    assert (workspace / "cache" / bar_hash[:2] / bar_hash[2:]).read_text() == "bar"
+    assert not (
+        workspace / "cache" / "files" / "md5" / foo_hash[:2] / foo_hash[2:]
+    ).exists()
+    assert (
+        workspace / "cache" / "files" / "md5" / bar_hash[:2] / bar_hash[2:]
+    ).read_text() == "bar"
 
 
 def test_gc_all_experiments(tmp_dir, scm, dvc):
@@ -288,9 +296,11 @@ def test_gc_all_experiments(tmp_dir, scm, dvc):
 
     dvc.gc(all_experiments=True, force=True)
 
-    assert not (tmp_dir / ".dvc" / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
+    assert not (
+        tmp_dir / ".dvc" / "cache" / "files" / "md5" / foo_hash[:2] / foo_hash[2:]
+    ).exists()
     assert (
-        tmp_dir / ".dvc" / "cache" / baz_hash[:2] / baz_hash[2:]
+        tmp_dir / ".dvc" / "cache" / "files" / "md5" / baz_hash[:2] / baz_hash[2:]
     ).read_text() == "baz"
 
 
@@ -306,7 +316,9 @@ def test_gc_rev_num(tmp_dir, scm, dvc):
     dvc.gc(rev="HEAD", num=num, force=True)
 
     for n, i in enumerate(reversed(range(4))):
-        cache = tmp_dir / ".dvc" / "cache" / hashes[i][:2] / hashes[i][2:]
+        cache = (
+            tmp_dir / ".dvc" / "cache" / "files" / "md5" / hashes[i][:2] / hashes[i][2:]
+        )
         if n >= num:
             assert not cache.exists()
         else:

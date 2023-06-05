@@ -11,7 +11,9 @@ class TestAPI:
     def test_get_url(self, tmp_dir, dvc, remote):
         tmp_dir.dvc_gen("foo", "foo")
 
-        expected_url = (remote / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
+        expected_url = (
+            remote / "files" / "md5" / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+        ).url
         assert api.get_url("foo") == expected_url
 
     def test_open(self, tmp_dir, dvc, remote):

@@ -729,10 +729,22 @@ def test_add_symlink_file(tmp_dir, dvc):
     assert (tmp_dir / "dir" / "bar").read_text() == "bar"
 
     assert (
-        tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
+        tmp_dir
+        / ".dvc"
+        / "cache"
+        / "files"
+        / "md5"
+        / "37"
+        / "b51d194a7513e45b56f6524f2d51f2"
     ).read_text() == "bar"
     assert not (
-        tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
+        tmp_dir
+        / ".dvc"
+        / "cache"
+        / "files"
+        / "md5"
+        / "37"
+        / "b51d194a7513e45b56f6524f2d51f2"
     ).is_symlink()
 
     # Test that subsequent add succeeds
@@ -790,7 +802,13 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
     assert (
-        tmp_dir / ".dvc" / "cache" / "ac" / "bd18db4cc2f85cedef654fccc4a4d8"
+        tmp_dir
+        / ".dvc"
+        / "cache"
+        / "files"
+        / "md5"
+        / "ac"
+        / "bd18db4cc2f85cedef654fccc4a4d8"
     ).read_text() == "foo"
 
 

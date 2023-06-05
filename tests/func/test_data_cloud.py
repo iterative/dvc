@@ -470,11 +470,11 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
     dvc.pull("copy-foo-bar")
     assert (tmp_dir / "bar").exists()
-    assert len(recurse_list_dir(dvc.cache.local.path)) == 2
+    assert len(recurse_list_dir(dvc.cache.local.path)) == 1
     clean(["bar"], dvc)
 
     dvc.fetch("copy-foo-bar")
-    assert len(recurse_list_dir(dvc.cache.local.path)) == 2
+    assert len(recurse_list_dir(dvc.cache.local.path)) == 1
 
 
 def test_pull_partial(tmp_dir, dvc, local_remote):

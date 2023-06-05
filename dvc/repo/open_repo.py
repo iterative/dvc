@@ -129,7 +129,7 @@ def _get_remote_config(url):
             name = "auto-generated-upstream"
             return {
                 "core": {"remote": name},
-                "remote": {name: {"url": repo.cache.local.path}},
+                "remote": {name: {"url": repo.cache.local_cache_dir}},
             }
 
         # Use original remote to make sure that we are using correct url,
