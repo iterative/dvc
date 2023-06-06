@@ -29,7 +29,7 @@ def test_add(mocker, dvc):
         out=None,
         remote=None,
         to_remote=False,
-        jobs=None,
+        remote_jobs=None,
         force=False,
     )
 
@@ -61,7 +61,7 @@ def test_add_to_remote(mocker):
         out="bar",
         remote="remote",
         to_remote=True,
-        jobs=None,
+        remote_jobs=None,
         force=False,
     )
 
@@ -93,5 +93,5 @@ def test_add_to_cache_invalid_combinations(mocker, caplog):
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = "multiple targets can't be used with -o"
+        expected_msg = "multiple targets can't be used with --out"
         assert expected_msg in caplog.text

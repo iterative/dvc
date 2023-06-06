@@ -13,11 +13,7 @@ from dvc.cachemgr import CacheManager
 from dvc.cli import main
 from dvc.config import ConfigError
 from dvc.dvcfile import DVC_FILE_SUFFIX
-from dvc.exceptions import (
-    DvcException,
-    InvalidArgumentError,
-    OverlappingOutputPathsError,
-)
+from dvc.exceptions import DvcException, OverlappingOutputPathsError
 from dvc.fs import LocalFileSystem, system
 from dvc.output import (
     OutputAlreadyTrackedError,
@@ -874,19 +870,6 @@ def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, remote):
         dvc.add(str(tmp_foo), out=str(tmp_bar), to_remote=True)
 
 
-@pytest.mark.parametrize(
-    "invalid_opt, kwargs",
-    [
-        ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
-        ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        ("--external", {"targets": ["foo"], "external": True}),
-    ],
-)
-def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
-    with pytest.raises(InvalidArgumentError, match=invalid_opt):
-        dvc.add(to_remote=True, **kwargs)
-
-
 def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
     local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
 
@@ -960,18 +943,6 @@ def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
 
     assert dest_dir.read_text() == {"foo": "foo", "bar": "bar"}
     assert dest_dir.with_suffix(".dvc").exists()
-
-
-@pytest.mark.parametrize(
-    "invalid_opt, kwargs",
-    [
-        ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
-        ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-    ],
-)
-def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
-    with pytest.raises(InvalidArgumentError, match=invalid_opt):
-        dvc.add(out="bar", **kwargs)
 
 
 def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):

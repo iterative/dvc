@@ -9,8 +9,41 @@ logger = logging.getLogger(__name__)
 
 
 class CmdAdd(CmdBase):
+    def validate_args(self) -> None:
+        from dvc.exceptions import InvalidArgumentError
+
+        args = self.args
+        invalid_opt = None
+
+        if args.to_remote or args.out:
+            message = "{option} can't be used with "
+            message += "--to-remote" if args.to_remote else "--out"
+            if len(args.targets) != 1:
+                invalid_opt = "multiple targets"
+            elif args.glob:
+                invalid_opt = "--glob option"
+            elif args.no_commit:
+                invalid_opt = "--no-commit option"
+            elif args.external:
+                invalid_opt = "--external option"
+        else:
+            message = "{option} can't be used without --to-remote"
+            if args.remote:
+                invalid_opt = "--remote"
+            elif args.remote_jobs:
+                invalid_opt = "--remote-jobs"
+
+        if invalid_opt is not None:
+            raise InvalidArgumentError(message.format(option=invalid_opt))
+
     def run(self):
-        from dvc.exceptions import DvcException
+        from dvc.exceptions import DvcException, InvalidArgumentError
+
+        try:
+            self.validate_args()
+        except InvalidArgumentError:
+            logger.exception("")
+            return 1
 
         try:
             self.repo.add(
@@ -21,7 +54,7 @@ class CmdAdd(CmdBase):
                 out=self.args.out,
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
-                jobs=self.args.remote_jobs,
+                remote_jobs=self.args.remote_jobs,
                 force=self.args.force,
             )
         except FileNotFoundError:
