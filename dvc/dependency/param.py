@@ -2,10 +2,9 @@ import logging
 import os
 import typing
 from collections import defaultdict
-from typing import Dict
+from typing import Any, Dict
 
 import dpath
-from voluptuous import Any
 
 from dvc.exceptions import DvcException
 from dvc.utils.serialize import ParseError, load_path
@@ -34,7 +33,6 @@ class BadParamFileError(DvcException):
 
 class ParamsDependency(Dependency):
     PARAM_PARAMS = "params"
-    PARAM_SCHEMA = {PARAM_PARAMS: Any(dict, list, None)}
     DEFAULT_PARAMS_FILE = "params.yaml"
 
     def __init__(self, stage, path, params=None, repo=None):

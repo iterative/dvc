@@ -14,7 +14,6 @@ from .repo import RepoDependency
 SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
-    **ParamsDependency.PARAM_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
 
