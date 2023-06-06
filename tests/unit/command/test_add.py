@@ -11,8 +11,6 @@ def test_add(mocker, dvc):
             "--no-commit",
             "--external",
             "--glob",
-            "--file",
-            "file",
             "data",
         ]
     )
@@ -27,7 +25,6 @@ def test_add(mocker, dvc):
         ["data"],
         no_commit=True,
         glob=True,
-        file="file",
         external=True,
         out=None,
         remote=None,
@@ -60,7 +57,6 @@ def test_add_to_remote(mocker):
         ["s3://bucket/foo"],
         no_commit=False,
         glob=False,
-        file=None,
         external=False,
         out="bar",
         remote="remote",

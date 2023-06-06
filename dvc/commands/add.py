@@ -16,7 +16,6 @@ class CmdAdd(CmdBase):
             self.repo.add(
                 self.args.targets,
                 no_commit=self.args.no_commit,
-                file=self.args.file,
                 external=self.args.external,
                 glob=self.args.glob,
                 out=self.args.out,
@@ -61,11 +60,6 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Allows targets containing shell-style wildcards.",
-    )
-    parser.add_argument(
-        "--file",
-        help="Specify name of the .dvc file this command will generate.",
-        metavar="<filename>",
     )
     parser.add_argument(
         "-o",

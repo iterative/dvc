@@ -450,28 +450,6 @@ def test_add_force_overwrite_out(caplog, tmp_dir, dvc):
     assert (tmp_dir / "foo").read_text() == "foo"
 
 
-def test_add_filename(tmp_dir, dvc):
-    tmp_dir.gen({"foo": "foo", "bar": "bar", "data": {"file": "file"}})
-    ret = main(["add", "foo", "bar", "--file", "error.dvc"])
-    assert ret != 0
-
-    ret = main(["add", "data", "--file", "data_directory.dvc"])
-    assert ret == 0
-    assert (tmp_dir / "data_directory.dvc").exists()
-
-    ret = main(["add", "foo", "--file", "bar.dvc"])
-    assert ret == 0
-    assert (tmp_dir / "bar.dvc").exists()
-    assert not (tmp_dir / "foo.dvc").exists()
-
-    (tmp_dir / "bar.dvc").unlink()
-
-    ret = main(["add", "foo", "--file", "bar.dvc"])
-    assert ret == 0
-    assert (tmp_dir / "bar.dvc").exists()
-    assert not (tmp_dir / "foo.dvc").exists()
-
-
 def test_failed_add_cleanup(tmp_dir, scm, dvc):
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
 
