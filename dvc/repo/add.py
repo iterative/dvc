@@ -80,7 +80,6 @@ PIPELINE_TRACKED_UPDATE_FMT = (
 def get_or_create_stage(
     repo: "Repo",
     target: str,
-    file: Optional[str] = None,
     external: bool = False,
     out: Optional[str] = None,
     to_remote: bool = False,
@@ -103,7 +102,7 @@ def get_or_create_stage(
         stage = repo.stage.create(
             single_stage=True,
             validate=False,
-            fname=file or path,
+            fname=path,
             wdir=wdir,
             outs=[out],
             external=external,
@@ -222,7 +221,7 @@ def _add(stage: "Stage", source: Optional[str] = None, no_commit: bool = False) 
 
 @locked
 @scm_context
-def add(  # noqa: PLR0913
+def add(
     repo: "Repo",
     targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]],
     no_commit: bool = False,
@@ -251,7 +250,6 @@ def add(  # noqa: PLR0913
         target: get_or_create_stage(
             repo,
             target,
-            file=file,
             external=external,
             out=out,
             to_remote=to_remote,
