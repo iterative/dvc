@@ -234,30 +234,40 @@ class TestRunStageInsideOutput:
 class TestRunBadCwd:
     def test(self, make_tmp_dir, dvc):
         with pytest.raises(StagePathOutsideError):
-            dvc.run(cmd="command", wdir=make_tmp_dir("tmp"), single_stage=True)
+            dvc.run(
+                cmd="command",
+                wdir=make_tmp_dir("tmp"),
+                fname="bad-cwd.dvc",
+                single_stage=True,
+            )
 
     def test_same_prefix(self, tmp_dir, dvc):
         path = f"{tmp_dir}-{uuid.uuid4()}"
         os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            dvc.run(cmd="command", wdir=path, single_stage=True)
+            dvc.run(cmd="command", wdir=path, fname="bad-cwd.dvc", single_stage=True)
 
 
 class TestRunBadWdir:
     def test(self, make_tmp_dir, dvc):
         with pytest.raises(StagePathOutsideError):
-            dvc.run(cmd="command", wdir=make_tmp_dir("tmp"), single_stage=True)
+            dvc.run(
+                cmd="command",
+                wdir=make_tmp_dir("tmp"),
+                fname="bad-wdir.dvc",
+                single_stage=True,
+            )
 
     def test_same_prefix(self, tmp_dir, dvc):
         path = f"{tmp_dir}-{uuid.uuid4()}"
         os.mkdir(path)
         with pytest.raises(StagePathOutsideError):
-            dvc.run(cmd="command", wdir=path, single_stage=True)
+            dvc.run(cmd="command", wdir=path, fname="bad-wdir.dvc", single_stage=True)
 
     def test_not_found(self, tmp_dir, dvc):
         path = os.path.join(tmp_dir, str(uuid.uuid4()))
         with pytest.raises(StagePathNotFoundError):
-            dvc.run(cmd="command", wdir=path, single_stage=True)
+            dvc.run(cmd="command", wdir=path, fname="bad-wdir.dvc", single_stage=True)
 
     def test_not_dir(self, tmp_dir, dvc):
         path = tmp_dir / str(uuid.uuid4())
@@ -265,7 +275,12 @@ class TestRunBadWdir:
         path = path / str(uuid.uuid4())
         path.touch()
         with pytest.raises(StagePathNotDirectoryError):
-            dvc.run(cmd="command", wdir=os.fspath(path), single_stage=True)
+            dvc.run(
+                cmd="command",
+                wdir=os.fspath(path),
+                fname="bad-wdir.dvc",
+                single_stage=True,
+            )
 
 
 class TestRunBadName:
@@ -372,7 +387,9 @@ def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy, mocker):
 
 def test_rerun_callback(dvc):
     def run_callback(force=False):
-        return dvc.run(cmd="echo content > out", force=force, single_stage=True)
+        return dvc.run(
+            cmd="echo content > out", force=force, fname="echo.dvc", single_stage=True
+        )
 
     assert run_callback() is not None
     with pytest.raises(StageFileAlreadyExistsError):

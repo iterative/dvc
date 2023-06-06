@@ -90,7 +90,7 @@ def test_stage_run_ignore_sigint(dvc, mocker):
     popen = mocker.patch.object(subprocess, "Popen", return_value=proc)
     signal_mock = mocker.patch("signal.signal")
 
-    dvc.run(cmd="path", single_stage=True)
+    dvc.run(cmd="path", name="train")
 
     assert popen.called_once()
     assert communicate.called_once_with()

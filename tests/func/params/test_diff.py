@@ -11,7 +11,7 @@ def test_diff_no_params(tmp_dir, scm, dvc):
 
 def test_diff_no_changes(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
     assert dvc.params.diff() == {}
@@ -19,7 +19,7 @@ def test_diff_no_changes(tmp_dir, scm, dvc):
 
 def test_diff(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
 
@@ -33,7 +33,7 @@ def test_diff(tmp_dir, scm, dvc):
 
 def test_diff_dirty(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
 
@@ -45,14 +45,14 @@ def test_diff_dirty(tmp_dir, scm, dvc):
 
 def test_diff_new(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
 
     assert dvc.params.diff() == {"params.yaml": {"foo": {"old": None, "new": "bar"}}}
 
 
 def test_diff_deleted(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
 
@@ -63,7 +63,7 @@ def test_diff_deleted(tmp_dir, scm, dvc):
 
 def test_diff_list(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo:\n- bar\n- baz")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("foo")
 
@@ -78,7 +78,7 @@ def test_diff_list(tmp_dir, scm, dvc):
 
 def test_diff_dict(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo:\n  bar: baz")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("foo")
 
@@ -91,7 +91,7 @@ def test_diff_dict(tmp_dir, scm, dvc):
 
 def test_diff_with_unchanged(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar\nxyz: val")
-    dvc.run(cmd="echo params.yaml", params=["foo,xyz"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo,xyz"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
 
@@ -261,7 +261,7 @@ def test_diff_top_level_params(tmp_dir, dvc, scm, dvcfile, params_file):
 
 def test_diff_active_branch_no_changes(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
     assert dvc.params.diff(a_rev=tmp_dir.scm.active_branch()) == {}

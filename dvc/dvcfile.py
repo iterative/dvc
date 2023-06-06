@@ -35,7 +35,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
 
-DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
 PROJECT_FILE = "dvc.yaml"
 LOCK_FILE = "dvc.lock"
@@ -55,10 +54,7 @@ class ParametrizedDumpError(DvcException):
 
 
 def is_valid_filename(path):
-    return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
-        DVC_FILE,
-        PROJECT_FILE,
-    ]
+    return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) == PROJECT_FILE
 
 
 def is_dvc_file(path):

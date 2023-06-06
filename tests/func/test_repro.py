@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import DVC_FILE, load_file
+from dvc.dvcfile import load_file
 from dvc.exceptions import CyclicGraphError, ReproductionError, StagePathAsOutputError
 from dvc.fs import LocalFileSystem, system
 from dvc.output import Output
@@ -943,7 +943,7 @@ def repro_dir(tmp_dir, dvc, run_copy):
     assert dir_file_copy.read_text() == "dir file content"
     stages["dir_file_copy"] = stage
 
-    last_stage = tmp_dir / "dir" / DVC_FILE
+    last_stage = tmp_dir / "dir" / "echo.dvc"
     deps = [os.fspath(origin_copy_2), os.fspath(dir_file_copy)]
     stage = dvc.run(
         cmd="echo {}".format(" ".join(deps)),

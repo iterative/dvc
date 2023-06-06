@@ -14,7 +14,7 @@ def test_show_empty(dvc):
 
 def test_show(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     assert dvc.params.show() == {
         "": {"data": {"params.yaml": {"data": {"foo": "bar"}}}}
     }
@@ -22,7 +22,7 @@ def test_show(tmp_dir, dvc):
 
 def test_show_targets(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     expected = {"": {"data": {"params.yaml": {"data": {"foo": "bar"}}}}}
     assert dvc.params.show(targets=["params.yaml"]) == expected
     assert dvc.params.show(targets=(tmp_dir / "params.yaml").fs_path) == expected
@@ -30,7 +30,7 @@ def test_show_targets(tmp_dir, dvc):
 
 def test_show_toml(tmp_dir, dvc):
     tmp_dir.gen("params.toml", "[foo]\nbar = 42\nbaz = [1, 2]\n")
-    dvc.run(cmd="echo params.toml", params=["params.toml:foo"], single_stage=True)
+    dvc.run(cmd="echo params.toml", params=["params.toml:foo"], name="echo-params")
     assert dvc.params.show() == {
         "": {"data": {"params.toml": {"data": {"foo": {"bar": 42, "baz": [1, 2]}}}}}
     }
@@ -44,7 +44,7 @@ def test_show_py(tmp_dir, dvc):
     dvc.run(
         cmd="echo params.py",
         params=["params.py:CONST,IS_DIR,Config.foo"],
-        single_stage=True,
+        name="echo-params",
     )
     assert dvc.params.show() == {
         "": {
@@ -59,18 +59,8 @@ def test_show_py(tmp_dir, dvc):
 
 def test_show_multiple(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar\nbaz: qux\n")
-    dvc.run(
-        cmd="echo params.yaml",
-        fname="foo.dvc",
-        params=["foo"],
-        single_stage=True,
-    )
-    dvc.run(
-        cmd="echo params.yaml",
-        fname="baz.dvc",
-        params=["baz"],
-        single_stage=True,
-    )
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params1")
+    dvc.run(cmd="echo params.yaml", params=["baz"], name="echo-params2")
     assert dvc.params.show() == {
         "": {"data": {"params.yaml": {"data": {"baz": "qux", "foo": "bar"}}}}
     }
@@ -78,7 +68,7 @@ def test_show_multiple(tmp_dir, dvc):
 
 def test_show_list(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo:\n- bar\n- baz\n")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     assert dvc.params.show() == {
         "": {"data": {"params.yaml": {"data": {"foo": ["bar", "baz"]}}}}
     }
@@ -86,7 +76,7 @@ def test_show_list(tmp_dir, dvc):
 
 def test_show_branch(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    dvc.run(cmd="echo params.yaml", params=["foo"], name="echo-params")
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("init")
 
