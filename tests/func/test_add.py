@@ -645,10 +645,10 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
 def test_add_parent_dir(tmp_dir, scm, dvc):
     tmp_dir.gen({"dir": {"file1": "file1 content"}})
     out_path = os.path.join("dir", "file1")
-    dvc.add(out_path, file=out_path + ".dvc")
+    dvc.add(out_path)
 
     with pytest.raises(OverlappingOutputPathsError) as e:
-        dvc.add("dir", file="dir.dvc")
+        dvc.add("dir")
     assert str(e.value) == (
         "Cannot add 'dir', because it is overlapping with other DVC "
         "tracked output: '{out}'.\n"

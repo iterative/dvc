@@ -51,9 +51,6 @@ def validate_args(targets: List[str], **kwargs: Any) -> None:
     invalid_opt = None
     to_remote = kwargs.get("to_remote")
 
-    if len(targets) > 1 and kwargs.get("file"):
-        raise InvalidArgumentError("cannot use '--file' with multiple targets")
-
     if to_remote or kwargs.get("out"):
         message = "{option} can't be used with "
         message += "--to-remote" if to_remote else "-o"
@@ -83,7 +80,6 @@ PIPELINE_TRACKED_UPDATE_FMT = (
 def get_or_create_stage(
     repo: "Repo",
     target: str,
-    file: Optional[str] = None,
     external: bool = False,
     out: Optional[str] = None,
     to_remote: bool = False,
@@ -106,7 +102,7 @@ def get_or_create_stage(
         stage = repo.stage.create(
             single_stage=True,
             validate=False,
-            fname=file or path,
+            fname=path,
             wdir=wdir,
             outs=[out],
             external=external,
@@ -225,11 +221,10 @@ def _add(stage: "Stage", source: Optional[str] = None, no_commit: bool = False) 
 
 @locked
 @scm_context
-def add(  # noqa: PLR0913
+def add(
     repo: "Repo",
     targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]],
     no_commit: bool = False,
-    file: Optional[str] = None,
     external: bool = False,
     glob: bool = False,
     out: Optional[str] = None,
@@ -245,7 +240,6 @@ def add(  # noqa: PLR0913
     validate_args(
         add_targets,
         no_commit=no_commit,
-        file=file,
         external=external,
         out=out,
         remote=remote,
@@ -256,7 +250,6 @@ def add(  # noqa: PLR0913
         target: get_or_create_stage(
             repo,
             target,
-            file=file,
             external=external,
             out=out,
             to_remote=to_remote,
