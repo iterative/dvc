@@ -39,7 +39,7 @@ def test_move_not_data_source(tmp_dir, dvc):
         cmd="cp foo file1",
         outs=["file1"],
         deps=["foo"],
-        single_stage=True,
+        name="copy-foo-file1",
     )
 
     with pytest.raises(MoveNotDataSourceError):

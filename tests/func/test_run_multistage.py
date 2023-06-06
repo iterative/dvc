@@ -40,20 +40,6 @@ def test_run_no_exec(tmp_dir, dvc, run_copy):
     }
 
 
-def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
-    from dvc.stage import PipelineStage, Stage
-
-    tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "foo1", single_stage=True)
-    stage2 = run_copy("foo1", "foo2", name="copy-foo1-foo2")
-    stage3 = run_copy("foo2", "foo3", single_stage=True)
-
-    assert isinstance(stage2, PipelineStage)
-    assert isinstance(stage1, Stage)
-    assert isinstance(stage3, Stage)
-    assert stage2.name == "copy-foo1-foo2"
-
-
 def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     from dvc.dvcfile import PROJECT_FILE, load_file
     from dvc.stage import PipelineStage
@@ -61,14 +47,15 @@ def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "foo1", name="copy-foo-foo1")
     run_copy("foo1", "foo2", name="copy-foo1-foo2")
-    run_copy("foo2", "foo3", single_stage=True)
+    run_copy("foo2", "foo3", name="copy-foo2-foo3")
 
     stages = list(load_file(dvc, PROJECT_FILE).stages.values())
-    assert len(stages) == 2
+    assert len(stages) == 3
     assert all(isinstance(stage, PipelineStage) for stage in stages)
     assert {stage.name for stage in stages} == {
         "copy-foo-foo1",
         "copy-foo1-foo2",
+        "copy-foo2-foo3",
     }
 
 

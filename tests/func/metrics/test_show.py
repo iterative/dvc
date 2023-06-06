@@ -12,7 +12,9 @@ from dvc.utils.serialize import JSONFileCorruptedError, YAMLFileCorruptedError
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "1.1")
-    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
+    run_copy_metrics(
+        "metrics_t.yaml", "metrics.yaml", name="copy-metrics", metrics=["metrics.yaml"]
+    )
     assert dvc.metrics.show() == {"": {"data": {"metrics.yaml": {"data": 1.1}}}}
 
 
@@ -23,6 +25,7 @@ def test_show_simple_from_subdir(tmp_dir, dvc, run_copy_metrics):
     run_copy_metrics(
         "metrics_t.yaml",
         "subdir/metrics.yaml",
+        name="copy-metrics",
         metrics=["subdir/metrics.yaml"],
     )
 
@@ -40,7 +43,9 @@ def test_show_simple_from_subdir(tmp_dir, dvc, run_copy_metrics):
 
 def test_show(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
-    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
+    run_copy_metrics(
+        "metrics_t.yaml", "metrics.yaml", name="copy-metrics", metrics=["metrics.yaml"]
+    )
     assert dvc.metrics.show() == {
         "": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}
     }
@@ -48,7 +53,9 @@ def test_show(tmp_dir, dvc, run_copy_metrics):
 
 def test_show_toml(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.toml", "[foo]\nbar = 1.2")
-    run_copy_metrics("metrics_t.toml", "metrics.toml", metrics=["metrics.toml"])
+    run_copy_metrics(
+        "metrics_t.toml", "metrics.toml", name="copy-metrics", metrics=["metrics.toml"]
+    )
     assert dvc.metrics.show() == {
         "": {"data": {"metrics.toml": {"data": {"foo": {"bar": 1.2}}}}}
     }
@@ -56,7 +63,9 @@ def test_show_toml(tmp_dir, dvc, run_copy_metrics):
 
 def test_show_targets(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
-    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
+    run_copy_metrics(
+        "metrics_t.yaml", "metrics.yaml", name="copy-metrics", metrics=["metrics.yaml"]
+    )
     expected = {"": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}}
     assert dvc.metrics.show(targets=["metrics.yaml"]) == expected
     assert dvc.metrics.show(targets=(tmp_dir / "metrics.yaml").fs_path) == expected
@@ -65,8 +74,8 @@ def test_show_targets(tmp_dir, dvc, run_copy_metrics):
 def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("foo_temp", "foo: 1\n")
     tmp_dir.gen("baz_temp", "baz: 2\n")
-    run_copy_metrics("foo_temp", "foo", fname="foo.dvc", metrics=["foo"])
-    run_copy_metrics("baz_temp", "baz", fname="baz.dvc", metrics=["baz"])
+    run_copy_metrics("foo_temp", "foo", name="copy-to-foo", metrics=["foo"])
+    run_copy_metrics("baz_temp", "baz", name="copy-to-baz", metrics=["baz"])
     assert dvc.metrics.show() == {
         "": {"data": {"foo": {"data": {"foo": 1}}, "baz": {"data": {"baz": 2}}}}
     }
@@ -75,7 +84,10 @@ def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
 def test_show_branch(tmp_dir, scm, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_temp.yaml", "foo: 1")
     run_copy_metrics(
-        "metrics_temp.yaml", "metrics.yaml", metrics_no_cache=["metrics.yaml"]
+        "metrics_temp.yaml",
+        "metrics.yaml",
+        name="copy-metrics",
+        metrics_no_cache=["metrics.yaml"],
     )
     scm.add(["metrics.yaml", "metrics.yaml.dvc"])
     scm.commit("init")
@@ -104,13 +116,14 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
         dvc.run(
             cmd="echo foo: 1 > metrics.yaml",
             metrics=["metrics.yaml"],
-            single_stage=True,
+            name="generate-metrics",
         )
 
     scm.add(
         [
             str(subrepo_dir / "metrics.yaml"),
-            str(subrepo_dir / "metrics.yaml.dvc"),
+            str(subrepo_dir / "dvc.yaml"),
+            str(subrepo_dir / "dvc.lock"),
         ]
     )
     scm.commit("init metrics")
@@ -125,11 +138,16 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
 
 def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "1.1")
-    run_copy_metrics("metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"])
+    run_copy_metrics(
+        "metrics_t.yaml", "metrics.yaml", name="copy-metrics", metrics=["metrics.yaml"]
+    )
 
     # This one should be skipped
     stage = run_copy_metrics(
-        "metrics_t.yaml", "metrics2.yaml", metrics=["metrics2.yaml"]
+        "metrics_t.yaml",
+        "metrics2.yaml",
+        name="copy-metrics2",
+        metrics=["metrics2.yaml"],
     )
     remove(stage.outs[0].fspath)
     remove(stage.outs[0].cache_path)
@@ -183,11 +201,11 @@ def test_show_non_metric_branch(tmp_dir, scm, use_dvc):
         assert not (tmp_dir / ".dvc").exists()
 
 
-def test_non_metric_and_recurisve_show(tmp_dir, dvc, run_copy_metrics):
+def test_non_metric_and_recursive_show(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen({"metrics_t.yaml": "foo: 1.1", "metrics": {"metric1.yaml": "bar: 1.2"}})
 
     metric2 = os.fspath(tmp_dir / "metrics" / "metric2.yaml")
-    run_copy_metrics("metrics_t.yaml", metric2, metrics=[metric2])
+    run_copy_metrics("metrics_t.yaml", metric2, name="copy-metric2", metrics=[metric2])
 
     assert dvc.metrics.show(targets=["metrics_t.yaml", "metrics"], recursive=True) == {
         "": {

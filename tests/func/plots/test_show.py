@@ -32,6 +32,7 @@ def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
         "metric_t.json",
         "metric.json",
         plots=["metric.json"],
+        name="copy-metric",
         commit="there is metric",
     )
     scm.tag("v1")
@@ -43,6 +44,7 @@ def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
         "metric_t.json",
         "metric.json",
         plots=["metric.json"],
+        name="copy-metric",
         commit="there is an another metric",
     )
     scm.tag("v2")
@@ -64,6 +66,7 @@ def test_plot_wrong_metric_type(tmp_dir, scm, dvc, run_copy_metrics):
         "metric_t.txt",
         "metric.txt",
         plots_no_cache=["metric.txt"],
+        name="copy-metric",
         commit="add text metric",
     )
 
@@ -210,7 +213,9 @@ def test_ignore_parsing_error(tmp_dir, dvc, run_copy_metrics):
     with open("file", "wb", encoding=None) as fobj:
         fobj.write(b"\xc1")
 
-    run_copy_metrics("file", "plot_file.json", plots=["plot_file.json"])
+    run_copy_metrics(
+        "file", "plot_file.json", plots=["plot_file.json"], name="copy-metric"
+    )
     result = dvc.plots.show(onerror=onerror_collect)
 
     assert isinstance(
@@ -304,7 +309,6 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
             f"python copy.py {sname} {p2}"
         ),
         deps=[sname],
-        single_stage=False,
         plots=["subdir"],
         name="copy_double",
     )
@@ -313,6 +317,7 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
         pname,
         "plot.json",
         plots=["plot.json"],
+        name="copy-metric",
         commit="there is metric",
     )
 

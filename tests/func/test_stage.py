@@ -89,21 +89,16 @@ def test_reload(tmp_dir, dvc):
 
 def test_default_wdir_ignored_in_checksum(tmp_dir, dvc):
     tmp_dir.gen("bar", "bar")
-    stage = dvc.run(
-        cmd="cp bar foo",
-        deps=["bar"],
-        outs=["foo"],
-        single_stage=True,
-    )
+    stage = dvc.run(cmd="cp bar foo", deps=["bar"], outs=["foo"], name="copy-foo-bar")
 
     d = stage.dumpd()
     assert Stage.PARAM_WDIR not in d.keys()
 
-    d = load_yaml(stage.relpath)
-    assert Stage.PARAM_WDIR not in d.keys()
+    d = load_yaml("dvc.yaml")
+    assert Stage.PARAM_WDIR not in d["stages"]["copy-foo-bar"]
 
     with dvc.lock:
-        stage = SingleStageFile(dvc, stage.relpath).stage
+        stage = stage.reload()
         assert not stage.changed()
 
 
@@ -117,7 +112,7 @@ def test_external_remote_output_resolution(tmp_dir, dvc, make_remote):
     dvc.run(
         cmd=f"echo file > {file_path}",
         outs_no_cache=["remote://storage/file"],
-        single_stage=True,
+        name="gen-file",
     )
     assert os.path.exists(file_path)
 
@@ -245,16 +240,15 @@ def test_collect_symlink(tmp_dir, dvc, with_deps):
 
 
 def test_stage_strings_representation(tmp_dir, dvc, run_copy):
-    tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "bar", single_stage=True)
-    assert stage1.addressing == "bar.dvc"
-    assert repr(stage1) == "Stage: 'bar.dvc'"
-    assert str(stage1) == "stage: 'bar.dvc'"
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    assert stage1.addressing == "foo.dvc"
+    assert repr(stage1) == "Stage: 'foo.dvc'"
+    assert str(stage1) == "stage: 'foo.dvc'"
 
-    stage2 = run_copy("bar", "baz", name="copy-bar-baz")
-    assert stage2.addressing == "copy-bar-baz"
-    assert repr(stage2) == "Stage: 'copy-bar-baz'"
-    assert str(stage2) == "stage: 'copy-bar-baz'"
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    assert stage2.addressing == "copy-foo-bar"
+    assert repr(stage2) == "Stage: 'copy-foo-bar'"
+    assert str(stage2) == "stage: 'copy-foo-bar'"
 
     folder = tmp_dir / "dir"
     folder.mkdir()

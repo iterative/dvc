@@ -15,14 +15,15 @@ def test_stage_cache(tmp_dir, dvc, mocker):
         cmd="python script.py",
         deps=["script.py", "dep"],
         outs=["out"],
-        single_stage=True,
+        name="write-out",
     )
 
     with dvc.lock:
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "out").exists()
-    assert not (tmp_dir / "out.dvc").exists()
+    assert not (tmp_dir / "dvc.yaml").exists()
+    assert not (tmp_dir / "dvc.lock").exists()
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
@@ -61,14 +62,15 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
         cmd="python script.py",
         params=["foo,bar", "myparams.yaml:baz,qux"],
         outs=["out"],
-        single_stage=True,
+        name="write-out",
     )
 
     with dvc.lock:
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "out").exists()
-    assert not (tmp_dir / "out.dvc").exists()
+    assert not (tmp_dir / "dvc.yaml").exists()
+    assert not (tmp_dir / "dvc.lock").exists()
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
@@ -107,7 +109,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
         cmd="python ../script.py",
         deps=["../script.py", "../dep"],
         outs=["out"],
-        single_stage=True,
+        name="write-out",
         wdir="wdir",
     )
 
@@ -115,7 +117,8 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "wdir" / "out").exists()
-    assert not (tmp_dir / "wdir" / "out.dvc").exists()
+    assert not (tmp_dir / "wdir" / "dvc.yaml").exists()
+    assert not (tmp_dir / "wdir" / "dvc.lock").exists()
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,

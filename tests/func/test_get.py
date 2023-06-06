@@ -149,11 +149,9 @@ def test_non_cached_output(tmp_dir, erepo_dir):
 
     with erepo_dir.chdir():
         erepo_dir.dvc.run(
-            outs_no_cache=[src],
-            cmd="echo hello > non_cached_file",
-            single_stage=True,
+            outs_no_cache=[src], cmd="echo hello > non_cached_file", name="gen"
         )
-        erepo_dir.scm_add([src, src + ".dvc"], commit="add non-cached output")
+        erepo_dir.scm_add(["dvc.lock", "dvc.yaml"], commit="add non-cached output")
 
     Repo.get(os.fspath(erepo_dir), src, dst)
 

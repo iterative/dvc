@@ -91,7 +91,7 @@ def test_open_not_cached(dvc):
     metric_content = "0.6"
     metric_code = f"open('{metric_file}', 'w').write('{metric_content}')"
     dvc.run(
-        single_stage=True,
+        name="write-metric",
         metrics_no_cache=[metric_file],
         cmd=f'python -c "{metric_code}"',
     )

@@ -84,14 +84,13 @@ def test_commit_preserve_fields(tmp_dir, dvc):
     )
 
 
-@pytest.mark.parametrize("run_kw", [{"single_stage": True}, {"name": "copy"}])
-def test_commit_with_deps(tmp_dir, dvc, run_copy, run_kw):
+def test_commit_with_deps(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     (foo_stage,) = dvc.add("foo", no_commit=True)
     assert foo_stage is not None
     assert len(foo_stage.outs) == 1
 
-    stage = run_copy("foo", "file", no_commit=True, **run_kw)
+    stage = run_copy("foo", "file", no_commit=True, name="copy")
     assert stage is not None
     assert len(stage.outs) == 1
 

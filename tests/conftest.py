@@ -6,6 +6,7 @@ from contextlib import suppress
 import pytest
 
 from dvc import env
+from dvc.stage import PipelineStage
 from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
 
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
@@ -241,6 +242,8 @@ def run_copy_metrics(tmp_dir, copy_script):
 
         if hasattr(tmp_dir.dvc, "scm"):
             files = [stage.path]
+            if isinstance(stage, PipelineStage):
+                files += [stage.dvcfile._lockfile.path]
             files += [out.fs_path for out in stage.outs if not out.use_cache]
             tmp_dir.dvc.scm.add(files)
             if commit:
