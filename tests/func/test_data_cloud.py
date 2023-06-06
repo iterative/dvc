@@ -14,6 +14,7 @@ from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
+from dvc_data.hashfile.hash_info import HashInfo
 
 
 def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
@@ -118,19 +119,17 @@ def test_data_cloud_error_cli(dvc):
 
 
 def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
-    stage = dvc.run(outs=["bar"], cmd="echo bar > bar", single_stage=True)
-    assert main(["push"]) == 0
+    stage = dvc.run(outs=["bar"], cmd="echo bar > bar", name="gen-bar")
+    dvc.push()
 
-    stage_file_path = stage.relpath
-    content = (tmp_dir / stage_file_path).parse()
-    del content["outs"][0]["md5"]
-    (tmp_dir / stage_file_path).dump(content)
+    stage.outs[0].hash_info = HashInfo()
+    stage.dump()
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
         caplog.clear()
         assert main(["status", "-c"]) == 0
         expected_warning = (
-            "Output 'bar'(stage: 'bar.dvc') is missing version info. "
+            "Output 'bar'(stage: 'gen-bar') is missing version info. "
             "Cache for it will not be collected. "
             "Use `dvc repro` to get your pipeline up to date."
         )
@@ -311,7 +310,7 @@ def recurse_list_dir(d):
 
 def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     (stage0,) = tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "bar", single_stage=True)
+    stage1 = run_copy("foo", "bar", name="copy-foo-bar")
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
     dvc.push()
 
@@ -343,7 +342,6 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
     path = local_remote.url
     tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar", single_stage=True)
 
     tmp_dir.dvc_gen("lorem", "lorem")
     run_copy("lorem", "lorem2", name="copy-lorem-lorem2")
@@ -351,13 +349,13 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
     tmp_dir.dvc_gen("ipsum", "ipsum")
     run_copy("ipsum", "baz", name="copy-ipsum-baz")
 
-    outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
+    outs = ["foo", "lorem", "ipsum", "baz", "lorem2"]
 
     remove(dvc.stage_cache.cache_dir)
 
     dvc.push()
 
-    outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
+    outs = ["foo", "lorem", "ipsum", "baz", "lorem2"]
 
     # each one's a copy of other, hence 3
     assert len(recurse_list_dir(path)) == 3

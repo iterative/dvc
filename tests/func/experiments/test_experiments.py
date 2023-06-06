@@ -584,7 +584,11 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target, copy_sc
 def test_exp_run_recursive(tmp_dir, scm, dvc, run_copy_metrics):
     tmp_dir.dvc_gen("metric_t.json", '{"foo": 1}')
     run_copy_metrics(
-        "metric_t.json", "metric.json", metrics=["metric.json"], no_exec=True
+        "metric_t.json",
+        "metric.json",
+        metrics=["metric.json"],
+        no_exec=True,
+        name="copy-metric",
     )
     assert dvc.experiments.run(".", recursive=True)
     assert (tmp_dir / "metric.json").parse() == {"foo": 1}

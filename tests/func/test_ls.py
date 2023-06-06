@@ -44,10 +44,9 @@ def create_dvc_pipeline(tmp_dir, dvc):
         cmd="python script.py {}".format(os.path.join("out", "file")),
         outs=[os.path.join("out", "file")],
         deps=["dep"],
-        fname="out.dvc",
-        single_stage=True,
+        name="touch",
     )
-    tmp_dir.scm_add(["out.dvc"], commit="run")
+    tmp_dir.scm_add(["dvc.yaml", "dvc.lock"], commit="run")
     shutil.rmtree("out")
 
 
@@ -243,7 +242,8 @@ def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):
         (
             (("script.py",), False),
             (("dep.dvc",), False),
-            (("out.dvc",), False),
+            (("dvc.yaml",), False),
+            (("dvc.lock",), False),
             (("dep",), True),
             (("out",), False),
             ((".dvcignore",), False),
@@ -261,7 +261,8 @@ def test_ls_repo_with_removed_dvc_dir_recursive(tmp_dir, dvc, scm):
         (
             (("script.py",), False),
             (("dep.dvc",), False),
-            (("out.dvc",), False),
+            (("dvc.yaml",), False),
+            (("dvc.lock",), False),
             (("dep",), True),
             (("out", "file"), True),
             ((".dvcignore",), False),

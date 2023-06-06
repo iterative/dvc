@@ -13,7 +13,7 @@ from tests.utils import get_gitignore_content
 @pytest.mark.parametrize("remove_outs", [True, False])
 def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
-    stage2 = run_copy("foo", "bar", single_stage=True)
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
     stage3 = run_copy("bar", "foobar", name="copy-bar-foobar")
 
     assert "/foo" in get_gitignore_content()
@@ -96,7 +96,7 @@ def test_cmd_remove_gitignore_single_stage(tmp_dir, scm, dvc, run_copy):
 
 def test_cmd_remove_gitignore_multistage(tmp_dir, scm, dvc, run_copy):
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "foo1", single_stage=True)
+    stage1 = run_copy("foo", "foo1", name="copy-foo-foo1")
     stage2 = run_copy("foo1", "foo2", name="copy-foo1-foo2")
 
     assert (tmp_dir / ".gitignore").exists()

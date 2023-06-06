@@ -26,19 +26,19 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
         }
 
     tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar", single_stage=True)
-    scm.add([".gitignore", "foo.dvc", "bar.dvc"])
+    run_copy("foo", "bar", name="copy-foo-bar")
+    scm.add([".gitignore", "foo.dvc", "dvc.yaml", "dvc.lock"])
     scm.commit("Add foo and bar")
 
     scm.checkout("new-branch", create_new=True)
 
-    run_copy("bar", "buzz", single_stage=True)
-    scm.add([".gitignore", "buzz.dvc"])
+    run_copy("bar", "buzz", name="copy-bar-buzz")
+    scm.add([".gitignore", "dvc.yaml", "dvc.lock"])
     scm.commit("Add buzz")
 
-    assert collect_outs("bar.dvc", with_deps=True) == {"foo", "bar"}
-    assert collect_outs("buzz.dvc", with_deps=True) == {"foo", "bar", "buzz"}
-    assert collect_outs("buzz.dvc", with_deps=False) == {"buzz"}
+    assert collect_outs("copy-foo-bar", with_deps=True) == {"foo", "bar"}
+    assert collect_outs("copy-bar-buzz", with_deps=True) == {"foo", "bar", "buzz"}
+    assert collect_outs("copy-bar-buzz", with_deps=False) == {"buzz"}
 
     run_copy("foo", "foobar", name="copy-foo-foobar")
     assert collect_outs(":copy-foo-foobar") == {"foobar"}
@@ -52,16 +52,22 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
     assert collect_outs("copy-foo-foobar", recursive=True) == {"foobar"}
 
     run_copy("foobar", "baz", name="copy-foobar-baz")
-    assert collect_outs("dvc.yaml") == {"foobar", "baz"}
-    assert collect_outs("dvc.yaml", with_deps=True) == {"foobar", "baz", "foo"}
+    assert collect_outs("dvc.yaml") == {"foobar", "baz", "bar", "buzz"}
+    assert collect_outs("dvc.yaml", with_deps=True) == {
+        "foobar",
+        "baz",
+        "bar",
+        "buzz",
+        "foo",
+    }
 
 
 def test_collect_dir_recursive(tmp_dir, dvc, run_head):
     tmp_dir.gen({"dir": {"foo": "foo"}})
     (stage1,) = dvc.add("dir/*", glob=True)
     with (tmp_dir / "dir").chdir():
-        stage2 = run_head("foo", name="copy-foo-bar")
-        stage3 = run_head("foo-1", single_stage=True)
+        stage2 = run_head("foo", name="head-foo")
+        stage3 = run_head("foo-1", name="head-foo1")
     assert set(dvc.stage.collect("dir", recursive=True)) == {
         stage1,
         stage2,
@@ -101,7 +107,7 @@ def stages(tmp_dir, run_copy):
     return {
         "foo-generate": stage1,
         "lorem-generate": stage2,
-        "copy-foo-bar": run_copy("foo", "bar", single_stage=True),
+        "copy-foo-bar": run_copy("foo", "bar", name="copy-foo-bar"),
         "copy-bar-foobar": run_copy("bar", "foobar", name="copy-bar-foobar"),
         "copy-lorem-ipsum": run_copy("lorem", "ipsum", name="copy-lorem-ipsum"),
     }
@@ -147,7 +153,7 @@ def test_collect_generated(tmp_dir, dvc):
 
 def test_collect_glob(tmp_dir, dvc, stages):
     assert set(dvc.stage.collect("copy*", glob=True)) == {
-        stages[key] for key in ["copy-bar-foobar", "copy-lorem-ipsum"]
+        stages[key] for key in ["copy-bar-foobar", "copy-foo-bar", "copy-lorem-ipsum"]
     }
     assert set(dvc.stage.collect("copy-lorem*", glob=True, with_deps=True)) == {
         stages[key] for key in ["copy-lorem-ipsum", "lorem-generate"]
@@ -162,12 +168,14 @@ def test_collect_granular_with_no_target(tmp_dir, dvc, stages):
 
 
 def test_collect_granular_with_target(tmp_dir, dvc, stages):
-    assert dvc.stage.collect_granular("bar.dvc") == [(stages["copy-foo-bar"], None)]
+    assert dvc.stage.collect_granular("foo.dvc") == [(stages["foo-generate"], None)]
     assert dvc.stage.collect_granular(PROJECT_FILE) == [
+        (stages["copy-foo-bar"], None),
         (stages["copy-bar-foobar"], None),
         (stages["copy-lorem-ipsum"], None),
     ]
     assert dvc.stage.collect_granular(":") == [
+        (stages["copy-foo-bar"], None),
         (stages["copy-bar-foobar"], None),
         (stages["copy-lorem-ipsum"], None),
     ]
@@ -218,7 +226,7 @@ def test_collect_granular_with_deps(tmp_dir, dvc, stages):
     assert set(
         map(
             itemgetter(0),
-            dvc.stage.collect_granular("bar.dvc", with_deps=True),
+            dvc.stage.collect_granular("copy-foo-bar", with_deps=True),
         )
     ) == {stages["copy-foo-bar"], stages["foo-generate"]}
     assert set(

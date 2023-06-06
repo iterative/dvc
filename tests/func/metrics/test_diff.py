@@ -10,7 +10,9 @@ from dvc.utils import relpath
 def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         tmp_dir.gen({"m_temp.yaml": str(val)})
-        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"])
+        run_copy_metrics(
+            "m_temp.yaml", "m.yaml", name="copy-metrics", metrics=["m.yaml"]
+        )
         dvc.scm.commit(str(val))
 
     _gen(1)
@@ -26,7 +28,13 @@ def test_metrics_diff_yaml(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         (tmp_dir / "m_temp.yaml").dump(metrics)
-        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"], commit=str(val))
+        run_copy_metrics(
+            "m_temp.yaml",
+            "m.yaml",
+            name="copy-metrics",
+            metrics=["m.yaml"],
+            commit=str(val),
+        )
 
     _gen(1)
     _gen(2)
@@ -46,7 +54,13 @@ def test_metrics_diff_json(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         (tmp_dir / "m_temp.json").dump(metrics)
-        run_copy_metrics("m_temp.json", "m.json", metrics=["m.json"], commit=str(val))
+        run_copy_metrics(
+            "m_temp.json",
+            "m.json",
+            name="copy-metrics",
+            metrics=["m.json"],
+            commit=str(val),
+        )
 
     _gen(1)
     _gen(2)
@@ -65,7 +79,13 @@ def test_metrics_diff_json_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         (tmp_dir / "m_temp.json").dump(metrics)
-        run_copy_metrics("m_temp.json", "m.json", metrics=["m.json"], commit=str(val))
+        run_copy_metrics(
+            "m_temp.json",
+            "m.json",
+            name="copy-metrics",
+            metrics=["m.json"],
+            commit=str(val),
+        )
 
     _gen(1)
     _gen(2)
@@ -80,6 +100,7 @@ def test_metrics_diff_broken_json(tmp_dir, scm, dvc, run_copy_metrics):
     run_copy_metrics(
         "m_temp.json",
         "m.json",
+        name="copy-metrics",
         metrics_no_cache=["m.json"],
         commit="add metrics",
     )
@@ -103,7 +124,9 @@ def test_metrics_diff_no_metrics(tmp_dir, scm, dvc):
 def test_metrics_diff_new_metric(tmp_dir, scm, dvc, run_copy_metrics):
     metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
     (tmp_dir / "m_temp.json").dump(metrics)
-    run_copy_metrics("m_temp.json", "m.json", metrics_no_cache=["m.json"])
+    run_copy_metrics(
+        "m_temp.json", "m.json", name="copy-metrics", metrics_no_cache=["m.json"]
+    )
 
     assert dvc.metrics.diff() == {
         "m.json": {
@@ -120,6 +143,7 @@ def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc, run_copy_metrics):
     run_copy_metrics(
         "m_temp.json",
         "m.json",
+        name="copy-metrics",
         metrics_no_cache=["m.json"],
         commit="add metrics",
     )
@@ -140,6 +164,7 @@ def test_metrics_diff_with_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
     run_copy_metrics(
         "metrics_temp.yaml",
         "metrics.yaml",
+        name="copy-metrics",
         metrics_no_cache=["metrics.yaml"],
         commit="1",
     )
@@ -168,7 +193,9 @@ def test_no_commits(tmp_dir):
 def test_metrics_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         tmp_dir.gen({"m_temp.yaml": str(val)})
-        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"])
+        run_copy_metrics(
+            "m_temp.yaml", "m.yaml", name="copy-metrics", metrics=["m.yaml"]
+        )
         dvc.scm.commit(str(val))
 
     _gen(1)
@@ -185,7 +212,9 @@ def test_metrics_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
 def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
     def _gen(val):
         tmp_dir.gen({"m_temp.yaml": f"foo: {val}"})
-        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"])
+        run_copy_metrics(
+            "m_temp.yaml", "m.yaml", name="copy-metrics", metrics=["m.yaml"]
+        )
         dvc.scm.commit(str(val))
 
     _gen(1.23456789)
@@ -243,7 +272,13 @@ def test_metrics_diff_active_branch_unchanged(tmp_dir, scm, dvc, run_copy_metric
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         (tmp_dir / "m_temp.yaml").dump(metrics)
-        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"], commit=str(val))
+        run_copy_metrics(
+            "m_temp.yaml",
+            "m.yaml",
+            name="copy-metric",
+            metrics=["m.yaml"],
+            commit=str(val),
+        )
 
     _gen(1)
     _gen(2)

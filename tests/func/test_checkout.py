@@ -9,12 +9,10 @@ import pytest
 from dvc.cli import main
 from dvc.dvcfile import PROJECT_FILE, load_file
 from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
-from dvc.fs import LocalFileSystem, system
-from dvc.stage import Stage
+from dvc.fs import system
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils import relpath
 from dvc.utils.fs import remove
-from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.utils import get_gitignore_content
 
 logger = logging.getLogger("dvc")
@@ -29,11 +27,10 @@ def walk_files(directory):
 def test_checkout(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
     dvc.run(
-        fname="file1.dvc",
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-foo-file1",
     )
     remove(tmp_dir / "foo")
     remove("data")
@@ -46,11 +43,10 @@ def test_checkout(tmp_dir, dvc, copy_script):
 def test_checkout_cli(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
     dvc.run(
-        fname="file1.dvc",
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-foo-file1",
     )
     remove(tmp_dir / "foo")
     remove("data")
@@ -179,10 +175,10 @@ def test_gitignore_basic(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen("file1", "random text1", commit="add file1")
     tmp_dir.dvc_gen("file2", "random text2", commit="add file2")
     dvc.run(
-        single_stage=True,
         cmd="cp foo file3",
         deps=["foo"],
         outs_no_cache=["file3"],
+        name="cp-foo-file3",
     )
     assert get_gitignore_content() == ["/file1", "/file2"]
 
@@ -211,19 +207,14 @@ def test_gitignore_when_checkout(tmp_dir, dvc, scm):
     assert "/file_in_a_branch" in ignored
 
 
-def test_checkout_missing_md5_in_stage_file(tmp_dir, dvc, copy_script):
+def test_checkout_missing_md5_in_lock_file_for_outs_deps(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
-    stage = dvc.run(
-        fname="file1.dvc",
+    dvc.stage.add(
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-file",
     )
-    d = load_yaml(stage.relpath)
-    del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
-    del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
-    dump_yaml(stage.relpath, d)
 
     with pytest.raises(CheckoutError):
         dvc.checkout(force=True)
@@ -249,7 +240,7 @@ def test_checkout_not_cached_file(tmp_dir, dvc):
         cmd="cp foo bar",
         deps=["foo"],
         outs_no_cache=["bar"],
-        single_stage=True,
+        name="copy-file",
     )
     stats = dvc.checkout(force=True)
     assert not any(stats.values())
@@ -258,11 +249,10 @@ def test_checkout_not_cached_file(tmp_dir, dvc):
 def test_checkout_with_deps_cli(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
     dvc.run(
-        fname="file1.dvc",
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-file",
     )
     remove("foo")
     remove("file1")
@@ -270,7 +260,7 @@ def test_checkout_with_deps_cli(tmp_dir, dvc, copy_script):
     assert not os.path.exists("foo")
     assert not os.path.exists("file1")
 
-    ret = main(["checkout", "--force", "file1.dvc", "--with-deps"])
+    ret = main(["checkout", "--force", "copy-file", "--with-deps"])
     assert ret == 0
 
     assert os.path.exists("foo")
@@ -364,10 +354,10 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
 
 def test_checkout_no_checksum(tmp_dir, dvc):
     tmp_dir.gen("file", "file content")
-    stage = dvc.run(outs=["file"], no_exec=True, cmd="somecmd", single_stage=True)
+    dvc.run(outs=["file"], no_exec=True, cmd="somecmd", name="stage1")
 
     with pytest.raises(CheckoutError):
-        dvc.checkout([stage.path], force=True)
+        dvc.checkout(["stage1"], force=True)
 
     assert not os.path.exists("file")
 
@@ -586,21 +576,20 @@ def test_checkout_with_relink_existing(tmp_dir, dvc, link):
 def test_checkout_with_deps(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
     dvc.run(
-        fname="copy_file.dvc",
         cmd="echo foo > bar",
         outs=["bar"],
         deps=["foo"],
-        single_stage=True,
+        name="copy-file",
     )
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "foo").unlink()
 
-    stats = dvc.checkout(["copy_file.dvc"], with_deps=False)
+    stats = dvc.checkout(["copy-file"], with_deps=False)
     assert stats == {**empty_checkout, "added": ["bar"]}
 
     (tmp_dir / "bar").unlink()
-    stats = dvc.checkout(["copy_file.dvc"], with_deps=True)
+    stats = dvc.checkout(["copy-file"], with_deps=True)
     assert set(stats["added"]) == {"foo", "bar"}
 
 
