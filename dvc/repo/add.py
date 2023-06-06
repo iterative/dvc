@@ -51,9 +51,6 @@ def validate_args(targets: List[str], **kwargs: Any) -> None:
     invalid_opt = None
     to_remote = kwargs.get("to_remote")
 
-    if len(targets) > 1 and kwargs.get("file"):
-        raise InvalidArgumentError("cannot use '--file' with multiple targets")
-
     if to_remote or kwargs.get("out"):
         message = "{option} can't be used with "
         message += "--to-remote" if to_remote else "-o"
@@ -229,7 +226,6 @@ def add(  # noqa: PLR0913
     repo: "Repo",
     targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]],
     no_commit: bool = False,
-    file: Optional[str] = None,
     external: bool = False,
     glob: bool = False,
     out: Optional[str] = None,
@@ -245,7 +241,6 @@ def add(  # noqa: PLR0913
     validate_args(
         add_targets,
         no_commit=no_commit,
-        file=file,
         external=external,
         out=out,
         remote=remote,
