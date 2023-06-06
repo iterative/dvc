@@ -1,4 +1,5 @@
 import os
+import shutil
 import textwrap
 
 import pytest
@@ -138,10 +139,10 @@ def test_move_should_save_stage_info(tmp_dir, dvc):
 
 
 def test_should_move_to_dir_on_non_default_stage_file(tmp_dir, dvc):
-    stage_file_name = "stage.dvc"
     tmp_dir.gen({"file": "file_content"})
 
-    dvc.add("file", file=stage_file_name)
+    dvc.add("file")
+    shutil.move("file.dvc", "stage.dvc")
     os.mkdir("directory")
 
     dvc.move("file", "directory")
