@@ -298,15 +298,6 @@ class Output:
     PARAM_PUSH = "push"
     PARAM_CLOUD = "cloud"
 
-    METRIC_SCHEMA = Any(
-        None,
-        bool,
-        {
-            PARAM_METRIC_TYPE: Any(str, None),
-            PARAM_METRIC_XPATH: Any(str, None),
-        },
-    )
-
     DoesNotExistError: Type[DvcException] = OutputDoesNotExistError
     IsNotFileOrDirError: Type[DvcException] = OutputIsNotFileOrDirError
     IsStageFileError: Type[DvcException] = OutputIsStageFileError
@@ -1417,7 +1408,6 @@ ARTIFACT_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     Required(Output.PARAM_PATH): str,
-    Output.PARAM_PLOT: bool,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
 }
@@ -1433,7 +1423,6 @@ SCHEMA = {
     **ARTIFACT_SCHEMA,
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
-    Output.PARAM_METRIC: Output.METRIC_SCHEMA,
     Output.PARAM_REMOTE: str,
     Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
