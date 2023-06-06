@@ -639,31 +639,36 @@ def test_repro_metrics_add_unchanged(tmp_dir, dvc, copy_script):
     assert len(stages) == 1
     assert stages[0] is not None
 
-    file1 = "file1"
-    file1_stage = file1 + ".dvc"
     dvc.run(
-        fname=file1_stage,
-        outs_no_cache=[file1],
+        outs_no_cache=["file1"],
         deps=["foo", "copy.py"],
-        cmd=f"python copy.py foo {file1}",
-        single_stage=True,
+        cmd="python copy.py foo file1",
+        name="copy",
     )
 
-    stages = dvc.reproduce(file1_stage)
+    stages = dvc.reproduce("copy")
     assert len(stages) == 0
 
-    d = load_yaml(file1_stage)
-    d["outs"][0]["metric"] = True
-    dump_yaml(file1_stage, d)
+    dvc.stage.add(
+        metrics_no_cache=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="copy",
+        force=True,
+    )
 
-    stages = dvc.reproduce(file1_stage)
+    stages = dvc.reproduce("copy")
     assert len(stages) == 0
 
-    d = load_yaml(file1_stage)
-    d["outs"][0]["metric"] = False
-    dump_yaml(file1_stage, d)
+    dvc.stage.add(
+        outs_no_cache=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="copy",
+        force=True,
+    )
 
-    stages = dvc.reproduce(file1_stage)
+    stages = dvc.reproduce("copy")
     assert len(stages) == 0
 
 
