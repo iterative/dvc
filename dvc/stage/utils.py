@@ -225,7 +225,7 @@ def prepare_file_path(kwargs) -> str:
 
     Used in creating .dvc files.
     """
-    from dvc.dvcfile import DVC_FILE, DVC_FILE_SUFFIX
+    from dvc.dvcfile import DVC_FILE_SUFFIX
 
     out = first(
         concat(
@@ -239,10 +239,8 @@ def prepare_file_path(kwargs) -> str:
             kwargs.get("outs_persist_no_cache", []),
         )
     )
-
-    return (
-        os.path.basename(os.path.normpath(out)) + DVC_FILE_SUFFIX if out else DVC_FILE
-    )
+    assert out
+    return os.path.basename(os.path.normpath(out)) + DVC_FILE_SUFFIX
 
 
 def check_stage_exists(repo: "Repo", stage: Union["Stage", "PipelineStage"], path: str):
