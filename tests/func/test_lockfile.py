@@ -5,7 +5,7 @@ from dvc.dvcfile import LOCK_FILE
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
-from tests.func.test_run_multistage import supported_params
+from tests.func.test_run import supported_params
 
 FS_STRUCTURE = {
     "foo": "bar\nfoobar",
