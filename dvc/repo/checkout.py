@@ -153,15 +153,4 @@ def checkout(  # noqa: C901
         self.state.save_link(out_path, self.fs)
         stats[typ_map[typ]].append(_fspath_dir(out_path))
 
-    failed = []
-    for out in view.outs:
-        if not out.use_cache:
-            continue
-
-        if not out.hash_info:
-            failed.append(_fspath_dir(out.fs_path))
-
-    if not allow_missing and failed:
-        raise CheckoutError(failed, stats)
-
     return stats
