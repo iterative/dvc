@@ -173,8 +173,8 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     m = mocker.patch("dvc.stage.run.cmd_run", wraps=cmd_run)
 
     with modify_yaml("dvc.yaml") as d:
-        cmd = d["stages"]["copy-foo-bar"]["cmd"]
-        d["stages"]["copy-foo-bar"]["cmd"] = f"command {cmd}"
+        # change cmd spacing by two
+        d["stages"]["copy-foo-bar"]["cmd"] = "  ".join(stage.cmd.split())
 
     assert dvc.status([stage.addressing]) == {stage.addressing: ["changed command"]}
     assert dvc.reproduce(stage.addressing)[0] == stage
