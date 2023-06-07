@@ -6,13 +6,12 @@ import platform
 
 import psutil
 
-from dvc import __version__
+from dvc import PKG, __version__
 from dvc.exceptions import NotDvcRepoError
 from dvc.fs import Schemes, generic, get_fs_cls, get_fs_config, registry
 from dvc.repo import Repo
 from dvc.scm import SCMError
 from dvc.utils import error_link
-from dvc.utils.pkg import PKG
 
 SUBPROJECTS = (
     "dvc_data",

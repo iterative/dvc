@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 from packaging import version
 
-from dvc import __version__
-from dvc.utils.pkg import PKG
+from dvc import PKG, __version__
 
 if TYPE_CHECKING:
     from dvc.ui import RichText
