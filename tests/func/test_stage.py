@@ -20,16 +20,8 @@ def test_cmd_obj():
         SingleStageFile.validate({Stage.PARAM_CMD: {}})
 
 
-def test_cmd_none():
-    SingleStageFile.validate({Stage.PARAM_CMD: None})
-
-
 def test_no_cmd():
     SingleStageFile.validate({})
-
-
-def test_cmd_str():
-    SingleStageFile.validate({Stage.PARAM_CMD: "cmd"})
 
 
 def test_object():

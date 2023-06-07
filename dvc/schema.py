@@ -17,7 +17,6 @@ from dvc.stage.params import StageParams
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_MD5: output.CHECKSUM_SCHEMA,
-    StageParams.PARAM_CMD: Any(str, list, None),
     StageParams.PARAM_WDIR: Any(str, None),
     StageParams.PARAM_DEPS: Any([dependency.SCHEMA], None),
     StageParams.PARAM_OUTS: Any([output.SCHEMA], None),
