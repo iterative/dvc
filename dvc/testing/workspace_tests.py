@@ -111,6 +111,8 @@ class TestImportURLVersionAware:
         dvc.pull()
         assert (tmp_dir / "file").read_text() == "modified"
 
+        dvc.get(".", "file", "file_get")
+
     def test_import_dir(self, tmp_dir, dvc, remote_version_aware):
         remote_version_aware.gen({"data_dir": {"subdir": {"file": "file"}}})
         dvc.imp_url("remote://upstream/data_dir", version_aware=True)
@@ -139,6 +141,8 @@ class TestImportURLVersionAware:
         dvc.pull()
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
+
+        dvc.get(".", "data_dir", "data_dir_get")
 
     def test_import_no_download(self, tmp_dir, dvc, remote_version_aware):
         remote_version_aware.gen({"data_dir": {"subdir": {"file": "file"}}})
