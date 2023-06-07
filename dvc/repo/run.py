@@ -21,6 +21,8 @@ def run(
     force: bool = True,
     **kwargs,
 ) -> Union["Stage", "PipelineStage"]:
+    assert not kwargs.get("single_stage")
+    assert not kwargs.get("fname")
     kwargs.update({"force": force, "params": parse_params(kwargs.get("params", []))})
     stage = self.stage.create(**kwargs)
 
