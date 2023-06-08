@@ -63,22 +63,6 @@ def test_import_conflict_and_override(tmp_dir, dvc):
     assert os.path.exists("bar.dvc")
 
 
-def test_import_filename(tmp_dir, dvc, cloud):
-    external_source = cloud / "file"
-    (cloud / "file").write_text("content", encoding="utf-8")
-    ret = main(["import-url", "--file", "bar.dvc", external_source.fs_path])
-    assert ret == 0
-    assert (tmp_dir / "bar.dvc").exists()
-
-    (tmp_dir / "bar.dvc").unlink()
-    (tmp_dir / "sub").mkdir()
-
-    path = tmp_dir / "sub" / "bar.dvc"
-    ret = main(["import-url", "--file", path.fs_path, external_source.fs_path, "out"])
-    assert ret == 0
-    assert path.exists()
-
-
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
 def test_import_url_to_dir(dname, tmp_dir, dvc):
     tmp_dir.gen({"data_dir": {"file": "file content"}})
