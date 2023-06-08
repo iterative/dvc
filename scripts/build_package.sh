@@ -8,7 +8,7 @@ if [ ! -d "dvc" ]; then
   exit 1
 fi
 
-echo 'PKG = "pip"' >dvc/utils/build.py
+echo 'PKG = "pip"' >dvc/_build.py
 
 python -m pip install build twine
 python -m build

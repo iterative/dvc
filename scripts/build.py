@@ -20,7 +20,7 @@ parser.add_argument("--apple-id-username")
 parser.add_argument("--apple-id-password")
 args = parser.parse_args()
 
-(dvc / "utils" / "build.py").write_text(f'PKG = "{args.pkg}"')
+(dvc / "_build.py").write_text(f'PKG = "{args.pkg}"')
 
 if not (dvc / "_dvc_version.py").exists():
     raise Exception("no version info found")
