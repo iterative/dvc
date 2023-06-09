@@ -324,30 +324,25 @@ def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
     dvc.cache.local.cache_types = [link]
 
     tmp_dir.dvc_gen({"dir": {"data": "text"}})
-    dvc.unprotect("dir/data")
-    assert not link_test_func("dir/data")
+
+    data_file = os.path.join("dir", "data")
+
+    # NOTE: Windows symlink perms don't propagate to the target
+    if not (os.name == "nt" and link == "symlink"):
+        assert not os.access(data_file, os.W_OK)
+
+    dvc.unprotect(data_file)
+    assert os.access(data_file, os.W_OK)
+    assert not link_test_func(data_file)
 
     stats = dvc.checkout(["dir.dvc"], relink=True)
     assert stats == empty_checkout
-    assert link_test_func("dir/data")
+    assert link_test_func(data_file)
 
-
-@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
-def test_checkout_relink_protected(tmp_dir, dvc, link):
-    dvc.cache.local.cache_types = [link]
-
-    tmp_dir.dvc_gen("foo", "foo")
-    dvc.unprotect("foo")
-    assert os.access("foo", os.W_OK)
-
-    stats = dvc.checkout(["foo.dvc"], relink=True)
-    assert stats == empty_checkout
-
-    # NOTE: Windows symlink perms don't propagate to the target
-    if link == "copy" or (link == "symlink" and os.name == "nt"):
-        assert os.access("foo", os.W_OK)
-    else:
-        assert not os.access("foo", os.W_OK)
+    # NOTE: Windows symlink perms don't propagate to the target and
+    # hardlink was chmod-ed during relink to be deleted
+    if not (os.name == "nt" and link in ["symlink", "hardlink"]):
+        assert not os.access(data_file, os.W_OK)
 
 
 @pytest.mark.parametrize(
