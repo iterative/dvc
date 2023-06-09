@@ -150,6 +150,7 @@ def _load_data_from_outs(index, prefix, outs):
 
 
 def _load_storage_from_out(storage_map, key, out):
+    from dvc.cachemgr import LEGACY_HASH_NAMES
     from dvc.config import NoRemoteError
     from dvc_data.index import FileStorage, ObjectStorage
 
@@ -168,7 +169,10 @@ def _load_storage_from_out(storage_map, key, out):
                 )
             )
         else:
-            storage_map.add_remote(ObjectStorage(key, remote.odb, index=remote.index))
+            odb = (
+                remote.legacy_odb if out.hash_name in LEGACY_HASH_NAMES else remote.odb
+            )
+            storage_map.add_remote(ObjectStorage(key, odb, index=remote.index))
     except NoRemoteError:
         pass
 

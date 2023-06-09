@@ -1,5 +1,6 @@
 import logging
 import os
+from functools import partial
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, List, Set, Tuple, Union
 
@@ -17,17 +18,18 @@ logger = logging.getLogger(__name__)
 
 def unfetched_view(
     index: "Index", targets: "TargetType", unpartial: bool = False, **kwargs
-) -> Tuple["IndexView", List["Dependency"]]:
+) -> Tuple["IndexView", "IndexView", List["Dependency"]]:
     """Return index view of imports which have not been fetched.
 
     Returns:
-        Tuple in the form (view, changed_deps) where changed_imports is a list
-        of import dependencies that cannot be fetched due to changed data
-        source.
+        Tuple in the form (legacy_view, view, changed_deps) where changed_imports is a
+        list of import dependencies that cannot be fetched due to changed data source.
     """
+    from dvc.cachemgr import LEGACY_HASH_NAMES
+
     changed_deps: List["Dependency"] = []
 
-    def need_fetch(stage: "Stage") -> bool:
+    def need_fetch(stage: "Stage", legacy: bool = False) -> bool:
         if not stage.is_import or (stage.is_partial_import and not unpartial):
             return False
 
@@ -40,10 +42,19 @@ def unfetched_view(
             changed_deps.append(dep)
             return False
 
-        return True
+        if out.hash_name in LEGACY_HASH_NAMES and legacy:
+            return True
+        if out.hash_name not in LEGACY_HASH_NAMES and not legacy:
+            return True
+        return False
 
+    legacy_unfetched = index.targets_view(
+        targets,
+        stage_filter=partial(need_fetch, legacy=True),
+        **kwargs,
+    )
     unfetched = index.targets_view(targets, stage_filter=need_fetch, **kwargs)
-    return unfetched, changed_deps
+    return legacy_unfetched, unfetched, changed_deps
 
 
 def partial_view(index: "Index", targets: "TargetType", **kwargs) -> "IndexView":
@@ -94,33 +105,36 @@ def save_imports(
 
     downloaded: Set["HashInfo"] = set()
 
-    unfetched, changed = unfetched_view(
+    legacy_unfetched, unfetched, changed = unfetched_view(
         repo.index, targets, unpartial=unpartial, **kwargs
     )
     for dep in changed:
         logger.warning(str(DataSourceChanged(f"{dep.stage} ({dep})")))
 
-    data_view = unfetched.data["repo"]
-    if len(data_view):
-        cache = repo.cache.local
-        if not cache.fs.exists(cache.path):
-            os.makedirs(cache.path)
-        with TemporaryDirectory(dir=cache.path) as tmpdir:
-            with Callback.as_tqdm_callback(
-                desc="Downloading imports from source",
-                unit="files",
-            ) as cb:
-                checkout(data_view, tmpdir, cache.fs, callback=cb, storage="remote")
-            md5(data_view)
-            save(data_view, odb=cache, hardlink=True)
+    for view, cache in [
+        (legacy_unfetched, repo.cache.legacy),
+        (unfetched, repo.cache.local),
+    ]:
+        data_view = view.data["repo"]
+        if len(data_view):
+            if not cache.fs.exists(cache.path):
+                os.makedirs(cache.path)
+            with TemporaryDirectory(dir=cache.path) as tmpdir:
+                with Callback.as_tqdm_callback(
+                    desc="Downloading imports from source",
+                    unit="files",
+                ) as cb:
+                    checkout(data_view, tmpdir, cache.fs, callback=cb, storage="remote")
+                md5(data_view, name=cache.hash_name)
+                save(data_view, odb=cache, hardlink=True)
 
-        downloaded.update(
-            entry.hash_info
-            for _, entry in data_view.iteritems()
-            if entry.meta is not None
-            and not entry.meta.isdir
-            and entry.hash_info is not None
-        )
+            downloaded.update(
+                entry.hash_info
+                for _, entry in data_view.iteritems()
+                if entry.meta is not None
+                and not entry.meta.isdir
+                and entry.hash_info is not None
+            )
 
     if unpartial:
         unpartial_imports(partial_view(repo.index, targets, **kwargs))
