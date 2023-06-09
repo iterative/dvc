@@ -1,18 +1,18 @@
 """Manages dvc remotes that user can use with push/pull/status commands."""
 
 import logging
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional, Set, Tuple
 
 from dvc.config import NoRemoteError, RemoteConfigError
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
+from dvc_data.hashfile.transfer import TransferResult
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.status import CompareStatusResult
-    from dvc_data.hashfile.transfer import TransferResult
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,21 @@ class Remote:
 
         path = self.path
         return get_odb(self.fs, path, hash_name="md5-dos2unix", **self.config)
+
+
+def _split_legacy_hash_infos(
+    hash_infos: Iterable["HashInfo"],
+) -> Tuple[Set["HashInfo"], Set["HashInfo"]]:
+    from dvc.cachemgr import LEGACY_HASH_NAMES
+
+    legacy = set()
+    default = set()
+    for hi in hash_infos:
+        if hi.name in LEGACY_HASH_NAMES:
+            legacy.add(hi)
+        else:
+            default.add(hi)
+    return legacy, default
 
 
 class DataCloud:
@@ -167,14 +182,40 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to push to. Overrides remote.
         """
-        odb = odb or self.get_remote_odb(remote, "push")
+        if odb is not None:
+            return self._push(objs, jobs=jobs, odb=odb)
+        legacy_objs, default_objs = _split_legacy_hash_infos(objs)
+        result = TransferResult(set(), set())
+        if legacy_objs:
+            odb = self.get_remote_odb(remote, "push", hash_name="md5-dos2unix")
+            t, f = self._push(legacy_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        if default_objs:
+            odb = self.get_remote_odb(remote, "push")
+            t, f = self._push(default_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        return result
+
+    def _push(
+        self,
+        objs: Iterable["HashInfo"],
+        *,
+        jobs: Optional[int] = None,
+        odb: "HashFileDB",
+    ) -> "TransferResult":
+        if odb.hash_name == "md5-dos2unix":
+            cache = self.repo.cache.legacy
+        else:
+            cache = self.repo.cache.local
         return self.transfer(
-            self.repo.cache.local,
+            cache,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
-            cache_odb=self.repo.cache.local,
+            cache_odb=cache,
             validate_status=self._log_missing,
         )
 
@@ -194,14 +235,41 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to pull from. Overrides remote.
         """
-        odb = odb or self.get_remote_odb(remote, "pull")
+        if odb is not None:
+            return self._pull(objs, jobs=jobs, odb=odb)
+        legacy_objs, default_objs = _split_legacy_hash_infos(objs)
+        result = TransferResult(set(), set())
+        if legacy_objs:
+            odb = self.get_remote_odb(remote, "pull", hash_name="md5-dos2unix")
+            assert odb.hash_name == "md5-dos2unix"
+            t, f = self._pull(legacy_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        if default_objs:
+            odb = self.get_remote_odb(remote, "pull")
+            t, f = self._pull(default_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        return result
+
+    def _pull(
+        self,
+        objs: Iterable["HashInfo"],
+        *,
+        jobs: Optional[int] = None,
+        odb: "HashFileDB",
+    ) -> "TransferResult":
+        if odb.hash_name == "md5-dos2unix":
+            cache = self.repo.cache.legacy
+        else:
+            cache = self.repo.cache.local
         return self.transfer(
             odb,
-            self.repo.cache.local,
+            cache,
             objs,
             jobs=jobs,
             src_index=get_index(odb),
-            cache_odb=self.repo.cache.local,
+            cache_odb=cache,
             verify=odb.verify,
             validate_status=self._log_missing,
         )
@@ -223,17 +291,49 @@ class DataCloud:
                 is used.
             odb: optional ODB to check status from. Overrides remote.
         """
+        from dvc_data.hashfile.status import CompareStatusResult
+
+        if odb is not None:
+            return self._status(objs, jobs=jobs, odb=odb)
+        result = CompareStatusResult(set(), set(), set(), set())
+        legacy_objs, default_objs = _split_legacy_hash_infos(objs)
+        if legacy_objs:
+            odb = self.get_remote_odb(remote, "status", hash_name="md5-dos2unix")
+            assert odb.hash_name == "md5-dos2unix"
+            o, m, n, d = self._status(legacy_objs, jobs=jobs, odb=odb)
+            result.ok.update(o)
+            result.missing.update(m)
+            result.new.update(n)
+            result.deleted.update(d)
+        if default_objs:
+            odb = self.get_remote_odb(remote, "status")
+            o, m, n, d = self._status(default_objs, jobs=jobs, odb=odb)
+            result.ok.update(o)
+            result.missing.update(m)
+            result.new.update(n)
+            result.deleted.update(d)
+        return result
+
+    def _status(
+        self,
+        objs: Iterable["HashInfo"],
+        *,
+        jobs: Optional[int] = None,
+        odb: "HashFileDB",
+    ):
         from dvc_data.hashfile.status import compare_status
 
-        if not odb:
-            odb = self.get_remote_odb(remote, "status")
+        if odb.hash_name == "md5-dos2unix":
+            cache = self.repo.cache.legacy
+        else:
+            cache = self.repo.cache.local
         return compare_status(
-            self.repo.cache.local,
+            cache,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
-            cache_odb=self.repo.cache.local,
+            cache_odb=cache,
         )
 
     def get_url_for(self, remote, checksum):
