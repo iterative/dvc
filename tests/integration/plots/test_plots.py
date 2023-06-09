@@ -385,7 +385,7 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
                 "source": p,
                 "rev": "workspace",
                 "type": "FileNotFoundError",
-                "msg": "",
+                "msg": f"[Errno 2] No storage files available: '{p}'",
             }
             for p in [
                 "linear.json",
