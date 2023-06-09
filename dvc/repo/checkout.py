@@ -119,9 +119,6 @@ def checkout(  # noqa: C901
 
     new = view.data["repo"]
 
-    for out in view.outs:
-        out.changed_cache()
-
     with Callback.as_tqdm_callback(
         unit="file",
         desc="Checkout",

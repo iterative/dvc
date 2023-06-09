@@ -64,52 +64,6 @@ def test_checkout_cli(tmp_dir, dvc, copy_script):
     assert (tmp_dir / "data").read_text() == {"file": "file"}
 
 
-def test_checkout_corrupted_cache_file(tmp_dir, dvc):
-    (foo_stage,) = tmp_dir.dvc_gen("foo", "foo")
-    cache = foo_stage.outs[0].cache_path
-
-    os.chmod(cache, 0o644)
-    with open(cache, "a", encoding="utf-8") as fd:
-        fd.write("1")
-
-    with pytest.raises(CheckoutError):
-        dvc.checkout(force=True, relink=True)
-
-    assert not os.path.isfile("foo")
-    assert not os.path.isfile(cache)
-
-
-def test_checkout_corrupted_cache_dir(tmp_dir, dvc):
-    from dvc_data.hashfile import load
-
-    tmp_dir.gen("data", {"foo": "foo", "bar": "bar"})
-    # NOTE: using 'copy' so that cache and link don't have same inode
-    ret = main(["config", "cache.type", "copy"])
-    assert ret == 0
-
-    dvc.config.load()
-
-    stages = dvc.add("data")
-    assert len(stages) == 1
-    assert len(stages[0].outs) == 1
-    out = stages[0].outs[0]
-
-    # NOTE: modifying cache file for one of the files inside the directory
-    # to check if dvc will detect that the cache is corrupted.
-    obj = load(dvc.cache.local, out.hash_info)
-    _, _, entry_oid = list(obj)[0]
-    cache = dvc.cache.local.oid_to_path(entry_oid.value)
-
-    os.chmod(cache, 0o644)
-    with open(cache, "w+", encoding="utf-8") as fobj:
-        fobj.write("1")
-
-    with pytest.raises(CheckoutError):
-        dvc.checkout(force=True, relink=True)
-
-    assert not os.path.exists(cache)
-
-
 def test_remove_files_when_checkout(tmp_dir, dvc, scm):
     # add the file into a separate branch
     scm.checkout("branch", True)
