@@ -18,7 +18,6 @@ class CmdImport(CmdBase):
                 self.args.url,
                 self.args.path,
                 out=self.args.out,
-                fname=self.args.file,
                 rev=self.args.rev,
                 no_exec=self.args.no_exec,
                 no_download=self.args.no_download,
@@ -68,11 +67,6 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
-    )
-    import_parser.add_argument(
-        "--file",
-        help="Specify name of the .dvc file this command will generate.",
-        metavar="<filename>",
     )
     no_download_exec_group = import_parser.add_mutually_exclusive_group()
     no_download_exec_group.add_argument(

@@ -18,7 +18,6 @@ def imp_url(  # noqa: C901, PLR0913
     self: "Repo",
     url,
     out=None,
-    fname=None,
     erepo=None,
     frozen=True,
     no_download=False,
@@ -58,7 +57,7 @@ def imp_url(  # noqa: C901, PLR0913
     stage = self.stage.create(
         single_stage=True,
         validate=False,
-        fname=fname or path,
+        fname=path,
         wdir=wdir,
         deps=[url],
         outs=[out],

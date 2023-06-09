@@ -13,8 +13,6 @@ def test_import_url(mocker):
             "import-url",
             "src",
             "out",
-            "--file",
-            "file",
             "--jobs",
             "4",
         ]
@@ -29,7 +27,6 @@ def test_import_url(mocker):
     m.assert_called_once_with(
         "src",
         out="out",
-        fname="file",
         no_exec=False,
         no_download=False,
         remote=None,
@@ -70,8 +67,6 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
             flag,
             "src",
             "out",
-            "--file",
-            "file",
         ]
     )
 
@@ -83,7 +78,6 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
     m.assert_called_once_with(
         "src",
         out="out",
-        fname="file",
         remote=None,
         to_remote=False,
         jobs=None,
@@ -114,7 +108,6 @@ def test_import_url_to_remote(mocker):
     m.assert_called_once_with(
         "s3://bucket/foo",
         out="bar",
-        fname=None,
         no_exec=False,
         no_download=False,
         remote="remote",

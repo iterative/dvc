@@ -15,7 +15,6 @@ class CmdImportUrl(CmdBase):
             self.repo.imp_url(
                 self.args.url,
                 out=self.args.out,
-                fname=self.args.file,
                 no_exec=self.args.no_exec,
                 no_download=self.args.no_download,
                 remote=self.args.remote,
@@ -63,11 +62,6 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "out", nargs="?", help="Destination path to put files to."
-    ).complete = completion.DIR
-    import_parser.add_argument(
-        "--file",
-        help="Specify name of the .dvc file this command will generate.",
-        metavar="<filename>",
     ).complete = completion.DIR
     import_parser.add_argument(
         "--to-remote",
