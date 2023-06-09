@@ -1273,3 +1273,12 @@ def test_repro_missing_lock_info(tmp_dir, dvc, copy_script):
 
     stages = dvc.reproduce(stage.addressing)
     assert len(stages) == 1
+
+
+def test_repro_rm_recursive(tmp_dir, dvc):
+    # check that dir output recursively removes files in the dir
+    tmp_dir.gen({"dir": {"foo": "foo"}})
+    dvc.stage.add(name="dir_bar", cmd="mkdir dir; echo bar > dir/bar", outs=["dir"])
+    dvc.reproduce()
+    assert not (tmp_dir / "dir" / "foo").exists()
+    assert (tmp_dir / "dir" / "bar").exists()
