@@ -19,7 +19,6 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     DvcException,
     MergeError,
-    RemoteCacheRequiredError,
 )
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile import check as ocheck
@@ -526,14 +525,9 @@ class Output:
     def cache(self):
         from dvc.cachemgr import LEGACY_HASH_NAMES
 
-        if self.is_in_repo:
-            odb_name = "legacy" if self.hash_name in LEGACY_HASH_NAMES else "repo"
-        else:
-            odb_name = self.protocol
-        odb = getattr(self.repo.cache, odb_name)
-        if self.use_cache and odb is None:
-            raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
-        return odb
+        assert self.is_in_repo
+        odb_name = "legacy" if self.hash_name in LEGACY_HASH_NAMES else "repo"
+        return getattr(self.repo.cache, odb_name)
 
     @property
     def local_cache(self):

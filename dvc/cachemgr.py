@@ -32,13 +32,6 @@ def _get_odb(
 
 class CacheManager:
     CACHE_DIR = "cache"
-    CLOUD_SCHEMES = [
-        Schemes.S3,
-        Schemes.GS,
-        Schemes.SSH,
-        Schemes.HDFS,
-        Schemes.WEBHDFS,
-    ]
     FILES_DIR = "files"
 
     def __init__(self, repo):
@@ -91,16 +84,12 @@ class CacheManager:
             )
 
     def __getattr__(self, name):
-        if name not in self._odb and name in self.CLOUD_SCHEMES:
-            self._init_odb([name])
-
         try:
             return self._odb[name]
         except KeyError as exc:
             raise AttributeError from exc
 
     def by_scheme(self):
-        self._init_odb(self.CLOUD_SCHEMES)
         yield from self._odb.items()
 
     @property

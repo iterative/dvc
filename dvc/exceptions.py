@@ -299,21 +299,6 @@ class URLMissingError(DvcException):
         super().__init__(f"The path '{url}' does not exist")
 
 
-class RemoteCacheRequiredError(DvcException):
-    def __init__(self, scheme, fs_path):
-        super().__init__(
-            (
-                "Current operation was unsuccessful because '{}' requires "
-                "existing cache on '{}' remote. See {} for information on how "
-                "to set up remote cache."
-            ).format(
-                fs_path,
-                scheme,
-                format_link("https://man.dvc.org/config#cache"),
-            )
-        )
-
-
 class IsADirectoryError(DvcException):  # noqa,pylint:disable=redefined-builtin
     """Raised when a file operation is requested on a directory."""
 

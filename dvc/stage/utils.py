@@ -87,28 +87,24 @@ def fill_stage_dependencies(stage, deps=None, erepo=None, params=None, fs_config
 
 
 def check_no_externals(stage):
-    from urllib.parse import urlparse
-
     from dvc.utils import format_link
 
-    # NOTE: preventing users from accidentally using external outputs. See
-    # https://github.com/iterative/dvc/issues/1545 for more details.
-
-    def _is_external(out):
-        # NOTE: in case of `remote://` notation, the user clearly knows that
-        # this is an advanced feature and so we shouldn't error-out.
-        if out.is_in_repo or urlparse(out.def_path).scheme == "remote":
+    def _is_cached_external(out):
+        if out.is_in_repo or not out.use_cache:
             return False
         return True
 
-    outs = [str(out) for out in stage.outs if _is_external(out)]
+    outs = [str(out) for out in stage.outs if _is_cached_external(out)]
     if not outs:
         return
 
     str_outs = ", ".join(outs)
-    link = format_link("https://dvc.org/doc/user-guide/managing-external-data")
+    link = format_link(
+        "https://dvc.org/doc/user-guide/pipelines/external-dependencies-and-outputs"
+    )
     raise StageExternalOutputsError(
-        f"Output(s) outside of DVC project: {str_outs}. See {link} for more info."
+        f"Cached output(s) outside of DVC project: {str_outs}. "
+        f"See {link} for more info."
     )
 
 

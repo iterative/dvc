@@ -24,8 +24,6 @@ class CmdAdd(CmdBase):
                 invalid_opt = "--glob option"
             elif args.no_commit:
                 invalid_opt = "--no-commit option"
-            elif args.external:
-                invalid_opt = "--external option"
         else:
             message = "{option} can't be used without --to-remote"
             if args.remote:
@@ -49,7 +47,6 @@ class CmdAdd(CmdBase):
             self.repo.add(
                 self.args.targets,
                 no_commit=self.args.no_commit,
-                external=self.args.external,
                 glob=self.args.glob,
                 out=self.args.out,
                 remote=self.args.remote,
@@ -81,12 +78,6 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Don't put files/directories into cache.",
-    )
-    parser.add_argument(
-        "--external",
-        action="store_true",
-        default=False,
-        help="Allow targets that are outside of the DVC repository.",
     )
     parser.add_argument(
         "--glob",
