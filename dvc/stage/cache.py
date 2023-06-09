@@ -44,7 +44,12 @@ def _can_hash(stage):
             return False
 
     for out in stage.outs:
-        if out.protocol != "local" or not out.def_path or out.persist:
+        if (
+            out.protocol != "local"
+            or not out.def_path
+            or out.persist
+            or not out.is_in_repo
+        ):
             return False
 
     return True
@@ -112,7 +117,6 @@ class StageCache:
             cmd=cache["cmd"],
             wdir=wdir,
             outs=[out["path"] for out in cache["outs"]],
-            external=True,
         )
         StageLoader.fill_from_lock(stage, cache)
         return stage
@@ -137,7 +141,7 @@ class StageCache:
         # NOTE: using copy link to make it look like a git-tracked file
         with self._cache_type_copy():
             for out in cached_stage.outs:
-                if out.def_path in outs_no_cache:
+                if out.def_path in outs_no_cache and out.is_in_repo:
                     yield out
 
     def save(self, stage):

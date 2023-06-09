@@ -154,13 +154,13 @@ SCHEMA = {
         "machine": Lower,
     },
     "cache": {
-        "local": str,
-        "s3": str,
-        "gs": str,
-        "hdfs": str,
-        "webhdfs": str,
-        "ssh": str,
-        "azure": str,
+        "local": str,  # obsoleted
+        "s3": str,  # obsoleted
+        "gs": str,  # obsoleted
+        "hdfs": str,  # obsoleted
+        "webhdfs": str,  # obsoleted
+        "ssh": str,  # obsoleted
+        "azure": str,  # obsoleted
         # This is for default local cache
         "dir": str,
         **LOCAL_COMMON,

@@ -54,7 +54,6 @@ PIPELINE_TRACKED_UPDATE_FMT = (
 def get_or_create_stage(
     repo: "Repo",
     target: str,
-    external: bool = False,
     out: Optional[str] = None,
     to_remote: bool = False,
     force: bool = False,
@@ -79,7 +78,6 @@ def get_or_create_stage(
             fname=path,
             wdir=wdir,
             outs=[out],
-            external=external,
             force=force,
         )
         return StageInfo(stage, output_exists=False)
@@ -199,7 +197,6 @@ def add(
     repo: "Repo",
     targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]],
     no_commit: bool = False,
-    external: bool = False,
     glob: bool = False,
     out: Optional[str] = None,
     remote: Optional[str] = None,
@@ -215,7 +212,6 @@ def add(
         target: get_or_create_stage(
             repo,
             target,
-            external=external,
             out=out,
             to_remote=to_remote,
             force=force,
