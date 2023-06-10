@@ -37,7 +37,7 @@ def prompt_to_commit(stage, changes, force=False):
 @locked
 def commit(
     self,
-    target,
+    target=None,
     with_deps=False,
     recursive=False,
     force=False,
