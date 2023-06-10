@@ -33,6 +33,8 @@ def fetch(  # noqa: C901, PLR0913
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
+    from fsspec.utils import tokenize
+
     from dvc.fs.callbacks import Callback
     from dvc_data.index.fetch import fetch as ifetch
 
@@ -48,36 +50,43 @@ def fetch(  # noqa: C901, PLR0913
     except DownloadError as exc:
         failed_count += exc.amount
 
-    def _indexes():
-        for _ in self.brancher(
-            revs=revs,
-            all_branches=all_branches,
-            all_tags=all_tags,
-            all_commits=all_commits,
-        ):
-            yield self.index.targets_view(
+    indexes = []
+    index_keys = set()
+    for _ in self.brancher(
+        revs=revs,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+    ):
+        saved_remote = self.config["core"].get("remote")
+        try:
+            if remote:
+                self.config["core"]["remote"] = remote
+
+            idx = self.index.targets_view(
                 targets,
                 with_deps=with_deps,
                 recursive=recursive,
-            ).data["repo"]
+            )
+            index_keys.add(idx.data_tree.hash_info.value)
+            indexes.append(idx.data["repo"])
+        finally:
+            if remote:
+                self.config["core"]["remote"] = saved_remote
 
-    saved_remote = self.config["core"].get("remote")
-    try:
-        if remote:
-            self.config["core"]["remote"] = remote
+    cache_key = ("fetch", tokenize(sorted(index_keys)))
 
-        with Callback.as_tqdm_callback(
-            desc="Fetching",
-            unit="file",
-        ) as cb:
-            fetch_transferred, fetch_failed = ifetch(
-                _indexes(),
-                jobs=jobs,
-                callback=cb,
-            )  # pylint: disable=assignment-from-no-return
-    finally:
-        if remote:
-            self.config["core"]["remote"] = saved_remote
+    with Callback.as_tqdm_callback(
+        desc="Fetching",
+        unit="file",
+    ) as cb:
+        fetch_transferred, fetch_failed = ifetch(
+            indexes,
+            jobs=jobs,
+            callback=cb,
+            cache_index=self.data_index,
+            cache_key=cache_key,
+        )  # pylint: disable=assignment-from-no-return
 
     if fetch_transferred:
         # NOTE: dropping cached index to force reloading from newly saved cache

@@ -197,8 +197,8 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     hash_spy = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
     dvc.pull()
-    # NOTE: 1 is for index.data_tree building
-    assert hash_spy.call_count == 2
+    # NOTE: 2 are for index.data_tree building
+    assert hash_spy.call_count == 3
 
     # Removing cache will invalidate existing state entries
     dvc.cache.local.clear()
@@ -206,7 +206,7 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     dvc.config["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
-    assert hash_spy.call_count == 8
+    assert hash_spy.call_count == 10
 
 
 @flaky(max_runs=3, min_passes=1)
