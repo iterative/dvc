@@ -591,6 +591,23 @@ class IndexView:
         return dict(ret)
 
     @cached_property
+    def data_tree(self):
+        from dvc_data.hashfile.tree import Tree
+
+        tree = Tree()
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            ws, key = out.index_key
+
+            tree.add((ws, *key), out.meta, out.hash_info)
+
+        tree.digest()
+
+        return tree
+
+    @cached_property
     def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
         from dvc_data.index import DataIndex, view
 
