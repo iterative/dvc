@@ -33,6 +33,7 @@ def fetch(  # noqa: C901, PLR0913
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
+    from dvc.fs.callbacks import Callback
     from dvc_data.index.fetch import fetch as ifetch
 
     if isinstance(targets, str):
@@ -65,9 +66,15 @@ def fetch(  # noqa: C901, PLR0913
         if remote:
             self.config["core"]["remote"] = remote
 
-        fetch_transferred, fetch_failed = ifetch(
-            _indexes(), jobs=jobs
-        )  # pylint: disable=assignment-from-no-return
+        with Callback.as_tqdm_callback(
+            desc="Fetching",
+            unit="file",
+        ) as cb:
+            fetch_transferred, fetch_failed = ifetch(
+                _indexes(),
+                jobs=jobs,
+                callback=cb,
+            )  # pylint: disable=assignment-from-no-return
     finally:
         if remote:
             self.config["core"]["remote"] = saved_remote
