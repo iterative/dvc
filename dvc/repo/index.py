@@ -136,7 +136,11 @@ def _load_data_from_outs(index, prefix, outs):
         if out.stage.is_import and not out.stage.is_repo_import:
             dep = out.stage.deps[0]
             entry.meta = dep.meta
-            entry.hash_info = dep.hash_info
+            if out.hash_info:
+                entry.hash_info = out.hash_info
+            else:
+                # partial import
+                entry.hash_info = dep.hash_info
 
         # FIXME PyGTrie-based DataIndex doesn't remove entry.key during
         # index.add, so we have to set the entry manually here to make

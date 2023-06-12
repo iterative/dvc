@@ -150,6 +150,8 @@ class TestImportURLVersionAware:
 
         dvc.pull()
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
+
+        dvc.commit(force=True)
         assert dvc.status() == {}
 
 
