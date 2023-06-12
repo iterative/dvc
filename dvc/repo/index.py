@@ -656,12 +656,14 @@ def build_data_index(  # noqa: C901
         if not fs.exists(out_path):
             continue
 
+        hash_name = _get_entry_hash_name(index, workspace, key)
         try:
             out_entry = build_entry(
                 out_path,
                 fs,
                 compute_hash=compute_hash,
                 state=index.repo.state,
+                hash_name=hash_name,
             )
         except FileNotFoundError:
             continue
@@ -679,6 +681,7 @@ def build_data_index(  # noqa: C901
             compute_hash=compute_hash,
             state=index.repo.state,
             ignore=ignore,
+            hash_name=hash_name,
         ):
             if not entry.key or entry.key == ("",):
                 # NOTE: whether the root will be returned by build_entries
@@ -690,7 +693,7 @@ def build_data_index(  # noqa: C901
             callback.relative_update(1)
 
         if compute_hash:
-            tree_meta, tree = build_tree(data, key)
+            tree_meta, tree = build_tree(data, key, name=hash_name)
             out_entry.meta = tree_meta
             out_entry.hash_info = tree.hash_info
             out_entry.loaded = True
@@ -706,3 +709,17 @@ def build_data_index(  # noqa: C901
         callback.relative_update(1)
 
     return data
+
+
+def _get_entry_hash_name(
+    index: Union["Index", "IndexView"], workspace: str, key: "DataIndexKey"
+) -> str:
+    from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
+
+    try:
+        src_entry = index.data[workspace][key]
+        if src_entry.hash_info and src_entry.hash_info.name:
+            return src_entry.hash_info.name
+    except KeyError:
+        pass
+    return DEFAULT_ALGORITHM
