@@ -29,7 +29,7 @@ repos:
       - id: beautysh
         args: ["-i", "2"]
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
+    rev: v3.6.0
     hooks:
       - id: pyupgrade
         args:
@@ -43,7 +43,7 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.261'
+    rev: 'v0.0.272'
     hooks:
       - id: ruff
   - repo: https://github.com/codespell-project/codespell
