@@ -670,7 +670,7 @@ def build_data_index(  # noqa: C901
                 hash_name=hash_name,
             )
         except FileNotFoundError:
-            continue
+            out_entry = DataIndexEntry()
 
         out_entry.key = key
         data.add(out_entry)
