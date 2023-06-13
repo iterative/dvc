@@ -143,27 +143,16 @@ filterwarnings = [
     "error::ResourceWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
     "error::pytest_mock.PytestMockWarning",
-    # remove when aiobotocore supports botocore>=1.29.13
-    "ignore:'cgi' is deprecated and slated for removal in Python 3.13:DeprecationWarning",
-    # also relates to botocore, but looks like it's not going to be fixed
     # https://github.com/boto/botocore/issues/2744
     "ignore:'urllib3.contrib.pyopenssl' module is deprecated:DeprecationWarning",
-    # ruamel.yaml: https://sourceforge.net/p/ruamel-yaml/tickets/452/
     # google.cloud: https://github.com/googleapis/python-storage/issues/1000
     # google.logging: https://github.com/googleapis/python-logging/issues/730
     # Also happens with `zc.lockfile`.
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
-    # see https://github.com/celery/kombu/issues/1339
-    # and https://github.com/celery/celery/issues/7528
-    # drop when celery==5.3 && kombu==5.3 releases
-    "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning",
     # tpi imports pkg_resources
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
     # see https://github.com/networkx/networkx/issues/5723.
     "ignore:nx.nx_pydot.* depends on the pydot package, which has.*known issues and is not actively maintained:DeprecationWarning",
-    # remove when new version of pytest-cov gets released
-    # https://github.com/pytest-dev/pytest-cov/issues/557
-    "ignore:The --rsyncdir command line argument and rsyncdirs config variable are deprecated:DeprecationWarning",
 ]
 log_level = "debug"
 markers = [
