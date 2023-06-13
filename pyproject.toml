@@ -65,6 +65,7 @@ dependencies = [
     "voluptuous>=0.11.7",
     "zc.lockfile>=1.2.1",
 ]
+
 [project.optional-dependencies]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
 azure = ["dvc-azure>=2.21.2"]
@@ -112,14 +113,18 @@ tests = [
 webdav = ["dvc-webdav==2.19.1"]
 webhdfs = ["dvc-webhdfs==2.19"]
 webhdfs_kerberos = ["dvc-webhdfs[kerberos]==2.19"]
+
 [project.urls]
 Documentation = "https://dvc.org/doc"
 Issues = "https://github.com/iterative/dvc/issues"
 Source = "https://github.com/iterative/dvc"
+
 [project.scripts]
 dvc = "dvc.cli:main"
+
 [project.entry-points."fsspec.specs"]
 dvc = "dvc.api:DVCFileSystem"
+
 [project.entry-points."pytest11"]
 dvc-testing = "dvc.testing.plugin"
 
