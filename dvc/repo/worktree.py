@@ -112,8 +112,7 @@ def push_worktree(
     **kwargs: Any,
 ) -> int:
     from dvc.repo.index import build_data_index
-    from dvc_data.index import checkout
-    from dvc_data.index.checkout import VersioningNotSupported
+    from dvc_data.index.checkout import VersioningNotSupported, apply, compare
 
     pushed = 0
     stages: Set["Stage"] = set()
@@ -139,6 +138,18 @@ def push_worktree(
         else:
             diff_kwargs = {}
 
+        with Callback.as_tqdm_callback(
+            unit="entry",
+            desc=f"Comparing indexes for remote {remote_obj.name!r}",
+        ) as cb:
+            diff = compare(
+                old_index,
+                new_index,
+                callback=cb,
+                delete=remote_obj.worktree,
+                **diff_kwargs,
+            )
+
         total = len(new_index)
         with Callback.as_tqdm_callback(
             unit="file",
@@ -147,16 +158,13 @@ def push_worktree(
         ) as cb:
             cb.set_size(total)
             try:
-                stats = checkout(
-                    new_index,
+                stats = apply(
+                    diff,
                     remote_obj.path,
                     remote_obj.fs,
-                    old=old_index,
-                    delete=remote_obj.worktree,
                     callback=cb,
                     latest_only=remote_obj.worktree,
                     jobs=jobs,
-                    **diff_kwargs,
                 )
                 pushed += sum(len(changes) for changes in stats.values())
             except VersioningNotSupported:
@@ -316,23 +324,33 @@ def _fetch_out_changes(
     remote_index: Union["DataIndex", "DataIndexView"],
     remote: "Remote",
 ):
-    from dvc_data.index import checkout
+    from dvc_data.index.checkout import apply, compare
 
     old, new = _get_diff_indexes(out, local_index, remote_index)
+
+    with Callback.as_tqdm_callback(
+        unit="entry",
+        desc="Comparing indexes",
+    ) as cb:
+        diff = compare(
+            old,
+            new,
+            delete=True,
+            meta_only=True,
+            meta_cmp_key=partial(_meta_checksum, remote.fs),
+            callback=cb,
+        )
+
     total = len(new)
     with Callback.as_tqdm_callback(
         unit="file", desc=f"Updating '{out}'", disable=total == 0
     ) as cb:
         cb.set_size(total)
-        checkout(
-            new,
+        apply(
+            diff,
             out.repo.root_dir,
             out.fs,
-            old=old,
-            delete=True,
             update_meta=False,
-            meta_only=True,
-            meta_cmp_key=partial(_meta_checksum, remote.fs),
             storage="data",
             callback=cb,
         )

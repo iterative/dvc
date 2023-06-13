@@ -74,9 +74,7 @@ def checkout(  # noqa: C901
     from dvc.fs.callbacks import Callback
     from dvc.repo.index import build_data_index
     from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
-    from dvc_data.hashfile.checkout import CheckoutError as IndexCheckoutError
-    from dvc_data.index.checkout import ADD, DELETE, MODIFY
-    from dvc_data.index.checkout import checkout as icheckout
+    from dvc_data.index.checkout import ADD, DELETE, MODIFY, apply, compare
 
     stats: Dict[str, List[str]] = {
         "added": [],
@@ -120,27 +118,35 @@ def checkout(  # noqa: C901
     new = view.data["repo"]
 
     with Callback.as_tqdm_callback(
+        desc="Comparing indexes",
+        unit="entry",
+    ) as cb:
+        diff = compare(old, new, relink=relink, delete=True, callback=cb)
+
+    failed = []
+
+    def checkout_onerror(src_path, dest_path, _exc):
+        logger.debug(
+            "failed to create {%s} from {%s}", dest_path, src_path, exc_info=True
+        )
+        failed.append(dest_path)
+
+    with Callback.as_tqdm_callback(
         unit="file",
         desc="Checkout",
     ) as cb:
-        try:
-            changes = icheckout(
-                new,
-                self.root_dir,
-                self.fs,
-                old=old,
-                callback=cb,
-                delete=True,
-                prompt=prompt.confirm,
-                update_meta=False,
-                relink=relink,
-                force=force,
-                allow_missing=allow_missing,
-                state=self.state,
-                **kwargs,
-            )
-        except IndexCheckoutError as exc:
-            raise CheckoutError(exc.paths, {}) from exc
+        changes = apply(
+            diff,
+            self.root_dir,
+            self.fs,
+            callback=cb,
+            prompt=prompt.confirm,
+            update_meta=False,
+            force=force,
+            onerror=checkout_onerror,
+            state=self.state,
+            **kwargs,
+        )
 
     out_changes = _build_out_changes(view, changes)
 
@@ -149,5 +155,8 @@ def checkout(  # noqa: C901
         out_path = self.fs.path.join(self.root_dir, *key)
         self.state.save_link(out_path, self.fs)
         stats[typ_map[typ]].append(_fspath_dir(out_path))
+
+    if failed and not allow_missing:
+        raise CheckoutError(failed, stats)
 
     return stats
