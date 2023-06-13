@@ -513,6 +513,16 @@ def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
     remove("foo")
     remove("bar")
 
+    assert (
+        tmp_dir
+        / ".dvc"
+        / "cache"
+        / "files"
+        / "md5"
+        / "ac"
+        / "bd18db4cc2f85cedef654fccc4a4d8"
+    ).exists()
+
     dvc.experiments.run(stage.addressing, params=["foo=2"])
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"
