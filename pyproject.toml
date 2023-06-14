@@ -99,7 +99,7 @@ tests = [
     "dvc-ssh",
     "filelock",
     "flaky",
-    "pydantic>=1.10,<3",
+    "pydantic==2.0b2",
     "pytest<8,>=7",
     "pytest-cov>=4.1.0",
     "pytest-docker>=1,<2",

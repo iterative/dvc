@@ -1,7 +1,10 @@
 import warnings
 from typing import TYPE_CHECKING, Dict, List, NewType, Optional, TypeVar, Union
 
-from pydantic import BaseModel, Field
+import pydantic
+from pydantic import ConfigDict, Field
+from pydantic.functional_validators import BeforeValidator
+from typing_extensions import Annotated
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
@@ -9,13 +12,22 @@ if TYPE_CHECKING:
 
 
 _T = TypeVar("_T")
+
+_Key = TypeVar("_Key")
+_Config = TypeVar("_Config")
+
 OneOrMore = Union[_T, List[_T]]
-ItemWithConfig = Union[str, Dict[str, _T]]
+Config = Union[_Key, Dict[_Key, _Config]]
+
 PathLike = NewType("PathLike", str)
 PathOrId = NewType("PathOrId", str)
 TemplateNameOrPath = NewType("TemplateNameOrPath", str)
 ParamPath = NewType("ParamPath", str)
 PlotColumn = NewType("PlotColumn", str)
+
+
+class BaseModel(pydantic.BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
 class Plot(BaseModel):
@@ -34,7 +46,7 @@ class Plot(BaseModel):
 class OutputConfig(BaseModel):
     desc: Optional[str] = None
     type: Optional[str] = None  # noqa: A003
-    labels: Optional[str] = None
+    labels: List[str] = Field(default_factory=list)
     meta: object = None
     cache: bool = True
     persist: bool = False
@@ -60,15 +72,15 @@ class Stage(BaseModel):
     cmd: OneOrMore[str]
     wdir: Optional[PathLike] = None
     deps: List[PathLike] = Field(default_factory=list)
-    params: List[Union[ParamPath, Dict[PathLike, List[ParamPath]]]] = Field(
+    params: List[Union[ParamPath, Dict[PathLike, Optional[List[ParamPath]]]]] = Field(
         default_factory=list
     )
     frozen: bool = False
     meta: object = None
     desc: Optional[str] = None
     always_changed: bool = False
-    outs: List[ItemWithConfig[OutputConfig]] = Field(default_factory=list)
-    metrics: List[ItemWithConfig[MetricConfig]] = Field(default_factory=list)
+    outs: List[Config[PathLike, OutputConfig]] = Field(default_factory=list)
+    metrics: List[Config[PathLike, MetricConfig]] = Field(default_factory=list)
     plots: List[Union[PathLike, Dict[PathLike, OneOrMore[PlotConfig]]]] = Field(
         default_factory=list
     )
@@ -77,6 +89,17 @@ class Stage(BaseModel):
 class ForeachDo(BaseModel):
     foreach: Union[str, Dict, List]
     do: Stage
+
+
+def foreach_or_stage_validator(v):
+    if isinstance(v, dict) and "foreach" in v:
+        return ForeachDo.model_validate(v)
+    return Stage.model_validate(v)
+
+
+ForeachDoOrStage = Annotated[
+    Union[ForeachDo, Stage], BeforeValidator(foreach_or_stage_validator)
+]
 
 
 class Artifact(BaseModel):
@@ -91,7 +114,7 @@ class Project(BaseModel):
     plots: List[Union[PathLike, Dict[PathOrId, Optional[Plot]]]] = Field(
         default_factory=list
     )
-    stages: Dict[str, Union[Stage, ForeachDo]] = Field(default_factory=dict)
+    stages: Dict[str, ForeachDoOrStage] = Field(default_factory=dict)
     vars: List[Union[PathLike, Dict[str, object]]] = Field(  # noqa; A003
         default_factory=list
     )
