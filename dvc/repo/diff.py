@@ -156,8 +156,13 @@ def diff(
         for target in old_missing & new_missing:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), target)
 
-    old = indexes[a_rev]
-    new = indexes[b_rev]
+    if len(indexes.keys()) == 1:
+        # both a_rev and b_rev point to the same sha, nothing to compare
+        old = None
+        new = None
+    else:
+        old = indexes[a_rev]
+        new = indexes[b_rev]
 
     with ui.status("Calculating diff"):
         return _diff(old, new, with_missing=with_missing)
