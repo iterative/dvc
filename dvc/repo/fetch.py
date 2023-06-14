@@ -36,7 +36,6 @@ def fetch(  # noqa: C901, PLR0913
     from fsspec.utils import tokenize
 
     from dvc.fs.callbacks import Callback
-    from dvc_data.index.fetch import collect
     from dvc_data.index.fetch import fetch as ifetch
 
     if isinstance(targets, str):
@@ -78,26 +77,16 @@ def fetch(  # noqa: C901, PLR0913
     cache_key = ("fetch", tokenize(sorted(index_keys)))
 
     with Callback.as_tqdm_callback(
-        desc="Collecting",
-        unit="entry",
-    ) as cb:
-        data = collect(
-            indexes, cache_index=self.data_index, cache_key=cache_key, callback=cb
-        )
-
-    with Callback.as_tqdm_callback(
         desc="Fetching",
         unit="file",
     ) as cb:
-        try:
-            fetch_transferred, fetch_failed = ifetch(
-                data,
-                jobs=jobs,
-                callback=cb,
-            )  # pylint: disable=assignment-from-no-return
-        finally:
-            for fs_index in data.values():
-                fs_index.close()
+        fetch_transferred, fetch_failed = ifetch(
+            indexes,
+            jobs=jobs,
+            callback=cb,
+            cache_index=self.data_index,
+            cache_key=cache_key,
+        )  # pylint: disable=assignment-from-no-return
 
     if fetch_transferred:
         # NOTE: dropping cached index to force reloading from newly saved cache

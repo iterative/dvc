@@ -515,6 +515,7 @@ class BaseExecutor(ABC):
                     targets=targets,
                     with_deps=targets is not None,
                     force=True,
+                    quiet=True,
                     allow_missing=True,
                     recursive=kwargs.get("recursive", False),
                 )

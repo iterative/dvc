@@ -100,8 +100,7 @@ def save_imports(
         Objects which were downloaded from source location.
     """
     from dvc.stage.exceptions import DataSourceChanged
-    from dvc_data.index import md5, save
-    from dvc_data.index.checkout import apply, compare
+    from dvc_data.index import checkout, md5, save
     from dvc_objects.fs.callbacks import Callback
 
     downloaded: Set["HashInfo"] = set()
@@ -125,8 +124,7 @@ def save_imports(
                     desc="Downloading imports from source",
                     unit="files",
                 ) as cb:
-                    diff = compare(None, data_view)
-                    apply(diff, tmpdir, cache.fs, callback=cb, storage="remote")
+                    checkout(data_view, tmpdir, cache.fs, callback=cb, storage="remote")
                 md5(data_view, name=cache.hash_name)
                 save(data_view, odb=cache, hardlink=True)
 

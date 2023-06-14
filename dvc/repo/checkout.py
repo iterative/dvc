@@ -75,7 +75,8 @@ def checkout(  # noqa: C901
     from dvc.repo.index import build_data_index
     from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
     from dvc_data.hashfile.checkout import CheckoutError as IndexCheckoutError
-    from dvc_data.index.checkout import ADD, DELETE, MODIFY, apply, compare
+    from dvc_data.index.checkout import ADD, DELETE, MODIFY
+    from dvc_data.index.checkout import checkout as icheckout
 
     stats: Dict[str, List[str]] = {
         "added": [],
@@ -119,23 +120,20 @@ def checkout(  # noqa: C901
     new = view.data["repo"]
 
     with Callback.as_tqdm_callback(
-        desc="Comparing indexes",
-        unit="entry",
-    ) as cb:
-        diff = compare(old, new, relink=relink, delete=True, callback=cb)
-
-    with Callback.as_tqdm_callback(
         unit="file",
         desc="Checkout",
     ) as cb:
         try:
-            changes = apply(
-                diff,
+            changes = icheckout(
+                new,
                 self.root_dir,
                 self.fs,
+                old=old,
                 callback=cb,
+                delete=True,
                 prompt=prompt.confirm,
                 update_meta=False,
+                relink=relink,
                 force=force,
                 allow_missing=allow_missing,
                 state=self.state,
