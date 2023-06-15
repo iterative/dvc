@@ -218,3 +218,36 @@ def test_open_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
         remote="other",
     ) as fd:
         assert fd.read() == "foo content"
+
+    with api.open(
+        os.path.join("dir", "foo"),
+        repo=f"file://{erepo_dir.as_posix()}",
+        config={"core": {"remote": "other"}},
+    ) as fd:
+        assert fd.read() == "foo content"
+
+
+def test_read_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
+    erepo_dir.add_remote(config=cloud.config, name="other")
+    erepo_dir.add_remote(config=local_cloud.config, default=True)
+    erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create file")
+    erepo_dir.dvc.push(remote="other")
+    remove(erepo_dir.dvc.cache.local.path)
+
+    assert (
+        api.read(
+            os.path.join("dir", "foo"),
+            repo=f"file://{erepo_dir.as_posix()}",
+            remote="other",
+        )
+        == "foo content"
+    )
+
+    assert (
+        api.read(
+            os.path.join("dir", "foo"),
+            repo=f"file://{erepo_dir.as_posix()}",
+            config={"core": {"remote": "other"}},
+        )
+        == "foo content"
+    )
