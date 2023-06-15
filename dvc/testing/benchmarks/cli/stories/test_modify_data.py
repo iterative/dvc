@@ -22,8 +22,8 @@ def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):
             shutil.move(dataset / f, tmp_dir / "partial-copy" / f)
 
     # Add/push partial dataset
-    dvc.add(str(dataset))
-    dvc.push()
+    bench_dvc("add", dataset)
+    bench_dvc("push")
 
     # Add more files to the dataset
     shutil.copytree("partial-copy", dataset, dirs_exist_ok=True)
@@ -39,8 +39,8 @@ def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):
 def test_partial_remove(bench_dvc, tmp_dir, dvc, dataset, remote):
     random.seed(5232)
     # Add/push full dataset
-    dvc.add(str(dataset))
-    dvc.push()
+    bench_dvc("add", dataset)
+    bench_dvc("push")
 
     # Remove some files
     for f in glob.glob("*", root_dir=dataset, recursive=True):  # type: ignore[call-arg]
