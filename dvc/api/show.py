@@ -41,6 +41,7 @@ def metrics_show(
     *targets: str,
     repo: Optional[str] = None,
     rev: Optional[str] = None,
+    config: Optional[Dict] = None,
 ) -> Dict:
     """Get metrics tracked in `repo`.
 
@@ -69,6 +70,8 @@ def metrics_show(
             hash or a dvc experiment name.
             If `repo` is not a Git repo, this option is ignored.
             If `None`, the current working tree will be used.
+        config (dict, optional): config to be passed through to DVC project.
+            Defaults to `None`.
 
     Returns:
         Dict: See Examples below.
@@ -136,7 +139,7 @@ def metrics_show(
         https://git-scm.com/docs/revisions
     """
 
-    with Repo.open(repo) as _repo:
+    with Repo.open(repo, config=config) as _repo:
         metrics = _repo.metrics.show(
             targets=targets,
             revs=rev if rev is None else [rev],
@@ -157,6 +160,7 @@ def params_show(
     stages: Optional[Union[str, Iterable[str]]] = None,
     rev: Optional[str] = None,
     deps: bool = False,
+    config: Optional[Dict] = None,
 ) -> Dict:
     """Get parameters tracked in `repo`.
 
@@ -195,6 +199,8 @@ def params_show(
         deps (bool, optional): Whether to retrieve only parameters that are
             stage dependencies or not.
             Defaults to `False`.
+        config (dict, optional): config to be passed through to DVC project.
+            Defaults to `None`.
 
     Returns:
         Dict: See Examples below.
@@ -379,7 +385,7 @@ def params_show(
     if isinstance(stages, str):
         stages = [stages]
 
-    with Repo.open(repo) as _repo:
+    with Repo.open(repo, config=config) as _repo:
         params = _repo.params.show(
             revs=rev if rev is None else [rev],
             targets=targets,
