@@ -60,6 +60,7 @@ class SerializableExp:
         # supported in dataclasses.asdict() on all python releases
         # see https://bugs.python.org/issue35540
         params = dict(_gather_params(repo, deps=param_deps, onerror=onerror))
+        params = {k: dict(v) for k, v in params.items()}
         metrics = dict(
             _gather_metrics(
                 repo,
