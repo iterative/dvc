@@ -111,7 +111,8 @@ def push(
         exp_ref_set.update(exp_refs(repo.scm))
     if exp_names:
         exp_ref_set.update(exp_refs_from_names(repo.scm, ensure_list(exp_names)))
-    if rev:
+    else:
+        rev = rev or "HEAD"
         if isinstance(rev, str):
             rev = [rev]
         exp_ref_set.update(exp_refs_from_rev(repo.scm, rev, num=num))
