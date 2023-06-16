@@ -65,6 +65,7 @@ def exp_show(
     num: int = 1,
     param_deps: bool = False,
     force: bool = False,
+    config: Optional[Dict] = None,
 ) -> List[Dict]:
     """Get DVC experiments tracked in `repo`.
 
@@ -99,13 +100,15 @@ def exp_show(
             When `force` is specified, DVC will reload all experiment data and
             ignore any previously cached results.
             Defaults to `False`.
+        config (dict, optional): config to be passed through to DVC project.
+            Defaults to `None`.
 
     Returns:
         List[Dict]: Each item in the list will contain a dictionary with
             the info for an individual experiment.
             See Examples below.
     """
-    with Repo.open(repo) as _repo:
+    with Repo.open(repo, config=config) as _repo:
         experiments = _repo.experiments.show(
             revs=revs,
             num=num,
