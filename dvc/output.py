@@ -526,14 +526,18 @@ class Output:
         from dvc.cachemgr import LEGACY_HASH_NAMES
 
         if not self.is_in_repo:
-            raise AssertionError('\n'.join([
-                'Unexpected error, not in repo:',
-                f'{self.def_path=}',
-                f'{self.repo=}',
-                f'{self.repo.root_dir=}',
-                f'{self.fs_path=}',
-                f'{self.fs.path.realpath(self.fs_path)=}',
-            ]))
+            raise AssertionError(
+                "\n".join(
+                    [
+                        "Unexpected error, not in repo:",
+                        f"{self.def_path=}",
+                        f"{self.repo=}",
+                        f"{self.repo.root_dir=}",
+                        f"{self.fs_path=}",
+                        f"{self.fs.path.realpath(self.fs_path)=}",
+                    ]
+                )
+            )
         odb_name = "legacy" if self.hash_name in LEGACY_HASH_NAMES else "repo"
         return getattr(self.repo.cache, odb_name)
 
