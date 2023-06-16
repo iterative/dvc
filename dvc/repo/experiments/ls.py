@@ -42,7 +42,7 @@ def ls(
     for baseline in ref_info_dict:
         name = baseline
         if tags[baseline] or ref_heads[baseline]:
-            name = tags[baseline] or ref_heads[baseline][len(base) + 1 :]
+            name = tags[baseline] or ref_heads[baseline]
         for info in ref_info_dict[baseline]:
             if git_remote:
                 exp_rev = None

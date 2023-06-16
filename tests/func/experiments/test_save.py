@@ -71,7 +71,7 @@ def test_exp_save_after_commit(tmp_dir, dvc, scm):
 
     all_exps = dvc.experiments.ls(all_commits=True)
     assert all_exps[baseline][0][0] == "exp-1"
-    assert all_exps["master"][0][0] == "exp-2"
+    assert all_exps["refs/heads/master"][0][0] == "exp-2"
 
 
 def test_exp_save_with_staged_changes(tmp_dir, dvc, scm):

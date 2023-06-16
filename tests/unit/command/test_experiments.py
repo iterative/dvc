@@ -198,7 +198,7 @@ def test_experiments_list_format(mocker, capsys, args, expected):
     mocker.patch(
         "dvc.repo.experiments.ls.ls",
         return_value={
-            "main": [
+            "refs/heads/main": [
                 ("exp-a", "sha-a"),
             ]
         },

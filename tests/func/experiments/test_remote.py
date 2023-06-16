@@ -165,7 +165,7 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     exp_list = downstream_exp.ls(all_commits=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {(ref_info_a.name, None), (ref_info_b.name, None)},
-        "master": {(ref_info_c.name, None)},
+        "refs/heads/master": {(ref_info_c.name, None)},
     }
 
 
