@@ -527,7 +527,7 @@ class Output:
 
         if not self.is_in_repo:
             raise AssertionError('\n'.join([
-                'Unexpected error',
+                'Unexpected error, not in repo:',
                 f'{self.def_path=}',
                 f'{self.repo=}',
                 f'{self.repo.root_dir=}',
