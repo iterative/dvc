@@ -362,7 +362,7 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
 
-    assert dvc.experiments.ls() == {"master": [(ref_info_c.name, exp_c)]}
+    assert dvc.experiments.ls() == {"refs/heads/master": [(ref_info_c.name, exp_c)]}
 
     exp_list = dvc.experiments.ls(rev=ref_info_a.baseline_sha)
     assert {key: set(val) for key, val in exp_list.items()} == {
@@ -372,20 +372,20 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     exp_list = dvc.experiments.ls(rev=[baseline_a, scm.get_rev()])
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
-        "master": {(ref_info_c.name, exp_c)},
+        "refs/heads/master": {(ref_info_c.name, exp_c)},
     }
 
     exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
-        "master": {(ref_info_c.name, exp_c)},
+        "refs/heads/master": {(ref_info_c.name, exp_c)},
     }
 
     scm.checkout("branch", True)
     exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
-        "branch": {(ref_info_c.name, exp_c)},
+        "refs/heads/branch": {(ref_info_c.name, exp_c)},
     }
 
 
@@ -676,7 +676,7 @@ def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing)
     dvc.experiments.run(exp_stage.addressing)
 
-    assert len(dvc.experiments.ls()["master"]) == 2
+    assert len(dvc.experiments.ls()["refs/heads/master"]) == 2
 
 
 def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
