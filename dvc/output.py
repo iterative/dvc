@@ -510,7 +510,7 @@ class Output:
             return False
 
         return self.repo and self.fs.path.isin(
-            self.fs.path.realpath(self.fs_path),
+            self.fs_path,
             self.repo.root_dir,
         )
 
