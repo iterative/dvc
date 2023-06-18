@@ -2,7 +2,6 @@ import errno
 import itertools
 import os
 import stat
-from unittest.mock import patch
 
 import configobj
 import pytest
@@ -128,7 +127,7 @@ def test_upper_case_remote(tmp_dir, dvc, local_cloud):
     assert ret == 0
 
 
-def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
+def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc, mocker):
     from dvc_data.hashfile.build import build
     from dvc_data.hashfile.tree import Tree
 
@@ -138,24 +137,27 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 
     tree = Tree.from_list([{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}])
     tree.digest()
-    with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
-        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
-        hash1 = obj.hash_info
+
+    mocker.patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree))
+
+    _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
+    hash1 = obj.hash_info
 
     # remove the raw dir obj to force building the tree on the next build call
     dvc.cache.local.fs.remove(dvc.cache.local.oid_to_path(hash1.as_raw().value))
 
     tree = Tree.from_list([{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}])
     tree.digest()
-    with patch("dvc_data.hashfile.build._build_tree", return_value=(None, tree)):
-        _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
-        hash2 = obj.hash_info
+
+    # NOTE: _build_tree already patched above
+    _, _, obj = build(dvc.cache.local, path, dvc.cache.local.fs, "md5")
+    hash2 = obj.hash_info
 
     assert hash1 == hash2
 
 
 def test_partial_push_n_pull(  # noqa: C901
-    tmp_dir, dvc, tmp_path_factory, local_remote
+    tmp_dir, dvc, tmp_path_factory, local_remote, mocker
 ):
     from dvc_objects.fs import generic
 
@@ -190,14 +192,15 @@ def test_partial_push_n_pull(  # noqa: C901
                 del to_info[i]
         return original(from_fs, from_info, to_fs, to_info, **kwargs)
 
-    with patch.object(generic, "transfer", unreliable_upload):
-        with pytest.raises(UploadError) as upload_error_info:
-            dvc.push()
-        assert upload_error_info.value.amount == 2
+    mock_upload = mocker.patch.object(generic, "transfer", unreliable_upload)
+    with pytest.raises(UploadError) as upload_error_info:
+        dvc.push()
+    assert upload_error_info.value.amount == 2
 
-        assert not odb.exists(foo.hash_info.value)
-        assert odb.exists(bar.hash_info.value)
-        assert not odb.exists(baz.hash_info.value)
+    assert not odb.exists(foo.hash_info.value)
+    assert odb.exists(bar.hash_info.value)
+    assert not odb.exists(baz.hash_info.value)
+    mocker.stop(mock_upload)
 
     # Push everything and delete local cache
     dvc.push()
@@ -215,12 +218,13 @@ def test_partial_push_n_pull(  # noqa: C901
         for from_i, to_i in zip(from_info, to_info):
             on_error(from_i, to_i, Exception())
 
-    with patch.object(generic, "transfer", unreliable_download):
-        with pytest.raises(DownloadError) as download_error_info:
-            dvc.pull()
-        # error count should be len(.dir + standalone file checksums)
-        # since files inside dir are ignored if dir cache entry is missing
-        assert download_error_info.value.amount == 2
+    mock_download = mocker.patch.object(generic, "transfer", unreliable_download)
+    with pytest.raises(DownloadError) as download_error_info:
+        dvc.pull()
+    # error count should be len(.dir + standalone file checksums)
+    # since files inside dir are ignored if dir cache entry is missing
+    assert download_error_info.value.amount == 2
+    mocker.stop(mock_download)
 
 
 def test_raise_on_too_many_open_files(

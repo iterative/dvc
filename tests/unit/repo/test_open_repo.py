@@ -1,5 +1,4 @@
 import os
-from unittest.mock import call
 
 import pytest
 
@@ -34,7 +33,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
         paths = ["/" + path.replace("\\", "/") for path in subrepo_paths]
         spy.assert_has_calls(
             [
-                call(
+                mocker.call(
                     path,
                     fs=repo.fs,
                     scm=repo.scm,
