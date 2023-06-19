@@ -35,6 +35,9 @@ def test_push(tmp_dir, scm, dvc, git_upstream, exp_stage, use_url):
     dvc.experiments.push(remote, [ref_info1.name])
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
 
+    dvc.experiments.push(remote)
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info3)) == exp3
+
 
 @pytest.mark.parametrize("all_,rev,result3", [(True, False, True), (False, True, None)])
 def test_push_args(tmp_dir, scm, dvc, git_upstream, exp_stage, all_, rev, result3):
@@ -173,6 +176,11 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     from dvc.exceptions import InvalidArgumentError
 
+    # fetch and checkout to downstream so both repos start from same commit
+    downstream_repo = git_downstream.tmp_dir.scm.gitpython.repo
+    fetched = downstream_repo.remote(git_downstream.remote).fetch()
+    downstream_repo.git.checkout(fetched)
+
     remote = git_downstream.url if use_url else git_downstream.remote
     downstream_exp = git_downstream.tmp_dir.dvc.experiments
     with pytest.raises(InvalidArgumentError):
@@ -199,6 +207,9 @@ def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 
     downstream_exp.pull(remote, [str(ref_info1)])
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+
+    downstream_exp.pull(remote)
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info3)) == exp3
 
 
 @pytest.mark.parametrize("all_,rev,result3", [(True, False, True), (False, True, None)])

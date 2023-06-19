@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def pull(  # noqa: C901
     repo,
     git_remote: str,
-    exp_names: Union[Iterable[str], str],
+    exp_names: Optional[Union[Iterable[str], str]] = None,
     all_commits=False,
     rev: Optional[Union[List[str], str]] = None,
     num=1,

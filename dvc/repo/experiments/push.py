@@ -97,7 +97,7 @@ def exp_refs_from_rev(scm: "Git", rev: List[str], num: int = 1) -> Set["ExpRefIn
 def push(
     repo: "Repo",
     git_remote: str,
-    exp_names: Union[List[str], str],
+    exp_names: Optional[Union[List[str], str]] = None,
     all_commits: bool = False,
     rev: Optional[Union[List[str], str]] = None,
     num: int = 1,
