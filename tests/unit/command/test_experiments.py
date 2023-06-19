@@ -294,12 +294,7 @@ def test_experiments_push(dvc, scm, mocker):
     )
     cmd = cli_args.func(cli_args)
 
-    with pytest.raises(InvalidArgumentError) as exp_info:
-        cmd.run()
-    assert (
-        str(exp_info.value) == "Either provide an `experiment` argument"
-        ", or use the `--rev` or `--all-commits` flag."
-    )
+    assert cmd.run() == 0
 
 
 def test_experiments_pull(dvc, scm, mocker):
@@ -351,12 +346,7 @@ def test_experiments_pull(dvc, scm, mocker):
     )
     cmd = cli_args.func(cli_args)
 
-    with pytest.raises(InvalidArgumentError) as exp_info:
-        cmd.run()
-    assert (
-        str(exp_info.value) == "Either provide an `experiment` argument"
-        ", or use the `--rev` or `--all-commits` flag."
-    )
+    assert cmd.run() == 0
 
 
 def test_experiments_remove_flag(dvc, scm, mocker, capsys, caplog):
