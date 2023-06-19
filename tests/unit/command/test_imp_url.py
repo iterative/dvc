@@ -7,7 +7,7 @@ from dvc.commands.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
 
 
-def test_import_url(mocker):
+def test_import_url(mocker, dvc):
     cli_args = parse_args(
         [
             "import-url",
@@ -37,7 +37,7 @@ def test_import_url(mocker):
     )
 
 
-def test_failed_import_url(mocker, caplog):
+def test_failed_import_url(mocker, caplog, dvc):
     cli_args = parse_args(["import-url", "http://somesite.com/file_name"])
     assert cli_args.func == CmdImportUrl
 
@@ -60,7 +60,7 @@ def test_failed_import_url(mocker, caplog):
         ("--no-download", {"no_download": True, "no_exec": False}),
     ],
 )
-def test_import_url_no_exec_download_flags(mocker, flag, expected):
+def test_import_url_no_exec_download_flags(mocker, flag, expected, dvc):
     cli_args = parse_args(
         [
             "import-url",
@@ -87,7 +87,7 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
     )
 
 
-def test_import_url_to_remote(mocker):
+def test_import_url_to_remote(mocker, dvc):
     cli_args = parse_args(
         [
             "import-url",
