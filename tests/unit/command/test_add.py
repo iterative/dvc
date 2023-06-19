@@ -32,7 +32,7 @@ def test_add(mocker, dvc):
     )
 
 
-def test_add_to_remote(mocker):
+def test_add_to_remote(mocker, dvc):
     cli_args = parse_args(
         [
             "add",
@@ -63,7 +63,7 @@ def test_add_to_remote(mocker):
     )
 
 
-def test_add_to_remote_invalid_combinations(mocker, caplog):
+def test_add_to_remote_invalid_combinations(mocker, caplog, dvc):
     cli_args = parse_args(["add", "s3://bucket/foo", "s3://bucket/bar", "--to-remote"])
     assert cli_args.func == CmdAdd
 
@@ -83,7 +83,7 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
             assert expected_msg in caplog.text
 
 
-def test_add_to_cache_invalid_combinations(mocker, caplog):
+def test_add_to_cache_invalid_combinations(mocker, caplog, dvc):
     cli_args = parse_args(["add", "s3://bucket/foo", "s3://bucket/bar", "-o", "foo"])
     assert cli_args.func == CmdAdd
 

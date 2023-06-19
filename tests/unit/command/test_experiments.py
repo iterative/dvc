@@ -56,7 +56,7 @@ def test_experiments_diff(dvc, scm, mocker):
     )
 
 
-def test_experiments_diff_revs(mocker, capsys):
+def test_experiments_diff_revs(mocker, capsys, dvc, scm):
     mocker.patch(
         "dvc.repo.experiments.diff.diff",
         return_value={
@@ -194,7 +194,7 @@ def test_experiments_list(dvc, scm, mocker):
         (["--sha-only"], "sha-a\n"),
     ],
 )
-def test_experiments_list_format(mocker, capsys, args, expected):
+def test_experiments_list_format(mocker, capsys, args, expected, dvc, scm):
     mocker.patch(
         "dvc.repo.experiments.ls.ls",
         return_value={
@@ -214,7 +214,7 @@ def test_experiments_list_format(mocker, capsys, args, expected):
     assert cap.out == expected
 
 
-def test_experiments_list_remote(mocker, capsys):
+def test_experiments_list_remote(mocker, capsys, dvc, scm):
     mocker.patch(
         "dvc.repo.experiments.ls.ls",
         return_value={

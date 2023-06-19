@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.commands.imp import CmdImport
 
 
-def test_import(mocker):
+def test_import(mocker, dvc):
     cli_args = parse_args(
         [
             "import",
@@ -34,7 +34,7 @@ def test_import(mocker):
     )
 
 
-def test_import_no_exec(mocker):
+def test_import_no_exec(mocker, dvc):
     cli_args = parse_args(
         [
             "import",
@@ -64,7 +64,7 @@ def test_import_no_exec(mocker):
     )
 
 
-def test_import_no_download(mocker):
+def test_import_no_download(mocker, dvc):
     cli_args = parse_args(
         [
             "import",

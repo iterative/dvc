@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.commands.data_sync import CmdDataFetch, CmdDataPull, CmdDataPush
 
 
-def test_fetch(mocker):
+def test_fetch(mocker, dvc):
     cli_args = parse_args(
         [
             "fetch",
@@ -40,7 +40,7 @@ def test_fetch(mocker):
     )
 
 
-def test_pull(mocker):
+def test_pull(mocker, dvc):
     cli_args = parse_args(
         [
             "pull",
@@ -84,7 +84,7 @@ def test_pull(mocker):
     )
 
 
-def test_push(mocker):
+def test_push(mocker, dvc):
     cli_args = parse_args(
         [
             "push",
