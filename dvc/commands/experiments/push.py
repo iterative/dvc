@@ -92,7 +92,7 @@ def add_parser(experiments_subparsers, parent_parser):
         help=EXPERIMENTS_PUSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    add_rev_selection_flags(experiments_push_parser, "Push", False)
+    add_rev_selection_flags(experiments_push_parser, "Push", True)
     experiments_push_parser.add_argument(
         "-f",
         "--force",
