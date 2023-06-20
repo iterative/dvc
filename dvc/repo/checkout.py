@@ -1,11 +1,20 @@
 import logging
 import os
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
-from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
+from dvc.exceptions import (
+    CheckoutError,
+    CheckoutErrorSuggestGit,
+    DvcException,
+    NoOutputOrStageError,
+)
 from dvc.utils import relpath
 
 from . import locked
+
+if TYPE_CHECKING:
+    from dvc_data.index import BaseDataIndex, DataIndexEntry
+    from dvc_objects.fs.base import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +68,33 @@ def _build_out_changes(index, changes):
     return out_changes
 
 
+def _check_can_delete(
+    entries: List["DataIndexEntry"],
+    index: "BaseDataIndex",
+    path: str,
+    fs: "FileSystem",
+):
+    entry_paths = []
+    for entry in entries:
+        try:
+            cache_fs, cache_path = index.storage_map.get_cache(entry)
+        except ValueError:
+            continue
+
+        if cache_fs.exists(cache_path):
+            continue
+
+        entry_paths.append(fs.path.join(path, *entry.key))
+
+    if not entry_paths:
+        return
+
+    raise DvcException(
+        "Can't remove the following unsaved files without confirmation. "
+        "Use `--force` to force.\n" + "\n".join(entry_paths)
+    )
+
+
 @locked
 def checkout(  # noqa: C901
     self,
@@ -70,7 +106,6 @@ def checkout(  # noqa: C901
     allow_missing=False,
     **kwargs,
 ):
-    from dvc import prompt
     from dvc.fs.callbacks import Callback
     from dvc.repo.index import build_data_index
     from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
@@ -123,6 +158,9 @@ def checkout(  # noqa: C901
     ) as cb:
         diff = compare(old, new, relink=relink, delete=True, callback=cb)
 
+    if not force:
+        _check_can_delete(diff.files_delete, new, self.root_dir, self.fs)
+
     failed = []
 
     def checkout_onerror(src_path, dest_path, _exc):
@@ -140,9 +178,7 @@ def checkout(  # noqa: C901
             self.root_dir,
             self.fs,
             callback=cb,
-            prompt=prompt.confirm,
             update_meta=False,
-            force=force,
             onerror=checkout_onerror,
             state=self.state,
             **kwargs,
