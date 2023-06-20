@@ -84,23 +84,19 @@ def test_remove_files_when_checkout(tmp_dir, dvc, scm):
 
 class TestCheckoutCleanWorkingDir:
     def test(self, mocker, tmp_dir, dvc):
-        mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=True)
         (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
         # change working directory
         (tmp_dir / "data").gen("not_cached.txt", "not_cached")
-        assert main(["checkout", stage.relpath]) == 0
-        mock_prompt.assert_called()
+        assert main(["checkout", stage.relpath, "--force"]) == 0
         assert not (tmp_dir / "data" / "not_cached.txt").exists()
 
     def test_force(self, mocker, tmp_dir, dvc):
-        mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=False)
         (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
         # change working directory
         (tmp_dir / "data").gen("not_cached.txt", "not_cached")
         assert main(["checkout", stage.relpath]) != 0
-        mock_prompt.assert_called()
         assert (tmp_dir / "data" / "not_cached.txt").exists()
 
 
