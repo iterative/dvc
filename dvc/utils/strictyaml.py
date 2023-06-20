@@ -254,18 +254,32 @@ class YAMLValidationError(PrettyDvcException):
             ui.error_write(line, styled=True)
 
 
+def _is_migration_error(error):
+    return (
+        error.msg == "extra keys not allowed"
+        and error.path[0] == "stages"
+        and (
+            error.path[2] == "vars"
+            or (error.path[2] == "outs" and error.path[5] == "checkpoint")
+        )
+    )
+
+
 def validate(
     data: _T,
     schema: Callable[[_T], _T],
     text: Optional[str] = None,
     path: Optional[str] = None,
     rev: Optional[str] = None,
+    allow_migration_errors: bool = True,
 ) -> _T:
     from voluptuous import MultipleInvalid
 
     try:
         return schema(data)
     except MultipleInvalid as exc:
+        if allow_migration_errors and all(_is_migration_error(e) for e in exc.errors):
+            return data
         raise YAMLValidationError(exc, path, text, rev=rev) from exc
 
 
