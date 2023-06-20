@@ -965,7 +965,10 @@ class Output:
         return added, False if added else modified
 
     def remove(self, ignore_remove=False):
-        self.fs.remove(self.fs_path, recursive=True)
+        try:
+            self.fs.remove(self.fs_path, recursive=True)
+        except FileNotFoundError:
+            pass
         if self.protocol != Schemes.LOCAL:
             return
 
