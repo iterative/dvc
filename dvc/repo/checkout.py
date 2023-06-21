@@ -161,19 +161,23 @@ def checkout(  # noqa: C901
     if not force:
         _check_can_delete(diff.files_delete, new, self.root_dir, self.fs)
 
-    failed = []
+    failed = set()
+    out_paths = [out.fs_path for out in view.outs if out.use_cache and out.is_in_repo]
 
     def checkout_onerror(src_path, dest_path, _exc):
         logger.debug(
             "failed to create {%s} from {%s}", dest_path, src_path, exc_info=True
         )
-        failed.append(dest_path)
+
+        for out_path in out_paths:
+            if self.fs.path.isin_or_eq(dest_path, out_path):
+                failed.add(out_path)
 
     with Callback.as_tqdm_callback(
         unit="file",
         desc="Checkout",
     ) as cb:
-        changes = apply(
+        apply(
             diff,
             self.root_dir,
             self.fs,
@@ -184,15 +188,19 @@ def checkout(  # noqa: C901
             **kwargs,
         )
 
-    out_changes = _build_out_changes(view, changes)
+    out_changes = _build_out_changes(view, diff.changes)
 
     typ_map = {ADD: "added", DELETE: "deleted", MODIFY: "modified"}
     for key, typ in out_changes.items():
         out_path = self.fs.path.join(self.root_dir, *key)
-        self.state.save_link(out_path, self.fs)
-        stats[typ_map[typ]].append(_fspath_dir(out_path))
+
+        if out_path in failed:
+            self.fs.remove(out_path, recursive=True)
+        else:
+            self.state.save_link(out_path, self.fs)
+            stats[typ_map[typ]].append(_fspath_dir(out_path))
 
     if failed and not allow_missing:
-        raise CheckoutError(failed, stats)
+        raise CheckoutError([relpath(out_path) for out_path in failed], stats)
 
     return stats
