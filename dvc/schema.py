@@ -73,12 +73,14 @@ PLOT_PSTAGE_SCHEMA = {str: Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
 
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 
+VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
     Required(StageParams.PARAM_CMD): Any(str, list),
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],
     Optional(StageParams.PARAM_PARAMS): [Any(str, dict)],
+    Optional(VARS_KWD): VARS_SCHEMA,
     Optional(StageParams.PARAM_FROZEN): bool,
     Optional(StageParams.PARAM_META): object,
     Optional(StageParams.PARAM_DESC): str,
@@ -120,7 +122,7 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
 MULTI_STAGE_SCHEMA = {
     PLOTS: [Any(str, SINGLE_PLOT_SCHEMA)],
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
-    VARS_KWD: [str, dict],
+    VARS_KWD: VARS_SCHEMA,
     StageParams.PARAM_PARAMS: [str],
     StageParams.PARAM_METRICS: [str],
     ARTIFACTS: SINGLE_ARTIFACT_SCHEMA,

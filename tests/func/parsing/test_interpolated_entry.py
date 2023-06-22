@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 
 import pytest
@@ -71,6 +72,147 @@ def test_vars_and_params_import(tmp_dir, dvc):
     }
 
 
+def test_stage_with_wdir(tmp_dir, dvc):
+    """
+    Test that params file from wdir are also loaded
+    """
+    d = {
+        "stages": {
+            "stage1": {
+                "cmd": "echo ${dict.foo} ${dict.bar}",
+                "params": ["value1"],
+                "wdir": "data",
+                "vars": [DEFAULT_PARAMS_FILE],
+            }
+        }
+    }
+
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"bar": "bar"}})
+    (data_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"foo": "foo"}})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
+
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "stage1": {
+                    "cmd": "echo foo bar",
+                    "wdir": "data",
+                    "params": ["value1"],
+                }
+            }
+        },
+    )
+    assert resolver.tracked_vars == {
+        "stage1": {
+            os.path.join("data", DEFAULT_PARAMS_FILE): {"dict.foo": "foo"},
+            DEFAULT_PARAMS_FILE: {"dict.bar": "bar"},
+        }
+    }
+
+
+def test_with_templated_wdir(tmp_dir, dvc):
+    """
+    Test that params from the resolved wdir are still loaded
+    and is used in the interpolation.
+    """
+    d = {
+        "stages": {
+            "stage1": {
+                "cmd": "echo ${dict.foo} ${dict.bar}",
+                "params": ["value1"],
+                "wdir": "${dict.ws}",
+                "vars": [DEFAULT_PARAMS_FILE],
+            }
+        }
+    }
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"bar": "bar", "ws": "data"}})
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
+    (data_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"foo": "foo"}})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
+
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "stage1": {
+                    "cmd": "echo foo bar",
+                    "wdir": "data",
+                    "params": ["value1"],
+                }
+            }
+        },
+    )
+    assert resolver.tracked_vars == {
+        "stage1": {
+            os.path.join("data", DEFAULT_PARAMS_FILE): {"dict.foo": "foo"},
+            DEFAULT_PARAMS_FILE: {"dict.bar": "bar", "dict.ws": "data"},
+        }
+    }
+    assert resolver.context.imports == {"params.yaml": None}
+    assert resolver.context == {"dict": {"bar": "bar", "ws": "data"}}
+
+
+def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
+    iterable = {"bar": "bar", "foo": "foo"}
+    (tmp_dir / "params.json").dump(iterable)
+
+    d = {
+        "vars": ["params.json"],
+        "stages": {
+            "build": {
+                "cmd": "command --value ${bar}",
+                "params": [{"params.json": ["foo"]}],
+                "vars": ["params.json"],
+            }
+        },
+    }
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build": {
+                    "cmd": "command --value bar",
+                    "params": [{"params.json": ["foo"]}],
+                }
+            }
+        },
+    )
+    assert resolver.tracked_vars == {"build": {"params.json": {"bar": "bar"}}}
+
+
+def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
+    iterable = {"bar": "bar", "foo": "foo"}
+    (tmp_dir / "params.yaml").dump(iterable)
+
+    d = {
+        "stages": {
+            "build": {
+                "cmd": "command --value ${bar}",
+                "params": [{"params.yaml": ["foo"]}],
+                "vars": ["params.yaml"],
+            }
+        }
+    }
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build": {
+                    "cmd": "command --value bar",
+                    "params": [{"params.yaml": ["foo"]}],
+                }
+            }
+        },
+    )
+    assert resolver.tracked_vars == {"build": {"params.yaml": {"bar": "bar"}}}
+
+
 def test_vars_relpath_overwrite(tmp_dir, dvc):
     iterable = {"bar": "bar", "foo": "foo"}
     (tmp_dir / "params.yaml").dump(iterable)
@@ -89,6 +231,7 @@ def test_vars_relpath_overwrite(tmp_dir, dvc):
     assert resolver.context.imports == {"params.yaml": None}
 
 
+@pytest.mark.parametrize("local", [True, False])
 @pytest.mark.parametrize(
     "vars_",
     [
@@ -98,10 +241,14 @@ def test_vars_relpath_overwrite(tmp_dir, dvc):
         ["test_params.yaml", "test_params.yaml"],
     ],
 )
-def test_vars_load_partial(tmp_dir, dvc, vars_):
+def test_vars_load_partial(tmp_dir, dvc, local, vars_):
     iterable = {"bar": "bar", "foo": "foo"}
     (tmp_dir / "test_params.yaml").dump(iterable)
-    d = {"vars": vars_, "stages": {"build": {"cmd": "echo ${bar}"}}}
+    d = {"stages": {"build": {"cmd": "echo ${bar}"}}}
+    if local:
+        d["stages"]["build"]["vars"] = vars_
+    else:
+        d["vars"] = vars_
     resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     resolver.resolve()
 
