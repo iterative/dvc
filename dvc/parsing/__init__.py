@@ -232,6 +232,18 @@ class EntryDefinition:
         self.definition = definition
         self.where = where
 
+    def _resolve_wdir(
+        self, context: Context, name: str, wdir: Optional[str] = None
+    ) -> str:
+        if not wdir:
+            return self.wdir
+
+        try:
+            wdir = to_str(context.resolve_str(wdir))
+        except (ContextError, ParseError) as exc:
+            format_and_raise(exc, f"'{self.where}.{name}.wdir'", self.relpath)
+        return self.resolver.fs.path.join(self.wdir, wdir)
+
     def resolve(self, **kwargs):
         try:
             return self.resolve_stage(**kwargs)
@@ -249,7 +261,33 @@ class EntryDefinition:
 
         # we need to pop vars from generated/evaluated data
         definition = deepcopy(self.definition)
+
+        wdir = self._resolve_wdir(context, name, definition.get(WDIR_KWD))
+        vars_ = definition.pop(VARS_KWD, [])
+        # FIXME: Should `vars` be templatized?
+        check_interpolations(vars_, f"{self.where}.{name}.vars", self.relpath)
+        if vars_:
+            # Optimization: Lookahead if it has any vars, if it does not, we
+            # don't need to clone them.
+            context = Context.clone(context)
+
+        try:
+            fs = self.resolver.fs
+            context.load_from_vars(fs, vars_, wdir, stage_name=name)
+        except VarsAlreadyLoaded as exc:
+            format_and_raise(exc, f"'{self.where}.{name}.vars'", self.relpath)
+
+        logger.trace(  # type: ignore[attr-defined]
+            "Context during resolution of stage %s:\n%s", name, context
+        )
+
         with context.track() as tracked_data:
+            # NOTE: we do not pop "wdir", and resolve it again
+            # this does not affect anything and is done to try to
+            # track the source of `wdir` interpolation.
+            # This works because of the side-effect that we do not
+            # allow overwriting and/or str interpolating complex objects.
+            # Fix if/when those assumptions are no longer valid.
             resolved = {
                 key: self._resolve(context, value, key, skip_checks)
                 for key, value in definition.items()
