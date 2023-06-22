@@ -784,6 +784,7 @@ def test_add_preserve_fields(tmp_dir, dvc):
           remote: testremote
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
+          hash: md5
         meta: some metadata
     """
     )
@@ -975,6 +976,7 @@ def test_add_updates_to_cloud_versioning_dir(tmp_dir, dvc):
             "outs": [
                 {
                     "path": "data",
+                    "hash": "md5",
                     "files": [
                         {
                             "size": 3,
@@ -1007,6 +1009,7 @@ def test_add_updates_to_cloud_versioning_dir(tmp_dir, dvc):
         "outs": [
             {
                 "path": "data",
+                "hash": "md5",
                 "files": [
                     {
                         "size": 4,
