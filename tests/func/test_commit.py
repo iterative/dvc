@@ -316,9 +316,12 @@ def test_commit_dos2unix(tmp_dir, dvc):
         }
     )
     legacy_content = (tmp_dir / "foo.dvc").read_text()
+    assert "hash: md5" not in legacy_content
 
-    dvc.commit("foo.dvc")
+    dvc.commit("foo.dvc", force=True)
     assert (tmp_dir / "foo.dvc").read_text() == legacy_content
+
+    tmp_dir.gen("foo", "modified")
     dvc.commit("foo.dvc", force=True)
     content = (tmp_dir / "foo.dvc").read_text()
     assert "hash: md5" in content

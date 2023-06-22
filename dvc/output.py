@@ -692,7 +692,7 @@ class Output:
         if self.metric:
             self.verify_metric()
 
-        if self.hash_name == "md5-dos2unix":
+        if self.hash_name == "md5-dos2unix" and self.changed_checksum():
             self.hash_name = "md5"
         if self.use_cache:
             _, self.meta, self.obj = build(
