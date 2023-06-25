@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 # NOTE: this is very similar to dvc-objects.fs.callbacks.TqdmCallback,
-# but it works with out own Tqdm instance.
+# but it works with our own Tqdm instance.
 class TqdmCallback(Callback):
     def __init__(
         self,

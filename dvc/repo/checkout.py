@@ -8,6 +8,7 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
+from dvc.ui import ui
 from dvc.utils import relpath
 
 from . import locked
@@ -106,7 +107,6 @@ def checkout(  # noqa: C901
     allow_missing=False,
     **kwargs,
 ):
-    from dvc.fs.callbacks import Callback
     from dvc.repo.index import build_data_index
     from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
     from dvc_data.index.checkout import ADD, DELETE, MODIFY, apply, compare
@@ -142,21 +142,25 @@ def checkout(  # noqa: C901
         onerror=onerror,
     )
 
-    with Callback.as_tqdm_callback(
+    with ui.progress(
         unit="entry",
         desc="Building data index",
-    ) as cb:
+    ) as pb:
         old = build_data_index(
-            view, self.root_dir, self.fs, compute_hash=True, callback=cb
+            view,
+            self.root_dir,
+            self.fs,
+            compute_hash=True,
+            callback=pb.as_callback(),
         )
 
     new = view.data["repo"]
 
-    with Callback.as_tqdm_callback(
+    with ui.progress(
         desc="Comparing indexes",
         unit="entry",
-    ) as cb:
-        diff = compare(old, new, relink=relink, delete=True, callback=cb)
+    ) as pb:
+        diff = compare(old, new, relink=relink, delete=True, callback=pb.as_callback())
 
     if not force:
         _check_can_delete(diff.files_delete, new, self.root_dir, self.fs)
@@ -173,15 +177,15 @@ def checkout(  # noqa: C901
             if self.fs.path.isin_or_eq(dest_path, out_path):
                 failed.add(out_path)
 
-    with Callback.as_tqdm_callback(
+    with ui.progress(
         unit="file",
         desc="Checkout",
-    ) as cb:
+    ) as pb:
         apply(
             diff,
             self.root_dir,
             self.fs,
-            callback=cb,
+            callback=pb.as_callback(),
             update_meta=False,
             onerror=checkout_onerror,
             state=self.state,
