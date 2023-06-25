@@ -2,9 +2,11 @@ import os
 import posixpath
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, TypedDict, Union
 
+from dvc.fs.callbacks import DEFAULT_CALLBACK
 from dvc.ui import ui
 
 if TYPE_CHECKING:
+    from dvc.fs.callbacks import Callback
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
     from dvc_data.index import DataIndex
@@ -50,6 +52,7 @@ def _diff(
     not_in_cache: bool = False,
     not_in_remote: bool = False,
     remote_refresh: bool = False,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> Dict[str, List[str]]:
     from dvc_data.index import StorageError
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
@@ -70,6 +73,7 @@ def _diff(
         shallow=not granular,
         hash_only=True,
         with_unknown=True,
+        callback=callback,
     ):
         if (
             change.typ == UNCHANGED
@@ -149,16 +153,27 @@ def _git_info(scm: Union["Git", "NoSCM"], untracked_files: str = "all") -> GitIn
 def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
     from .index import build_data_index
 
-    with ui.status("Building workspace index"):
+    with ui.progress(
+        desc="Building workspace index",
+        unit="entry",
+    ) as pb:
         workspace = build_data_index(
-            repo.index, repo.root_dir, repo.fs, compute_hash=True
+            repo.index,
+            repo.root_dir,
+            repo.fs,
+            compute_hash=True,
+            callback=pb.as_callback(),
         )
 
-    with ui.status("Calculating diff between index/workspace"):
+    with ui.progress(
+        desc="Calculating diff between index/workspace",
+        unit="entry",
+    ) as pb:
         return _diff(
             repo.index.data["repo"],
             workspace,
             not_in_cache=True,
+            callback=pb.as_callback(),
             **kwargs,
         )
 
@@ -171,8 +186,11 @@ def _diff_head_to_index(
     with repo.switch(head):
         head_index = repo.index.data["repo"]
 
-    with ui.status("Calculating diff between head/index"):
-        return _diff(head_index, index, **kwargs)
+    with ui.progress(
+        desc="Calculating diff between head/index",
+        unit="entry",
+    ) as pb:
+        return _diff(head_index, index, callback=pb.as_callback(), **kwargs)
 
 
 class Status(TypedDict):

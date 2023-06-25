@@ -75,7 +75,8 @@ def test_json(dvc, mocker, capsys, mocked_status, args, to_omit):
 
 def test_no_changes_repo(dvc, scm, capsys):
     assert main(["data", "status"]) == 0
-    assert capsys.readouterr() == ("No changes.\n", "")
+    out, _ = capsys.readouterr()
+    assert out == "No changes.\n"
 
 
 def test_empty_scm_repo(tmp_dir, capsys):
@@ -83,7 +84,7 @@ def test_empty_scm_repo(tmp_dir, capsys):
     Repo.init()
 
     assert main(["data", "status"]) == 0
-    out, err = capsys.readouterr()
+    out, _ = capsys.readouterr()
     assert (
         out
         == """\
@@ -91,7 +92,6 @@ No changes in an empty git repo.
 (there are changes not tracked by dvc, use "git status" to see)
 """
     )
-    assert not err
 
 
 @pytest.mark.parametrize(
