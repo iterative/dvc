@@ -2,11 +2,15 @@
 import logging
 import sys
 from threading import RLock
+from typing import TYPE_CHECKING
 
 from tqdm import tqdm
 
 from dvc.env import DVC_IGNORE_ISATTY
 from dvc.utils import env2bool
+
+if TYPE_CHECKING:
+    from dvc.fs.callbacks import TqdmCallback
 
 logger = logging.getLogger(__name__)
 tqdm.set_lock(RLock())
@@ -158,3 +162,8 @@ class Tqdm(tqdm):
             d["ncols_desc"] = d["ncols_info"] = 1
             d["prefix"] = ""
         return d
+
+    def as_callback(self) -> "TqdmCallback":
+        from dvc.fs.callbacks import TqdmCallback
+
+        return TqdmCallback(progress_bar=self)
