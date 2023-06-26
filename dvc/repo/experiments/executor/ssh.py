@@ -210,8 +210,7 @@ class SSHExecutor(BaseExecutor):
         """Collect DVC cache."""
         from dvc.repo.experiments.pull import _pull_cache
 
-        with self.get_odb() as odb:
-            _pull_cache(repo, exp_ref, run_cache=run_cache, odb=odb)
+        _pull_cache(repo, exp_ref, run_cache=run_cache)
 
     @contextmanager
     def get_odb(self):
