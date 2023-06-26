@@ -107,10 +107,9 @@ def _pull_cache(
     dvc_remote=None,
     jobs=None,
     run_cache=False,
-    odb=None,
 ):
     if isinstance(refs, ExpRefInfo):
         refs = [refs]
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc fetch experiment '%s'", refs)
-    repo.fetch(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, odb=odb)
+    repo.fetch(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)
