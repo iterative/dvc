@@ -1,5 +1,6 @@
 import logging
 
+from dvc.exceptions import CheckoutError
 from dvc.repo import locked
 from dvc.utils import glob_targets
 
@@ -38,13 +39,17 @@ def pull(  # noqa: PLR0913
         recursive=recursive,
         run_cache=run_cache,
     )
-    stats = self.checkout(
-        targets=expanded_targets,
-        with_deps=with_deps,
-        force=force,
-        recursive=recursive,
-        allow_missing=allow_missing,
-    )
+    try:
+        stats = self.checkout(
+            targets=expanded_targets,
+            with_deps=with_deps,
+            force=force,
+            recursive=recursive,
+            allow_missing=allow_missing,
+        )
+    except CheckoutError as exc:
+        exc.stats["fetched"] = processed_files_count
+        raise
 
     stats["fetched"] = processed_files_count
     return stats
