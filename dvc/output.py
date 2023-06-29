@@ -20,6 +20,7 @@ from dvc.exceptions import (
     DvcException,
     MergeError,
 )
+from dvc.utils import format_link
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile import check as ocheck
 from dvc_data.hashfile import load as oload
@@ -678,6 +679,14 @@ class Output:
     # pylint: enable=no-member
 
     def save(self) -> None:
+        if self.use_cache and not self.is_in_repo:
+            raise DvcException(
+                f"Saving cached external output {str(self)} is not supported "
+                "since DVC 3.0. See "
+                f"{format_link('https://dvc.org/doc/user-guide/upgrade')} "
+                "for more info."
+            )
+
         if not self.exists:
             raise self.DoesNotExistError(self)
 
