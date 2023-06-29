@@ -1279,7 +1279,7 @@ class Output:
             raise FileNotFoundError(  # noqa: B904
                 errno.ENOENT,
                 os.strerror(errno.ENOENT),
-                self.fs.path.relpath(path),
+                path,
             )
 
         new = tree.from_trie(trie)
@@ -1402,8 +1402,7 @@ class Output:
         otransfer(staging, self.cache, {obj.hash_info}, hardlink=relink, shallow=False)
 
         if relink:
-            rel = self.fs.path.relpath(path)
-            with CheckoutCallback(desc=f"Checking out {rel}", unit="files") as callback:
+            with CheckoutCallback(desc="Checking out {path}", unit="files") as callback:
                 self._checkout(
                     path,
                     self.fs,
