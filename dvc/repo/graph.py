@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Iterator, List, Set
+from typing import TYPE_CHECKING, Any, Iterator, List, Set, TypeVar
 
 from dvc.fs import localfs
 from dvc.utils.fs import path_isin
@@ -7,6 +7,8 @@ if TYPE_CHECKING:
     from networkx import DiGraph
 
     from dvc.stage import Stage
+
+T = TypeVar("T")
 
 
 def check_acyclic(graph: "DiGraph") -> None:
@@ -37,6 +39,26 @@ def get_pipelines(graph: "DiGraph"):
     import networkx as nx
 
     return [graph.subgraph(c).copy() for c in nx.weakly_connected_components(graph)]
+
+
+def get_subgraph_of_nodes(
+    graph: "DiGraph", sources: List[Any], downstream: bool = False
+) -> "DiGraph":
+    from networkx import dfs_postorder_nodes, reverse_view
+
+    assert sources
+    g = reverse_view(graph) if downstream else graph
+    nodes = []
+    for source in sources:
+        nodes.extend(dfs_postorder_nodes(g, source))
+    return graph.subgraph(nodes)
+
+
+def get_steps(graph: "DiGraph", sources: List[T], downstream: bool = False) -> List[T]:
+    from networkx import dfs_postorder_nodes
+
+    sub = get_subgraph_of_nodes(graph, sources, downstream=downstream)
+    return list(dfs_postorder_nodes(sub))
 
 
 def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:

@@ -1,5 +1,7 @@
 import logging
-from typing import TYPE_CHECKING, Iterator, List
+from typing import TYPE_CHECKING, Iterator, List, cast
+
+from funcy import ldistinct
 
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
@@ -8,6 +10,8 @@ from dvc.stage.cache import RunCacheNotSupported
 from . import locked
 
 if TYPE_CHECKING:
+    from networkx import DiGraph
+
     from dvc.stage import Stage
 
     from . import Repo
@@ -78,11 +82,12 @@ def reproduce(  # noqa: C901, PLR0912
 
         targets = [PROJECT_FILE]
 
+    targets = targets or []
     interactive = kwargs.get("interactive", False)
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    stages = set()
+    stages = []
     if pipeline or all_pipelines:
         pipelines = get_pipelines(self.index.graph)
         if all_pipelines:
@@ -96,10 +101,10 @@ def reproduce(  # noqa: C901, PLR0912
         for pline in used_pipelines:
             for stage in pline:
                 if pline.in_degree(stage) == 0:
-                    stages.add(stage)
+                    stages.append(stage)
     else:
         for target in targets:
-            stages.update(
+            stages.extend(
                 self.stage.collect(
                     target,
                     recursive=recursive,
@@ -114,7 +119,7 @@ def reproduce(  # noqa: C901, PLR0912
         except RunCacheNotSupported as e:
             logger.warning("Failed to pull run cache: %s", e)
 
-    return _reproduce_stages(self.index.graph, list(stages), **kwargs)
+    return _reproduce_stages(self.index.graph, ldistinct(stages), **kwargs)
 
 
 def _reproduce_stages(  # noqa: C901
@@ -159,7 +164,11 @@ def _reproduce_stages(  # noqa: C901
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
-    steps = _get_steps(graph, stages, downstream, single_item)
+    from .graph import get_steps
+
+    if not single_item:
+        active = _remove_frozen_stages(graph)
+        stages = get_steps(active, stages, downstream=downstream)
 
     force_downstream = kwargs.pop("force_downstream", False)
     result: List["Stage"] = []
@@ -167,7 +176,7 @@ def _reproduce_stages(  # noqa: C901
     # `ret` is used to add a cosmetic newline.
     ret: List["Stage"] = []
 
-    for stage in steps:
+    for stage in stages:
         if ret:
             logger.info("")
 
@@ -191,40 +200,10 @@ def _reproduce_stages(  # noqa: C901
     return result
 
 
-def _get_steps(graph, stages, downstream, single_item):
-    import networkx as nx
-
-    active = graph.copy()
-    if not single_item:
-        # NOTE: frozen stages don't matter for single_item
-        for stage in graph:
-            if stage.frozen:
-                # NOTE: disconnect frozen stage from its dependencies
-                active.remove_edges_from(graph.out_edges(stage))
-
-    all_pipelines: List["Stage"] = []
-    for stage in stages:
-        if downstream:
-            # NOTE (py3 only):
-            # Python's `deepcopy` defaults to pickle/unpickle the object.
-            # Stages are complex objects (with references to `repo`,
-            # `outs`, and `deps`) that cause struggles when you try
-            # to serialize them. We need to create a copy of the graph
-            # itself, and then reverse it, instead of using
-            # graph.reverse() directly because it calls `deepcopy`
-            # underneath -- unless copy=False is specified.
-            nodes = nx.dfs_postorder_nodes(active.reverse(copy=False), stage)
-            all_pipelines += reversed(list(nodes))
-        else:
-            all_pipelines += nx.dfs_postorder_nodes(active, stage)
-
-    steps = []
-    for stage in all_pipelines:
-        if stage not in steps:
-            # NOTE: order of steps still matters for single_item
-            if single_item and stage not in stages:
-                continue
-
-            steps.append(stage)
-
-    return steps
+def _remove_frozen_stages(graph: "DiGraph") -> "DiGraph":
+    g = cast("DiGraph", graph.copy())
+    for stage in graph:
+        if stage.frozen:
+            # NOTE: disconnect frozen stage from its dependencies
+            g.remove_edges_from(graph.out_edges(stage))
+    return g
