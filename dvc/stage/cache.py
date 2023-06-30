@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 from funcy import first
 
 from dvc import fs
-from dvc.exceptions import DvcException
+from dvc.exceptions import CollectCacheError, DvcException
 from dvc.utils import dict_sha256, relpath
 
 if TYPE_CHECKING:
@@ -179,7 +179,7 @@ class StageCache:
         dump_yaml(tmp, cache)
         self.repo.cache.legacy.move(tmp, path)
 
-    def restore(self, stage, run_cache=True, pull=False, dry=False):
+    def restore(self, stage, run_cache=True, pull=False, dry=False):  # noqa: C901
         from .serialize import to_single_stage_lockfile
 
         if not _can_hash(stage):
@@ -203,8 +203,11 @@ class StageCache:
         cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
         if pull and not dry:
-            for objs in cached_stage.get_used_objs().values():
-                self.repo.cloud.pull(objs)
+            try:
+                for objs in cached_stage.get_used_objs().values():
+                    self.repo.cloud.pull(objs)
+            except CollectCacheError as exc:
+                raise RunCacheNotFoundError(stage) from exc
 
         if not cached_stage.outs_cached():
             raise RunCacheNotFoundError(stage)
