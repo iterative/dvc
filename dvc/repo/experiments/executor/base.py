@@ -459,24 +459,15 @@ class BaseExecutor(ABC):
             should force overwrite any existing duplicates.
         """
         from dvc.repo.checkout import checkout as dvc_checkout
-        from dvc.repo.reproduce import reproduce as dvc_reproduce
-        from dvc.stage import PipelineStage
         from dvc.ui import ui
 
         auto_push = env2bool(DVC_EXP_AUTO_PUSH)
         git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
 
-        unchanged = []
-
         if queue is not None:
             queue.put((rev, os.getpid()))
         if log_errors and log_level is not None:
             cls._set_log_level(log_level)
-
-        def filter_pipeline(stages):
-            unchanged.extend(
-                [stage for stage in stages if isinstance(stage, PipelineStage)]
-            )
 
         exp_hash: Optional[str] = None
         exp_ref: Optional["ExpRefInfo"] = None
@@ -519,12 +510,7 @@ class BaseExecutor(ABC):
                     recursive=kwargs.get("recursive", False),
                 )
 
-            stages = dvc_reproduce(
-                dvc,
-                *args,
-                on_unchanged=filter_pipeline,
-                **kwargs,
-            )
+            stages = dvc.reproduce(*args, **kwargs)
             if paths := cls._get_top_level_paths(dvc):
                 logger.debug("Staging top-level files: %s", paths)
                 dvc.scm_context.add(paths)

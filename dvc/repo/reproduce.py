@@ -122,7 +122,6 @@ def _reproduce_stages(  # noqa: C901
     stages,
     downstream=False,
     single_item=False,
-    on_unchanged=None,
     **kwargs,
 ):
     r"""Derive the evaluation of the given node for the given graph.
@@ -175,24 +174,20 @@ def _reproduce_stages(  # noqa: C901
         try:
             kwargs["upstream"] = result + unchanged
             ret = _reproduce_stage(stage, **kwargs)
-
-            if len(ret) == 0:
+            if not ret:
                 unchanged.extend([stage])
-            elif force_downstream:
+                continue
+
+            result.extend(ret)
+            if force_downstream:
                 # NOTE: we are walking our pipeline from the top to the
                 # bottom. If one stage is changed, it will be reproduced,
                 # which tells us that we should force reproducing all of
                 # the other stages down below, even if their direct
                 # dependencies didn't change.
                 kwargs["force"] = True
-
-            if ret:
-                result.extend(ret)
         except Exception as exc:  # noqa: BLE001
             raise ReproductionError(stage.addressing) from exc
-
-    if on_unchanged is not None:
-        on_unchanged(unchanged)
     return result
 
 
@@ -233,7 +228,3 @@ def _get_steps(graph, stages, downstream, single_item):
             steps.append(stage)
 
     return steps
-
-
-def _repro_callback(experiments_callback, unchanged, stages):
-    experiments_callback(unchanged, stages)
