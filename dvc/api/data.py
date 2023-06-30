@@ -36,21 +36,31 @@ def get_url(path, repo=None, rev=None, remote=None):
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
-    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
+    from dvc.config import NoRemoteError
+    from dvc_data.index import StorageKeyError
+
+    repo_kwargs: Dict[str, Any] = {}
+    if remote:
+        repo_kwargs["config"] = {"core": {"remote": remote}}
+    with Repo.open(
+        repo, rev=rev, subrepos=True, uninitialized=True, **repo_kwargs
+    ) as _repo:
         with _wrap_exceptions(_repo, path):
             fs_path = _repo.dvcfs.from_os_path(path)
-
-            with reraise(FileNotFoundError, PathMissingError(path, repo)):
-                info = _repo.dvcfs.info(fs_path)
-
-            dvc_info = info.get("dvc_info")
-            if not dvc_info:
-                raise OutputNotFoundError(path, repo)
-
-            dvc_repo = info["repo"]  # pylint: disable=unsubscriptable-object
-            md5 = dvc_info["md5"]
-
-            return dvc_repo.cloud.get_url_for(remote, checksum=md5)
+            fs = _repo.dvcfs.fs
+            # pylint: disable-next=protected-access
+            key = fs._get_key_from_relative(fs_path)
+            # pylint: disable-next=protected-access
+            subrepo, _, subkey = fs._get_subrepo_info(key)
+            index = subrepo.index.data["repo"]
+            with reraise(KeyError, OutputNotFoundError(path, repo)):
+                entry = index[subkey]
+            with reraise(
+                (StorageKeyError, ValueError),
+                NoRemoteError(f"no remote specified in {_repo}"),
+            ):
+                remote_fs, remote_path = index.storage_map.get_remote(entry)
+                return remote_fs.unstrip_protocol(remote_path)
 
 
 class _OpenContextManager(GCM):
