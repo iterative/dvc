@@ -209,6 +209,30 @@ def draw(vertices, edges):
     Args:
         vertices (list): list of graph vertices.
         edges (list): list of graph edges.
+
+    Returns:
+        str: ASCII representation
+
+    Example:
+        >>> from dvc.dagascii import draw
+        >>> vertices = [1, 2, 3, 4]
+        >>> edges = [(1, 2), (2, 3), (2, 4), (1, 4)]
+        >>> print(draw(vertices, edges))
+        +---+     +---+
+        | 3 |     | 4 |
+        +---+    *+---+
+          *    **   *
+          *  **     *
+          * *       *
+        +---+       *
+        | 2 |      *
+        +---+     *
+             *    *
+              *  *
+               **
+             +---+
+             | 1 |
+             +---+
     """
     # pylint: disable=too-many-locals
     # NOTE: coordinates might me negative, so we need to shift
