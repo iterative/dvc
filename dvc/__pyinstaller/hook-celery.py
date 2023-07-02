@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 # pylint: disable=import-error
 from PyInstaller.utils.hooks import collect_submodules, is_module_or_submodule
 

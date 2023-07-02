@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 from PyInstaller.utils.hooks import copy_metadata  # pylint:disable=import-error
 
 # needed for `dvc doctor` to show dep versions
