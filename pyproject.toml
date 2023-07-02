@@ -82,6 +82,7 @@ lint = [
     "types-tabulate",
     "types-toml",
     "types-tqdm",
+    "types-pyinstaller",
 ]
 oss = ["dvc-oss==2.19"]
 s3 = ["dvc-s3==2.23.0"]
@@ -127,6 +128,10 @@ dvc = "dvc.api:DVCFileSystem"
 
 [project.entry-points."pytest11"]
 dvc-testing = "dvc.testing.plugin"
+
+[project.entry-points."pyinstaller40"]
+hook-dirs = "dvc.__pyinstaller:get_hook_dirs"
+tests = "dvc.__pyinstaller:get_PyInstaller_tests"
 
 [tool.setuptools]
 license-files = ["LICENSE"]
