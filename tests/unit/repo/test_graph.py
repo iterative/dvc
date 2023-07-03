@@ -8,12 +8,14 @@ from dvc.repo.graph import get_steps, get_subgraph_of_nodes
 @pytest.mark.parametrize(
     "nodes,downstream,expected_edges",
     [
+        ([], False, {1: [2, 3], 2: [4, 5], 3: [6, 7], 8: [9]}),
         ([1], False, {1: [2, 3], 2: [4, 5], 3: [6, 7]}),
         ([2], False, {2: [4, 5]}),
         ([3], False, {3: [6, 7]}),
         ([8], False, [(8, 9)]),
         ([2, 3, 8], False, {2: [4, 5], 3: [6, 7], 8: [9]}),
         ([4], False, {4: []}),
+        ([], True, {1: [2, 3], 2: [4, 5], 3: [6, 7], 8: [9]}),
         ([1], True, {1: []}),
         ([9], True, [(8, 9)]),
         ([2], True, [(1, 2)]),
@@ -39,12 +41,14 @@ def test_subgraph_of_nodes(nodes, downstream, expected_edges):
 @pytest.mark.parametrize(
     "nodes,downstream,expected_steps",
     [
+        ([], False, [4, 5, 2, 6, 7, 3, 1, 9, 8]),
         ([1], False, [4, 5, 2, 6, 7, 3, 1]),
         ([2], False, [4, 5, 2]),
         ([3], False, [6, 7, 3]),
         ([8], False, [9, 8]),
         ([2, 3, 8], False, [4, 5, 2, 6, 7, 3, 9, 8]),
         ([4], False, [4]),
+        ([], True, [4, 5, 2, 6, 7, 3, 1, 9, 8]),
         ([1], True, [1]),
         ([9], True, [9, 8]),
         ([2], True, [2, 1]),

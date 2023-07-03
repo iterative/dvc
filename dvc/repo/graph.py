@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Iterator, List, Set, TypeVar
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Set, TypeVar
 
 from dvc.fs import localfs
 from dvc.utils.fs import path_isin
@@ -42,11 +42,13 @@ def get_pipelines(graph: "DiGraph"):
 
 
 def get_subgraph_of_nodes(
-    graph: "DiGraph", sources: List[Any], downstream: bool = False
+    graph: "DiGraph", sources: Optional[List[Any]] = None, downstream: bool = False
 ) -> "DiGraph":
     from networkx import dfs_postorder_nodes, reverse_view
 
-    assert sources
+    if not sources:
+        return graph
+
     g = reverse_view(graph) if downstream else graph
     nodes = []
     for source in sources:
@@ -54,7 +56,9 @@ def get_subgraph_of_nodes(
     return graph.subgraph(nodes)
 
 
-def get_steps(graph: "DiGraph", sources: List[T], downstream: bool = False) -> List[T]:
+def get_steps(
+    graph: "DiGraph", sources: Optional[List[T]] = None, downstream: bool = False
+) -> List[T]:
     from networkx import dfs_postorder_nodes
 
     sub = get_subgraph_of_nodes(graph, sources, downstream=downstream)
