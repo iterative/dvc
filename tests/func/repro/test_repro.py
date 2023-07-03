@@ -1282,3 +1282,17 @@ def test_repro_rm_recursive(tmp_dir, dvc):
     dvc.reproduce()
     assert (tmp_dir / "dir").exists()
     assert not (tmp_dir / "dir" / "foo").exists()
+
+
+def test_repro_single_item_with_multiple_targets(tmp_dir, dvc, copy_script):
+    stage1 = dvc.stage.add(cmd="echo foo > foo", outs=["foo"], name="gen-foo")
+    with dvc.lock:
+        stage1.run()
+
+    stage2 = dvc.stage.add(
+        cmd="python copy.py foo bar", deps=["foo"], outs=["bar"], name="copy-foo-bar"
+    )
+    assert dvc.reproduce(["copy-foo-bar", "gen-foo"], single_item=True) == [
+        stage2,
+        stage1,
+    ]
