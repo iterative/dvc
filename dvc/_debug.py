@@ -199,6 +199,8 @@ def add_debugging_flags(parser):
     import os
     from argparse import SUPPRESS
 
+    # For detailed info see:
+    # https://github.com/iterative/dvc/wiki/Debugging,-Profiling-and-Benchmarking-DVC
     dvc_show_debug_options = os.environ.get("DVC_SHOW_DEBUG_OPTIONS", "")
 
     def debug_help(msg):
@@ -208,38 +210,69 @@ def add_debugging_flags(parser):
             return SUPPRESS
 
     parser.add_argument(
-        "--cprofile", action="store_true", default=False, help=debug_help("")
+        "--cprofile",
+        action="store_true",
+        default=False,
+        help=debug_help("Generate cprofile data for tools like snakeviz / tuna"),
     )
     parser.add_argument(
-        "--yappi", action="store_true", default=False, help=debug_help("")
+        "--yappi",
+        action="store_true",
+        default=False,
+        help=debug_help(
+            "Generate a callgrind file for use with tools like kcachegrind / qcachegrind"
+        ),
     )
     parser.add_argument(
         "--yappi-separate-threads",
         action="store_true",
         default=False,
-        help=debug_help(""),
+        help=debug_help("Generate one callgrind file per thread"),
     )
     parser.add_argument(
-        "--viztracer", action="store_true", default=False, help=debug_help("")
-    )
-    parser.add_argument("--viztracer-depth", type=int, help=debug_help(""))
-    parser.add_argument(
-        "--viztracer-async", action="store_true", default=False, help=debug_help("")
-    )
-    parser.add_argument("--cprofile-dump", help=debug_help(""))
-    parser.add_argument(
-        "--pdb", action="store_true", default=False, help=debug_help("")
+        "--viztracer",
+        action="store_true",
+        default=False,
+        help=debug_help("Generate a viztracer file for use with vizviewer"),
     )
     parser.add_argument(
-        "--instrument", action="store_true", default=False, help=debug_help("")
+        "--viztracer-depth",
+        type=int,
+        help=debug_help("Set viztracer maximum stack depth"),
     )
     parser.add_argument(
-        "--instrument-open", action="store_true", default=False, help=debug_help("")
+        "--viztracer-async",
+        action="store_true",
+        default=False,
+        help=debug_help("Treat async tasks as threads"),
+    )
+    parser.add_argument(
+        "--cprofile-dump", help=debug_help("location to dump cprofile file")
+    )
+    parser.add_argument(
+        "--pdb",
+        action="store_true",
+        default=False,
+        help=debug_help("Drop into the pdb/ipdb debugger on any exception"),
+    )
+    parser.add_argument(
+        "--instrument",
+        action="store_true",
+        default=False,
+        help=debug_help("Use pyinstrument CLI profiler"),
+    )
+    parser.add_argument(
+        "--instrument-open",
+        action="store_true",
+        default=False,
+        help=debug_help("Use pyinstrument web profiler"),
     )
     parser.add_argument(
         "--show-stack",
         "--ss",
         action="store_true",
         default=False,
-        help=debug_help(""),
+        help=debug_help(
+            "Use CTRL+T on macOS or Ctrl+/ on Linux to print the stack frame currently executing. Not available on Windows."
+        ),
     )
