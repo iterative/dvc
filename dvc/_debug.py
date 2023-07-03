@@ -206,8 +206,9 @@ def add_debugging_flags(parser):
     def debug_help(msg):
         if dvc_show_debug_options:
             return msg
-        else:
-            return SUPPRESS
+        return SUPPRESS
+
+    parser = parser.add_argument_group("debug options")
 
     parser.add_argument(
         "--cprofile",
@@ -216,11 +217,15 @@ def add_debugging_flags(parser):
         help=debug_help("Generate cprofile data for tools like snakeviz / tuna"),
     )
     parser.add_argument(
+        "--cprofile-dump", help=debug_help("Location to dump cprofile file")
+    )
+    parser.add_argument(
         "--yappi",
         action="store_true",
         default=False,
         help=debug_help(
-            "Generate a callgrind file for use with tools like kcachegrind / qcachegrind"
+            "Generate a callgrind file for use with tools like "
+            "kcachegrind / qcachegrind"
         ),
     )
     parser.add_argument(
@@ -247,9 +252,6 @@ def add_debugging_flags(parser):
         help=debug_help("Treat async tasks as threads"),
     )
     parser.add_argument(
-        "--cprofile-dump", help=debug_help("Location to dump cprofile file")
-    )
-    parser.add_argument(
         "--pdb",
         action="store_true",
         default=False,
@@ -273,6 +275,7 @@ def add_debugging_flags(parser):
         action="store_true",
         default=False,
         help=debug_help(
-            r"Use Ctrl+T on macOS or Ctrl+\ on Linux to print the stack frame currently executing. Unavailable on Windows."
+            r"Use Ctrl+T on macOS or Ctrl+\ on Linux to print the stack "
+            "frame currently executing. Unavailable on Windows."
         ),
     )
