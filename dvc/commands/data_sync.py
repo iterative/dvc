@@ -91,6 +91,7 @@ class CmdDataFetch(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
+                max_size=self.args.max_size,
             )
             self.log_summary({"fetched": processed_files_count})
         except DvcException:
@@ -321,6 +322,11 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Fetch run history for all stages.",
+    )
+    fetch_parser.add_argument(
+        "--max-size",
+        type=int,
+        help="Fetch data files/directories that are each below specified size (bytes).",
     )
     fetch_parser.set_defaults(func=CmdDataFetch)
 

@@ -492,6 +492,7 @@ class Index:
         targets: Optional["TargetType"],
         stage_filter: Optional[Callable[["Stage"], bool]] = None,
         outs_filter: Optional[Callable[["Output"], bool]] = None,
+        max_size: Optional[int] = None,
         **kwargs: Any,
     ) -> "IndexView":
         """Return read-only view of index for the specified targets.
@@ -514,7 +515,17 @@ class Index:
             for stage_info in self.collect_targets(targets, **kwargs)
             if not stage_filter or stage_filter(stage_info.stage)
         ]
-        return IndexView(self, stage_infos, outs_filter=outs_filter)
+
+        def _outs_filter(out):
+            if max_size and out.meta and out.meta.size and out.meta.size >= max_size:
+                return False
+
+            if outs_filter:
+                return outs_filter(out)
+
+            return True
+
+        return IndexView(self, stage_infos, outs_filter=_outs_filter)
 
 
 class _DataPrefixes(NamedTuple):
