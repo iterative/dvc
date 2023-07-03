@@ -586,12 +586,16 @@ class Repo:
     def close(self):
         self.scm.close()
         self.state.close()
+        if "dvcfs" in self.__dict__:
+            self.dvcfs.close()
         if self._data_index is not None:
             self._data_index.close()
 
     def _reset(self):
         self.scm._reset()  # pylint: disable=protected-access
         self.state.close()
+        if "dvcfs" in self.__dict__:
+            self.dvcfs.close()
         self.__dict__.pop("index", None)
         self.__dict__.pop("dvcignore", None)
         self.__dict__.pop("dvcfs", None)
