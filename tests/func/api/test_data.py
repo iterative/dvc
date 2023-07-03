@@ -198,11 +198,13 @@ def test_get_url_subrepos(tmp_dir, scm, local_cloud):
         local_cloud / "files" / "md5" / "ac" / "bd18db4cc2f85cedef654fccc4a4d8"
     )
     assert api.get_url(os.path.join("subrepo", "dir", "foo")) == expected_url
+    assert api.get_url(os.path.join("subrepo", "dir", "foo"), repo=".") == expected_url
 
     expected_url = os.fspath(
         local_cloud / "files" / "md5" / "37" / "b51d194a7513e45b56f6524f2d51f2"
     )
     assert api.get_url("subrepo/bar") == expected_url
+    assert api.get_url("subrepo/bar", repo=".") == expected_url
 
 
 def test_open_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
