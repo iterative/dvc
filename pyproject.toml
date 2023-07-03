@@ -298,11 +298,10 @@ ignore-names = ["M", "SCM"]
 "dvc/commands/**" = ["N806"]
 "dvc/testing/**" = ["ARG002"]
 "dvc/testing/benchmarks/**" = ["ARG001"]
-"scripts/**" = ["T201", "INP001", "TRY002"]
 
 [tool.ruff.pylint]
 max-args = 10
 
 [tool.bandit]
-exclude_dirs = ["tests", "scripts", "dvc/repo/experiments/utils.py"]
+exclude_dirs = ["tests"]
 skips = ["B101"]
