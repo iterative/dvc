@@ -200,7 +200,8 @@ def add_debugging_flags(parser):
 
     # For detailed info see:
     # https://github.com/iterative/dvc/wiki/Debugging,-Profiling-and-Benchmarking-DVC
-    dvc_show_debug_options = parser.parse_known_args()[0].verbose
+    args, _ = parser.parse_known_args()
+    verbose = args.verbose
 
     def debug_help(msg):
         if dvc_show_debug_options:
