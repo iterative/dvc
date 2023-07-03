@@ -54,6 +54,8 @@ def _merge_info(repo, key, fs_info, dvc_info):
         ret["size"] = dvc_info["size"]
         if not fs_info and "md5" in dvc_info:
             ret["md5"] = dvc_info["md5"]
+        if not fs_info and "md5-dos2unix" in dvc_info:
+            ret["md5-dos2unix"] = dvc_info["md5-dos2unix"]
 
     if fs_info:
         ret["type"] = fs_info["type"]
