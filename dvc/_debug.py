@@ -196,13 +196,11 @@ def debugtools(args: Optional["Namespace"] = None, **kwargs):
 
 
 def add_debugging_flags(parser):
-    import os
     from argparse import SUPPRESS
-    from dvc.env import DVC_DEBUG
 
     # For detailed info see:
     # https://github.com/iterative/dvc/wiki/Debugging,-Profiling-and-Benchmarking-DVC
-    dvc_show_debug_options = os.environ.get(DVC_DEBUG, "")
+    dvc_show_debug_options = parser.parse_known_args()[0].verbose
 
     def debug_help(msg):
         if dvc_show_debug_options:
