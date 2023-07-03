@@ -196,43 +196,50 @@ def debugtools(args: Optional["Namespace"] = None, **kwargs):
 
 
 def add_debugging_flags(parser):
-    from argparse import SUPPRESS
     import os
-    DVC_SHOW_DEBUG_OPTIONS = os.environ.get('DVC_SHOW_DEBUG_OPTIONS', '')
+    from argparse import SUPPRESS
+
+    dvc_show_debug_options = os.environ.get("DVC_SHOW_DEBUG_OPTIONS", "")
 
     def debug_help(msg):
-        if DVC_SHOW_DEBUG_OPTIONS:
+        if dvc_show_debug_options:
             return msg
         else:
             return SUPPRESS
 
-    parser.add_argument("--cprofile", action="store_true", default=False, help=debug_help(''))
-    parser.add_argument("--yappi", action="store_true", default=False, help=debug_help(''))
+    parser.add_argument(
+        "--cprofile", action="store_true", default=False, help=debug_help("")
+    )
+    parser.add_argument(
+        "--yappi", action="store_true", default=False, help=debug_help("")
+    )
     parser.add_argument(
         "--yappi-separate-threads",
         action="store_true",
         default=False,
-        help=debug_help(''),
+        help=debug_help(""),
     )
     parser.add_argument(
-        "--viztracer", action="store_true", default=False, help=debug_help('')
+        "--viztracer", action="store_true", default=False, help=debug_help("")
     )
-    parser.add_argument("--viztracer-depth", type=int, help=debug_help(''))
+    parser.add_argument("--viztracer-depth", type=int, help=debug_help(""))
     parser.add_argument(
-        "--viztracer-async", action="store_true", default=False, help=debug_help('')
+        "--viztracer-async", action="store_true", default=False, help=debug_help("")
     )
-    parser.add_argument("--cprofile-dump", help=debug_help(''))
-    parser.add_argument("--pdb", action="store_true", default=False, help=debug_help(''))
+    parser.add_argument("--cprofile-dump", help=debug_help(""))
     parser.add_argument(
-        "--instrument", action="store_true", default=False, help=debug_help('')
+        "--pdb", action="store_true", default=False, help=debug_help("")
     )
     parser.add_argument(
-        "--instrument-open", action="store_true", default=False, help=debug_help('')
+        "--instrument", action="store_true", default=False, help=debug_help("")
+    )
+    parser.add_argument(
+        "--instrument-open", action="store_true", default=False, help=debug_help("")
     )
     parser.add_argument(
         "--show-stack",
         "--ss",
         action="store_true",
         default=False,
-        help=debug_help(''),
+        help=debug_help(""),
     )
