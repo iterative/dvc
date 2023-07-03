@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Iterator, List, cast
+from typing import TYPE_CHECKING, Iterator, List, Optional, cast
 
 from funcy import ldistinct
 
@@ -19,22 +19,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _reproduce_stage(stage: "Stage", **kwargs) -> List["Stage"]:
+def _reproduce_stage(stage: "Stage", **kwargs) -> Optional["Stage"]:
     if stage.frozen and not stage.is_import:
         logger.warning(
             "%s is frozen. Its dependencies are not going to be reproduced.",
             stage,
         )
 
-    stage = stage.reproduce(**kwargs)
-    if not stage:
-        return []
-
-    if not kwargs.get("dry", False):
+    ret = stage.reproduce(**kwargs)
+    if ret and not kwargs.get("dry", False):
         stage.dump(update_pipeline=False)
         _track_stage(stage)
-
-    return [stage]
+    return ret
 
 
 def _get_stage_files(stage: "Stage") -> Iterator[str]:
@@ -123,12 +119,13 @@ def reproduce(  # noqa: C901, PLR0912
 
 
 def _reproduce_stages(  # noqa: C901
-    graph,
-    stages,
-    downstream=False,
-    single_item=False,
+    graph: "DiGraph",
+    stages: List["Stage"],
+    force_downstream: bool = False,
+    downstream: bool = False,
+    single_item: bool = False,
     **kwargs,
-):
+) -> List["Stage"]:
     r"""Derive the evaluation of the given node for the given graph.
 
     When you _reproduce a stage_, you want to _evaluate the descendants_
@@ -170,33 +167,26 @@ def _reproduce_stages(  # noqa: C901
         active = _remove_frozen_stages(graph)
         stages = get_steps(active, stages, downstream=downstream)
 
-    force_downstream = kwargs.pop("force_downstream", False)
     result: List["Stage"] = []
-    unchanged: List["Stage"] = []
-    # `ret` is used to add a cosmetic newline.
-    ret: List["Stage"] = []
-
-    for stage in stages:
-        if ret:
-            logger.info("")
-
+    for i, stage in enumerate(stages):
         try:
-            kwargs["upstream"] = result + unchanged
-            ret = _reproduce_stage(stage, **kwargs)
-            if not ret:
-                unchanged.extend([stage])
-                continue
-
-            result.extend(ret)
-            if force_downstream:
-                # NOTE: we are walking our pipeline from the top to the
-                # bottom. If one stage is changed, it will be reproduced,
-                # which tells us that we should force reproducing all of
-                # the other stages down below, even if their direct
-                # dependencies didn't change.
-                kwargs["force"] = True
+            ret = _reproduce_stage(stage, upstream=stages[:i], **kwargs)
         except Exception as exc:  # noqa: BLE001
             raise ReproductionError(stage.addressing) from exc
+
+        if not ret:
+            continue
+
+        result.append(ret)
+        if force_downstream:
+            # NOTE: we are walking our pipeline from the top to the
+            # bottom. If one stage is changed, it will be reproduced,
+            # which tells us that we should force reproducing all of
+            # the other stages down below, even if their direct
+            # dependencies didn't change.
+            kwargs["force"] = True
+        if i < len(stages) - 1:
+            logger.info("")  # add a newline
     return result
 
 
