@@ -204,7 +204,7 @@ def add_debugging_flags(parser):
     verbose = args.verbose
 
     def debug_help(msg):
-        if dvc_show_debug_options:
+        if verbose:
             return msg
         return SUPPRESS
 
