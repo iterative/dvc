@@ -67,6 +67,7 @@ def open_repo(url, *args, **kwargs):
         url = os.getcwd()
 
     if os.path.exists(url):
+        url = os.path.abspath(url)
         try:
             config = _get_remote_config(url)
             config.update(kwargs.get("config") or {})
