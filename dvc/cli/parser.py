@@ -137,7 +137,6 @@ def get_parent_parser():
     from dvc._debug import add_debugging_flags
 
     parent_parser = argparse.ArgumentParser(add_help=False)
-    add_debugging_flags(parent_parser)
     log_level_group = parent_parser.add_mutually_exclusive_group()
     log_level_group.add_argument(
         "-q", "--quiet", action="count", default=0, help="Be quiet."
@@ -145,6 +144,7 @@ def get_parent_parser():
     log_level_group.add_argument(
         "-v", "--verbose", action="count", default=0, help="Be verbose."
     )
+    add_debugging_flags(parent_parser)
 
     return parent_parser
 
