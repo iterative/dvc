@@ -5,7 +5,7 @@ import ntpath
 import os
 import posixpath
 import threading
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
@@ -123,11 +123,13 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         from pygtrie import Trie
 
         super().__init__()
+        self._repo_stack = ExitStack()
         if repo is None:
             repo = self._make_repo(url=url, rev=rev, subrepos=subrepos, **repo_kwargs)
             assert repo is not None
             # pylint: disable=protected-access
             repo_factory = repo._fs_conf["repo_factory"]
+            self._repo_stack.enter_context(repo)
 
         if not repo_factory:
             from dvc.repo import Repo
@@ -216,6 +218,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                     scm=self.repo.scm,
                     repo_factory=self.repo_factory,
                 )
+                self._repo_stack.enter_context(repo)
                 self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
             self._subrepos_trie[key] = repo
 
@@ -396,6 +399,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs.get_file(dvc_path, lpath, **kwargs)
 
+    def close(self):
+        self._repo_stack.close()
+
 
 class DVCFileSystem(FileSystem):
     protocol = "local"
@@ -429,3 +435,7 @@ class DVCFileSystem(FileSystem):
             path = os.path.relpath(path, self.repo.root_dir)
 
         return as_posix(path)
+
+    def close(self):
+        if "fs" in self.__dict__:
+            self.fs.close()
