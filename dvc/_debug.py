@@ -247,7 +247,7 @@ def add_debugging_flags(parser):
         help=debug_help("Treat async tasks as threads"),
     )
     parser.add_argument(
-        "--cprofile-dump", help=debug_help("location to dump cprofile file")
+        "--cprofile-dump", help=debug_help("Location to dump cprofile file")
     )
     parser.add_argument(
         "--pdb",
@@ -273,6 +273,6 @@ def add_debugging_flags(parser):
         action="store_true",
         default=False,
         help=debug_help(
-            "Use CTRL+T on macOS or Ctrl+/ on Linux to print the stack frame currently executing. Not available on Windows."
+            r"Use Ctrl+T on macOS or Ctrl+\ on Linux to print the stack frame currently executing. Unavailable on Windows."
         ),
     )
