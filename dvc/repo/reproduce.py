@@ -95,16 +95,17 @@ def plan_repro(
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
+    import networkx as nx
+
     from .graph import get_pipeline, get_pipelines, get_steps
 
     active = _remove_frozen_stages(graph)
     if stages and pipeline:
-        leaves: List["Stage"] = []
         pipelines = get_pipelines(active)
-        pipelines = [get_pipeline(pipelines, stage) for stage in stages]
-        for pline in pipelines:
-            leaves.extend(node for node in pline if pline.in_degree(node) == 0)
-        stages = ldistinct(leaves)
+        used_pipelines = [get_pipeline(pipelines, stage) for stage in stages]
+        # create a disjointed union of all the pipelines
+        active = nx.compose_all(used_pipelines)
+        return get_steps(active)
     return get_steps(active, stages, downstream=downstream)
 
 
