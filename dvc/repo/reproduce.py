@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Iterator, List, Optional, cast
+from typing import TYPE_CHECKING, List, Optional, cast
 
 from funcy import ldistinct
 
@@ -29,31 +29,7 @@ def _reproduce_stage(stage: "Stage", **kwargs) -> Optional["Stage"]:
     ret = stage.reproduce(**kwargs)
     if ret and not kwargs.get("dry", False):
         stage.dump(update_pipeline=False)
-        _track_stage(stage)
     return ret
-
-
-def _get_stage_files(stage: "Stage") -> Iterator[str]:
-    yield stage.dvcfile.relpath
-    for dep in stage.deps:
-        if (
-            not dep.use_scm_ignore
-            and dep.is_in_repo
-            and not stage.repo.dvcfs.isdvc(stage.repo.dvcfs.from_os_path(str(dep)))
-        ):
-            yield dep.fs_path
-    for out in stage.outs:
-        if not out.use_scm_ignore and out.is_in_repo:
-            yield out.fs_path
-
-
-def _track_stage(stage: "Stage") -> None:
-    from dvc.utils import relpath
-
-    context = stage.repo.scm_context
-    for path in _get_stage_files(stage):
-        context.track_file(relpath(path))
-    return context.track_changed_files()
 
 
 @locked

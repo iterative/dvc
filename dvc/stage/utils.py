@@ -280,3 +280,27 @@ def validate_kwargs(
         kwargs.pop("name", None)
 
     return kwargs
+
+
+def _get_stage_files(stage: "Stage") -> List[str]:
+    from dvc.dvcfile import ProjectFile
+    from dvc.utils import relpath
+
+    ret: List[str] = []
+    file = stage.dvcfile
+    ret.append(file.relpath)
+    if isinstance(file, ProjectFile):
+        ret.append(file._lockfile.relpath)  # pylint: disable=protected-access
+
+    for dep in stage.deps:
+        if (
+            not dep.use_scm_ignore
+            and dep.is_in_repo
+            and not stage.repo.dvcfs.isdvc(stage.repo.dvcfs.from_os_path(str(dep)))
+        ):
+            ret.append(relpath(dep.fs_path))
+
+    for out in stage.outs:
+        if not out.use_scm_ignore and out.is_in_repo:
+            ret.append(relpath(out.fs_path))
+    return ret

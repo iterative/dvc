@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.repo.experiments.stash import ExpStashEntry
     from dvc.scm import Git
-    from dvc.stage import PipelineStage
+    from dvc.stage import PipelineStage, Stage
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +254,15 @@ class BaseExecutor(ABC):
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
         )
+
+    @classmethod
+    def _get_stage_files(cls, stages: List["Stage"]) -> List[str]:
+        from dvc.stage.utils import _get_stage_files
+
+        ret: List[str] = []
+        for stage in stages:
+            ret.extend(_get_stage_files(stage))
+        return ret
 
     @classmethod
     def _get_top_level_paths(cls, repo: "Repo") -> List["str"]:
@@ -511,6 +520,9 @@ class BaseExecutor(ABC):
                 )
 
             stages = dvc.reproduce(*args, **kwargs)
+            if paths := cls._get_stage_files(stages):
+                logger.debug("Staging stage-related files: %s", paths)
+                dvc.scm_context.add(paths)
             if paths := cls._get_top_level_paths(dvc):
                 logger.debug("Staging top-level files: %s", paths)
                 dvc.scm_context.add(paths)
