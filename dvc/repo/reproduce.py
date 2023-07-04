@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Iterable, List, Optional, Set, Union, cast
+from typing import TYPE_CHECKING, Iterable, Iterator, List, Optional, Set, Union, cast
 
 from funcy import ldistinct
 
@@ -182,6 +182,16 @@ def handle_error(graph: "DiGraph", on_error: str, e: Exception, node: "Stage"):
         )
 
 
+def topological_generations(graph: "DiGraph") -> Iterator[List["Stage"]]:
+    # Allows modifying graph while iterating, and consumes node as it goes.
+    while graph:
+        roots = [node for node, degree in graph.in_degree() if degree == 0]
+        yield roots
+
+        for node in roots:
+            graph.remove_node(node)
+
+
 def _reproduce_graph(
     graph: "DiGraph", force_downstream: bool = False, on_error: str = "fail", **kwargs
 ) -> List["Stage"]:
@@ -191,14 +201,10 @@ def _reproduce_graph(
     result: List["Stage"] = []
 
     err_handler = partial(handle_error, g, on_error)
-    while g:
-        roots = [node for node, degree in g.in_degree() if degree == 0]
-        ret = _reproduce_stages(roots, upstream=stages, on_error=err_handler, **kwargs)
-        for node in roots:
-            g.remove_node(node)
-
+    for gen in topological_generations(g):
+        ret = _reproduce_stages(gen, upstream=stages, on_error=err_handler, **kwargs)
         result.extend(ret)
-        stages.extend(roots)
+        stages.extend(gen)
         if ret and force_downstream:
             # NOTE: we are walking our pipeline from the top to the
             # bottom. If one stage is changed, it will be reproduced,
