@@ -557,6 +557,7 @@ class Repo:
 
         from dvc.dirs import site_cache_dir
         from dvc.fs import GitFileSystem
+        from dvc.version import version_tuple
 
         cache_dir = self.config["core"].get("site_cache_dir") or site_cache_dir()
 
@@ -578,7 +579,13 @@ class Repo:
             os.umask(umask)
 
         md5 = hashlib.md5(  # noqa: S324  # nosec B324, B303
-            str((root_dir, getpass.getuser())).encode()
+            str(
+                (
+                    root_dir,
+                    getpass.getuser(),
+                    version_tuple[0],
+                )
+            ).encode()
         )
         repo_token = md5.hexdigest()
         return os.path.join(repos_dir, repo_token)
