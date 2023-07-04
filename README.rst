@@ -280,8 +280,8 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://pypi.org/project/dvc
    :alt: PyPI Downloads
 
-.. |Packages| image:: https://img.shields.io/github/v/release/iterative/dvc?label=deb|pkg|rpm|exe&logo=GitHub
-   :target: https://github.com/iterative/dvc/releases/latest
+.. |Packages| image:: https://img.shields.io/badge/deb|pkg|rpm|exe-blue
+   :target: https://dvc.org/doc/install
    :alt: deb|pkg|rpm|exe
 
 .. |DOI| image:: https://img.shields.io/badge/DOI-10.5281/zenodo.3677553-blue.svg
