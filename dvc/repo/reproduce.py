@@ -59,7 +59,6 @@ def plan_repro(
     stages: Optional[List["Stage"]] = None,
     pipeline: bool = False,
     downstream: bool = False,
-    all_pipelines: bool = False,
 ) -> List["Stage"]:
     r"""Derive the evaluation of the given node for the given graph.
 
@@ -96,25 +95,23 @@ def plan_repro(
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
+    import networkx as nx
+
     from .graph import get_pipeline, get_pipelines, get_steps
 
-    if pipeline or all_pipelines:
-        pipelines = get_pipelines(graph)
-        if stages and pipeline:
-            pipelines = [get_pipeline(pipelines, stage) for stage in stages]
-
-        leaves: List["Stage"] = []
-        for pline in pipelines:
-            leaves.extend(node for node in pline if pline.in_degree(node) == 0)
-        stages = ldistinct(leaves)
-
     active = _remove_frozen_stages(graph)
+    if stages and pipeline:
+        pipelines = get_pipelines(active)
+        used_pipelines = [get_pipeline(pipelines, stage) for stage in stages]
+        # create a disjointed union of all the pipelines
+        active = nx.compose_all(used_pipelines)
+        return get_steps(active)
     return get_steps(active, stages, downstream=downstream)
 
 
 @locked
 @scm_context
-def reproduce(  # noqa: C901
+def reproduce(
     self: "Repo",
     targets: Union[Iterable[str], str, None] = None,
     recursive: bool = False,
@@ -145,13 +142,7 @@ def reproduce(  # noqa: C901
     steps = stages
     if pipeline or all_pipelines or not single_item:
         graph = self.index.graph
-        steps = plan_repro(
-            graph,
-            stages,
-            pipeline=pipeline,
-            downstream=downstream,
-            all_pipelines=all_pipelines,
-        )
+        steps = plan_repro(graph, stages, pipeline=pipeline, downstream=downstream)
     return _reproduce_stages(steps, **kwargs)
 
 
