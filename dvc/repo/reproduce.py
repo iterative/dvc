@@ -20,19 +20,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _reproduce_stage(stage: "Stage", **kwargs) -> Optional["Stage"]:
-    if stage.frozen and not stage.is_import:
-        logger.warning(
-            "%s is frozen. Its dependencies are not going to be reproduced.",
-            stage,
-        )
-
-    ret = stage.reproduce(**kwargs)
-    if ret and not kwargs.get("dry", False):
-        stage.dump(update_pipeline=False)
-    return ret
-
-
 def collect_stages(
     repo: "Repo",
     targets: Iterable[str],
@@ -45,6 +32,24 @@ def collect_stages(
     return ldistinct(stages)
 
 
+def get_subgraph(
+    graph: "DiGraph",
+    nodes: Optional[List] = None,
+    pipeline: bool = False,
+    downstream: bool = False,
+) -> "DiGraph":
+    import networkx as nx
+
+    from .graph import get_pipeline, get_pipelines, get_subgraph_of_nodes
+
+    if not pipeline or not nodes:
+        return get_subgraph_of_nodes(graph, nodes, downstream=downstream)
+
+    pipelines = get_pipelines(graph)
+    used_pipelines = [get_pipeline(pipelines, node) for node in nodes]
+    return nx.compose_all(used_pipelines)
+
+
 def _remove_frozen_stages(graph: "DiGraph") -> "DiGraph":
     g = cast("DiGraph", graph.copy())
     for stage in graph:
@@ -52,6 +57,17 @@ def _remove_frozen_stages(graph: "DiGraph") -> "DiGraph":
             # NOTE: disconnect frozen stage from its dependencies
             g.remove_edges_from(graph.out_edges(stage))
     return g
+
+
+def get_active_graph(
+    graph: "DiGraph",
+    stages: Optional[List["Stage"]] = None,
+    pipeline: bool = False,
+    downstream: bool = False,
+) -> "DiGraph":
+    """Return the graph to operate."""
+    processed = _remove_frozen_stages(graph)
+    return get_subgraph(processed, stages, pipeline=pipeline, downstream=downstream)
 
 
 def plan_repro(
@@ -97,53 +113,21 @@ def plan_repro(
     """
     import networkx as nx
 
-    from .graph import get_pipeline, get_pipelines, get_steps
-
-    active = _remove_frozen_stages(graph)
-    if stages and pipeline:
-        pipelines = get_pipelines(active)
-        used_pipelines = [get_pipeline(pipelines, stage) for stage in stages]
-        # create a disjointed union of all the pipelines
-        active = nx.compose_all(used_pipelines)
-        return get_steps(active)
-    return get_steps(active, stages, downstream=downstream)
+    active = get_active_graph(graph, stages, pipeline=pipeline, downstream=downstream)
+    return list(nx.dfs_postorder_nodes(active))
 
 
-@locked
-@scm_context
-def reproduce(
-    self: "Repo",
-    targets: Union[Iterable[str], str, None] = None,
-    recursive: bool = False,
-    pipeline: bool = False,
-    all_pipelines: bool = False,
-    downstream: bool = False,
-    single_item: bool = False,
-    glob: bool = False,
-    **kwargs,
-):
-    from dvc.dvcfile import PROJECT_FILE
+def _reproduce_stage(stage: "Stage", **kwargs) -> Optional["Stage"]:
+    if stage.frozen and not stage.is_import:
+        logger.warning(
+            "%s is frozen. Its dependencies are not going to be reproduced.",
+            stage,
+        )
 
-    if not kwargs.get("interactive", False):
-        kwargs["interactive"] = self.config["core"].get("interactive", False)
-
-    stages: List["Stage"] = []
-    if not all_pipelines:
-        targets_list = ensure_list(targets or PROJECT_FILE)
-        stages = collect_stages(self, targets_list, recursive=recursive, glob=glob)
-
-    if kwargs.get("pull", False) and kwargs.get("run_cache", True):
-        logger.debug("Pulling run cache")
-        try:
-            self.stage_cache.pull(None)
-        except RunCacheNotSupported as e:
-            logger.warning("Failed to pull run cache: %s", e)
-
-    steps = stages
-    if pipeline or all_pipelines or not single_item:
-        graph = self.index.graph
-        steps = plan_repro(graph, stages, pipeline=pipeline, downstream=downstream)
-    return _reproduce_stages(steps, **kwargs)
+    ret = stage.reproduce(**kwargs)
+    if ret and not kwargs.get("dry", False):
+        stage.dump(update_pipeline=False)
+    return ret
 
 
 def _reproduce_stages(
@@ -172,3 +156,44 @@ def _reproduce_stages(
         if i < len(stages) - 1:
             logger.info("")  # add a newline
     return result
+
+
+@locked
+@scm_context
+def reproduce(
+    self: "Repo",
+    targets: Union[Iterable[str], str, None] = None,
+    recursive: bool = False,
+    pipeline: bool = False,
+    all_pipelines: bool = False,
+    downstream: bool = False,
+    single_item: bool = False,
+    glob: bool = False,
+    **kwargs,
+):
+    from dvc.dvcfile import PROJECT_FILE
+
+    if all_pipelines or pipeline:
+        single_item = False
+        downstream = False
+
+    if not kwargs.get("interactive", False):
+        kwargs["interactive"] = self.config["core"].get("interactive", False)
+
+    stages: List["Stage"] = []
+    if not all_pipelines:
+        targets_list = ensure_list(targets or PROJECT_FILE)
+        stages = collect_stages(self, targets_list, recursive=recursive, glob=glob)
+
+    if kwargs.get("pull", False) and kwargs.get("run_cache", True):
+        logger.debug("Pulling run cache")
+        try:
+            self.stage_cache.pull(None)
+        except RunCacheNotSupported as e:
+            logger.warning("Failed to pull run cache: %s", e)
+
+    steps = stages
+    if not single_item:
+        graph = self.index.graph
+        steps = plan_repro(graph, stages, pipeline=pipeline, downstream=downstream)
+    return _reproduce_stages(steps, **kwargs)

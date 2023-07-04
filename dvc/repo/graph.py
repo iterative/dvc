@@ -56,15 +56,6 @@ def get_subgraph_of_nodes(
     return graph.subgraph(nodes)
 
 
-def get_steps(
-    graph: "DiGraph", sources: Optional[List[T]] = None, downstream: bool = False
-) -> List[T]:
-    from networkx import dfs_postorder_nodes
-
-    sub = get_subgraph_of_nodes(graph, sources, downstream=downstream)
-    return list(dfs_postorder_nodes(sub))
-
-
 def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:
     import networkx as nx
 
