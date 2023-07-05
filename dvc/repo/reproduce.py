@@ -172,7 +172,7 @@ def _reproduce_stages(
             if callable(on_error):
                 on_error(e, stage)
                 continue
-            raise ReproductionError(f"failed to reproduce '{stage.addressing}'") from e
+            raise ReproductionError(f"failed to reproduce {stage.addressing!r}") from e
 
         if not ret:
             stats.unchanged.append(stage)
