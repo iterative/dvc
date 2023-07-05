@@ -10,6 +10,7 @@ from typing import (
     List,
     Optional,
     Set,
+    TypeVar,
     Union,
     cast,
 )
@@ -32,6 +33,8 @@ if TYPE_CHECKING:
     from . import Repo
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 def collect_stages(
@@ -133,10 +136,8 @@ def plan_repro(
 
 def _reproduce_stage(stage: "Stage", **kwargs) -> Optional["Stage"]:
     if stage.frozen and not stage.is_import:
-        logger.warning(
-            "%s is frozen. Its dependencies are not going to be reproduced.",
-            stage,
-        )
+        msg = "%s is frozen. Its dependencies are not going to be reproduced."
+        logger.warning(msg, stage)
 
     ret = stage.reproduce(**kwargs)
     if ret and not kwargs.get("dry", False):
@@ -182,8 +183,8 @@ def _reproduce_stages(
     return stats
 
 
-def _remove_dependents_recursively(graph: "DiGraph", node: "Stage") -> Set["Stage"]:
-    visited: Set["Stage"] = set()
+def _remove_dependents_recursively(graph: "DiGraph", node: T) -> Set[T]:
+    visited: Set[T] = set()
 
     def dfs(n):
         succ = list(graph.successors(n))
@@ -198,7 +199,7 @@ def _remove_dependents_recursively(graph: "DiGraph", node: "Stage") -> Set["Stag
 
 
 def _stage_names(*stages: "Stage") -> str:
-    return humanize.join([f"'{stage.addressing}'" for stage in stages])
+    return humanize.join([repr(stage.addressing) for stage in stages])
 
 
 def handle_error(
@@ -215,7 +216,7 @@ def handle_error(
     return removed
 
 
-def topological_generations(graph: "DiGraph") -> Iterator[List["Stage"]]:
+def topological_generations(graph: "DiGraph") -> Iterator[List]:
     # Allows modifying graph while iterating, and consumes node as it goes.
     while graph:
         roots = [node for node, degree in graph.in_degree() if degree == 0]
@@ -230,7 +231,7 @@ def _reproduce_graph(
 ) -> List["Stage"]:
     assert on_error in ("fail", "skip_dependents", "ignore")
     g = cast("DiGraph", graph.reverse())
-    err_handler = None if on_error in "fail" else partial(handle_error, g, on_error)
+    err_handler = None if on_error == "fail" else partial(handle_error, g, on_error)
     all_stats = Stats()
 
     for gen in topological_generations(g):
@@ -263,7 +264,7 @@ def reproduce(
     glob: bool = False,
     on_error: str = "fail",
     **kwargs,
-):
+) -> List["Stage"]:
     from dvc.dvcfile import PROJECT_FILE
 
     if all_pipelines or pipeline:
