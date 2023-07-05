@@ -1,6 +1,18 @@
 import logging
+from dataclasses import dataclass, field
 from functools import partial
-from typing import TYPE_CHECKING, Iterable, Iterator, List, Optional, Set, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Union,
+    cast,
+)
 
 from funcy import ldistinct
 
@@ -132,22 +144,42 @@ def _reproduce_stage(stage: "Stage", **kwargs) -> Optional["Stage"]:
     return ret
 
 
-def _reproduce_stages(stages: List["Stage"], on_error=None, **kwargs) -> List["Stage"]:
-    result: List["Stage"] = []
+@dataclass
+class Stats:
+    reproduced: List["Stage"] = field(default_factory=list)
+    failed: List["Stage"] = field(default_factory=list)
+    unchanged: List["Stage"] = field(default_factory=list)
+
+    def merge(self, other: "Stats") -> None:
+        self.reproduced.extend(other.reproduced)
+        self.failed.extend(other.failed)
+        self.unchanged.extend(other.unchanged)
+
+
+def _reproduce_stages(
+    stages: List["Stage"],
+    on_error: Optional[Callable[[Exception, "Stage"], Any]] = None,
+    **kwargs,
+) -> Stats:
+    stats = Stats()
+
     for stage in stages:
         try:
             ret = _reproduce_stage(stage, **kwargs)
-        except Exception as exc:  # noqa: BLE001, pylint: disable=broad-exception-caught
-            if not callable(on_error):
-                raise ReproductionError(stage.addressing) from exc
-            on_error(exc, stage)
+        except Exception as e:  # noqa: BLE001, pylint: disable=broad-exception-caught
+            stats.failed.append(stage)
+            if callable(on_error):
+                on_error(e, stage)
+                continue
+            raise ReproductionError(f"failed to reproduce '{stage.addressing}'") from e
+
+        if not ret:
+            stats.unchanged.append(stage)
             continue
 
-        if ret:
-            result.append(ret)
+        stats.reproduced.append(ret)
         logger.info("")
-
-    return result
+    return stats
 
 
 def _remove_dependents_recursively(graph: "DiGraph", node: "Stage") -> Set["Stage"]:
@@ -165,21 +197,22 @@ def _remove_dependents_recursively(graph: "DiGraph", node: "Stage") -> Set["Stag
     return visited
 
 
-def handle_error(graph: "DiGraph", on_error: str, e: Exception, node: "Stage"):
-    if on_error == "fail":
-        raise ReproductionError(node.addressing) from e
+def _stage_names(*stages: "Stage") -> str:
+    return humanize.join([f"'{stage.addressing}'" for stage in stages])
 
+
+def handle_error(
+    graph: "DiGraph", on_error: str, e: Exception, node: "Stage"
+) -> Set["Stage"]:
     logger.warning(e)
     if on_error == "ignore":
-        return
+        return {node}
 
     assert on_error == "skip_dependents"
     if removed := _remove_dependents_recursively(graph, node):
-        logger.warning(
-            "Stage%s %s will be skipped due to the above failure.",
-            "s" if len(removed) > 1 else "",
-            humanize.join([f"'{node.addressing}'" for node in removed]),
-        )
+        msg = "Stage%s %s will be skipped due to the above failure."
+        logger.warning(msg, "s" if len(removed) > 1 else "", _stage_names(*removed))
+    return removed
 
 
 def topological_generations(graph: "DiGraph") -> Iterator[List["Stage"]]:
@@ -197,22 +230,24 @@ def _reproduce_graph(
 ) -> List["Stage"]:
     assert on_error in ("fail", "skip_dependents", "ignore")
     g = cast("DiGraph", graph.reverse())
-    stages: List["Stage"] = []
-    result: List["Stage"] = []
+    err_handler = None if on_error in "fail" else partial(handle_error, g, on_error)
+    all_stats = Stats()
 
-    err_handler = partial(handle_error, g, on_error)
     for gen in topological_generations(g):
-        ret = _reproduce_stages(gen, upstream=stages, on_error=err_handler, **kwargs)
-        result.extend(ret)
-        stages.extend(gen)
-        if ret and force_downstream:
+        stages = all_stats.reproduced + all_stats.unchanged
+        stats = _reproduce_stages(gen, upstream=stages, on_error=err_handler, **kwargs)
+        if stats.reproduced and force_downstream:
             # NOTE: we are walking our pipeline from the top to the
             # bottom. If one stage is changed, it will be reproduced,
             # which tells us that we should force reproducing all of
             # the other stages down below, even if their direct
             # dependencies didn't change.
             kwargs["force"] = True
-    return result
+        all_stats.merge(stats)
+
+    if failed := all_stats.failed:
+        raise ReproductionError("failed to reproduce stages: " + _stage_names(*failed))
+    return all_stats.reproduced
 
 
 @locked
@@ -251,7 +286,9 @@ def reproduce(
             logger.warning("Failed to pull run cache: %s", e)
 
     if single_item:
-        return _reproduce_stages(stages, **kwargs)
+        stats = _reproduce_stages(stages, **kwargs)
+        assert not stats.failed
+        return stats.reproduced
 
     graph = self.index.graph
     active = get_active_graph(graph, stages, pipeline=pipeline, downstream=downstream)
