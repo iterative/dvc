@@ -102,6 +102,10 @@ def check_no_externals(stage):
     link = format_link(
         "https://dvc.org/doc/user-guide/pipelines/external-dependencies-and-outputs"
     )
+    if stage.is_data_source:
+        link = format_link(
+            "https://dvc.org/doc/user-guide/data-management/importing-external-data"
+        )
     raise StageExternalOutputsError(
         f"Cached output(s) outside of DVC project: {str_outs}. "
         f"See {link} for more info."
