@@ -33,6 +33,7 @@ class CmdRepro(CmdBase):
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
             "allow_missing": self.args.allow_missing,
+            "on_error": self.args.on_error,
         }
 
     @property
@@ -136,6 +137,26 @@ and then the stage name name.
         help=(
             "Only print the commands that would be executed without actually executing."
         ),
+    )
+    repro_parser.add_argument(
+        "-k",
+        "--keep-going",
+        action="store_const",
+        default="fail",
+        const="keep-going",
+        dest="on_error",
+        help=(
+            "Continue executing, skipping stages having dependencies "
+            "on the failed stages"
+        ),
+    )
+    repro_parser.add_argument(
+        "--ignore-errors",
+        action="store_const",
+        default="fail",
+        const="ignore",
+        dest="on_error",
+        help="Ignore errors from stages.",
     )
 
 
