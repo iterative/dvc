@@ -41,7 +41,7 @@ dependencies = [
     "dvc-task>=0.3.0,<1",
     "flatten_dict<1,>=0.4.1",
     # https://github.com/iterative/dvc/issues/9654
-    "flufl.lock>=5,<8",
+    "flufl.lock>=5,<9",
     "funcy>=1.14",
     "grandalf<1,>=0.7",
     "hydra-core>=1.1",
