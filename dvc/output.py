@@ -548,12 +548,24 @@ class Output:
         _, hash_info = self._get_hash_meta()
         return hash_info
 
+    def _build(
+        self, *args, no_progress_bar=False, **kwargs
+    ) -> Tuple["HashFileDB", "Meta", "HashFile"]:
+        from dvc.ui import ui
+
+        with ui.progress(
+            unit="file",
+            desc=f"Collecting files and computing hashes in {self}",
+            disable=no_progress_bar,
+        ) as pb:
+            return build(*args, callback=pb.as_callback(), **kwargs)
+
     def _get_hash_meta(self):
         if self.use_cache:
             odb = self.cache
         else:
             odb = self.local_cache
-        _, meta, obj = build(
+        _, meta, obj = self._build(
             odb,
             self.fs_path,
             self.fs,
@@ -703,7 +715,7 @@ class Output:
 
         self._update_legacy_hash_name()
         if self.use_cache:
-            _, self.meta, self.obj = build(
+            _, self.meta, self.obj = self._build(
                 self.cache,
                 self.fs_path,
                 self.fs,
@@ -711,7 +723,7 @@ class Output:
                 ignore=self.dvcignore,
             )
         else:
-            _, self.meta, self.obj = build(
+            _, self.meta, self.obj = self._build(
                 self.local_cache,
                 self.fs_path,
                 self.fs,
@@ -763,7 +775,7 @@ class Output:
             if granular:
                 obj = self._commit_granular_dir(filter_info, hardlink)
             else:
-                staging, _, obj = build(
+                staging, _, obj = self._build(
                     self.cache,
                     filter_info or self.fs_path,
                     self.fs,
@@ -794,7 +806,7 @@ class Output:
 
     def _commit_granular_dir(self, filter_info, hardlink) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
-        staging, _, obj = build(
+        staging, _, obj = self._build(
             self.cache,
             self.fs_path,
             self.fs,
@@ -1021,7 +1033,7 @@ class Output:
 
         upload = not (update and from_fs.isdir(from_info))
         jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
-        staging, self.meta, obj = build(
+        staging, self.meta, obj = self._build(
             odb,
             from_info,
             from_fs,
@@ -1357,7 +1369,7 @@ class Output:
         new: "HashFile"
         try:
             assert self.hash_name
-            staging, meta, obj = build(
+            staging, meta, obj = self._build(
                 cache,
                 path,
                 self.fs,
