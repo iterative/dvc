@@ -375,6 +375,50 @@ class Index:
         return dict(by_workspace)
 
     @cached_property
+    def metric_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        from .metrics.show import _collect_top_level_metrics
+
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        by_workspace["repo"] = set()
+
+        for out in self.outs:
+            if not out.metric:
+                continue
+
+            workspace, key = out.index_key
+            by_workspace[workspace].add(key)
+
+        for path in _collect_top_level_metrics(self.repo):
+            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            by_workspace["repo"].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
+    def plot_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        by_workspace["repo"] = set()
+
+        for out in self.outs:
+            if not out.plot:
+                continue
+
+            workspace, key = out.index_key
+            by_workspace[workspace].add(key)
+
+        for path in self._plot_sources:
+            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            by_workspace["repo"].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
     def data_tree(self):
         from dvc_data.hashfile.tree import Tree
 
@@ -487,12 +531,31 @@ class Index:
                 used[odb].update(objs)
         return used
 
+    def _types_filter(self, types, out):
+        ws, okey = out.index_key
+        for typ in types:
+            if typ == "plots":
+                keys = self.plot_keys
+            elif typ == "metrics":
+                keys = self.metric_keys
+            else:
+                raise ValueError(f"unsupported type {typ}")
+
+            for key in keys.get(ws, []):
+                if (len(key) >= len(okey) and key[: len(okey)] == okey) or (
+                    len(key) < len(okey) and okey[: len(key)] == key
+                ):
+                    return True
+
+        return False
+
     def targets_view(
         self,
         targets: Optional["TargetType"],
         stage_filter: Optional[Callable[["Stage"], bool]] = None,
         outs_filter: Optional[Callable[["Output"], bool]] = None,
         max_size: Optional[int] = None,
+        types: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> "IndexView":
         """Return read-only view of index for the specified targets.
@@ -518,6 +581,9 @@ class Index:
 
         def _outs_filter(out):
             if max_size and out.meta and out.meta.size and out.meta.size >= max_size:
+                return False
+
+            if types and not self._types_filter(types, out):
                 return False
 
             if outs_filter:
