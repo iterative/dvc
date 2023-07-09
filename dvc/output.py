@@ -1402,7 +1402,9 @@ class Output:
         otransfer(staging, self.cache, {obj.hash_info}, hardlink=relink, shallow=False)
 
         if relink:
-            with CheckoutCallback(desc=f"Checking out {path}", unit="files") as callback:
+            with CheckoutCallback(
+                desc=f"Checking out {path}", unit="files"
+            ) as callback:
                 self._checkout(
                     path,
                     self.fs,
