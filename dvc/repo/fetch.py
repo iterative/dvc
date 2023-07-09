@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 from dvc.exceptions import DownloadError
 from dvc_data.index import DataIndex, FileStorage
@@ -86,9 +86,14 @@ def fetch(  # noqa: C901, PLR0913
         unit="entry",
     ) as cb:
         data = collect(
-            indexes, cache_index=self.data_index, cache_key=cache_key, callback=cb
+            indexes,
+            "remote",
+            cache_index=self.data_index,
+            cache_key=cache_key,
+            callback=cb,
         )
-    failed_count += _log_unversioned(data)
+    data, unversioned_count = _log_unversioned(data)
+    failed_count += unversioned_count
 
     with Callback.as_tqdm_callback(
         desc="Fetching",
@@ -101,7 +106,7 @@ def fetch(  # noqa: C901, PLR0913
                 callback=cb,
             )  # pylint: disable=assignment-from-no-return
         finally:
-            for fs_index in data.values():
+            for fs_index in data:
                 fs_index.close()
 
     if fetch_transferred:
@@ -116,11 +121,13 @@ def fetch(  # noqa: C901, PLR0913
     return transferred_count
 
 
-def _log_unversioned(data: Dict[Tuple[str, str], "DataIndex"]) -> int:
+def _log_unversioned(data: List["DataIndex"]) -> Tuple[List["DataIndex"], int]:
+    ret: List["DataIndex"] = []
     unversioned: List[str] = []
-    for by_fs, fs_index in data.items():
+    for fs_index in data:
         remote = fs_index.storage_map[()].remote
         if not isinstance(remote, FileStorage) or not remote.fs.version_aware:
+            ret.append(fs_index)
             continue
 
         fs = remote.fs
@@ -132,7 +139,8 @@ def _log_unversioned(data: Dict[Tuple[str, str], "DataIndex"]) -> int:
             else:
                 index[key] = entry
         fs_index.close()
-        data[by_fs] = index
+        ret.append(index)
+
     if unversioned:
         logger.warning(
             (
@@ -141,4 +149,4 @@ def _log_unversioned(data: Dict[Tuple[str, str], "DataIndex"]) -> int:
             ),
             "\n".join(unversioned),
         )
-    return len(unversioned)
+    return ret, len(unversioned)
