@@ -20,6 +20,10 @@ def test_fetch(mocker, dvc):
             "--run-cache",
             "--max-size",
             "10",
+            "--type",
+            "plots",
+            "--type",
+            "metrics",
         ]
     )
     assert cli_args.func == CmdDataFetch
@@ -40,6 +44,7 @@ def test_fetch(mocker, dvc):
         recursive=True,
         run_cache=True,
         max_size=10,
+        types=["plots", "metrics"],
     )
 
 

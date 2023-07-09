@@ -23,6 +23,7 @@ def fetch(  # noqa: C901, PLR0913
     run_cache=False,
     revs=None,
     max_size=None,
+    types=None,
 ) -> int:
     """Download data items from a cloud and imported repositories
 
@@ -72,6 +73,7 @@ def fetch(  # noqa: C901, PLR0913
                 with_deps=with_deps,
                 recursive=recursive,
                 max_size=max_size,
+                types=types,
             )
             index_keys.add(idx.data_tree.hash_info.value)
             indexes.append(idx.data["repo"])
