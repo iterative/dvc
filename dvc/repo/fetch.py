@@ -9,6 +9,53 @@ from . import locked
 logger = logging.getLogger(__name__)
 
 
+def _collect_indexes(  # noqa: PLR0913
+    repo,
+    targets=None,
+    remote=None,
+    all_branches=False,
+    with_deps=False,
+    all_tags=False,
+    recursive=False,
+    all_commits=False,
+    revs=None,
+    max_size=None,
+    types=None,
+):
+    indexes = {}
+    collection_exc = None
+    for rev in repo.brancher(
+        revs=revs,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+    ):
+        saved_remote = repo.config["core"].get("remote")
+        try:
+            if remote:
+                repo.config["core"]["remote"] = remote
+
+            idx = repo.index.targets_view(
+                targets,
+                with_deps=with_deps,
+                recursive=recursive,
+                max_size=max_size,
+                types=types,
+            )
+            indexes[idx.data_tree.hash_info.value] = idx.data["repo"]
+        except Exception as exc:  # pylint: disable=broad-except
+            collection_exc = exc
+            logger.exception("failed to collect '%s'", rev or "workspace")
+        finally:
+            if remote:
+                repo.config["core"]["remote"] = saved_remote
+
+    if not indexes and collection_exc:
+        raise collection_exc
+
+    return indexes
+
+
 @locked
 def fetch(  # noqa: C901, PLR0913
     self,
@@ -55,40 +102,28 @@ def fetch(  # noqa: C901, PLR0913
     except DownloadError as exc:
         failed_count += exc.amount
 
-    indexes = []
-    index_keys = set()
-    for _ in self.brancher(
-        revs=revs,
+    indexes = _collect_indexes(
+        self,
+        targets=targets,
+        remote=remote,
         all_branches=all_branches,
+        with_deps=with_deps,
         all_tags=all_tags,
+        recursive=recursive,
         all_commits=all_commits,
-    ):
-        saved_remote = self.config["core"].get("remote")
-        try:
-            if remote:
-                self.config["core"]["remote"] = remote
+        revs=revs,
+        max_size=max_size,
+        types=types,
+    )
 
-            idx = self.index.targets_view(
-                targets,
-                with_deps=with_deps,
-                recursive=recursive,
-                max_size=max_size,
-                types=types,
-            )
-            index_keys.add(idx.data_tree.hash_info.value)
-            indexes.append(idx.data["repo"])
-        finally:
-            if remote:
-                self.config["core"]["remote"] = saved_remote
-
-    cache_key = ("fetch", tokenize(sorted(index_keys)))
+    cache_key = ("fetch", tokenize(sorted(indexes.keys())))
 
     with Callback.as_tqdm_callback(
         desc="Collecting",
         unit="entry",
     ) as cb:
         data = collect(
-            indexes,
+            indexes.values(),
             "remote",
             cache_index=self.data_index,
             cache_key=cache_key,
