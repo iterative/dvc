@@ -2,8 +2,7 @@ import logging
 import os
 import tempfile
 import threading
-from contextlib import contextmanager
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from funcy import retry, wrap_with
 
@@ -18,13 +17,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@contextmanager
 @map_scm_exception()
 def _external_repo(
     url,
     rev: Optional[str] = None,
     **kwargs,
-) -> Iterator["Repo"]:
+) -> "Repo":
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev)
     # Local HEAD points to the tip of whatever branch we first cloned from
@@ -46,12 +44,7 @@ def _external_repo(
         **kwargs,
     )
 
-    repo = Repo(**repo_kwargs)
-
-    try:
-        yield repo
-    finally:
-        repo.close()
+    return Repo(**repo_kwargs)
 
 
 def open_repo(url, *args, **kwargs):
