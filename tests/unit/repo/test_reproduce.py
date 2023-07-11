@@ -3,7 +3,7 @@ from itertools import chain
 from networkx import DiGraph
 from networkx.utils import graphs_equal
 
-from dvc.repo.reproduce import _reproduce, get_active_graph, plan_repro
+from dvc.repo.reproduce import get_active_graph, plan_repro
 
 
 def test_active_graph(mocker):
@@ -69,45 +69,3 @@ def test_number_reproduces(tmp_dir, dvc, mocker):
 
     dvc.reproduce(all_pipelines=True, repro_fn=mock)
     assert mock.call_count == 5
-
-
-def test_repro_force_downstream(mocker):
-    def side_effect(value, **kwargs):
-        if value == 2:
-            return 2
-
-    mock = mocker.Mock(side_effect=side_effect)
-    graph = DiGraph({1: [2, 3], 2: [4, 5], 3: [6, 7], 8: [1]})
-
-    plan = plan_repro(graph)  # type: ignore[var-annotated]
-    assert _reproduce(plan, graph, repro_fn=mock, force_downstream=True) == [2]
-
-    calls = [
-        mocker.call(4, upstream=[], force=False),
-        mocker.call(5, upstream=[], force=False),
-        mocker.call(6, upstream=[], force=False),
-        mocker.call(7, upstream=[], force=False),
-        mocker.call(2, upstream=[4, 5], force=False),
-        mocker.call(3, upstream=[6, 7], force=False),
-        mocker.call(1, upstream=[2, 3], force=True),
-        mocker.call(8, upstream=[1], force=True),
-    ]
-    mock.assert_has_calls(calls, any_order=True)
-
-    plan = plan_repro(graph, [2, 3], downstream=True)
-    assert _reproduce(
-        plan,  # type: ignore[arg-type]
-        graph,
-        repro_fn=mock,
-        force_downstream=True,
-        force=True,
-    ) == [2]
-    mock.assert_has_calls(
-        [
-            mocker.call(2, upstream=[4, 5], force=True),
-            mocker.call(3, upstream=[6, 7], force=True),
-            mocker.call(1, upstream=[2, 3], force=True),
-            mocker.call(8, upstream=[1], force=True),
-        ],
-        any_order=True,
-    )

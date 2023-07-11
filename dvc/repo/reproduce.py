@@ -140,6 +140,10 @@ def _get_upstream_downstream_nodes(
     return succ, pre
 
 
+def _repr(stages: Iterable["Stage"]) -> str:
+    return humanize.join(repr(stage.addressing) for stage in stages)
+
+
 def handle_error(
     graph: Optional["DiGraph"], on_error: str, exc: Exception, stage: "Stage"
 ) -> Set["Stage"]:
@@ -151,17 +155,16 @@ def handle_error(
 
     dependents = set(nx.dfs_postorder_nodes(graph.reverse(), stage)) - {stage}
     if dependents:
-        names = [repr(stage.addressing) for stage in dependents]
-        joined_names = humanize.join(names)
+        names = _repr(dependents)
         msg = "%s %s will be skipped due to this failure"
-        logger.warning(msg, "Stages" if len(names) > 1 else "Stage", joined_names)
+        logger.warning(msg, "Stages" if len(dependents) > 1 else "Stage", names)
     return dependents
 
 
 def _raise_error(exc: Optional[Exception], *stages: "Stage") -> NoReturn:
-    names = humanize.join(repr(stage.addressing) for stage in stages)
-    word = "stages: " if len(stages) > 1 else ""
-    raise ReproductionError(f"failed to reproduce{word} {names}") from exc
+    names = _repr(stages)
+    segment = "stages: " if len(stages) > 1 else ""
+    raise ReproductionError(f"failed to reproduce{segment} {names}") from exc
 
 
 def _reproduce(
