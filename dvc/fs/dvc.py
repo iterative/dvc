@@ -412,7 +412,7 @@ class DVCFileSystem(FileSystem):
 
     @functools.cached_property
     # pylint: disable-next=invalid-overridden-method
-    def fs(self) -> "DVCFileSystem":
+    def fs(self) -> "_DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
 
     def isdvc(self, path, **kwargs) -> bool:

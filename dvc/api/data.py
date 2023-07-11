@@ -45,22 +45,13 @@ def get_url(path, repo=None, rev=None, remote=None):
     with Repo.open(
         repo, rev=rev, subrepos=True, uninitialized=True, **repo_kwargs
     ) as _repo:
-        with _wrap_exceptions(_repo, path):
-            fs_path = _repo.dvcfs.from_os_path(path)
-            fs = _repo.dvcfs.fs
-            # pylint: disable-next=protected-access
-            key = fs._get_key_from_relative(fs_path)
-            # pylint: disable-next=protected-access
-            subrepo, _, subkey = fs._get_subrepo_info(key)
-            index = subrepo.index.data["repo"]
-            with reraise(KeyError, OutputNotFoundError(path, repo)):
-                entry = index[subkey]
-            with reraise(
-                (StorageKeyError, ValueError),
-                NoRemoteError(f"no remote specified in {_repo}"),
-            ):
-                remote_fs, remote_path = index.storage_map.get_remote(entry)
-                return remote_fs.unstrip_protocol(remote_path)
+        index, entry = _repo.get_data_index_entry(path)
+        with reraise(
+            (StorageKeyError, ValueError),
+            NoRemoteError(f"no remote specified in {_repo}"),
+        ):
+            remote_fs, remote_path = index.storage_map.get_remote(entry)
+            return remote_fs.unstrip_protocol(remote_path)
 
 
 class _OpenContextManager(GCM):
