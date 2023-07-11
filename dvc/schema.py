@@ -42,9 +42,10 @@ LOCK_FILE_STAGE_SCHEMA = {
     StageParams.PARAM_OUTS: [DATA_SCHEMA],
 }
 
+NO_SCHEMA_MSG = "This is a 1.0 lockfile format which is unsupported in dvc>=3.0"
 LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 LOCKFILE_SCHEMA = {
-    Required("schema"): Equal("2.0", "invalid schema version"),
+    Required("schema", NO_SCHEMA_MSG): Equal("2.0", "invalid schema version"),
     STAGES: LOCKFILE_STAGES_SCHEMA,
 }
 
