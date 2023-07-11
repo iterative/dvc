@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from dvc.stage import Stage
     from dvc.types import DictStrAny
     from dvc_data.hashfile.state import StateBase
-    from dvc_data.index import DataIndex
+    from dvc_data.index import DataIndex, DataIndexEntry
 
     from .experiments import Experiments
     from .index import Index
@@ -285,7 +285,7 @@ class Repo:
             new.check_graph()
 
     @staticmethod
-    def open(url, *args, **kwargs):  # noqa: A003
+    def open(url: Optional[str], *args, **kwargs) -> "Repo":  # noqa: A003
         from .open_repo import open_repo
 
         return open_repo(url, *args, **kwargs)
@@ -374,6 +374,28 @@ class Repo:
             pass
         self.data_index.commit()
         self._reset()
+
+    def get_data_index_entry(
+        self,
+        path: str,
+        workspace: str = "repo",
+    ) -> Tuple["DataIndex", "DataIndexEntry"]:
+        if self.subrepos:
+            fs_path = self.dvcfs.from_os_path(path)
+            fs = self.dvcfs.fs
+            # pylint: disable-next=protected-access
+            key = fs._get_key_from_relative(fs_path)
+            # pylint: disable-next=protected-access
+            subrepo, _, key = fs._get_subrepo_info(key)
+            index = subrepo.index.data[workspace]
+        else:
+            index = self.index.data[workspace]
+            key = self.fs.path.relparts(path, self.root_dir)
+
+        try:
+            return index, index[key]
+        except KeyError as exc:
+            raise OutputNotFoundError(path, self) from exc
 
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
