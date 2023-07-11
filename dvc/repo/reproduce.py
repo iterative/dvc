@@ -163,7 +163,7 @@ def handle_error(
 
 def _raise_error(exc: Optional[Exception], *stages: "Stage") -> NoReturn:
     names = _repr(stages)
-    segment = "stages: " if len(stages) > 1 else ""
+    segment = " stages:" if len(stages) > 1 else ""
     raise ReproductionError(f"failed to reproduce{segment} {names}") from exc
 
 
