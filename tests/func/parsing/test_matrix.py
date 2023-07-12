@@ -23,7 +23,6 @@ MATRIX_DATA = {
     ],
 )
 def test_matrix_interpolated(tmp_dir, dvc, matrix):
-    """Testing a simple non-nested list as a foreach data"""
     (tmp_dir / "params.yaml").dump(MATRIX_DATA)
     resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     data = {

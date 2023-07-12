@@ -45,7 +45,7 @@ LOCK_FILE_STAGE_SCHEMA = {
 LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 LOCKFILE_SCHEMA = {
     Required("schema"): Equal("2.0", "invalid schema version"),
-    Required(STAGES): LOCKFILE_STAGES_SCHEMA,
+    STAGES: LOCKFILE_STAGES_SCHEMA,
 }
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
@@ -93,12 +93,13 @@ STAGE_DEFINITION = {
 
 
 def stage_schema(data):
+    schema = STAGE_DEFINITION
     if isinstance(data, Mapping):
         if FOREACH_KWD in data:
-            return Schema(FOREACH_DO)(data)
-        if MATRIX_KWD in data:
-            return Schema(MATRIX_DO)(data)
-    return Schema(STAGE_DEFINITION)(data)
+            schema = FOREACH_DO
+        elif MATRIX_KWD in data:
+            schema = MATRIX_DO
+    return Schema(schema)(data)
 
 
 PLOT_DEFINITION = {
