@@ -243,7 +243,7 @@ class StageLoad:
     ) -> Iterable[str]:
         if not name:
             return stages.keys()
-        if accept_group and stages.is_foreach_generated(name):
+        if accept_group and stages.is_foreach_or_matrix_generated(name):
             return self._get_group_keys(stages, name)
         if glob:
             return fnmatch.filter(stages.keys(), name)

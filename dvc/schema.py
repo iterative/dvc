@@ -11,7 +11,7 @@ from dvc.output import (
     META_SCHEMA,
     Output,
 )
-from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
+from dvc.parsing import DO_KWD, FOREACH_KWD, MATRIX_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -45,7 +45,7 @@ LOCK_FILE_STAGE_SCHEMA = {
 LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 LOCKFILE_SCHEMA = {
     Required("schema"): Equal("2.0", "invalid schema version"),
-    STAGES: LOCKFILE_STAGES_SCHEMA,
+    Required(STAGES): LOCKFILE_STAGES_SCHEMA,
 }
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
@@ -92,14 +92,13 @@ STAGE_DEFINITION = {
 }
 
 
-def either_or(primary, fallback, fallback_includes=None):
-    def validator(data):
-        schema = primary
-        if isinstance(data, Mapping) and set(fallback_includes or []) & data.keys():
-            schema = fallback
-        return Schema(schema)(data)
-
-    return validator
+def stage_schema(data):
+    if isinstance(data, Mapping):
+        if FOREACH_KWD in data:
+            return Schema(FOREACH_DO)(data)
+        if MATRIX_KWD in data:
+            return Schema(MATRIX_DO)(data)
+    return Schema(STAGE_DEFINITION)(data)
 
 
 PLOT_DEFINITION = {
@@ -113,13 +112,15 @@ PLOT_DEFINITION = {
 SINGLE_PLOT_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
 ARTIFACTS = "artifacts"
 SINGLE_ARTIFACT_SCHEMA = Schema({str: ARTIFACT_SCHEMA})
-FOREACH_IN = {
+FOREACH_DO = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
 }
-SINGLE_PIPELINE_STAGE_SCHEMA = {
-    str: either_or(STAGE_DEFINITION, FOREACH_IN, [FOREACH_KWD, DO_KWD])
+MATRIX_DO = {
+    Required(MATRIX_KWD): Any(dict, list, str),
+    Required(DO_KWD): STAGE_DEFINITION,
 }
+SINGLE_PIPELINE_STAGE_SCHEMA = {str: stage_schema}
 MULTI_STAGE_SCHEMA = {
     PLOTS: [Any(str, SINGLE_PLOT_SCHEMA)],
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
