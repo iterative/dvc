@@ -1,3 +1,4 @@
+import logging
 import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, DefaultDict, Dict, List, NamedTuple, Optional
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
+logger = logging.getLogger(__name__)
 
 
 def _squash_plots_properties(data: List) -> Dict:
@@ -113,6 +115,7 @@ def match_defs_renderers(  # noqa: C901, PLR0912
             try:
                 dps, rev_props = converter.flat_datapoints(rev)
             except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
+                logger.warning("In %r, %s", rev, str(e).lower())
                 def_errors[rev] = e
                 continue
 
