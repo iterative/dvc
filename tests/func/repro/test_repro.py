@@ -943,6 +943,18 @@ def test_repro_force_downstream(tmp_dir, dvc, copy_script):
     assert stages[1].addressing == file3_stage.addressing
 
 
+def test_repro_force_downstream_do_not_force_independent_stages(tmp_dir, dvc, run_copy):
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+    foo1 = run_copy("foo", "foo1", name="foo1")
+    foo2 = run_copy("foo1", "foo2", name="foo2")
+    run_copy("bar", "bar1", name="bar1")
+    run_copy("bar1", "bar2", name="bar2")
+    cat = dvc.run(cmd="cat bar2 foo2", deps=["foo2", "bar2"], name="cat")
+
+    tmp_dir.gen("foo", "foobar")
+    assert dvc.reproduce(force_downstream=True) == [foo1, foo2, cat]
+
+
 def test_repro_pipeline(
     tmp_dir,
     dvc,
@@ -1295,4 +1307,54 @@ def test_repro_single_item_with_multiple_targets(tmp_dir, dvc, copy_script):
     assert dvc.reproduce(["copy-foo-bar", "gen-foo"], single_item=True) == [
         stage2,
         stage1,
+    ]
+
+
+def test_repro_keep_going(mocker, tmp_dir, dvc, copy_script):
+    from dvc.repo import reproduce
+
+    (bar_stage, foo_stage) = tmp_dir.dvc_gen({"bar": "bar", "foo": "foo"})
+    stage1 = dvc.stage.add(
+        cmd=["python copy.py bar foobar", "exit 1"],
+        deps=["bar"],
+        outs=["foobar"],
+        name="copy-bar-foobar",
+    )
+    dvc.stage.add(cmd="cat foobar foo", deps=["foobar", "foo"], name="cat")
+    spy = mocker.spy(reproduce, "_reproduce_stage")
+
+    with pytest.raises(ReproductionError):
+        dvc.reproduce(on_error="keep-going", repro_fn=spy)
+
+    assert spy.call_args_list == [
+        mocker.call(bar_stage, upstream=[], force=False, interactive=False),
+        mocker.call(stage1, upstream=[bar_stage], force=False, interactive=False),
+        mocker.call(foo_stage, upstream=[], force=False, interactive=False),
+    ]
+
+
+def test_repro_ignore_errors(M, mocker, tmp_dir, dvc, copy_script):
+    from dvc.repo import reproduce
+
+    (bar_stage, foo_stage) = tmp_dir.dvc_gen({"bar": "bar", "foo": "foo"})
+    stage1 = dvc.stage.add(
+        cmd=["python copy.py bar foobar", "exit 1"],
+        deps=["bar"],
+        outs=["foobar"],
+        name="copy-bar-foobar",
+    )
+    stage2 = dvc.stage.add(cmd="cat foobar foo", deps=["foobar", "foo"], name="cat")
+    spy = mocker.spy(reproduce, "_reproduce_stage")
+    dvc.reproduce(on_error="ignore", repro_fn=spy)
+
+    assert spy.call_args_list == [
+        mocker.call(bar_stage, upstream=[], force=False, interactive=False),
+        mocker.call(stage1, upstream=[bar_stage], force=False, interactive=False),
+        mocker.call(foo_stage, upstream=[], force=False, interactive=False),
+        mocker.call(
+            stage2,
+            upstream=[foo_stage, stage1],
+            force=False,
+            interactive=False,
+        ),
     ]
