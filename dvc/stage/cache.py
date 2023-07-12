@@ -123,12 +123,15 @@ class StageCache:
 
     @contextmanager
     def _cache_type_copy(self):
-        cache_types = self.repo.cache.legacy.cache_types
+        cache_types = self.repo.cache.local.cache_types
+        legacy_cache_types = self.repo.cache.legacy.cache_types
+        self.repo.cache.local.cache_types = ["copy"]
         self.repo.cache.legacy.cache_types = ["copy"]
         try:
             yield
         finally:
-            self.repo.cache.legacy.cache_types = cache_types
+            self.repo.cache.local.cache_types = cache_types
+            self.repo.cache.legacy.cache_types = legacy_cache_types
 
     def _uncached_outs(self, stage, cache):
         # NOTE: using temporary stage to avoid accidentally modifying original
