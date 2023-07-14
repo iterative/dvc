@@ -196,12 +196,6 @@ def _add_common_args(parser):
         metavar="<filename>",
     ).complete = completion.FILE
     parser.add_argument(
-        "--external",
-        action="store_true",
-        default=False,
-        help="Allow outputs that are outside of the DVC repository.",
-    )
-    parser.add_argument(
         "--outs-persist",
         action="append",
         default=[],

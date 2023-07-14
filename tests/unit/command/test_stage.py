@@ -47,7 +47,6 @@ def test_stage_add(mocker, dvc, command, parsed_command):
             "file:param1,param2",
             "--params",
             "param3",
-            "--external",
             "--desc",
             "description",
             "--force",
