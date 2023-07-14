@@ -97,9 +97,7 @@ class FileMixin:
         self.verify = verify
 
     def __repr__(self):
-        return "{}: {}".format(
-            self.__class__.__name__, relpath(self.path, self.repo.root_dir)
-        )
+        return f"{self.__class__.__name__}: {relpath(self.path, self.repo.root_dir)}"
 
     def __hash__(self):
         return hash(self.path)

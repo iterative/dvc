@@ -212,7 +212,7 @@ def test_unhashable(tmp_dir, dvc, mocker, kwargs):
     stage = create_stage(Stage, path="stage.dvc", repo=dvc, **kwargs)
     get_stage_hash = mocker.patch("dvc.stage.cache._get_stage_hash")
     assert cache.save(stage) is None
-    assert get_stage_hash.not_called
+    get_stage_hash.assert_not_called()
     with pytest.raises(RunCacheNotFoundError):
         cache.restore(stage)
-    assert get_stage_hash.not_called
+    get_stage_hash.assert_not_called()

@@ -75,7 +75,7 @@ def ByUrl(mapping):  # noqa: N802
 
 
 class RelPath(str):
-    pass
+    __slots__ = ()
 
 
 class FeatureSchema(Schema):

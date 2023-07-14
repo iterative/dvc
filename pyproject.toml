@@ -268,8 +268,8 @@ ignored-argument-names = "_.*|args|kwargs"
 [tool.ruff]
 # external flake8 codes that should be preserved
 external = ["B301", "C901", "E302", "W601"]
-ignore = ["N818", "S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR2004", "PLW2901", "RUF005"]
-select = ["F", "E", "W", "C90", "N", "UP", "YTT", "S", "BLE", "B", "A", "C4", "T10", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RET501", "RET504", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "RUF"]
+ignore = ["N818", "S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR2004", "PLW2901", "RUF005", "RUF012"]
+select = ["F", "E", "W", "C90", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET501", "RET504", "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "FLY", "RUF"]
 show-source = true
 
 [tool.ruff.flake8-pytest-style]

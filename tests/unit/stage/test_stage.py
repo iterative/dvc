@@ -69,7 +69,7 @@ def test_stage_update(dvc, mocker):
     is_repo_import.return_value = True
     with dvc.lock:
         stage.update()
-    assert reproduce.called_once_with()
+    reproduce.assert_called_once_with(no_download=None, jobs=None)
 
     is_repo_import.return_value = False
     with pytest.raises(StageUpdateError):
@@ -92,8 +92,8 @@ def test_stage_run_ignore_sigint(dvc, mocker):
 
     dvc.run(cmd="path", name="train")
 
-    assert popen.called_once()
-    assert communicate.called_once_with()
+    popen.assert_called_once()
+    communicate.assert_called_once_with()
     signal_mock.assert_any_call(signal.SIGINT, signal.SIG_IGN)
     assert signal.getsignal(signal.SIGINT) == signal.default_int_handler
 

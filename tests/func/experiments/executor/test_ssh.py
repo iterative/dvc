@@ -119,7 +119,7 @@ def test_reproduce(tmp_dir, scm, dvc, cloud, exp_stage, mocker):
         rev,
         fs_factory=partial(_ssh_factory, cloud),
     )
-    assert mock_execute.called_once()
+    mock_execute.assert_called_once()
     _name, args, _kwargs = mock_execute.mock_calls[0]
     assert f"dvc exp exec-run --infofile {infofile}" in args[0]
 
@@ -148,7 +148,7 @@ def test_run_machine(tmp_dir, scm, dvc, cloud, exp_stage, mocker):
 
     tmp_dir.gen("params.yaml", "foo: 2")
     dvc.experiments.run(exp_stage.addressing, machine="foo")
-    assert mock_repro.called_once()
+    mock_repro.assert_called_once()
     _name, _args, kwargs = mock_repro.mock_calls[0]
     info = kwargs["info"]
     url = urlparse(info.git_url)

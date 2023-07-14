@@ -233,8 +233,8 @@ def docker_services(
         pytest.skip("disabled for Windows on CI")
 
     try:
-        subprocess.check_output(  # nosec B607, B602
-            "docker ps", stderr=subprocess.STDOUT, shell=True
+        subprocess.check_output(  # nosec B607, B602,
+            "docker ps", stderr=subprocess.STDOUT, shell=True  # noqa: S602, S607
         )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
@@ -242,7 +242,9 @@ def docker_services(
 
     try:
         cmd = "docker-compose version"
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)  # nosec
+        subprocess.check_output(
+            cmd, stderr=subprocess.STDOUT, shell=True  # nosec B602 # noqa: S602
+        )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
         pytest.skip(f"docker-compose is not installed: {out}")

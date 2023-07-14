@@ -192,7 +192,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
 
             from dvc import PKG, __version__
 
-            pyv = " ".join([python_implementation(), python_version()])
+            pyv = f"{python_implementation()} {python_version()}"
             pkg = f" ({PKG})" if PKG else ""
             logger.debug("v%s%s, %s on %s", __version__, pkg, pyv, platform())
             logger.debug("command: %s", " ".join(argv or sys.argv))

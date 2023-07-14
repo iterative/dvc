@@ -234,7 +234,7 @@ def fix_exp_head(scm: Union["Git", "NoSCM"], ref: Optional[str]) -> Optional[str
     if ref:
         name, tail = Git.split_ref_pattern(ref)
         if name == "HEAD" and scm.get_ref(EXEC_BASELINE):
-            return "".join((EXEC_BASELINE, tail))
+            return f"{EXEC_BASELINE}{tail}"
     return ref
 
 

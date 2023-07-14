@@ -452,7 +452,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     assert "metrics.yaml:foo,params.yaml:foo,copy.py" in cap.out
     assert f",workspace,baseline,,,3,3,{data_hash}" in cap.out
     assert (
-        ",master,baseline,{},,1,1,{}".format(
+        ",master,baseline,{},,1,1,{}".format(  # noqa: UP032
             _get_rev_isotimestamp(baseline_rev), data_hash
         )
         in cap.out
@@ -682,7 +682,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
 
     assert f",master,baseline,{_get_rev_isotimestamp(scores_rev)},,1,,1" in cap.out
     assert (
-        ",{},baseline,{},,,1,1".format(
+        ",{},baseline,{},,,1,1".format(  # noqa: UP032
             metrics_rev[:7], _get_rev_isotimestamp(metrics_rev)
         )
         in cap.out

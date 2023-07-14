@@ -471,9 +471,7 @@ class Output:
         return fs.path.abspath(fs.path.normpath(fs_path))
 
     def __repr__(self):
-        return "{class_name}: '{def_path}'".format(
-            class_name=type(self).__name__, def_path=self.def_path
-        )
+        return f"{type(self).__name__}: {self.def_path!r}"
 
     def __str__(self):
         if self.fs.protocol != "local":
@@ -693,7 +691,7 @@ class Output:
     def save(self) -> None:
         if self.use_cache and not self.is_in_repo:
             raise DvcException(
-                f"Saving cached external output {str(self)} is not supported "
+                f"Saving cached external output {self!s} is not supported "
                 "since DVC 3.0. See "
                 f"{format_link('https://dvc.org/doc/user-guide/upgrade')} "
                 "for more info."

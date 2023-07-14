@@ -63,9 +63,7 @@ class OutputNotFoundError(DvcException):
         self.output = output
         self.repo = repo
         super().__init__(
-            "Unable to find DVC file with output '{path}'".format(
-                path=relpath(self.output)
-            )
+            f"Unable to find DVC file with output {relpath(self.output)!r}"
         )
 
 
@@ -80,11 +78,7 @@ class StagePathAsOutputError(DvcException):
 
     def __init__(self, stage, output):
         assert isinstance(output, str)
-        super().__init__(
-            "{stage} is within an output '{output}' of another stage".format(
-                stage=stage, output=output
-            )
-        )
+        super().__init__(f"{stage} is within an output {output!r} of another stage")
 
 
 class CircularDependencyError(DvcException):
@@ -156,9 +150,7 @@ class CyclicGraphError(DvcException):
 class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "unable to remove '{}' without a confirmation. Use `-f` to force.".format(
-                path
-            )
+            f"unable to remove {path!r} without a confirmation. Use `-f` to force."
         )
 
 

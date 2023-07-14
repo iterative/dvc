@@ -848,9 +848,7 @@ def test_repro_dry_no_exec(tmp_dir, dvc):
                 idir,
                 "-o",
                 odir,
-                'python -c \'import shutil; shutil.copytree("{}", "{}")\''.format(
-                    idir, odir
-                ),
+                f'python -c \'import shutil; shutil.copytree("{idir}", "{odir}")\'',
             ]
         )
         assert ret == 0
