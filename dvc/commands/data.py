@@ -90,9 +90,7 @@ class CmdDataStatus(CmdBase):
                     ui.write(f"  ({hint})")
 
             if isinstance(stage_status, dict):
-                items = [
-                    ": ".join([state, file]) for file, state in stage_status.items()
-                ]
+                items = [f"{state}: {file}" for file, state in stage_status.items()]
             else:
                 items = stage_status
 

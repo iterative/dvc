@@ -426,10 +426,7 @@ class Stage(params.StageParams):
                 logger.info("Stage '%s' didn't change, skipping", self.addressing)
             return None
 
-        msg = "Going to reproduce {stage}. Are you sure you want to continue?".format(
-            stage=self
-        )
-
+        msg = f"Going to reproduce {self}. Are you sure you want to continue?"
         if interactive and not prompt.confirm(msg):
             raise DvcException("reproduction aborted by the user")
 

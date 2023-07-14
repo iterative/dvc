@@ -71,7 +71,7 @@ def test_post_run_after_kill(test_queue):
         except ProcessLookupError:
             time.sleep(0.1)
         if time.time() > timeout:
-            raise TimeoutError()
+            raise TimeoutError
 
     assert result_foo.get(timeout=10) == "foo"
 
@@ -132,9 +132,11 @@ def test_celery_queue_kill(test_queue, mocker, force):
     )
     with pytest.raises(CannotKillTasksError, match="Task 'foobar' is initializing,"):
         test_queue.kill(["bar", "foo", "foobar"], force=force)
-    assert kill_mock.called_once_with(mock_entry_foo.stash_rev)
-    assert kill_mock.called_once_with(mock_entry_bar.stash_rev)
-    assert kill_mock.called_once_with(mock_entry_foobar.stash_rev)
+    assert kill_mock.call_args_list == [
+        mocker.call(mock_entry_bar.stash_rev),
+        mocker.call(mock_entry_foo.stash_rev),
+        mocker.call(mock_entry_foobar.stash_rev),
+    ]
     mark_mocker.assert_called_once_with("bar", None)
 
 
@@ -157,7 +159,7 @@ def test_celery_queue_kill_invalid(test_queue, mocker, force):
 
     with pytest.raises(UnresolvedExpNamesError):
         test_queue.kill(["bar", "foo", "foobar"], force=force)
-    assert kill_mock.called_once_with(
+    kill_mock.assert_called_once_with(
         {mock_entry_foo: "foo", mock_entry_bar: "bar"}, force
     )
 

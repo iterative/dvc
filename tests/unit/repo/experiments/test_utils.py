@@ -8,7 +8,7 @@ from dvc.repo.experiments.utils import check_ref_format, resolve_name, to_studio
 def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
     tmp_dir.scm_gen(file, contents, commit="init")
     rev = scm.get_rev()
-    ref = "/".join([EXPS_NAMESPACE, "ab", "c123", name])
+    ref = f"{EXPS_NAMESPACE}/ab/c123/{name}"
     scm.gitpython.set_ref(ref, rev)
     return ref, rev
 

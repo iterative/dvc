@@ -90,7 +90,7 @@ def make_dvc_bin(
         dvc_bin = bench_config.dvc_bin
 
     def _dvc_bin(*args):
-        return check_output([dvc_bin, *args], text=True)  # nosec B603
+        return check_output([dvc_bin, *args], text=True)  # nosec B603  # noqa: S603
 
     _dvc_bin.version = parse_tuple(_dvc_bin("--version"))  # type: ignore[attr-defined]
     return _dvc_bin

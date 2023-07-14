@@ -319,7 +319,7 @@ def resolve_paths(repo, out, always_local=False):
 
 
 def format_link(link):
-    return "<{blue}{link}{nc}>".format(
+    return "<{blue}{link}{nc}>".format(  # noqa: UP032
         blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
     )
 

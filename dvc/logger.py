@@ -56,7 +56,7 @@ def add_logging_level(level_name, level_num, method_name=None):
 
 class LoggingException(Exception):
     def __init__(self, record):
-        msg = f"failed to log {str(record)}"
+        msg = f"failed to log {record!s}"
         super().__init__(msg)
 
 

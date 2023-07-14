@@ -377,7 +377,7 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
     remove("confusion.json")
     remove("image.png")
 
-    for s in {"show", "diff"}:
+    for s in ("show", "diff"):
         _, json_result, split_json_result = call(capsys, subcommand=s)
         errors = [
             {

@@ -187,7 +187,7 @@ def test_params_show_stages(params_repo):
 
 
 def test_params_show_stage_addressing(tmp_dir, dvc):
-    for subdir in {"subdir1", "subdir2"}:
+    for subdir in ("subdir1", "subdir2"):
         subdir = tmp_dir / subdir
         subdir.mkdir()
         with subdir.chdir():
@@ -195,7 +195,7 @@ def test_params_show_stage_addressing(tmp_dir, dvc):
 
             dvc.run(name="stage-0", cmd="echo stage-0", params=["foo"])
 
-    for s in {"subdir1", "subdir2"}:
+    for s in ("subdir1", "subdir2"):
         dvcyaml = os.path.join(s, "dvc.yaml")
         assert api.params_show(stages=f"{dvcyaml}:stage-0") == {"foo": 1}
 

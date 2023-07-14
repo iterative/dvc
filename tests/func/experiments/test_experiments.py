@@ -488,16 +488,6 @@ def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
     assert expected == metrics
 
 
-def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
-    from dvc.cli import main
-
-    mocker.patch.object(dvc.experiments, "run", return_value={"abc123": "abc123"})
-    show_mock = mocker.patch.object(dvc.metrics, "show", return_value={})
-
-    main(["exp", "run", "-m"])
-    assert show_mock.called_once()
-
-
 def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
     from dvc.utils.fs import remove
 
