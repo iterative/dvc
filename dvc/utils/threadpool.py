@@ -46,7 +46,7 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
         if sys.version_info > (3, 9):  # pylint: disable=no-else-return
             # pylint: disable=unexpected-keyword-arg
             return super().shutdown(wait=wait, cancel_futures=cancel_futures)
-        else:
+        else:  # noqa: RET505
             with self._shutdown_lock:
                 self._shutdown = True
                 if cancel_futures:

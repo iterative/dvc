@@ -21,7 +21,7 @@ class CmdDestroy(CmdBase):
             )
 
             if not self.args.force and not ui.confirm(statement):
-                raise DvcException(
+                raise DvcException(  # noqa: TRY301
                     "cannot destroy without a confirmation from the user."
                     " Use `-f` to force."
                 )
