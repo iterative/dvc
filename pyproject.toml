@@ -79,11 +79,11 @@ lint = [
     "pylint==2.17.4",
     "types-colorama",
     "types-psutil",
+    "types-pyinstaller",
     "types-requests",
     "types-tabulate",
     "types-toml",
     "types-tqdm",
-    "types-pyinstaller",
 ]
 oss = ["dvc-oss==2.19"]
 s3 = ["dvc-s3==2.23.0"]
@@ -268,8 +268,16 @@ ignored-argument-names = "_.*|args|kwargs"
 [tool.ruff]
 # external flake8 codes that should be preserved
 external = ["B301", "C901", "E302", "W601"]
-ignore = ["N818", "S101", "PT004", "PT007", "PT019", "SIM105", "SIM108", "SIM110", "SIM117", "TRY003", "TRY200", "TRY300", "TRY301", "PLR2004", "PLW2901", "RUF005", "RUF012"]
-select = ["F", "E", "W", "C90", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET501", "RET504", "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY", "FLY", "RUF"]
+ignore = [
+    "N818", "S101", "PT004", "PT007", "RET501", "RET502", "RET503", "SIM105", "SIM108",
+    "SIM117", "TRY003", "TRY200", "TRY300", "PLR2004", "PLW2901", "RUF012"
+]
+select = [
+    "F", "E", "W", "C90", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10",
+    "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
+    "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
+    "FLY", "PERF101", "RUF",
+]
 show-source = true
 
 [tool.ruff.flake8-pytest-style]
@@ -298,6 +306,7 @@ ignore-names = ["M", "SCM"]
 "dvc/commands/**" = ["N806"]
 "dvc/testing/**" = ["ARG002"]
 "dvc/testing/benchmarks/**" = ["ARG001"]
+"tests/**" = ["S", "ARG001", "ARG002", "TRY002", "TRY301"]
 
 [tool.ruff.pylint]
 max-args = 10

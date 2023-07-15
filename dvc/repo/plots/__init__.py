@@ -134,7 +134,7 @@ class Plots:
             if "workspace" in revs:
                 # reorder revs to match repo.brancher ordering
                 revs.remove("workspace")
-                revs = ["workspace"] + revs
+                revs = ["workspace", *revs]
         for rev in revs:
             with switch_repo(self.repo, rev) as (repo, _):
                 res: Dict = {}

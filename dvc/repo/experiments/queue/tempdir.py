@@ -115,7 +115,9 @@ class TempDirQueue(WorkspaceQueue):
                 message=message,
             )
             if not exec_result.exp_hash:
-                raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'")
+                raise DvcException(  # noqa: TRY301
+                    f"Failed to reproduce experiment '{rev[:7]}'"
+                )
             if exec_result.ref_info:
                 results[rev].update(
                     self.collect_executor(self.repo.experiments, executor, exec_result)
