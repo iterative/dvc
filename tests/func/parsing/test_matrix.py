@@ -27,10 +27,8 @@ def test_matrix_interpolated(tmp_dir, dvc, matrix):
     resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     data = {
         "matrix": matrix,
-        "do": {
-            "cmd": "echo ${item.os} ${item.pyv} ${item.dict}"
-            " -- ${item.list.0} ${item.list.1}"
-        },
+        "cmd": "echo ${item.os} ${item.pyv} ${item.dict}"
+        " -- ${item.list.0} ${item.list.1}",
     }
     definition = MatrixDefinition(resolver, resolver.context, "build", data)
 

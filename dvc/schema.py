@@ -77,6 +77,7 @@ PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
+    MATRIX_KWD: {str: Any(str, list)},
     Required(StageParams.PARAM_CMD): Any(str, list),
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],
@@ -92,14 +93,14 @@ STAGE_DEFINITION = {
 }
 
 
-def stage_schema(data):
-    schema = STAGE_DEFINITION
-    if isinstance(data, Mapping):
-        if FOREACH_KWD in data:
-            schema = FOREACH_DO
-        elif MATRIX_KWD in data:
-            schema = MATRIX_DO
-    return Schema(schema)(data)
+def either_or(primary, fallback, fallback_includes=None):
+    def validator(data):
+        schema = primary
+        if isinstance(data, Mapping) and set(fallback_includes or []) & data.keys():
+            schema = fallback
+        return Schema(schema)(data)
+
+    return validator
 
 
 PLOT_DEFINITION = {
@@ -113,15 +114,13 @@ PLOT_DEFINITION = {
 SINGLE_PLOT_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
 ARTIFACTS = "artifacts"
 SINGLE_ARTIFACT_SCHEMA = Schema({str: ARTIFACT_SCHEMA})
-FOREACH_DO = {
+FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
 }
-MATRIX_DO = {
-    Required(MATRIX_KWD): Any(dict, list, str),
-    Required(DO_KWD): STAGE_DEFINITION,
+SINGLE_PIPELINE_STAGE_SCHEMA = {
+    str: either_or(STAGE_DEFINITION, FOREACH_IN, [FOREACH_KWD, DO_KWD])
 }
-SINGLE_PIPELINE_STAGE_SCHEMA = {str: stage_schema}
 MULTI_STAGE_SCHEMA = {
     PLOTS: [Any(str, SINGLE_PLOT_SCHEMA)],
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,

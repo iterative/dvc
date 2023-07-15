@@ -261,8 +261,8 @@ class EntryDefinition:
         if not skip_checks:
             # we can check for syntax errors as we go for interpolated entries,
             # but for foreach and matrix generated ones, once is enough, which it does
-            # that itself. See `ForeachDefinition.do_definition`
-            # and `MatrixDefinition.do_definition`.
+            # that itself. See `ForeachDefinition.template`
+            # and `MatrixDefinition.template`.
             check_syntax_errors(self.definition, name, self.relpath)
 
         # we need to pop vars from generated/evaluated data
@@ -337,16 +337,16 @@ class ForeachDefinition:
 
         assert DO_KWD in definition
         self.foreach_data = definition[FOREACH_KWD]
-        self._do_definition = definition[DO_KWD]
+        self._template = definition[DO_KWD]
 
         self.pair = IterationPair()
         self.where = where
 
     @cached_property
-    def do_definition(self):
+    def template(self):
         # optimization: check for syntax errors only once for `foreach` stages
-        check_syntax_errors(self._do_definition, self.name, self.relpath)
-        return self._do_definition
+        check_syntax_errors(self._template, self.name, self.relpath)
+        return self._template
 
     @cached_property
     def resolved_iterable(self):
@@ -449,11 +449,11 @@ class ForeachDefinition:
             # i.e. quadratic complexity).
             generated = self._generate_name(key)
             entry = EntryDefinition(
-                self.resolver, self.context, generated, self.do_definition
+                self.resolver, self.context, generated, self.template
             )
             try:
                 # optimization: skip checking for syntax errors on each foreach
-                # generated stages. We do it once when accessing do_definition.
+                # generated stages. We do it once when accessing template.
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
                 format_and_raise(exc, f"stage '{generated}'", self.relpath)
@@ -473,18 +473,21 @@ class MatrixDefinition:
         self.context = context
         self.name = name
 
-        assert DO_KWD in definition
+        assert MATRIX_KWD in definition
+        assert DO_KWD not in definition
+        assert FOREACH_KWD not in definition
         self.matrix_data = definition[MATRIX_KWD]
-        self._do_definition = definition[DO_KWD]
+        self._template = definition.copy()
+        self._template.pop(MATRIX_KWD)
 
         self.pair = IterationPair()
         self.where = where
 
     @cached_property
-    def do_definition(self):
+    def template(self):
         # optimization: check for syntax errors only once for `matrix` stages
-        check_syntax_errors(self._do_definition, self.name, self.relpath)
-        return self._do_definition
+        check_syntax_errors(self._template, self.name, self.relpath)
+        return self._template
 
     @cached_property
     def resolved_iterable(self):
@@ -546,11 +549,11 @@ class MatrixDefinition:
             # i.e. quadratic complexity).
             generated = self._generate_name(key)
             entry = EntryDefinition(
-                self.resolver, self.context, generated, self.do_definition
+                self.resolver, self.context, generated, self.template
             )
             try:
                 # optimization: skip checking for syntax errors on each matrix
-                # generated stages. We do it once when accessing do_definition.
+                # generated stages. We do it once when accessing template.
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
                 format_and_raise(exc, f"stage '{generated}'", self.relpath)
