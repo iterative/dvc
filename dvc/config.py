@@ -176,23 +176,32 @@ class Config(dict):
         # the repo.
         return self.fs if level == "repo" else self.wfs
 
-    def _load_config(self, level):
+    @staticmethod
+    def load_file(path, fs=None) -> dict:
         from configobj import ConfigObj, ConfigObjError
 
+        from dvc.fs import localfs
+
+        fs = fs or localfs
+
+        with fs.open(path) as fobj:
+            try:
+                conf_obj = ConfigObj(fobj)
+            except UnicodeDecodeError as exc:
+                raise ConfigError(str(exc)) from exc
+            except ConfigObjError as exc:
+                raise ConfigError(str(exc)) from exc
+
+        return _parse_named(_lower_keys(conf_obj.dict()))
+
+    def _load_config(self, level):
         filename = self.files[level]
         fs = self._get_fs(level)
 
-        if fs.exists(filename):
-            with fs.open(filename) as fobj:
-                try:
-                    conf_obj = ConfigObj(fobj)
-                except UnicodeDecodeError as exc:
-                    raise ConfigError(str(exc)) from exc
-                except ConfigObjError as exc:
-                    raise ConfigError(str(exc)) from exc
-        else:
-            conf_obj = ConfigObj()
-        return _parse_named(_lower_keys(conf_obj.dict()))
+        try:
+            return self.load_file(filename, fs=fs)
+        except FileNotFoundError:
+            return {}
 
     def _save_config(self, level, conf_dict):
         from configobj import ConfigObj

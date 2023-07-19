@@ -16,12 +16,14 @@ class RepoDependency(Dependency):
     PARAM_URL = "url"
     PARAM_REV = "rev"
     PARAM_REV_LOCK = "rev_lock"
+    PARAM_CONFIG = "config"
 
     REPO_SCHEMA = {
         PARAM_REPO: {
             Required(PARAM_URL): str,
             PARAM_REV: str,
             PARAM_REV_LOCK: str,
+            PARAM_CONFIG: str,
         }
     }
 
@@ -60,7 +62,24 @@ class RepoDependency(Dependency):
             self.def_repo[self.PARAM_REV_LOCK] = rev
 
     def dumpd(self, **kwargs) -> Dict[str, Union[str, Dict[str, str]]]:
-        return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
+        repo = {self.PARAM_URL: self.def_repo[self.PARAM_URL]}
+
+        rev = self.def_repo.get(self.PARAM_REV)
+        if rev:
+            repo[self.PARAM_REV] = self.def_repo[self.PARAM_REV]
+
+        rev_lock = self.def_repo.get(self.PARAM_REV_LOCK)
+        if rev_lock:
+            repo[self.PARAM_REV_LOCK] = rev_lock
+
+        config = self.def_repo.get(self.PARAM_CONFIG)
+        if config:
+            repo[self.PARAM_CONFIG] = config
+
+        return {
+            self.PARAM_PATH: self.def_path,
+            self.PARAM_REPO: repo,
+        }
 
     def update(self, rev: Optional[str] = None):
         if rev:
@@ -77,9 +96,16 @@ class RepoDependency(Dependency):
     def _make_fs(
         self, rev: Optional[str] = None, locked: bool = True
     ) -> "DVCFileSystem":
+        from dvc.config import Config
         from dvc.fs import DVCFileSystem
 
-        config = {"cache": self.repo.config["cache"]}
+        conf = self.def_repo.get("config")
+        if conf:
+            config = Config.load_file(conf)
+        else:
+            config = {}
+
+        config["cache"] = self.repo.config["cache"]
         config["cache"]["dir"] = self.repo.cache.local_cache_dir
 
         return DVCFileSystem(

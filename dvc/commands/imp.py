@@ -22,6 +22,7 @@ class CmdImport(CmdBase):
                 no_exec=self.args.no_exec,
                 no_download=self.args.no_download,
                 jobs=self.args.jobs,
+                config=self.args.config,
             )
         except CloneError:
             logger.exception("failed to import '%s'", self.args.path)
@@ -93,5 +94,13 @@ def add_parser(subparsers, parent_parser):
             "The default value is 4 * cpu_count(). "
         ),
         metavar="<number>",
+    )
+    import_parser.add_argument(
+        "--config",
+        type=str,
+        help=(
+            "Path to a config file that will be merged with the config "
+            "in the target repository.",
+        ),
     )
     import_parser.set_defaults(func=CmdImport)

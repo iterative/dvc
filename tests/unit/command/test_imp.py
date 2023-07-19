@@ -14,6 +14,8 @@ def test_import(mocker, dvc):
             "version",
             "--jobs",
             "3",
+            "--config",
+            "myconfig",
         ]
     )
     assert cli_args.func == CmdImport
@@ -31,6 +33,7 @@ def test_import(mocker, dvc):
         no_exec=False,
         no_download=False,
         jobs=3,
+        config="myconfig",
     )
 
 
@@ -61,6 +64,7 @@ def test_import_no_exec(mocker, dvc):
         no_exec=True,
         no_download=False,
         jobs=None,
+        config=None,
     )
 
 
@@ -91,4 +95,5 @@ def test_import_no_download(mocker, dvc):
         no_exec=False,
         no_download=True,
         jobs=None,
+        config=None,
     )

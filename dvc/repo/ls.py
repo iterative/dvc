@@ -13,6 +13,7 @@ def ls(
     rev: Optional[str] = None,
     recursive: Optional[bool] = None,
     dvc_only: bool = False,
+    config: Optional[str] = None,
 ):
     """Methods for getting files and outputs for the repo.
 
@@ -22,6 +23,7 @@ def ls(
         rev (str, optional): SHA commit, branch or tag name
         recursive (bool, optional): recursively walk the repo
         dvc_only (bool, optional): show only DVC-artifacts
+        config (bool, optional): path to config file
 
     Returns:
         list of `entry`
@@ -35,9 +37,18 @@ def ls(
             "isexec": bool,
         }
     """
+    from dvc.config import Config
+
     from . import Repo
 
-    with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
+    if config and not isinstance(config, dict):
+        config_dict = Config.load_file(config)
+    else:
+        config_dict = None
+
+    with Repo.open(
+        url, rev=rev, subrepos=True, uninitialized=True, config=config_dict
+    ) as repo:
         path = path or ""
 
         ret = _ls(repo, path, recursive, dvc_only)

@@ -34,6 +34,7 @@ class CmdList(CmdBaseNoRepo):
                 rev=self.args.rev,
                 recursive=self.args.recursive,
                 dvc_only=self.args.dvc_only,
+                config=self.args.config,
             )
             if self.args.json:
                 ui.write_json(entries)
@@ -79,6 +80,14 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
+    )
+    list_parser.add_argument(
+        "--config",
+        type=str,
+        help=(
+            "Path to a config file that will be merged with the config "
+            "in the target repository.",
+        ),
     )
     list_parser.add_argument(
         "path",
