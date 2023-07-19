@@ -14,6 +14,8 @@ def test_get(mocker):
             "version",
             "--jobs",
             "4",
+            "--config",
+            "myconfig",
         ]
     )
     assert cli_args.func == CmdGet
@@ -24,7 +26,13 @@ def test_get(mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        "repo_url", path="src", out="out", rev="version", jobs=4, force=False
+        "repo_url",
+        path="src",
+        out="out",
+        rev="version",
+        jobs=4,
+        config="myconfig",
+        force=False,
     )
 
 

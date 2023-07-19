@@ -37,6 +37,7 @@ class CmdGet(CmdBaseNoRepo):
                 rev=self.args.rev,
                 jobs=self.args.jobs,
                 force=self.args.force,
+                config=self.args.config,
             )
             return 0
         except CloneError:
@@ -101,5 +102,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Override local file or folder if exists.",
+    )
+    get_parser.add_argument(
+        "--config",
+        type=str,
+        help=(
+            "Path to a config file that will be merged with the config "
+            "in the target repository.",
+        ),
     )
     get_parser.set_defaults(func=CmdGet)
