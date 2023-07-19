@@ -162,6 +162,16 @@ def test_isdir_mixed(tmp_dir, dvc):
     assert not fs.isfile("dir")
 
 
+def test_ls_dirty(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"data": "data"})
+    (tmp_dir / "data").unlink()
+
+    tmp_dir.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    fs = DVCFileSystem(repo=dvc)
+    assert set(fs.ls("data")) == {"data/foo", "data/bar"}
+
+
 @pytest.mark.parametrize(
     "dvcfiles,extra_expected",
     [
