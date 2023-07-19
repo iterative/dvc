@@ -288,7 +288,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_infos = {}
         if dvc_fs:
             dvc_path = _get_dvc_path(dvc_fs, subkey)
-            with suppress(FileNotFoundError):
+            with suppress(FileNotFoundError, NotADirectoryError):
                 for info in dvc_fs.ls(dvc_path, detail=True):
                     dvc_infos[dvc_fs.path.name(info["name"])] = info
             dvc_exists = bool(dvc_infos) or dvc_fs.exists(dvc_path)
