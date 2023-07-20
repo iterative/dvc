@@ -86,7 +86,7 @@ def add_parser(subparsers, parent_parser):
         type=str,
         help=(
             "Path to a config file that will be merged with the config "
-            "in the target repository.",
+            "in the target repository."
         ),
     )
     list_parser.add_argument(
