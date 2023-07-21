@@ -17,6 +17,10 @@ class DvcException(Exception):
 class InvalidArgumentError(ValueError, DvcException):
     """Thrown if arguments are invalid."""
 
+    def __init__(self, msg, *args):
+        self.msg = msg
+        super().__init__(msg, *args)
+
 
 class OutputDuplicationError(DvcException):
     """Thrown if a file/directory is specified as an output in more than one

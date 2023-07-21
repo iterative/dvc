@@ -1,4 +1,6 @@
+import logging
 import os
+from copy import deepcopy
 
 import pytest
 
@@ -37,6 +39,22 @@ def test_artifacts_read_subdir(tmp_dir, dvc):
         "dvc.yaml": artifacts,
         f"subdir{os.path.sep}dvc.yaml": artifacts,
     }
+
+
+def test_artifacts_read_bad_name(tmp_dir, dvc, caplog):
+    bad_name_dvcyaml = deepcopy(dvcyaml)
+    bad_name_dvcyaml["artifacts"]["bad_name"] = {"type": "model", "path": "bad.pkl"}
+
+    (tmp_dir / "dvc.yaml").dump(bad_name_dvcyaml)
+
+    artifacts = {
+        name: Artifact(**values)
+        for name, values in bad_name_dvcyaml["artifacts"].items()
+    }
+
+    with caplog.at_level(logging.WARNING):
+        assert tmp_dir.dvc.artifacts.read() == {"dvc.yaml": artifacts}
+        assert "Can't use 'bad_name' as artifact name (ID)" in caplog.text
 
 
 def test_artifacts_add_subdir(tmp_dir, dvc):
