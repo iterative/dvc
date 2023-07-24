@@ -14,4 +14,4 @@ def get_url(url, out=None, *, config=None, jobs=None, force=False):
     src_fs, src_path = parse_external_url(url, config)
     if not src_fs.exists(src_path):
         raise URLMissingError(url)
-    download(src_fs, src_path, out, jobs=jobs)
+    download(src_fs, src_path, out.fs_path, jobs=jobs)

@@ -22,7 +22,6 @@ class GetDVCFileError(DvcException):
 def get(url, path, out=None, rev=None, jobs=None, force=False, config=None):
     from dvc.config import Config
     from dvc.dvcfile import is_valid_filename
-    from dvc.fs.callbacks import Callback
     from dvc.repo import Repo
 
     out = resolve_output(path, out, force=force)
@@ -40,6 +39,7 @@ def get(url, path, out=None, rev=None, jobs=None, force=False, config=None):
         uninitialized=True,
         config=config,
     ) as repo:
+        from dvc.fs import download
         from dvc.fs.data import DataFileSystem
 
         fs: Union[DataFileSystem, "DVCFileSystem"]
@@ -49,14 +49,9 @@ def get(url, path, out=None, rev=None, jobs=None, force=False, config=None):
         else:
             fs = repo.dvcfs
             fs_path = fs.from_os_path(path)
-
-        with Callback.as_tqdm_callback(
-            desc=f"Downloading {fs.path.name(path)}",
-            unit="files",
-        ) as cb:
-            fs.get(
-                fs_path,
-                os.path.abspath(out),
-                batch_size=jobs,
-                callback=cb,
-            )
+        download(
+            fs,
+            fs_path,
+            os.path.abspath(out),
+            jobs=jobs,
+        )

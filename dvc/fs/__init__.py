@@ -1,3 +1,4 @@
+from typing import Optional
 from urllib.parse import urlparse
 
 from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
@@ -18,7 +19,7 @@ from dvc_objects.fs import (  # noqa: F401
     system,
     utils,
 )
-from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
+from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401, TCH001
 from dvc_objects.fs.errors import (  # noqa: F401
     AuthError,
     ConfigError,
@@ -48,12 +49,39 @@ known_implementations.update(
 # pylint: enable=unused-import
 
 
-def download(fs, fs_path, to, jobs=None):
+def download(fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None):
     with Callback.as_tqdm_callback(
         desc=f"Downloading {fs.path.name(fs_path)}",
         unit="files",
     ) as cb:
-        fs.get(fs_path, to.fs_path, batch_size=jobs, callback=cb)
+        # NOTE: We use dvc-objects generic.copy over fs.get since it makes file
+        # download atomic and avoids fsspec glob/regex path expansion.
+        if fs.isdir(fs_path):
+            from_infos = [
+                path
+                for path in fs.find(fs_path)
+                if not path.endswith(fs.path.flavour.sep)
+            ]
+            if not from_infos:
+                return localfs.makedirs(to, exist_ok=True)
+            to_infos = [
+                localfs.path.join(to, *fs.path.relparts(info, fs_path))
+                for info in from_infos
+            ]
+        else:
+            from_infos = [fs_path]
+            to_infos = [to]
+
+        cb.set_size(len(from_infos))
+        jobs = jobs or fs.jobs
+        generic.copy(
+            fs,
+            from_infos,
+            localfs,
+            to_infos,
+            callback=cb,
+            batch_size=jobs,
+        )
 
 
 def parse_external_url(url, config=None):

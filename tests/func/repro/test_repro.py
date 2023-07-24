@@ -10,7 +10,7 @@ from funcy import lsplit
 from dvc.cli import main
 from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.exceptions import CyclicGraphError, ReproductionError
-from dvc.fs import LocalFileSystem, system
+from dvc.fs import system
 from dvc.output import Output
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.cache import RunCacheNotSupported
@@ -624,12 +624,14 @@ class TestReproAlreadyCached:
         assert stage.outs[0].hash_info != saved_stage.outs[0].hash_info
 
     def test_force_import(self, mocker, tmp_dir, dvc):
+        from dvc.dependency import base
+
         tmp_dir.dvc_gen("foo", "foo")
 
         ret = main(["import-url", "foo", "bar"])
         assert ret == 0
 
-        spy_get = mocker.spy(LocalFileSystem, "get")
+        spy_get = mocker.spy(base, "fs_download")
         spy_checkout = mocker.spy(Output, "checkout")
 
         assert main(["unfreeze", "bar.dvc"]) == 0
