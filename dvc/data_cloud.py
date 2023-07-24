@@ -90,7 +90,7 @@ class DataCloud:
         if name:
             from dvc.fs import get_cloud_fs
 
-            cls, config, fs_path = get_cloud_fs(self.repo, name=name)
+            cls, config, fs_path = get_cloud_fs(self.repo.config, name=name)
 
             if config.get("worktree"):
                 version_aware = config.get("version_aware")

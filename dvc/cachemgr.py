@@ -24,7 +24,7 @@ def _get_odb(
     if not settings:
         return None
 
-    cls, config, fs_path = get_cloud_fs(repo, **settings)
+    cls, config, fs_path = get_cloud_fs(repo.config, **settings)
     fs = fs or cls(**config)
     if prefix:
         fs_path = fs.path.join(fs_path, *prefix)
