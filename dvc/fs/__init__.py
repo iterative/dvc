@@ -87,7 +87,7 @@ def download(fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
 def parse_external_url(url, config=None):
     remote_config = dict(config) if config else {}
     remote_config["url"] = url
-    fs_cls, fs_config, fs_path = get_cloud_fs(None, **remote_config)
+    fs_cls, fs_config, fs_path = get_cloud_fs({}, **remote_config)
     fs = fs_cls(**fs_config)
     return fs, fs_path
 
@@ -133,18 +133,14 @@ def _resolve_remote_refs(config, remote_conf):
         return remote_conf
 
     base = get_fs_config(config, name=parsed.netloc)
-    cls, _, _ = _get_cloud_fs(config, **base)
+    cls, _, _ = get_cloud_fs(config, **base)
     relpath = parsed.path.lstrip("/").replace("/", cls.sep)
     url = cls.sep.join((base["url"], relpath))
     return {**base, **remote_conf, "url": url}
 
 
-def get_cloud_fs(repo, **kwargs):
-    repo_config = repo.config if repo else {}
-    return _get_cloud_fs(repo_config, **kwargs)
-
-
-def _get_cloud_fs(repo_config, **kwargs):
+def get_cloud_fs(repo_config, **kwargs):
+    repo_config = repo_config or {}
     core_config = repo_config.get("core", {})
 
     remote_conf = get_fs_config(repo_config, **kwargs)

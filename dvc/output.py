@@ -354,7 +354,11 @@ class Output:
         if fs_config is not None:
             fs_kwargs.update(**fs_config)
 
-        fs_cls, fs_config, fs_path = get_cloud_fs(self.repo, url=path, **fs_kwargs)
+        fs_cls, fs_config, fs_path = get_cloud_fs(
+            self.repo.config if self.repo else {},
+            url=path,
+            **fs_kwargs,
+        )
         self.fs = fs_cls(**fs_config)
 
         if (
@@ -1017,7 +1021,9 @@ class Output:
         if odb is None:
             odb = self.cache
 
-        cls, config, from_info = get_cloud_fs(self.repo, url=source)
+        cls, config, from_info = get_cloud_fs(
+            self.repo.config if self.repo else {}, url=source
+        )
         from_fs = cls(**config)
 
         # When running import-url --to-remote / add --to-remote/-o ... we

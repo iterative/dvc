@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import pytest
 from dvc_http import HTTPFileSystem, HTTPSFileSystem
 from dvc_s3 import S3FileSystem
@@ -63,14 +61,8 @@ def test_remote_url():
     }
 
 
-@dataclass
-class FakeRepo:
-    config: dict
-
-
 def test_get_cloud_fs():
-    repo = FakeRepo({})
-    cls, config, path = get_cloud_fs(repo, url="ssh://example.com:/dir/path")
+    cls, config, path = get_cloud_fs({}, url="ssh://example.com:/dir/path")
     assert cls is SSHFileSystem
     assert config == {"host": "example.com", "verify": False}
     assert path == "/dir/path"
