@@ -21,19 +21,25 @@ def _collect_indexes(  # noqa: PLR0913
     revs=None,
     max_size=None,
     types=None,
+    config=None,
 ):
     indexes = {}
     collection_exc = None
+
+    config = config or {}
+    if remote:
+        core = config.get("core") or {}
+        core["remote"] = remote
+        config["core"] = core
+
     for rev in repo.brancher(
         revs=revs,
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
     ):
-        saved_remote = repo.config["core"].get("remote")
         try:
-            if remote:
-                repo.config["core"]["remote"] = remote
+            repo.config.update(config)
 
             idx = repo.index.targets_view(
                 targets,
@@ -46,9 +52,6 @@ def _collect_indexes(  # noqa: PLR0913
         except Exception as exc:  # pylint: disable=broad-except
             collection_exc = exc
             logger.exception("failed to collect '%s'", rev or "workspace")
-        finally:
-            if remote:
-                repo.config["core"]["remote"] = saved_remote
 
     if not indexes and collection_exc:
         raise collection_exc
@@ -71,6 +74,7 @@ def fetch(  # noqa: C901, PLR0913
     revs=None,
     max_size=None,
     types=None,
+    config=None,
 ) -> int:
     """Download data items from a cloud and imported repositories
 
@@ -114,6 +118,7 @@ def fetch(  # noqa: C901, PLR0913
         revs=revs,
         max_size=max_size,
         types=types,
+        config=config,
     )
 
     cache_key = ("fetch", tokenize(sorted(indexes.keys())))
