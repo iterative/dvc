@@ -47,7 +47,7 @@ def add_parser(subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Commit even if hash value for dependencies/outputs changed.",
+        help="Commit data even if hash values for dependencies or outputs did not change.",
     )
     commit_parser.add_argument(
         "-d",
