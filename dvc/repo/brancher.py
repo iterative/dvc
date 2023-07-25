@@ -67,6 +67,7 @@ def brancher(  # noqa: E302
 
     saved_fs = self.fs
     saved_root = self.root_dir
+    saved_dvc_dir = self.dvc_dir
 
     scm = self.scm
 
@@ -101,6 +102,8 @@ def brancher(  # noqa: E302
     finally:
         self.fs = saved_fs
         self.root_dir = saved_root
+        self.dvc_dir = saved_dvc_dir
+        self._reset()  # pylint: disable=protected-access
 
 
 def _switch_fs(
@@ -125,6 +128,8 @@ def _switch_fs(
 
     repo.fs = fs
     repo.root_dir = root_dir
+    repo.dvc_dir = fs.path.join(root_dir, repo.DVC_DIR)
+    repo._reset()  # pylint: disable=protected-access
 
     if cwd_parts:
         cwd = repo.fs.path.join("/", *cwd_parts)
@@ -149,9 +154,12 @@ def switch(repo: "Repo", rev: str) -> Iterator[str]:
 
     saved_fs = repo.fs
     saved_root = repo.root_dir
+    saved_dvc_dir = repo.dvc_dir
     try:
         _switch_fs(repo, rev, repo_root_parts, cwd_parts)
         yield rev
     finally:
         repo.fs = saved_fs
         repo.root_dir = saved_root
+        repo.dvc_dir = saved_dvc_dir
+        repo._reset()  # pylint: disable=protected-access
