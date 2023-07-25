@@ -1,6 +1,7 @@
 import itertools
 import logging
 import os
+from dataclasses import fields
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -152,7 +153,23 @@ def collect_queued(
     """
     if not baseline_revs:
         return {}
-    return repo.experiments.celery_queue.collect_queued_data(baseline_revs, **kwargs)
+    queued_data = {}
+    for rev, ranges in repo.experiments.celery_queue.collect_queued_data(
+        baseline_revs, **kwargs
+    ).items():
+        for exp_range in ranges:
+            for exp_state in exp_range.revs:
+                if exp_state.data:
+                    attrs = [f.name for f in fields(SerializableExp)]
+                    exp_state.data = SerializableExp(
+                        **{
+                            attr: getattr(exp_state.data, attr)
+                            for attr in attrs
+                            if attr != "metrics"
+                        }
+                    )
+        queued_data[rev] = ranges
+    return queued_data
 
 
 def collect_active(
