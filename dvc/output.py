@@ -488,6 +488,9 @@ class Output:
         ):
             return str(self.def_path)
 
+        if not self.fs.path.isin(self.fs_path, self.repo.root_dir):
+            return self.fs_path
+
         cur_dir = self.fs.path.getcwd()
         if self.fs.path.isin(cur_dir, self.repo.root_dir):
             return self.fs.path.relpath(self.fs_path, cur_dir)
