@@ -146,7 +146,6 @@ class Repo:
         scm: Optional[Union["Git", "NoSCM"]] = None,
     ):
         from dvc.cachemgr import CacheManager
-        from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
@@ -163,6 +162,7 @@ class Repo:
         self._fs_conf = {"repo_factory": repo_factory}
         self._fs = fs or localfs
         self._scm = scm
+        self._config = config
         self._data_index = None
 
         if rev and not fs:
@@ -182,7 +182,6 @@ class Repo:
             scm=scm,
         )
 
-        self.config: Config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
 
         # used by DVCFileSystem to determine if it should traverse subrepos
@@ -233,6 +232,12 @@ class Repo:
 
     def __str__(self):
         return self.url or self.root_dir
+
+    @cached_property
+    def config(self):
+        from dvc.config import Config
+
+        return Config(self.dvc_dir, fs=self.fs, config=self._config)
 
     @cached_property
     def local_dvc_dir(self):
@@ -629,6 +634,7 @@ class Repo:
         self.__dict__.pop("dvcignore", None)
         self.__dict__.pop("dvcfs", None)
         self.__dict__.pop("datafs", None)
+        self.__dict__.pop("config", None)
 
     def __enter__(self):
         return self

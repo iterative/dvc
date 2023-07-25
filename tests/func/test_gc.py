@@ -196,11 +196,7 @@ def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, local_remote):
         assert main(["gc", "-vf", flag]) == 0
 
 
-def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
+def test_gc_cloud_remove_order(tmp_dir, scm, dvc, mocker, local_remote):
     (standalone, dir1, dir2) = tmp_dir.dvc_gen(
         {
             "file1": "standalone",
@@ -321,11 +317,7 @@ def test_date(tmp_dir, scm, dvc):
     )  # "modified, again"
 
 
-def test_gc_not_in_remote(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
+def test_gc_not_in_remote(tmp_dir, scm, dvc, mocker, local_remote):
     (standalone, dir1, dir2) = tmp_dir.dvc_gen(
         {
             "file1": "standalone",
@@ -358,12 +350,9 @@ def test_gc_not_in_remote(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     )
 
 
-def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     tmp_dir.dvc_gen(
         {
@@ -385,15 +374,9 @@ def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker
     assert len(mocked_remove.mock_calls) == 3
 
 
-def test_gc_not_in_remote_with_remote_field(
-    tmp_dir, scm, dvc, tmp_path_factory, mocker
-):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_not_in_remote_with_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     text = textwrap.dedent(
         """\
@@ -420,12 +403,9 @@ def test_gc_not_in_remote_cloud(tmp_dir, scm, dvc):
         dvc.gc(workspace=True, not_in_remote=True, cloud=True)
 
 
-def test_gc_cloud_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_cloud_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     text = textwrap.dedent(
         """\

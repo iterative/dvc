@@ -203,7 +203,8 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     # Removing cache will invalidate existing state entries
     dvc.cache.local.clear()
 
-    dvc.config["remote"]["upstream"]["verify"] = True
+    with dvc.config.edit() as conf:
+        conf["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
     assert hash_spy.call_count == 10
