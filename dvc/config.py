@@ -93,6 +93,8 @@ class Config(dict):
         validate: bool = True,
         fs: Optional["FileSystem"] = None,
         config: Optional["DictStrAny"] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
     ):  # pylint: disable=super-init-not-called
         from dvc.fs import LocalFileSystem
 
@@ -103,7 +105,9 @@ class Config(dict):
         if dvc_dir:
             self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
 
-        self.load(validate=validate, config=config)
+        self.load(
+            validate=validate, config=config, remote=remote, remote_config=remote_config
+        )
 
     @classmethod
     def from_cwd(cls, fs: Optional["FileSystem"] = None, **kwargs):
@@ -154,7 +158,13 @@ class Config(dict):
         with open(config_file, "w+", encoding="utf-8"):
             return Config(dvc_dir)
 
-    def load(self, validate: bool = True, config: Optional["DictStrAny"] = None):
+    def load(
+        self,
+        validate: bool = True,
+        config: Optional["DictStrAny"] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
+    ):
         """Loads config from all the config files.
 
         Raises:
@@ -169,6 +179,17 @@ class Config(dict):
             conf = self.validate(conf)
 
         self.clear()
+
+        if remote:
+            conf["core"]["remote"] = remote
+
+        if remote_config:
+            remote = remote or conf["core"].get("remote")
+            if not remote:
+                raise ValueError("Missing remote name")
+
+            merge(conf, {"remote": {remote: remote_config}})
+
         self.update(conf)
 
     def _get_fs(self, level):
