@@ -352,7 +352,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 dvc_info = dvc_fs.fs.index.info(subkey)
                 dvc_path = _get_dvc_path(dvc_fs, subkey)
                 dvc_info["name"] = dvc_path
-            except FileNotFoundError:
+            except KeyError:
                 pass
 
         fs_info = None
