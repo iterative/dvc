@@ -44,6 +44,7 @@ dependencies = [
     "flufl.lock>=5,<8",
     "funcy>=1.14",
     "grandalf<1,>=0.7",
+    "gto>=1.0.4,<2",
     "hydra-core>=1.1",
     "iterative-telemetry>=0.0.7",
     "networkx>=2.5",
