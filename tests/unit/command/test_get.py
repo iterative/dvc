@@ -16,6 +16,11 @@ def test_get(mocker):
             "4",
             "--config",
             "myconfig",
+            "--remote",
+            "myremote",
+            "--remote-config",
+            "k1=v1",
+            "k2=v2",
         ]
     )
     assert cli_args.func == CmdGet
@@ -33,6 +38,8 @@ def test_get(mocker):
         jobs=4,
         config="myconfig",
         force=False,
+        remote="myremote",
+        remote_config={"k1": "v1", "k2": "v2"},
     )
 
 

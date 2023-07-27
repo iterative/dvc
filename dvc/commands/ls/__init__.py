@@ -3,7 +3,7 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.commands.ls.ls_colors import LsColors
 from dvc.exceptions import DvcException
 from dvc.ui import ui
@@ -35,6 +35,8 @@ class CmdList(CmdBaseNoRepo):
                 recursive=self.args.recursive,
                 dvc_only=self.args.dvc_only,
                 config=self.args.config,
+                remote=self.args.remote,
+                remote_config=self.args.remote_config,
             )
             if self.args.json:
                 ui.write_json(entries)
@@ -87,6 +89,21 @@ def add_parser(subparsers, parent_parser):
         help=(
             "Path to a config file that will be merged with the config "
             "in the target repository."
+        ),
+    )
+    list_parser.add_argument(
+        "--remote",
+        type=str,
+        help="Remote name to set as a default in the target repository.",
+    )
+    list_parser.add_argument(
+        "--remote-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help=(
+            "Remote config options to merge with a remote's config (default or one "
+            "specified by '--remote') in the target repository."
         ),
     )
     list_parser.add_argument(

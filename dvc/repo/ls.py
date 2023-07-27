@@ -14,6 +14,8 @@ def ls(
     recursive: Optional[bool] = None,
     dvc_only: bool = False,
     config: Optional[str] = None,
+    remote: Optional[str] = None,
+    remote_config: Optional[dict] = None,
 ):
     """Methods for getting files and outputs for the repo.
 
@@ -23,7 +25,9 @@ def ls(
         rev (str, optional): SHA commit, branch or tag name
         recursive (bool, optional): recursively walk the repo
         dvc_only (bool, optional): show only DVC-artifacts
-        config (bool, optional): path to config file
+        config (str, optional): path to config file
+        remote (str, optional): remote name to set as a default remote in the repo
+        remote_config (str, dict): remote config to merge with a remote in the repo
 
     Returns:
         list of `entry`
@@ -47,7 +51,13 @@ def ls(
         config_dict = None
 
     with Repo.open(
-        url, rev=rev, subrepos=True, uninitialized=True, config=config_dict
+        url,
+        rev=rev,
+        subrepos=True,
+        uninitialized=True,
+        config=config_dict,
+        remote=remote,
+        remote_config=remote_config,
     ) as repo:
         path = path or ""
 

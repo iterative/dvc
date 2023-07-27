@@ -19,7 +19,14 @@ def test_list(mocker):
     url = "local_dir"
     m = _test_cli(mocker, url)
     m.assert_called_once_with(
-        url, None, recursive=False, rev=None, dvc_only=False, config=None
+        url,
+        None,
+        recursive=False,
+        rev=None,
+        dvc_only=False,
+        config=None,
+        remote=None,
+        remote_config=None,
     )
 
 
@@ -27,7 +34,14 @@ def test_list_recursive(mocker):
     url = "local_dir"
     m = _test_cli(mocker, url, "-R")
     m.assert_called_once_with(
-        url, None, recursive=True, rev=None, dvc_only=False, config=None
+        url,
+        None,
+        recursive=True,
+        rev=None,
+        dvc_only=False,
+        config=None,
+        remote=None,
+        remote_config=None,
     )
 
 
@@ -35,7 +49,14 @@ def test_list_git_ssh_rev(mocker):
     url = "git@github.com:repo"
     m = _test_cli(mocker, url, "--rev", "123")
     m.assert_called_once_with(
-        url, None, recursive=False, rev="123", dvc_only=False, config=None
+        url,
+        None,
+        recursive=False,
+        rev="123",
+        dvc_only=False,
+        config=None,
+        remote=None,
+        remote_config=None,
     )
 
 
@@ -44,7 +65,14 @@ def test_list_targets(mocker):
     target = "subdir"
     m = _test_cli(mocker, url, target)
     m.assert_called_once_with(
-        url, target, recursive=False, rev=None, dvc_only=False, config=None
+        url,
+        target,
+        recursive=False,
+        rev=None,
+        dvc_only=False,
+        config=None,
+        remote=None,
+        remote_config=None,
     )
 
 
@@ -52,15 +80,40 @@ def test_list_outputs_only(mocker):
     url = "local_dir"
     m = _test_cli(mocker, url, None, "--dvc-only")
     m.assert_called_once_with(
-        url, None, recursive=False, rev=None, dvc_only=True, config=None
+        url,
+        None,
+        recursive=False,
+        rev=None,
+        dvc_only=True,
+        config=None,
+        remote=None,
+        remote_config=None,
     )
 
 
 def test_list_config(mocker):
     url = "local_dir"
-    m = _test_cli(mocker, url, None, "--config", "myconfig")
+    m = _test_cli(
+        mocker,
+        url,
+        None,
+        "--config",
+        "myconfig",
+        "--remote",
+        "myremote",
+        "--remote-config",
+        "k1=v1",
+        "k2=v2",
+    )
     m.assert_called_once_with(
-        url, None, recursive=False, rev=None, dvc_only=False, config="myconfig"
+        url,
+        None,
+        recursive=False,
+        rev=None,
+        dvc_only=False,
+        config="myconfig",
+        remote="myremote",
+        remote_config={"k1": "v1", "k2": "v2"},
     )
 
 

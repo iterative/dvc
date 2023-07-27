@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from voluptuous import Required
+from voluptuous import Any, Required
 
 from dvc.utils import as_posix
 
@@ -17,6 +17,7 @@ class RepoDependency(Dependency):
     PARAM_REV = "rev"
     PARAM_REV_LOCK = "rev_lock"
     PARAM_CONFIG = "config"
+    PARAM_REMOTE = "remote"
 
     REPO_SCHEMA = {
         PARAM_REPO: {
@@ -24,6 +25,7 @@ class RepoDependency(Dependency):
             PARAM_REV: str,
             PARAM_REV_LOCK: str,
             PARAM_CONFIG: str,
+            PARAM_REMOTE: Any(str, dict),
         }
     }
 
@@ -76,6 +78,10 @@ class RepoDependency(Dependency):
         if config:
             repo[self.PARAM_CONFIG] = config
 
+        remote = self.def_repo.get(self.PARAM_REMOTE)
+        if remote:
+            repo[self.PARAM_REMOTE] = remote
+
         return {
             self.PARAM_PATH: self.def_path,
             self.PARAM_REPO: repo,
@@ -99,6 +105,14 @@ class RepoDependency(Dependency):
         from dvc.config import Config
         from dvc.fs import DVCFileSystem
 
+        rem = self.def_repo.get("remote")
+        if isinstance(rem, dict):
+            remote = None  # type: ignore[unreachable]
+            remote_config = rem
+        else:
+            remote = rem
+            remote_config = None
+
         conf = self.def_repo.get("config")
         if conf:
             config = Config.load_file(conf)
@@ -113,6 +127,8 @@ class RepoDependency(Dependency):
             rev=rev or self._get_rev(locked=locked),
             subrepos=True,
             config=config,
+            remote=remote,
+            remote_config=remote_config,
         )
 
     def _get_rev(self, locked: bool = True):
