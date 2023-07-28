@@ -421,7 +421,7 @@ class Repo:
 
         fs = fs or localfs
         root = root or os.curdir
-        root_dir = fs.path.realpath(root)
+        root_dir = fs.path.abspath(root)
 
         if not fs.isdir(root_dir):
             raise NotDvcRepoError(f"directory '{root}' does not exist")

@@ -103,7 +103,7 @@ class Config(dict):
         self.fs = fs or self.wfs
 
         if dvc_dir:
-            self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
+            self.dvc_dir = self.fs.path.abspath(dvc_dir)
 
         self.load(
             validate=validate, config=config, remote=remote, remote_config=remote_config

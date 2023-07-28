@@ -31,6 +31,9 @@ def check_acyclic(graph: "DiGraph") -> None:
 
 def get_pipeline(pipelines, node):
     found = [i for i in pipelines if i.has_node(node)]
+    if not found:
+        return None
+
     assert len(found) == 1
     return found[0]
 
@@ -60,6 +63,9 @@ def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:
     import networkx as nx
 
     pipeline = get_pipeline(get_pipelines(graph), stage)
+    if not pipeline:
+        return iter([])
+
     return nx.dfs_postorder_nodes(pipeline, stage)
 
 

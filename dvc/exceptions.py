@@ -71,6 +71,10 @@ class OutputNotFoundError(DvcException):
         )
 
 
+class StageNotFoundError(DvcException):
+    pass
+
+
 class StagePathAsOutputError(DvcException):
     """Thrown if directory that stage is going to be saved in is specified as
     an output of another stage.
