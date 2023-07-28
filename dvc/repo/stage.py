@@ -37,11 +37,19 @@ StageSet = Set["Stage"]
 
 
 def _collect_with_deps(stages: StageList, graph: "DiGraph") -> StageSet:
+    from dvc.exceptions import StageNotFoundError
     from dvc.repo.graph import collect_pipeline
 
     res: StageSet = set()
     for stage in stages:
-        res.update(collect_pipeline(stage, graph=graph))
+        pl = list(collect_pipeline(stage, graph=graph))
+        if not pl:
+            raise StageNotFoundError(
+                f"Stage {stage} is not found in the project. "
+                "Check that there are no symlinks in the parents "
+                "leading up to it within the project."
+            )
+        res.update(pl)
     return res
 
 
@@ -211,7 +219,7 @@ class StageLoad:
         self, path: Optional[str] = None, name: Optional[str] = None
     ) -> str:
         if path:
-            return self.repo.fs.path.realpath(path)
+            return self.repo.fs.path.abspath(path)
 
         path = PROJECT_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)

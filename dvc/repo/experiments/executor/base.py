@@ -607,7 +607,7 @@ class BaseExecutor(ABC):
             old_cwd = os.getcwd()
 
             for path in copy_paths or []:
-                cls._copy_path(os.path.realpath(path), os.path.join(dvc.root_dir, path))
+                cls._copy_path(os.path.abspath(path), os.path.join(dvc.root_dir, path))
 
             if info.wdir:
                 os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))

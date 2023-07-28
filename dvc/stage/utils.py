@@ -32,14 +32,14 @@ def check_stage_path(repo, path, is_wdir=False):
         wdir_or_path="stage working dir" if is_wdir else "file path", path=path
     )
 
-    real_path = os.path.realpath(path)
+    real_path = os.path.abspath(path)
     if not os.path.exists(real_path):
         raise StagePathNotFoundError(error_msg.format("does not exist"))
 
     if not os.path.isdir(real_path):
         raise StagePathNotDirectoryError(error_msg.format("is not directory"))
 
-    proj_dir = os.path.realpath(repo.root_dir)
+    proj_dir = os.path.abspath(repo.root_dir)
     if real_path != proj_dir and not path_isin(real_path, proj_dir):
         raise StagePathOutsideError(error_msg.format("is outside of DVC repo"))
 
