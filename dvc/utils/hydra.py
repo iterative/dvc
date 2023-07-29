@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from dvc.exceptions import InvalidArgumentError
 
@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 def compose_and_dump(
     output_file: "StrPath",
-    config_dir: str,
+    config_dir: Optional[str],
+    config_module: Optional[str],
     config_name: str,
     overrides: List[str],
 ) -> None:
@@ -25,6 +26,8 @@ def compose_and_dump(
         output_file: File where the composed config will be dumped.
         config_dir: Folder containing the Hydra config files.
             Must be absolute file system path.
+        config_module: Module containing the Hydra config files.
+            Ignored if `config_dir` is not `None`.
         config_name: Name of the config file containing defaults,
             without the .yaml extension.
         overrides: List of `Hydra Override`_ patterns.
@@ -32,13 +35,24 @@ def compose_and_dump(
     .. _Hydra Override:
         https://hydra.cc/docs/advanced/override_grammar/basic/
     """
-    from hydra import compose, initialize_config_dir
+    from hydra import compose, initialize_config_dir, initialize_config_module
     from omegaconf import OmegaConf
 
     from .serialize import DUMPERS
 
-    with initialize_config_dir(config_dir, version_base=None):
-        cfg = compose(config_name=config_name, overrides=overrides)
+    if ((config_dir is None) and (config_module is None)) or (
+        (config_dir is not None) and (config_module is not None)
+    ):
+        raise ValueError(
+            f"Exactly one of {config_dir = } and {config_module = } should be different from `None`."
+        )
+
+    if config_module is not None:
+        with initialize_config_module(config_module, version_base=None):
+            cfg = compose(config_name=config_name, overrides=overrides)
+    else:
+        with initialize_config_dir(config_dir, version_base=None):
+            cfg = compose(config_name=config_name, overrides=overrides)
 
     OmegaConf.resolve(cfg)
 
