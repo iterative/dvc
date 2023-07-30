@@ -40,10 +40,10 @@ def compose_and_dump(
 
     from .serialize import DUMPERS
 
-    if (config_dir is None and config_module is not None):
+    if config_dir is None and config_module is not None:
         with initialize_config_module(config_module, version_base=None):
             cfg = compose(config_name=config_name, overrides=overrides)
-    elif (config_dir is not None and config_module is None):
+    elif config_dir is not None and config_module is None:
         with initialize_config_dir(config_dir, version_base=None):
             cfg = compose(config_name=config_name, overrides=overrides)
     else:
