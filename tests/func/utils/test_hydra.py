@@ -127,7 +127,7 @@ def test_invalid_overrides(tmp_dir, overrides):
         apply_overrides(path=params_file.name, overrides=overrides)
 
 
-def hydra_setup_overrides(tmp_dir, config_dir, config_name):
+def hydra_setup(tmp_dir, config_dir, config_name):
     config_dir = tmp_dir / config_dir
     (config_dir / "db").mkdir(parents=True)
     (config_dir / f"{config_name}.yaml").dump({"defaults": [{"db": "mysql"}]})
@@ -174,7 +174,7 @@ def test_compose_and_dump_overrides(tmp_dir, suffix, overrides, expected):
 
     config_name = "config"
     output_file = tmp_dir / f"params.{suffix}"
-    config_dir = hydra_setup_overrides(tmp_dir, "conf", "config")
+    config_dir = hydra_setup(tmp_dir, "conf", "config")
     config_module = None
     compose_and_dump(output_file, config_dir, config_module, config_name, overrides)
     assert output_file.parse() == expected
