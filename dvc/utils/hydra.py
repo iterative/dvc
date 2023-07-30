@@ -44,7 +44,8 @@ def compose_and_dump(
         (config_dir is not None) and (config_module is not None)
     ):
         raise ValueError(
-            f"Exactly one of {config_dir = } and {config_module = } should be different from `None`."
+            f"Exactly one of {config_dir = } and {config_module = }"
+            "should be different from `None`."
         )
 
     if config_module is not None:

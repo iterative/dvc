@@ -201,8 +201,8 @@ def hydra_setup_dir_basic(tmp_dir, config_subdir, config_name, config_content):
             does_not_raise(),
             {"normal_yaml_config": True},
         ),
-        ("conf", "hydra.test_utils.configs", "config", pytest.raises(ValueError), None),
-        (None, None, "config", pytest.raises(ValueError), None),
+        ("conf", "hydra.test_utils.configs", "config", pytest.raises(ValueError, match="^Exactly one of"), None),
+        (None, None, "config", pytest.raises(ValueError, match="^Exactly one of"), None),
     ],
 )
 def test_compose_and_dump_dir_module(

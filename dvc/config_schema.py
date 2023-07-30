@@ -13,7 +13,6 @@ from voluptuous import (
     Lower,
     Optional,
     Range,
-    Required,
     Schema,
 )
 
