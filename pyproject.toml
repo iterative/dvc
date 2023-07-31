@@ -76,7 +76,7 @@ gs = ["dvc-gs==2.22.1"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
     "mypy==1.4.1",
-    "pylint==2.17.4",
+    "pylint==2.17.5",
     "types-colorama",
     "types-psutil",
     "types-pyinstaller",
