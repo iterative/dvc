@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from dvc.scm import Git
 
@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 def rename(
     repo: "Repo",
-    exp_name: Union[str, List[str]],
+    exp_name: str,
+    new_name: str,
     git_remote: Optional[str] = None,
 ) -> List[str]:
     assert isinstance(repo.scm, Git)
@@ -30,7 +31,7 @@ def rename(
     for _, result in results.items():
         assert isinstance(result.exp_ref_info, ExpRefInfo)
         renamed_exp = _rename_exp(
-            scm=repo.scm, ref_info=result.exp_ref_info, new_name="renamed-exp"
+            scm=repo.scm, ref_info=result.exp_ref_info, new_name=new_name
         )
         renamed.append(renamed_exp)
 

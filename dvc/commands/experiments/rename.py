@@ -13,14 +13,11 @@ class CmdExperimentsRename(CmdBase):
     def check_arguments(self):
         if not any(
             [
-                self.args.all_commits,
                 self.args.rev,
-                self.args.queue,
             ]
         ) ^ bool(self.args.experiment):
             raise InvalidArgumentError(
-                "Either provide an `experiment` argument, or use the "
-                "`--rev` or `--all-commits` or `--queue` flag."
+                "Either provide an `experiment` argument, or use the `--rev` flag."
             )
 
     def run(self):
@@ -30,6 +27,7 @@ class CmdExperimentsRename(CmdBase):
 
         renamed = self.repo.experiments.rename(
             exp_name=self.args.experiment,
+            new_name=self.args.name,
             git_remote=self.args.git_remote,
         )
         if renamed:
@@ -41,31 +39,42 @@ class CmdExperimentsRename(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    from . import add_rev_selection_flags
-
     EXPERIMENTS_REMOVE_HELP = "Rename experiments."
-    experiments_remove_parser = experiments_subparsers.add_parser(
+    experiments_rename_parser = experiments_subparsers.add_parser(
         "rename",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_REMOVE_HELP, "exp/remove"),
         help=EXPERIMENTS_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    remove_group = experiments_remove_parser.add_mutually_exclusive_group()
-    add_rev_selection_flags(experiments_remove_parser, "Remove", False)
-    remove_group.add_argument(
-        "--queue", action="store_true", help="Remove all queued experiments."
-    )
+    remove_group = experiments_rename_parser.add_mutually_exclusive_group()
     remove_group.add_argument(
         "-g",
         "--git-remote",
         metavar="<git_remote>",
-        help="Name or URL of the Git remote to remove the experiment from",
+        help="Name or URL of the Git remote to rename the experiment from",
     )
-    experiments_remove_parser.add_argument(
+    default_msg = " (HEAD by default)"
+    msg = (
+        f"Rename experiments derived from the specified `<commit>` as "
+        f"baseline{default_msg}."
+    )
+    experiments_rename_parser.add_argument(
+        "--rev",
+        type=str,
+        action="append",
+        default=None,
+        help=msg,
+        metavar="<commit>",
+    )
+    experiments_rename_parser.add_argument(
         "experiment",
-        nargs="*",
-        help="Experiments to remove.",
+        help="Experiment to rename.",
         metavar="<experiment>",
     )
-    experiments_remove_parser.set_defaults(func=CmdExperimentsRename)
+    experiments_rename_parser.add_argument(
+        "name",
+        help="Name of new experiment.",
+        metavar="<name>",
+    )
+    experiments_rename_parser.set_defaults(func=CmdExperimentsRename)
