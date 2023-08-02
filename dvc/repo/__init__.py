@@ -497,7 +497,7 @@ class Repo:
         used_run_cache=None,
         revs=None,
         num=1,
-        push: bool = False,  # noqa: F811
+        push: bool = False,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.

@@ -160,7 +160,7 @@ class LoggerHandler(logging.StreamHandler):
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
-        except Exception:  # noqa, pylint: disable=broad-except
+        except Exception:  # noqa: BLE001, pylint: disable=broad-except
             self.handleError(record)
 
 

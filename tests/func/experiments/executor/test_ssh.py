@@ -10,7 +10,9 @@ from dvc_ssh.tests.cloud import TEST_SSH_KEY_PATH, TEST_SSH_USER
 from dvc.repo.experiments.executor.base import ExecutorInfo, ExecutorResult
 from dvc.repo.experiments.executor.ssh import SSHExecutor
 from dvc.repo.experiments.refs import EXEC_HEAD, EXEC_MERGE
-from tests.func.machine.conftest import *  # noqa, pylint: disable=wildcard-import
+
+# pylint: disable-next=wildcard-import
+from tests.func.machine.conftest import *  # noqa: F403
 
 
 @contextmanager

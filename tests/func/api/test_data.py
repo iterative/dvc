@@ -5,7 +5,7 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.testing.api_tests import TestAPI  # noqa, pylint: disable=unused-import
+from dvc.testing.api_tests import TestAPI  # noqa: F401, pylint: disable=unused-import
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 

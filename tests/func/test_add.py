@@ -452,9 +452,9 @@ def temporary_windows_drive(tmp_path_factory):
         if len(s) > 0
     ]
 
-    new_drive_name = [
+    new_drive_name = next(
         letter for letter in string.ascii_uppercase if letter not in drives
-    ][0]
+    )
     new_drive = f"{new_drive_name}:"
 
     target_path = tmp_path_factory.mktemp("tmp_windows_drive")

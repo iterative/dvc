@@ -1,4 +1,4 @@
-from dvc_ssh.tests.fixtures import (  # noqa, pylint: disable=unused-import
+from dvc_ssh.tests.fixtures import (  # noqa: F401, pylint: disable=unused-import
     make_ssh,
     ssh,
     ssh_server,

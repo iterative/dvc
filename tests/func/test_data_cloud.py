@@ -10,7 +10,9 @@ from dvc.cli import main
 from dvc.exceptions import CheckoutError
 from dvc.repo.open_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
-from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-import
+from dvc.testing.remote_tests import (  # noqa: F401, pylint: disable=unused-import
+    TestRemote,
+)
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
