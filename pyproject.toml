@@ -300,7 +300,7 @@ ignore-variadic-names = true
 known-first-party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
 
 [tool.ruff.pep8-naming]
-ignore-names = ["M", "SCM"]
+extend-ignore-names = ["M", "SCM"]
 
 [tool.ruff.per-file-ignores]
 "dvc/commands/**" = ["N806"]

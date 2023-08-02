@@ -427,7 +427,7 @@ def _get_update_diff_index(
         meta_cmp_key=partial(_meta_checksum, remote.fs),
         with_unchanged=True,
     ):
-        if change.typ == ADD or change.typ == MODIFY:
+        if change.typ in (ADD, MODIFY):
             entry = change.new
             # preserve md5's which were calculated in out.save() after
             # downloading

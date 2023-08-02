@@ -84,7 +84,7 @@ def test_default_wdir_ignored_in_checksum(tmp_dir, dvc):
     stage = dvc.run(cmd="cp bar foo", deps=["bar"], outs=["foo"], name="copy-foo-bar")
 
     d = stage.dumpd()
-    assert Stage.PARAM_WDIR not in d.keys()
+    assert Stage.PARAM_WDIR not in d
 
     d = load_yaml("dvc.yaml")
     assert Stage.PARAM_WDIR not in d["stages"]["copy-foo-bar"]
@@ -246,13 +246,17 @@ def test_collect_symlink(tmp_dir, dvc, with_deps):
         with pytest.raises(StageNotFoundError):
             dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
     else:
-        stage = list(
-            dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
-        )[0]
+        stage = next(
+            iter(
+                dvc.stage.collect(
+                    target=str(data_link / "foo.dvc"), with_deps=with_deps
+                )
+            )
+        )
 
         assert stage.addressing == os.path.join("data_link", "foo.dvc")
 
-    stage = list(dvc.stage.collect(target=f"{foo_path}.dvc", with_deps=with_deps))[0]
+    stage = next(iter(dvc.stage.collect(target=f"{foo_path}.dvc", with_deps=with_deps)))
 
     assert stage.addressing == os.path.join("data", "foo.dvc")
 

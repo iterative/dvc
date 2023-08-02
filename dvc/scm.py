@@ -67,7 +67,7 @@ def map_scm_exception(with_cause: bool = False) -> Iterator[None]:
         into = SCMError(str(exc))
         if with_cause:
             raise into from exc
-        raise into
+        raise into  # noqa: B904
 
 
 @overload
