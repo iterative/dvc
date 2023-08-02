@@ -35,6 +35,7 @@ repos:
     rev: 'v0.0.282'
     hooks:
       - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.5
     hooks:
