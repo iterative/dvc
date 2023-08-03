@@ -9,6 +9,9 @@ from dvc.ui import ui
 logger = logging.getLogger(__name__)
 
 
+SUPPORTED_SHELLS = ["bash", "zsh"]
+
+
 class CmdCompletion(CmdBaseNoRepo):
     def run(self):
         import shtab
@@ -35,6 +38,6 @@ def add_parser(subparsers, parent_parser):
         "--shell",
         help="Shell syntax for completions.",
         default="bash",
-        choices=["bash", "zsh"],
+        choices=SUPPORTED_SHELLS,
     )
     completion_parser.set_defaults(func=CmdCompletion)
