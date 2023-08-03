@@ -787,13 +787,18 @@ class Output:
                     self.hash_name,
                     ignore=self.dvcignore,
                 )
-                otransfer(
-                    staging,
-                    self.cache,
-                    {obj.hash_info},
-                    shallow=False,
-                    hardlink=hardlink,
-                )
+                with Callback.as_tqdm_callback(
+                    desc=f"Committing {self} to cache",
+                    unit="file",
+                ) as cb:
+                    otransfer(
+                        staging,
+                        self.cache,
+                        {obj.hash_info},
+                        shallow=False,
+                        hardlink=hardlink,
+                        callback=cb,
+                    )
             if relink:
                 rel = self.fs.path.relpath(filter_info or self.fs_path)
                 with CheckoutCallback(desc=f"Checking out {rel}", unit="files") as cb:
@@ -822,13 +827,18 @@ class Output:
         save_obj = obj.filter(prefix)
         assert isinstance(save_obj, Tree)
         checkout_obj = save_obj.get_obj(self.cache, prefix)
-        otransfer(
-            staging,
-            self.cache,
-            {save_obj.hash_info} | {oid for _, _, oid in save_obj},
-            shallow=True,
-            hardlink=hardlink,
-        )
+        with Callback.as_tqdm_callback(
+            desc=f"Committing {self} to cache",
+            unit="file",
+        ) as cb:
+            otransfer(
+                staging,
+                self.cache,
+                {save_obj.hash_info} | {oid for _, _, oid in save_obj},
+                shallow=True,
+                hardlink=hardlink,
+                callback=cb,
+            )
         return checkout_obj
 
     def dumpd(self, **kwargs):  # noqa: C901, PLR0912
@@ -1423,7 +1433,18 @@ class Output:
 
         assert staging
         assert obj.hash_info
-        otransfer(staging, self.cache, {obj.hash_info}, hardlink=relink, shallow=False)
+        with Callback.as_tqdm_callback(
+            desc=f"Adding {self} to cache",
+            unit="file",
+        ) as cb:
+            otransfer(
+                staging,
+                self.cache,
+                {obj.hash_info},
+                hardlink=relink,
+                shallow=False,
+                callback=cb,
+            )
 
         if relink:
             with CheckoutCallback(
