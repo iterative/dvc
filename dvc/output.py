@@ -1048,14 +1048,19 @@ class Output:
             upload=upload,
             no_progress_bar=no_progress_bar,
         )
-        otransfer(
-            staging,
-            odb,
-            {obj.hash_info},
-            jobs=jobs,
-            hardlink=False,
-            shallow=False,
-        )
+        with Callback.as_tqdm_callback(
+            desc=f"Transferring to {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            otransfer(
+                staging,
+                odb,
+                {obj.hash_info},
+                jobs=jobs,
+                hardlink=False,
+                shallow=False,
+                callback=cb,
+            )
 
         self.hash_info = obj.hash_info
         self.files = None
