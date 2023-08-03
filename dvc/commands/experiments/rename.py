@@ -17,7 +17,8 @@ class CmdExperimentsRename(CmdBase):
             ]
         ) ^ bool(self.args.experiment):
             raise InvalidArgumentError(
-                "Either provide an `experiment` argument, or use the `--rev` flag."
+                "Either provide an `experiment` argument, or use the "
+                "`--rev` or `--all-commits` or `--queue` flag."
             )
 
     def run(self):
@@ -28,6 +29,7 @@ class CmdExperimentsRename(CmdBase):
         renamed = self.repo.experiments.rename(
             exp_name=self.args.experiment,
             new_name=self.args.name,
+            rev=self.args.rev,
             git_remote=self.args.git_remote,
         )
         if renamed:
@@ -70,6 +72,7 @@ def add_parser(experiments_subparsers, parent_parser):
     experiments_rename_parser.add_argument(
         "experiment",
         help="Experiment to rename.",
+        nargs="?",
         metavar="<experiment>",
     )
     experiments_rename_parser.add_argument(
