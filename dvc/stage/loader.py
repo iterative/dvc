@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 from funcy import get_in, lcat, once, project
 
 from dvc import dependency, output
-from dvc.parsing import FOREACH_KWD, JOIN, EntryNotFound
+from dvc.parsing import FOREACH_KWD, JOIN, MATRIX_KWD, EntryNotFound
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.meta import Meta
 
@@ -167,8 +167,11 @@ class StageLoader(Mapping):
     def __contains__(self, name):
         return self.resolver.has_key(name)  # noqa: W601
 
-    def is_foreach_generated(self, name: str):
-        return name in self.stages_data and FOREACH_KWD in self.stages_data[name]
+    def is_foreach_or_matrix_generated(self, name: str) -> bool:
+        return (
+            name in self.stages_data
+            and {FOREACH_KWD, MATRIX_KWD} & self.stages_data[name].keys()
+        )
 
 
 class SingleStageLoader(Mapping):

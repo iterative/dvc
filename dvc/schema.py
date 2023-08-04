@@ -11,7 +11,7 @@ from dvc.output import (
     META_SCHEMA,
     Output,
 )
-from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
+from dvc.parsing import DO_KWD, FOREACH_KWD, MATRIX_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -77,6 +77,7 @@ PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
+    MATRIX_KWD: {str: Any(str, list)},
     Required(StageParams.PARAM_CMD): Any(str, list),
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],

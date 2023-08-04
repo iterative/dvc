@@ -2,6 +2,7 @@ import logging
 import os
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from itertools import product
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -51,6 +52,7 @@ VARS_KWD = "vars"
 WDIR_KWD = "wdir"
 PARAMS_KWD = "params"
 FOREACH_KWD = "foreach"
+MATRIX_KWD = "matrix"
 DO_KWD = "do"
 
 DEFAULT_PARAMS_FILE = "params.yaml"
@@ -105,7 +107,7 @@ def is_map_or_seq(data: Any) -> bool:
     return not isinstance(data, str) and _is_map_or_seq(data)
 
 
-def split_foreach_name(name: str) -> Tuple[str, Optional[str]]:
+def split_group_name(name: str) -> Tuple[str, Optional[str]]:
     group, *keys = name.rsplit(JOIN, maxsplit=1)
     return group, first(keys)
 
@@ -120,13 +122,15 @@ def check_interpolations(data: "DictStrAny", where: str, path: str):
     return recurse(func)(data)
 
 
-Definition = Union["ForeachDefinition", "EntryDefinition"]
+Definition = Union["ForeachDefinition", "EntryDefinition", "MatrixDefinition"]
 
 
 def make_definition(
     resolver: "DataResolver", name: str, definition: "DictStrAny", **kwargs
 ) -> Definition:
     args = resolver, resolver.context, name, definition
+    if MATRIX_KWD in definition:
+        return MatrixDefinition(*args, **kwargs)
     if FOREACH_KWD in definition:
         return ForeachDefinition(*args, **kwargs)
     return EntryDefinition(*args, **kwargs)
@@ -159,7 +163,8 @@ class DataResolver:
         self.tracked_vars: Dict[str, Mapping] = {}
 
         stages_data = d.get(STAGES_KWD, {})
-        # we wrap the definitions into ForeachDefinition and EntryDefinition,
+        # we wrap the definitions into:
+        # ForeachDefinition, MatrixDefinition, and EntryDefinition
         # that helps us to optimize, cache and selectively load each one of
         # them as we need, and simplify all of this DSL/parsing logic.
         self.definitions: Dict[str, Definition] = {
@@ -168,12 +173,13 @@ class DataResolver:
         }
 
     def resolve_one(self, name: str):
-        group, key = split_foreach_name(name)
+        group, key = split_group_name(name)
 
         if not self._has_group_and_key(group, key):
             raise EntryNotFound(f"Could not find '{name}'")
 
-        # all of the checks for `key` not being None for `ForeachDefinition`
+        # all of the checks for `key` not being None for
+        # `ForeachDefinition`/`MatrixDefinition`
         # and/or `group` not existing in the `interim`, etc. should be
         # handled by the `self.has_key()` above.
         definition = self.definitions[group]
@@ -190,7 +196,7 @@ class DataResolver:
         return {STAGES_KWD: data}
 
     def has_key(self, key: str):
-        return self._has_group_and_key(*split_foreach_name(key))
+        return self._has_group_and_key(*split_group_name(key))
 
     def _has_group_and_key(self, group: str, key: Optional[str] = None):
         try:
@@ -198,16 +204,14 @@ class DataResolver:
         except KeyError:
             return False
 
-        if key:
-            return isinstance(definition, ForeachDefinition) and definition.has_member(
-                key
-            )
-        return not isinstance(definition, ForeachDefinition)
+        if not isinstance(definition, (ForeachDefinition, MatrixDefinition)):
+            return key is None
+        return key is not None and definition.has_member(key)
 
     @collecting
     def get_keys(self):
         for name, definition in self.definitions.items():
-            if isinstance(definition, ForeachDefinition):
+            if isinstance(definition, (ForeachDefinition, MatrixDefinition)):
                 yield from definition.get_generated_names()
                 continue
             yield name
@@ -256,8 +260,9 @@ class EntryDefinition:
         name = self.name
         if not skip_checks:
             # we can check for syntax errors as we go for interpolated entries,
-            # but for foreach-generated ones, once is enough, which it does
-            # that itself. See `ForeachDefinition.do_definition`.
+            # but for foreach and matrix generated ones, once is enough, which it does
+            # that itself. See `ForeachDefinition.template`
+            # and `MatrixDefinition.template`.
             check_syntax_errors(self.definition, name, self.relpath)
 
         # we need to pop vars from generated/evaluated data
@@ -331,17 +336,18 @@ class ForeachDefinition:
         self.name = name
 
         assert DO_KWD in definition
+        assert MATRIX_KWD not in definition
         self.foreach_data = definition[FOREACH_KWD]
-        self._do_definition = definition[DO_KWD]
+        self._template = definition[DO_KWD]
 
         self.pair = IterationPair()
         self.where = where
 
     @cached_property
-    def do_definition(self):
+    def template(self):
         # optimization: check for syntax errors only once for `foreach` stages
-        check_syntax_errors(self._do_definition, self.name, self.relpath)
-        return self._do_definition
+        check_syntax_errors(self._template, self.name, self.relpath)
+        return self._template
 
     @cached_property
     def resolved_iterable(self):
@@ -444,16 +450,111 @@ class ForeachDefinition:
             # i.e. quadratic complexity).
             generated = self._generate_name(key)
             entry = EntryDefinition(
-                self.resolver, self.context, generated, self.do_definition
+                self.resolver, self.context, generated, self.template
             )
             try:
                 # optimization: skip checking for syntax errors on each foreach
-                # generated stages. We do it once when accessing do_definition.
+                # generated stages. We do it once when accessing template.
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
                 format_and_raise(exc, f"stage '{generated}'", self.relpath)
 
-            # let mypy know that this state is unreachable as format_and_raise
-            # does not return at all (it's not able to understand it for some
-            # reason)
-            raise AssertionError("unreachable")
+
+class MatrixDefinition:
+    def __init__(
+        self,
+        resolver: DataResolver,
+        context: Context,
+        name: str,
+        definition: "DictStrAny",
+        where: str = STAGES_KWD,
+    ):
+        self.resolver = resolver
+        self.relpath = self.resolver.relpath
+        self.context = context
+        self.name = name
+
+        assert MATRIX_KWD in definition
+        assert DO_KWD not in definition
+        assert FOREACH_KWD not in definition
+
+        self._template = definition.copy()
+        self.matrix_data = self._template.pop(MATRIX_KWD)
+
+        self.pair = IterationPair()
+        self.where = where
+
+    @cached_property
+    def template(self) -> "DictStrAny":
+        # optimization: check for syntax errors only once for `matrix` stages
+        check_syntax_errors(self._template, self.name, self.relpath)
+        return self._template
+
+    @cached_property
+    def resolved_iterable(self) -> Dict[str, List]:
+        return self._resolve_matrix_data()
+
+    def _resolve_matrix_data(self) -> Dict[str, List]:
+        try:
+            iterable = self.context.resolve(self.matrix_data, unwrap=False)
+        except (ContextError, ParseError) as exc:
+            format_and_raise(exc, f"'{self.where}.{self.name}.matrix'", self.relpath)
+        return iterable
+
+    @cached_property
+    def normalized_iterable(self) -> Dict[str, "DictStrAny"]:
+        """Convert sequence to Mapping with keys normalized."""
+        iterable = self.resolved_iterable
+        assert isinstance(iterable, Mapping)
+
+        ret: Dict[str, "DictStrAny"] = {}
+        matrix = {key: enumerate(v) for key, v in iterable.items()}
+        for combination in product(*matrix.values()):
+            d: "DictStrAny" = {}
+            fragments: List[str] = []
+            for k, (i, v) in zip(matrix.keys(), combination):
+                d[k] = v
+                fragments.append(f"{k}{i}" if is_map_or_seq(v) else to_str(v))
+
+            key = "-".join(fragments)
+            ret[key] = d
+        return ret
+
+    def has_member(self, key: str) -> bool:
+        return key in self.normalized_iterable
+
+    def get_generated_names(self) -> List[str]:
+        return list(map(self._generate_name, self.normalized_iterable))
+
+    def _generate_name(self, key: str) -> str:
+        return f"{self.name}{JOIN}{key}"
+
+    def resolve_all(self) -> "DictStrAny":
+        return join(map(self.resolve_one, self.normalized_iterable))
+
+    def resolve_one(self, key: str) -> "DictStrAny":
+        return self._each_iter(key)
+
+    def _each_iter(self, key: str) -> "DictStrAny":
+        err_message = f"Could not find '{key}' in matrix group '{self.name}'"
+        with reraise(KeyError, EntryNotFound(err_message)):
+            value = self.normalized_iterable[key]
+
+        temp_dict = {self.pair.value: value}
+        with self.context.set_temporarily(temp_dict, reserve=True):
+            # optimization: item and key can be removed on __exit__() as they
+            # are top-level values, and are not merged recursively.
+            # This helps us avoid cloning context, which is slower
+            # (increasing the size of the context might increase
+            # the no. of items to be generated which means more cloning,
+            # i.e. quadratic complexity).
+            generated = self._generate_name(key)
+            entry = EntryDefinition(
+                self.resolver, self.context, generated, self.template
+            )
+            try:
+                # optimization: skip checking for syntax errors on each matrix
+                # generated stages. We do it once when accessing template.
+                return entry.resolve_stage(skip_checks=True)
+            except ContextError as exc:
+                format_and_raise(exc, f"stage '{generated}'", self.relpath)
