@@ -64,6 +64,22 @@ def test_get_repo_dir(tmp_dir, erepo_dir):
     assert (tmp_dir / "dir_imported").read_text() == {"file": "contents"}
 
 
+def test_get_repo_broken_dir(tmp_dir, erepo_dir):
+    import shutil
+
+    from dvc_data.index import DataIndexDirError
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"broken": {"file": "contents"}})
+        erepo_dir.dvc.cache.local.clear()
+        shutil.rmtree(erepo_dir / "broken")
+
+    with pytest.raises(DataIndexDirError):
+        Repo.get(os.fspath(erepo_dir), "broken", "out")
+
+    assert not (tmp_dir / "out").exists()
+
+
 @pytest.mark.parametrize(
     "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
 )
