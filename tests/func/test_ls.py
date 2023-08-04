@@ -583,3 +583,40 @@ def test_broken_symlink(tmp_dir, dvc):
             "path": "link",
         },
     ]
+
+
+def test_ls_broken_dir(tmp_dir, dvc):
+    from dvc_data.index import DataIndexDirError
+
+    tmp_dir.dvc_gen(
+        {
+            "broken": {"baz": "baz"},
+        }
+    )
+
+    shutil.rmtree(tmp_dir / "broken")
+    dvc.cache.local.clear()
+
+    tmp_dir.dvc_gen(
+        {
+            "foo": "foo",
+            "dir": {"bar": "bar"},
+        }
+    )
+
+    entries = Repo.ls(os.fspath(tmp_dir))
+    assert entries == [
+        {"isdir": False, "isexec": False, "isout": False, "path": ".dvcignore"},
+        {"isdir": True, "isexec": False, "isout": True, "path": "broken"},
+        {"isdir": False, "isexec": False, "isout": False, "path": "broken.dvc"},
+        {"isdir": True, "isexec": False, "isout": True, "path": "dir"},
+        {"isdir": False, "isexec": False, "isout": False, "path": "dir.dvc"},
+        {"isdir": False, "isexec": False, "isout": True, "path": "foo"},
+        {"isdir": False, "isexec": False, "isout": False, "path": "foo.dvc"},
+    ]
+
+    with pytest.raises(DataIndexDirError):
+        Repo.ls(os.fspath(tmp_dir), "broken")
+
+    with pytest.raises(DataIndexDirError):
+        Repo.ls(os.fspath(tmp_dir), recursive=True)

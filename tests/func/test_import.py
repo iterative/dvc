@@ -12,6 +12,7 @@ from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
+from dvc_data.index.index import DataIndexDirError
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -94,6 +95,19 @@ def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+def test_import_broken_dir(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
+        erepo_dir.dvc.cache.local.clear()
+        remove(erepo_dir / "dir")
+
+    with pytest.raises(DataIndexDirError):
+        dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
+
+    assert not (tmp_dir / "dir_imported").exists()
+    assert not (tmp_dir / "dir_imported.dvc").exists()
 
 
 def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
@@ -346,7 +360,8 @@ def test_push_wildcard_from_bare_git_repo(
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
 
-        dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
+        with pytest.raises(DataIndexDirError):
+            dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
