@@ -336,6 +336,7 @@ class ForeachDefinition:
         self.name = name
 
         assert DO_KWD in definition
+        assert MATRIX_KWD not in definition
         self.foreach_data = definition[FOREACH_KWD]
         self._template = definition[DO_KWD]
 
@@ -476,24 +477,24 @@ class MatrixDefinition:
         assert MATRIX_KWD in definition
         assert DO_KWD not in definition
         assert FOREACH_KWD not in definition
-        self.matrix_data = definition[MATRIX_KWD]
+
         self._template = definition.copy()
-        self._template.pop(MATRIX_KWD)
+        self.matrix_data = self._template.pop(MATRIX_KWD)
 
         self.pair = IterationPair()
         self.where = where
 
     @cached_property
-    def template(self):
+    def template(self) -> "DictStrAny":
         # optimization: check for syntax errors only once for `matrix` stages
         check_syntax_errors(self._template, self.name, self.relpath)
         return self._template
 
     @cached_property
-    def resolved_iterable(self):
+    def resolved_iterable(self) -> Dict[str, List]:
         return self._resolve_matrix_data()
 
-    def _resolve_matrix_data(self) -> "SeqOrMap":
+    def _resolve_matrix_data(self) -> Dict[str, List]:
         try:
             iterable = self.context.resolve(self.matrix_data, unwrap=False)
         except (ContextError, ParseError) as exc:
@@ -501,16 +502,16 @@ class MatrixDefinition:
         return iterable
 
     @cached_property
-    def normalized_iterable(self):
+    def normalized_iterable(self) -> Dict[str, "DictStrAny"]:
         """Convert sequence to Mapping with keys normalized."""
         iterable = self.resolved_iterable
         assert isinstance(iterable, Mapping)
 
-        ret = {}
+        ret: Dict[str, "DictStrAny"] = {}
         matrix = {key: enumerate(v) for key, v in iterable.items()}
         for combination in product(*matrix.values()):
-            d = {}
-            fragments = []
+            d: "DictStrAny" = {}
+            fragments: List[str] = []
             for k, (i, v) in zip(matrix.keys(), combination):
                 d[k] = v
                 fragments.append(f"{k}{i}" if is_map_or_seq(v) else to_str(v))
@@ -522,7 +523,7 @@ class MatrixDefinition:
     def has_member(self, key: str) -> bool:
         return key in self.normalized_iterable
 
-    def get_generated_names(self):
+    def get_generated_names(self) -> List[str]:
         return list(map(self._generate_name, self.normalized_iterable))
 
     def _generate_name(self, key: str) -> str:
