@@ -20,7 +20,7 @@ def rename(
     repo: "Repo",
     new_name: str,
     exp_name: Union[str, None] = None,
-    rev: Optional[Union[str, None]] = None,
+    rev: Optional[Union[List[str], str, None]] = None,
     git_remote: Optional[str] = None,
 ) -> List[str]:
     assert isinstance(repo.scm, Git)
@@ -38,7 +38,8 @@ def rename(
             )
             renamed.append(renamed_exp)
     elif rev:
-        rev = rev[0]
+        if isinstance(rev, list):
+            rev = rev[0]
         ref_info_generator = exp_refs_by_rev(repo.scm, rev)
         for exp_ref_info in ref_info_generator:
             renamed_exp = _rename_exp(
