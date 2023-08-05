@@ -47,7 +47,9 @@ def compose_and_dump(
         initialize_config_dir if config_dir else initialize_config_module
     )
 
-    with initialize_config(config_source, version_base=None):  # type: ignore[attr-defined]
+    with initialize_config(  # type: ignore[attr-defined]
+        config_source, version_base=None
+    ):
         cfg = compose(config_name=config_name, overrides=overrides)
 
     OmegaConf.resolve(cfg)
