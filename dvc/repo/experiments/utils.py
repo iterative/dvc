@@ -386,20 +386,23 @@ def _describe(
             logger.debug("unresolved ref %s", ref)
             continue
         if is_tag and rev not in tags:
-            if remove_ref_string:
-                tags[rev] = ref[len("refs/tags/") :]
-            else:
-                tags[rev] = ref
+            tags[rev] = ref
         if is_branch and rev not in branches:
-            if remove_ref_string:
-                branches[rev] = ref[len("refs/heads/") :]
-            else:
-                branches[rev] = ref
+            branches[rev] = ref
+
+    if remove_ref_string:
+        tags_final = {rev: name[len("refs/tags/") :] for rev, name in tags.items()}
+        branches_final = {
+            rev: name[len("refs/heads/") :] for rev, name in branches.items()
+        }
+    else:
+        tags_final = tags
+        branches_final = branches
 
     names: Dict[str, Optional[str]] = {}
     for rev in revs:
         if rev == head_rev and head_branch:
             names[rev] = head_branch
         else:
-            names[rev] = tags.get(rev) or branches.get(rev)
+            names[rev] = tags_final.get(rev) or branches_final.get(rev)
     return names
