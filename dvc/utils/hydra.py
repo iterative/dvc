@@ -43,9 +43,11 @@ def compose_and_dump(
     config_source = config_dir or config_module
     if not config_source:
         raise ValueError("Either `config_dir` or `config_module` should be provided.")
-    init = initialize_config_dir if config_dir else initialize_config_module
+    initialize_config = (
+        initialize_config_dir if config_dir else initialize_config_module
+    )
 
-    with init(config_source, version_base=None):
+    with initialize_config(config_source, version_base=None):  # type: ignore[attr-defined]
         cfg = compose(config_name=config_name, overrides=overrides)
 
     OmegaConf.resolve(cfg)
