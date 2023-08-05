@@ -1,16 +1,66 @@
 import logging
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
 
 from dvc.repo import locked
-
-# TODO? move _describe to utils or something
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
-from .utils import _describe, exp_refs_by_baseline
+from .utils import exp_refs_by_baseline  # , _describe
+
+if TYPE_CHECKING:
+    from dvc.scm import Git
 
 logger = logging.getLogger(__name__)
+
+
+def _describe(
+    scm: "Git",
+    revs: Iterable[str],
+    refs: Optional[Iterable[str]] = None,
+) -> Dict[str, Optional[str]]:
+    """Describe revisions using a tag, branch.
+
+    The first matching name will be returned for each rev. Names are preferred in this
+    order:
+        - current branch (if rev matches HEAD and HEAD is a branch)
+        - tags
+        - branches
+
+    Returns:
+        Dict mapping revisions from revs to a name.
+    """
+
+    head_rev = scm.get_rev()
+    head_ref = scm.get_ref("HEAD", follow=False)
+    if head_ref and head_ref.startswith("refs/heads/"):
+        head_branch = head_ref
+    else:
+        head_branch = None
+
+    tags = {}
+    branches = {}
+    ref_it = iter(refs) if refs else scm.iter_refs()
+    for ref in ref_it:
+        is_tag = ref.startswith("refs/tags/")
+        is_branch = ref.startswith("refs/heads/")
+        if not (is_tag or is_branch):
+            continue
+        rev = scm.get_ref(ref)
+        if not rev:
+            logger.debug("unresolved ref %s", ref)
+            continue
+        if is_tag and rev not in tags:
+            tags[rev] = ref
+        if is_branch and rev not in branches:
+            branches[rev] = ref
+    names: Dict[str, Optional[str]] = {}
+    for rev in revs:
+        if rev == head_rev and head_branch:
+            names[rev] = head_branch
+        else:
+            names[rev] = tags.get(rev) or branches.get(rev)
+    return names
 
 
 @locked
