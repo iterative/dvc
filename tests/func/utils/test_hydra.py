@@ -1,3 +1,5 @@
+from contextlib import nullcontext as does_not_raise
+
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
@@ -189,28 +191,34 @@ def hydra_setup_dir_basic(tmp_dir, config_subdir, config_name, config_content):
 
 
 @pytest.mark.parametrize(
-    "config_subdir,config_module,config_content",
+    "config_subdir,config_module,config_content,error_context",
     [
-        ("conf", None, {"normal_yaml_config": False}),
+        ("conf", None, {"normal_yaml_config": False}, does_not_raise()),
         (
             None,
             "hydra.test_utils.configs",
             {"normal_yaml_config": True},
+            does_not_raise(),
         ),
         (
             "conf",
             "hydra.test_utils.configs",
             {"normal_yaml_config": False},
+            does_not_raise(),
         ),
         (
             None,
             None,
             None,
+            pytest.raises(
+                ValueError,
+                match="Either `config_dir` or `config_module` should be provided.",
+            ),
         ),
     ],
 )
 def test_compose_and_dump_dir_module(
-    tmp_dir, config_subdir, config_module, config_content
+    tmp_dir, config_subdir, config_module, config_content, error_context
 ):
     from dvc.utils.hydra import compose_and_dump
 
@@ -220,8 +228,9 @@ def test_compose_and_dump_dir_module(
         tmp_dir, config_subdir, config_name, config_content
     )
 
-    compose_and_dump(output_file, config_dir, config_module, config_name, [])
-    assert output_file.parse() == config_content
+    with error_context:
+        compose_and_dump(output_file, config_dir, config_module, config_name, [])
+        assert output_file.parse() == config_content
 
 
 def test_compose_and_dump_yaml_handles_string(tmp_dir):
