@@ -364,15 +364,10 @@ def _describe(
         Dict mapping revisions from revs to a name.
     """
 
-    if remove_ref_string:
-        replace_pat = r"^refs/(?:tags|heads)/"
-    else:
-        replace_pat = r""
-
     head_rev = scm.get_rev()
     head_ref = scm.get_ref("HEAD", follow=False)
     if head_ref and head_ref.startswith("refs/heads/"):
-        head_branch = re.sub(replace_pat, "", head_ref)
+        head_branch = head_ref
     else:
         head_branch = None
 
@@ -389,9 +384,9 @@ def _describe(
             logger.debug("unresolved ref %s", ref)
             continue
         if is_tag and rev not in tags:
-            tags[rev] = re.sub(replace_pat, "", ref)
+            tags[rev] = ref
         if is_branch and rev not in branches:
-            branches[rev] = re.sub(replace_pat, "", ref)
+            branches[rev] = ref
 
     names: Dict[str, Optional[str]] = {}
     for rev in revs:
@@ -399,4 +394,12 @@ def _describe(
             names[rev] = head_branch
         else:
             names[rev] = tags.get(rev) or branches.get(rev)
+
+    if remove_ref_string:
+        replace_pat = r"^refs/(?:tags|heads)/"
+        names = {
+            rev: (re.sub(replace_pat, "", name) if name else name)
+            for rev, name in names.items()
+        }
+
     return names
