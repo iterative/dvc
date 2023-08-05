@@ -366,10 +366,7 @@ def _describe(
     head_rev = scm.get_rev()
     head_ref = scm.get_ref("HEAD", follow=False)
     if head_ref and head_ref.startswith("refs/heads/"):
-        if remove_ref_string:
-            head_branch = head_ref[len("refs/heads/") :]
-        else:
-            head_branch = head_ref
+        head_branch = head_ref
     else:
         head_branch = None
 
@@ -391,18 +388,16 @@ def _describe(
             branches[rev] = ref
 
     if remove_ref_string:
-        tags_final = {rev: name[len("refs/tags/") :] for rev, name in tags.items()}
-        branches_final = {
-            rev: name[len("refs/heads/") :] for rev, name in branches.items()
-        }
-    else:
-        tags_final = tags
-        branches_final = branches
+        if head_branch:
+            head_branch = head_branch[len("refs/heads/") :]
+
+        tags = {rev: name[len("refs/tags/") :] for rev, name in tags.items()}
+        branches = {rev: name[len("refs/heads/") :] for rev, name in branches.items()}
 
     names: Dict[str, Optional[str]] = {}
     for rev in revs:
         if rev == head_rev and head_branch:
             names[rev] = head_branch
         else:
-            names[rev] = tags_final.get(rev) or branches_final.get(rev)
+            names[rev] = tags.get(rev) or branches.get(rev)
     return names
