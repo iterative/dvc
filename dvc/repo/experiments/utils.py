@@ -1,4 +1,3 @@
-import logging
 import os
 import random
 import sys
@@ -348,8 +347,9 @@ def to_studio_params(dvc_params):
 def _describe(
     scm: "Git",
     revs: Iterable[str],
+    logger,
     refs: Optional[Iterable[str]] = None,
-    logger=None,
+    remove_ref_string=True,
 ) -> Dict[str, Optional[str]]:
     """Describe revisions using a tag, branch.
 
@@ -363,13 +363,13 @@ def _describe(
         Dict mapping revisions from revs to a name.
     """
 
-    if not logger:
-        logger = logging.getLogger(__name__)
-
     head_rev = scm.get_rev()
     head_ref = scm.get_ref("HEAD", follow=False)
     if head_ref and head_ref.startswith("refs/heads/"):
-        head_branch = head_ref[len("refs/heads/") :]
+        if remove_ref_string:
+            head_branch = head_ref[len("refs/heads/") :]
+        else:
+            head_branch = head_ref
     else:
         head_branch = None
 
@@ -386,9 +386,16 @@ def _describe(
             logger.debug("unresolved ref %s", ref)
             continue
         if is_tag and rev not in tags:
-            tags[rev] = ref[len("refs/tags/") :]
+            if remove_ref_string:
+                tags[rev] = ref[len("refs/tags/") :]
+            else:
+                tags[rev] = ref
         if is_branch and rev not in branches:
-            branches[rev] = ref[len("refs/heads/") :]
+            if remove_ref_string:
+                branches[rev] = ref[len("refs/heads/") :]
+            else:
+                branches[rev] = ref
+
     names: Dict[str, Optional[str]] = {}
     for rev in revs:
         if rev == head_rev and head_branch:

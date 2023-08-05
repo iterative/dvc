@@ -309,7 +309,9 @@ def collect(
     if sha_only:
         baseline_names: Dict[str, Optional[str]] = {}
     else:
-        baseline_names = _describe(repo.scm, baseline_revs, refs=cached_refs)
+        baseline_names = _describe(
+            repo.scm, baseline_revs, refs=cached_refs, logger=logger
+        )
 
     workspace_data = collect_rev(repo, "workspace", **kwargs)
     result: List["ExpState"] = [workspace_data]
