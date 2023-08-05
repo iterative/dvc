@@ -7,11 +7,11 @@ import pytest
 
 from dvc import env
 from dvc.stage import PipelineStage
-from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
+from dvc.testing.fixtures import *  # noqa: F403, pylint: disable=wildcard-import
 
-from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
-from .remotes import *  # noqa, pylint: disable=wildcard-import
-from .scripts import *  # noqa, pylint: disable=wildcard-import
+from .dir_helpers import *  # noqa: F403 # pylint: disable=wildcard-import
+from .remotes import *  # noqa: F403 # pylint: disable=wildcard-import
+from .scripts import *  # noqa: F403, pylint: disable=wildcard-import
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"

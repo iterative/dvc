@@ -1,3 +1,27 @@
+import argparse
+
+
+class DictAction(argparse.Action):
+    def __call__(self, parser, args, values, option_string=None):  # noqa: ARG002
+        d = getattr(args, self.dest) or {}
+
+        if isinstance(values, list):
+            kvs = values
+        else:
+            kvs = [values]
+
+        for kv in kvs:
+            key, value = kv.split("=")
+            if not value:
+                raise argparse.ArgumentError(
+                    self,
+                    f'Could not parse argument "{values}" as k1=v1 k2=v2 ... format',
+                )
+            d[key] = value
+
+        setattr(args, self.dest, d)
+
+
 def fix_subparsers(subparsers):
     """Workaround for bug in Python 3. See more info at:
     https://bugs.python.org/issue16308

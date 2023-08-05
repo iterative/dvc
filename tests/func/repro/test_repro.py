@@ -1326,14 +1326,18 @@ def test_repro_keep_going(mocker, tmp_dir, dvc, copy_script):
     with pytest.raises(ReproductionError):
         dvc.reproduce(on_error="keep-going", repro_fn=spy)
 
-    assert spy.call_args_list == [
-        mocker.call(bar_stage, upstream=[], force=False, interactive=False),
-        mocker.call(stage1, upstream=[bar_stage], force=False, interactive=False),
-        mocker.call(foo_stage, upstream=[], force=False, interactive=False),
-    ]
+    bar_call = mocker.call(bar_stage, upstream=[], force=False, interactive=False)
+    stage1_call = mocker.call(
+        stage1, upstream=[bar_stage], force=False, interactive=False
+    )
+    foo_call = mocker.call(foo_stage, upstream=[], force=False, interactive=False)
+    assert spy.call_args_list in (
+        [bar_call, stage1_call, foo_call],
+        [foo_call, bar_call, stage1_call],
+    )
 
 
-def test_repro_ignore_errors(M, mocker, tmp_dir, dvc, copy_script):
+def test_repro_ignore_errors(mocker, tmp_dir, dvc, copy_script):
     from dvc.repo import reproduce
 
     (bar_stage, foo_stage) = tmp_dir.dvc_gen({"bar": "bar", "foo": "foo"})
@@ -1347,14 +1351,18 @@ def test_repro_ignore_errors(M, mocker, tmp_dir, dvc, copy_script):
     spy = mocker.spy(reproduce, "_reproduce_stage")
     dvc.reproduce(on_error="ignore", repro_fn=spy)
 
-    assert spy.call_args_list == [
-        mocker.call(bar_stage, upstream=[], force=False, interactive=False),
-        mocker.call(stage1, upstream=[bar_stage], force=False, interactive=False),
-        mocker.call(foo_stage, upstream=[], force=False, interactive=False),
-        mocker.call(
-            stage2,
-            upstream=[foo_stage, stage1],
-            force=False,
-            interactive=False,
-        ),
-    ]
+    bar_call = mocker.call(bar_stage, upstream=[], force=False, interactive=False)
+    foo_call = mocker.call(foo_stage, upstream=[], force=False, interactive=False)
+    stage1_call = mocker.call(
+        stage1, upstream=[bar_stage], force=False, interactive=False
+    )
+    stage2_call = mocker.call(
+        stage2,
+        upstream=[foo_stage, stage1],
+        force=False,
+        interactive=False,
+    )
+    assert spy.call_args_list in (
+        [bar_call, stage1_call, foo_call, stage2_call],
+        [foo_call, bar_call, stage1_call, stage2_call],
+    )

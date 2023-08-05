@@ -483,7 +483,7 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
             if isinstance(elem, str):
                 dvcfile_defs_dict[elem] = None
             else:
-                k, v = list(elem.items())[0]
+                k, v = next(iter(elem.items()))
                 dvcfile_defs_dict[k] = v
 
         resolved = _resolve_definitions(

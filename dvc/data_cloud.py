@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Iterable, Optional, Set, Tuple
 
 from dvc.config import NoRemoteError, RemoteConfigError
+from dvc.fs.callbacks import Callback
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
 from dvc_data.hashfile.transfer import TransferResult
@@ -209,15 +210,20 @@ class DataCloud:
             cache = self.repo.cache.legacy
         else:
             cache = self.repo.cache.local
-        return self.transfer(
-            cache,
-            odb,
-            objs,
-            jobs=jobs,
-            dest_index=get_index(odb),
-            cache_odb=cache,
-            validate_status=self._log_missing,
-        )
+        with Callback.as_tqdm_callback(
+            desc=f"Pushing to {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            return self.transfer(
+                cache,
+                odb,
+                objs,
+                jobs=jobs,
+                dest_index=get_index(odb),
+                cache_odb=cache,
+                validate_status=self._log_missing,
+                callback=cb,
+            )
 
     def pull(
         self,
@@ -263,16 +269,21 @@ class DataCloud:
             cache = self.repo.cache.legacy
         else:
             cache = self.repo.cache.local
-        return self.transfer(
-            odb,
-            cache,
-            objs,
-            jobs=jobs,
-            src_index=get_index(odb),
-            cache_odb=cache,
-            verify=odb.verify,
-            validate_status=self._log_missing,
-        )
+        with Callback.as_tqdm_callback(
+            desc=f"Fetching from {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            return self.transfer(
+                odb,
+                cache,
+                objs,
+                jobs=jobs,
+                src_index=get_index(odb),
+                cache_odb=cache,
+                verify=odb.verify,
+                validate_status=self._log_missing,
+                callback=cb,
+            )
 
     def status(
         self,

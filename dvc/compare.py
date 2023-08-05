@@ -57,7 +57,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return self._columns[name]
 
     def items(self) -> ItemsView[str, Column]:
-        projection = {k: self.column(k) for k in self.keys()}  # noqa: SIM118
+        projection = {k: self.column(k) for k in self.keys()}
         return projection.items()
 
     def keys(self) -> List[str]:
@@ -171,8 +171,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 self.add_column(key)
 
         row: List["CellT"] = [
-            with_value(d.get(key), self._fill_value)
-            for key in self.keys()  # noqa: SIM118
+            with_value(d.get(key), self._fill_value) for key in self.keys()
         ]
         self.append(row)
 
@@ -227,7 +226,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             to_drop -= match_line
 
         if axis == "rows":
-            for name in self.keys():  # noqa: SIM118
+            for name in self.keys():
                 self._columns[name] = Column(
                     [x for n, x in enumerate(self._columns[name]) if n not in to_drop]
                 )
@@ -275,7 +274,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 else:
                     unique_rows.append(tuple_row)
 
-            for name in self.keys():  # noqa: SIM118
+            for name in self.keys():
                 self._columns[name] = Column(
                     [
                         x

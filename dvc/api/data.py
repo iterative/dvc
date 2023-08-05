@@ -67,7 +67,7 @@ class _OpenContextManager(GCM):
         raise AttributeError("dvc.api.open() should be used in a with statement.")
 
 
-def open(  # noqa, pylint: disable=redefined-builtin
+def open(  # noqa: A001, pylint: disable=redefined-builtin
     path: str,
     repo: Optional[str] = None,
     rev: Optional[str] = None,

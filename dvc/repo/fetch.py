@@ -48,7 +48,14 @@ def _collect_indexes(  # noqa: PLR0913
                 max_size=max_size,
                 types=types,
             )
-            indexes[idx.data_tree.hash_info.value] = idx.data["repo"]
+
+            def onerror(_entry, _exc):
+                pass
+
+            data = idx.data["repo"]
+            data.onerror = onerror
+
+            indexes[idx.data_tree.hash_info.value] = data
         except Exception as exc:  # pylint: disable=broad-except
             collection_exc = exc
             logger.exception("failed to collect '%s'", rev or "workspace")

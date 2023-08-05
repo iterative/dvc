@@ -1,5 +1,5 @@
-from .benchmarks.fixtures import *  # noqa, pylint: disable=wildcard-import
-from .fixtures import *  # noqa, pylint: disable=wildcard-import
+from .benchmarks.fixtures import *  # noqa: F403, pylint: disable=wildcard-import
+from .fixtures import *  # noqa: F403, pylint: disable=wildcard-import
 
 
 def pytest_generate_tests(metafunc):

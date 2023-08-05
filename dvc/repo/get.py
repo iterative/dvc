@@ -19,7 +19,17 @@ class GetDVCFileError(DvcException):
         )
 
 
-def get(url, path, out=None, rev=None, jobs=None, force=False, config=None):
+def get(
+    url,
+    path,
+    out=None,
+    rev=None,
+    jobs=None,
+    force=False,
+    config=None,
+    remote=None,
+    remote_config=None,
+):
     from dvc.config import Config
     from dvc.dvcfile import is_valid_filename
     from dvc.repo import Repo
@@ -38,6 +48,8 @@ def get(url, path, out=None, rev=None, jobs=None, force=False, config=None):
         subrepos=True,
         uninitialized=True,
         config=config,
+        remote=remote,
+        remote_config=remote_config,
     ) as repo:
         from dvc.fs import download
         from dvc.fs.data import DataFileSystem

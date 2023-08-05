@@ -3,7 +3,7 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,8 @@ class CmdImport(CmdBase):
                 no_download=self.args.no_download,
                 jobs=self.args.jobs,
                 config=self.args.config,
+                remote=self.args.remote,
+                remote_config=self.args.remote_config,
             )
         except CloneError:
             logger.exception("failed to import '%s'", self.args.path)
@@ -101,6 +103,21 @@ def add_parser(subparsers, parent_parser):
         help=(
             "Path to a config file that will be merged with the config "
             "in the target repository."
+        ),
+    )
+    import_parser.add_argument(
+        "--remote",
+        type=str,
+        help="Remote name to set as a default in the target repository.",
+    )
+    import_parser.add_argument(
+        "--remote-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help=(
+            "Remote config options to merge with a remote's config (default or one "
+            "specified by '--remote') in the target repository."
         ),
     )
     import_parser.set_defaults(func=CmdImport)
