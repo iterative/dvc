@@ -1,5 +1,6 @@
 import os
 import random
+import re
 import sys
 from collections import defaultdict
 from functools import wraps
@@ -363,10 +364,15 @@ def _describe(
         Dict mapping revisions from revs to a name.
     """
 
+    if remove_ref_string:
+        replace_pat = r"^refs/(?:tags|heads)/"
+    else:
+        replace_pat = r""
+
     head_rev = scm.get_rev()
     head_ref = scm.get_ref("HEAD", follow=False)
     if head_ref and head_ref.startswith("refs/heads/"):
-        head_branch = head_ref
+        head_branch = re.sub(replace_pat, "", head_ref)
     else:
         head_branch = None
 
@@ -383,16 +389,9 @@ def _describe(
             logger.debug("unresolved ref %s", ref)
             continue
         if is_tag and rev not in tags:
-            tags[rev] = ref
+            tags[rev] = re.sub(replace_pat, "", ref)
         if is_branch and rev not in branches:
-            branches[rev] = ref
-
-    if remove_ref_string:
-        if head_branch:
-            head_branch = head_branch[len("refs/heads/") :]
-
-        tags = {rev: name[len("refs/tags/") :] for rev, name in tags.items()}
-        branches = {rev: name[len("refs/heads/") :] for rev, name in branches.items()}
+            branches[rev] = re.sub(replace_pat, "", ref)
 
     names: Dict[str, Optional[str]] = {}
     for rev in revs:
