@@ -182,7 +182,7 @@ def test_partial_checkout_and_update(M, tmp_dir, dvc, remote):
 
     assert dvc.pull("dir/subdir") == M.dict(
         added=[join("dir", "")],
-        fetched=3,
+        fetched=2,
     )
     assert (tmp_dir / "dir").read_text() == {"subdir": {"lorem": "lorem"}}
 
