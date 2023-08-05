@@ -19,11 +19,11 @@ from funcy import first
 from scmrepo.exceptions import SCMError as InnerSCMError
 
 from dvc.scm import Git, SCMError, iter_revs
-from .utils import _describe
 
 from .exceptions import InvalidExpRefError
 from .refs import EXEC_BRANCH, ExpRefInfo
 from .serialize import ExpRange, ExpState, SerializableError, SerializableExp
+from .utils import _describe
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -336,6 +336,7 @@ def collect(
             )
         )
     return result
+
 
 def _sorted_ranges(exp_ranges: Iterable["ExpRange"]) -> List["ExpRange"]:
     """Return list of ExpRange sorted by (timestamp, rev)."""

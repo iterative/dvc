@@ -3,13 +3,12 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Tuple, Union
 
 from dvc.repo import locked
+
+# TODO? move _describe to utils or something
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
-# TODO? move _describe to utils or something
-from dvc.repo.experiments.collect import _describe
-
-from .utils import exp_refs_by_baseline, _describe
+from .utils import _describe, exp_refs_by_baseline
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,9 @@ def ls(
     for baseline in ref_info_dict:
         name = baseline
         if baseline_names[baseline]:
-            name = baseline_names[baseline]
+            # the str() retyping is a hack to deal with the typed dictionary
+            # from _describe...probably there is a better way
+            name = str(baseline_names.get(baseline))
         for info in ref_info_dict[baseline]:
             if git_remote:
                 exp_rev = None

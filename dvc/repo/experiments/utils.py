@@ -344,11 +344,12 @@ def to_studio_params(dvc_params):
 
     return result
 
+
 def _describe(
     scm: "Git",
     revs: Iterable[str],
     refs: Optional[Iterable[str]] = None,
-    logger = logging.getLogger(__name__),
+    logger=None,
 ) -> Dict[str, Optional[str]]:
     """Describe revisions using a tag, branch.
 
@@ -361,6 +362,9 @@ def _describe(
     Returns:
         Dict mapping revisions from revs to a name.
     """
+
+    if not logger:
+        logger = logging.getLogger(__name__)
 
     head_rev = scm.get_rev()
     head_ref = scm.get_ref("HEAD", follow=False)
