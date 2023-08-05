@@ -210,15 +210,15 @@ def hydra_setup_dir_basic(tmp_dir, config_subdir, config_name, config_content):
     ],
 )
 def test_compose_and_dump_dir_module(
-    tmp_dir, config_subdir, config_module, config_name, config_content
+    tmp_dir, config_subdir, config_module, config_content
 ):
     from dvc.utils.hydra import compose_and_dump
 
     output_file = tmp_dir / "params.yaml"
+    config_name = "config"
     config_dir = hydra_setup_dir_basic(
         tmp_dir, config_subdir, config_name, config_content
     )
-    config_name = "config"
 
     compose_and_dump(output_file, config_dir, config_module, config_name, [])
     assert output_file.parse() == config_content
