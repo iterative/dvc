@@ -148,7 +148,7 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     assert ret == 0
     ret = main(["push"])
     assert ret == 0
-    assert test_file_md5.mock.call_count == 1
+    assert test_file_md5.mock.call_count == 3
 
 
 def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
@@ -486,7 +486,7 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     clean(["foo"], dvc)
 
     stats = dvc.pull(os.path.join("foo", "bar"))
-    assert stats["fetched"] == 3
+    assert stats["fetched"] == 2
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
 
 

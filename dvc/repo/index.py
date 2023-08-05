@@ -169,8 +169,9 @@ def _load_storage_from_out(storage_map, key, out):
                 FileStorage(
                     key=key,
                     fs=remote.fs,
-                    path=remote.fs.path.join(remote.path, *key),
+                    path=remote.path,
                     index=remote.index,
+                    prefix=(),
                 )
             )
         else:
