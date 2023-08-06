@@ -6,7 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
-from .utils import describe, exp_refs_by_baseline
+from .utils import exp_refs_by_baseline
 
 logger = logging.getLogger(__name__)
 
@@ -33,22 +33,13 @@ def ls(
         rev_set = set(revs.keys())
 
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-    baseline_names = describe(
-        repo.scm, revs=ref_info_dict.keys(), logger=logger, remove_ref_string=False
-    )
-
     results = defaultdict(list)
     for baseline in ref_info_dict:
-        name = baseline
-        if baseline_names[baseline]:
-            # the str() retyping is a hack to deal with the typed dictionary
-            # from _describe...probably there is a better way
-            name = str(baseline_names.get(baseline))
         for info in ref_info_dict[baseline]:
             if git_remote:
                 exp_rev = None
             else:
                 exp_rev = repo.scm.get_ref(str(info))
-            results[name].append((info.name, exp_rev))
+            results[baseline].append((info.name, exp_rev))
 
     return results

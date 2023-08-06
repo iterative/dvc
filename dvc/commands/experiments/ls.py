@@ -1,9 +1,13 @@
 import argparse
 import logging
 
+from scmrepo.exceptions import SCMError
+
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import InvalidArgumentError
+from dvc.repo.experiments.utils import describe
+from dvc.scm import NoSCM
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
@@ -23,15 +27,20 @@ class CmdExperimentsList(CmdBase):
             git_remote=git_remote,
         )
 
+        if name_only or sha_only:
+            names = {}
+        elif isinstance(self.repo.scm, NoSCM):
+            raise SCMError("No SCM repository found")
+        else:
+            names = describe(
+                self.repo.scm,
+                (baseline for baseline in exps),
+                logger=logger,
+            )
+
         for baseline in exps:
             if not (name_only or sha_only):
-                tag_base = "refs/tags/"
-                branch_base = "refs/heads/"
-                name = baseline[:7]
-                if baseline.startswith(tag_base):
-                    name = baseline[len(tag_base) :]
-                elif baseline.startswith(branch_base):
-                    name = baseline[len(branch_base) :]
+                name = names.get(baseline) or baseline[:7]
                 ui.write(f"{name}:")
             for exp_name, rev in exps[baseline]:
                 if name_only:
