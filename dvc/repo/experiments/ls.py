@@ -6,7 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
-from .utils import _describe, exp_refs_by_baseline
+from .utils import describe, exp_refs_by_baseline
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def ls(
         rev_set = set(revs.keys())
 
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-    baseline_names = _describe(
+    baseline_names = describe(
         repo.scm, revs=ref_info_dict.keys(), logger=logger, remove_ref_string=False
     )
 

@@ -23,7 +23,7 @@ from dvc.scm import Git, SCMError, iter_revs
 from .exceptions import InvalidExpRefError
 from .refs import EXEC_BRANCH, ExpRefInfo
 from .serialize import ExpRange, ExpState, SerializableError, SerializableExp
-from .utils import _describe
+from .utils import describe
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -309,7 +309,7 @@ def collect(
     if sha_only:
         baseline_names: Dict[str, Optional[str]] = {}
     else:
-        baseline_names = _describe(
+        baseline_names = describe(
             repo.scm, baseline_revs, refs=cached_refs, logger=logger
         )
 

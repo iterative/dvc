@@ -345,7 +345,7 @@ def to_studio_params(dvc_params):
     return result
 
 
-def _describe(
+def describe(
     scm: "Git",
     revs: Iterable[str],
     logger,
