@@ -177,7 +177,7 @@ def _build_rows(
                 )
 
 
-def _sort_column(
+def _sort_column(  # noqa: C901
     sort_by: str,
     metric_names: Mapping[str, Iterable[str]],
     param_names: Mapping[str, Iterable[str]],
@@ -190,13 +190,13 @@ def _sort_column(
             matches.add((path, sort_name, "metrics"))
         if path in param_names and sort_name in param_names[path]:
             matches.add((path, sort_name, "params"))
-    else:
+    if not matches:
         for path in metric_names:
-            if sort_name in metric_names[path]:
-                matches.add((path, sort_name, "metrics"))
+            if sort_by in metric_names[path]:
+                matches.add((path, sort_by, "metrics"))
         for path in param_names:
-            if sort_name in param_names[path]:
-                matches.add((path, sort_name, "params"))
+            if sort_by in param_names[path]:
+                matches.add((path, sort_by, "params"))
 
     if len(matches) == 1:
         return matches.pop()
