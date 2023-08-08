@@ -93,6 +93,7 @@ class Repo:
     from dvc.repo.status import status  # type: ignore[misc]
     from dvc.repo.update import update  # type: ignore[misc]
 
+    from .cache import check_missing as cache_check_missing  # type: ignore[misc]
     from .data import status as data_status  # type: ignore[misc]
 
     ls = staticmethod(_ls)

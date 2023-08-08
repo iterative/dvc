@@ -8,6 +8,7 @@ from voluptuous import (
     All,
     Any,
     Coerce,
+    Exclusive,
     Invalid,
     Lower,
     Optional,
@@ -324,7 +325,8 @@ SCHEMA = {
     },
     "hydra": {
         Optional("enabled", default=False): Bool,
-        "config_dir": str,
+        Exclusive("config_dir", "config_source"): str,
+        Exclusive("config_module", "config_source"): str,
         "config_name": str,
     },
     "studio": {
