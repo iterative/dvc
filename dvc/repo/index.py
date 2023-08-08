@@ -413,7 +413,7 @@ class Index:
             by_workspace[workspace].add(key)
 
         for path in self._plot_sources:
-            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            key = self.repo.fs.path.parts(path)
             by_workspace["repo"].add(key)
 
         return dict(by_workspace)
