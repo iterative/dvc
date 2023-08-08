@@ -353,12 +353,16 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 def test_show_sort_metric_sep(tmp_dir, scm, dvc, caplog):
-    metrics_path = tmp_dir / "metrics.json"
+    metrics_path = tmp_dir / "metrics1.json"
     metrics_path.write_text('{"my::metric": 1}')
+    metrics_path = tmp_dir / "metrics2.json"
+    metrics_path.write_text('{"my::metric": 2}')
     dvcyaml_path = tmp_dir / "dvc.yaml"
-    dvcyaml_path.write_text("metrics: [metrics.json]")
+    dvcyaml_path.write_text("metrics: [metrics1.json, metrics2.json]")
     dvc.experiments.save()
-    assert main(["exp", "show", "--no-pager", "--sort-by=my::metric"]) == 0
+    assert (
+        main(["exp", "show", "--no-pager", "--sort-by=metrics1.json:my::metric"]) == 0
+    )
 
 
 @pytest.mark.vscode

@@ -182,7 +182,7 @@ def _sort_column(  # noqa: C901
     metric_names: Mapping[str, Iterable[str]],
     param_names: Mapping[str, Iterable[str]],
 ) -> Tuple[str, str, str]:
-    path, _, sort_name = sort_by.rpartition(":")
+    path, _, sort_name = sort_by.partition(":")
     matches: Set[Tuple[str, str, str]] = set()
 
     if path:
