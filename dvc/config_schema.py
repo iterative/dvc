@@ -75,6 +75,17 @@ def ByUrl(mapping):  # noqa: N802
     return validate
 
 
+class ExpPath(str):
+    __slots__ = ("def_path",)
+
+    def_path: str
+
+    def __new__(cls, string, def_path):
+        ret = super().__new__(cls, string)
+        ret.def_path = def_path
+        return ret
+
+
 class RelPath(str):
     __slots__ = ()
 
