@@ -250,21 +250,30 @@ class Config(dict):
         return conf
 
     @staticmethod
-    def _load_paths(conf, filename):
-        abs_conf_dir = os.path.abspath(os.path.dirname(filename))
+    def _resolve(conf_dir, path):
+        from .config_schema import ExpPath, RelPath
 
-        def resolve(path):
-            from .config_schema import RelPath
+        if re.match(r"\w+://", path):
+            return path
 
-            if os.path.isabs(path) or re.match(r"\w+://", path):
-                return path
+        if os.path.isabs(path):
+            return path
 
-            # on windows convert slashes to backslashes
-            # to have path compatible with abs_conf_dir
-            if os.path.sep == "\\" and "/" in path:
-                path = path.replace("/", "\\")
+        # on windows convert slashes to backslashes
+        # to have path compatible with abs_conf_dir
+        if os.path.sep == "\\" and "/" in path:
+            path = path.replace("/", "\\")
 
-            return RelPath(os.path.join(abs_conf_dir, path))
+        expanded = os.path.expanduser(path)
+        if os.path.isabs(expanded):
+            return ExpPath(expanded, path)
+
+        return RelPath(os.path.abspath(os.path.join(conf_dir, path)))
+
+    @classmethod
+    def _load_paths(cls, conf, filename):
+        conf_dir = os.path.abspath(os.path.dirname(filename))
+        resolve = partial(cls._resolve, conf_dir)
 
         return Config._map_dirs(conf, resolve)
 
@@ -273,10 +282,16 @@ class Config(dict):
         from dvc.fs import localfs
         from dvc.utils import relpath
 
-        from .config_schema import RelPath
+        from .config_schema import ExpPath, RelPath
 
         if re.match(r"\w+://", path):
             return path
+
+        if isinstance(path, ExpPath):
+            return path.def_path
+
+        if os.path.expanduser(path) != path:
+            return localfs.path.as_posix(path)
 
         if isinstance(path, RelPath) or not os.path.isabs(path):
             path = relpath(path, conf_dir)
