@@ -244,6 +244,7 @@ class Repo:
 
         return Config(
             self.dvc_dir,
+            local_dvc_dir=self.local_dvc_dir,
             fs=self.fs,
             config=self._config,
             remote=self._remote,
