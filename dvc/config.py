@@ -165,6 +165,9 @@ class Config(dict):
         with open(config_file, "w+", encoding="utf-8"):
             return Config(dvc_dir)
 
+    def merge(self, config):
+        merge(self, config)
+
     def load(
         self,
         validate: bool = True,

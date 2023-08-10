@@ -48,7 +48,7 @@ def _collect_indexes(  # noqa: PLR0913
         all_commits=all_commits,
     ):
         try:
-            repo.config.update(config)
+            repo.config.merge(config)
 
             idx = repo.index.targets_view(
                 targets,
