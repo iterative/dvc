@@ -23,6 +23,7 @@ from dvc.scm import Git, SCMError, iter_revs
 from .exceptions import InvalidExpRefError
 from .refs import EXEC_BRANCH, ExpRefInfo
 from .serialize import ExpRange, ExpState, SerializableError, SerializableExp
+from .utils import describe
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -308,7 +309,9 @@ def collect(
     if sha_only:
         baseline_names: Dict[str, Optional[str]] = {}
     else:
-        baseline_names = _describe(repo.scm, baseline_revs, refs=cached_refs)
+        baseline_names = describe(
+            repo.scm, baseline_revs, refs=cached_refs, logger=logger
+        )
 
     workspace_data = collect_rev(repo, "workspace", **kwargs)
     result: List["ExpState"] = [workspace_data]
@@ -335,55 +338,6 @@ def collect(
             )
         )
     return result
-
-
-def _describe(
-    scm: "Git",
-    revs: Iterable[str],
-    refs: Optional[Iterable[str]] = None,
-) -> Dict[str, Optional[str]]:
-    """Describe revisions using a tag, branch.
-
-    The first matching name will be returned for each rev. Names are preferred in this
-    order:
-        - current branch (if rev matches HEAD and HEAD is a branch)
-        - tags
-        - branches
-
-    Returns:
-        Dict mapping revisions from revs to a name.
-    """
-
-    head_rev = scm.get_rev()
-    head_ref = scm.get_ref("HEAD", follow=False)
-    if head_ref and head_ref.startswith("refs/heads/"):
-        head_branch = head_ref[len("refs/heads/") :]
-    else:
-        head_branch = None
-
-    tags = {}
-    branches = {}
-    ref_it = iter(refs) if refs else scm.iter_refs()
-    for ref in ref_it:
-        is_tag = ref.startswith("refs/tags/")
-        is_branch = ref.startswith("refs/heads/")
-        if not (is_tag or is_branch):
-            continue
-        rev = scm.get_ref(ref)
-        if not rev:
-            logger.debug("unresolved ref %s", ref)
-            continue
-        if is_tag and rev not in tags:
-            tags[rev] = ref[len("refs/tags/") :]
-        if is_branch and rev not in branches:
-            branches[rev] = ref[len("refs/heads/") :]
-    names: Dict[str, Optional[str]] = {}
-    for rev in revs:
-        if rev == head_rev and head_branch:
-            names[rev] = head_branch
-        else:
-            names[rev] = tags.get(rev) or branches.get(rev)
-    return names
 
 
 def _sorted_ranges(exp_ranges: Iterable["ExpRange"]) -> List["ExpRange"]:

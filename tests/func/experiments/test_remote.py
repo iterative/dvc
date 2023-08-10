@@ -139,7 +139,7 @@ def test_push_ambiguous_name(tmp_dir, scm, dvc, git_upstream, exp_stage):
 
 @pytest.mark.parametrize("use_url", [True, False])
 def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
-    baseline_a = scm.get_rev()
+    baseline_old = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
     ref_info_a = first(exp_refs_by_rev(scm, exp_a))
@@ -149,6 +149,8 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
     tmp_dir.scm_gen("new", "new", commit="new")
+    baseline_new = scm.get_rev()
+
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
@@ -160,15 +162,15 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     assert downstream_exp.ls(git_remote=remote) == {}
 
     git_downstream.tmp_dir.scm.fetch_refspecs(remote, ["master:master"])
-    exp_list = downstream_exp.ls(rev=baseline_a, git_remote=remote)
+    exp_list = downstream_exp.ls(rev=baseline_old, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, None), (ref_info_b.name, None)}
+        baseline_old: {(ref_info_a.name, None), (ref_info_b.name, None)}
     }
 
     exp_list = downstream_exp.ls(all_commits=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, None), (ref_info_b.name, None)},
-        "refs/heads/master": {(ref_info_c.name, None)},
+        baseline_old: {(ref_info_a.name, None), (ref_info_b.name, None)},
+        baseline_new: {(ref_info_c.name, None)},
     }
 
 

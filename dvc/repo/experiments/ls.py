@@ -31,23 +31,15 @@ def ls(
             rev = [rev]
         revs = iter_revs(repo.scm, rev, num)
         rev_set = set(revs.keys())
+
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-
-    tags = repo.scm.describe(ref_info_dict.keys())
-    remained = {baseline for baseline, tag in tags.items() if tag is None}
-    base = "refs/heads"
-    ref_heads = repo.scm.describe(remained, base=base)
-
     results = defaultdict(list)
     for baseline in ref_info_dict:
-        name = baseline
-        if tags[baseline] or ref_heads[baseline]:
-            name = tags[baseline] or ref_heads[baseline]
         for info in ref_info_dict[baseline]:
             if git_remote:
                 exp_rev = None
             else:
                 exp_rev = repo.scm.get_ref(str(info))
-            results[name].append((info.name, exp_rev))
+            results[baseline].append((info.name, exp_rev))
 
     return results
