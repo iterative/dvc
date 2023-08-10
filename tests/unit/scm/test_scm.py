@@ -76,6 +76,12 @@ def test_iter_revs(
                 commit_time_offset=0,
                 message="dummy",
                 parents=["dummy"],
+                committer_name="dummy",
+                committer_email="dummy",
+                author_name="dummy",
+                author_email="dummy",
+                author_time=datetime(2022, 6, 28).timestamp(),
+                author_time_offset=0,
             )
         if rev == rev_old:
             raise SCMError
@@ -85,6 +91,12 @@ def test_iter_revs(
             commit_time_offset=0,
             message="dummy",
             parents=["dummy"],
+            committer_name="dummy",
+            committer_email="dummy",
+            author_name="dummy",
+            author_email="dummy",
+            author_time=datetime(2022, 6, 28).timestamp(),
+            author_time_offset=0,
         )
 
     mocker.patch(
