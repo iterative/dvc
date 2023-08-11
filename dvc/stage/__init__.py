@@ -314,7 +314,8 @@ class Stage(params.StageParams):
             if status:
                 if allow_missing and status[str(dep)] == "deleted":
                     if upstream and any(
-                        dep.fs_path == out.fs_path and dep.hash_info != out.hash_info
+                        dep.fs_path == out.fs_path
+                        and dep.hash_info.value != out.hash_info.value
                         for stage in upstream
                         for out in stage.outs
                     ):

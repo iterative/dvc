@@ -16,6 +16,59 @@ def test_repro_allow_missing(tmp_dir, dvc):
     assert not ret
 
 
+def test_repro_allow_missing_dry_with_dvc_2_file(tmp_dir, dvc):
+    """https://github.com/iterative/dvc/issues/9818"""
+
+    # A .dvc file in 2.X format
+    (tmp_dir / "data.dvc").dump(
+        {
+            "outs": [
+                {
+                    "md5": "14d187e749ee5614e105741c719fa185.dir",
+                    "size": 18999874,
+                    "nfiles": 183,
+                    "path": "data",
+                }
+            ]
+        }
+    )
+
+    (tmp_dir / "dvc.lock").dump(
+        {
+            "schema": "2.0",
+            "stages": {
+                "cat-data-foo": {
+                    "cmd": "cat data/foo > foo",
+                    "deps": [
+                        {
+                            # The file as dependency in 3.X format
+                            "path": "data",
+                            "hash": "md5",
+                            "md5": "14d187e749ee5614e105741c719fa185.dir",
+                            "size": 18999874,
+                            "nfiles": 183,
+                        }
+                    ],
+                    "outs": [
+                        {
+                            "path": "foo",
+                            "hash": "md5",
+                            "md5": "069f9d4b9c418b935f7bec4a094ba535",
+                            "size": 30,
+                        }
+                    ],
+                }
+            },
+        }
+    )
+    dvc.stage.add(
+        name="cat-data-foo", cmd="cat data/foo > foo", deps=["data"], outs=["foo"]
+    )
+
+    ret = dvc.reproduce(allow_missing=True, dry=True)
+    assert not ret
+
+
 def test_repro_allow_missing_and_pull(tmp_dir, dvc, mocker, local_remote):
     tmp_dir.gen("fixed", "fixed")
     dvc.stage.add(name="create-foo", cmd="echo foo > foo", deps=["fixed"], outs=["foo"])
