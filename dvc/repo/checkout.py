@@ -51,20 +51,16 @@ def _build_out_changes(index, changes):
         out_keys.append(key)
 
     out_changes = {}
-    for objects in changes.values():
-        for change in objects:
-            for out_key in out_keys:
-                if (
-                    len(out_key) > len(change.key)
-                    or change.key[: len(out_key)] != out_key
-                ):
-                    continue
+    for key, change in changes.items():
+        for out_key in out_keys:
+            if len(out_key) > len(key) or key[: len(out_key)] != out_key:
+                continue
 
-                if change.key == out_key:
-                    out_changes[out_key] = change.typ
-                elif not out_changes.get(out_key):
-                    out_changes[out_key] = MODIFY
-                break
+            if key == out_key:
+                out_changes[out_key] = change.typ
+            elif not out_changes.get(out_key):
+                out_changes[out_key] = MODIFY
+            break
 
     return out_changes
 
