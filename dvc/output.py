@@ -1090,7 +1090,7 @@ class Output:
         return len(obj) if obj else 0
 
     def unprotect(self):
-        if self.exists:
+        if self.exists and self.use_cache:
             self.cache.unprotect(self.fs_path)
 
     def get_dir_cache(self, **kwargs) -> Optional["Tree"]:

@@ -520,22 +520,22 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
     assert (tmp_dir / PROJECT_FILE).read_text() == text.format(src="foo1", dest="bar1")
 
 
-def test_run_external_outputs(
-    tmp_dir,
-    dvc,
-    local_workspace,
-):
+@pytest.mark.parametrize("persist", [True, False])
+def test_run_external_outputs(tmp_dir, dvc, local_workspace, persist):
     hash_name = "md5"
     foo_hash = "acbd18db4cc2f85cedef654fccc4a4d8"
     bar_hash = "37b51d194a7513e45b56f6524f2d51f2"
 
     local_workspace.gen("foo", "foo")
+    outs = {"outs_no_cache": ["remote://workspace/bar"]}
+    if persist:
+        outs = {"outs_persist_no_cache": ["remote://workspace/bar"]}
     dvc.run(
         name="mystage",
         cmd="mycmd",
         deps=["remote://workspace/foo"],
-        outs_no_cache=["remote://workspace/bar"],
         no_exec=True,
+        **outs,
     )
 
     dvc_yaml = (
@@ -548,6 +548,8 @@ def test_run_external_outputs(
         "    - remote://workspace/bar:\n"
         "        cache: false\n"
     )
+    if persist:
+        dvc_yaml += "        persist: true\n"
 
     assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
     assert not (tmp_dir / "dvc.lock").exists()
