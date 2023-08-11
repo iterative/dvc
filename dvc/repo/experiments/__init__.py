@@ -136,10 +136,6 @@ class Experiments:
         **kwargs,
     ) -> "QueueEntry":
         """Queue a single experiment."""
-        if kwargs.pop("machine", None) is not None:
-            # TODO: decide how to handle queued remote execution
-            raise NotImplementedError
-
         return self.new(
             queue,
             **kwargs,

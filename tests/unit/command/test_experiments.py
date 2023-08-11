@@ -125,7 +125,6 @@ def test_experiments_run(dvc, scm, mocker):
         "run_all": False,
         "jobs": 1,
         "tmp_dir": False,
-        "machine": None,
         "copy_paths": [],
         "message": None,
     }
