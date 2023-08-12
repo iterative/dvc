@@ -22,6 +22,7 @@ hiddenimports = [
     "dvc_hdfs",
     "dvc_oss",
     "dvc_s3",
+    "dvc_ssh",
     "dvc_webdav",
     "dvc_webhdfs",
     # https://github.com/pypa/setuptools/issues/1963
