@@ -129,7 +129,6 @@ class BaseExecutor(ABC):
 
     PACKED_ARGS_FILE = "repro.dat"
     WARN_UNTRACKED = False
-    QUIET = False
     INFOFILE_EXT = ".run"
     DEFAULT_LOCATION: str = "workspace"
 
@@ -602,8 +601,7 @@ class BaseExecutor(ABC):
             info.status = TaskStatus.RUNNING
             if infofile is not None:
                 info.dump_json(infofile)
-            if cls.QUIET:
-                dvc.scm_context.quiet = cls.QUIET
+            dvc.scm_context.quiet = True
             old_cwd = os.getcwd()
 
             for path in copy_paths or []:

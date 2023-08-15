@@ -100,13 +100,14 @@ def test_scm_context_on_no_files_to_track(caplog, scm_context, autostage, quiet)
     assert not caplog.text
 
 
-def test_scm_context_remind_to_track(caplog, scm_context):
-    with scm_context() as context:
+@pytest.mark.parametrize("quiet", [True, False])
+def test_scm_context_remind_to_track(caplog, scm_context, quiet):
+    with scm_context(quiet=quiet) as context:
         context.track_file("foo")
         context.track_file("lorem ipsum")
         assert context.files_to_track == {"foo", "lorem ipsum"}
 
-    if isinstance(scm_context.scm, NoSCM):
+    if quiet or isinstance(scm_context.scm, NoSCM):
         assert not caplog.text
     else:
         assert "To track the changes with git, run:" in caplog.text

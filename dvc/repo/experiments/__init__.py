@@ -210,10 +210,6 @@ class Experiments:
             )
         else:
             ui.write("Experiment results have been applied to your workspace.")
-        ui.write(
-            "\nTo promote an experiment to a Git branch run:\n\n"
-            "\tdvc exp branch <exp> <branch>\n"
-        )
 
     def new(
         self,
