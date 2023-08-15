@@ -27,10 +27,6 @@ class CmdExperimentsSave(CmdBase):
         else:
             name = self.repo.experiments.get_exact_name([ref])[ref]
             ui.write(f"Experiment has been saved as: {name}")
-            ui.write(
-                "\nTo promote an experiment to a Git branch run:\n\n"
-                "\tdvc exp branch <exp> <branch>\n"
-            )
 
         return 0
 

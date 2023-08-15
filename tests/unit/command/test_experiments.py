@@ -418,7 +418,7 @@ def test_experiments_remove_invalid(dvc, scm, mocker, capsys, caplog):
     )
 
 
-def test_experiments_save(dvc, scm, mocker):
+def test_experiments_save(dvc, scm, mocker, caplog):
     cli_args = parse_args(["exp", "save", "--name", "exp-name", "--force"])
     assert cli_args.func == CmdExperimentsSave
 
