@@ -212,7 +212,7 @@ class Plots:
             short_rev = "workspace"
             if rev := getattr(self.repo.fs, "rev", None):
                 short_rev = rev[:7]
-            _resolve_data_sources(data, short_rev, cache_remote_stream=True)
+            _resolve_data_sources(data, short_rev, cache=True)
             result.update(data)
 
         errored = errored_revisions(result)
@@ -281,9 +281,7 @@ def _is_plot(out: "Output") -> bool:
     return bool(out.plot)
 
 
-def _resolve_data_sources(
-    plots_data: Dict, rev: str, cache_remote_stream: bool = False
-):
+def _resolve_data_sources(plots_data: Dict, rev: str, cache: bool = False):
     from dvc.progress import Tqdm
 
     values = list(plots_data.values())
@@ -298,7 +296,7 @@ def _resolve_data_sources(
     def resolve(value):
         data_source = value.pop("data_source")
         assert callable(data_source)
-        value.update(data_source(cache_remote_stream=cache_remote_stream))
+        value.update(data_source(cache=cache))
 
     if not to_resolve:
         return
