@@ -460,7 +460,7 @@ def test_ls_shows_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     match_files(files, ((("bar",), True),))
 
 
-def test_ls_granular(erepo_dir):
+def test_ls_granular(erepo_dir, M):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(
             {
@@ -475,15 +475,21 @@ def test_ls_granular(erepo_dir):
 
     entries = Repo.ls(os.fspath(erepo_dir), os.path.join("dir", "subdir"))
     assert entries == [
-        {"isout": True, "isdir": False, "isexec": False, "path": "bar"},
-        {"isout": True, "isdir": False, "isexec": False, "path": "foo"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "bar", "size": 3},
+        {"isout": True, "isdir": False, "isexec": False, "path": "foo", "size": 3},
     ]
 
     entries = Repo.ls(os.fspath(erepo_dir), "dir")
     assert entries == [
-        {"isout": True, "isdir": False, "isexec": False, "path": "1"},
-        {"isout": True, "isdir": False, "isexec": False, "path": "2"},
-        {"isout": True, "isdir": True, "isexec": False, "path": "subdir"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "1", "size": 1},
+        {"isout": True, "isdir": False, "isexec": False, "path": "2", "size": 1},
+        {
+            "isout": True,
+            "isdir": True,
+            "isexec": False,
+            "path": "subdir",
+            "size": M.instance_of(int),
+        },
     ]
 
 
@@ -508,14 +514,14 @@ def test_ls_target(erepo_dir, use_scm):
         return Repo.ls(os.fspath(erepo_dir), path)
 
     assert _ls(os.path.join("dir", "1")) == [
-        {"isout": isout, "isdir": False, "isexec": False, "path": "1"}
+        {"isout": isout, "isdir": False, "isexec": False, "path": "1", "size": 1}
     ]
     assert _ls(os.path.join("dir", "subdir", "foo")) == [
-        {"isout": isout, "isdir": False, "isexec": False, "path": "foo"}
+        {"isout": isout, "isdir": False, "isexec": False, "path": "foo", "size": 3}
     ]
     assert _ls(os.path.join("dir", "subdir")) == [
-        {"isdir": False, "isexec": 0, "isout": isout, "path": "bar"},
-        {"isdir": False, "isexec": 0, "isout": isout, "path": "foo"},
+        {"isdir": False, "isexec": 0, "isout": isout, "path": "bar", "size": 3},
+        {"isdir": False, "isexec": 0, "isout": isout, "path": "foo", "size": 3},
     ]
 
 
@@ -559,7 +565,7 @@ def test_subrepo(dvc_top_level, erepo):
     assert _list_files(subrepo, "dvc_dir") == {"lorem"}
 
 
-def test_broken_symlink(tmp_dir, dvc):
+def test_broken_symlink(tmp_dir, dvc, M):
     from dvc.fs import system
 
     tmp_dir.gen("file", "content")
@@ -575,17 +581,19 @@ def test_broken_symlink(tmp_dir, dvc):
             "isdir": False,
             "isexec": False,
             "path": ".dvcignore",
+            "size": M.instance_of(int),
         },
         {
             "isout": False,
             "isdir": False,
             "isexec": False,
             "path": "link",
+            "size": 0,
         },
     ]
 
 
-def test_ls_broken_dir(tmp_dir, dvc):
+def test_ls_broken_dir(tmp_dir, dvc, M):
     from dvc_data.index import DataIndexDirError
 
     tmp_dir.dvc_gen(
@@ -606,13 +614,43 @@ def test_ls_broken_dir(tmp_dir, dvc):
 
     entries = Repo.ls(os.fspath(tmp_dir))
     assert entries == [
-        {"isdir": False, "isexec": False, "isout": False, "path": ".dvcignore"},
-        {"isdir": True, "isexec": False, "isout": True, "path": "broken"},
-        {"isdir": False, "isexec": False, "isout": False, "path": "broken.dvc"},
-        {"isdir": True, "isexec": False, "isout": True, "path": "dir"},
-        {"isdir": False, "isexec": False, "isout": False, "path": "dir.dvc"},
-        {"isdir": False, "isexec": False, "isout": True, "path": "foo"},
-        {"isdir": False, "isexec": False, "isout": False, "path": "foo.dvc"},
+        {
+            "isdir": False,
+            "isexec": False,
+            "isout": False,
+            "path": ".dvcignore",
+            "size": M.instance_of(int),
+        },
+        {"isdir": True, "isexec": False, "isout": True, "path": "broken", "size": 3},
+        {
+            "isdir": False,
+            "isexec": False,
+            "isout": False,
+            "path": "broken.dvc",
+            "size": M.instance_of(int),
+        },
+        {
+            "isdir": True,
+            "isexec": False,
+            "isout": True,
+            "path": "dir",
+            "size": M.instance_of(int),
+        },
+        {
+            "isdir": False,
+            "isexec": False,
+            "isout": False,
+            "path": "dir.dvc",
+            "size": M.instance_of(int),
+        },
+        {"isdir": False, "isexec": False, "isout": True, "path": "foo", "size": 3},
+        {
+            "isdir": False,
+            "isexec": False,
+            "isout": False,
+            "path": "foo.dvc",
+            "size": M.instance_of(int),
+        },
     ]
 
     with pytest.raises(DataIndexDirError):

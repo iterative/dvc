@@ -1,6 +1,8 @@
 import argparse
 import logging
 
+from tqdm import tqdm
+
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import DictAction, append_doc_link
@@ -11,7 +13,16 @@ from dvc.ui import ui
 logger = logging.getLogger(__name__)
 
 
-def _prettify(entries, with_color=False):
+def _format_entry(entry, fmt):
+    size = entry.get("size")
+    if size is None:
+        size = ""
+    else:
+        size = tqdm.format_sizeof(size, divisor=1024)
+    return size, fmt(entry)
+
+
+def show_entries(entries, with_color=False, with_size=False):
     if with_color:
         ls_colors = LsColors()
         fmt = ls_colors.format
@@ -20,7 +31,12 @@ def _prettify(entries, with_color=False):
         def fmt(entry):
             return entry["path"]
 
-    return [fmt(entry) for entry in entries]
+    if with_size:
+        ui.table([_format_entry(entry, fmt) for entry in entries])
+        return
+
+    # NOTE: this is faster than ui.table for very large number of entries
+    ui.write("\n".join(fmt(entry) for entry in entries))
 
 
 class CmdList(CmdBaseNoRepo):
@@ -41,8 +57,7 @@ class CmdList(CmdBaseNoRepo):
             if self.args.json:
                 ui.write_json(entries)
             elif entries:
-                entries = _prettify(entries, with_color=True)
-                ui.write("\n".join(entries))
+                show_entries(entries, with_color=True, with_size=self.args.size)
             return 0
         except DvcException:
             logger.exception("failed to list '%s'", self.args.url)
@@ -105,6 +120,11 @@ def add_parser(subparsers, parent_parser):
             "Remote config options to merge with a remote's config (default or one "
             "specified by '--remote') in the target repository."
         ),
+    )
+    list_parser.add_argument(
+        "--size",
+        action="store_true",
+        help="Show sizes.",
     )
     list_parser.add_argument(
         "path",
