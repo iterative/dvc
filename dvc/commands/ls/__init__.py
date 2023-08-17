@@ -1,8 +1,6 @@
 import argparse
 import logging
 
-from tqdm import tqdm
-
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import DictAction, append_doc_link
@@ -14,11 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 def _format_entry(entry, fmt):
+    from humanize import naturalsize
+
     size = entry.get("size")
     if size is None:
         size = ""
     else:
-        size = tqdm.format_sizeof(size, divisor=1024)
+        size = naturalsize(size, gnu=True)
     return size, fmt(entry)
 
 
