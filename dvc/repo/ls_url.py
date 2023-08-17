@@ -20,6 +20,7 @@ def ls_url(url, *, config=None, recursive=False):
             ls_info = {
                 "path": fs.path.relpath(info["name"], fs_path),
                 "isdir": info["type"] == "directory",
+                "size": info.get("size"),
             }
             ret.append(ls_info)
 
