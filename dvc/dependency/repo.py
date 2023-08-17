@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from voluptuous import Any, Required
@@ -115,7 +116,7 @@ class RepoDependency(Dependency):
 
         conf = self.def_repo.get("config", {})
         if isinstance(conf, dict):
-            config = conf
+            config = deepcopy(conf)
         else:
             config = Config.load_file(conf)
 
