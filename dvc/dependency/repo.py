@@ -24,12 +24,12 @@ class RepoDependency(Dependency):
             Required(PARAM_URL): str,
             PARAM_REV: str,
             PARAM_REV_LOCK: str,
-            PARAM_CONFIG: str,
+            PARAM_CONFIG: Any(str, dict),
             PARAM_REMOTE: Any(str, dict),
         }
     }
 
-    def __init__(self, def_repo: Dict[str, str], stage: "Stage", *args, **kwargs):
+    def __init__(self, def_repo: Dict[str, Any], stage: "Stage", *args, **kwargs):
         self.def_repo = def_repo
         super().__init__(stage, *args, **kwargs)
 
@@ -107,17 +107,17 @@ class RepoDependency(Dependency):
 
         rem = self.def_repo.get("remote")
         if isinstance(rem, dict):
-            remote = None  # type: ignore[unreachable]
+            remote = None
             remote_config = rem
         else:
             remote = rem
             remote_config = None
 
-        conf = self.def_repo.get("config")
-        if conf:
-            config = Config.load_file(conf)
+        conf = self.def_repo.get("config", {})
+        if isinstance(conf, dict):
+            config = conf
         else:
-            config = {}
+            config = Config.load_file(conf)
 
         config["cache"] = self.repo.config["cache"]
         config["cache"]["dir"] = self.repo.cache.local_cache_dir
