@@ -25,6 +25,10 @@ def command_tuples():
 
     main_parser = get_main_parser()
     recurse_parser(main_parser)
+
+    # the no. of commands will usually go up,
+    # but if we ever remove commands and drop below, adjust the magic number accordingly
+    assert len(commands) >= 96
     return sorted(commands)
 
 
