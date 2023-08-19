@@ -28,15 +28,11 @@ def command_tuples():
     return sorted(commands)
 
 
-def pytest_generate_tests(metafunc):
-    def ids(values):
-        if values:
-            return "-".join(values)
-        return "dvc"
-
-    metafunc.parametrize("command_tuples", command_tuples(), ids=ids)
+def ids(values):
+    return "-".join(values) or "dvc"
 
 
+@pytest.mark.parametrize("command_tuples", command_tuples(), ids=ids)
 def test_help(caplog, capsys, command_tuples):
     with caplog.at_level(logging.INFO), pytest.raises(SystemExit) as e:
         main([*command_tuples, "--help"])
