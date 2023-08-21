@@ -22,7 +22,7 @@ from dvc.output import (
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageExternalOutputsError, StagePathNotFoundError
 from dvc.utils.fs import path_isin
-from dvc.utils.serialize import YAMLFileCorruptedError
+from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml
 from dvc_data.hashfile.hash import file_md5
 from dvc_data.hashfile.hash_info import HashInfo
 from tests.utils import get_gitignore_content
@@ -654,6 +654,26 @@ def test_try_adding_pipeline_tracked_output(tmp_dir, dvc, run_copy):
     )
     with pytest.raises(DvcException, match=msg):
         dvc.add("bar")
+
+
+def test_try_adding_multiple_overlaps(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvcyaml_content = {
+        "stages": {
+            "echo-foo": {
+                "cmd": "echo foo > foo",
+                "outs": ["foo"],
+            }
+        }
+    }
+    dump_yaml("dvc.yaml", dvcyaml_content)
+    msg = (
+        "output 'foo' is specified in:\n\t- foo.dvc\n\t- echo-foo"
+        "\nUse `dvc remove` with any of the above targets to stop tracking the "
+        "overlapping output."
+    )
+    with pytest.raises(DvcException, match=msg):
+        dvc.add("foo")
 
 
 def test_add_pipeline_file(tmp_dir, dvc, run_copy):
