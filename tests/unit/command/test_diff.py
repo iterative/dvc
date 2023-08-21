@@ -45,10 +45,10 @@ def test_default(mocker, capsys, dvc):
         "    file\n"
         "\n"
         "Renamed:\n"
-        "    data{sep}file_old -> data{sep}file_new\n"
+        f"    data{os.path.sep}file_old -> data{os.path.sep}file_new\n"
         "\n"
         "files summary: 1 added, 1 renamed"
-    ).format(sep=os.path.sep) in capsys.readouterr()[0]
+    ) in capsys.readouterr()[0]
 
 
 def test_show_hash(mocker, capsys, dvc):
@@ -252,14 +252,14 @@ def test_show_markdown(capsys):
         "|--------------|----------------------|\n"
         "| added        | file                 |\n"
         "| deleted      | zoo                  |\n"
-        "| deleted      | data{sep}                |\n"
-        "| deleted      | data{sep}foo             |\n"
-        "| deleted      | data{sep}bar             |\n"
+        f"| deleted      | data{os.path.sep}                |\n"
+        f"| deleted      | data{os.path.sep}foo             |\n"
+        f"| deleted      | data{os.path.sep}bar             |\n"
         "| renamed      | file_old -> file_new |\n"
         "| modified     | file                 |\n"
         "| not in cache | file2                |\n"
         "\n"
-    ).format(sep=os.path.sep)
+    )
 
 
 def test_show_markdown_with_hash(capsys):
@@ -289,14 +289,14 @@ def test_show_markdown_with_hash(capsys):
         "|--------------|--------------------|----------------------|\n"
         "| added        | 00000000           | file                 |\n"
         "| deleted      | 22222              | zoo                  |\n"
-        "| deleted      | XXXXXXXX           | data{sep}                |\n"
-        "| deleted      | 11111111           | data{sep}foo             |\n"
-        "| deleted      | 00000000           | data{sep}bar             |\n"
+        f"| deleted      | XXXXXXXX           | data{os.path.sep}                |\n"
+        f"| deleted      | 11111111           | data{os.path.sep}foo             |\n"
+        f"| deleted      | 00000000           | data{os.path.sep}bar             |\n"
         "| renamed      | 11111111           | file_old -> file_new |\n"
         "| modified     | AAAAAAAA..BBBBBBBB | file                 |\n"
         "| not in cache | 12345678           | file2                |\n"
         "\n"
-    ).format(sep=os.path.sep)
+    )
 
 
 def test_show_markdown_hide_missing(capsys):
@@ -321,13 +321,13 @@ def test_show_markdown_hide_missing(capsys):
         "|----------|----------------------|\n"
         "| added    | file                 |\n"
         "| deleted  | zoo                  |\n"
-        "| deleted  | data{sep}                |\n"
-        "| deleted  | data{sep}foo             |\n"
-        "| deleted  | data{sep}bar             |\n"
+        f"| deleted  | data{os.path.sep}                |\n"
+        f"| deleted  | data{os.path.sep}foo             |\n"
+        f"| deleted  | data{os.path.sep}bar             |\n"
         "| renamed  | file_old -> file_new |\n"
         "| modified | file                 |\n"
         "\n"
-    ).format(sep=os.path.sep)
+    )
 
 
 def test_hide_missing(mocker, capsys, dvc):

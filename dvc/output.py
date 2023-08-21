@@ -1142,7 +1142,7 @@ class Output:
             if not force and not prompt.confirm(msg.format(self.fs_path)):
                 raise CollectCacheError(  # noqa: B904
                     "unable to fully collect used cache"
-                    " without cache for directory '{}'".format(self)
+                    f" without cache for directory '{self}'"
                 )
             return None
 
@@ -1171,19 +1171,15 @@ class Output:
 
         if not self.hash_info:
             msg = (
-                "Output '{}'({}) is missing version info. "
+                f"Output '{self}'({self.stage}) is missing version info. "
                 "Cache for it will not be collected. "
-                "Use `dvc repro` to get your pipeline up to date.".format(
-                    self, self.stage
-                )
+                "Use `dvc repro` to get your pipeline up to date."
             )
             if self.exists:
                 msg += (
                     "\n"
-                    "You can also use `dvc commit {stage.addressing}` "
-                    "to associate existing '{out}' with {stage}.".format(
-                        out=self, stage=self.stage
-                    )
+                    f"You can also use `dvc commit {self.stage.addressing}` "
+                    f"to associate existing '{self}' with {self.stage}."
                 )
             logger.warning(msg)
             return {}
