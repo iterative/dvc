@@ -148,7 +148,9 @@ class DvcIgnorePatterns(DvcIgnore):
         return bool(self.pattern_list)
 
 
-CheckIgnoreResult = namedtuple("CheckIgnoreResult", ["file", "match", "patterns"])
+CheckIgnoreResult = namedtuple(  # noqa: PYI024
+    "CheckIgnoreResult", ["file", "match", "patterns"]
+)
 
 
 def _no_match(path):
