@@ -139,7 +139,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self.repo_factory = repo_factory
 
         def _getcwd():
-            relparts = ()
+            relparts: Tuple[str, ...] = ()
             assert repo is not None
             if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
                 relparts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.root_dir)
@@ -163,6 +163,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
     def _get_key(self, path: "StrPath") -> Key:
+        path = os.fspath(path)
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
         if parts == (os.curdir,):
             return ()
