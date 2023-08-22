@@ -99,6 +99,7 @@ class Config(dict):
     ):  # pylint: disable=super-init-not-called
         from dvc.fs import LocalFileSystem
 
+        dvc_dir = os.fspath(dvc_dir) if dvc_dir else None
         self.dvc_dir = dvc_dir
         self.wfs = LocalFileSystem()
         self.fs = fs or self.wfs

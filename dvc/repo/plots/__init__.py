@@ -446,6 +446,7 @@ def _resolve_definitions(
     definitions: "DictStrAny",
     onerror: Optional[Callable[[Any], Any]] = None,
 ):
+    config_path = os.fspath(config_path)
     config_dir = fs.path.dirname(config_path)
     result: Dict[str, Dict] = {}
     for plot_id, plot_props in definitions.items():
