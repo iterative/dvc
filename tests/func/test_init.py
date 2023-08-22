@@ -115,6 +115,5 @@ def test_init_when_ignored_by_git(tmp_dir, scm, caplog):
     assert (
         f"{tmp_dir / DvcRepo.DVC_DIR} is ignored by your SCM tool. \n"
         "Make sure that it's tracked, "
-        "for example, by adding '!.dvc' to .gitignore."
-        in caplog.text
+        "for example, by adding '!.dvc' to .gitignore." in caplog.text
     )
