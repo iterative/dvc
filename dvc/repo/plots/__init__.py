@@ -46,8 +46,8 @@ SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS
 class PlotMetricTypeError(DvcException):
     def __init__(self, file):
         super().__init__(
-            "'{}' - file type error\n"
-            "Only JSON, YAML, CSV and TSV formats are supported.".format(file)
+            f"'{file}' - file type error\n"
+            "Only JSON, YAML, CSV and TSV formats are supported."
         )
 
 

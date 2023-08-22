@@ -196,7 +196,7 @@ class ETagMismatchError(DvcException):
     def __init__(self, etag, cached_etag):
         super().__init__(
             "ETag mismatch detected when copying file to cache! "
-            "(expected: '{}', actual: '{}')".format(etag, cached_etag)
+            f"(expected: '{etag}', actual: '{cached_etag}')"
         )
 
 
