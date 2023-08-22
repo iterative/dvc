@@ -31,3 +31,11 @@ def truncate_text(text: str, max_length: int, with_ellipsis: bool = True) -> str
         return text[: max_length - 1] + ELLIPSIS
 
     return text[:max_length]
+
+
+def naturalsize(value: float, base: int = 1024) -> str:
+    from tqdm import tqdm
+
+    if value < base:
+        return f"{value:.0f}"
+    return tqdm.format_sizeof(value, divisor=base)
