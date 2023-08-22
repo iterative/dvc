@@ -182,10 +182,13 @@ def _sort_column(  # noqa: C901
     metric_names: Mapping[str, Iterable[str]],
     param_names: Mapping[str, Iterable[str]],
 ) -> Tuple[str, str, str]:
-    path, _, sort_name = sort_by.partition(":")
+    sep = ":"
+    parts = sort_by.split(sep)
     matches: Set[Tuple[str, str, str]] = set()
 
-    if path:
+    for split_num in range(1, len(parts)):
+        path = sep.join(parts[:split_num])
+        sort_name = sep.join(parts[split_num:])
         if path in metric_names and sort_name in metric_names[path]:
             matches.add((path, sort_name, "metrics"))
         if path in param_names and sort_name in param_names[path]:
