@@ -361,7 +361,7 @@ def test_show_sort_metric_sep(tmp_dir, scm, dvc, caplog):
     dvcyaml_path.write_text("metrics: ['metrics:1.json', 'metrics:2.json']")
     dvc.experiments.save()
     assert (
-            main(["exp", "show", "--no-pager", "--sort-by=metrics:1.json:my::metric"]) == 0
+        main(["exp", "show", "--no-pager", "--sort-by=metrics:1.json:my::metric"]) == 0
     )
 
 
