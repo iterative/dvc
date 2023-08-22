@@ -29,8 +29,8 @@ def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):
     shutil.copytree("partial-copy", dataset, dirs_exist_ok=True)
 
     # Benchmark operations for adding files to a dataset
-    bench_dvc("add", dataset, name="partial-add")
-    bench_dvc("push", name="partial-add")
+    bench_dvc("add", dataset, name="partial")
+    bench_dvc("push", name="partial")
     bench_dvc("gc", "-f", "-w", name="noop")
     bench_dvc("gc", "-f", "-w", "-c", name="cloud-noop")
 
@@ -51,7 +51,7 @@ def test_partial_remove(bench_dvc, tmp_dir, dvc, dataset, remote):
                 shutil.rmtree(dataset / f)
 
     # Benchmark operations for removing files from dataset
-    bench_dvc("add", dataset)
-    bench_dvc("push")
+    bench_dvc("add", dataset, name="noop")
+    bench_dvc("push", name="noop")
     bench_dvc("gc", "-f", "-w")
     bench_dvc("gc", "-f", "-w", "-c", name="cloud")
