@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 def _format_entry(entry, fmt):
-    from humanize import naturalsize
+    from dvc.utils.humanize import naturalsize
 
     size = entry.get("size")
     if size is None:
         size = ""
     else:
-        size = naturalsize(size, gnu=True)
+        size = naturalsize(size)
     return size, fmt(entry)
 
 

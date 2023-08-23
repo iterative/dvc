@@ -30,8 +30,8 @@ class CmdRemoteAdd(CmdRemote):
         with self.config.edit(self.args.level) as conf:
             if self.args.name in conf["remote"] and not self.args.force:
                 raise ConfigError(
-                    "remote '{}' already exists. Use `-f|--force` to "
-                    "overwrite it.".format(self.args.name)
+                    f"remote '{self.args.name}' already exists. Use `-f|--force` to "
+                    "overwrite it."
                 )
 
             conf["remote"][self.args.name] = {"url": self.args.url}

@@ -57,11 +57,11 @@ def brancher(  # noqa: E302
 
     from dvc.fs import LocalFileSystem
 
-    repo_root_parts = ()
+    repo_root_parts: Tuple[str, ...] = ()
     if self.fs.path.isin(self.root_dir, self.scm.root_dir):
         repo_root_parts = self.fs.path.relparts(self.root_dir, self.scm.root_dir)
 
-    cwd_parts = ()
+    cwd_parts: Tuple[str, ...] = ()
     if self.fs.path.isin(self.fs.path.getcwd(), self.scm.root_dir):
         cwd_parts = self.fs.path.relparts(self.fs.path.getcwd(), self.scm.root_dir)
 
@@ -144,11 +144,11 @@ def switch(repo: "Repo", rev: str) -> Iterator[str]:
     if rev != "workspace":
         rev = resolve_rev(repo.scm, rev)
 
-    repo_root_parts = ()
+    repo_root_parts: Tuple[str, ...] = ()
     if repo.fs.path.isin(repo.root_dir, repo.scm.root_dir):
         repo_root_parts = repo.fs.path.relparts(repo.root_dir, repo.scm.root_dir)
 
-    cwd_parts = ()
+    cwd_parts: Tuple[str, ...] = ()
     if repo.fs.path.isin(repo.fs.path.getcwd(), repo.scm.root_dir):
         cwd_parts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.scm.root_dir)
 

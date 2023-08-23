@@ -81,7 +81,7 @@ def _check_can_delete(
         if cache_fs.exists(cache_path):
             continue
 
-        entry_paths.append(fs.path.join(path, *entry.key))
+        entry_paths.append(fs.path.join(path, *(entry.key or ())))
 
     if not entry_paths:
         return
