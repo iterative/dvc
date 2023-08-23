@@ -1,8 +1,11 @@
 """Exceptions raised by the dvc."""
 import errno
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Set
 
 from dvc.utils import format_link
+
+if TYPE_CHECKING:
+    from dvc.stage import Stage
 
 
 class DvcException(Exception):
@@ -31,7 +34,7 @@ class OutputDuplicationError(DvcException):
         stages (list): list of paths to stages.
     """
 
-    def __init__(self, output: str, stages: List[Any]):
+    def __init__(self, output: str, stages: Set["Stage"]):
         from funcy import first
 
         assert isinstance(output, str)
@@ -40,7 +43,7 @@ class OutputDuplicationError(DvcException):
             stage = first(stages)
             msg = (
                 f"output '{output}' is already specified in {stage}."
-                f"\nUse `dvc remove {stage.addressing}` to stop tracking the"
+                f"\nUse `dvc remove {stage.addressing}` to stop tracking the "
                 "overlapping output."
             )
         else:
