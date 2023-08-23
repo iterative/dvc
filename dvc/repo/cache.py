@@ -26,6 +26,14 @@ def check_missing(repo, rev=None, max_size=None, types=None):
             continue
 
         if not fs.exists(path):
-            ret.append(os.path.join(*entry.key))
+            typ = "directory" if (entry.meta and entry.meta.isdir) else "file"
+            ret.append(
+                (
+                    typ,
+                    entry.hash_info.name,
+                    entry.hash_info.value,
+                    os.path.join(*entry.key),
+                )
+            )
 
     return ret

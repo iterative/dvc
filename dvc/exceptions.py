@@ -1,6 +1,6 @@
 """Exceptions raised by the dvc."""
 import errno
-from typing import TYPE_CHECKING, Any, Dict, List, Set
+from typing import TYPE_CHECKING, Dict, List, Set
 
 from dvc.utils import format_link
 
