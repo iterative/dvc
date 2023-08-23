@@ -363,9 +363,7 @@ def test_show_sort_metric_sep(tmp_dir, scm, dvc, caplog):
     assert (
         main(["exp", "show", "--no-pager", "--sort-by=metrics:1.json:my::metric"]) == 0
     )
-    assert (
-        main(["exp", "show", "--no-pager", "--sort-by=:other_metric"]) == 0
-    )
+    assert main(["exp", "show", "--no-pager", "--sort-by=:other_metric"]) == 0
 
 
 @pytest.mark.vscode

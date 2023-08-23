@@ -189,7 +189,7 @@ def _sort_column(  # noqa: C901
     for split_num in range(len(parts)):
         path = sep.join(parts[:split_num])
         sort_name = sep.join(parts[split_num:])
-        if not path: # handles ':metric_name' case
+        if not path:  # handles ':metric_name' case
             sort_by = sort_name
         if path in metric_names and sort_name in metric_names[path]:
             matches.add((path, sort_name, "metrics"))
