@@ -12,7 +12,7 @@ from dvc.cachemgr import CacheManager
 from dvc.cli import main
 from dvc.config import ConfigError
 from dvc.dvcfile import DVC_FILE_SUFFIX
-from dvc.exceptions import DvcException, OverlappingOutputPathsError
+from dvc.exceptions import DvcException, OutputDuplicationError, OverlappingOutputPathsError
 from dvc.fs import LocalFileSystem, system
 from dvc.output import (
     OutputAlreadyTrackedError,
@@ -668,11 +668,10 @@ def test_try_adding_multiple_overlaps(tmp_dir, dvc):
     }
     dump_yaml("dvc.yaml", dvcyaml_content)
     msg = (
-        "output 'foo' is specified in:\n\t- foo.dvc\n\t- echo-foo"
         "\nUse `dvc remove` with any of the above targets to stop tracking the "
         "overlapping output."
     )
-    with pytest.raises(DvcException, match=msg):
+    with pytest.raises(OutputDuplicationError, match=msg):
         dvc.add("foo")
 
 
