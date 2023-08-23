@@ -120,7 +120,7 @@ def translate_graph_error(stages: List["Stage"]) -> Iterator[None]:
         )
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(  # noqa: B904
-            exc.output, list(set(exc.stages) - set(stages))
+            exc.output, set(exc.stages) - set(stages)
         )
 
 
