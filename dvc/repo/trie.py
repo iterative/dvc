@@ -14,7 +14,7 @@ def build_outs_trie(stages):
             # Check for dup outs
             if out_key in outs:
                 dup_stages = [stage, outs[out_key].stage]
-                raise OutputDuplicationError(str(out), dup_stages)
+                raise OutputDuplicationError(str(out), set(dup_stages))
 
             # Check for overlapping outs
             if outs.has_subtrie(out_key):
