@@ -51,7 +51,7 @@ def test_partial_remove(bench_dvc, tmp_dir, dvc, dataset, remote):
                 shutil.rmtree(dataset / f)
 
     # Benchmark operations for removing files from dataset
-    bench_dvc("add", dataset, name="noop")
-    bench_dvc("push", name="noop")
+    bench_dvc("add", dataset, name="update")
+    bench_dvc("push", name="update")
     bench_dvc("gc", "-f", "-w")
     bench_dvc("gc", "-f", "-w", "-c", name="cloud")
