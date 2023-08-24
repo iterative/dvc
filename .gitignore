@@ -50,3 +50,4 @@ scripts/ci/gcp-creds.json
 .nox/
 .tox/
 htmlcov/
+/bar
