@@ -7,6 +7,7 @@ from functools import lru_cache
 from dvc import __version__
 from dvc.commands import (
     add,
+    artifacts,
     cache,
     check_ignore,
     checkout,
@@ -89,6 +90,7 @@ COMMANDS = [
     experiments,
     check_ignore,
     data,
+    artifacts,
 ]
 
 

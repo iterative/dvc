@@ -5,8 +5,8 @@ from copy import deepcopy
 import pytest
 
 from dvc.annotations import Artifact
-from dvc.exceptions import InvalidArgumentError
-from dvc.repo.artifacts import name_is_compatible
+from dvc.exceptions import ArtifactNotFoundError, InvalidArgumentError
+from dvc.repo.artifacts import check_name_format
 from dvc.utils.strictyaml import YAMLSyntaxError, YAMLValidationError
 
 dvcyaml = {
@@ -160,7 +160,7 @@ def test_artifacts_read_fails_on_id_duplication(tmp_dir, dvc):
     ],
 )
 def test_name_is_compatible(name):
-    assert name_is_compatible(name)
+    check_name_format(name)
 
 
 @pytest.mark.parametrize(
@@ -181,4 +181,34 @@ def test_name_is_compatible(name):
     ],
 )
 def test_name_is_compatible_fails(name):
-    assert not name_is_compatible(name)
+    with pytest.raises(InvalidArgumentError):
+        check_name_format(name)
+
+
+def test_get_rev(tmp_dir, dvc, scm):
+    scm.tag("myart@v1.0.0#1", annotated=True, message="foo")
+    scm.tag("subdir=myart@v2.0.0#1", annotated=True, message="foo")
+    scm.tag("myart#dev#1", annotated=True, message="foo")
+    rev = scm.get_rev()
+
+    assert dvc.artifacts.get_rev("myart") == rev
+    assert dvc.artifacts.get_rev("myart", version="v1.0.0") == rev
+    assert dvc.artifacts.get_rev("subdir:myart", version="v2.0.0") == rev
+    assert dvc.artifacts.get_rev("subdir/dvc.yaml:myart", version="v2.0.0") == rev
+    with pytest.raises(ArtifactNotFoundError):
+        dvc.artifacts.get_rev("myart", version="v3.0.0")
+    with pytest.raises(ArtifactNotFoundError):
+        dvc.artifacts.get_rev("myart", stage="prod")
+
+
+def test_get_path(tmp_dir, dvc):
+    (tmp_dir / "dvc.yaml").dump(dvcyaml)
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+    (subdir / "dvc.yaml").dump(dvcyaml)
+
+    assert dvc.artifacts.get_path("myart") == "myart.pkl"
+    assert dvc.artifacts.get_path("subdir:myart") == os.path.join("subdir", "myart.pkl")
+    assert dvc.artifacts.get_path("subdir/dvc.yaml:myart") == os.path.join(
+        "subdir", "myart.pkl"
+    )
