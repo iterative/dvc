@@ -44,9 +44,6 @@ class Dependency(Output):
         if self.fs.version_aware:
             self.fs_path = self.fs.path.version_path(self.fs_path, rev)
             self.meta = self.get_meta()
-            self.def_path = self.fs.path.version_path(
-                self.def_path, self.meta.version_id
-            )
             self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
 
     def download(self, to, jobs=None):
