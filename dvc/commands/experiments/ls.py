@@ -23,15 +23,22 @@ class CmdExperimentsList(CmdBase):
             git_remote=git_remote,
         )
 
+        from dvc.repo.experiments.utils import describe
+        from dvc.scm import Git
+
+        if name_only or sha_only:
+            names = {}
+        else:
+            assert isinstance(self.repo.scm, Git)
+            names = describe(
+                self.repo.scm,
+                (baseline for baseline in exps),
+                logger=logger,
+            )
+
         for baseline in exps:
             if not (name_only or sha_only):
-                tag_base = "refs/tags/"
-                branch_base = "refs/heads/"
-                name = baseline[:7]
-                if baseline.startswith(tag_base):
-                    name = baseline[len(tag_base) :]
-                elif baseline.startswith(branch_base):
-                    name = baseline[len(branch_base) :]
+                name = names.get(baseline) or baseline[:7]
                 ui.write(f"{name}:")
             for exp_name, rev in exps[baseline]:
                 if name_only:

@@ -1366,3 +1366,27 @@ def test_repro_ignore_errors(mocker, tmp_dir, dvc, copy_script):
         [bar_call, stage1_call, foo_call, stage2_call],
         [foo_call, bar_call, stage1_call, stage2_call],
     )
+
+
+@pytest.mark.parametrize("persist", [True, False])
+def test_repro_external_outputs(tmp_dir, dvc, local_workspace, persist):
+    local_workspace.gen("foo", "foo")
+    foo_path = str(local_workspace / "foo")
+    bar_path = str(local_workspace / "bar")
+    outs = {"outs_no_cache": [bar_path]}
+    if persist:
+        outs = {"outs_persist_no_cache": [bar_path]}
+    dvc.run(
+        name="mystage",
+        cmd=f"cp {foo_path} {bar_path}",
+        deps=[foo_path],
+        no_exec=True,
+        **outs,
+    )
+
+    dvc.reproduce()
+    dvc.reproduce(force=True)
+
+    assert (local_workspace / "foo").read_text() == "foo"
+    assert (local_workspace / "bar").read_text() == "foo"
+    assert not (local_workspace / "cache").exists()

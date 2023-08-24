@@ -15,7 +15,6 @@ from typing import (
 
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
-from dvc.utils import env2bool
 from dvc.utils.fs import path_isin
 from dvc.utils.objects import cached_property
 
@@ -24,7 +23,6 @@ if TYPE_CHECKING:
     from dvc.fs.data import DataFileSystem
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
-    from dvc.machine import MachineManager
     from dvc.scm import Git, NoSCM
     from dvc.stage import Stage
     from dvc.types import DictStrAny
@@ -93,6 +91,7 @@ class Repo:
     from dvc.repo.status import status  # type: ignore[misc]
     from dvc.repo.update import update  # type: ignore[misc]
 
+    from .cache import check_missing as cache_check_missing  # type: ignore[misc]
     from .data import status as data_status  # type: ignore[misc]
 
     ls = staticmethod(_ls)
@@ -243,6 +242,7 @@ class Repo:
 
         return Config(
             self.dvc_dir,
+            local_dvc_dir=self.local_dvc_dir,
             fs=self.fs,
             config=self._config,
             remote=self._remote,
@@ -349,16 +349,6 @@ class Repo:
         from dvc.repo.experiments import Experiments
 
         return Experiments(self)
-
-    @cached_property
-    def machine(self) -> Optional["MachineManager"]:
-        from dvc.machine import MachineManager
-
-        if self.tmp_dir and (
-            self.config["feature"].get("machine", False) or env2bool("DVC_TEST")
-        ):
-            return MachineManager(self)
-        return None
 
     @property
     def fs(self) -> "FileSystem":

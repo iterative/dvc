@@ -25,18 +25,18 @@ def command_tuples():
 
     main_parser = get_main_parser()
     recurse_parser(main_parser)
+
+    # the no. of commands will usually go up,
+    # but if we ever remove commands and drop below, adjust the magic number accordingly
+    assert len(commands) >= 96
     return sorted(commands)
 
 
-def pytest_generate_tests(metafunc):
-    def ids(values):
-        if values:
-            return "-".join(values)
-        return "dvc"
-
-    metafunc.parametrize("command_tuples", command_tuples(), ids=ids)
+def ids(values):
+    return "-".join(values) or "dvc"
 
 
+@pytest.mark.parametrize("command_tuples", command_tuples(), ids=ids)
 def test_help(caplog, capsys, command_tuples):
     with caplog.at_level(logging.INFO), pytest.raises(SystemExit) as e:
         main([*command_tuples, "--help"])

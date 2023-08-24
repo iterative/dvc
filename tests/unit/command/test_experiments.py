@@ -125,7 +125,6 @@ def test_experiments_run(dvc, scm, mocker):
         "run_all": False,
         "jobs": 1,
         "tmp_dir": False,
-        "machine": None,
         "copy_paths": [],
         "message": None,
     }
@@ -189,7 +188,7 @@ def test_experiments_list(dvc, scm, mocker):
 @pytest.mark.parametrize(
     "args,expected",
     [
-        ([], "main:\n\tsha-a [exp-a]\n"),
+        ([], "master:\n\tsha-a [exp-a]\n"),
         (["--name-only"], "exp-a\n"),
         (["--sha-only"], "sha-a\n"),
     ],
@@ -198,7 +197,7 @@ def test_experiments_list_format(mocker, capsys, args, expected, dvc, scm):
     mocker.patch(
         "dvc.repo.experiments.ls.ls",
         return_value={
-            "refs/heads/main": [
+            scm.get_rev(): [
                 ("exp-a", "sha-a"),
             ]
         },

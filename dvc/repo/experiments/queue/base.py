@@ -476,13 +476,17 @@ class BaseStashQueue(ABC):
         hydra_output_file = ParamsDependency.DEFAULT_PARAMS_FILE
         for path, overrides in params.items():
             if hydra_enabled and path == hydra_output_file:
-                config_dir = os.path.join(
-                    self.repo.root_dir, hydra_config.get("config_dir", "conf")
-                )
+                if (config_module := hydra_config.get("config_module")) is None:
+                    config_dir = os.path.join(
+                        self.repo.root_dir, hydra_config.get("config_dir", "conf")
+                    )
+                else:
+                    config_dir = None
                 config_name = hydra_config.get("config_name", "config")
                 compose_and_dump(
                     path,
                     config_dir,
+                    config_module,
                     config_name,
                     overrides,
                 )

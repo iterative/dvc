@@ -8,7 +8,7 @@ from pathspec.util import normalize_file
 
 from dvc.utils import relpath
 
-PatternInfo = namedtuple("PatternInfo", ["patterns", "file_info"])
+PatternInfo = namedtuple("PatternInfo", ["patterns", "file_info"])  # noqa: PYI024
 
 
 def _not_ignore(rule):

@@ -166,7 +166,7 @@ def push_worktree(
                     latest_only=remote_obj.worktree,
                     jobs=jobs,
                 )
-                pushed += sum(len(changes) for changes in diff.changes.values())
+                pushed += len(diff.files_create)
             except VersioningNotSupported:
                 logger.exception("")
                 raise DvcException(

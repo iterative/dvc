@@ -136,10 +136,6 @@ class Experiments:
         **kwargs,
     ) -> "QueueEntry":
         """Queue a single experiment."""
-        if kwargs.pop("machine", None) is not None:
-            # TODO: decide how to handle queued remote execution
-            raise NotImplementedError
-
         return self.new(
             queue,
             **kwargs,
@@ -214,10 +210,6 @@ class Experiments:
             )
         else:
             ui.write("Experiment results have been applied to your workspace.")
-        ui.write(
-            "\nTo promote an experiment to a Git branch run:\n\n"
-            "\tdvc exp branch <exp> <branch>\n"
-        )
 
     def new(
         self,

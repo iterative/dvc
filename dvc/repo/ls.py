@@ -109,6 +109,7 @@ def _ls(
             "isout": dvc_info.get("isout", False),
             "isdir": info["type"] == "directory",
             "isexec": info.get("isexec", False),
+            "size": info.get("size"),
         }
 
     return ret

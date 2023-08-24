@@ -8,6 +8,7 @@ from voluptuous import (
     All,
     Any,
     Coerce,
+    Exclusive,
     Invalid,
     Lower,
     Optional,
@@ -72,6 +73,17 @@ def ByUrl(mapping):  # noqa: N802
         return schemas[parsed.scheme](data)
 
     return validate
+
+
+class ExpPath(str):
+    __slots__ = ("def_path",)
+
+    def_path: str
+
+    def __new__(cls, string, def_path):
+        ret = super().__new__(cls, string)
+        ret.def_path = def_path
+        return ret
 
 
 class RelPath(str):
@@ -324,7 +336,8 @@ SCHEMA = {
     },
     "hydra": {
         Optional("enabled", default=False): Bool,
-        "config_dir": str,
+        Exclusive("config_dir", "config_source"): str,
+        Exclusive("config_module", "config_source"): str,
         "config_name": str,
     },
     "studio": {

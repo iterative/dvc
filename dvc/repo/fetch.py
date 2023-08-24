@@ -9,6 +9,14 @@ from . import locked
 logger = logging.getLogger(__name__)
 
 
+def _make_index_onerror(onerror, rev):
+    def _onerror(entry, exc):
+        if onerror:
+            return onerror(rev, entry, exc)
+
+    return _onerror
+
+
 def _collect_indexes(  # noqa: PLR0913
     repo,
     targets=None,
@@ -22,6 +30,7 @@ def _collect_indexes(  # noqa: PLR0913
     max_size=None,
     types=None,
     config=None,
+    onerror=None,
 ):
     indexes = {}
     collection_exc = None
@@ -39,7 +48,7 @@ def _collect_indexes(  # noqa: PLR0913
         all_commits=all_commits,
     ):
         try:
-            repo.config.update(config)
+            repo.config.merge(config)
 
             idx = repo.index.targets_view(
                 targets,
@@ -49,14 +58,13 @@ def _collect_indexes(  # noqa: PLR0913
                 types=types,
             )
 
-            def onerror(_entry, _exc):
-                pass
-
             data = idx.data["repo"]
-            data.onerror = onerror
+            data.onerror = _make_index_onerror(onerror, rev)
 
             indexes[idx.data_tree.hash_info.value] = data
         except Exception as exc:  # pylint: disable=broad-except
+            if onerror:
+                onerror(rev, None, exc)
             collection_exc = exc
             logger.exception("failed to collect '%s'", rev or "workspace")
 
@@ -82,6 +90,7 @@ def fetch(  # noqa: C901, PLR0913
     max_size=None,
     types=None,
     config=None,
+    onerror=None,
 ) -> int:
     """Download data items from a cloud and imported repositories
 
@@ -126,6 +135,7 @@ def fetch(  # noqa: C901, PLR0913
         max_size=max_size,
         types=types,
         config=config,
+        onerror=onerror,
     )
 
     cache_key = ("fetch", tokenize(sorted(indexes.keys())))

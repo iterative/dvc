@@ -658,3 +658,75 @@ def test_parameterized_repo(tmp_dir, dvc, scm, erepo_dir, paths):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+@pytest.mark.parametrize(
+    "options, def_repo",
+    [
+        ({"config": "myconfig"}, {"config": "myconfig"}),
+        ({"remote": "myremote"}, {"remote": "myremote"}),
+        ({"remote_config": {"key": "value"}}, {"remote": {"key": "value"}}),
+        (
+            {
+                "remote": "myremote",
+                "remote_config": {"key": "value"},
+            },
+            {
+                "config": {
+                    "core": {"remote": "myremote"},
+                    "remote": {
+                        "myremote": {"key": "value"},
+                    },
+                },
+            },
+        ),
+        (
+            {
+                "remote": "myremote",
+                "remote_config": {"key": "value"},
+                "config": {"otherkey": "othervalue"},
+            },
+            {
+                "config": {
+                    "core": {"remote": "myremote"},
+                    "remote": {
+                        "myremote": {"key": "value"},
+                    },
+                    "otherkey": "othervalue",
+                },
+            },
+        ),
+    ],
+)
+def test_import_configs(tmp_dir, scm, dvc, erepo_dir, options, def_repo):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    (tmp_dir / "myconfig").touch()
+
+    stage = dvc.imp(
+        os.fspath(erepo_dir), "foo", "foo_imported", no_exec=True, **options
+    )
+    assert stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        **def_repo,
+    }
+
+
+def test_import_invalid_configs(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    with pytest.raises(
+        ValueError,
+        match="Can't specify config path together with both remote and remote_config",
+    ):
+        dvc.imp(
+            os.fspath(erepo_dir),
+            "foo",
+            "foo_imported",
+            no_exec=True,
+            config="myconfig",
+            remote="myremote",
+            remote_config={"key": "value"},
+        )

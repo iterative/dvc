@@ -17,7 +17,6 @@ class CmdExperimentsRun(CmdRepro):
             jobs=self.args.jobs,
             params=self.args.set_param,
             tmp_dir=self.args.tmp_dir,
-            machine=self.args.machine,
             copy_paths=self.args.copy_paths,
             message=self.args.message,
             **self._common_kwargs,
@@ -89,15 +88,6 @@ def _add_run_common(parser):
             "Run this experiment in a separate temporary directory instead of "
             "your workspace."
         ),
-    )
-    parser.add_argument(
-        "--machine",
-        default=None,
-        help=argparse.SUPPRESS,
-        # help=(
-        #     "Run this experiment on the specified 'dvc machine' instance."
-        # )
-        # metavar="<name>",
     )
     parser.add_argument(
         "-C",

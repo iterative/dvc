@@ -1,8 +1,11 @@
 """Exceptions raised by the dvc."""
 import errno
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List, Set
 
 from dvc.utils import format_link
+
+if TYPE_CHECKING:
+    from dvc.stage import Stage
 
 
 class DvcException(Exception):
@@ -31,24 +34,25 @@ class OutputDuplicationError(DvcException):
         stages (list): list of paths to stages.
     """
 
-    def __init__(self, output, stages):
+    def __init__(self, output: str, stages: Set["Stage"]):
         from funcy import first
 
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
-        msg = ""
-        stage_names = [s.addressing for s in stages]
-        stages_str = " ".join(stage_names)
         if len(stages) == 1:
-            stage_name = first(stages)
-            msg = f"output '{output}' is already specified in {stage_name}."
-        else:
-            msg = "output '{}' is already specified in stages:\n{}".format(
-                output, "\n".join(f"\t- {s}" for s in stage_names)
+            stage = first(stages)
+            msg = (
+                f"output '{output}' is already specified in {stage}."
+                f"\nUse `dvc remove {stage.addressing}` to stop tracking the "
+                "overlapping output."
             )
-        msg += (
-            f"\nUse `dvc remove {stages_str}` to stop tracking the overlapping output."
-        )
+        else:
+            stage_names = "\n".join(["\t- " + s.addressing for s in stages])
+            msg = (
+                f"output '{output}' is specified in:\n{stage_names}"
+                "\nUse `dvc remove` with any of the above targets to stop tracking the "
+                "overlapping output."
+            )
         super().__init__(msg)
         self.stages = stages
         self.output = output
@@ -196,7 +200,7 @@ class ETagMismatchError(DvcException):
     def __init__(self, etag, cached_etag):
         super().__init__(
             "ETag mismatch detected when copying file to cache! "
-            "(expected: '{}', actual: '{}')".format(etag, cached_etag)
+            f"(expected: '{etag}', actual: '{cached_etag}')"
         )
 
 

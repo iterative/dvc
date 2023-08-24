@@ -65,7 +65,6 @@ class TempDirExecutor(BaseLocalExecutor):
     # debugging user code), and suppress other DVC hints (like `git add`
     # suggestions) that are not applicable outside of workspace runs
     WARN_UNTRACKED = True
-    QUIET = True
     DEFAULT_LOCATION = "tempdir"
 
     @retry(180, errors=LockError, timeout=1)

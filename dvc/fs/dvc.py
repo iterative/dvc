@@ -139,7 +139,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self.repo_factory = repo_factory
 
         def _getcwd():
-            relparts = ()
+            relparts: Tuple[str, ...] = ()
             assert repo is not None
             if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
                 relparts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.root_dir)
@@ -163,6 +163,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
     def _get_key(self, path: "StrPath") -> Key:
+        path = os.fspath(path)
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
         if parts == (os.curdir,):
             return ()
@@ -261,15 +262,12 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         try:
             return self.repo.fs.open(fs_path, mode=mode)
         except FileNotFoundError:
-            repo, dvc_fs, subkey = self._get_subrepo_info(key)
+            _, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
-        kw = {}
-        if kwargs.get("cache_remote_stream", False):
-            kw["cache_odb"] = repo.cache.local
-        return dvc_fs.open(dvc_path, mode=mode, **kw)
+        return dvc_fs.open(dvc_path, mode=mode, cache=kwargs.get("cache", False))
 
     def isdvc(self, path, **kwargs) -> bool:
         """Is this entry dvc-tracked?"""
