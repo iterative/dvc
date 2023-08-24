@@ -1,0 +1,7 @@
+stages:
+  bar:
+    cmd: cp foo bar
+    deps:
+    - foo
+    outs:
+    - bar

@@ -1,0 +1,14 @@
+schema: '2.0'
+stages:
+  bar:
+    cmd: cp foo bar
+    deps:
+    - path: foo
+      hash: md5
+      md5: d3b07384d113edec49eaa6238ad5ff00
+      size: 4
+    outs:
+    - path: bar
+      hash: md5
+      md5: d3b07384d113edec49eaa6238ad5ff00
+      size: 4
