@@ -95,6 +95,9 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "file").read_text() == "file"
         assert dvc.status() == {}
 
+        orig_version_id = stage.deps[0].meta.version_id
+        orig_def_path = stage.deps[0].def_path
+
         dvc.cache.local.clear()
         remove(tmp_dir / "file")
         dvc.pull()
@@ -107,6 +110,10 @@ class TestImportURLVersionAware:
         dvc.update(str(tmp_dir / "file.dvc"))
         assert (tmp_dir / "file").read_text() == "modified"
         assert dvc.status() == {}
+
+        stage = first(dvc.index.stages)
+        assert orig_version_id != stage.deps[0].meta.version_id
+        assert orig_def_path == stage.deps[0].def_path
 
         dvc.cache.local.clear()
         remove(tmp_dir / "file")
