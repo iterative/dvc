@@ -285,15 +285,6 @@ class Stage(params.StageParams):
                 return line.strip()
         return desc
 
-    def env(self) -> Env:
-        from dvc.env import DVC_ROOT
-
-        env: Env = {}
-        if self.repo:
-            env.update({DVC_ROOT: self.repo.root_dir})
-
-        return env
-
     def changed_deps(
         self, allow_missing: bool = False, upstream: Optional[List] = None
     ) -> bool:
