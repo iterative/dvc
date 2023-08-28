@@ -21,7 +21,7 @@ from dvc_studio_client.post_live_metrics import get_studio_config
 from funcy import retry
 
 from dvc.dependency import ParamsDependency
-from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
+from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVC_ROOT
 from dvc.lock import LockError
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.executor.base import BaseExecutor
@@ -348,6 +348,7 @@ class BaseStashQueue(ABC):
                     if not name:
                         name = get_random_exp_name(self.scm, baseline_rev)
                     run_env[DVC_EXP_NAME] = name
+                    run_env[DVC_ROOT] = self.repo.root_dir
 
                     # save studio config to read later by dvc and dvclive
                     studio_config = get_studio_config(
