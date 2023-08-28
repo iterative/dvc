@@ -241,13 +241,15 @@ class Artifacts:
         return len(to_infos), relpath(localfs.path.commonpath(to_infos))
 
     @classmethod
-    def get(  # noqa: C901
+    def get(  # noqa: C901, PLR0913
         cls,
         url: str,
         name: str,
         version: Optional[str] = None,
         stage: Optional[str] = None,
         config: Optional[Union[str, Dict[str, Any]]] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional[Union[str, Dict[str, Any]]] = None,
         out: Optional[str] = None,
         force: bool = False,
         jobs: Optional[int] = None,
@@ -291,6 +293,8 @@ class Artifacts:
             subrepos=True,
             uninitialized=True,
             config=config,
+            remote=remote,
+            remote_config=remote_config,
         ) as repo:
             logger.trace("Trying repo [studio] config")  # type: ignore[attr-defined]
             studio_config = dict(repo.config.get("studio"))

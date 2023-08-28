@@ -3,7 +3,7 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import DictAction, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,8 @@ class CmdArtifactsGet(CmdBaseNoRepo):
                 stage=self.args.stage,
                 force=self.args.force,
                 config=self.args.config,
+                remote=self.args.remote,
+                remote_config=self.args.remote_config,
                 out=self.args.out,
             )
             ui.write(f"Downloaded {count} file(s) to '{out}'")
@@ -107,6 +109,25 @@ def add_parser(subparsers, parent_parser):
         help=(
             "Path to a config file that will be merged with the config "
             "in the target repository."
+        ),
+    )
+    get_parser.add_argument(
+        "--remote",
+        type=str,
+        help=(
+            "Remote name to set as a default in the target repository "
+            "(only applicable when downloading from DVC remote)."
+        ),
+    )
+    get_parser.add_argument(
+        "--remote-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help=(
+            "Remote config options to merge with a remote's config (default or one "
+            "specified by '--remote') in the target repository (only applicable "
+            "when downloading from DVC remote)."
         ),
     )
     get_parser.set_defaults(func=CmdArtifactsGet)
