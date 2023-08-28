@@ -12,6 +12,7 @@ from dvc.dvcfile import PROJECT_FILE
 from dvc.env import (
     DVC_EXP_BASELINE_REV,
     DVC_EXP_NAME,
+    DVC_ROOT,
     DVC_STUDIO_OFFLINE,
     DVC_STUDIO_REPO_URL,
     DVC_STUDIO_TOKEN,
@@ -620,6 +621,7 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
         from dvc.env import (
             DVC_EXP_BASELINE_REV,
             DVC_EXP_NAME,
+            DVC_ROOT,
             DVC_STUDIO_OFFLINE,
             DVC_STUDIO_REPO_URL,
             DVC_STUDIO_TOKEN,
@@ -628,6 +630,7 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
         for v in (
             DVC_EXP_BASELINE_REV,
             DVC_EXP_NAME,
+            DVC_ROOT,
             DVC_STUDIO_OFFLINE,
             DVC_STUDIO_REPO_URL,
             DVC_STUDIO_TOKEN,
@@ -655,6 +658,7 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     dvc.experiments.run()
     assert (tmp_dir / DVC_EXP_BASELINE_REV).read_text().strip() == baseline
     assert (tmp_dir / DVC_EXP_NAME).read_text().strip()
+    assert (tmp_dir / DVC_ROOT).read_text().strip() == dvc.root_dir
     assert (tmp_dir / DVC_STUDIO_TOKEN).read_text().strip() == "TOKEN"
     assert (tmp_dir / DVC_STUDIO_REPO_URL).read_text().strip() == "REPO_URL"
     assert (tmp_dir / DVC_STUDIO_URL).read_text().strip() == "BASE_URL"
