@@ -42,11 +42,8 @@ class CacheManager:
         self.config = config = repo.config["cache"]
         self._odb = {}
 
-        default = None
-        if repo and repo.local_dvc_dir:
-            default = os.path.join(repo.local_dvc_dir, self.CACHE_DIR)
-
         local = config.get("local")
+        default = self.default_local_cache_dir
 
         if local:
             settings = {"name": local}
@@ -102,6 +99,13 @@ class CacheManager:
         (i.e. `dvc cache dir`).
         """
         return self.legacy.path
+
+    @property
+    def default_local_cache_dir(self) -> Optional[str]:
+        repo = self._repo
+        if repo and repo.local_dvc_dir:
+            return os.path.join(repo.local_dvc_dir, self.CACHE_DIR)
+        return None
 
 
 def migrate_2_to_3(repo: "Repo", dry: bool = False):
