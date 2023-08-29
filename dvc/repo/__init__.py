@@ -605,12 +605,19 @@ class Repo:
         finally:
             os.umask(umask)
 
+        # NOTE: Some number to change the generated token if none of the
+        # components were changed (useful to prevent newer dvc versions from
+        # using older broken cache). Please reset this back to 0 if other parts
+        # of the token components are changed.
+        salt = 0
+
         md5 = hashlib.md5(  # noqa: S324  # nosec B324, B303
             str(
                 (
                     root_dir,
                     getpass.getuser(),
                     version_tuple[0],
+                    salt,
                 )
             ).encode()
         )
