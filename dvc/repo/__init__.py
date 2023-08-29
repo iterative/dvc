@@ -15,7 +15,6 @@ from typing import (
 
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
-from dvc.utils.fs import path_isin
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -455,8 +454,9 @@ class Repo:
         flist = [self.config.files["local"]]
         if tmp_dir := self.tmp_dir:
             flist.append(tmp_dir)
-        if path_isin(self.cache.legacy.path, self.root_dir):
-            flist.append(self.cache.legacy.path)
+
+        if cache_dir := self.cache.default_local_cache_dir:
+            flist.append(cache_dir)
 
         for file in flist:
             self.scm_context.ignore(file)
