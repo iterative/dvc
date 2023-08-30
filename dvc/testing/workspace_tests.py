@@ -173,7 +173,7 @@ class TestLsUrl:
     def test_file(self, cloud, fname):
         cloud.gen({fname: "foo contents"})
         fs, fs_path = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / fname), config=cloud.config)
+        result = ls_url(str(cloud / fname), fs_config=cloud.config)
         match_files(
             fs,
             result,
@@ -185,7 +185,7 @@ class TestLsUrl:
         if not (cloud / "dir").is_dir():
             pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / "dir"), config=cloud.config)
+        result = ls_url(str(cloud / "dir"), fs_config=cloud.config)
         match_files(
             fs,
             result,
@@ -200,7 +200,7 @@ class TestLsUrl:
         if not (cloud / "dir").is_dir():
             pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / "dir"), config=cloud.config, recursive=True)
+        result = ls_url(str(cloud / "dir"), fs_config=cloud.config, recursive=True)
         match_files(
             fs,
             result,
@@ -212,14 +212,14 @@ class TestLsUrl:
 
     def test_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
-            ls_url(str(cloud / "dir"), config=cloud.config)
+            ls_url(str(cloud / "dir"), fs_config=cloud.config)
 
 
 class TestGetUrl:
     def test_get_file(self, cloud, tmp_dir):
         cloud.gen({"foo": "foo contents"})
 
-        Repo.get_url(str(cloud / "foo"), "foo_imported", config=cloud.config)
+        Repo.get_url(str(cloud / "foo"), "foo_imported", fs_config=cloud.config)
 
         assert (tmp_dir / "foo_imported").is_file()
         assert (tmp_dir / "foo_imported").read_text() == "foo contents"
@@ -229,7 +229,7 @@ class TestGetUrl:
         if not (cloud / "foo").is_dir():
             pytest.skip("Cannot create directories on this cloud")
 
-        Repo.get_url(str(cloud / "foo"), "foo_imported", config=cloud.config)
+        Repo.get_url(str(cloud / "foo"), "foo_imported", fs_config=cloud.config)
 
         assert (tmp_dir / "foo_imported").is_dir()
         assert (tmp_dir / "foo_imported" / "foo").is_file()
@@ -242,14 +242,14 @@ class TestGetUrl:
             pytest.skip("Cannot create directories on this cloud")
         tmp_dir.gen({"dir": {"subdir": {}}})
 
-        Repo.get_url(str(cloud / "src" / "foo"), dname, config=cloud.config)
+        Repo.get_url(str(cloud / "src" / "foo"), dname, fs_config=cloud.config)
 
         assert (tmp_dir / dname).is_dir()
         assert (tmp_dir / dname / "foo").read_text() == "foo contents"
 
     def test_get_url_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
-            Repo.get_url(str(cloud / "nonexistent"), config=cloud.config)
+            Repo.get_url(str(cloud / "nonexistent"), fs_config=cloud.config)
 
 
 class TestToRemote:

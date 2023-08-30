@@ -3,7 +3,7 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ class CmdGetUrl(CmdBaseNoRepo):
                 out=self.args.out,
                 jobs=self.args.jobs,
                 force=self.args.force,
+                fs_config=self.args.fs_config,
             )
             return 0
         except DvcException:
@@ -57,5 +58,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Override local file or folder if exists.",
+    )
+    get_parser.add_argument(
+        "--fs-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help="Config options for the target url.",
     )
     get_parser.set_defaults(func=CmdGetUrl)
