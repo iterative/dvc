@@ -11,7 +11,7 @@ class DictAction(argparse.Action):
             kvs = [values]
 
         for kv in kvs:
-            key, value = kv.split("=")
+            key, value = kv.split("=", 1)
             if not value:
                 raise argparse.ArgumentError(
                     self,
