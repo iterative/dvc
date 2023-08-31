@@ -3,7 +3,7 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ class CmdImportUrl(CmdBase):
                 jobs=self.args.jobs,
                 force=self.args.force,
                 version_aware=self.args.version_aware,
+                fs_config=self.args.fs_config,
             )
         except DvcException:
             logger.exception(
@@ -113,5 +114,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Import using cloud versioning. Implied if the URL contains a version ID.",
+    )
+    import_parser.add_argument(
+        "--fs-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help="Config options for the target url.",
     )
     import_parser.set_defaults(func=CmdImportUrl)

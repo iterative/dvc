@@ -97,6 +97,7 @@ def loadd_from(stage, d_list):
         files = d.pop(Output.PARAM_FILES, None)
         push = d.pop(Output.PARAM_PUSH, True)
         hash_name = d.pop(Output.PARAM_HASH, None)
+        fs_config = d.pop(Output.PARAM_FS_CONFIG, None)
         ret.append(
             _get(
                 stage,
@@ -111,6 +112,7 @@ def loadd_from(stage, d_list):
                 files=files,
                 push=push,
                 hash_name=hash_name,
+                fs_config=fs_config,
             )
         )
     return ret
@@ -313,6 +315,7 @@ class Output:
     PARAM_PUSH = "push"
     PARAM_CLOUD = "cloud"
     PARAM_HASH = "hash"
+    PARAM_FS_CONFIG = "fs_config"
 
     DoesNotExistError: Type[DvcException] = OutputDoesNotExistError
     IsNotFileOrDirError: Type[DvcException] = OutputIsNotFileOrDirError
@@ -351,6 +354,7 @@ class Output:
         if meta.version_id or files:
             fs_kwargs["version_aware"] = True
 
+        self.def_fs_config = fs_config
         if fs_config is not None:
             fs_kwargs.update(**fs_config)
 
@@ -871,6 +875,9 @@ class Output:
             ret[self.PARAM_HASH] = "md5"
 
         ret[self.PARAM_PATH] = path
+
+        if self.def_fs_config:
+            ret[self.PARAM_FS_CONFIG] = self.def_fs_config
 
         if not self.IS_DEPENDENCY:
             ret.update(self.annot.to_dict())
@@ -1537,4 +1544,5 @@ SCHEMA = {
     Output.PARAM_REMOTE: str,
     Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
+    Output.PARAM_FS_CONFIG: dict,
 }

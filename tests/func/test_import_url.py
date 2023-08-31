@@ -249,9 +249,19 @@ def test_import_url_fs_config(tmp_dir, dvc, workspace, mocker):
     dep_init = mocker.spy(Dependency, "__init__")
     dvc.imp_url(url, fs_config={"jobs": 42})
 
+    stage = load_file(dvc, "foo.dvc").stage
+    assert stage.deps[0].def_fs_config == {"jobs": 42}
+
     dep_init_kwargs = dep_init.call_args[1]
     assert dep_init_kwargs.get("fs_config") == {"jobs": 42}
 
     assert get_fs_config.call_args_list[0][1] == {"url": "foo"}
     assert get_fs_config.call_args_list[1][1] == {"url": url, "jobs": 42}
     assert get_fs_config.call_args_list[2][1] == {"name": "workspace"}
+
+    dep_init.reset_mock()
+
+    dvc.pull("foo.dvc")
+
+    dep_init_kwargs = dep_init.call_args[1]
+    assert dep_init_kwargs.get("fs_config") == {"jobs": 42}

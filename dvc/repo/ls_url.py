@@ -2,8 +2,8 @@ from dvc.exceptions import URLMissingError
 from dvc.fs import parse_external_url
 
 
-def ls_url(url, *, config=None, recursive=False):
-    fs, fs_path = parse_external_url(url, config=config)
+def ls_url(url, *, fs_config=None, recursive=False):
+    fs, fs_path = parse_external_url(url, config=fs_config)
     try:
         info = fs.info(fs_path)
     except FileNotFoundError as exc:

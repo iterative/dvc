@@ -2,7 +2,7 @@ import argparse
 import logging
 
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 
 from .ls import show_entries
 
@@ -13,7 +13,11 @@ class CmdListUrl(CmdBaseNoRepo):
     def run(self):
         from dvc.repo import Repo
 
-        entries = Repo.ls_url(self.args.url, recursive=self.args.recursive)
+        entries = Repo.ls_url(
+            self.args.url,
+            recursive=self.args.recursive,
+            fs_config=self.args.fs_config,
+        )
         if entries:
             show_entries(entries, with_color=True, with_size=self.args.size)
         return 0
@@ -42,5 +46,12 @@ def add_parser(subparsers, parent_parser):
         "--size",
         action="store_true",
         help="Show sizes.",
+    )
+    lsurl_parser.add_argument(
+        "--fs-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help="Config options for the target url.",
     )
     lsurl_parser.set_defaults(func=CmdListUrl)
