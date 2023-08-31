@@ -35,7 +35,7 @@ class PlotsData:
     def group_definitions(self):
         groups = defaultdict(list)
         for rev, rev_content in self.data.items():
-            for config_file, config_file_content in (
+            for _config_file, config_file_content in (
                 rev_content.get("definitions", {}).get("data", {}).items()
             ):
                 for plot_id, plot_definition in config_file_content.get(
