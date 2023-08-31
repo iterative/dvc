@@ -11,13 +11,9 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsRename(CmdBase):
     def check_arguments(self):
-        if not any(
-            [
-                self.args.rev,
-            ]
-        ) ^ bool(self.args.experiment):
+        if not bool(self.args.name) | bool(self.args.experiment):
             raise InvalidArgumentError(
-                "Either provide an `experiment` argument, or use the `--rev` flag."
+                "Please provide an `experiment` and `name` argument."
             )
 
     def run(self):
@@ -28,7 +24,6 @@ class CmdExperimentsRename(CmdBase):
         renamed = self.repo.experiments.rename(
             exp_name=self.args.experiment,
             new_name=self.args.name,
-            rev=self.args.rev,
             git_remote=self.args.git_remote,
         )
         if renamed:
@@ -54,19 +49,6 @@ def add_parser(experiments_subparsers, parent_parser):
         "--git-remote",
         metavar="<git_remote>",
         help="Name or URL of the Git remote to rename the experiment from",
-    )
-    default_msg = " (HEAD by default)"
-    msg = (
-        f"Rename experiments derived from the specified `<commit>` as "
-        f"baseline{default_msg}."
-    )
-    experiments_rename_parser.add_argument(
-        "--rev",
-        type=str,
-        action="append",
-        default=None,
-        help=msg,
-        metavar="<commit>",
     )
     experiments_rename_parser.add_argument(
         "experiment",
