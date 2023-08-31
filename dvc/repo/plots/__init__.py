@@ -367,14 +367,11 @@ def infer_data_sources(plot_id, config=None):
 def _matches(targets, config_file, plot_id):
     import re
 
-    from dvc.utils.plots import get_plot_id
-
     if not targets:
         return True
 
-    full_id = get_plot_id(plot_id, config_file)
     if any(
-        (re.match(target, plot_id) or re.match(target, full_id)) for target in targets
+        (re.match(target, plot_id) or re.match(target, plot_id)) for target in targets
     ):
         return True
     return False

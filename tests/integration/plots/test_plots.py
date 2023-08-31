@@ -440,8 +440,8 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     html_result = extract_vega_specs(
         html_path,
         [
-            "dvc.yaml::linear_train_vs_test",
-            "dvc.yaml::confusion_train_vs_test",
+            "linear_train_vs_test",
+            "confusion_train_vs_test",
         ],
     )
     ble = _update_datapoints(
@@ -456,5 +456,5 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
         },
     )
 
-    assert html_result["dvc.yaml::linear_train_vs_test"]["data"]["values"] == ble
+    assert html_result["linear_train_vs_test"]["data"]["values"] == ble
     # TODO check json results once vscode is able to handle flexible plots
