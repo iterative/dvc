@@ -29,9 +29,9 @@ def test_group_definitions():
     grouped = PlotsData(data).group_definitions()
 
     assert grouped == {
-        "config_file_1::plot_id_1": [("v1", "plot_id_1", {})],
-        "config_file_1::plot_id_2": [("v1", "plot_id_2", {})],
-        "config_file_2::plot_id_3": [
+        "plot_id_1": [("v1", "plot_id_1", {})],
+        "plot_id_2": [("v1", "plot_id_2", {})],
+        "plot_id_3": [
             ("v1", "plot_id_3", {}),
             ("v2", "plot_id_3", {}),
         ],
@@ -103,7 +103,7 @@ def test_match_renderers(M):
         },
     ]
     assert renderer.properties == {
-        "title": "config_file_1::plot_id_1",
+        "title": "plot_id_1",
         "x": "x",
         "y": "y",
         "x_label": "x",

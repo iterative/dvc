@@ -426,5 +426,5 @@ def test_show_plots_defined_with_native_os_path(tmp_dir, dvc, scm, capsys):
     assert "errors" not in json_out
 
     json_data = json_out["data"]
-    assert json_data[f"dvc.yaml::{top_level_plot}"]
+    assert json_data[f"{top_level_plot}"]
     assert json_data[stage_plot]
