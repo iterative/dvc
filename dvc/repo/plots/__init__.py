@@ -400,9 +400,9 @@ def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = No
     for plot in repo.index.plots:
         plot_props = _plot_props(plot)
         dvcfile = plot.stage.dvcfile
-        config_path = _relpath(fs, dvcfile.path)
+        _relpath(fs, dvcfile.path)
         wdir_relpath = _relpath(fs, plot.stage.wdir)
-        if _matches(targets, config_path, str(plot)):
+        if _matches(targets, str(plot)):
             unpacked = unpack_if_dir(
                 fs,
                 _normpath(fs.path.join(wdir_relpath, plot.def_path)),
@@ -451,7 +451,7 @@ def _resolve_definitions(
             plot_props = {}
         if _id_is_path(plot_props):
             data_path = _normpath(fs.path.join(config_dir, plot_id))
-            if _matches(targets, config_path, plot_id):
+            if _matches(targets, plot_id):
                 unpacked = unpack_if_dir(
                     fs,
                     data_path,
@@ -462,7 +462,7 @@ def _resolve_definitions(
                     result,
                     unpacked,
                 )
-        elif _matches(targets, config_path, plot_id):
+        elif _matches(targets, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
             dpath.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
 
