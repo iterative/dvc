@@ -364,7 +364,7 @@ def infer_data_sources(plot_id, config=None):
     return ldistinct(source for source in sources)
 
 
-def _matches(targets, config_file, plot_id):
+def _matches(targets, plot_id):
     import re
 
     if not targets:
