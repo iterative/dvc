@@ -40,3 +40,17 @@ def add_parser(subparsers, parent_parser):
     ).complete = completion.FILE
     move_parser.add_argument("dst", help="Destination path.").complete = completion.FILE
     move_parser.set_defaults(func=CmdMove)
+
+    mv_parser = subparsers.add_parser(
+        "mv",
+        parents=[parent_parser],
+        description=append_doc_link(MOVE_DESCRIPTION, "move"),
+        help=MOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    mv_parser.add_argument(
+        "src", help="Source path to a data file or directory."
+    ).complete = completion.FILE
+    mv_parser.add_argument("dst", help="Destination path.").complete = completion.FILE
+    mv_parser.set_defaults(func=CmdMove)
