@@ -70,10 +70,11 @@ def _read_metrics(fs, metrics):
 
 def expand_paths(dvcfs, paths):
     for path in paths:
-        if dvcfs.isdir(path):
-            yield from dvcfs.find(os.path.join("/", path))
+        abspath = f"{os.sep}{path}"
+        if dvcfs.isdir(abspath):
+            yield from dvcfs.find(abspath)
         else:
-            yield os.path.join("/", path)
+            yield abspath
 
 
 def _collect_metrics(repo, targets: Optional[List[str]]) -> List[str]:
@@ -102,9 +103,9 @@ def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
     cwd = fs.path.getcwd()
 
     start = relpath(cwd, root_dir)
-    data = {relpath(path, start): result for path, result in d.get("data", {}).items()}
-    if data:
-        d["data"] = data
+    data = d.get("data")
+    if data is not None:
+        d["data"] = {relpath(path, start): result for path, result in data.items()}
     return d
 
 
@@ -118,7 +119,7 @@ def _show(
     files = _collect_metrics(repo, targets=targets)
     data = {}
     for file, result in _read_metrics(repo.dvcfs, files):
-        repo_path = file.lstrip("/")
+        repo_path = file.lstrip(os.sep)
         if not isinstance(result, Exception):
             data.update({repo_path: FileResult(data=result)})
             continue
@@ -150,16 +151,15 @@ def show(
         all_tags=all_tags,
         all_commits=all_commits,
     ):
-        result = res[rev] = Result()
         try:
-            if show_result := _show(repo, targets=targets, on_error=on_error):
-                result["data"] = show_result
+            result = _show(repo, targets=targets, on_error=on_error)
+            res[rev] = Result(data=result)
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             if on_error == "raise":
                 raise
 
             logger.debug("failed to load in revision %r, %s", rev, str(exc))
-            result["error"] = exc
+            res[rev] = Result(error=exc)
 
     if hide_workspace:
         # Hide workspace metrics if they are the same as in the active branch

@@ -255,7 +255,7 @@ def test_metrics_show_no_target(M, tmp_dir, dvc, capsys):
 
 
 def test_show_no_metrics_files(tmp_dir, dvc, caplog):
-    assert dvc.metrics.show() == {"": {}}
+    assert dvc.metrics.show() == {"": {"data": {}}}
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])
