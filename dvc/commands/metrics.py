@@ -4,7 +4,6 @@ import logging
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils.serialize import encode_exception
 
@@ -60,16 +59,26 @@ class CmdMetricsShow(CmdMetricsBase):
 
 class CmdMetricsDiff(CmdMetricsBase):
     def run(self):
-        try:
-            diff = self.repo.metrics.diff(
-                a_rev=self.args.a_rev,
-                b_rev=self.args.b_rev,
-                targets=self.args.targets,
-                all=self.args.all,
+        diff_result = self.repo.metrics.diff(
+            a_rev=self.args.a_rev,
+            b_rev=self.args.b_rev,
+            targets=self.args.targets,
+            all=self.args.all,
+        )
+
+        errored = [rev for rev, err in diff_result.get("errors", {}).items() if err]
+        if errored:
+            ui.error_write(
+                "DVC failed to load some metrics for following revisions:"
+                f" '{', '.join(errored)}'."
             )
-        except DvcException:
-            logger.exception("failed to show metrics diff")
-            return 1
+
+        repo = self.repo
+        relpath = repo.fs.path.relpath
+
+        start = relpath(repo.fs.path.getcwd(), repo.root_dir)
+        diff = diff_result.get("diff", {})
+        diff = {relpath(path, start): result for path, result in diff.items()}
 
         if self.args.json:
             ui.write_json(diff)

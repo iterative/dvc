@@ -23,7 +23,10 @@ def test_metrics_diff(dvc, mocker, capsys):
     assert cli_args.func == CmdMetricsDiff
 
     cmd = cli_args.func(cli_args)
-    diff = {"metrics.yaml": {"": {"old": 1, "new": 3}}}
+    diff = {
+        "diff": {"metrics.yaml": {"": {"old": 1, "new": 3}}},
+        "errors": {"workspace": Exception},
+    }
     metrics_diff = mocker.patch("dvc.repo.metrics.diff.diff", return_value=diff)
     show_diff_mock = mocker.patch("dvc.compare.show_diff")
 
@@ -37,7 +40,7 @@ def test_metrics_diff(dvc, mocker, capsys):
         all=True,
     )
     show_diff_mock.assert_called_once_with(
-        diff,
+        diff["diff"],
         title="Metric",
         no_path=True,
         precision=5,
@@ -69,7 +72,7 @@ def test_metrics_diff_json(dvc, mocker, capsys):
     assert cli_args.func == CmdMetricsDiff
     cmd = cli_args.func(cli_args)
 
-    diff = {"metrics.yaml": {"": {"old": 1, "new": 3}}}
+    diff = {"diff": {"metrics.yaml": {"": {"old": 1, "new": 3}}}}
     metrics_diff = mocker.patch("dvc.repo.metrics.diff.diff", return_value=diff)
     show_diff_mock = mocker.patch("dvc.compare.show_diff")
 
@@ -83,7 +86,7 @@ def test_metrics_diff_json(dvc, mocker, capsys):
         all=True,
     )
     show_diff_mock.assert_not_called()
-    assert json.dumps(diff) in out
+    assert json.dumps(diff["diff"]) in out
 
 
 def test_metrics_show(dvc, mocker):

@@ -70,11 +70,10 @@ def _read_metrics(fs, metrics):
 
 def expand_paths(dvcfs, paths):
     for path in paths:
-        abspath = f"{os.sep}{path}"
-        if dvcfs.isdir(abspath):
-            yield from dvcfs.find(abspath)
+        if dvcfs.isdir(path):
+            yield from dvcfs.find(path)
         else:
-            yield abspath
+            yield path
 
 
 def _collect_metrics(repo, targets: Optional[List[str]]) -> List[str]:
@@ -85,7 +84,8 @@ def _collect_metrics(repo, targets: Optional[List[str]]) -> List[str]:
         metrics = [dvcfs.from_os_path(out.fs_path) for out in repo.index.metrics]
         metrics.extend(_collect_top_level_metrics(repo))
 
-    return ldistinct(expand_paths(dvcfs, metrics))
+    paths = (f"{os.sep}{path}" for path in metrics)
+    return ldistinct(expand_paths(dvcfs, paths))
 
 
 class FileResult(TypedDict, total=False):
