@@ -26,6 +26,7 @@ def add_parser(subparsers, parent_parser):
     )
     remove_parser = subparsers.add_parser(
         "remove",
+        aliases=["rm"],
         parents=[parent_parser],
         description=append_doc_link(REMOVE_HELP, "remove"),
         help=REMOVE_HELP,

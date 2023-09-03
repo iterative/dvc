@@ -50,6 +50,7 @@ def add_parser(experiments_subparsers, parent_parser):
     EXPERIMENTS_REMOVE_HELP = "Remove experiments."
     experiments_remove_parser = experiments_subparsers.add_parser(
         "remove",
+        aliases=["rm"],
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_REMOVE_HELP, "exp/remove"),
         help=EXPERIMENTS_REMOVE_HELP,
