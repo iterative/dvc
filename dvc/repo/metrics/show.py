@@ -1,33 +1,21 @@
 import logging
 import os
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 
+from funcy import ldistinct
 from scmrepo.exceptions import SCMError
 
-from dvc.fs.dvc import DVCFileSystem
 from dvc.repo import locked
-from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
-from dvc.utils import as_posix, error_handler, errored_revisions, onerror_collect
+from dvc.utils import as_posix
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
-    from dvc.output import Output
+    from dvc.fs import FileSystem
+    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
-
-
-def _is_metric(out: "Output") -> bool:
-    return bool(out.metric)
-
-
-def _to_fs_paths(metrics: List["Output"]) -> List["str"]:
-    result = []
-    for out in metrics:
-        if out.metric:
-            result.append(out.repo.dvcfs.from_os_path(out.fs_path))
-    return result
 
 
 def _collect_top_level_metrics(repo):
@@ -39,14 +27,7 @@ def _collect_top_level_metrics(repo):
             yield repo.fs.path.normpath(path)
 
 
-def _collect_metrics(repo, targets, recursive):
-    metrics, fs_paths = collect(
-        repo, targets=targets, output_filter=_is_metric, recursive=recursive
-    )
-    return _to_fs_paths(metrics) + list(fs_paths)
-
-
-def _extract_metrics(metrics, path, rev):
+def _extract_metrics(metrics, path):
     if isinstance(metrics, (int, float, str)):
         return metrics
 
@@ -55,74 +36,111 @@ def _extract_metrics(metrics, path, rev):
 
     ret = {}
     for key, val in metrics.items():
-        m = _extract_metrics(val, path, rev)
+        m = _extract_metrics(val, path)
         if m not in (None, {}):
             ret[key] = m
         else:
             logger.debug(
                 (
-                    "Could not parse '%s' metric from '%s' at '%s' "
+                    "Could not parse '%s' metric from '%s'"
                     "due to its unsupported type: '%s'"
                 ),
                 key,
                 path,
-                rev,
-                type(val).__name__,
+                type(val),
             )
 
     return ret
 
 
-@error_handler
-def _read_metric(path, fs, rev, **kwargs):
+def _read_metric(path, fs):
     val = load_path(path, fs)
-    val = _extract_metrics(val, path, rev)
+    val = _extract_metrics(val, path)
     return val or {}
 
 
-def _read_metrics(repo, metrics, rev, onerror=None):
-    fs = DVCFileSystem(repo=repo)
-
-    relpath = ""
-    if repo.root_dir != repo.fs.path.getcwd():
-        relpath = repo.fs.path.relpath(repo.root_dir, repo.fs.path.getcwd())
-
-    res = {}
+def _read_metrics(fs, metrics):
     for metric in metrics:
-        rel_metric_path = os.path.join(relpath, *fs.path.parts(metric))
-        if not fs.isfile(metric):
-            if fs.isfile(rel_metric_path):
-                metric = rel_metric_path
-            else:
-                continue
-
-        res[rel_metric_path] = _read_metric(metric, fs, rev, onerror=onerror)
-
-    return res
+        try:
+            yield metric, _read_metric(metric, fs)
+        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+            logger.debug(exc)
+            yield metric, exc
 
 
-def _gather_metrics(repo, targets, rev, recursive, onerror=None):
-    metrics = _collect_metrics(repo, targets, recursive)
-    metrics.extend(_collect_top_level_metrics(repo))
-    return _read_metrics(repo, metrics, rev, onerror=onerror)
+def expand_paths(dvcfs, paths):
+    for path in paths:
+        if dvcfs.isdir(path):
+            yield from dvcfs.find(os.path.join("/", path))
+        else:
+            yield os.path.join("/", path)
+
+
+def _collect_metrics(repo, targets: Optional[List[str]]) -> List[str]:
+    dvcfs = repo.dvcfs
+    if targets:
+        metrics = list(targets)
+    else:
+        metrics = [dvcfs.from_os_path(out.fs_path) for out in repo.index.metrics]
+        metrics.extend(_collect_top_level_metrics(repo))
+
+    return ldistinct(expand_paths(dvcfs, metrics))
+
+
+class FileResult(TypedDict, total=False):
+    data: Any
+    error: Exception
+
+
+class Result(TypedDict, total=False):
+    data: Dict[str, FileResult]
+    error: Exception
+
+
+def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
+    relpath = fs.path.relpath
+    cwd = fs.path.getcwd()
+
+    start = relpath(cwd, root_dir)
+    data = {relpath(path, start): result for path, result in d.get("data", {}).items()}
+    if data:
+        d["data"] = data
+    return d
+
+
+def _show(
+    repo: "Repo",
+    targets: Optional[List[str]] = None,
+    on_error: str = "return",
+) -> Dict[str, FileResult]:
+    assert on_error in ("raise", "return")
+
+    files = _collect_metrics(repo, targets=targets)
+    data = {}
+    for file, result in _read_metrics(repo.dvcfs, files):
+        repo_path = file.lstrip("/")
+        if not isinstance(result, Exception):
+            data.update({repo_path: FileResult(data=result)})
+            continue
+
+        if on_error == "raise":
+            raise result
+        data.update({repo_path: FileResult(error=result)})
+    return data
 
 
 @locked
 def show(
-    repo,
-    targets=None,
+    repo: "Repo",
+    targets: Optional[List[str]] = None,
     all_branches=False,
     all_tags=False,
-    recursive=False,
     revs=None,
     all_commits=False,
-    onerror=None,
     hide_workspace=True,
-):
-    if onerror is None:
-        onerror = onerror_collect
-
-    targets = ensure_list(targets)
+    on_error: str = "return",
+) -> Dict[str, Result]:
+    targets = [os.path.abspath(target) for target in ensure_list(targets)]
     targets = [repo.dvcfs.from_os_path(target) for target in targets]
 
     res = {}
@@ -132,9 +150,16 @@ def show(
         all_tags=all_tags,
         all_commits=all_commits,
     ):
-        res[rev] = error_handler(_gather_metrics)(
-            repo, targets, rev, recursive, onerror=onerror
-        )
+        result = res[rev] = Result()
+        try:
+            if show_result := _show(repo, targets=targets, on_error=on_error):
+                result["data"] = show_result
+        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+            if on_error == "raise":
+                raise
+
+            logger.debug("failed to load in revision %r, %s", rev, str(exc))
+            result["error"] = exc
 
     if hide_workspace:
         # Hide workspace metrics if they are the same as in the active branch
@@ -147,14 +172,5 @@ def show(
         else:
             if res.get("workspace") == res.get(active_branch):
                 res.pop("workspace", None)
-
-    errored = errored_revisions(res)
-    if errored:
-        from dvc.ui import ui
-
-        ui.error_write(
-            "DVC failed to load some metrics for following revisions:"
-            f" '{', '.join(errored)}'."
-        )
 
     return res

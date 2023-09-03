@@ -11,7 +11,6 @@ def test_metrics_diff(dvc, mocker, capsys):
             "diff",
             "HEAD~10",
             "HEAD~1",
-            "-R",
             "--all",
             "--md",
             "--targets",
@@ -35,7 +34,6 @@ def test_metrics_diff(dvc, mocker, capsys):
         targets=["target1", "target2"],
         a_rev="HEAD~10",
         b_rev="HEAD~1",
-        recursive=True,
         all=True,
     )
     show_diff_mock.assert_called_once_with(
@@ -57,7 +55,6 @@ def test_metrics_diff_json(dvc, mocker, capsys):
             "diff",
             "HEAD~10",
             "HEAD~1",
-            "-R",
             "--all",
             "--json",
             "--targets",
@@ -83,7 +80,6 @@ def test_metrics_diff_json(dvc, mocker, capsys):
         targets=["target1", "target2"],
         a_rev="HEAD~10",
         b_rev="HEAD~1",
-        recursive=True,
         all=True,
     )
     show_diff_mock.assert_not_called()
@@ -95,7 +91,6 @@ def test_metrics_show(dvc, mocker):
         [
             "metrics",
             "show",
-            "-R",
             "--all-tags",
             "--all-branches",
             "--all-commits",
@@ -116,7 +111,6 @@ def test_metrics_show(dvc, mocker):
     m1.assert_called_once_with(
         cmd.repo,
         ["target1", "target2"],
-        recursive=True,
         all_tags=True,
         all_branches=True,
         all_commits=True,
@@ -138,7 +132,6 @@ def test_metrics_show_json(dvc, mocker, capsys):
             "metrics",
             "show",
             "--json",
-            "-R",
             "--all-tags",
             "--all-branches",
             "--all-commits",
@@ -163,7 +156,6 @@ def test_metrics_show_json(dvc, mocker, capsys):
     metrics_show.assert_called_once_with(
         cmd.repo,
         ["target1", "target2"],
-        recursive=True,
         all_tags=True,
         all_branches=True,
         all_commits=True,

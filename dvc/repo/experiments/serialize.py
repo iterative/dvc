@@ -4,12 +4,13 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Literal, Optional
 
 from dvc.exceptions import DvcException
-from dvc.repo.metrics.show import _gather_metrics
+from dvc.repo.metrics.show import _show as _show_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.utils import onerror_collect, relpath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.repo.metrics.show import FileResult as MetricsFileResult
 
 
 class DeserializeError(DvcException):
@@ -30,7 +31,7 @@ class SerializableExp:
     rev: str
     timestamp: Optional[datetime] = None
     params: Dict[str, Any] = field(default_factory=dict)
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: Dict[str, "MetricsFileResult"] = field(default_factory=dict)
     deps: Dict[str, "ExpDep"] = field(default_factory=dict)
     outs: Dict[str, "ExpOut"] = field(default_factory=dict)
     meta: Dict[str, Any] = field(default_factory=dict)
@@ -61,19 +62,13 @@ class SerializableExp:
         # see https://bugs.python.org/issue35540
         params = dict(_gather_params(repo, deps=param_deps, onerror=onerror))
         params = {k: dict(v) for k, v in params.items()}
-        metrics = dict(
-            _gather_metrics(
-                repo,
-                targets=None,
-                rev=rev[:7],
-                recursive=False,
-                onerror=onerror_collect,
-            )
-        )
+
+        metrics = _show_metrics(repo, on_error="return")
+
         return cls(
             rev=rev,
             params=params,
-            metrics=metrics,
+            metrics=dict(metrics),
             deps={
                 relpath(dep.fs_path, repo.root_dir): ExpDep(
                     hash=dep.hash_info.value if dep.hash_info else None,
@@ -122,7 +117,6 @@ class SerializableExp:
         return (
             self.params.get("error")
             or any(value.get("error") for value in self.params.values())
-            or self.metrics.get("error")
             or any(value.get("error") for value in self.metrics.values())
         )
 

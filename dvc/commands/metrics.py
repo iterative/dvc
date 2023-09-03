@@ -20,17 +20,25 @@ class CmdMetricsBase(CmdBase):
 
 class CmdMetricsShow(CmdMetricsBase):
     def run(self):
-        try:
-            metrics = self.repo.metrics.show(
-                self.args.targets,
-                all_branches=self.args.all_branches,
-                all_tags=self.args.all_tags,
-                all_commits=self.args.all_commits,
-                recursive=self.args.recursive,
+        from dvc.repo.metrics.show import to_relpath
+        from dvc.utils import errored_revisions
+
+        metrics = self.repo.metrics.show(
+            self.args.targets,
+            all_branches=self.args.all_branches,
+            all_tags=self.args.all_tags,
+            all_commits=self.args.all_commits,
+        )
+        metrics = {
+            k: to_relpath(self.repo.fs, self.repo.root_dir, v)
+            for k, v in metrics.items()
+        }
+
+        if errored := errored_revisions(metrics):
+            ui.error_write(
+                "DVC failed to load some metrics for following revisions:"
+                f" '{', '.join(errored)}'."
             )
-        except DvcException:
-            logger.exception("")
-            return 1
 
         if self.args.json:
             ui.write_json(metrics, default=encode_exception)
@@ -57,7 +65,6 @@ class CmdMetricsDiff(CmdMetricsBase):
                 a_rev=self.args.a_rev,
                 b_rev=self.args.b_rev,
                 targets=self.args.targets,
-                recursive=self.args.recursive,
                 all=self.args.all,
             )
         except DvcException:

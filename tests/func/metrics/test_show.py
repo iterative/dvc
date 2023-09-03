@@ -1,13 +1,15 @@
+import json
 import os
 
 import pytest
 from funcy import get_in
 
+from dvc.cli import main
 from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
 from dvc.utils.fs import remove
-from dvc.utils.serialize import JSONFileCorruptedError, YAMLFileCorruptedError
+from dvc.utils.serialize import JSONFileCorruptedError
 
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
@@ -32,11 +34,13 @@ def test_show_simple_from_subdir(tmp_dir, dvc, run_copy_metrics):
     expected_path = os.path.join("subdir", "metrics.yaml")
     assert dvc.metrics.show() == {"": {"data": {expected_path: {"data": 1.1}}}}
 
-    expected_path = os.path.join("..", "subdir", "metrics.yaml")
+    expected_path = os.path.join("subdir", "metrics.yaml")
     with subdir.chdir():
         assert dvc.metrics.show() == {"": {"data": {expected_path: {"data": 1.1}}}}
     subdir2 = tmp_dir / "subdir2"
     subdir2.mkdir()
+
+    expected_path = os.path.join("subdir", "metrics.yaml")
     with subdir2.chdir():
         assert dvc.metrics.show() == {"": {"data": {expected_path: {"data": 1.1}}}}
 
@@ -129,7 +133,7 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
     scm.commit("init metrics")
     scm.tag("v1")
 
-    expected_path = os.path.join("subdir", "metrics.yaml")
+    expected_path = "metrics.yaml"
     assert dvc.metrics.show(all_tags=True) == {
         "workspace": {"data": {expected_path: {"data": {"foo": 1}}}},
         "v1": {"data": {expected_path: {"data": {"foo": 1}}}},
@@ -201,13 +205,13 @@ def test_show_non_metric_branch(tmp_dir, scm, use_dvc):
         assert not (tmp_dir / ".dvc").exists()
 
 
-def test_non_metric_and_recursive_show(tmp_dir, dvc, run_copy_metrics):
+def test_non_metric_and_dir_show(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen({"metrics_t.yaml": "foo: 1.1", "metrics": {"metric1.yaml": "bar: 1.2"}})
 
     metric2 = os.fspath(tmp_dir / "metrics" / "metric2.yaml")
     run_copy_metrics("metrics_t.yaml", metric2, name="copy-metric2", metrics=[metric2])
 
-    assert dvc.metrics.show(targets=["metrics_t.yaml", "metrics"], recursive=True) == {
+    assert dvc.metrics.show(targets=["metrics_t.yaml", "metrics"]) == {
         "": {
             "data": {
                 os.path.join("metrics", "metric1.yaml"): {"data": {"bar": 1.2}},
@@ -244,8 +248,10 @@ def test_show_malformed_metric(tmp_dir, scm, dvc, caplog):
     )
 
 
-def test_metrics_show_no_target(tmp_dir, dvc, capsys):
-    assert dvc.metrics.show(targets=["metrics.json"]) == {"": {}}
+def test_metrics_show_no_target(M, tmp_dir, dvc, capsys):
+    assert dvc.metrics.show(targets=["metrics.json"]) == {
+        "": {"data": {"metrics.json": {"error": M.instance_of(FileNotFoundError)}}}
+    }
 
 
 def test_show_no_metrics_files(tmp_dir, dvc, caplog):
@@ -253,6 +259,7 @@ def test_show_no_metrics_files(tmp_dir, dvc, caplog):
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])
+@pytest.mark.skip(reason="no longer raising graph errors")
 def test_metrics_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     data_dir = tmp_dir / "data"
     data_dir.mkdir()
@@ -286,13 +293,19 @@ def test_metrics_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
 
 
 @pytest.mark.parametrize(
-    "file,error_path",
+    "file,error_path,err_type",
     (
-        (PROJECT_FILE, ["workspace", "error"]),
-        ("metrics.yaml", ["workspace", "data", "metrics.yaml", "error"]),
+        (PROJECT_FILE, ["workspace", "error", "type"], "YAMLSyntaxError"),
+        (
+            "metrics.yaml",
+            ["workspace", "data", "metrics.yaml", "error", "type"],
+            "YAMLFileCorruptedError",
+        ),
     ),
 )
-def test_log_errors(tmp_dir, scm, dvc, capsys, run_copy_metrics, file, error_path):
+def test_log_errors(
+    tmp_dir, scm, dvc, capsys, run_copy_metrics, file, error_path, err_type
+):
     tmp_dir.gen("metrics_t.yaml", "m: 1.1")
     run_copy_metrics(
         "metrics_t.yaml",
@@ -306,11 +319,12 @@ def test_log_errors(tmp_dir, scm, dvc, capsys, run_copy_metrics, file, error_pat
     with open(file, "a", encoding="utf-8") as fd:
         fd.write("\nMALFORMED!")
 
-    result = dvc.metrics.show(revs=["v1"])
+    assert main(["metrics", "show", "--all-tags", "--json"]) == 0
 
-    _, error = capsys.readouterr()
+    out, error = capsys.readouterr()
+    result = json.loads(out)
 
-    assert isinstance(get_in(result, error_path), YAMLFileCorruptedError)
+    assert get_in(result, error_path) == err_type
     assert (
         "DVC failed to load some metrics for following revisions: 'workspace'." in error
     )
