@@ -27,6 +27,14 @@ def _collect_top_level_params(repo: "Repo") -> Iterator[str]:
             yield repo.fs.path.normpath(path)
 
 
+def params_from_target(
+    repo: "Repo", targets: List[str]
+) -> Iterator["ParamsDependency"]:
+    stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
+    for stage in stages:
+        yield from stage.param_deps
+
+
 def _collect_params(
     repo: "Repo",
     targets: Union[List[str], Dict[str, List[str]], None] = None,
@@ -95,14 +103,6 @@ def _read_params(
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             logger.debug(exc)
             yield file_path, exc
-
-
-def params_from_target(
-    repo: "Repo", targets: List[str]
-) -> Iterator["ParamsDependency"]:
-    stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
-    for stage in stages:
-        yield from stage.param_deps
 
 
 def _gather_params(

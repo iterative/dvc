@@ -84,6 +84,12 @@ def _read_metrics(
             yield metric, exc
 
 
+def metrics_from_target(repo: "Repo", targets: List[str]) -> Iterator["Output"]:
+    stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
+    for stage in stages:
+        yield from stage.param_deps
+
+
 def _collect_metrics(
     repo: "Repo",
     targets: Optional[List[str]] = None,
@@ -128,12 +134,6 @@ def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
     if data is not None:
         d["data"] = {relpath(path, start): result for path, result in data.items()}
     return d
-
-
-def metrics_from_target(repo: "Repo", targets: List[str]) -> Iterator["Output"]:
-    stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
-    for stage in stages:
-        yield from stage.param_deps
 
 
 def _show(
