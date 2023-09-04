@@ -243,19 +243,16 @@ def _exp_range_rows(
     is_base: bool = False,
     **kwargs,
 ) -> Iterator[Tuple["CellT", ...]]:
-    for i, exp in enumerate(exp_range.revs):
+    from funcy import first
+
+    if len(exp_range.revs) > 1:
+        logger.debug("Returning tip commit for legacy checkpoint exp")
+    exp = first(exp_range.revs)
+    if exp:
         row: Dict[str, "CellT"] = {k: fill_value for k in all_headers}
         row["Experiment"] = exp.name or ""
         row["rev"] = exp.rev[:7] if Git.is_sha(exp.rev) else exp.rev
-        if len(exp_range.revs) > 1:
-            if i == 0:
-                row["typ"] = "checkpoint_tip"
-            elif i == len(exp_range.revs) - 1:
-                row["typ"] = "checkpoint_base"
-            else:
-                row["typ"] = "checkpoint_commit"
-        else:
-            row["typ"] = "branch_base" if is_base else "branch_commit"
+        row["typ"] = "branch_base" if is_base else "branch_commit"
         row["parent"] = ""
         if exp_range.executor:
             row["State"] = exp_range.executor.state.capitalize()
