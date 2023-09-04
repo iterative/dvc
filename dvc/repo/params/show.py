@@ -2,52 +2,30 @@ import logging
 import os
 from collections import defaultdict
 from itertools import chain
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Union,
-)
-
-from scmrepo.exceptions import SCMError
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from dvc.dependency.param import ParamsDependency
 from dvc.repo import locked
 from dvc.repo.metrics.show import FileResult, Result
-from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
-from dvc.utils import as_posix
+from dvc.utils import as_posix, expand_paths
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
-    from dvc.fs import DVCFileSystem, FileSystem
+    from dvc.fs import FileSystem
     from dvc.repo import Repo
-    from dvc.scm import Git, NoSCM
 
 logger = logging.getLogger(__name__)
 
 
-def _collect_top_level_params(repo):
+def _collect_top_level_params(repo: "Repo") -> Iterator[str]:
     top_params = repo.index._params  # pylint: disable=protected-access
     for dvcfile, params in top_params.items():
         wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
         for file in params:
             path = repo.fs.path.join(wdir, as_posix(file))
             yield repo.fs.path.normpath(path)
-
-
-def expand_paths(dvcfs: "DVCFileSystem", paths: Iterable[str]) -> Iterator[str]:
-    for path in paths:
-        if dvcfs.isdir(path):
-            yield from dvcfs.find(path)
-        else:
-            yield path
 
 
 def _collect_params(
@@ -187,23 +165,6 @@ def _gather_params(
     return data
 
 
-def _hide_workspace(
-    scm: Union["Git", "NoSCM"], res: Dict[str, Result]
-) -> Dict[str, Result]:
-    # Hide workspace params if they are the same as in the active branch
-    try:
-        active_branch = scm.active_branch()
-    except (SCMError, NoSCMError):
-        # SCMError - detached head
-        # NoSCMError - no repo case
-        pass
-    else:
-        if res.get("workspace") == res.get(active_branch):
-            res.pop("workspace", None)
-
-    return res
-
-
 @locked
 def show(
     repo: "Repo",
@@ -246,5 +207,7 @@ def show(
                 res[rev] = Result(error=exc)
 
     if hide_workspace:
+        from dvc.repo.metrics.show import _hide_workspace
+
         _hide_workspace(repo.scm, res)
     return res

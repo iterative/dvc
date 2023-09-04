@@ -19,13 +19,12 @@ from scmrepo.exceptions import SCMError
 
 from dvc.repo import locked
 from dvc.scm import NoSCMError
-from dvc.utils import as_posix
+from dvc.utils import as_posix, expand_paths
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
-    from dvc.fs.dvc import DVCFileSystem
     from dvc.output import Output
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
@@ -83,14 +82,6 @@ def _read_metrics(
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             logger.debug(exc)
             yield metric, exc
-
-
-def expand_paths(dvcfs: "DVCFileSystem", paths: Iterable[str]) -> Iterator[str]:
-    for path in paths:
-        if dvcfs.isdir(path):
-            yield from dvcfs.find(path)
-        else:
-            yield path
 
 
 def _collect_metrics(
