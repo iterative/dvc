@@ -200,10 +200,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     metrics_diff_parser.add_argument(
-        "a_rev", nargs="?", help="Old Git commit to compare (defaults to HEAD)"
+        "a_rev",
+        nargs="?",
+        help="Old Git commit to compare (defaults to HEAD)",
+        default="HEAD",
     )
     metrics_diff_parser.add_argument(
         "b_rev",
+        default="workspace",
         nargs="?",
         help="New Git commit to compare (defaults to the current workspace)",
     )

@@ -1,6 +1,18 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
+from itertools import chain
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypedDict,
+    Union,
+)
 
 from funcy import ldistinct
 from scmrepo.exceptions import SCMError
@@ -13,12 +25,15 @@ from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
+    from dvc.fs.dvc import DVCFileSystem
+    from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.scm import Git, NoSCM
 
 logger = logging.getLogger(__name__)
 
 
-def _collect_top_level_metrics(repo):
+def _collect_top_level_metrics(repo: "Repo") -> Iterator[str]:
     top_metrics = repo.index._metrics  # pylint: disable=protected-access
     for dvcfile, metrics in top_metrics.items():
         wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
@@ -27,7 +42,7 @@ def _collect_top_level_metrics(repo):
             yield repo.fs.path.normpath(path)
 
 
-def _extract_metrics(metrics, path):
+def _extract_metrics(metrics, path: str):
     if isinstance(metrics, (int, float, str)):
         return metrics
 
@@ -53,22 +68,24 @@ def _extract_metrics(metrics, path):
     return ret
 
 
-def _read_metric(path, fs):
+def _read_metric(fs: "FileSystem", path: str) -> Any:
     val = load_path(path, fs)
     val = _extract_metrics(val, path)
     return val or {}
 
 
-def _read_metrics(fs, metrics):
+def _read_metrics(
+    fs: "FileSystem", metrics: Iterable[str]
+) -> Iterator[Tuple[str, Union[Exception, Any]]]:
     for metric in metrics:
         try:
-            yield metric, _read_metric(metric, fs)
+            yield metric, _read_metric(fs, metric)
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             logger.debug(exc)
             yield metric, exc
 
 
-def expand_paths(dvcfs, paths):
+def expand_paths(dvcfs: "DVCFileSystem", paths: Iterable[str]) -> Iterator[str]:
     for path in paths:
         if dvcfs.isdir(path):
             yield from dvcfs.find(path)
@@ -76,12 +93,25 @@ def expand_paths(dvcfs, paths):
             yield path
 
 
-def _collect_metrics(repo, targets: Optional[List[str]]) -> List[str]:
+def _collect_metrics(
+    repo: "Repo",
+    targets: Optional[List[str]] = None,
+    stages: Optional[List[str]] = None,
+    outs_only: bool = False,
+) -> List[str]:
     dvcfs = repo.dvcfs
-    if targets:
-        metrics = list(targets)
-    else:
-        metrics = [dvcfs.from_os_path(out.fs_path) for out in repo.index.metrics]
+
+    metrics: List[str] = []
+    if targets and not outs_only:
+        metrics = targets
+
+    if not metrics or stages:
+        metric_outs = (
+            metrics_from_target(repo, stages) if stages else repo.index.metrics
+        )
+        metrics = [dvcfs.from_os_path(out.fs_path) for out in metric_outs]
+
+    if not targets and not outs_only and not stages:
         metrics.extend(_collect_top_level_metrics(repo))
 
     paths = (f"{os.sep}{path}" for path in metrics)
@@ -109,14 +139,22 @@ def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
     return d
 
 
+def metrics_from_target(repo: "Repo", targets: List[str]) -> Iterator["Output"]:
+    stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
+    for stage in stages:
+        yield from stage.param_deps
+
+
 def _show(
     repo: "Repo",
     targets: Optional[List[str]] = None,
+    outs_only: bool = False,
+    stages: Optional[List[str]] = None,
     on_error: str = "return",
 ) -> Dict[str, FileResult]:
-    assert on_error in ("raise", "return")
+    assert on_error in ("raise", "return", "ignore")
 
-    files = _collect_metrics(repo, targets=targets)
+    files = _collect_metrics(repo, targets=targets, stages=stages, outs_only=outs_only)
     data = {}
     for file, result in _read_metrics(repo.dvcfs, files):
         repo_path = file.lstrip(os.sep)
@@ -126,21 +164,43 @@ def _show(
 
         if on_error == "raise":
             raise result
-        data.update({repo_path: FileResult(error=result)})
+        if on_error == "return":
+            data.update({repo_path: FileResult(error=result)})
     return data
+
+
+def _hide_workspace(
+    scm: Union["Git", "NoSCM"], res: Dict[str, Result]
+) -> Dict[str, Result]:
+    # Hide workspace params if they are the same as in the active branch
+    try:
+        active_branch = scm.active_branch()
+    except (SCMError, NoSCMError):
+        # SCMError - detached head
+        # NoSCMError - no repo case
+        pass
+    else:
+        if res.get("workspace") == res.get(active_branch):
+            res.pop("workspace", None)
+
+    return res
 
 
 @locked
 def show(
     repo: "Repo",
     targets: Optional[List[str]] = None,
-    all_branches=False,
-    all_tags=False,
-    revs=None,
-    all_commits=False,
-    hide_workspace=True,
+    stages: Optional[List[str]] = None,
+    outs_only: bool = False,
+    all_branches: bool = False,
+    all_tags: bool = False,
+    revs: Optional[List[str]] = None,
+    all_commits: bool = False,
+    hide_workspace: bool = True,
     on_error: str = "return",
 ) -> Dict[str, Result]:
+    assert on_error in ("raise", "return", "ignore")
+
     targets = [os.path.abspath(target) for target in ensure_list(targets)]
     targets = [repo.dvcfs.from_os_path(target) for target in targets]
 
@@ -152,25 +212,22 @@ def show(
         all_commits=all_commits,
     ):
         try:
-            result = _show(repo, targets=targets, on_error=on_error)
+            result = _show(
+                repo,
+                targets=targets,
+                stages=stages,
+                outs_only=outs_only,
+                on_error=on_error,
+            )
             res[rev] = Result(data=result)
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             if on_error == "raise":
                 raise
 
-            logger.debug("failed to load in revision %r, %s", rev, str(exc))
-            res[rev] = Result(error=exc)
+            logger.warning("failed to load metrics in revision %r, %s", rev, str(exc))
+            if on_error == "return":
+                res[rev] = Result(error=exc)
 
     if hide_workspace:
-        # Hide workspace metrics if they are the same as in the active branch
-        try:
-            active_branch = repo.scm.active_branch()
-        except (SCMError, NoSCMError):
-            # SCMError - detached head
-            # NoSCMError - no repo case
-            pass
-        else:
-            if res.get("workspace") == res.get(active_branch):
-                res.pop("workspace", None)
-
+        _hide_workspace(repo.scm, res)
     return res

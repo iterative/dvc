@@ -7,10 +7,6 @@ from funcy import first
 from dvc.repo import Repo
 
 
-def _onerror_raise(exception: Exception, *args, **kwargs):
-    raise exception
-
-
 def _postprocess(results):
     processed: Dict[str, Dict] = {}
     for rev, rev_data in results.items():
@@ -385,6 +381,8 @@ def params_show(
         https://git-scm.com/docs/revisions
 
     """
+    from dvc.repo.metrics.show import to_relpath
+
     if isinstance(stages, str):
         stages = [stages]
 
@@ -392,10 +390,11 @@ def params_show(
         params = _repo.params.show(
             revs=rev if rev is None else [rev],
             targets=targets,
-            deps=deps,
-            onerror=_onerror_raise,
+            deps_only=deps,
+            on_error="raise",
             stages=stages,
         )
+        params = {k: to_relpath(_repo.fs, _repo.root_dir, v) for k, v in params.items()}
 
     params = _postprocess(params)
 

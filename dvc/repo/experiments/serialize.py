@@ -10,7 +10,7 @@ from dvc.utils import onerror_collect, relpath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
-    from dvc.repo.metrics.show import FileResult as MetricsFileResult
+    from dvc.repo.metrics.show import FileResult
 
 
 class DeserializeError(DvcException):
@@ -30,8 +30,8 @@ class SerializableExp:
 
     rev: str
     timestamp: Optional[datetime] = None
-    params: Dict[str, Any] = field(default_factory=dict)
-    metrics: Dict[str, "MetricsFileResult"] = field(default_factory=dict)
+    params: Dict[str, "FileResult"] = field(default_factory=dict)
+    metrics: Dict[str, "FileResult"] = field(default_factory=dict)
     deps: Dict[str, "ExpDep"] = field(default_factory=dict)
     outs: Dict[str, "ExpOut"] = field(default_factory=dict)
     meta: Dict[str, Any] = field(default_factory=dict)
@@ -57,18 +57,13 @@ class SerializableExp:
 
         rev = rev or repo.get_rev()
         assert rev
-        # NOTE: _gather_params/_gather_metrics return defaultdict which is not
-        # supported in dataclasses.asdict() on all python releases
-        # see https://bugs.python.org/issue35540
-        params = dict(_gather_params(repo, deps=param_deps, onerror=onerror))
-        params = {k: dict(v) for k, v in params.items()}
 
+        params = _gather_params(repo, deps_only=param_deps, on_error="return")
         metrics = _show_metrics(repo, on_error="return")
-
         return cls(
             rev=rev,
             params=params,
-            metrics=dict(metrics),
+            metrics=metrics,
             deps={
                 relpath(dep.fs_path, repo.root_dir): ExpDep(
                     hash=dep.hash_info.value if dep.hash_info else None,
@@ -114,10 +109,8 @@ class SerializableExp:
 
     @property
     def contains_error(self) -> bool:
-        return (
-            self.params.get("error")
-            or any(value.get("error") for value in self.params.values())
-            or any(value.get("error") for value in self.metrics.values())
+        return any(value.get("error") for value in self.params.values()) or any(
+            value.get("error") for value in self.metrics.values()
         )
 
 
