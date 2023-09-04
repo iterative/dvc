@@ -1,12 +1,12 @@
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Literal, Optional
 
 from dvc.exceptions import DvcException
 from dvc.repo.metrics.show import _show as _show_metrics
 from dvc.repo.params.show import _gather_params
-from dvc.utils import onerror_collect, relpath
+from dvc.utils import relpath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -41,7 +41,6 @@ class SerializableExp:
         cls,
         repo: "Repo",
         rev: Optional[str] = None,
-        onerror: Optional[Callable] = None,
         param_deps: bool = False,
         **kwargs,
     ) -> "SerializableExp":
@@ -51,9 +50,6 @@ class SerializableExp:
         should be passed via kwargs.
         """
         from dvc.dependency import ParamsDependency, RepoDependency
-
-        if not onerror:
-            onerror = onerror_collect
 
         rev = rev or repo.get_rev()
         assert rev
