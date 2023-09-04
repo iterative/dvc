@@ -4,13 +4,12 @@ from collections import defaultdict
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
-from dvc.dependency.param import ParamsDependency
+from dvc.dependency.param import ParamsDependency, read_param_file
 from dvc.repo import locked
 from dvc.repo.metrics.show import FileResult, Result
 from dvc.stage import PipelineStage
 from dvc.utils import as_posix, expand_paths
 from dvc.utils.collections import ensure_list
-from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
@@ -87,33 +86,12 @@ def _collect_vars(repo, params, stages=None) -> Dict:
     return vars_params
 
 
-def _read_param(
-    fs: "FileSystem", path: str, key_paths: Optional[List[str]] = None
-) -> Any:
-    import dpath
-
-    config = load_path(path, fs)
-    if not key_paths:
-        return config
-
-    ret: Dict = {}
-    from dpath import merge
-
-    for key_path in key_paths:
-        merge(
-            ret,
-            dpath.search(config, key_path, separator="."),
-            separator=".",
-        )
-    return ret
-
-
 def _read_params(
     fs: "FileSystem", params: Dict[str, List[str]]
 ) -> Iterator[Tuple[str, Union[Exception, Any]]]:
     for file_path, key_paths in params.items():
         try:
-            yield file_path, _read_param(fs, file_path, key_paths)
+            yield file_path, read_param_file(fs, file_path, key_paths)
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             logger.debug(exc)
             yield file_path, exc
