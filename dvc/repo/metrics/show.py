@@ -111,7 +111,8 @@ def _collect_metrics(
     if not targets and not outs_only and not stages:
         metrics.extend(_collect_top_level_metrics(repo))
 
-    paths = (f"{os.sep}{path}" for path in metrics)
+    root_marker = dvcfs.root_marker
+    paths = (f"{root_marker}{path}" for path in metrics)
     return ldistinct(expand_paths(dvcfs, paths))
 
 
@@ -147,16 +148,19 @@ def _show(
 
     files = _collect_metrics(repo, targets=targets, stages=stages, outs_only=outs_only)
     data = {}
-    for file, result in _read_metrics(repo.dvcfs, files):
-        repo_path = file.lstrip(os.sep)
+
+    dvcfs = repo.dvcfs
+    for fs_path, result in _read_metrics(dvcfs, files):
+        repo_path = fs_path.lstrip(dvcfs.root_marker)
+        repo_os_path = os.sep.join(repo.fs.path.parts(repo_path))
         if not isinstance(result, Exception):
-            data.update({repo_path: FileResult(data=result)})
+            data.update({repo_os_path: FileResult(data=result)})
             continue
 
         if on_error == "raise":
             raise result
         if on_error == "return":
-            data.update({repo_path: FileResult(error=result)})
+            data.update({repo_os_path: FileResult(error=result)})
     return data
 
 

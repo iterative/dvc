@@ -63,14 +63,15 @@ def _collect_params(
             )
         )
 
+    root_marker = dvcfs.root_marker
     if not targets and not deps_only and not stages:
         params.update({param: [] for param in _collect_top_level_params(repo)})
-        if default_file and repo.dvcfs.exists(os.sep + default_file):
+        if default_file and dvcfs.exists(f"{root_marker}{default_file}"):
             params.update({default_file: []})
 
     ret = {}
     for param_file, _params in params.items():
-        path = f"{os.sep}{param_file}"
+        path = f"{root_marker}{param_file}"
         ret.update({file: _params for file in expand_paths(dvcfs, [path])})
 
     return ret
@@ -123,16 +124,19 @@ def _gather_params(
     )
 
     data: Dict[str, FileResult] = {}
-    for file, result in _read_params(repo.dvcfs, files_keypaths):
-        repo_path = file.lstrip(os.sep)
+
+    dvcfs = repo.dvcfs
+    for fs_path, result in _read_params(dvcfs, files_keypaths):
+        repo_path = fs_path.lstrip(dvcfs.root_marker)
+        repo_os_path = os.sep.join(repo.fs.path.parts(repo_path))
         if not isinstance(result, Exception):
-            data.update({repo_path: FileResult(data=result)})
+            data.update({repo_os_path: FileResult(data=result)})
             continue
 
         if on_error == "raise":
             raise result
         if on_error == "return":
-            data.update({repo_path: FileResult(error=result)})
+            data.update({repo_os_path: FileResult(error=result)})
 
     # vars_params = _collect_vars(repo, params, stages=stages)
 
