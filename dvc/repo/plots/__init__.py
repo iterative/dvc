@@ -364,14 +364,17 @@ def infer_data_sources(plot_id, config=None):
     return ldistinct(source for source in sources)
 
 
-def _matches(targets, plot_id):
+def _matches(targets, config_file, plot_id):
     import re
+
+    from dvc.utils.plots import get_plot_id
 
     if not targets:
         return True
 
+    full_id = get_plot_id(plot_id, config_file)
     if any(
-        (re.match(target, plot_id) or re.match(target, plot_id)) for target in targets
+        (re.match(target, plot_id) or re.match(target, full_id)) for target in targets
     ):
         return True
     return False
@@ -400,9 +403,9 @@ def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = No
     for plot in repo.index.plots:
         plot_props = _plot_props(plot)
         dvcfile = plot.stage.dvcfile
-        _relpath(fs, dvcfile.path)
+        config_path = _relpath(fs, dvcfile.path)
         wdir_relpath = _relpath(fs, plot.stage.wdir)
-        if _matches(targets, str(plot)):
+        if _matches(targets, config_path, str(plot)):
             unpacked = unpack_if_dir(
                 fs,
                 _normpath(fs.path.join(wdir_relpath, plot.def_path)),
@@ -451,7 +454,7 @@ def _resolve_definitions(
             plot_props = {}
         if _id_is_path(plot_props):
             data_path = _normpath(fs.path.join(config_dir, plot_id))
-            if _matches(targets, plot_id):
+            if _matches(targets, config_path, plot_id):
                 unpacked = unpack_if_dir(
                     fs,
                     data_path,
@@ -462,7 +465,7 @@ def _resolve_definitions(
                     result,
                     unpacked,
                 )
-        elif _matches(targets, plot_id):
+        elif _matches(targets, config_path, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
             dpath.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
 

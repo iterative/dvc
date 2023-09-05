@@ -8,6 +8,7 @@ import dpath.options
 from funcy import get_in, last
 
 from dvc.repo.plots import _normpath, infer_data_sources
+from dvc.utils.plots import get_plot_id
 
 from .convert import _get_converter
 
@@ -35,13 +36,22 @@ class PlotsData:
     def group_definitions(self):
         groups = defaultdict(list)
         for rev, rev_content in self.data.items():
-            for config_file_content in (
-                rev_content.get("definitions", {}).get("data", {}).values()
+            groups_by_id: Dict = defaultdict(dict)
+            for config_file, config_file_content in (
+                rev_content.get("definitions", {}).get("data", {}).items()
             ):
                 for plot_id, plot_definition in config_file_content.get(
                     "data", {}
                 ).items():
-                    groups[plot_id].append((rev, plot_id, plot_definition))
+                    groups_by_id[plot_id][config_file] = (rev, plot_id, plot_definition)
+            # only keep config_file if the same plot_id is in multiple config_files
+            for plot_id, configs in groups_by_id.items():
+                if len(configs) == 1:
+                    groups[plot_id].append(next(iter(configs.values())))
+                else:
+                    for config_file, content in configs.items():
+                        full_id = get_plot_id(plot_id, config_file)
+                        groups[full_id].append(content)
         return dict(groups)
 
     def get_definition_data(self, target_files, rev):
