@@ -1,3 +1,4 @@
+import pytest
 from funcy import set_in
 
 from dvc.render import VERSION_FIELD
@@ -5,37 +6,112 @@ from dvc.render.converter.vega import VegaConverter
 from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_renderers
 
 
-def test_group_definitions():
-    error = FileNotFoundError()
-    data = {
-        "v1": {
-            "definitions": {
-                "data": {
-                    "config_file_1": {"data": {"plot_id_1": {}, "plot_id_2": {}}},
-                    "config_file_2": {"data": {"plot_id_3": {}}},
+@pytest.mark.parametrize(
+    "data,expected",
+    [
+        pytest.param(
+            {
+                "v1": {
+                    "definitions": {
+                        "data": {"config_file_1": {"data": {"plot_id_1": {}}}}
+                    }
                 }
-            }
-        },
-        "v2": {
-            "definitions": {
-                "data": {
-                    "config_file_1": {"error": error},
-                    "config_file_2": {"data": {"plot_id_3": {}}},
+            },
+            {"plot_id_1": [("v1", "plot_id_1", {})]},
+            id="simple",
+        ),
+        pytest.param(
+            {
+                "v1": {
+                    "definitions": {
+                        "data": {
+                            "config_file_1": {"data": {"plot_id_1": {}}},
+                            "config_file_2": {"data": {"plot_id_1": {}}},
+                        }
+                    }
                 }
-            }
-        },
-    }
-
+            },
+            {
+                "config_file_1::plot_id_1": [("v1", "plot_id_1", {})],
+                "config_file_2::plot_id_1": [("v1", "plot_id_1", {})],
+            },
+            id="multi_config",
+        ),
+        pytest.param(
+            {
+                "v1": {
+                    "definitions": {
+                        "data": {"config_file_1": {"data": {"plot_id_1": {}}}}
+                    }
+                },
+                "v2": {
+                    "definitions": {
+                        "data": {"config_file_2": {"data": {"plot_id_1": {}}}}
+                    }
+                },
+            },
+            {"plot_id_1": [("v1", "plot_id_1", {}), ("v2", "plot_id_1", {})]},
+            id="multi_rev",
+        ),
+        pytest.param(
+            {
+                "v1": {
+                    "definitions": {
+                        "data": {
+                            "config_file_1": {"data": {"plot_id_1": {}}},
+                            "config_file_2": {"data": {"plot_id_1": {}}},
+                        }
+                    }
+                },
+                "v2": {
+                    "definitions": {
+                        "data": {"config_file_1": {"data": {"plot_id_1": {}}}}
+                    }
+                },
+            },
+            {
+                "config_file_1::plot_id_1": [("v1", "plot_id_1", {})],
+                "config_file_2::plot_id_1": [("v1", "plot_id_1", {})],
+                "plot_id_1": [("v2", "plot_id_1", {})],
+            },
+            id="multi_rev_multi_config",
+        ),
+        pytest.param(
+            {
+                "v1": {
+                    "definitions": {
+                        "data": {
+                            "config_file_1": {
+                                "data": {"plot_id_1": {}, "plot_id_2": {}}
+                            },
+                            "config_file_2": {"data": {"plot_id_3": {}}},
+                        }
+                    }
+                },
+                "v2": {
+                    "definitions": {
+                        "data": {
+                            "config_file_1": {"error": FileNotFoundError()},
+                            "config_file_2": {"data": {"plot_id_3": {}}},
+                        }
+                    }
+                },
+            },
+            {
+                "plot_id_1": [("v1", "plot_id_1", {})],
+                "plot_id_2": [("v1", "plot_id_2", {})],
+                "plot_id_3": [
+                    ("v1", "plot_id_3", {}),
+                    ("v2", "plot_id_3", {}),
+                ],
+            },
+            id="all",
+        ),
+    ],
+)
+def test_group_definitions(data, expected):
     grouped = PlotsData(data).group_definitions()
-
-    assert grouped == {
-        "plot_id_1": [("v1", "plot_id_1", {})],
-        "plot_id_2": [("v1", "plot_id_2", {})],
-        "plot_id_3": [
-            ("v1", "plot_id_3", {}),
-            ("v2", "plot_id_3", {}),
-        ],
-    }
+    assert grouped == expected
 
 
 def test_match_renderers(M):
