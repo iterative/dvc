@@ -39,10 +39,14 @@ def _enforce_cmd_list(cmd):
 
 
 def prepare_kwargs(stage, run_env=None):
+    from dvc.env import DVC_ROOT
+
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
 
     if run_env:
         kwargs["env"].update(run_env)
+    if DVC_ROOT not in kwargs["env"]:
+        kwargs["env"][DVC_ROOT] = stage.repo.root_dir
 
     # NOTE: when you specify `shell=True`, `Popen` [1] will default to
     # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.

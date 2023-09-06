@@ -348,6 +348,8 @@ class BaseStashQueue(ABC):
                     if not name:
                         name = get_random_exp_name(self.scm, baseline_rev)
                     run_env[DVC_EXP_NAME] = name
+                    # Override DVC_ROOT env var to point to the parent DVC repo
+                    # root (and not an executor tempdir root)
                     run_env[DVC_ROOT] = self.repo.root_dir
 
                     # save studio config to read later by dvc and dvclive
