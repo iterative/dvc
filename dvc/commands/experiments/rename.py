@@ -3,23 +3,14 @@ import logging
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
-from dvc.exceptions import InvalidArgumentError
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsRename(CmdBase):
-    def check_arguments(self):
-        if not bool(self.args.name) | bool(self.args.experiment):
-            raise InvalidArgumentError(
-                "Please provide an `experiment` and `name` argument."
-            )
-
     def run(self):
         from dvc.utils import humanize
-
-        self.check_arguments()
 
         renamed = self.repo.experiments.rename(
             exp_name=self.args.experiment,

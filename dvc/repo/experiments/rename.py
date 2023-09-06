@@ -18,13 +18,16 @@ def rename(
     new_name: str,
     exp_name: Union[str, None] = None,
     git_remote: Optional[str] = None,
-) -> List[str]:
+) -> Union[List[str], None]:
     assert isinstance(repo.scm, Git)
     renamed: List[str] = []
     remained: List[str] = []
 
+    if exp_name == new_name:
+        return None
+
     if exp_name:
-        results: Dict[str, ExpRefInfo | None] = resolve_name(
+        results: Dict[str, Union[ExpRefInfo, None]] = resolve_name(
             scm=repo.scm, exp_names=exp_name, git_remote=git_remote
         )
         for name, result in results.items():
