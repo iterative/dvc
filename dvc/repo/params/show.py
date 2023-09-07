@@ -1,13 +1,11 @@
 import logging
 import os
-from collections import defaultdict
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from dvc.dependency.param import ParamsDependency, read_param_file
 from dvc.repo import locked
 from dvc.repo.metrics.show import FileResult, Result
-from dvc.stage import PipelineStage
 from dvc.utils import as_posix, expand_paths
 from dvc.utils.collections import ensure_list
 
@@ -77,24 +75,6 @@ def _collect_params(
     return ret
 
 
-def _collect_vars(repo, params, stages=None) -> Dict:
-    vars_params: Dict[str, Dict] = defaultdict(dict)
-
-    for stage in repo.index.stages:
-        if isinstance(stage, PipelineStage) and stage.tracked_vars:
-            if stages and stage.addressing not in stages:
-                continue
-            for file, vars_ in stage.tracked_vars.items():
-                # `params` file are shown regardless of `tracked` or not
-                # to reduce noise and duplication, they are skipped
-                if file in params:
-                    continue
-
-                name = os.sep.join(repo.fs.path.parts(file))
-                vars_params[name].update(vars_)
-    return vars_params
-
-
 def _read_params(
     fs: "FileSystem", params: Dict[str, List[str]]
 ) -> Iterator[Tuple[str, Union[Exception, Any]]]:
@@ -137,13 +117,6 @@ def _gather_params(
             raise result
         if on_error == "return":
             data.update({repo_os_path: FileResult(error=result)})
-
-    # vars_params = _collect_vars(repo, params, stages=stages)
-
-    # NOTE: only those that are not added as a ParamDependency are
-    # included so we don't need to recursively merge them yet.
-    # for key, vals in vars_params.items():
-    #     params[key]["data"] = vals
     return data
 
 
