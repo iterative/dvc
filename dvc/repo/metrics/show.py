@@ -137,7 +137,7 @@ def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
     return d
 
 
-def _show(
+def _gather_metrics(
     repo: "Repo",
     targets: Optional[List[str]] = None,
     outs_only: bool = False,
@@ -207,7 +207,7 @@ def show(
         all_commits=all_commits,
     ):
         try:
-            result = _show(
+            result = _gather_metrics(
                 repo,
                 targets=targets,
                 stages=stages,

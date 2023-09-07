@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Literal, Optional
 
 from dvc.exceptions import DvcException
-from dvc.repo.metrics.show import _show as _show_metrics
+from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.utils import relpath
 
@@ -55,7 +55,7 @@ class SerializableExp:
         assert rev
 
         params = _gather_params(repo, deps_only=param_deps, on_error="return")
-        metrics = _show_metrics(repo, on_error="return")
+        metrics = _gather_metrics(repo, on_error="return")
         return cls(
             rev=rev,
             params=params,
