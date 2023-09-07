@@ -458,3 +458,18 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
 
     assert html_result["linear_train_vs_test"]["data"]["values"] == ble
     # TODO check json results once vscode is able to handle flexible plots
+
+
+@pytest.mark.vscode
+def test_repo_with_dvclive_plots(tmp_dir, capsys, repo_with_dvclive_plots):
+    next(repo_with_dvclive_plots())
+
+    for s in ("show", "diff"):
+        _, json_result, split_json_result = call(capsys, subcommand=s)
+        expected_result = {
+            "data": {
+                "dvclive/plots/metrics/metric.tsv": [],
+            },
+        }
+        assert json_result == expected_result
+        assert split_json_result == expected_result
