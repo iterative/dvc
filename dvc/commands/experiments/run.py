@@ -26,7 +26,7 @@ class CmdExperimentsRun(CmdRepro):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    EXPERIMENTS_RUN_HELP = "Run or resume an experiment."
+    EXPERIMENTS_RUN_HELP = "Run an experiment."
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
         parents=[parent_parser],

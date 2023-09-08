@@ -676,10 +676,12 @@ def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
     assert len(dvc.experiments.ls()[scm.get_rev()]) == 2
 
 
-def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
+def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage, mocker):
+    repro = mocker.spy(dvc.experiments, "reproduce_one")
     dvc.experiments.run(exp_stage.addressing, dry=True)
 
     assert len(dvc.experiments.ls()["master"]) == 0
+    assert repro.call_args.kwargs["tmp_dir"] is True
 
 
 def test_clean(tmp_dir, scm, dvc, mocker):
