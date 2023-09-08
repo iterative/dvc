@@ -144,7 +144,6 @@ def test_no_commits(tmp_dir):
     assert Repo.init().params.diff() == {}
 
 
-@pytest.mark.skip(reason="temporarily skipped")
 def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
     params_file = tmp_dir / "test_params.yaml"
     param_data = {"vars": {"model1": {"epoch": 15}, "model2": {"epoch": 35}}}
@@ -160,9 +159,11 @@ def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
     }
     (tmp_dir / "dvc.yaml").dump(d)
     assert dvc.params.diff() == {
-        "test_params.yaml": {
-            "vars.model1.epoch": {"new": 15, "old": None},
-            "vars.model2.epoch": {"new": 35, "old": None},
+        "diff": {
+            "test_params.yaml": {
+                "vars.model1.epoch": {"new": 15, "old": None},
+                "vars.model2.epoch": {"new": 35, "old": None},
+            }
         }
     }
     scm.add(["dvc.yaml", "test_params.yaml"])
@@ -171,15 +172,19 @@ def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
     param_data["vars"]["model1"]["epoch"] = 20
     (tmp_dir / params_file).dump(param_data)
     assert dvc.params.diff() == {
-        "test_params.yaml": {"vars.model1.epoch": {"new": 20, "old": 15, "diff": 5}}
+        "diff": {
+            "test_params.yaml": {"vars.model1.epoch": {"new": 20, "old": 15, "diff": 5}}
+        }
     }
 
     data_dir = tmp_dir / "data"
     data_dir.mkdir()
     with data_dir.chdir():
         assert dvc.params.diff() == {
-            relpath(params_file): {
-                "vars.model1.epoch": {"new": 20, "old": 15, "diff": 5}
+            "diff": {
+                str(params_file.relative_to(tmp_dir)): {
+                    "vars.model1.epoch": {"new": 20, "old": 15, "diff": 5}
+                }
             }
         }
 

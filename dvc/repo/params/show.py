@@ -87,12 +87,15 @@ def _collect_vars(repo, params, stages=None) -> Dict:
             for file, vars_ in stage.tracked_vars.items():
                 # `params` file are shown regardless of `tracked` or not
                 # to reduce noise and duplication, they are skipped
-                if file in params:
+
+                # `file` is relative
+                abspath = repo.fs.path.abspath(file)
+                repo_path = repo.dvcfs.from_os_path(abspath)
+                if repo_path in params:
                     continue
 
-                name = os.sep.join(repo.fs.path.parts(file))
-                vars_params[name].update(vars_)
-    return vars_params
+                vars_params[repo_path].update(vars_)
+    return dict(vars_params)
 
 
 def _read_params(
@@ -138,12 +141,13 @@ def _gather_params(
         if on_error == "return":
             data.update({repo_os_path: FileResult(error=result)})
 
-    # vars_params = _collect_vars(repo, params, stages=stages)
-
-    # NOTE: only those that are not added as a ParamDependency are
-    # included so we don't need to recursively merge them yet.
-    # for key, vals in vars_params.items():
-    #     params[key]["data"] = vals
+    if not (stages or targets):
+        data.update(
+            {
+                path: FileResult(data=result)
+                for path, result in _collect_vars(repo, data).items()
+            }
+        )
     return data
 
 
