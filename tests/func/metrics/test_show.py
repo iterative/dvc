@@ -1,5 +1,6 @@
 import json
 import os
+from os.path import join
 
 import pytest
 from funcy import get_in
@@ -328,3 +329,25 @@ def test_log_errors(
     assert (
         "DVC failed to load some metrics for following revisions: 'workspace'." in error
     )
+
+
+def test_cached_metrics(tmp_dir, dvc, scm, remote):
+    tmp_dir.dvc_gen(
+        {
+            "dir": {"metrics.yaml": "foo: 3\nbar: 10"},
+            "dir2": {"metrics.yaml": "foo: 42\nbar: 4"},
+        }
+    )
+    dvc.push()
+    dvc.cache.local.clear()
+
+    (tmp_dir / "dvc.yaml").dump({"metrics": ["dir/metrics.yaml", "dir2"]})
+
+    assert dvc.metrics.show() == {
+        "": {
+            "data": {
+                join("dir", "metrics.yaml"): {"data": {"foo": 3, "bar": 10}},
+                join("dir2", "metrics.yaml"): {"data": {"foo": 42, "bar": 4}},
+            }
+        }
+    }

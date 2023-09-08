@@ -1,3 +1,5 @@
+from os.path import join
+
 import pytest
 
 from dvc.repo import Repo
@@ -153,4 +155,26 @@ def test_deps_with_targets(tmp_dir, scm, dvc, run_copy):
 
     assert dvc.params.show(targets=["params.yaml"], deps_only=True) == {
         "": {"data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}}
+    }
+
+
+def test_cached_params(tmp_dir, dvc, scm, remote):
+    tmp_dir.dvc_gen(
+        {
+            "dir": {"params.yaml": "foo: 3\nbar: 10"},
+            "dir2": {"params.yaml": "foo: 42\nbar: 4"},
+        }
+    )
+    dvc.push()
+    dvc.cache.local.clear()
+
+    (tmp_dir / "dvc.yaml").dump({"params": ["dir/params.yaml", "dir2"]})
+
+    assert dvc.params.show() == {
+        "": {
+            "data": {
+                join("dir", "params.yaml"): {"data": {"foo": 3, "bar": 10}},
+                join("dir2", "params.yaml"): {"data": {"foo": 42, "bar": 4}},
+            }
+        }
     }
