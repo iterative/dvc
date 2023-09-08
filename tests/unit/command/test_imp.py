@@ -41,6 +41,7 @@ def test_import(mocker, dvc):
         config="myconfig",
         remote="myremote",
         remote_config={"k1": "v1", "k2": "v2"},
+        force=False,
     )
 
 
@@ -74,6 +75,7 @@ def test_import_no_exec(mocker, dvc):
         config=None,
         remote=None,
         remote_config=None,
+        force=False,
     )
 
 
@@ -107,4 +109,5 @@ def test_import_no_download(mocker, dvc):
         config=None,
         remote=None,
         remote_config=None,
+        force=False,
     )
