@@ -166,9 +166,11 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def fsid(self) -> str:
         from fsspec.utils import tokenize
 
+        from dvc.scm import NoSCM
+
         return "dvcfs_" + tokenize(
             self.repo.url or self.repo.root_dir,
-            self.repo.get_rev() if self.repo.scm else None,
+            self.repo.get_rev() if not isinstance(self.repo.scm, NoSCM) else None,
         )
 
     def _get_key(self, path: "StrPath") -> Key:
