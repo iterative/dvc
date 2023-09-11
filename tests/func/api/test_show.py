@@ -159,9 +159,7 @@ def test_params_show_targets(params_repo):
         "bar": 2,
         "foobar": 3,
     }
-    assert api.params_show("params.yaml", stages="stage-1") == {
-        "foo": 5,
-    }
+    assert api.params_show("params.yaml", stages="stage-1") == {"bar": 2, "foo": 5}
 
 
 def test_params_show_deps(params_repo):
@@ -181,7 +179,7 @@ def test_params_show_stages(params_repo):
         stages=["stage-1", "stage-2", "stage-3"]
     )
 
-    assert api.params_show("params.json", stages="stage-3") == {"foobar": 3}
+    assert api.params_show("params.json", stages="stage-3") == {"bar": 2, "foobar": 3}
 
     assert api.params_show(stages="stage-0") == {}
 
@@ -286,9 +284,7 @@ def test_params_show_untracked_target(params_repo, tmp_dir):
 
     assert api.params_show("params_foo.yaml") == {"foo": 1}
 
-    assert api.params_show("params_foo.yaml", stages="stage-0") == {}
-
-    assert api.params_show("params_foo.yaml", deps=True) == {}
+    assert api.params_show("params_foo.yaml", stages="stage-0") == {"foo": 1}
 
 
 def test_metrics_show_no_args(metrics_repo):

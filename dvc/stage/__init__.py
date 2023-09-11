@@ -43,6 +43,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from dvc.dependency import ParamsDependency
     from dvc.dvcfile import ProjectFile, SingleStageFile
     from dvc.output import Output
     from dvc.repo import Repo
@@ -204,6 +205,16 @@ class Stage(params.StageParams):
     @dvcfile.setter
     def dvcfile(self, dvcfile: Union["ProjectFile", "SingleStageFile"]) -> None:
         self._dvcfile = dvcfile
+
+    @property
+    def params(self) -> List["ParamsDependency"]:
+        from dvc.dependency import ParamsDependency
+
+        return [dep for dep in self.deps if isinstance(dep, ParamsDependency)]
+
+    @property
+    def metrics(self) -> List["Output"]:
+        return [out for out in self.outs if out.metric]
 
     def __repr__(self):
         return f"Stage: '{self.addressing}'"

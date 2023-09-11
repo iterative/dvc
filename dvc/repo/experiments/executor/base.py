@@ -23,7 +23,6 @@ from typing import (
     Union,
 )
 
-from funcy import get_in
 from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
@@ -644,13 +643,15 @@ class BaseExecutor(ABC):
                 info.status = TaskStatus.FAILED
                 raise
             finally:
+                from dvc.repo.metrics.show import _gather_metrics
+
                 post_live_metrics(
                     "done",
                     info.baseline_rev,
                     info.name,  # type: ignore[arg-type]
                     "dvc",
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
-                    metrics=get_in(dvc.metrics.show(), ["", "data"]),
+                    metrics=_gather_metrics(dvc, on_error="return"),
                     dvc_studio_config=dvc_studio_config,
                 )
 

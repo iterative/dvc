@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Mapping, Set
+from typing import Any, Dict, List, Mapping, Set
 
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
@@ -58,7 +58,7 @@ def loads_from(stage, s_list, erepo=None, fs_config=None):
     ]
 
 
-def _merge_params(s_list):
+def _merge_params(s_list) -> Dict[str, List[str]]:
     d = defaultdict(list)
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
 

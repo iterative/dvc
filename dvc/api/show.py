@@ -7,10 +7,6 @@ from funcy import first
 from dvc.repo import Repo
 
 
-def _onerror_raise(exception: Exception, *args, **kwargs):
-    raise exception
-
-
 def _postprocess(results):
     processed: Dict[str, Dict] = {}
     for rev, rev_data in results.items():
@@ -23,7 +19,6 @@ def _postprocess(results):
         for file_data in rev_data["data"].values():
             for k in file_data["data"]:
                 counts[k] += 1
-
         for file_name, file_data in rev_data["data"].items():
             to_merge = {
                 (k if counts[k] == 1 else f"{file_name}:{k}"): v
@@ -138,13 +133,17 @@ def metrics_show(
     .. _Git revision:
         https://git-scm.com/docs/revisions
     """
+    from dvc.repo.metrics.show import to_relpath
 
     with Repo.open(repo, config=config) as _repo:
         metrics = _repo.metrics.show(
             targets=targets,
             revs=rev if rev is None else [rev],
-            onerror=_onerror_raise,
+            on_error="raise",
         )
+        metrics = {
+            k: to_relpath(_repo.fs, _repo.root_dir, v) for k, v in metrics.items()
+        }
 
     metrics = _postprocess(metrics)
 
@@ -382,6 +381,8 @@ def params_show(
         https://git-scm.com/docs/revisions
 
     """
+    from dvc.repo.metrics.show import to_relpath
+
     if isinstance(stages, str):
         stages = [stages]
 
@@ -389,10 +390,11 @@ def params_show(
         params = _repo.params.show(
             revs=rev if rev is None else [rev],
             targets=targets,
-            deps=deps,
-            onerror=_onerror_raise,
+            deps_only=deps,
+            on_error="raise",
             stages=stages,
         )
+        params = {k: to_relpath(_repo.fs, _repo.root_dir, v) for k, v in params.items()}
 
     params = _postprocess(params)
 
