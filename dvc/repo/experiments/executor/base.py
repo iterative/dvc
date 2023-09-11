@@ -23,7 +23,6 @@ from typing import (
     Union,
 )
 
-from funcy import get_in
 from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
@@ -253,15 +252,6 @@ class BaseExecutor(ABC):
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
         )
-
-    @classmethod
-    def _get_stage_files(cls, stages: List["Stage"]) -> List[str]:
-        from dvc.stage.utils import _get_stage_files
-
-        ret: List[str] = []
-        for stage in stages:
-            ret.extend(_get_stage_files(stage))
-        return ret
 
     @classmethod
     def _get_top_level_paths(cls, repo: "Repo") -> List["str"]:
@@ -518,10 +508,8 @@ class BaseExecutor(ABC):
                     recursive=kwargs.get("recursive", False),
                 )
 
+            kwargs["repro_fn"] = cls._repro_and_track
             stages = dvc.reproduce(*args, **kwargs)
-            if paths := cls._get_stage_files(stages):
-                logger.debug("Staging stage-related files: %s", paths)
-                dvc.scm_context.add(paths)
             if paths := cls._get_top_level_paths(dvc):
                 logger.debug("Staging top-level files: %s", paths)
                 dvc.scm_context.add(paths)
@@ -545,6 +533,17 @@ class BaseExecutor(ABC):
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
         return ExecutorResult(exp_hash, exp_ref, repro_force)
+
+    @staticmethod
+    def _repro_and_track(stage: "Stage", **kwargs) -> Optional["Stage"]:
+        from dvc.repo.reproduce import _reproduce_stage
+        from dvc.stage.utils import _get_stage_files
+
+        ret = _reproduce_stage(stage, **kwargs)
+        if not kwargs.get("dry") and (paths := _get_stage_files(stage)):
+            logger.debug("Staging stage-related files: %s", paths)
+            stage.repo.scm_context.add(paths)
+        return ret
 
     @classmethod
     def _repro_commit(
@@ -644,13 +643,15 @@ class BaseExecutor(ABC):
                 info.status = TaskStatus.FAILED
                 raise
             finally:
+                from dvc.repo.metrics.show import _gather_metrics
+
                 post_live_metrics(
                     "done",
                     info.baseline_rev,
                     info.name,  # type: ignore[arg-type]
                     "dvc",
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
-                    metrics=get_in(dvc.metrics.show(), ["", "data"]),
+                    metrics=_gather_metrics(dvc, on_error="return"),
                     dvc_studio_config=dvc_studio_config,
                 )
 

@@ -34,6 +34,7 @@ def test_import_url(mocker, dvc):
         jobs=4,
         force=False,
         version_aware=False,
+        fs_config=None,
     )
 
 
@@ -83,6 +84,7 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected, dvc):
         jobs=None,
         force=False,
         version_aware=False,
+        fs_config=None,
         **expected,
     )
 
@@ -115,6 +117,7 @@ def test_import_url_to_remote(mocker, dvc):
         jobs=None,
         force=False,
         version_aware=False,
+        fs_config=None,
     )
 
 

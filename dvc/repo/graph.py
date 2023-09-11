@@ -158,10 +158,9 @@ def build_outs_graph(graph, outs_trie):
 
     outs_graph.add_nodes_from(outs_trie.values())
     for stage in graph.nodes():
+        if stage.is_repo_import:
+            continue
         for dep in stage.deps:
-            if dep.fs_path is None:
-                # RepoDependency don't have a path
-                continue
             dep_key = dep.fs.path.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):

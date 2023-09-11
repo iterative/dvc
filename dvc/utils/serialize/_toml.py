@@ -10,8 +10,8 @@ class TOMLFileCorruptedError(ParseError):
         super().__init__(path, "TOML file structure is corrupted")
 
 
-def load_toml(path, fs=None):
-    return _load_data(path, parser=parse_toml, fs=fs)
+def load_toml(path, fs=None, **kwargs):
+    return _load_data(path, parser=parse_toml, fs=fs, **kwargs)
 
 
 def _parse_toml(text, path):

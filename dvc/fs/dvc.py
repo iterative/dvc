@@ -162,6 +162,15 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
+    @functools.cached_property
+    def fsid(self) -> str:
+        from fsspec.utils import tokenize
+
+        return "dvcfs_" + tokenize(
+            self.repo.url or self.repo.root_dir,
+            self.repo.get_rev() if self.repo.scm else None,
+        )
+
     def _get_key(self, path: "StrPath") -> Key:
         path = os.fspath(path)
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
@@ -412,6 +421,10 @@ class DVCFileSystem(FileSystem):
     # pylint: disable-next=invalid-overridden-method
     def fs(self) -> "_DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
+
+    @property
+    def fsid(self) -> str:
+        return self.fs.fsid
 
     def isdvc(self, path, **kwargs) -> bool:
         return self.fs.isdvc(path, **kwargs)

@@ -59,6 +59,7 @@ def add_parser(experiments_subparsers, parent_parser):
     EXPERIMENTS_LIST_HELP = "List local and remote experiments."
     experiments_list_parser = experiments_subparsers.add_parser(
         "list",
+        aliases=["ls"],
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_LIST_HELP, "exp/list"),
         help=EXPERIMENTS_LIST_HELP,

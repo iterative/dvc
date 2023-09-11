@@ -6,9 +6,12 @@ import logging
 import os
 import re
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, Optional, Tuple
 
 import colorama
+
+if TYPE_CHECKING:
+    from dvc.fs import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -413,3 +416,11 @@ def errored_revisions(rev_data: Dict) -> List:
         if nested_contains(data, "error"):
             result.append(revision)
     return result
+
+
+def expand_paths(fs: "FileSystem", paths: Iterable[str]) -> Iterator[str]:
+    for path in paths:
+        if fs.isdir(path):
+            yield from fs.find(path)
+        else:
+            yield path

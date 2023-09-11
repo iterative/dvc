@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Mapping, Set
+from typing import Any, Dict, List, Mapping, Set
 
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
@@ -15,6 +15,7 @@ SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
+    Output.PARAM_FS_CONFIG: dict,
 }
 
 
@@ -36,7 +37,10 @@ def loadd_from(stage, d_list):
         p = d.pop(Output.PARAM_PATH, None)
         files = d.pop(Output.PARAM_FILES, None)
         hash_name = d.pop(Output.PARAM_HASH, None)
-        ret.append(_get(stage, p, d, files=files, hash_name=hash_name))
+        fs_config = d.pop(Output.PARAM_FS_CONFIG, None)
+        ret.append(
+            _get(stage, p, d, files=files, hash_name=hash_name, fs_config=fs_config)
+        )
     return ret
 
 
@@ -54,7 +58,7 @@ def loads_from(stage, s_list, erepo=None, fs_config=None):
     ]
 
 
-def _merge_params(s_list):
+def _merge_params(s_list) -> Dict[str, List[str]]:
     d = defaultdict(list)
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
 

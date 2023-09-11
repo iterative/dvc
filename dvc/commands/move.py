@@ -30,6 +30,7 @@ def add_parser(subparsers, parent_parser):
 
     move_parser = subparsers.add_parser(
         "move",
+        aliases=["mv"],
         parents=[parent_parser],
         description=append_doc_link(MOVE_DESCRIPTION, "move"),
         help=MOVE_HELP,
