@@ -103,11 +103,11 @@ def _collect_vars(repo, params, stages=None) -> Dict:
 
 
 def _read_params(
-    fs: "FileSystem", params: Dict[str, List[str]]
+    fs: "FileSystem", params: Dict[str, List[str]], **load_kwargs
 ) -> Iterator[Tuple[str, Union[Exception, Any]]]:
     for file_path, key_paths in params.items():
         try:
-            yield file_path, read_param_file(fs, file_path, key_paths)
+            yield file_path, read_param_file(fs, file_path, key_paths, **load_kwargs)
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             logger.debug(exc)
             yield file_path, exc
@@ -136,7 +136,7 @@ def _gather_params(
     data: Dict[str, FileResult] = {}
 
     fs = repo.dvcfs
-    for fs_path, result in _read_params(fs, files_keypaths):
+    for fs_path, result in _read_params(fs, files_keypaths, cache=True):
         repo_path = fs_path.lstrip(fs.root_marker)
         repo_os_path = os.sep.join(fs.path.parts(repo_path))
         if not isinstance(result, Exception):

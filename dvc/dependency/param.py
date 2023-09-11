@@ -39,8 +39,9 @@ def read_param_file(
     path: str,
     key_paths: Optional[List[str]] = None,
     flatten: bool = False,
+    **load_kwargs,
 ) -> Any:
-    config = load_path(path, fs)
+    config = load_path(path, fs, **load_kwargs)
     if not key_paths:
         return config
 
