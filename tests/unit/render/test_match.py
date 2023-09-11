@@ -1,7 +1,6 @@
 import pytest
 from funcy import set_in
 
-from dvc.render import VERSION_FIELD
 from dvc.render.converter.vega import VegaConverter
 from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_renderers
 
@@ -158,20 +157,16 @@ def test_match_renderers(M):
     renderer = renderer_with_errors[0]
     assert renderer.datapoints == [
         {
-            VERSION_FIELD: {
-                "revision": "v1",
-                "filename": "file.json",
-                "field": "y",
-            },
+            "rev": "v1",
+            "filename": "file.json",
+            "field": "y",
             "x": 1,
             "y": 1,
         },
         {
-            VERSION_FIELD: {
-                "revision": "v1",
-                "filename": "file.json",
-                "field": "y",
-            },
+            "rev": "v1",
+            "filename": "file.json",
+            "field": "y",
             "x": 2,
             "y": 2,
         },

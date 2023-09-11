@@ -1,4 +1,4 @@
-from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY, VERSION_FIELD
+from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
 from dvc.render.convert import to_json
 
 
@@ -10,13 +10,13 @@ def test_to_json_vega(mocker):
         {
             "x": 1,
             "y": 2,
-            VERSION_FIELD: {"revision": "foo"},
+            "rev": "foo",
             "filename": "foo.json",
         },
         {
             "x": 2,
             "y": 1,
-            VERSION_FIELD: {"revision": "bar"},
+            "rev": "bar",
             "filename": "foo.json",
         },
     ]
@@ -31,7 +31,7 @@ def test_to_json_vega(mocker):
                     "x": 1,
                     "y": 2,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "foo"},
+                    "rev": "foo",
                 },
             ],
             "bar": [
@@ -39,7 +39,7 @@ def test_to_json_vega(mocker):
                     "x": 2,
                     "y": 1,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "bar"},
+                    "rev": "bar",
                 },
             ],
         },
@@ -55,13 +55,13 @@ def test_to_json_vega_split(mocker):
         {
             "x": 1,
             "y": 2,
-            VERSION_FIELD: {"revision": "foo"},
+            "rev": "foo",
             "filename": "foo.json",
         },
         {
             "x": 2,
             "y": 1,
-            VERSION_FIELD: {"revision": "bar"},
+            "rev": "bar",
             "filename": "foo.json",
         },
     ]
@@ -76,7 +76,7 @@ def test_to_json_vega_split(mocker):
                     "x": 1,
                     "y": 2,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "foo"},
+                    "rev": "foo",
                 }
             ],
             "bar": [
@@ -84,7 +84,7 @@ def test_to_json_vega_split(mocker):
                     "x": 2,
                     "y": 1,
                     "filename": "foo.json",
-                    VERSION_FIELD: {"revision": "bar"},
+                    "rev": "bar",
                 }
             ],
         },

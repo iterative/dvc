@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from funcy import first, last
 
 from dvc.exceptions import DvcException
-from dvc.render import FILENAME_FIELD, INDEX_FIELD, VERSION_FIELD
+from dvc.render import FIELD_FIELD, FILENAME_FIELD, INDEX_FIELD, REVISION_FIELD
 
 from . import Converter
 
@@ -270,11 +270,9 @@ class VegaConverter(Converter):
             _update_all(
                 datapoints,
                 update_dict={
-                    VERSION_FIELD: {
-                        "revision": revision,
-                        FILENAME_FIELD: y_file_short,
-                        "field": y_field,
-                    }
+                    REVISION_FIELD: revision,
+                    FILENAME_FIELD: y_file_short,
+                    FIELD_FIELD: y_field,
                 },
             )
 
