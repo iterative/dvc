@@ -91,10 +91,14 @@ from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_ren
                 "v2": {
                     "definitions": {
                         "data": {
-                            "config_file_1": {"error": FileNotFoundError()},
                             "config_file_2": {"data": {"plot_id_3": {}}},
                         }
-                    }
+                    },
+                    "source": {
+                        "data": {
+                            "config_file_1": {"error": FileNotFoundError()},
+                        }
+                    },
                 },
             },
             {
@@ -132,12 +136,6 @@ def test_match_renderers(M):
             "sources": {
                 "data": {"file.json": {"data": [{"x": 1, "y": 1}, {"x": 2, "y": 2}]}}
             },
-        },
-        "errored_revision": {
-            "definitions": {
-                "data": {"config_file_1": {"error": FileNotFoundError()}},
-            },
-            "sources": {},
         },
         "revision_with_no_data": {
             "definitions": {
