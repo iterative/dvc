@@ -55,30 +55,27 @@ def _extract_metrics(metrics, path: str):
             ret[key] = m
         else:
             logger.debug(
-                (
-                    "Could not parse '%s' metric from '%s'"
-                    "due to its unsupported type: '%s'"
-                ),
+                "Could not parse %r metric from %r due to its unsupported type: %r",
                 key,
                 path,
-                type(val),
+                type(val).__name__,
             )
 
     return ret
 
 
-def _read_metric(fs: "FileSystem", path: str) -> Any:
-    val = load_path(path, fs)
+def _read_metric(fs: "FileSystem", path: str, **load_kwargs) -> Any:
+    val = load_path(path, fs, **load_kwargs)
     val = _extract_metrics(val, path)
     return val or {}
 
 
 def _read_metrics(
-    fs: "FileSystem", metrics: Iterable[str]
+    fs: "FileSystem", metrics: Iterable[str], **load_kwargs
 ) -> Iterator[Tuple[str, Union[Exception, Any]]]:
     for metric in metrics:
         try:
-            yield metric, _read_metric(fs, metric)
+            yield metric, _read_metric(fs, metric, **load_kwargs)
         except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
             logger.debug(exc)
             yield metric, exc
@@ -157,7 +154,7 @@ def _gather_metrics(
     data = {}
 
     fs = repo.dvcfs
-    for fs_path, result in _read_metrics(fs, files):
+    for fs_path, result in _read_metrics(fs, files, cache=True):
         repo_path = fs_path.lstrip(fs.root_marker)
         repo_os_path = os.sep.join(fs.path.parts(repo_path))
         if not isinstance(result, Exception):

@@ -17,8 +17,8 @@ class YAMLFileCorruptedError(YAMLError):
         super().__init__(path, "YAML file structure is corrupted")
 
 
-def load_yaml(path, fs=None):
-    return _load_data(path, parser=parse_yaml, fs=fs)
+def load_yaml(path, fs=None, **kwargs):
+    return _load_data(path, parser=parse_yaml, fs=fs, **kwargs)
 
 
 def parse_yaml(text, path, typ="safe"):

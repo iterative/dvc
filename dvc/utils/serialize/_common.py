@@ -69,10 +69,12 @@ class EncodingError(ParseError):
         super().__init__(path, f"is not valid {encoding}")
 
 
-def _load_data(path: "StrPath", parser: ParserFn, fs: Optional["FileSystem"] = None):
+def _load_data(
+    path: "StrPath", parser: ParserFn, fs: Optional["FileSystem"] = None, **kwargs
+):
     open_fn = fs.open if fs else open
     encoding = "utf-8"
-    with open_fn(path, encoding=encoding) as fd:  # type: ignore[operator]
+    with open_fn(path, encoding=encoding, **kwargs) as fd:  # type: ignore[operator]
         with reraise(UnicodeDecodeError, EncodingError(path, encoding)):
             return parser(fd.read(), path)
 
