@@ -7,13 +7,12 @@ on:
     types: [released, prereleased]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   pip:
     environment: pypi
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
