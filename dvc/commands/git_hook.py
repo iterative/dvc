@@ -28,7 +28,7 @@ class CmdPreCommit(CmdHookBase):
     def _run(self):
         from dvc.cli import main
 
-        return main(["status"])
+        return main(["data", "status"])
 
 
 class CmdPostCheckout(CmdHookBase):
