@@ -42,38 +42,42 @@ def _collect_params(
     deps_only: bool = False,
     default_file: Optional[str] = None,
 ) -> Dict[str, List[str]]:
-    dvcfs = repo.dvcfs
+    from dvc.dependency import _merge_params
+
     if isinstance(targets, list):
         targets = {target: [] for target in targets}
 
-    params = {}
-    if targets and not deps_only:
-        params.update(targets)
+    params: List[Dict[str, List[str]]] = []
 
-    if not params or stages:
-        from dvc.dependency import _merge_params
+    if targets:
+        # target is a repo-relative path
+        params.extend({file: params} for file, params in targets.items())
 
-        param_deps = params_from_target(repo, stages) if stages else repo.index.params
-        params.update(
-            _merge_params(
-                [
-                    {dvcfs.from_os_path(dep.fs_path): list(dep.params)}
-                    for dep in param_deps
-                ]
-            )
+    if not targets or stages:
+        deps = params_from_target(repo, stages) if stages else repo.index.params
+        relpath = repo.fs.path.relpath
+        params.extend(
+            {relpath(dep.fs_path, repo.root_dir): list(dep.params)} for dep in deps
         )
 
-    root_marker = dvcfs.root_marker
+    fs = repo.dvcfs
+
     if not targets and not deps_only and not stages:
-        params.update({param: [] for param in _collect_top_level_params(repo)})
-        if default_file and dvcfs.exists(f"{root_marker}{default_file}"):
-            params.update({default_file: []})
+        # _collect_top_level_params returns repo-relative paths
+        params.extend({param: []} for param in _collect_top_level_params(repo))
+        if default_file and fs.exists(f"{fs.root_marker}{default_file}"):
+            params.append({default_file: []})
+
+    # combine all the param files and the keypaths to track
+    all_params = _merge_params(params)
 
     ret = {}
-    for param_file, _params in params.items():
-        path = f"{root_marker}{param_file}"
-        ret.update({file: _params for file in expand_paths(dvcfs, [path])})
-
+    for param, _params in all_params.items():
+        # convert to posixpath for DVCFileSystem
+        path = fs.from_os_path(param)
+        # make paths absolute for DVCFileSystem
+        repo_path = f"{fs.root_marker}{path}"
+        ret.update({file: _params for file in expand_paths(fs, [repo_path])})
     return ret
 
 
@@ -118,6 +122,9 @@ def _gather_params(
 ):
     assert on_error in ("raise", "return", "ignore")
 
+    # `files` is a repo-relative posixpath that can be passed to DVCFileSystem
+    # It is absolute, i.e. has a root_marker `/` in front which we strip when returning
+    # the result and convert to appropriate repo-relative os.path.
     files_keypaths = _collect_params(
         repo,
         targets=targets,
@@ -128,10 +135,10 @@ def _gather_params(
 
     data: Dict[str, FileResult] = {}
 
-    dvcfs = repo.dvcfs
-    for fs_path, result in _read_params(dvcfs, files_keypaths):
-        repo_path = fs_path.lstrip(dvcfs.root_marker)
-        repo_os_path = os.sep.join(repo.fs.path.parts(repo_path))
+    fs = repo.dvcfs
+    for fs_path, result in _read_params(fs, files_keypaths):
+        repo_path = fs_path.lstrip(fs.root_marker)
+        repo_os_path = os.sep.join(fs.path.parts(repo_path))
         if not isinstance(result, Exception):
             data.update({repo_os_path: FileResult(data=result)})
             continue

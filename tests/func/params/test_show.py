@@ -154,7 +154,11 @@ def test_deps_with_targets(tmp_dir, scm, dvc, run_copy):
     scm.commit("add stage")
 
     assert dvc.params.show(targets=["params.yaml"], deps_only=True) == {
-        "": {"data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}}
+        "": {
+            "data": {
+                "params.yaml": {"data": {"abc": "ignore", "foo": "bar", "xyz": "val"}}
+            }
+        }
     }
 
 

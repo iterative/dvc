@@ -179,7 +179,7 @@ def test_params_show_stages(params_repo):
         stages=["stage-1", "stage-2", "stage-3"]
     )
 
-    assert api.params_show("params.json", stages="stage-3") == {"foobar": 3}
+    assert api.params_show("params.json", stages="stage-3") == {"bar": 2, "foobar": 3}
 
     assert api.params_show(stages="stage-0") == {}
 

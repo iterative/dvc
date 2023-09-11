@@ -96,24 +96,28 @@ def _collect_metrics(
     stages: Optional[List[str]] = None,
     outs_only: bool = False,
 ) -> List[str]:
-    dvcfs = repo.dvcfs
-
     metrics: List[str] = []
-    if targets and not outs_only:
-        metrics = targets
 
-    if not metrics or stages:
-        metric_outs = (
-            metrics_from_target(repo, stages) if stages else repo.index.metrics
-        )
-        metrics = [dvcfs.from_os_path(out.fs_path) for out in metric_outs]
+    if targets:
+        # target is a repo-relative path
+        metrics.extend(targets)
+
+    if not targets or outs_only:
+        outs = metrics_from_target(repo, stages) if stages else repo.index.metrics
+        relpath = repo.fs.path.relpath
+        metrics.extend(relpath(out.fs_path, repo.root_dir) for out in outs)
 
     if not targets and not outs_only and not stages:
+        # _collect_top_level_metrics returns repo-relative paths
         metrics.extend(_collect_top_level_metrics(repo))
 
-    root_marker = dvcfs.root_marker
-    paths = (f"{root_marker}{path}" for path in metrics)
-    return ldistinct(expand_paths(dvcfs, paths))
+    fs = repo.dvcfs
+
+    # convert to posixpath for DVCFileSystem
+    paths = (fs.from_os_path(metric) for metric in metrics)
+    # make paths absolute for DVCFileSystem
+    repo_paths = (f"{fs.root_marker}{path}" for path in paths)
+    return ldistinct(expand_paths(fs, repo_paths))
 
 
 class FileResult(TypedDict, total=False):
@@ -146,13 +150,16 @@ def _gather_metrics(
 ) -> Dict[str, FileResult]:
     assert on_error in ("raise", "return", "ignore")
 
+    # `files` is a repo-relative posixpath that can be passed to DVCFileSystem
+    # It is absolute, i.e. has a root_marker `/` in front which we strip when returning
+    # the result and convert to appropriate repo-relative os.path.
     files = _collect_metrics(repo, targets=targets, stages=stages, outs_only=outs_only)
     data = {}
 
-    dvcfs = repo.dvcfs
-    for fs_path, result in _read_metrics(dvcfs, files):
-        repo_path = fs_path.lstrip(dvcfs.root_marker)
-        repo_os_path = os.sep.join(repo.fs.path.parts(repo_path))
+    fs = repo.dvcfs
+    for fs_path, result in _read_metrics(fs, files):
+        repo_path = fs_path.lstrip(fs.root_marker)
+        repo_os_path = os.sep.join(fs.path.parts(repo_path))
         if not isinstance(result, Exception):
             data.update({repo_os_path: FileResult(data=result)})
             continue
