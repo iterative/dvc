@@ -3,8 +3,7 @@
   - pre-commit
   entry: dvc
   id: dvc-pre-commit
-  language: python
-  language_version: python3
+  language: system
   name: DVC pre-commit
   require_serial: true
   stages:
@@ -15,8 +14,7 @@
   - pre-push
   entry: dvc
   id: dvc-pre-push
-  language: python
-  language_version: python3
+  language: system
   name: DVC pre-push
   require_serial: true
   stages:
@@ -27,8 +25,7 @@
   - post-checkout
   entry: dvc
   id: dvc-post-checkout
-  language: python
-  language_version: python3
+  language: system
   minimum_pre_commit_version: 2.2.0
   name: DVC post-checkout
   require_serial: true
