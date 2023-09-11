@@ -59,6 +59,9 @@ class CmdMetricsShow(CmdMetricsBase):
 
 class CmdMetricsDiff(CmdMetricsBase):
     def run(self):
+        import os
+        from os.path import relpath
+
         diff_result = self.repo.metrics.diff(
             a_rev=self.args.a_rev,
             b_rev=self.args.b_rev,
@@ -73,10 +76,7 @@ class CmdMetricsDiff(CmdMetricsBase):
                 f" '{', '.join(errored)}'."
             )
 
-        repo = self.repo
-        relpath = repo.fs.path.relpath
-
-        start = relpath(repo.fs.path.getcwd(), repo.root_dir)
+        start = relpath(os.getcwd(), self.repo.root_dir)
         diff = diff_result.get("diff", {})
         diff = {relpath(path, start): result for path, result in diff.items()}
 

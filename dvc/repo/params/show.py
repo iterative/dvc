@@ -32,7 +32,7 @@ def params_from_target(
 ) -> Iterator["ParamsDependency"]:
     stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
     for stage in stages:
-        yield from stage.param_deps
+        yield from stage.params
 
 
 def _collect_params(

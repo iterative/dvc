@@ -87,7 +87,7 @@ def _read_metrics(
 def metrics_from_target(repo: "Repo", targets: List[str]) -> Iterator["Output"]:
     stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
     for stage in stages:
-        yield from stage.param_deps
+        yield from stage.metrics
 
 
 def _collect_metrics(

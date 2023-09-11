@@ -207,13 +207,13 @@ class Stage(params.StageParams):
         self._dvcfile = dvcfile
 
     @property
-    def param_deps(self) -> List["ParamsDependency"]:
+    def params(self) -> List["ParamsDependency"]:
         from dvc.dependency import ParamsDependency
 
         return [dep for dep in self.deps if isinstance(dep, ParamsDependency)]
 
     @property
-    def metric_outs(self) -> List["Output"]:
+    def metrics(self) -> List["Output"]:
         return [out for out in self.outs if out.metric]
 
     def __repr__(self):
