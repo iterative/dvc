@@ -3,6 +3,7 @@ import posixpath
 import shutil
 
 import pytest
+from fsspec.utils import tokenize
 
 from dvc.fs import localfs
 from dvc.fs.dvc import DVCFileSystem
@@ -652,3 +653,37 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
     for root, dirs, files in fs.walk("/", ignore_subrepos=not traverse_subrepos):
         actual[root] = set(dirs + files)
     assert expected == actual
+
+
+def test_fsid_noscm(tmp_dir, dvc):
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, None)
+
+
+def test_fsid(tmp_dir, dvc, scm):
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, scm.get_rev())
+    old_fsid = fs.fsid
+
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="foo")
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid != old_fsid
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, scm.get_rev())
+
+
+def test_fsid_url(erepo_dir):
+    from dvc.repo import Repo
+
+    url = f"file://{erepo_dir.as_posix()}"
+    with Repo.open(url) as dvc:
+        fs = DVCFileSystem(repo=dvc)
+        assert fs.fsid == "dvcfs_" + tokenize(url, erepo_dir.scm.get_rev())
+        old_fsid = fs.fsid
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"foo": "foo"}, commit="foo")
+
+    with Repo.open(url) as dvc:
+        fs = DVCFileSystem(repo=dvc)
+        assert fs.fsid != old_fsid
+        assert fs.fsid == "dvcfs_" + tokenize(url, erepo_dir.scm.get_rev())
