@@ -9,7 +9,6 @@ on:
 
 jobs:
   pip:
-    environment: pypi
     permissions:
       contents: read
       id-token: write
