@@ -9,10 +9,12 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   pip:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
