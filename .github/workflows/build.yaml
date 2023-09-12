@@ -7,6 +7,9 @@ on:
     types: [released, prereleased]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   pip:
     permissions:
