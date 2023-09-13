@@ -30,6 +30,9 @@ def run(  # noqa: C901, PLR0912
     Returns a dict mapping new experiment SHAs to the results
     of `repro` for that experiment.
     """
+    if kwargs.get("dry"):
+        tmp_dir = True
+
     if run_all:
         return repo.experiments.reproduce_celery(jobs=jobs)
 
