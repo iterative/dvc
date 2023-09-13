@@ -36,9 +36,15 @@ from dvc_data.hashfile.tree import Tree, du
 from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
-from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
+from .fs import (
+    GitFileSystem,
+    LocalFileSystem,
+    RemoteMissingDepsError,
+    Schemes,
+    get_cloud_fs,
+)
 from .fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
-from .utils import relpath
+from .utils import as_posix, relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
@@ -474,7 +480,13 @@ class Output:
             #
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
-            fs_path = fs.path.join(self.stage.wdir, fs_path)
+            wdir = self.stage.wdir
+            if isinstance(fs, GitFileSystem):
+                fs_path = as_posix(fs_path)
+                # dvc always generates wdir as posixpath but converting here
+                # just to be safe if it was written manually
+                wdir = as_posix(wdir)
+            fs_path = fs.path.join(wdir, fs_path)
 
         return fs.path.abspath(fs.path.normpath(fs_path))
 

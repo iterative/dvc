@@ -331,6 +331,29 @@ def test_log_errors(
     )
 
 
+def test_metrics_output_directory(tmp_dir, scm, dvc, copy_script):
+    tmp_dir.scm_gen(join("dir", "dir2", ".keep"), ".keep")
+
+    # testing inside nested directory so that ntpath.join handling gets properly tested
+    metrics_dir = join("dir2", "sub")
+    dvc.scm_context.autostage = True
+    dvc.run(
+        cmd=f"mkdir {metrics_dir} && echo 4 > {join(metrics_dir, 'metric')}",
+        wdir="dir",
+        metrics=[metrics_dir],
+        name="gen-metrics",
+    )
+    scm.commit("add stage")
+
+    metrics_file = join("dir", metrics_dir, "metric")
+    (tmp_dir.joinpath(metrics_file)).dump(42)
+
+    assert dvc.metrics.show(revs=["HEAD", "workspace"]) == {
+        "workspace": {"data": {metrics_file: {"data": 42}}},
+        "HEAD": {"data": {metrics_file: {"data": 4}}},
+    }
+
+
 def test_cached_metrics(tmp_dir, dvc, scm, remote):
     tmp_dir.dvc_gen(
         {
