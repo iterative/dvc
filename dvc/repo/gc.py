@@ -65,6 +65,7 @@ def gc(  # noqa: PLR0912, PLR0913, C901
     rev: Optional[str] = None,
     num: Optional[int] = None,
     not_in_remote: bool = False,
+    dry: bool = False,
 ):
     # require `workspace` to be true to come into effect.
     # assume `workspace` to be enabled if any of `all_tags`, `all_commits`,
@@ -127,8 +128,10 @@ def gc(  # noqa: PLR0912, PLR0913, C901
     for scheme, odb in self.cache.by_scheme():
         if not odb:
             continue
-        removed = ogc(odb, used_obj_ids, jobs=jobs)
-        if not removed:
+        num_removed = ogc(odb, used_obj_ids, jobs=jobs, dry=dry)
+        if num_removed:
+            logger.info("Removed %d objects from %s cache.", num_removed, scheme)
+        if not num_removed:
             logger.info("No unused '%s' cache to remove.", scheme)
 
     if not cloud:
@@ -137,8 +140,9 @@ def gc(  # noqa: PLR0912, PLR0913, C901
     for remote_odb, obj_ids in odb_to_obj_ids:
         if remote_odb is None:
             remote_odb = repo.cloud.get_remote_odb(remote, "gc -c")
-        removed = ogc(remote_odb, obj_ids, jobs=jobs)
-        if removed:
+        num_removed = ogc(remote_odb, obj_ids, jobs=jobs, dry=dry)
+        if num_removed:
             get_index(remote_odb).clear()
+            logger.info("Removed %d objects from remote.", num_removed)
         else:
             logger.info("No unused cache to remove from remote.")

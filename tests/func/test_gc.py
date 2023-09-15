@@ -36,14 +36,14 @@ def test_gc_api(dvc, good_and_bad_cache):
     dvc.gc(workspace=True)
     odb = dvc.cache.local
     good_cache, bad_cache = good_and_bad_cache
-    assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
+    assert set(odb.all()) == good_cache
 
 
 def test_gc_cli(dvc, good_and_bad_cache):
     assert main(["gc", "-wf"]) == 0
     odb = dvc.cache.local
     good_cache, bad_cache = good_and_bad_cache
-    assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
+    assert set(odb.all()) == good_cache
 
 
 def test_gc_branches_tags(tmp_dir, dvc, scm):
@@ -423,3 +423,19 @@ def test_gc_cloud_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
     mocked_remove = mocker.spy(LocalFileSystem, "remove")
     dvc.gc(workspace=True, cloud=True)
     assert len(mocked_remove.mock_calls) == 2  # local and other_remote
+
+
+def test_gc_dry(dvc, good_and_bad_cache):
+    dvc.gc(workspace=True, dry=True)
+    odb = dvc.cache.local
+    good_cache, bad_cache = good_and_bad_cache
+    assert set(odb.all()) != good_cache
+
+
+def test_gc_logging(caplog, dvc, good_and_bad_cache):
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        dvc.gc(workspace=True)
+
+    assert "Removed 3 objects from repo cache." in caplog.text
+    assert "No unused 'local' cache to remove." in caplog.text
+    assert "No unused 'legacy' cache to remove." in caplog.text
