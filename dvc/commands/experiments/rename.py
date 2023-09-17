@@ -3,6 +3,7 @@ import logging
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.exceptions import InvalidArgumentError
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,10 @@ class CmdExperimentsRename(CmdBase):
     def run(self):
         from dvc.utils import humanize
 
+        if not (self.args.experiment and self.args.name):
+            raise InvalidArgumentError(
+                "An experiment to rename and a new experiment name are required."
+            )
         renamed = self.repo.experiments.rename(
             exp_name=self.args.experiment,
             new_name=self.args.name,
