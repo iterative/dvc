@@ -1,6 +1,9 @@
 import pytest
 
-from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
+from dvc.repo.experiments.exceptions import (
+    ExperimentExistsError,
+    UnresolvedExpNamesError,
+)
 from dvc.repo.experiments.utils import exp_refs_by_names
 
 
@@ -18,3 +21,13 @@ def test_rename_experiment_by_name(scm, dvc, exp_stage):
 def test_same_name(dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing, name="same-name", params=["foo=1"])
     assert dvc.experiments.rename("same-name", "same-name") is None
+
+
+def test_existing_name(dvc, exp_stage):
+    dvc.experiments.run(exp_stage.addressing, name="first-name", params=["foo=1"])
+    dvc.experiments.run(exp_stage.addressing, name="second-name", params=["foo=2"])
+
+    with pytest.raises(ExperimentExistsError):
+        dvc.experiments.rename("second-name", "first-name")
+
+    dvc.experiments.rename("second-name", "first-name", force=True)

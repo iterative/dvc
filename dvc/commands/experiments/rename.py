@@ -21,6 +21,7 @@ class CmdExperimentsRename(CmdBase):
             exp_name=self.args.experiment,
             new_name=self.args.name,
             git_remote=self.args.git_remote,
+            force=self.args.force,
         )
         if renamed:
             ui.write(f"Renamed experiments: {humanize.join(map(repr, renamed))}")
@@ -56,5 +57,12 @@ def add_parser(experiments_subparsers, parent_parser):
         "name",
         help="Name of new experiment.",
         metavar="<name>",
+    )
+    experiments_rename_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Replace experiment if it already exists.",
     )
     experiments_rename_parser.set_defaults(func=CmdExperimentsRename)

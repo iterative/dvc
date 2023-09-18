@@ -1,7 +1,10 @@
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
-from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
+from dvc.repo.experiments.exceptions import (
+    ExperimentExistsError,
+    UnresolvedExpNamesError,
+)
 from dvc.repo.experiments.utils import resolve_name
 from dvc.scm import Git
 
@@ -18,10 +21,11 @@ def rename(
     new_name: str,
     exp_name: Union[str, None] = None,
     git_remote: Optional[str] = None,
+    force: bool = False,
 ) -> Union[List[str], None]:
-    assert isinstance(repo.scm, Git)
     renamed: List[str] = []
     remained: List[str] = []
+    assert isinstance(repo.scm, Git)
 
     if exp_name == new_name:
         return None
@@ -34,7 +38,11 @@ def rename(
             if result is None:
                 remained.append(name)
                 continue
-            assert isinstance(result, ExpRefInfo)
+
+            new_ref = ExpRefInfo(baseline_sha=result.baseline_sha, name=new_name)
+            if repo.scm.get_ref(str(new_ref)) and not force:
+                raise ExperimentExistsError(new_name)
+
             _rename_exp(scm=repo.scm, ref_info=result, new_name=new_name)
             renamed.append(name)
 
