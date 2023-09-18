@@ -9,6 +9,7 @@ from dvc.commands.experiments.ls import CmdExperimentsList
 from dvc.commands.experiments.pull import CmdExperimentsPull
 from dvc.commands.experiments.push import CmdExperimentsPush
 from dvc.commands.experiments.remove import CmdExperimentsRemove
+from dvc.commands.experiments.rename import CmdExperimentsRename
 from dvc.commands.experiments.run import CmdExperimentsRun
 from dvc.commands.experiments.save import CmdExperimentsSave
 from dvc.commands.experiments.show import CmdExperimentsShow
@@ -415,6 +416,40 @@ def test_experiments_remove_invalid(dvc, scm, mocker, capsys, caplog):
     assert (
         str(excinfo.value) == "Either provide an `experiment` argument"
         ", or use the `--rev` or `--all-commits` or `--queue` flag."
+    )
+
+
+def test_experiments_rename_flag(dvc, scm, mocker, capsys, caplog):
+    cli_args = parse_args(
+        [
+            "experiments",
+            "rename",
+            "--git-remote",
+            "myremote",
+            "exp-123",
+            "exp-234",
+        ]
+    )
+    assert cli_args.func == CmdExperimentsRename
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.rename.rename", return_value={})
+    assert cmd.run() == 0
+    m.assert_called_once_with(
+        cmd.repo,
+        exp_name="exp-123",
+        new_name="exp-234",
+        git_remote="myremote",
+        force=False,
+    )
+
+
+def test_experiments_rename_invalid(dvc, scm, mocker, capsys, caplog):
+    cmd = CmdExperimentsRename(parse_args(["exp", "rename", "exp-1"]))
+    with pytest.raises(InvalidArgumentError) as excinfo:
+        cmd.run()
+    assert (
+        str(excinfo.value)
+        == "An experiment to rename and a new experiment name are required."
     )
 
 
