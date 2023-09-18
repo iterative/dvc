@@ -439,6 +439,7 @@ def test_experiments_rename_flag(dvc, scm, mocker, capsys, caplog):
         exp_name="exp-123",
         new_name="exp-234",
         git_remote="myremote",
+        force=False,
     )
 
 
