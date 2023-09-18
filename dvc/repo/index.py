@@ -457,6 +457,9 @@ class Index:
             if not out.use_cache:
                 continue
 
+            if not out.is_in_repo:
+                continue
+
             ws, key = out.index_key
             if ws not in by_workspace:
                 by_workspace[ws] = index.view((*prefix, ws))
