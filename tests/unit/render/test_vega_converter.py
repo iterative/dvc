@@ -46,7 +46,13 @@ def test_finding_lists(dictionary, expected_result):
                     "field": "v",
                 },
             ],
-            {"x": "step", "y": "v", "x_label": "step", "y_label": "v"},
+            {
+                "anchors_y_defn": [{"filename": "f", "field": "v"}],
+                "x": "step",
+                "y": "v",
+                "x_label": "step",
+                "y_label": "v",
+            },
             id="default_x_y",
         ),
         pytest.param(
@@ -68,7 +74,13 @@ def test_finding_lists(dictionary, expected_result):
                     "field": "v2",
                 },
             ],
-            {"x": "v", "y": "v2", "x_label": "v", "y_label": "v2"},
+            {
+                "anchors_y_defn": [{"filename": "f", "field": "v2"}],
+                "x": "v",
+                "y": "v2",
+                "x_label": "v",
+                "y_label": "v2",
+            },
             id="choose_x_y",
         ),
         pytest.param(
@@ -102,7 +114,13 @@ def test_finding_lists(dictionary, expected_result):
                     "field": "v2",
                 },
             ],
-            {"x": "v", "y": "v2", "x_label": "x", "y_label": "y"},
+            {
+                "anchors_y_defn": [{"filename": "f", "field": "v2"}],
+                "x": "v",
+                "y": "v2",
+                "x_label": "x",
+                "y_label": "y",
+            },
             id="find_in_nested_structure",
         ),
         pytest.param(
@@ -147,6 +165,10 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
+                "anchors_y_defn": [
+                    {"filename": "f", "field": "v"},
+                    {"filename": "f", "field": "v2"},
+                ],
                 "x": "step",
                 "y": "dvc_inferred_y_value",
                 "y_label": "y",
@@ -201,6 +223,10 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
+                "anchors_y_defn": [
+                    {"filename": "f", "field": "v"},
+                    {"filename": "f", "field": "z"},
+                ],
                 "x": "step",
                 "y": "dvc_inferred_y_value",
                 "y_label": "y",
@@ -237,7 +263,16 @@ def test_finding_lists(dictionary, expected_result):
                     "field": "v2",
                 },
             ],
-            {"x": "v", "y": "v2", "x_label": "v", "y_label": "v2"},
+            {
+                "anchors_y_defn": [
+                    {"filename": "f", "field": "v2"},
+                    {"filename": "f2", "field": "v2"},
+                ],
+                "x": "v",
+                "y": "v2",
+                "x_label": "v",
+                "y_label": "v2",
+            },
             id="multi_file_json",
         ),
         pytest.param(
@@ -282,6 +317,10 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
+                "anchors_y_defn": [
+                    {"filename": "f", "field": "v"},
+                    {"filename": "f", "field": "v2"},
+                ],
                 "x": "step",
                 "y": "dvc_inferred_y_value",
                 "x_label": "step",
@@ -324,6 +363,11 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
+                "anchors_y_defn": [
+                    {"filename": "f", "field": "v2"},
+                    {"filename": "f", "field": "v3"},
+                    {"filename": "f2", "field": "v2"},
+                ],
                 "x": "v",
                 "y": "dvc_inferred_y_value",
                 "x_label": "v",
@@ -354,6 +398,10 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
+                "anchors_y_defn": [
+                    {"filename": "f", "field": "v2"},
+                    {"filename": "f2", "field": "v2"},
+                ],
                 "x": "v",
                 "y": "v2",
                 "x_label": "v",

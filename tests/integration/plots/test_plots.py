@@ -112,7 +112,7 @@ def verify_vega(
         assert set(j[0]["revisions"]) == set(versions)
 
     assert json_result[0]["datapoints"] == split_json_result[0]["datapoints"]
-    assert set(versions) == set(json_result[0]["datapoints"].keys())
+    assert set(versions) == set(json_result[0]["revisions"])
 
     assert json_result[0]["content"]["data"]["values"]
     assert html_result["data"]["values"]

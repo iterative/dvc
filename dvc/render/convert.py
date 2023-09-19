@@ -1,7 +1,12 @@
-from collections import defaultdict
 from typing import Dict, List, Union
 
-from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
+from dvc.render import (
+    ANCHORS_Y_DEFN,
+    REVISION_FIELD,
+    REVISIONS_KEY,
+    SRC_FIELD,
+    TYPE_KEY,
+)
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 
@@ -19,33 +24,26 @@ def _get_converter(
     raise ValueError(f"Invalid renderer class {renderer_class}")
 
 
-def _group_by_rev(datapoints):
-    grouped = defaultdict(list)
-    for datapoint in datapoints:
-        rev = datapoint.get(REVISION_FIELD)
-        grouped[rev].append(datapoint)
-    return dict(grouped)
-
-
 def to_json(renderer, split: bool = False) -> List[Dict]:
     if renderer.TYPE == "vega":
-        grouped = _group_by_rev(renderer.datapoints)
+        if not renderer.datapoints:
+            return []
         if split:
             content = renderer.get_filled_template(
                 skip_anchors=["data"], as_string=False
             )
         else:
             content = renderer.get_filled_template(as_string=False)
-        if grouped:
-            return [
-                {
-                    TYPE_KEY: renderer.TYPE,
-                    REVISIONS_KEY: sorted(grouped.keys()),
-                    "content": content,
-                    "datapoints": grouped,
-                }
-            ]
-        return []
+
+        return [
+            {
+                ANCHORS_Y_DEFN: renderer.properties.get("anchors_y_defn", {}),
+                TYPE_KEY: renderer.TYPE,
+                REVISIONS_KEY: renderer.properties.get("anchor_revs", []),
+                "content": content,
+                "datapoints": renderer.datapoints,
+            }
+        ]
     if renderer.TYPE == "image":
         return [
             {

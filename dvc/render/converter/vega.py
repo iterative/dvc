@@ -192,7 +192,7 @@ class VegaConverter(Converter):
     def flat_datapoints(self, revision):  # noqa: C901, PLR0912
         file2datapoints, properties = self.convert()
 
-        props_update = {}
+        props_update: Dict[str, Union[str, List[Dict[str, str]]]] = {}
 
         xs = list(_get_xs(properties, file2datapoints))
 
@@ -237,6 +237,14 @@ class VegaConverter(Converter):
         else:
             common_prefix_len = 0
 
+        props_update["anchors_y_defn"] = [
+            {
+                FILENAME_FIELD: _get_short_y_file(y_file, common_prefix_len),
+                FIELD_FIELD: y_field,
+            }
+            for y_file, y_field in ys
+        ]
+
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
                 x_file, x_field = xs[i]
@@ -266,12 +274,11 @@ class VegaConverter(Converter):
                         "They have to have same length."
                     )
 
-            y_file_short = y_file[common_prefix_len:].strip("/\\")
             _update_all(
                 datapoints,
                 update_dict={
                     REVISION_FIELD: revision,
-                    FILENAME_FIELD: y_file_short,
+                    FILENAME_FIELD: _get_short_y_file(y_file, common_prefix_len),
                     FIELD_FIELD: y_field,
                 },
             )
@@ -302,6 +309,10 @@ class VegaConverter(Converter):
         properties["x_label"] = self.infer_x_label(properties)
 
         return datapoints, properties
+
+
+def _get_short_y_file(y_file, common_prefix_len):
+    return y_file[common_prefix_len:].strip("/\\")
 
 
 def _update_from_field(
