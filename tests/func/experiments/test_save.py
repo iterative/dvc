@@ -156,6 +156,18 @@ def test_untracked_dvclock_is_included_in_exp(tmp_dir, scm, dvc):
     assert fs.exists("dvc.lock")
 
 
+def test_exp_save_include_untracked_force(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
+
+    new_file = tmp_dir / "new_file"
+    new_file.write_text("new_file")
+    dvc.scm.ignore(new_file)
+    exp = dvc.experiments.save(include_untracked=["new_file"])
+
+    fs = scm.get_fs(exp)
+    assert fs.exists("new_file")
+
+
 def test_exp_save_custom_message(tmp_dir, dvc, scm):
     setup_stage(tmp_dir, dvc, scm)
 
