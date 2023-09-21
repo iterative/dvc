@@ -1160,10 +1160,11 @@ class Output:
             return obj.filter(prefix)
         return obj
 
-    def get_used_objs(  # noqa: C901
+    def get_used_objs(  # noqa: C901, PLR0911
         self, **kwargs
     ) -> Dict[Optional["HashFileDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""
+        from dvc.cachemgr import LEGACY_HASH_NAMES
 
         if not self.use_cache:
             return {}
@@ -1202,13 +1203,17 @@ class Output:
             return {}
 
         if self.remote:
-            remote = self.repo.cloud.get_remote_odb(
+            remote_odb = self.repo.cloud.get_remote_odb(
                 name=self.remote, hash_name=self.hash_name
             )
-        else:
-            remote = None
-
-        return {remote: self._named_obj_ids(obj)}
+            other_odb = self.repo.cloud.get_remote_odb(
+                name=self.remote,
+                hash_name=(
+                    "md5" if self.hash_name in LEGACY_HASH_NAMES else "md5-dos2unix"
+                ),
+            )
+            return {remote_odb: self._named_obj_ids(obj), other_odb: set()}
+        return {None: self._named_obj_ids(obj)}
 
     def _named_obj_ids(self, obj):
         name = str(self)
