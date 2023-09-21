@@ -7,8 +7,8 @@ from . import locked
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
-    from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ def gc(  # noqa: PLR0912, PLR0913, C901
         repos = []
     all_repos = [Repo(path) for path in repos]
 
-    odb_to_obj_ids: List[Tuple[Optional["ObjectDB"], Set["HashInfo"]]] = []
+    odb_to_obj_ids: List[Tuple[Optional["HashFileDB"], Set["HashInfo"]]] = []
 
     with ExitStack() as stack:
         for repo in all_repos:

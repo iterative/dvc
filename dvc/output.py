@@ -44,7 +44,6 @@ from .utils.fs import path_isin
 if TYPE_CHECKING:
     from dvc_data.hashfile.obj import HashFile
     from dvc_data.index import DataIndexKey
-    from dvc_objects.db import ObjectDB
 
     from .ignore import DvcIgnoreFilter
 
@@ -1163,7 +1162,7 @@ class Output:
 
     def get_used_objs(  # noqa: C901
         self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+    ) -> Dict[Optional["HashFileDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""
 
         if not self.use_cache:

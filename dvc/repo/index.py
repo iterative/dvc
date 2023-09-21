@@ -33,14 +33,14 @@ if TYPE_CHECKING:
     from dvc.repo.stage import StageInfo
     from dvc.stage import Stage
     from dvc.types import TargetType
+    from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.index import DataIndex, DataIndexKey, DataIndexView
-    from dvc_objects.db import ObjectDB
     from dvc_objects.fs.base import FileSystem
 
 
 logger = logging.getLogger(__name__)
-ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]
+ObjectContainer = Dict[Optional["HashFileDB"], Set["HashInfo"]]
 
 
 def log_walk(seq):
