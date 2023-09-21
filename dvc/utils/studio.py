@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -73,7 +73,7 @@ def notify_refs(
             logger.warning("failed to notify Studio: %s", msg.lower())
             return {}
 
-        r = cast("Response", e.response)
+        r = e.response
         d = ignore(Exception, default={})(r.json)()
         status = r.status_code
         if detail := d.get("detail"):
