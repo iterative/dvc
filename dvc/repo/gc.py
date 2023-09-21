@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, List, Optional
 
 from dvc.exceptions import InvalidArgumentError
 
@@ -7,8 +7,7 @@ from . import locked
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
-    from dvc_data.hashfile.db import HashFileDB
-    from dvc_data.hashfile.hash_info import HashInfo
+    from dvc.repo.index import ObjectContainer
 
 logger = logging.getLogger(__name__)
 
@@ -33,22 +32,25 @@ def _validate_args(**kwargs):
         raise InvalidArgumentError("`--num` can only be used alongside `--rev`")
 
 
-def _used_obj_ids_not_in_remote(repo, default_remote, jobs, remote_odb_to_obj_ids):
+def _used_obj_ids_not_in_remote(
+    remote_odb_to_obj_ids: "ObjectContainer", jobs: Optional[int] = None
+):
     used_obj_ids = set()
     remote_oids = set()
-    for remote_odb, obj_ids in remote_odb_to_obj_ids:
-        if remote_odb is None:
-            remote_odb = repo.cloud.get_remote_odb(default_remote, "gc --not-in-remote")
-
+    for remote_odb, obj_ids in remote_odb_to_obj_ids.items():
+        assert remote_odb
         remote_oids.update(
-            remote_odb.list_oids_exists({x.value for x in obj_ids}, jobs=jobs)
+            remote_odb.list_oids_exists(
+                {x.value for x in obj_ids if x.value},
+                jobs=jobs,
+            )
         )
         used_obj_ids.update(obj_ids)
     return {obj for obj in used_obj_ids if obj.value not in remote_oids}
 
 
 @locked
-def gc(  # noqa: PLR0912, PLR0913, C901
+def gc(  # noqa: PLR0913, C901
     self: "Repo",
     all_branches: bool = False,
     cloud: bool = False,
@@ -92,8 +94,7 @@ def gc(  # noqa: PLR0912, PLR0913, C901
         repos = []
     all_repos = [Repo(path) for path in repos]
 
-    odb_to_obj_ids: List[Tuple[Optional["HashFileDB"], Set["HashInfo"]]] = []
-
+    odb_to_obj_ids: "ObjectContainer" = {}
     with ExitStack() as stack:
         for repo in all_repos:
             stack.enter_context(repo.lock)
@@ -112,17 +113,17 @@ def gc(  # noqa: PLR0912, PLR0913, C901
                 revs=[rev] if rev else None,
                 num=num or 1,
             ).items():
-                odb_to_obj_ids.append((odb, obj_ids))
+                if odb not in odb_to_obj_ids:
+                    odb_to_obj_ids[odb] = set()
+                odb_to_obj_ids[odb].update(obj_ids)
 
-    if not odb_to_obj_ids:
-        odb_to_obj_ids = [(None, set())]
-
+    if cloud or not_in_remote:
+        _merge_remote_obj_ids(self, remote, odb_to_obj_ids)
     if not_in_remote:
-        used_obj_ids = _used_obj_ids_not_in_remote(self, remote, jobs, odb_to_obj_ids)
+        used_obj_ids = _used_obj_ids_not_in_remote(odb_to_obj_ids, jobs=jobs)
     else:
         used_obj_ids = set()
-        for _, obj_ids in odb_to_obj_ids:
-            used_obj_ids.update(obj_ids)
+        used_obj_ids.update(*odb_to_obj_ids.values())
 
     for scheme, odb in self.cache.by_scheme():
         if not odb:
@@ -134,11 +135,25 @@ def gc(  # noqa: PLR0912, PLR0913, C901
     if not cloud:
         return
 
-    for remote_odb, obj_ids in odb_to_obj_ids:
-        if remote_odb is None:
-            remote_odb = repo.cloud.get_remote_odb(remote, "gc -c")
+    for remote_odb, obj_ids in odb_to_obj_ids.items():
+        assert remote_odb is not None
         removed = ogc(remote_odb, obj_ids, jobs=jobs)
         if removed:
             get_index(remote_odb).clear()
         else:
             logger.info("No unused cache to remove from remote.")
+
+
+def _merge_remote_obj_ids(
+    repo: "Repo", remote: Optional[str], used_objs: "ObjectContainer"
+):
+    # Merge default remote used objects with remote-per-output used objects
+    default_obj_ids = used_objs.pop(None, set())
+    remote_odb = repo.cloud.get_remote_odb(remote, "gc -c", hash_name="md5")
+    if remote_odb not in used_objs:
+        used_objs[remote_odb] = set()
+    used_objs[remote_odb].update(default_obj_ids)
+    legacy_odb = repo.cloud.get_remote_odb(remote, "gc -c", hash_name="md5-dos2unix")
+    if legacy_odb not in used_objs:
+        used_objs[legacy_odb] = set()
+    used_objs[legacy_odb].update(default_obj_ids)
