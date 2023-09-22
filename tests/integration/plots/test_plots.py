@@ -111,22 +111,26 @@ def verify_vega(
         assert j[0]["type"] == "vega"
         assert set(j[0]["revisions"]) == set(versions)
 
-    assert json_result[0]["datapoints"] == split_json_result[0]["datapoints"]
+    assert (
+        json_result[0]["content"]["data"]["values"]
+        == split_json_result[0]["anchor_definitions"]["<DVC_METRIC_DATA>"]
+    )
     assert set(versions) == set(json_result[0]["revisions"])
 
     assert json_result[0]["content"]["data"]["values"]
     assert html_result["data"]["values"]
-    assert split_json_result[0]["content"]["data"]["values"] == "<DVC_METRIC_DATA>"
+    assert "<DVC_METRIC_DATA>" in split_json_result[0]["content"]
 
     def _assert_templates_equal(html_template, filled_template, split_template):
-        # besides data, json and split json should be equal
-        path = ["data", "values"]
+        # besides split anchors, json and split json should be equal
+        paths = [["data", "values"], ["encoding", "color"]]
         tmp1 = deepcopy(html_template)
         tmp2 = deepcopy(filled_template)
-        tmp3 = deepcopy(split_template)
-        dpath.set(tmp1, path, {})
-        dpath.set(tmp2, path, {})
-        dpath.set(tmp3, path, {})
+        tmp3 = deepcopy(json.loads(split_template))
+        for path in paths:
+            dpath.set(tmp1, path, {})
+            dpath.set(tmp2, path, {})
+            dpath.set(tmp3, path, {})
 
         assert tmp1 == tmp2 == tmp3
 
@@ -194,16 +198,12 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
         linear_v1,
         {
             "rev": "workspace",
-            "filename": "linear.json",
-            "field": "y",
         },
     )
     assert html_result["linear.json"]["data"]["values"] == _update_datapoints(
         linear_v1,
         {
             REVISION_FIELD: "workspace",
-            "filename": "linear.json",
-            "field": "y",
         },
     )
     assert json_data["confusion.json"][0]["content"]["data"][
@@ -278,30 +278,22 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             linear_v2,
             {
                 "rev": "workspace",
-                "filename": "../linear.json",
-                "field": "y",
             },
         ) + _update_datapoints(
             linear_v1,
             {
                 "rev": "HEAD",
-                "filename": "../linear.json",
-                "field": "y",
             },
         )
         assert html_result["../linear.json"]["data"]["values"] == _update_datapoints(
             linear_v2,
             {
                 REVISION_FIELD: "workspace",
-                "filename": "../linear.json",
-                "field": "y",
             },
         ) + _update_datapoints(
             linear_v1,
             {
                 REVISION_FIELD: "HEAD",
-                "filename": "../linear.json",
-                "field": "y",
             },
         )
         assert json_data["../confusion.json"][0]["content"]["data"][
@@ -434,7 +426,7 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     repo_state = repo_with_config_plots()
     plots = next(repo_state)
 
-    html_path, json_result, __ = call(capsys)
+    html_path, _, split_json_result = call(capsys)
 
     assert os.path.exists(html_path)
     html_result = extract_vega_specs(
@@ -450,19 +442,22 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
         {
             "rev": "workspace",
             "filename": "linear_train.json",
-            "field": "y",
         },
     ) + _update_datapoints(
         plots["data"]["linear_test.json"],
         {
             "rev": "workspace",
             "filename": "linear_test.json",
-            "field": "y",
         },
     )
 
     assert html_result["linear_train_vs_test"]["data"]["values"] == ble
-    # TODO check json results once vscode is able to handle flexible plots
+    assert (
+        split_json_result["data"]["linear_train_vs_test"][0]["anchor_definitions"][
+            "<DVC_METRIC_DATA>"
+        ]
+        == ble
+    )
 
 
 @pytest.mark.vscode

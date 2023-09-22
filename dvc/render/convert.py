@@ -1,12 +1,6 @@
 from typing import Dict, List, Union
 
-from dvc.render import (
-    ANCHORS_Y_DEFN,
-    REVISION_FIELD,
-    REVISIONS_KEY,
-    SRC_FIELD,
-    TYPE_KEY,
-)
+from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 
@@ -28,20 +22,19 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
     if renderer.TYPE == "vega":
         if not renderer.datapoints:
             return []
+        revs = renderer.get_revs()
         if split:
-            content = renderer.get_filled_template(
-                skip_anchors=["data"], as_string=False
-            )
+            content, split_content = renderer.get_partial_filled_template()
         else:
             content = renderer.get_filled_template(as_string=False)
+            split_content = {}
 
         return [
             {
-                ANCHORS_Y_DEFN: renderer.properties.get("anchors_y_defn", {}),
                 TYPE_KEY: renderer.TYPE,
-                REVISIONS_KEY: renderer.properties.get("anchor_revs", []),
+                REVISIONS_KEY: revs,
                 "content": content,
-                "datapoints": renderer.datapoints,
+                **split_content,
             }
         ]
     if renderer.TYPE == "image":

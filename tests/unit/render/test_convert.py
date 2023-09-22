@@ -1,5 +1,9 @@
+import json
+
+import pytest
+
 from dvc.render import (
-    ANCHORS_Y_DEFN,
+    ANCHOR_DEFINITIONS,
     REVISION_FIELD,
     REVISIONS_KEY,
     SRC_FIELD,
@@ -11,95 +15,67 @@ from dvc.render.convert import to_json
 def test_to_json_vega(mocker):
     vega_renderer = mocker.MagicMock()
     vega_renderer.TYPE = "vega"
-    vega_renderer.properties = {
-        ANCHORS_Y_DEFN: [{"filename": "foo.json", "field": "y"}],
-        "anchor_revs": ["bar", "foo"],
-    }
+    vega_renderer.get_revs.return_value = ["bar", "foo"]
     vega_renderer.get_filled_template.return_value = {"this": "is vega"}
-    vega_renderer.datapoints = [
-        {
-            "x": 1,
-            "y": 2,
-            "rev": "foo",
-            "filename": "foo.json",
-        },
-        {
-            "x": 2,
-            "y": 1,
-            "rev": "bar",
-            "filename": "foo.json",
-        },
-    ]
     result = to_json(vega_renderer)
     assert result[0] == {
-        ANCHORS_Y_DEFN: [{"filename": "foo.json", "field": "y"}],
         TYPE_KEY: vega_renderer.TYPE,
         REVISIONS_KEY: ["bar", "foo"],
         "content": {"this": "is vega"},
-        "datapoints": [
-            {
-                "x": 1,
-                "y": 2,
-                "filename": "foo.json",
-                "rev": "foo",
-            },
-            {
-                "x": 2,
-                "y": 1,
-                "filename": "foo.json",
-                "rev": "bar",
-            },
-        ],
     }
     vega_renderer.get_filled_template.assert_called()
 
 
+@pytest.mark.vscode
 def test_to_json_vega_split(mocker):
-    vega_renderer = mocker.MagicMock()
-    vega_renderer.TYPE = "vega"
-    vega_renderer.get_filled_template.return_value = {"this": "is split vega"}
-    vega_renderer.properties = {
-        ANCHORS_Y_DEFN: [{"filename": "foo.json", "field": "y"}],
-        "anchor_revs": ["bar", "foo"],
-    }
-    vega_renderer.datapoints = [
+    revs = ["bar", "foo"]
+    content = json.dumps(
         {
-            "x": 1,
-            "y": 2,
-            "rev": "foo",
-            "filename": "foo.json",
+            "this": "is split vega",
+            "encoding": {"color": "<DVC_METRIC_COLOR>"},
+            "data": {"values": "<DVC_METRIC_DATA>"},
+        }
+    )
+    anchor_definitions = {
+        "<DVC_METRIC_COLOR>": {
+            "field": "rev",
+            "scale": {
+                "domain": revs,
+                "range": ["#ff0000", "#00ff00"],
+            },
         },
-        {
-            "x": 2,
-            "y": 1,
-            "rev": "bar",
-            "filename": "foo.json",
-        },
-    ]
-    result = to_json(vega_renderer, split=True)
-    assert result[0] == {
-        ANCHORS_Y_DEFN: [{"filename": "foo.json", "field": "y"}],
-        TYPE_KEY: vega_renderer.TYPE,
-        REVISIONS_KEY: ["bar", "foo"],
-        "content": {"this": "is split vega"},
-        "datapoints": [
+        "<DVC_METRIC_DATA>": [
             {
                 "x": 1,
                 "y": 2,
-                "filename": "foo.json",
                 "rev": "foo",
+                "filename": "foo.json",
             },
             {
                 "x": 2,
                 "y": 1,
-                "filename": "foo.json",
                 "rev": "bar",
+                "filename": "foo.json",
             },
         ],
     }
-    vega_renderer.get_filled_template.assert_called_with(
-        as_string=False, skip_anchors=["data"]
+
+    vega_renderer = mocker.MagicMock()
+    vega_renderer.TYPE = "vega"
+    vega_renderer.get_partial_filled_template.return_value = (
+        content,
+        {ANCHOR_DEFINITIONS: anchor_definitions},
     )
+    vega_renderer.get_revs.return_value = ["bar", "foo"]
+
+    result = to_json(vega_renderer, split=True)
+    assert result[0] == {
+        ANCHOR_DEFINITIONS: anchor_definitions,
+        TYPE_KEY: vega_renderer.TYPE,
+        REVISIONS_KEY: revs,
+        "content": content,
+    }
+    vega_renderer.get_partial_filled_template.assert_called_once()
 
 
 def test_to_json_image(mocker):
