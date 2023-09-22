@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.cli import main
-from dvc.render import REVISION_FIELD
+from dvc.render import REVISION
 
 JSON_OUT = "vis_data"
 
@@ -203,7 +203,7 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
     assert html_result["linear.json"]["data"]["values"] == _update_datapoints(
         linear_v1,
         {
-            REVISION_FIELD: "workspace",
+            REVISION: "workspace",
         },
     )
     assert json_data["confusion.json"][0]["content"]["data"][
@@ -288,12 +288,12 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
         assert html_result["../linear.json"]["data"]["values"] == _update_datapoints(
             linear_v2,
             {
-                REVISION_FIELD: "workspace",
+                REVISION: "workspace",
             },
         ) + _update_datapoints(
             linear_v1,
             {
-                REVISION_FIELD: "HEAD",
+                REVISION: "HEAD",
             },
         )
         assert json_data["../confusion.json"][0]["content"]["data"][
@@ -316,14 +316,14 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
         assert html_result["../confusion.json"]["data"]["values"] == _update_datapoints(
             confusion_v2,
             {
-                REVISION_FIELD: "workspace",
+                REVISION: "workspace",
                 "filename": "../confusion.json",
                 "field": "actual",
             },
         ) + _update_datapoints(
             confusion_v1,
             {
-                REVISION_FIELD: "HEAD",
+                REVISION: "HEAD",
                 "filename": "../confusion.json",
                 "field": "actual",
             },

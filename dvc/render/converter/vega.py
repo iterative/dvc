@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from funcy import first, last
 
 from dvc.exceptions import DvcException
-from dvc.render import FIELD_FIELD, FILENAME_FIELD, INDEX_FIELD, REVISION_FIELD
+from dvc.render import FIELD, FILENAME, INDEX, REVISION
 
 from . import Converter
 
@@ -182,7 +182,7 @@ class VegaConverter(Converter):
 
         x = properties.get("x", None)
         if not isinstance(x, dict):
-            return INDEX_FIELD
+            return INDEX
 
         fields = {field for _, field in _file_field(x)}
         if len(fields) == 1:
@@ -200,7 +200,7 @@ class VegaConverter(Converter):
         if not xs:
             x_file, x_field = (
                 None,
-                INDEX_FIELD,
+                INDEX,
             )
         else:
             x_file, x_field = xs[0]
@@ -237,10 +237,10 @@ class VegaConverter(Converter):
         else:
             common_prefix_len = 0
 
-        props_update["anchors_y_defn"] = [
+        props_update["anchors_y_definitions"] = [
             {
-                FILENAME_FIELD: _get_short_y_file(y_file, common_prefix_len),
-                FIELD_FIELD: y_field,
+                FILENAME: _get_short_y_file(y_file, common_prefix_len),
+                FIELD: y_field,
             }
             for y_file, y_field in ys
         ]
@@ -257,8 +257,8 @@ class VegaConverter(Converter):
                     source_field=y_field,
                 )
 
-            if x_field == INDEX_FIELD and x_file is None:
-                _update_from_index(datapoints, INDEX_FIELD)
+            if x_field == INDEX and x_file is None:
+                _update_from_index(datapoints, INDEX)
             else:
                 x_datapoints = file2datapoints.get(x_file, [])
                 try:
@@ -277,9 +277,9 @@ class VegaConverter(Converter):
             _update_all(
                 datapoints,
                 update_dict={
-                    REVISION_FIELD: revision,
-                    FILENAME_FIELD: _get_short_y_file(y_file, common_prefix_len),
-                    FIELD_FIELD: y_field,
+                    REVISION: revision,
+                    FILENAME: _get_short_y_file(y_file, common_prefix_len),
+                    FIELD: y_field,
                 },
             )
 

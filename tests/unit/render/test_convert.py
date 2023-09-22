@@ -2,13 +2,7 @@ import json
 
 import pytest
 
-from dvc.render import (
-    ANCHOR_DEFINITIONS,
-    REVISION_FIELD,
-    REVISIONS_KEY,
-    SRC_FIELD,
-    TYPE_KEY,
-)
+from dvc.render import ANCHOR_DEFINITIONS, REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.convert import to_json
 
 
@@ -20,7 +14,7 @@ def test_to_json_vega(mocker):
     result = to_json(vega_renderer)
     assert result[0] == {
         TYPE_KEY: vega_renderer.TYPE,
-        REVISIONS_KEY: ["bar", "foo"],
+        REVISIONS: ["bar", "foo"],
         "content": {"this": "is vega"},
     }
     vega_renderer.get_filled_template.assert_called()
@@ -72,7 +66,7 @@ def test_to_json_vega_split(mocker):
     assert result[0] == {
         ANCHOR_DEFINITIONS: anchor_definitions,
         TYPE_KEY: vega_renderer.TYPE,
-        REVISIONS_KEY: revs,
+        REVISIONS: revs,
         "content": content,
     }
     vega_renderer.get_partial_filled_template.assert_called_once()
@@ -82,12 +76,12 @@ def test_to_json_image(mocker):
     image_renderer = mocker.MagicMock()
     image_renderer.TYPE = "image"
     image_renderer.datapoints = [
-        {SRC_FIELD: "contentfoo", REVISION_FIELD: "foo"},
-        {SRC_FIELD: "contentbar", REVISION_FIELD: "bar"},
+        {SRC: "contentfoo", REVISION: "foo"},
+        {SRC: "contentbar", REVISION: "bar"},
     ]
     result = to_json(image_renderer)
     assert result[0] == {
-        "url": image_renderer.datapoints[0].get(SRC_FIELD),
-        REVISIONS_KEY: [image_renderer.datapoints[0].get(REVISION_FIELD)],
+        "url": image_renderer.datapoints[0].get(SRC),
+        REVISIONS: [image_renderer.datapoints[0].get(REVISION)],
         TYPE_KEY: image_renderer.TYPE,
     }

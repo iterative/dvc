@@ -47,7 +47,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [{"filename": "f", "field": "v"}],
+                "anchors_y_definitions": [{"filename": "f", "field": "v"}],
                 "x": "step",
                 "y": "v",
                 "x_label": "step",
@@ -75,7 +75,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [{"filename": "f", "field": "v2"}],
+                "anchors_y_definitions": [{"filename": "f", "field": "v2"}],
                 "x": "v",
                 "y": "v2",
                 "x_label": "v",
@@ -115,7 +115,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [{"filename": "f", "field": "v2"}],
+                "anchors_y_definitions": [{"filename": "f", "field": "v2"}],
                 "x": "v",
                 "y": "v2",
                 "x_label": "x",
@@ -165,7 +165,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [
+                "anchors_y_definitions": [
                     {"filename": "f", "field": "v"},
                     {"filename": "f", "field": "v2"},
                 ],
@@ -223,7 +223,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [
+                "anchors_y_definitions": [
                     {"filename": "f", "field": "v"},
                     {"filename": "f", "field": "z"},
                 ],
@@ -264,7 +264,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [
+                "anchors_y_definitions": [
                     {"filename": "f", "field": "v2"},
                     {"filename": "f2", "field": "v2"},
                 ],
@@ -317,7 +317,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [
+                "anchors_y_definitions": [
                     {"filename": "f", "field": "v"},
                     {"filename": "f", "field": "v2"},
                 ],
@@ -363,7 +363,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [
+                "anchors_y_definitions": [
                     {"filename": "f", "field": "v2"},
                     {"filename": "f", "field": "v3"},
                     {"filename": "f2", "field": "v2"},
@@ -398,7 +398,7 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
-                "anchors_y_defn": [
+                "anchors_y_definitions": [
                     {"filename": "f", "field": "v2"},
                     {"filename": "f2", "field": "v2"},
                 ],

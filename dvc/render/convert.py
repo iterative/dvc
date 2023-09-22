@@ -1,6 +1,6 @@
 from typing import Dict, List, Union
 
-from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
+from dvc.render import REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 
@@ -32,7 +32,7 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
         return [
             {
                 TYPE_KEY: renderer.TYPE,
-                REVISIONS_KEY: revs,
+                REVISIONS: revs,
                 "content": content,
                 **split_content,
             }
@@ -41,8 +41,8 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
         return [
             {
                 TYPE_KEY: renderer.TYPE,
-                REVISIONS_KEY: [datapoint.get(REVISION_FIELD)],
-                "url": datapoint.get(SRC_FIELD),
+                REVISIONS: [datapoint.get(REVISION)],
+                "url": datapoint.get(SRC),
             }
             for datapoint in renderer.datapoints
         ]
