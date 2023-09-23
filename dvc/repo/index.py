@@ -186,12 +186,13 @@ def _load_storage_from_out(storage_map, key, out):
             from fsspec.utils import tokenize
 
             # partial import
+            fs_cache = out.repo.cache.fs_cache
             storage_map.add_cache(
                 FileStorage(
                     key,
-                    out.cache.fs,
-                    out.cache.fs.path.join(
-                        out.cache.path, "fs", dep.fs.protocol, tokenize(dep.fs_path)
+                    fs_cache.fs,
+                    fs_cache.fs.path.join(
+                        fs_cache.path, dep.fs.protocol, tokenize(dep.fs_path)
                     ),
                 )
             )

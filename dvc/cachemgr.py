@@ -36,6 +36,7 @@ def _get_odb(
 class CacheManager:
     CACHE_DIR = "cache"
     FILES_DIR = "files"
+    FS_DIR = "fs"
 
     def __init__(self, repo):
         self._repo = repo
@@ -72,6 +73,21 @@ class CacheManager:
         self._odb[Schemes.LOCAL] = odb
         legacy_odb = _get_odb(repo, settings, hash_name="md5-dos2unix", **kwargs)
         self._odb["legacy"] = legacy_odb
+
+    @property
+    def fs_cache(self):
+        """Filesystem-based cache.
+
+        Currently used as a temporary location to download files that we don't
+        yet have a regular oid (e.g. md5) for.
+        """
+        from dvc_data.index import FileStorage
+
+        return FileStorage(
+            key=(),
+            fs=self.local.fs,
+            path=self.local.fs.path.join(self.default_local_cache_dir, self.FS_DIR),
+        )
 
     def _init_odb(self, schemes):
         for scheme in schemes:
