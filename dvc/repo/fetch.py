@@ -143,6 +143,7 @@ def fetch(  # noqa: C901, PLR0913
     with ui.progress(
         desc="Collecting",
         unit="entry",
+        leave=True,
     ) as pb:
         data = collect(
             indexes.values(),
@@ -156,7 +157,8 @@ def fetch(  # noqa: C901, PLR0913
 
     with ui.progress(
         desc="Fetching",
-        unit="file",
+        bar_format="{desc}",
+        leave=True,
     ) as pb:
         try:
             fetch_transferred, fetch_failed = ifetch(
