@@ -2,6 +2,7 @@ import logging
 from typing import List, Tuple
 
 from dvc.exceptions import DownloadError
+from dvc.ui import ui
 from dvc_data.index import DataIndex, FileStorage
 
 from . import locked
@@ -106,7 +107,6 @@ def fetch(  # noqa: C901, PLR0913
     """
     from fsspec.utils import tokenize
 
-    from dvc.fs.callbacks import Callback
     from dvc_data.index.fetch import collect
     from dvc_data.index.fetch import fetch as ifetch
 
@@ -140,29 +140,29 @@ def fetch(  # noqa: C901, PLR0913
 
     cache_key = ("fetch", tokenize(sorted(indexes.keys())))
 
-    with Callback.as_tqdm_callback(
+    with ui.progress(
         desc="Collecting",
         unit="entry",
-    ) as cb:
+    ) as pb:
         data = collect(
             indexes.values(),
             "remote",
             cache_index=self.data_index,
             cache_key=cache_key,
-            callback=cb,
+            callback=pb.as_callback(),
         )
     data, unversioned_count = _log_unversioned(data)
     failed_count += unversioned_count
 
-    with Callback.as_tqdm_callback(
+    with ui.progress(
         desc="Fetching",
         unit="file",
-    ) as cb:
+    ) as pb:
         try:
             fetch_transferred, fetch_failed = ifetch(
                 data,
                 jobs=jobs,
-                callback=cb,
+                callback=pb.as_callback(),
             )  # pylint: disable=assignment-from-no-return
         finally:
             for fs_index in data:
