@@ -38,6 +38,17 @@ def check_name_format(name: str) -> None:
         ) from exc
 
 
+def name_is_compatible(name: str) -> bool:
+    from gto.constants import assert_name_is_valid
+    from gto.exceptions import ValidationError
+
+    try:
+        assert_name_is_valid(name)
+        return True
+    except ValidationError:
+        return False
+
+
 def check_for_nested_dvc_repo(dvcfile: Path):
     from dvc.repo import Repo
 
