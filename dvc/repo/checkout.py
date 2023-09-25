@@ -140,7 +140,8 @@ def checkout(  # noqa: C901
 
     with ui.progress(
         unit="entry",
-        desc="Building data index",
+        desc="Building workspace index",
+        leave=True,
     ) as pb:
         old = build_data_index(
             view,
@@ -155,6 +156,7 @@ def checkout(  # noqa: C901
     with ui.progress(
         desc="Comparing indexes",
         unit="entry",
+        leave=True,
     ) as pb:
         diff = compare(old, new, relink=relink, delete=True, callback=pb.as_callback())
 
@@ -175,7 +177,8 @@ def checkout(  # noqa: C901
 
     with ui.progress(
         unit="file",
-        desc="Checkout",
+        desc="Applying changes",
+        leave=True,
     ) as pb:
         apply(
             diff,
