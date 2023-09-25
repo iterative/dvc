@@ -43,7 +43,7 @@ def test_artifacts_read_subdir(tmp_dir, dvc):
 
 def test_artifacts_read_bad_name(tmp_dir, dvc, caplog):
     bad_name_dvcyaml = deepcopy(dvcyaml)
-    bad_name_dvcyaml["artifacts"]["bad_name"] = {"type": "model", "path": "bad.pkl"}
+    bad_name_dvcyaml["artifacts"]["Bad_name"] = {"type": "model", "path": "bad.pkl"}
 
     (tmp_dir / "dvc.yaml").dump(bad_name_dvcyaml)
 
@@ -54,7 +54,7 @@ def test_artifacts_read_bad_name(tmp_dir, dvc, caplog):
 
     with caplog.at_level(logging.WARNING):
         assert tmp_dir.dvc.artifacts.read() == {"dvc.yaml": artifacts}
-        assert "Can't use 'bad_name' as artifact name (ID)" in caplog.text
+        assert "Can't use 'Bad_name' as artifact name (ID)" in caplog.text
 
 
 def test_artifacts_add_subdir(tmp_dir, dvc):
@@ -172,7 +172,6 @@ def test_name_is_compatible(name):
         "###",
         "@@@",
         "a model",
-        "a_model",
         "-model",
         "model-",
         "model@1",
