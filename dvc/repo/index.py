@@ -801,10 +801,14 @@ def _get_entry_hash_name(
 ) -> str:
     from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
 
-    try:
-        src_entry = index.data[workspace][key]
+    for idx in reversed(range(len(key) + 1)):
+        prefix = key[:idx]
+        try:
+            src_entry = index.data[workspace][prefix]
+        except KeyError:
+            continue
+
         if src_entry.hash_info and src_entry.hash_info.name:
             return src_entry.hash_info.name
-    except KeyError:
-        pass
+
     return DEFAULT_ALGORITHM
