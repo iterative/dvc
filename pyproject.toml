@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=61", "setuptools_scm[toml]>=7,<8"]
+requires = ["setuptools>=61", "setuptools_scm[toml]>=7"]
 
 [project]
 name = "dvc"
