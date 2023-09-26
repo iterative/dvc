@@ -39,6 +39,10 @@ def check_name_format(name: str) -> None:
 
 
 def name_is_compatible(name: str) -> bool:
+    """
+    Only needed by DVCLive per iterative/dvclive#715
+    Will be removed in future release.
+    """
     from gto.constants import assert_name_is_valid
     from gto.exceptions import ValidationError
 
