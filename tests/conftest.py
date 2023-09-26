@@ -5,11 +5,13 @@ from contextlib import suppress
 
 import pytest
 
-from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
+from dvc import env
+from dvc.stage import PipelineStage
+from dvc.testing.fixtures import *  # noqa: F403, pylint: disable=wildcard-import
 
-from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
-from .remotes import *  # noqa, pylint: disable=wildcard-import
-from .scripts import *  # noqa, pylint: disable=wildcard-import
+from .dir_helpers import *  # noqa: F403 # pylint: disable=wildcard-import
+from .remotes import *  # noqa: F403 # pylint: disable=wildcard-import
+from .scripts import *  # noqa: F403, pylint: disable=wildcard-import
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -206,7 +208,13 @@ defaultBranch=master
     import pygit2
 
     pygit2.settings.search_path[pygit2.GIT_CONFIG_LEVEL_GLOBAL] = str(home_dir)
+
+    monkeypatch.setenv(env.DVC_SYSTEM_CONFIG_DIR, os.fspath(path / "system"))
+    monkeypatch.setenv(env.DVC_GLOBAL_CONFIG_DIR, os.fspath(path / "global"))
+    monkeypatch.setenv(env.DVC_SITE_CACHE_DIR, os.fspath(path / "site_cache_dir"))
+
     yield
+
     monkeypatch.undo()
 
 
@@ -234,6 +242,8 @@ def run_copy_metrics(tmp_dir, copy_script):
 
         if hasattr(tmp_dir.dvc, "scm"):
             files = [stage.path]
+            if isinstance(stage, PipelineStage):
+                files += [stage.dvcfile._lockfile.path]
             files += [out.fs_path for out in stage.outs if not out.use_cache]
             tmp_dir.dvc.scm.add(files)
             if commit:

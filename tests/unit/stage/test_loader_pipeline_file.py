@@ -20,8 +20,8 @@ def stage_data():
 def lock_data():
     return {
         "cmd": "command",
-        "deps": [{"path": "foo", "md5": "foo_checksum"}],
-        "outs": [{"path": "bar", "md5": "bar_checksum"}],
+        "deps": [{"path": "foo", "md5": "foo_checksum", "hash": "md5"}],
+        "outs": [{"path": "bar", "md5": "bar_checksum", "hash": "md5"}],
     }
 
 
@@ -46,7 +46,9 @@ def test_fill_from_lock_outs_isexec(dvc):
         stage,
         {
             "cmd": "command",
-            "outs": [{"path": "foo", "md5": "foo_checksum", "isexec": True}],
+            "outs": [
+                {"path": "foo", "md5": "foo_checksum", "isexec": True, "hash": "md5"}
+            ],
         },
     )
 
@@ -253,3 +255,20 @@ def test_load_stage_mapping(dvc, stage_data, lock_data):
     assert "stage1" not in dvcfile.stages
     assert dvcfile.stages.keys() == {"stage"}
     assert isinstance(dvcfile.stages["stage"], PipelineStage)
+
+
+def test_fill_from_lock_dos2unix(dvc):
+    lock_data = {
+        "cmd": "command",
+        "deps": [{"path": "foo", "md5": "foo_checksum"}],
+        "outs": [{"path": "bar", "md5": "bar_checksum"}],
+    }
+    stage = create_stage(PipelineStage, dvc, PROJECT_FILE, deps=["foo"], outs=["bar"])
+
+    for item in chain(stage.deps, stage.outs):
+        assert not item.hash_info
+
+    StageLoader.fill_from_lock(stage, lock_data)
+
+    assert stage.deps[0].hash_info == HashInfo("md5-dos2unix", "foo_checksum")
+    assert stage.outs[0].hash_info == HashInfo("md5-dos2unix", "bar_checksum")

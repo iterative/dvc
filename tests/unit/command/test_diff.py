@@ -19,7 +19,7 @@ def test_digest(checksum, expected):
     assert expected == _digest(checksum)
 
 
-def test_default(mocker, capsys):
+def test_default(mocker, capsys, dvc):
     args = parse_args(["diff"])
     cmd = args.func(args)
     diff = {
@@ -45,13 +45,13 @@ def test_default(mocker, capsys):
         "    file\n"
         "\n"
         "Renamed:\n"
-        "    data{sep}file_old -> data{sep}file_new\n"
+        f"    data{os.path.sep}file_old -> data{os.path.sep}file_new\n"
         "\n"
         "files summary: 1 added, 1 renamed"
-    ).format(sep=os.path.sep) in capsys.readouterr()[0]
+    ) in capsys.readouterr()[0]
 
 
-def test_show_hash(mocker, capsys):
+def test_show_hash(mocker, capsys, dvc):
     args = parse_args(["diff", "--show-hash"])
     cmd = args.func(args)
     diff = {
@@ -101,7 +101,7 @@ def test_show_hash(mocker, capsys):
     ) in out
 
 
-def test_show_json(mocker, capsys):
+def test_show_json(mocker, capsys, dvc):
     args = parse_args(["diff", "--json"])
     cmd = args.func(args)
     diff = {
@@ -123,7 +123,7 @@ def test_show_json(mocker, capsys):
     assert '"not in cache": []' in out
 
 
-def test_show_json_and_hash(mocker, capsys):
+def test_show_json_and_hash(mocker, capsys, dvc):
     args = parse_args(["diff", "--json", "--show-hash"])
     cmd = args.func(args)
 
@@ -160,7 +160,7 @@ def test_show_json_and_hash(mocker, capsys):
     assert '"not in cache": []' in out
 
 
-def test_show_json_hide_missing(mocker, capsys):
+def test_show_json_hide_missing(mocker, capsys, dvc):
     args = parse_args(["diff", "--json", "--hide-missing"])
     cmd = args.func(args)
     diff = {
@@ -190,7 +190,7 @@ def test_show_json_hide_missing(mocker, capsys):
 
 
 @pytest.mark.parametrize("show_hash", [None, True, False])
-def test_diff_show_markdown_and_hash(mocker, show_hash):
+def test_diff_show_markdown_and_hash(mocker, show_hash, dvc):
     options = ["diff", "--md"] + (["--show-hash"] if show_hash else [])
     args = parse_args(options)
     cmd = args.func(args)
@@ -221,7 +221,7 @@ def test_diff_show_markdown_and_hash(mocker, show_hash):
         (["--md"], "| Status   | Path   |\n|----------|--------|"),
     ),
 )
-def test_no_changes(mocker, capsys, opts, show, expected):
+def test_no_changes(mocker, capsys, opts, show, expected, dvc):
     args = parse_args(["diff", *opts, *show])
     cmd = args.func(args)
     mocker.patch("dvc.repo.Repo.diff", return_value={})
@@ -252,14 +252,14 @@ def test_show_markdown(capsys):
         "|--------------|----------------------|\n"
         "| added        | file                 |\n"
         "| deleted      | zoo                  |\n"
-        "| deleted      | data{sep}                |\n"
-        "| deleted      | data{sep}foo             |\n"
-        "| deleted      | data{sep}bar             |\n"
+        f"| deleted      | data{os.path.sep}                |\n"
+        f"| deleted      | data{os.path.sep}foo             |\n"
+        f"| deleted      | data{os.path.sep}bar             |\n"
         "| renamed      | file_old -> file_new |\n"
         "| modified     | file                 |\n"
         "| not in cache | file2                |\n"
         "\n"
-    ).format(sep=os.path.sep)
+    )
 
 
 def test_show_markdown_with_hash(capsys):
@@ -289,14 +289,14 @@ def test_show_markdown_with_hash(capsys):
         "|--------------|--------------------|----------------------|\n"
         "| added        | 00000000           | file                 |\n"
         "| deleted      | 22222              | zoo                  |\n"
-        "| deleted      | XXXXXXXX           | data{sep}                |\n"
-        "| deleted      | 11111111           | data{sep}foo             |\n"
-        "| deleted      | 00000000           | data{sep}bar             |\n"
+        f"| deleted      | XXXXXXXX           | data{os.path.sep}                |\n"
+        f"| deleted      | 11111111           | data{os.path.sep}foo             |\n"
+        f"| deleted      | 00000000           | data{os.path.sep}bar             |\n"
         "| renamed      | 11111111           | file_old -> file_new |\n"
         "| modified     | AAAAAAAA..BBBBBBBB | file                 |\n"
         "| not in cache | 12345678           | file2                |\n"
         "\n"
-    ).format(sep=os.path.sep)
+    )
 
 
 def test_show_markdown_hide_missing(capsys):
@@ -321,16 +321,16 @@ def test_show_markdown_hide_missing(capsys):
         "|----------|----------------------|\n"
         "| added    | file                 |\n"
         "| deleted  | zoo                  |\n"
-        "| deleted  | data{sep}                |\n"
-        "| deleted  | data{sep}foo             |\n"
-        "| deleted  | data{sep}bar             |\n"
+        f"| deleted  | data{os.path.sep}                |\n"
+        f"| deleted  | data{os.path.sep}foo             |\n"
+        f"| deleted  | data{os.path.sep}bar             |\n"
         "| renamed  | file_old -> file_new |\n"
         "| modified | file                 |\n"
         "\n"
-    ).format(sep=os.path.sep)
+    )
 
 
-def test_hide_missing(mocker, capsys):
+def test_hide_missing(mocker, capsys, dvc):
     args = parse_args(["diff", "--hide-missing"])
     cmd = args.func(args)
     diff = {

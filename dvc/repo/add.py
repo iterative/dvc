@@ -1,32 +1,86 @@
-import logging
 import os
 from contextlib import contextmanager
-from itertools import tee
-from typing import TYPE_CHECKING, Any, Iterator, List, Optional
-
-import colorama
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from dvc.exceptions import (
     CacheLinkError,
-    InvalidArgumentError,
+    DvcException,
     OutputDuplicationError,
+    OutputNotFoundError,
     OverlappingOutputPathsError,
-    RecursiveAddingWhileUsingFilename,
 )
 from dvc.repo.scm_context import scm_context
 from dvc.ui import ui
-from dvc.utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
-from dvc.utils.collections import ensure_list, validate
+from dvc.utils import glob_targets, resolve_output, resolve_paths
 
 from . import locked
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.stage import Stage
-    from dvc.types import TargetType
+    from dvc.types import StrOrBytesPath
 
-Stages = List["Stage"]
-logger = logging.getLogger(__name__)
+
+class StageInfo(NamedTuple):
+    stage: "Stage"
+    output_exists: bool
+
+
+def find_targets(
+    targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]], glob: bool = False
+) -> List[str]:
+    if isinstance(targets, (str, bytes, os.PathLike)):
+        targets_list = [os.fsdecode(targets)]
+    else:
+        targets_list = [os.fsdecode(target) for target in targets]
+    return glob_targets(targets_list, glob=glob)
+
+
+PIPELINE_TRACKED_UPDATE_FMT = (
+    "cannot update {out!r}: overlaps with an output of {stage} in '{path}'.\n"
+    "Run the pipeline or use 'dvc commit' to force update it."
+)
+
+
+def get_or_create_stage(
+    repo: "Repo",
+    target: str,
+    out: Optional[str] = None,
+    to_remote: bool = False,
+    force: bool = False,
+) -> StageInfo:
+    if out:
+        target = resolve_output(target, out, force=force)
+    path, wdir, out = resolve_paths(repo, target, always_local=to_remote and not out)
+
+    try:
+        (out_obj,) = repo.find_outs_by_path(target, strict=False)
+        stage = out_obj.stage
+        if not stage.is_data_source:
+            msg = PIPELINE_TRACKED_UPDATE_FMT.format(
+                out=out, stage=stage, path=stage.relpath
+            )
+            raise DvcException(msg)
+        return StageInfo(stage, output_exists=True)
+    except OutputNotFoundError:
+        stage = repo.stage.create(
+            single_stage=True,
+            validate=False,
+            fname=path,
+            wdir=wdir,
+            outs=[out],
+            force=force,
+        )
+        return StageInfo(stage, output_exists=False)
 
 
 OVERLAPPING_CHILD_FMT = (
@@ -44,50 +98,8 @@ OVERLAPPING_PARENT_FMT = (
 )
 
 
-def check_recursive_and_fname(args):
-    if args.recursive and args.fname:
-        raise RecursiveAddingWhileUsingFilename()
-
-
-def transform_targets(args):
-    from funcy import count_reps
-
-    counts = count_reps(ensure_list(args.targets))
-    dupes = [key for key, count in counts.items() if count > 1]
-    if dupes:
-        msg = ", ".join(f"[b]{key}[/]" for key in dupes)
-        ui.error_write(f"ignoring duplicated targets: {msg}", styled=True)
-    args.targets = list(counts)
-
-
-def check_arg_combinations(args):
-    kwargs = args.kwargs
-    invalid_opt = None
-    to_remote = args.to_remote
-    to_cache = kwargs.get("out") and not to_remote
-
-    if to_remote or to_cache:
-        message = "{option} can't be used with "
-        message += "--to-remote" if to_remote else "-o"
-        if len(args.targets) != 1:
-            invalid_opt = "multiple targets"
-        elif args.no_commit:
-            invalid_opt = "--no-commit option"
-        elif args.recursive:
-            invalid_opt = "--recursive option"
-        elif kwargs.get("external"):
-            invalid_opt = "--external option"
-    else:
-        message = "{option} can't be used without --to-remote"
-        if kwargs.get("remote"):
-            invalid_opt = "--remote"
-
-    if invalid_opt is not None:
-        raise InvalidArgumentError(message.format(option=invalid_opt))
-
-
 @contextmanager
-def translate_graph_error(stages: Stages) -> Iterator[None]:
+def translate_graph_error(stages: List["Stage"]) -> Iterator[None]:
     try:
         yield
     except OverlappingOutputPathsError as exc:
@@ -108,22 +120,25 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
         )
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(  # noqa: B904
-            exc.output, list(set(exc.stages) - set(stages))
+            exc.output, set(exc.stages) - set(stages)
         )
 
 
-def progress_iter(stages: Stages) -> Iterator["Stage"]:
+def progress_iter(stages: Dict[str, StageInfo]) -> Iterator[Tuple[str, StageInfo]]:
     total = len(stages)
     desc = "Adding..."
-    with ui.progress(stages, total=total, desc=desc, unit="file", leave=True) as pbar:
+    with ui.progress(
+        stages.items(), total=total, desc=desc, unit="file", leave=True
+    ) as pbar:
         if total == 1:
             pbar.bar_format = desc
             pbar.refresh()
 
-        for stage in pbar:
+        for item, stage_info in pbar:
             if total > 1:
-                pbar.set_msg(f"{stage.outs[0]}")
-            yield stage
+                pbar.set_msg(str(stage_info.stage.outs[0]))
+                pbar.refresh()
+            yield item, stage_info
             if total == 1:  # restore bar format for stats
                 # pylint: disable=no-member
                 pbar.bar_format = pbar.BAR_FMT_DEFAULT
@@ -150,135 +165,75 @@ def warn_link_failures() -> Iterator[List[str]]:
             ui.error_write(msg)
 
 
-VALIDATORS = (
-    check_recursive_and_fname,
-    transform_targets,
-    check_arg_combinations,
-)
+def _add_transfer(
+    stage: "Stage",
+    source: str,
+    remote: Optional[str] = None,
+    to_remote: bool = False,
+    jobs: Optional[int] = None,
+    force: bool = False,
+) -> None:
+    odb = None
+    if to_remote:
+        odb = stage.repo.cloud.get_remote_odb(remote, "add")
+    stage.transfer(source, odb=odb, to_remote=to_remote, jobs=jobs, force=force)
+    stage.dump()
 
 
-@validate(*VALIDATORS)
+def _add(stage: "Stage", source: Optional[str] = None, no_commit: bool = False) -> None:
+    out = stage.outs[0]
+    path = out.fs.path.abspath(source) if source else None
+    try:
+        stage.add_outs(path, no_commit=no_commit)
+    except CacheLinkError:
+        stage.dump()
+        raise
+    stage.dump()
+
+
 @locked
 @scm_context
 def add(
     repo: "Repo",
-    targets: "TargetType",
-    recursive: bool = False,
+    targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]],
     no_commit: bool = False,
-    fname: Optional[str] = None,
-    to_remote: bool = False,
-    **kwargs: Any,
-):
-    to_cache = bool(kwargs.get("out")) and not to_remote
-    transfer = to_remote or to_cache
-
-    glob = kwargs.get("glob", False)
-    add_targets = collect_targets(repo, targets, recursive, glob)
-    # pass one for creating stages, other one is used for iterating here
-    add_targets, sources = tee(add_targets)
-
-    # collect targets and build stages as we go
-    desc = "Collecting targets"
-    stages_it = create_stages(repo, add_targets, fname, transfer, **kwargs)
-    stages = list(ui.progress(stages_it, desc=desc, unit="file"))
-    msg = "Collecting stages from the workspace"
-    with translate_graph_error(stages), ui.status(msg) as status:
-        # remove existing stages that are to-be replaced with these
-        # new stages for the graph checks.
-        repo.check_graph(
-            stages=stages, callback=lambda: status.update("Checking graph")
-        )
-
-    odb = None
-    if to_remote:
-        odb = repo.cloud.get_remote_odb(kwargs.get("remote"), "add")
-
-    with warn_link_failures() as link_failures:
-        for stage, source in zip(progress_iter(stages), sources):
-            if to_remote or to_cache:
-                stage.transfer(source, to_remote=to_remote, odb=odb, **kwargs)
-            else:
-                try:
-                    stage.save()
-                    if not no_commit:
-                        stage.commit(jobs=kwargs.get("jobs"))
-                except CacheLinkError:
-                    link_failures.append(str(stage.relpath))
-            stage.dump()
-    return stages
-
-
-LARGE_DIR_RECURSIVE_ADD_WARNING = (
-    "You are adding a large directory '{target}' recursively.\n"
-    "Consider tracking it as a whole instead with "
-    "`{cyan}dvc add {target}{nc}`."
-)
-
-
-def collect_targets(
-    repo: "Repo",
-    targets: "TargetType",
-    recursive: bool = False,
     glob: bool = False,
-) -> Iterator[str]:
-    for target in glob_targets(ensure_list(targets), glob=glob):
-        expanded_targets = _find_all_targets(repo, target, recursive=recursive)
-        for index, path in enumerate(expanded_targets):
-            if index == LARGE_DIR_SIZE:
-                msg = LARGE_DIR_RECURSIVE_ADD_WARNING.format(
-                    cyan=colorama.Fore.CYAN,
-                    nc=colorama.Style.RESET_ALL,
-                    target=target,
-                )
-                ui.error_write(msg)
-            yield path
-
-
-def _find_all_targets(
-    repo: "Repo", target: str, recursive: bool = False
-) -> Iterator[str]:
-    from dvc.dvcfile import is_dvc_file
-
-    if os.path.isdir(target) and recursive:
-        files = repo.dvcignore.find(repo.fs, target)
-        yield from (
-            path
-            for path in files
-            if not repo.is_dvc_internal(path)
-            if not is_dvc_file(path)
-            if not repo.scm.belongs_to_scm(path)
-            if not repo.scm.is_tracked(path)
-        )
-    else:
-        yield target
-
-
-def create_stages(
-    repo: "Repo",
-    targets: Iterator[str],
-    fname: Optional[str] = None,
-    transfer: bool = False,
-    external: bool = False,
+    out: Optional[str] = None,
+    remote: Optional[str] = None,
+    to_remote: bool = False,
+    remote_jobs: Optional[int] = None,
     force: bool = False,
-    **kwargs: Any,
-) -> Iterator["Stage"]:
-    for target in targets:
-        if kwargs.get("out"):
-            target = resolve_output(target, kwargs["out"], force=force)
-        path, wdir, out = resolve_paths(
-            repo, target, always_local=transfer and not kwargs.get("out")
-        )
+) -> List["Stage"]:
+    add_targets = find_targets(targets, glob=glob)
+    if not add_targets:
+        return []
 
-        stage = repo.stage.create(
-            single_stage=True,
-            validate=False,
-            fname=fname or path,
-            wdir=wdir,
-            outs=[out],
-            external=external,
+    stages_with_targets = {
+        target: get_or_create_stage(
+            repo,
+            target,
+            out=out,
+            to_remote=to_remote,
             force=force,
         )
+        for target in add_targets
+    }
 
-        out_obj = stage.outs[0]
-        out_obj.annot.update(**kwargs)
-        yield stage
+    stages = [stage for stage, _ in stages_with_targets.values()]
+    msg = "Collecting stages from the workspace"
+    with translate_graph_error(stages), ui.status(msg) as st:
+        repo.check_graph(stages=stages, callback=lambda: st.update("Checking graph"))
+
+    if to_remote or out:
+        assert len(stages_with_targets) == 1, "multiple targets are unsupported"
+        (source, (stage, _)) = next(iter(stages_with_targets.items()))
+        _add_transfer(stage, source, remote, to_remote, jobs=remote_jobs, force=force)
+        return [stage]
+
+    with warn_link_failures() as link_failures:
+        for source, (stage, output_exists) in progress_iter(stages_with_targets):
+            try:
+                _add(stage, source if output_exists else None, no_commit=no_commit)
+            except CacheLinkError:
+                link_failures.append(stage.relpath)
+    return stages

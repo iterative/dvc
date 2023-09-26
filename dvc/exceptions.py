@@ -1,8 +1,11 @@
 """Exceptions raised by the dvc."""
 import errno
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 from dvc.utils import format_link
+
+if TYPE_CHECKING:
+    from dvc.stage import Stage
 
 
 class DvcException(Exception):
@@ -17,6 +20,10 @@ class DvcException(Exception):
 class InvalidArgumentError(ValueError, DvcException):
     """Thrown if arguments are invalid."""
 
+    def __init__(self, msg, *args):
+        self.msg = msg
+        super().__init__(msg, *args)
+
 
 class OutputDuplicationError(DvcException):
     """Thrown if a file/directory is specified as an output in more than one
@@ -27,24 +34,25 @@ class OutputDuplicationError(DvcException):
         stages (list): list of paths to stages.
     """
 
-    def __init__(self, output, stages):
+    def __init__(self, output: str, stages: Set["Stage"]):
         from funcy import first
 
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
-        msg = ""
-        stage_names = [s.addressing for s in stages]
-        stages_str = " ".join(stage_names)
         if len(stages) == 1:
-            stage_name = first(stages)
-            msg = f"output '{output}' is already specified in {stage_name}."
-        else:
-            msg = "output '{}' is already specified in stages:\n{}".format(
-                output, "\n".join(f"\t- {s}" for s in stage_names)
+            stage = first(stages)
+            msg = (
+                f"output '{output}' is already specified in {stage}."
+                f"\nUse `dvc remove {stage.addressing}` to stop tracking the "
+                "overlapping output."
             )
-        msg += (
-            f"\nUse `dvc remove {stages_str}` to stop tracking the overlapping output."
-        )
+        else:
+            stage_names = "\n".join(["\t- " + s.addressing for s in stages])
+            msg = (
+                f"output '{output}' is specified in:\n{stage_names}"
+                "\nUse `dvc remove` with any of the above targets to stop tracking the "
+                "overlapping output."
+            )
         super().__init__(msg)
         self.stages = stages
         self.output = output
@@ -63,10 +71,12 @@ class OutputNotFoundError(DvcException):
         self.output = output
         self.repo = repo
         super().__init__(
-            "Unable to find DVC file with output '{path}'".format(
-                path=relpath(self.output)
-            )
+            f"Unable to find DVC file with output {relpath(self.output)!r}"
         )
+
+
+class StageNotFoundError(DvcException):
+    pass
 
 
 class StagePathAsOutputError(DvcException):
@@ -80,11 +90,7 @@ class StagePathAsOutputError(DvcException):
 
     def __init__(self, stage, output):
         assert isinstance(output, str)
-        super().__init__(
-            "{stage} is within an output '{output}' of another stage".format(
-                stage=stage, output=output
-            )
-        )
+        super().__init__(f"{stage} is within an output {output!r} of another stage")
 
 
 class CircularDependencyError(DvcException):
@@ -156,9 +162,7 @@ class CyclicGraphError(DvcException):
 class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "unable to remove '{}' without a confirmation. Use `-f` to force.".format(
-                path
-            )
+            f"unable to remove {path!r} without a confirmation. Use `-f` to force."
         )
 
 
@@ -167,9 +171,7 @@ class InitError(DvcException):
 
 
 class ReproductionError(DvcException):
-    def __init__(self, name):
-        self.name = name
-        super().__init__(f"failed to reproduce '{name}'")
+    pass
 
 
 class BadMetricError(DvcException):
@@ -180,11 +182,6 @@ class BadMetricError(DvcException):
                 paths=", ".join(f"'{path}'" for path in paths)
             )
         )
-
-
-class RecursiveAddingWhileUsingFilename(DvcException):
-    def __init__(self):
-        super().__init__("cannot use `fname` with multiple targets or `-R|--recursive`")
 
 
 class OverlappingOutputPathsError(DvcException):
@@ -203,7 +200,7 @@ class ETagMismatchError(DvcException):
     def __init__(self, etag, cached_etag):
         super().__init__(
             "ETag mismatch detected when copying file to cache! "
-            "(expected: '{}', actual: '{}')".format(etag, cached_etag)
+            f"(expected: '{etag}', actual: '{cached_etag}')"
         )
 
 
@@ -304,22 +301,7 @@ class URLMissingError(DvcException):
         super().__init__(f"The path '{url}' does not exist")
 
 
-class RemoteCacheRequiredError(DvcException):
-    def __init__(self, scheme, fs_path):
-        super().__init__(
-            (
-                "Current operation was unsuccessful because '{}' requires "
-                "existing cache on '{}' remote. See {} for information on how "
-                "to set up remote cache."
-            ).format(
-                fs_path,
-                scheme,
-                format_link("https://man.dvc.org/config#cache"),
-            )
-        )
-
-
-class IsADirectoryError(DvcException):  # noqa,pylint:disable=redefined-builtin
+class IsADirectoryError(DvcException):  # noqa: A001,pylint:disable=redefined-builtin
     """Raised when a file operation is requested on a directory."""
 
 
@@ -354,3 +336,24 @@ class CacheLinkError(DvcException):
 class PrettyDvcException(DvcException):
     def __pretty_exc__(self, **kwargs):
         """Print prettier exception message."""
+
+
+class ArtifactNotFoundError(DvcException):
+    """Thrown if an artifact is not found in the DVC repo.
+
+    Args:
+        name (str): artifact name.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        version: Optional[str] = None,
+        stage: Optional[str] = None,
+    ):
+        self.name = name
+        self.version = version
+        self.stage = stage
+
+        desc = f" @ {stage or version}" if (stage or version) else ""
+        super().__init__(f"Unable to find artifact '{name}{desc}'")

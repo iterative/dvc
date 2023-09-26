@@ -2,69 +2,61 @@ import argparse
 import logging
 
 from dvc.cli import completion
-from dvc.cli.actions import KeyValueArgs
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 
 logger = logging.getLogger(__name__)
 
 
-def _add_annotating_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--desc",
-        type=str,
-        metavar="<text>",
-        help="User description of the data.",
-    )
-    parser.add_argument(
-        "--meta",
-        metavar="key=value",
-        nargs=1,
-        action=KeyValueArgs,
-        help="Custom metadata to add to the data.",
-    )
-    parser.add_argument(
-        "--label",
-        dest="labels",
-        type=str,
-        action="append",
-        metavar="<str>",
-        help="Label for the data.",
-    )
-    parser.add_argument(
-        "--type",
-        type=str,
-        metavar="<str>",
-        help="Type of the data.",
-    )
-
-
 class CmdAdd(CmdBase):
+    def validate_args(self) -> None:
+        from dvc.exceptions import InvalidArgumentError
+
+        args = self.args
+        invalid_opt = None
+
+        if args.to_remote or args.out:
+            message = "{option} can't be used with "
+            message += "--to-remote" if args.to_remote else "--out"
+            if len(args.targets) != 1:
+                invalid_opt = "multiple targets"
+            elif args.glob:
+                invalid_opt = "--glob option"
+            elif args.no_commit:
+                invalid_opt = "--no-commit option"
+        else:
+            message = "{option} can't be used without --to-remote"
+            if args.remote:
+                invalid_opt = "--remote"
+            elif args.remote_jobs:
+                invalid_opt = "--remote-jobs"
+
+        if invalid_opt is not None:
+            raise InvalidArgumentError(message.format(option=invalid_opt))
+
     def run(self):
-        from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
+        from dvc.exceptions import DvcException, InvalidArgumentError
 
         try:
-            if len(self.args.targets) > 1 and self.args.file:
-                raise RecursiveAddingWhileUsingFilename()
+            self.validate_args()
+        except InvalidArgumentError:
+            logger.exception("")
+            return 1
 
+        try:
             self.repo.add(
                 self.args.targets,
-                recursive=self.args.recursive,
                 no_commit=self.args.no_commit,
-                fname=self.args.file,
-                external=self.args.external,
                 glob=self.args.glob,
-                desc=self.args.desc,
                 out=self.args.out,
-                type=self.args.type,
-                labels=self.args.labels,
-                meta=self.args.meta,
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
-                jobs=self.args.jobs,
+                remote_jobs=self.args.remote_jobs,
                 force=self.args.force,
             )
-
+        except FileNotFoundError:
+            logger.exception("")
+            return 1
         except DvcException:
             logger.exception("")
             return 1
@@ -82,34 +74,16 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "-R",
-        "--recursive",
-        action="store_true",
-        default=False,
-        help="Recursively add files under directory targets.",
-    )
-    parser.add_argument(
         "--no-commit",
         action="store_true",
         default=False,
         help="Don't put files/directories into cache.",
     )
     parser.add_argument(
-        "--external",
-        action="store_true",
-        default=False,
-        help="Allow targets that are outside of the DVC repository.",
-    )
-    parser.add_argument(
         "--glob",
         action="store_true",
         default=False,
         help="Allows targets containing shell-style wildcards.",
-    )
-    parser.add_argument(
-        "--file",
-        help="Specify name of the .dvc file this command will generate.",
-        metavar="<filename>",
     )
     parser.add_argument(
         "-o",
@@ -130,8 +104,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<name>",
     )
     parser.add_argument(
-        "-j",
-        "--jobs",
+        "--remote-jobs",
         type=int,
         help=(
             "Only used along with '--to-remote'. "
@@ -148,8 +121,6 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Override local file or folder if exists.",
     )
-
-    _add_annotating_args(parser)
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add."
     ).complete = completion.FILE

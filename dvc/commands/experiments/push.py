@@ -5,20 +5,12 @@ from typing import Any, Dict
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
-from dvc.exceptions import InvalidArgumentError
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsPush(CmdBase):
-    def raise_error_if_all_disabled(self):
-        if not any([self.args.experiment, self.args.all_commits, self.args.rev]):
-            raise InvalidArgumentError(
-                "Either provide an `experiment` argument, or use the "
-                "`--rev` or `--all-commits` flag."
-            )
-
     @staticmethod
     def log_result(result: Dict[str, Any], remote: str):
         from dvc.utils import humanize
@@ -58,8 +50,6 @@ class CmdExperimentsPush(CmdBase):
 
     def run(self):
         from dvc.repo.experiments.push import UploadError
-
-        self.raise_error_if_all_disabled()
 
         try:
             result = self.repo.experiments.push(
@@ -102,7 +92,7 @@ def add_parser(experiments_subparsers, parent_parser):
         help=EXPERIMENTS_PUSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    add_rev_selection_flags(experiments_push_parser, "Push", False)
+    add_rev_selection_flags(experiments_push_parser, "Push", True)
     experiments_push_parser.add_argument(
         "-f",
         "--force",

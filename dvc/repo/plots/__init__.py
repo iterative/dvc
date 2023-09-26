@@ -46,8 +46,8 @@ SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS
 class PlotMetricTypeError(DvcException):
     def __init__(self, file):
         super().__init__(
-            "'{}' - file type error\n"
-            "Only JSON, YAML, CSV and TSV formats are supported.".format(file)
+            f"'{file}' - file type error\n"
+            "Only JSON, YAML, CSV and TSV formats are supported."
         )
 
 
@@ -121,51 +121,58 @@ class Plots:
 
             }
         """
+        from dvc.repo.experiments.brancher import switch_repo
         from dvc.utils.collections import ensure_list
 
         targets = ensure_list(targets)
         targets = [self.repo.dvcfs.from_os_path(target) for target in targets]
 
-        for rev in self.repo.brancher(revs=revs):
-            # .brancher() adds unwanted workspace
-            if revs is not None and rev not in revs:
-                continue
-            rev = rev or "workspace"
-
-            res: Dict = {}
-            definitions = _collect_definitions(
-                self.repo,
-                targets=targets,
-                revision=rev,
-                onerror=onerror,
-                props=props,
-            )
-            if definitions:
-                res[rev] = {"definitions": definitions}
-
-                data_targets = _get_data_targets(definitions)
-
-                res[rev]["sources"] = self._collect_data_sources(
-                    targets=data_targets,
-                    recursive=recursive,
-                    props=props,
+        if revs is None:
+            revs = ["workspace"]
+        else:
+            revs = list(revs)
+            if "workspace" in revs:
+                # reorder revs to match repo.brancher ordering
+                revs.remove("workspace")
+                revs = ["workspace", *revs]
+        for rev in revs:
+            with switch_repo(self.repo, rev) as (repo, _):
+                res: Dict = {}
+                definitions = _collect_definitions(
+                    repo,
+                    targets=targets,
+                    revision=rev,
                     onerror=onerror,
+                    props=props,
                 )
-            yield res
+                if definitions:
+                    res[rev] = {"definitions": definitions}
+
+                    data_targets = _get_data_targets(definitions)
+
+                    res[rev]["sources"] = self._collect_data_sources(
+                        repo,
+                        targets=data_targets,
+                        recursive=recursive,
+                        props=props,
+                        onerror=onerror,
+                    )
+                yield res
 
     @error_handler
     def _collect_data_sources(
         self,
+        repo: "Repo",
         targets: Optional[List[str]] = None,
         recursive: bool = False,
         props: Optional[Dict] = None,
         onerror: Optional[Callable] = None,
     ):
-        fs = self.repo.dvcfs
+        fs = repo.dvcfs
 
         props = props or {}
 
-        plots = _collect_plots(self.repo, targets, recursive)
+        plots = _collect_plots(repo, targets, recursive)
         res: Dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
             joined_props = {**rev_props, **props}
@@ -205,7 +212,7 @@ class Plots:
             short_rev = "workspace"
             if rev := getattr(self.repo.fs, "rev", None):
                 short_rev = rev[:7]
-            _resolve_data_sources(data, short_rev, cache_remote_stream=True)
+            _resolve_data_sources(data, short_rev, cache=True)
             result.update(data)
 
         errored = errored_revisions(result)
@@ -274,9 +281,7 @@ def _is_plot(out: "Output") -> bool:
     return bool(out.plot)
 
 
-def _resolve_data_sources(
-    plots_data: Dict, rev: str, cache_remote_stream: bool = False
-):
+def _resolve_data_sources(plots_data: Dict, rev: str, cache: bool = False):
     from dvc.progress import Tqdm
 
     values = list(plots_data.values())
@@ -291,7 +296,7 @@ def _resolve_data_sources(
     def resolve(value):
         data_source = value.pop("data_source")
         assert callable(data_source)
-        value.update(data_source(cache_remote_stream=cache_remote_stream))
+        value.update(data_source(cache=cache))
 
     if not to_resolve:
         return
@@ -441,6 +446,7 @@ def _resolve_definitions(
     definitions: "DictStrAny",
     onerror: Optional[Callable[[Any], Any]] = None,
 ):
+    config_path = os.fspath(config_path)
     config_dir = fs.path.dirname(config_path)
     result: Dict[str, Dict] = {}
     for plot_id, plot_props in definitions.items():
@@ -472,15 +478,12 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
     for dvcfile, plots_def in top_plots.items():
         dvcfile_path = _relpath(repo.dvcfs, dvcfile)
         dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
-        if isinstance(plots_def, list):
-            for elem in plots_def:
-                if isinstance(elem, str):
-                    dvcfile_defs_dict[elem] = None
-                else:
-                    k, v = list(elem.items())[0]
-                    dvcfile_defs_dict[k] = v
-        else:
-            dvcfile_defs_dict = plots_def
+        for elem in plots_def:
+            if isinstance(elem, str):
+                dvcfile_defs_dict[elem] = None
+            else:
+                k, v = next(iter(elem.items()))
+                dvcfile_defs_dict[k] = v
 
         resolved = _resolve_definitions(
             repo.dvcfs,

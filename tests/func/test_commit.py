@@ -5,13 +5,14 @@ import pytest
 
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dvcfile import PROJECT_FILE
+from dvc.fs import localfs
 from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
 
 
 def test_commit_recursive(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"file": "text1", "subdir": {"file2": "text2"}}})
-    stages = dvc.add("dir", recursive=True, no_commit=True)
+    stages = dvc.add(localfs.find("dir"), no_commit=True)
 
     assert len(stages) == 2
     assert dvc.status() != {}
@@ -55,6 +56,7 @@ def test_commit_preserve_fields(tmp_dir, dvc):
             key1: value1
             key2: value2
           remote: testremote
+          hash: md5
         meta: some metadata
     """
     )
@@ -76,6 +78,7 @@ def test_commit_preserve_fields(tmp_dir, dvc):
             key1: value1
             key2: value2
           remote: testremote
+          hash: md5
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta: some metadata
@@ -83,14 +86,13 @@ def test_commit_preserve_fields(tmp_dir, dvc):
     )
 
 
-@pytest.mark.parametrize("run_kw", [{"single_stage": True}, {"name": "copy"}])
-def test_commit_with_deps(tmp_dir, dvc, run_copy, run_kw):
+def test_commit_with_deps(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     (foo_stage,) = dvc.add("foo", no_commit=True)
     assert foo_stage is not None
     assert len(foo_stage.outs) == 1
 
-    stage = run_copy("foo", "file", no_commit=True, **run_kw)
+    stage = run_copy("foo", "file", no_commit=True, name="copy")
     assert stage is not None
     assert len(stage.outs) == 1
 
@@ -129,12 +131,15 @@ def test_commit_no_exec(tmp_dir, dvc):
 def test_commit_granular_output(tmp_dir, dvc):
     dvc.run(
         name="mystage",
-        cmd=["echo foo>foo", "echo bar>bar"],
+        cmd=[
+            "python -c \"open('foo', 'wb').write(b'foo\\n')\"",
+            "python -c \"open('bar', 'wb').write(b'bar\\n')\"",
+        ],
         outs=["foo", "bar"],
         no_commit=True,
     )
 
-    cache = tmp_dir / ".dvc" / "cache"
+    cache = tmp_dir / ".dvc" / "cache" / "files" / "md5"
     assert not list(cache.glob("*/*"))
 
     dvc.commit("foo")
@@ -175,7 +180,7 @@ def test_commit_granular_dir(tmp_dir, dvc):
     )
     dvc.add("data", no_commit=True)
 
-    cache = tmp_dir / ".dvc" / "cache"
+    cache = tmp_dir / ".dvc" / "cache" / "files" / "md5"
 
     assert set(cache.glob("*/*")) == set()
 
@@ -248,6 +253,7 @@ def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
             "outs": [
                 {
                     "path": "data",
+                    "hash": "md5",
                     "files": [
                         {
                             "size": 3,
@@ -280,6 +286,7 @@ def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
         "outs": [
             {
                 "path": "data",
+                "hash": "md5",
                 "files": [
                     {
                         "size": 4,
@@ -297,3 +304,24 @@ def test_commit_updates_to_cloud_versioning_dir(tmp_dir, dvc):
             }
         ]
     }
+
+
+def test_commit_dos2unix(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    (tmp_dir / "foo.dvc").dump(
+        {
+            "outs": [
+                {"path": "foo", "md5": "acbd18db4cc2f85cedef654fccc4a4d8", "size": 3},
+            ]
+        }
+    )
+    legacy_content = (tmp_dir / "foo.dvc").read_text()
+    assert "hash: md5" not in legacy_content
+
+    dvc.commit("foo.dvc", force=True)
+    assert (tmp_dir / "foo.dvc").read_text() == legacy_content
+
+    tmp_dir.gen("foo", "modified")
+    dvc.commit("foo.dvc", force=True)
+    content = (tmp_dir / "foo.dvc").read_text()
+    assert "hash: md5" in content

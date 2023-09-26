@@ -1,0 +1,10 @@
+pull_request_rules:
+  - name: backport patches to 2.x
+    conditions:
+      - base=main
+      - label=backport
+    actions:
+      backport:
+        branches:
+          - "2.x"
+        title: ({{ destination_branch }}) {{ title }}

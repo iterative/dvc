@@ -16,12 +16,6 @@ class CmdRepro(CmdBase):
         else:
             ui.write("Use `dvc push` to send your updates to remote storage.")
 
-        if self.args.metrics:
-            from dvc.compare import show_metrics
-
-            metrics = self.repo.metrics.show()
-            show_metrics(metrics)
-
         return 0
 
     @property
@@ -38,6 +32,8 @@ class CmdRepro(CmdBase):
             "recursive": self.args.recursive,
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
+            "allow_missing": self.args.allow_missing,
+            "on_error": self.args.on_error,
         }
 
     @property
@@ -105,13 +101,6 @@ and then the stage name name.
         help="Reproduce all stages in the specified directory.",
     )
     repro_parser.add_argument(
-        "-m",
-        "--metrics",
-        action="store_true",
-        default=False,
-        help="Show metrics after reproduction.",
-    )
-    repro_parser.add_argument(
         "--downstream",
         action="store_true",
         default=False,
@@ -136,12 +125,38 @@ and then the stage name name.
         ),
     )
     repro_parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        default=False,
+        help=("Skip stages with missing data but no other changes."),
+    )
+    repro_parser.add_argument(
         "--dry",
         action="store_true",
         default=False,
         help=(
             "Only print the commands that would be executed without actually executing."
         ),
+    )
+    repro_parser.add_argument(
+        "-k",
+        "--keep-going",
+        action="store_const",
+        default="fail",
+        const="keep-going",
+        dest="on_error",
+        help=(
+            "Continue executing, skipping stages having dependencies "
+            "on the failed stages"
+        ),
+    )
+    repro_parser.add_argument(
+        "--ignore-errors",
+        action="store_const",
+        default="fail",
+        const="ignore",
+        dest="on_error",
+        help="Ignore errors from stages.",
     )
 
 

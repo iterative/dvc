@@ -3,16 +3,11 @@ import os
 import signal
 import subprocess  # nosec B404
 import threading
-from typing import TYPE_CHECKING, List
 
-from dvc.stage.monitor import CheckpointTask, Monitor
 from dvc.utils import fix_env
 
 from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
-
-if TYPE_CHECKING:
-    from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +38,15 @@ def _enforce_cmd_list(cmd):
     return cmd if isinstance(cmd, list) else cmd.splitlines()
 
 
-def prepare_kwargs(stage, checkpoint_func=None, run_env=None):
+def prepare_kwargs(stage, run_env=None):
+    from dvc.env import DVC_ROOT
+
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
 
-    kwargs["env"].update(stage.env(checkpoint_func=checkpoint_func))
     if run_env:
         kwargs["env"].update(run_env)
+    if DVC_ROOT not in kwargs["env"]:
+        kwargs["env"][DVC_ROOT] = stage.repo.root_dir
 
     # NOTE: when you specify `shell=True`, `Popen` [1] will default to
     # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
@@ -75,7 +73,7 @@ def get_executable():
     return (os.getenv("SHELL") or "/bin/sh") if os.name != "nt" else None
 
 
-def _run(stage: "Stage", executable, cmd, checkpoint_func, **kwargs):
+def _run(executable, cmd, **kwargs):
     # pylint: disable=protected-access
     main_thread = isinstance(
         threading.current_thread(),
@@ -86,40 +84,23 @@ def _run(stage: "Stage", executable, cmd, checkpoint_func, **kwargs):
     exec_cmd = _make_cmd(executable, cmd)
 
     try:
-        p = subprocess.Popen(exec_cmd, **kwargs)  # nosec B603
+        p = subprocess.Popen(exec_cmd, **kwargs)  # nosec B603 # noqa: S603
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        tasks = _get_monitor_tasks(stage, checkpoint_func, p)
-
-        if tasks:
-            with Monitor(tasks):
-                p.communicate()
-        else:
-            p.communicate()
+        p.communicate()
 
         if p.returncode != 0:
-            for t in tasks:
-                if t.updated.is_set():
-                    raise t.error_cls(cmd, p.returncode)
             raise StageCmdFailedError(cmd, p.returncode)
     finally:
         if old_handler:
             signal.signal(signal.SIGINT, old_handler)
 
 
-def _get_monitor_tasks(stage, checkpoint_func, proc) -> List[CheckpointTask]:
-    result = []
-    if checkpoint_func:
-        result.append(CheckpointTask(stage, checkpoint_func, proc))
-
-    return result
-
-
-def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
+def cmd_run(stage, dry=False, run_env=None):
     logger.info("Running stage '%s':", stage.addressing)
     commands = _enforce_cmd_list(stage.cmd)
-    kwargs = prepare_kwargs(stage, checkpoint_func=checkpoint_func, run_env=run_env)
+    kwargs = prepare_kwargs(stage, run_env=run_env)
     executable = get_executable()
 
     if not dry:
@@ -130,13 +111,27 @@ def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
         if dry:
             continue
 
-        _run(stage, executable, cmd, checkpoint_func=checkpoint_func, **kwargs)
+        _run(executable, cmd, **kwargs)
+
+
+def _pull_missing_deps(stage):
+    for dep in stage.deps:
+        if not dep.exists:
+            stage.repo.pull(dep.def_path)
 
 
 def run_stage(
-    stage, dry=False, force=False, checkpoint_func=None, run_env=None, **kwargs
+    stage,
+    dry=False,
+    force=False,
+    run_env=None,
+    allow_missing: bool = False,
+    **kwargs,
 ):
-    if not (force or checkpoint_func):
+    if not force:
+        if allow_missing and kwargs.get("pull") and not dry:
+            _pull_missing_deps(stage)
+
         from .cache import RunCacheNotFoundError
 
         try:
@@ -148,4 +143,4 @@ def run_stage(
                 stage.save_deps()
 
     run = cmd_run if dry else unlocked_repo(cmd_run)
-    run(stage, dry=dry, checkpoint_func=checkpoint_func, run_env=run_env)
+    run(stage, dry=dry, run_env=run_env)

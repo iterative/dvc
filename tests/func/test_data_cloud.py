@@ -10,10 +10,13 @@ from dvc.cli import main
 from dvc.exceptions import CheckoutError
 from dvc.repo.open_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
-from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-import
+from dvc.testing.remote_tests import (  # noqa: F401, pylint: disable=unused-import
+    TestRemote,
+)
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
+from dvc_data.hashfile.hash_info import HashInfo
 
 
 def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
@@ -118,19 +121,17 @@ def test_data_cloud_error_cli(dvc):
 
 
 def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
-    stage = dvc.run(outs=["bar"], cmd="echo bar > bar", single_stage=True)
-    assert main(["push"]) == 0
+    stage = dvc.run(outs=["bar"], cmd="echo bar > bar", name="gen-bar")
+    dvc.push()
 
-    stage_file_path = stage.relpath
-    content = (tmp_dir / stage_file_path).parse()
-    del content["outs"][0]["md5"]
-    (tmp_dir / stage_file_path).dump(content)
+    stage.outs[0].hash_info = HashInfo()
+    stage.dump()
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
         caplog.clear()
         assert main(["status", "-c"]) == 0
         expected_warning = (
-            "Output 'bar'(stage: 'bar.dvc') is missing version info. "
+            "Output 'bar'(stage: 'gen-bar') is missing version info. "
             "Cache for it will not be collected. "
             "Use `dvc repro` to get your pipeline up to date."
         )
@@ -147,8 +148,6 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     assert ret == 0
     ret = main(["push"])
     assert ret == 0
-    ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
-    assert ret == 0
     assert test_file_md5.mock.call_count == 1
 
 
@@ -162,8 +161,8 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
         "Some of the cache files do not exist "
         "neither locally nor on remote. Missing cache files:\n"
     )
-    foo = "name: bar, md5: 37b51d194a7513e45b56f6524f2d51f2\n"
-    bar = "name: foo, md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
+    foo = "md5: 37b51d194a7513e45b56f6524f2d51f2\n"
+    bar = "md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
 
     caplog.clear()
     dvc.push()
@@ -200,16 +199,17 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     hash_spy = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
     dvc.pull()
-    # NOTE: 1 is for index.data_tree building
-    assert hash_spy.call_count == 1
+    # NOTE: 2 are for index.data_tree building
+    assert hash_spy.call_count == 3
 
     # Removing cache will invalidate existing state entries
     dvc.cache.local.clear()
 
-    dvc.config["remote"]["upstream"]["verify"] = True
+    with dvc.config.edit() as conf:
+        conf["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
-    assert hash_spy.call_count == 6
+    assert hash_spy.call_count == 10
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -271,7 +271,7 @@ def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     result = dvc.pull("file")
-    assert result["fetched"] == 1
+    assert result["fetched"] == 0
     assert dst.exists()
 
     assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
@@ -313,7 +313,7 @@ def recurse_list_dir(d):
 
 def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     (stage0,) = tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "bar", single_stage=True)
+    stage1 = run_copy("foo", "bar", name="copy-foo-bar")
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
     dvc.push()
 
@@ -345,7 +345,6 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
     path = local_remote.url
     tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar", single_stage=True)
 
     tmp_dir.dvc_gen("lorem", "lorem")
     run_copy("lorem", "lorem2", name="copy-lorem-lorem2")
@@ -353,13 +352,13 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
     tmp_dir.dvc_gen("ipsum", "ipsum")
     run_copy("ipsum", "baz", name="copy-ipsum-baz")
 
-    outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
+    outs = ["foo", "lorem", "ipsum", "baz", "lorem2"]
 
     remove(dvc.stage_cache.cache_dir)
 
     dvc.push()
 
-    outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
+    outs = ["foo", "lorem", "ipsum", "baz", "lorem2"]
 
     # each one's a copy of other, hence 3
     assert len(recurse_list_dir(path)) == 3
@@ -474,11 +473,11 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
     dvc.pull("copy-foo-bar")
     assert (tmp_dir / "bar").exists()
-    assert len(recurse_list_dir(dvc.cache.local.path)) == 2
+    assert len(recurse_list_dir(dvc.cache.local.path)) == 1
     clean(["bar"], dvc)
 
     dvc.fetch("copy-foo-bar")
-    assert len(recurse_list_dir(dvc.cache.local.path)) == 2
+    assert len(recurse_list_dir(dvc.cache.local.path)) == 1
 
 
 def test_pull_partial(tmp_dir, dvc, local_remote):
@@ -487,7 +486,7 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     clean(["foo"], dvc)
 
     stats = dvc.pull(os.path.join("foo", "bar"))
-    assert stats["fetched"] == 1
+    assert stats["fetched"] == 3
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
 
 

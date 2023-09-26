@@ -1,40 +1,9 @@
-import builtins
-import os
-from time import sleep
 from typing import Dict, List, Optional, Union
 
 from rich.text import Text
 
-from dvc.env import DVC_CHECKPOINT, DVC_ROOT
 from dvc.repo import Repo
 from dvc.repo.experiments.show import tabulate
-from dvc.stage.monitor import CheckpointTask
-
-
-def make_checkpoint():
-    """
-    Signal DVC to create a checkpoint experiment.
-
-    If the current process is being run from DVC, this function will block
-    until DVC has finished creating the checkpoint. Otherwise, this function
-    will return immediately.
-    """
-    if os.getenv(DVC_CHECKPOINT) is None:
-        return
-
-    root_dir = os.getenv(DVC_ROOT, Repo.find_root())
-    signal_file = os.path.join(
-        root_dir, Repo.DVC_DIR, "tmp", CheckpointTask.SIGNAL_FILE
-    )
-
-    with builtins.open(signal_file, "w", encoding="utf-8") as fobj:
-        # NOTE: force flushing/writing empty file to disk, otherwise when
-        # run in certain contexts (pytest) file may not actually be written
-        fobj.write("")
-        fobj.flush()
-        os.fsync(fobj.fileno())
-    while os.path.exists(signal_file):
-        sleep(0.1)
 
 
 def exp_save(
@@ -96,6 +65,7 @@ def exp_show(
     num: int = 1,
     param_deps: bool = False,
     force: bool = False,
+    config: Optional[Dict] = None,
 ) -> List[Dict]:
     """Get DVC experiments tracked in `repo`.
 
@@ -130,13 +100,15 @@ def exp_show(
             When `force` is specified, DVC will reload all experiment data and
             ignore any previously cached results.
             Defaults to `False`.
+        config (dict, optional): config to be passed through to DVC project.
+            Defaults to `None`.
 
     Returns:
         List[Dict]: Each item in the list will contain a dictionary with
             the info for an individual experiment.
             See Examples below.
     """
-    with Repo.open(repo) as _repo:
+    with Repo.open(repo, config=config) as _repo:
         experiments = _repo.experiments.show(
             revs=revs,
             num=num,

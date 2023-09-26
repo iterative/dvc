@@ -176,7 +176,6 @@ def add_parser(subparsers, parent_parser):
     )
     dag_parser.add_argument(
         "--md",
-        "--show-md",
         action="store_true",
         default=False,
         dest="markdown",

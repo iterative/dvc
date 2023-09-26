@@ -82,9 +82,9 @@ def exp_refs_from_names(scm: "Git", exp_names: List[str]) -> Set["ExpRefInfo"]:
     return exp_ref_set
 
 
-def exp_refs_from_rev(scm: "Git", rev: str, num: int = 1) -> Set["ExpRefInfo"]:
+def exp_refs_from_rev(scm: "Git", rev: List[str], num: int = 1) -> Set["ExpRefInfo"]:
     exp_ref_set = set()
-    rev_dict = iter_revs(scm, [rev], num)
+    rev_dict = iter_revs(scm, rev, num)
     rev_set = set(rev_dict.keys())
     ref_info_dict = exp_refs_by_baseline(scm, rev_set)
     for _, ref_info_list in ref_info_dict.items():
@@ -97,9 +97,9 @@ def exp_refs_from_rev(scm: "Git", rev: str, num: int = 1) -> Set["ExpRefInfo"]:
 def push(
     repo: "Repo",
     git_remote: str,
-    exp_names: Union[List[str], str],
+    exp_names: Optional[Union[List[str], str]] = None,
     all_commits: bool = False,
-    rev: Optional[str] = None,
+    rev: Optional[Union[List[str], str]] = None,
     num: int = 1,
     force: bool = False,
     push_cache: bool = False,
@@ -111,7 +111,10 @@ def push(
         exp_ref_set.update(exp_refs(repo.scm))
     if exp_names:
         exp_ref_set.update(exp_refs_from_names(repo.scm, ensure_list(exp_names)))
-    if rev:
+    else:
+        rev = rev or "HEAD"
+        if isinstance(rev, str):
+            rev = [rev]
         exp_ref_set.update(exp_refs_from_rev(repo.scm, rev, num=num))
 
     push_result = _push(repo, git_remote, exp_ref_set, force)

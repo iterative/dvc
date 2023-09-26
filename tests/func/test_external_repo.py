@@ -1,5 +1,4 @@
 import os
-from unittest.mock import ANY
 
 from dvc.repo.open_repo import CLONES
 from dvc.repo.open_repo import _external_repo as external_repo
@@ -140,7 +139,9 @@ def test_shallow_clone_branch(erepo_dir, mocker):
         with repo.dvcfs.open("file") as fd:
             assert fd.read() == "branch"
 
-    clone_spy.assert_called_with(url, ANY, shallow_branch="branch", progress=ANY)
+    clone_spy.assert_called_with(
+        url, mocker.ANY, shallow_branch="branch", progress=mocker.ANY
+    )
 
     path, _ = CLONES[url]
     CLONES[url] = (path, True)
@@ -165,7 +166,9 @@ def test_shallow_clone_tag(erepo_dir, mocker):
         with repo.dvcfs.open("file") as fd:
             assert fd.read() == "foo"
 
-    clone_spy.assert_called_with(url, ANY, shallow_branch="v1", progress=ANY)
+    clone_spy.assert_called_with(
+        url, mocker.ANY, shallow_branch="v1", progress=mocker.ANY
+    )
 
     path, _ = CLONES[url]
     CLONES[url] = (path, True)
@@ -214,10 +217,20 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             shallow=False,
             hardlink=True,
         )
+        if os.name == "nt":
+            expected_gitignore_path = (
+                cache_dir / "d5" / "61e684092f0ff908aa82ee9cc1e594"
+            )
+            expected_dir_path = cache_dir / "0d" / "2086760aea091f1504eafc8843bb18.dir"
+        else:
+            expected_gitignore_path = (
+                cache_dir / "94" / "7d2b84e5aa88170e80dff467a5bfb6"
+            )
+            expected_dir_path = cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir"
         assert set(cache_dir.glob("??/*")) == {
-            cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
+            expected_dir_path,
+            expected_gitignore_path,
             cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",
-            cache_dir / "94" / "7d2b84e5aa88170e80dff467a5bfb6",
             cache_dir / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
         }
 

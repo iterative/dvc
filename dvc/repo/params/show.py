@@ -1,33 +1,24 @@
 import logging
 import os
 from collections import defaultdict
-from copy import copy
-from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Optional, Tuple
+from itertools import chain
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
-from scmrepo.exceptions import SCMError
-
-from dvc.dependency.param import ParamsDependency
+from dvc.dependency.param import ParamsDependency, read_param_file
 from dvc.repo import locked
-from dvc.repo.collect import collect
-from dvc.scm import NoSCMError
+from dvc.repo.metrics.show import FileResult, Result
 from dvc.stage import PipelineStage
-from dvc.ui import ui
-from dvc.utils import as_posix, error_handler, errored_revisions, onerror_collect
+from dvc.utils import as_posix, expand_paths
 from dvc.utils.collections import ensure_list
-from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
-    from dvc.output import Output
+    from dvc.fs import FileSystem
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
 
-def _is_params(dep: "Output"):
-    return isinstance(dep, ParamsDependency)
-
-
-def _collect_top_level_params(repo):
+def _collect_top_level_params(repo: "Repo") -> Iterator[str]:
     top_params = repo.index._params  # pylint: disable=protected-access
     for dvcfile, params in top_params.items():
         wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
@@ -36,67 +27,58 @@ def _collect_top_level_params(repo):
             yield repo.fs.path.normpath(path)
 
 
-def _collect_configs(
-    repo: "Repo", targets=None, deps=False, stages=None
-) -> Tuple[List["Output"], List[str]]:
-    params, fs_paths = collect(
-        repo,
-        targets=targets or [],
-        deps=True,
-        output_filter=_is_params,
-        duplicates=deps or stages is not None,
-    )
-    all_fs_paths = fs_paths + [p.fs_path for p in params]
-    if not any([deps, targets, stages]):
-        default_params = repo.fs.path.join(
-            repo.root_dir, ParamsDependency.DEFAULT_PARAMS_FILE
+def params_from_target(
+    repo: "Repo", targets: List[str]
+) -> Iterator["ParamsDependency"]:
+    stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
+    for stage in stages:
+        yield from stage.params
+
+
+def _collect_params(
+    repo: "Repo",
+    targets: Union[List[str], Dict[str, List[str]], None] = None,
+    stages: Optional[List[str]] = None,
+    deps_only: bool = False,
+    default_file: Optional[str] = None,
+) -> Dict[str, List[str]]:
+    from dvc.dependency import _merge_params
+
+    if isinstance(targets, list):
+        targets = {target: [] for target in targets}
+
+    params: List[Dict[str, List[str]]] = []
+
+    if targets:
+        # target is a repo-relative path
+        params.extend({file: params} for file, params in targets.items())
+
+    if not targets or stages:
+        deps = params_from_target(repo, stages) if stages else repo.index.params
+        relpath = repo.fs.path.relpath
+        params.extend(
+            {relpath(dep.fs_path, repo.root_dir): list(dep.params)} for dep in deps
         )
-        if default_params not in all_fs_paths and repo.fs.exists(default_params):
-            fs_paths.append(default_params)
-    if targets and (deps or stages) and not params:
-        # A target has been provided but it is not used in the stages
-        fs_paths = []
-    return params, fs_paths
 
+    fs = repo.dvcfs
 
-@error_handler
-def _read_fs_path(fs, fs_path, **kwargs):
-    return load_path(fs_path, fs)
+    if not targets and not deps_only and not stages:
+        # _collect_top_level_params returns repo-relative paths
+        params.extend({param: []} for param in _collect_top_level_params(repo))
+        if default_file and fs.exists(f"{fs.root_marker}{default_file}"):
+            params.append({default_file: []})
 
+    # combine all the param files and the keypaths to track
+    all_params = _merge_params(params)
 
-def _read_params(
-    repo,
-    params,
-    params_fs_paths,
-    deps=False,
-    onerror: Optional[Callable] = None,
-    stages: Optional[Iterable[str]] = None,
-):
-    res: Dict[str, Dict] = defaultdict(lambda: defaultdict(dict))
-    fs_paths = copy(params_fs_paths)
-
-    if deps or stages:
-        for param in params:
-            if stages and param.stage.addressing not in stages:
-                continue
-            params_dict = error_handler(param.read_params)(
-                onerror=onerror, flatten=False
-            )
-            if params_dict:
-                name = os.sep.join(repo.fs.path.relparts(param.fs_path))
-                res[name]["data"].update(params_dict["data"])
-                if name in fs_paths:
-                    fs_paths.remove(name)
-    else:
-        fs_paths += [param.fs_path for param in params]
-
-    for fs_path in fs_paths:
-        from_path = _read_fs_path(repo.fs, fs_path, onerror=onerror)
-        if from_path:
-            name = os.sep.join(repo.fs.path.relparts(fs_path))
-            res[name] = from_path
-
-    return res
+    ret = {}
+    for param, _params in all_params.items():
+        # convert to posixpath for DVCFileSystem
+        path = fs.from_os_path(param)
+        # make paths absolute for DVCFileSystem
+        repo_path = f"{fs.root_marker}{path}"
+        ret.update({file: _params for file in expand_paths(fs, [repo_path])})
+    return ret
 
 
 def _collect_vars(repo, params, stages=None) -> Dict:
@@ -109,82 +91,116 @@ def _collect_vars(repo, params, stages=None) -> Dict:
             for file, vars_ in stage.tracked_vars.items():
                 # `params` file are shown regardless of `tracked` or not
                 # to reduce noise and duplication, they are skipped
-                if file in params:
+
+                # `file` is relative
+                abspath = repo.fs.path.abspath(file)
+                repo_path = repo.dvcfs.from_os_path(abspath)
+                if repo_path in params:
                     continue
 
-                name = os.sep.join(repo.fs.path.parts(file))
-                vars_params[name].update(vars_)
-    return vars_params
+                vars_params[repo_path].update(vars_)
+    return dict(vars_params)
+
+
+def _read_params(
+    fs: "FileSystem", params: Dict[str, List[str]], **load_kwargs
+) -> Iterator[Tuple[str, Union[Exception, Any]]]:
+    for file_path, key_paths in params.items():
+        try:
+            yield file_path, read_param_file(fs, file_path, key_paths, **load_kwargs)
+        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+            logger.debug(exc)
+            yield file_path, exc
+
+
+def _gather_params(
+    repo: "Repo",
+    targets: Union[List[str], Dict[str, List[str]], None] = None,
+    deps_only: bool = False,
+    stages: Optional[List[str]] = None,
+    on_error: str = "return",
+):
+    assert on_error in ("raise", "return", "ignore")
+
+    # `files` is a repo-relative posixpath that can be passed to DVCFileSystem
+    # It is absolute, i.e. has a root_marker `/` in front which we strip when returning
+    # the result and convert to appropriate repo-relative os.path.
+    files_keypaths = _collect_params(
+        repo,
+        targets=targets,
+        stages=stages,
+        deps_only=deps_only,
+        default_file=ParamsDependency.DEFAULT_PARAMS_FILE,
+    )
+
+    data: Dict[str, FileResult] = {}
+
+    fs = repo.dvcfs
+    for fs_path, result in _read_params(fs, files_keypaths, cache=True):
+        repo_path = fs_path.lstrip(fs.root_marker)
+        repo_os_path = os.sep.join(fs.path.parts(repo_path))
+        if not isinstance(result, Exception):
+            data.update({repo_os_path: FileResult(data=result)})
+            continue
+
+        if on_error == "raise":
+            raise result
+        if on_error == "return":
+            data.update({repo_os_path: FileResult(error=result)})
+
+    if not (stages or targets):
+        data.update(
+            {
+                path: FileResult(data=result)
+                for path, result in _collect_vars(repo, data).items()
+            }
+        )
+    return data
 
 
 @locked
 def show(
-    repo,
-    revs=None,
-    targets=None,
-    deps=False,
-    onerror: Optional[Callable] = None,
-    stages=None,
-    hide_workspace=True,
-):
-    if onerror is None:
-        onerror = onerror_collect
+    repo: "Repo",
+    targets: Optional[List[str]] = None,
+    stages: Optional[List[str]] = None,
+    deps_only: bool = False,
+    all_branches: bool = False,
+    all_tags: bool = False,
+    revs: Optional[List[str]] = None,
+    all_commits: bool = False,
+    hide_workspace: bool = True,
+    on_error: str = "return",
+) -> Dict[str, Result]:
+    assert on_error in ("raise", "return", "ignore")
     res = {}
 
     targets = ensure_list(targets)
     targets = [repo.dvcfs.from_os_path(target) for target in targets]
 
-    for branch in repo.brancher(revs=revs):
-        params = error_handler(_gather_params)(
-            repo=repo,
-            targets=targets,
-            deps=deps,
-            onerror=onerror,
-            stages=stages,
-        )
-
-        if params:
-            res[branch] = params
+    for rev in repo.brancher(
+        revs=revs,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+    ):
+        try:
+            params = _gather_params(
+                repo=repo,
+                targets=targets,
+                stages=stages,
+                deps_only=deps_only,
+                on_error=on_error,
+            )
+            res[rev] = Result(data=params)
+        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+            if on_error == "raise":
+                raise
+            logger.warning("failed to load params in revision %r, %s", rev, str(exc))
+            if on_error == "return":
+                res[rev] = Result(error=exc)
 
     if hide_workspace:
-        # Hide workspace params if they are the same as in the active branch
-        try:
-            active_branch = repo.scm.active_branch()
-        except (SCMError, NoSCMError):
-            # SCMError - detached head
-            # NoSCMError - no repo case
-            pass
-        else:
-            if res.get("workspace") == res.get(active_branch):
-                res.pop("workspace", None)
+        from dvc.repo.metrics.show import _hide_workspace
 
-    errored = errored_revisions(res)
-    if errored:
-        ui.error_write(
-            "DVC failed to load some parameters for following revisions:"
-            f" '{', '.join(errored)}'."
-        )
-
+        _hide_workspace(repo.scm, res)
     return res
-
-
-def _gather_params(repo, targets=None, deps=False, onerror=None, stages=None):
-    param_outs, params_fs_paths = _collect_configs(
-        repo, targets=targets, deps=deps, stages=stages
-    )
-    params_fs_paths.extend(_collect_top_level_params(repo=repo))
-    params = _read_params(
-        repo,
-        params=param_outs,
-        params_fs_paths=params_fs_paths,
-        deps=deps,
-        onerror=onerror,
-        stages=stages,
-    )
-    vars_params = _collect_vars(repo, params, stages=stages)
-
-    # NOTE: only those that are not added as a ParamDependency are
-    # included so we don't need to recursively merge them yet.
-    for key, vals in vars_params.items():
-        params[key]["data"] = vals
-    return params

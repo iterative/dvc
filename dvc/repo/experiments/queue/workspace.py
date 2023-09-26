@@ -101,7 +101,6 @@ class WorkspaceQueue(BaseStashQueue):
         self, entry: QueueEntry, executor: "BaseExecutor", **kwargs
     ) -> Dict[str, Dict[str, str]]:
         kwargs.pop("copy_paths", None)
-        from dvc.stage.monitor import CheckpointKilledError
         from dvc_task.proc.process import ProcessInfo
 
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
@@ -122,14 +121,13 @@ class WorkspaceQueue(BaseStashQueue):
                 message=kwargs.get("message"),
             )
             if not exec_result.exp_hash:
-                raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'")
+                raise DvcException(  # noqa: TRY301
+                    f"Failed to reproduce experiment '{rev[:7]}'"
+                )
             if exec_result.ref_info:
                 results[rev].update(
                     self.collect_executor(self.repo.experiments, executor, exec_result)
                 )
-        except CheckpointKilledError:
-            # Checkpoint errors have already been logged
-            return {}
         except DvcException:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -191,33 +189,18 @@ class WorkspaceQueue(BaseStashQueue):
     ):
         raise NotImplementedError
 
-    def get_running_exps(
-        self,
-        fetch_refs: bool = True,  # noqa: ARG002
-    ) -> Dict[str, Dict]:
+    def get_running_exp(self) -> Optional[str]:
+        """Return the name of the exp running in workspace (if it exists)."""
         assert self._EXEC_NAME
-        result: Dict[str, Dict] = {}
         if self._active_pid is None:
-            return result
+            return None
 
         infofile = self.get_infofile_path(self._EXEC_NAME)
-
         try:
             info = ExecutorInfo.from_dict(load_json(infofile))
         except OSError:
-            return result
-
-        if info.status < TaskStatus.FAILED:
-            # If we are appending to a checkpoint branch in a workspace
-            # run, show the latest checkpoint as running.
-            if info.status == TaskStatus.SUCCESS:
-                return result
-            last_rev = self.scm.get_ref(EXEC_BRANCH)
-            if last_rev:
-                result[last_rev] = info.asdict()
-            else:
-                result[self._EXEC_NAME] = info.asdict()
-        return result
+            return None
+        return info.name
 
     def collect_active_data(
         self,

@@ -10,14 +10,8 @@ def test_add(mocker, dvc):
     cli_args = parse_args(
         [
             "add",
-            "--recursive",
             "--no-commit",
-            "--external",
             "--glob",
-            "--file",
-            "file",
-            "--desc",
-            "stage description",
             "data",
         ]
     )
@@ -30,19 +24,12 @@ def test_add(mocker, dvc):
 
     m.assert_called_once_with(
         ["data"],
-        recursive=True,
         no_commit=True,
         glob=True,
-        fname="file",
-        external=True,
         out=None,
         remote=None,
         to_remote=False,
-        desc="stage description",
-        type=None,
-        labels=None,
-        meta=None,
-        jobs=None,
+        remote_jobs=None,
         force=False,
     )
 
@@ -105,7 +92,7 @@ def test_add_commit_with_jobs(mocker, dvc):
     ThreadPoolExecutor.__init__ = executor_init
 
 
-def test_add_to_remote(mocker):
+def test_add_to_remote(mocker, dvc):
     cli_args = parse_args(
         [
             "add",
@@ -126,24 +113,17 @@ def test_add_to_remote(mocker):
 
     m.assert_called_once_with(
         ["s3://bucket/foo"],
-        recursive=False,
         no_commit=False,
         glob=False,
-        fname=None,
-        external=False,
         out="bar",
         remote="remote",
         to_remote=True,
-        desc=None,
-        type=None,
-        labels=None,
-        meta=None,
-        jobs=None,
+        remote_jobs=None,
         force=False,
     )
 
 
-def test_add_to_remote_invalid_combinations(mocker, caplog):
+def test_add_to_remote_invalid_combinations(mocker, caplog, dvc):
     cli_args = parse_args(["add", "s3://bucket/foo", "s3://bucket/bar", "--to-remote"])
     assert cli_args.func == CmdAdd
 
@@ -163,12 +143,12 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
             assert expected_msg in caplog.text
 
 
-def test_add_to_cache_invalid_combinations(mocker, caplog):
+def test_add_to_cache_invalid_combinations(mocker, caplog, dvc):
     cli_args = parse_args(["add", "s3://bucket/foo", "s3://bucket/bar", "-o", "foo"])
     assert cli_args.func == CmdAdd
 
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = "multiple targets can't be used with -o"
+        expected_msg = "multiple targets can't be used with --out"
         assert expected_msg in caplog.text

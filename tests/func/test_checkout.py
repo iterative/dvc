@@ -8,18 +8,11 @@ import pytest
 
 from dvc.cli import main
 from dvc.dvcfile import PROJECT_FILE, load_file
-from dvc.exceptions import (
-    CheckoutError,
-    CheckoutErrorSuggestGit,
-    ConfirmRemoveError,
-    NoOutputOrStageError,
-)
-from dvc.fs import LocalFileSystem, system
-from dvc.stage import Stage
+from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
+from dvc.fs import system
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils import relpath
 from dvc.utils.fs import remove
-from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.utils import get_gitignore_content
 
 logger = logging.getLogger("dvc")
@@ -34,11 +27,10 @@ def walk_files(directory):
 def test_checkout(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
     dvc.run(
-        fname="file1.dvc",
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-foo-file1",
     )
     remove(tmp_dir / "foo")
     remove("data")
@@ -51,11 +43,10 @@ def test_checkout(tmp_dir, dvc, copy_script):
 def test_checkout_cli(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
     dvc.run(
-        fname="file1.dvc",
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-foo-file1",
     )
     remove(tmp_dir / "foo")
     remove("data")
@@ -71,52 +62,6 @@ def test_checkout_cli(tmp_dir, dvc, copy_script):
     assert main(["checkout", "--force", "data.dvc"]) == 0
     assert (tmp_dir / "foo").read_text() == "foo"
     assert (tmp_dir / "data").read_text() == {"file": "file"}
-
-
-def test_checkout_corrupted_cache_file(tmp_dir, dvc):
-    (foo_stage,) = tmp_dir.dvc_gen("foo", "foo")
-    cache = foo_stage.outs[0].cache_path
-
-    os.chmod(cache, 0o644)
-    with open(cache, "a", encoding="utf-8") as fd:
-        fd.write("1")
-
-    with pytest.raises(CheckoutError):
-        dvc.checkout(force=True)
-
-    assert not os.path.isfile("foo")
-    assert not os.path.isfile(cache)
-
-
-def test_checkout_corrupted_cache_dir(tmp_dir, dvc):
-    from dvc_data.hashfile import load
-
-    tmp_dir.gen("data", {"foo": "foo", "bar": "bar"})
-    # NOTE: using 'copy' so that cache and link don't have same inode
-    ret = main(["config", "cache.type", "copy"])
-    assert ret == 0
-
-    dvc.config.load()
-
-    stages = dvc.add("data")
-    assert len(stages) == 1
-    assert len(stages[0].outs) == 1
-    out = stages[0].outs[0]
-
-    # NOTE: modifying cache file for one of the files inside the directory
-    # to check if dvc will detect that the cache is corrupted.
-    obj = load(dvc.cache.local, out.hash_info)
-    _, _, entry_oid = list(obj)[0]
-    cache = dvc.cache.local.oid_to_path(entry_oid.value)
-
-    os.chmod(cache, 0o644)
-    with open(cache, "w+", encoding="utf-8") as fobj:
-        fobj.write("1")
-
-    with pytest.raises(CheckoutError):
-        dvc.checkout(force=True)
-
-    assert not os.path.exists(cache)
 
 
 def test_remove_files_when_checkout(tmp_dir, dvc, scm):
@@ -139,23 +84,19 @@ def test_remove_files_when_checkout(tmp_dir, dvc, scm):
 
 class TestCheckoutCleanWorkingDir:
     def test(self, mocker, tmp_dir, dvc):
-        mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=True)
         (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
         # change working directory
         (tmp_dir / "data").gen("not_cached.txt", "not_cached")
-        assert main(["checkout", stage.relpath]) == 0
-        mock_prompt.assert_called()
+        assert main(["checkout", stage.relpath, "--force"]) == 0
         assert not (tmp_dir / "data" / "not_cached.txt").exists()
 
     def test_force(self, mocker, tmp_dir, dvc):
-        mock_prompt = mocker.patch("dvc.prompt.confirm", return_value=False)
         (stage,) = tmp_dir.dvc_gen("data", {"foo": "foo"})
 
         # change working directory
         (tmp_dir / "data").gen("not_cached.txt", "not_cached")
         assert main(["checkout", stage.relpath]) != 0
-        mock_prompt.assert_called()
         assert (tmp_dir / "data" / "not_cached.txt").exists()
 
 
@@ -184,10 +125,10 @@ def test_gitignore_basic(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen("file1", "random text1", commit="add file1")
     tmp_dir.dvc_gen("file2", "random text2", commit="add file2")
     dvc.run(
-        single_stage=True,
         cmd="cp foo file3",
         deps=["foo"],
         outs_no_cache=["file3"],
+        name="cp-foo-file3",
     )
     assert get_gitignore_content() == ["/file1", "/file2"]
 
@@ -216,19 +157,14 @@ def test_gitignore_when_checkout(tmp_dir, dvc, scm):
     assert "/file_in_a_branch" in ignored
 
 
-def test_checkout_missing_md5_in_stage_file(tmp_dir, dvc, copy_script):
+def test_checkout_missing_md5_in_lock_file_for_outs_deps(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
-    stage = dvc.run(
-        fname="file1.dvc",
+    dvc.stage.add(
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-file",
     )
-    d = load_yaml(stage.relpath)
-    del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
-    del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
-    dump_yaml(stage.relpath, d)
 
     with pytest.raises(CheckoutError):
         dvc.checkout(force=True)
@@ -254,7 +190,7 @@ def test_checkout_not_cached_file(tmp_dir, dvc):
         cmd="cp foo bar",
         deps=["foo"],
         outs_no_cache=["bar"],
-        single_stage=True,
+        name="copy-file",
     )
     stats = dvc.checkout(force=True)
     assert not any(stats.values())
@@ -263,11 +199,10 @@ def test_checkout_not_cached_file(tmp_dir, dvc):
 def test_checkout_with_deps_cli(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "data": {"file": "file"}})
     dvc.run(
-        fname="file1.dvc",
         outs=["file1"],
         deps=["foo", "copy.py"],
         cmd="python copy.py foo file1",
-        single_stage=True,
+        name="copy-file",
     )
     remove("foo")
     remove("file1")
@@ -275,7 +210,7 @@ def test_checkout_with_deps_cli(tmp_dir, dvc, copy_script):
     assert not os.path.exists("foo")
     assert not os.path.exists("file1")
 
-    ret = main(["checkout", "--force", "file1.dvc", "--with-deps"])
+    ret = main(["checkout", "--force", "copy-file", "--with-deps"])
     assert ret == 0
 
     assert os.path.exists("foo")
@@ -292,19 +227,6 @@ def test_checkout_directory(tmp_dir, dvc):
     assert ret == 0
 
     assert os.path.exists("data")
-
-
-def test_checkout_hook(mocker, tmp_dir, dvc):
-    """Test that dvc checkout handles EOFError gracefully, which is what
-    it will experience when running in a git hook.
-    """
-    tmp_dir.dvc_gen({"data": {"foo": "foo"}})
-    mocker.patch("sys.stdout.isatty", return_value=True)
-    mocker.patch("dvc.prompt.input", side_effect=EOFError)
-
-    (tmp_dir / "data").gen("test", "test")
-    with pytest.raises(ConfirmRemoveError):
-        dvc.checkout()
 
 
 def test_checkout_suggest_git(tmp_dir, dvc, scm):
@@ -357,8 +279,8 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
     assert system.is_symlink(os.path.join("data", "file"))
     old_data_link = os.path.realpath(os.path.join("data", "file"))
 
-    old_cache_dir = dvc.cache.local.path
-    new_cache_dir = old_cache_dir + "_new"
+    old_cache_dir = str(tmp_dir / ".dvc" / "cache")
+    new_cache_dir = str(tmp_dir / ".dvc" / "cache_new")
     os.rename(old_cache_dir, new_cache_dir)
 
     ret = main(["cache", "dir", new_cache_dir])
@@ -382,10 +304,10 @@ def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
 
 def test_checkout_no_checksum(tmp_dir, dvc):
     tmp_dir.gen("file", "file content")
-    stage = dvc.run(outs=["file"], no_exec=True, cmd="somecmd", single_stage=True)
+    dvc.run(outs=["file"], no_exec=True, cmd="somecmd", name="stage1")
 
     with pytest.raises(CheckoutError):
-        dvc.checkout([stage.path], force=True)
+        dvc.checkout(["stage1"], force=True)
 
     assert not os.path.exists("file")
 
@@ -398,30 +320,25 @@ def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
     dvc.cache.local.cache_types = [link]
 
     tmp_dir.dvc_gen({"dir": {"data": "text"}})
-    dvc.unprotect("dir/data")
-    assert not link_test_func("dir/data")
+
+    data_file = os.path.join("dir", "data")
+
+    # NOTE: Windows symlink perms don't propagate to the target
+    if not (os.name == "nt" and link == "symlink"):
+        assert not os.access(data_file, os.W_OK)
+
+    dvc.unprotect(data_file)
+    assert os.access(data_file, os.W_OK)
+    assert not link_test_func(data_file)
 
     stats = dvc.checkout(["dir.dvc"], relink=True)
     assert stats == empty_checkout
-    assert link_test_func("dir/data")
+    assert link_test_func(data_file)
 
-
-@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
-def test_checkout_relink_protected(tmp_dir, dvc, link):
-    dvc.cache.local.cache_types = [link]
-
-    tmp_dir.dvc_gen("foo", "foo")
-    dvc.unprotect("foo")
-    assert os.access("foo", os.W_OK)
-
-    stats = dvc.checkout(["foo.dvc"], relink=True)
-    assert stats == empty_checkout
-
-    # NOTE: Windows symlink perms don't propagate to the target
-    if link == "copy" or (link == "symlink" and os.name == "nt"):
-        assert os.access("foo", os.W_OK)
-    else:
-        assert not os.access("foo", os.W_OK)
+    # NOTE: Windows symlink perms don't propagate to the target and
+    # hardlink was chmod-ed during relink to be deleted
+    if not (os.name == "nt" and link in ["symlink", "hardlink"]):
+        assert not os.access(data_file, os.W_OK)
 
 
 @pytest.mark.parametrize(
@@ -604,27 +521,26 @@ def test_checkout_with_relink_existing(tmp_dir, dvc, link):
 def test_checkout_with_deps(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
     dvc.run(
-        fname="copy_file.dvc",
         cmd="echo foo > bar",
         outs=["bar"],
         deps=["foo"],
-        single_stage=True,
+        name="copy-file",
     )
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "foo").unlink()
 
-    stats = dvc.checkout(["copy_file.dvc"], with_deps=False)
+    stats = dvc.checkout(["copy-file"], with_deps=False)
     assert stats == {**empty_checkout, "added": ["bar"]}
 
     (tmp_dir / "bar").unlink()
-    stats = dvc.checkout(["copy_file.dvc"], with_deps=True)
+    stats = dvc.checkout(["copy-file"], with_deps=True)
     assert set(stats["added"]) == {"foo", "bar"}
 
 
 def test_checkout_recursive(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    dvc.add("dir", recursive=True)
+    dvc.add("dir/*", glob=True)
 
     (tmp_dir / "dir" / "foo").unlink()
     (tmp_dir / "dir" / "bar").unlink()
@@ -634,27 +550,6 @@ def test_checkout_recursive(tmp_dir, dvc):
         os.path.join("dir", "foo"),
         os.path.join("dir", "bar"),
     }
-
-
-def test_checkout_for_external_outputs(tmp_dir, dvc, workspace):
-    workspace.gen("foo", "foo")
-
-    file_path = workspace / "foo"
-    dvc.add("remote://workspace/foo")
-
-    odb = dvc.cloud.get_remote_odb("workspace")
-    odb.fs.remove(str(file_path))
-    assert not file_path.exists()
-
-    stats = dvc.checkout(force=True)
-    assert stats == {**empty_checkout, "added": ["remote://workspace/foo"]}
-    assert file_path.exists()
-
-    workspace.gen("foo", "foo\nfoo")
-
-    stats = dvc.checkout(force=True)
-    assert stats == {**empty_checkout, "modified": ["remote://workspace/foo"]}
-    assert file_path.read_text() == "foo"
 
 
 def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
@@ -723,22 +618,6 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
 
     (tmp_dir / "ipsum").unlink()
     assert set(dvc.checkout()["added"]) == {"bar", "ipsum"}
-
-
-def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
-    # regression: happened when file in external output changed and checkout
-    # was attempted without force, dvc checks if it's present in its cache
-    # before asking user to remove it.
-    workspace.gen("foo", "foo")
-    dvc.add("remote://workspace/foo", external=True)
-    scm.add(["foo.dvc"])
-    scm.commit("add foo")
-
-    workspace.gen("foo", "foobar")  # messing up the external outputs
-    mocker.patch("dvc.prompt.confirm", return_value=True)
-    dvc.checkout()
-
-    assert (workspace / "foo").read_text() == "foo"
 
 
 def test_checkout_executable(tmp_dir, dvc):
@@ -817,7 +696,7 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
     assert len(stats["modified"]) == 1
 
     stats = dvc.checkout(str(data_dir / "empty_sub_dir"))
-    assert not any(stats.values())
+    assert stats == {**empty_checkout, "modified": ["data" + os.sep]}
 
     dvc.checkout(str(data_dir))
 
@@ -867,6 +746,7 @@ def test_checkout_dir_compat(tmp_dir, dvc):
             f"""\
         outs:
         - md5: {stage.outs[0].hash_info.value}
+          hash: md5
           path: data
         """
         ),

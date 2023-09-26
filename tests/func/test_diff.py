@@ -21,6 +21,14 @@ def test_no_scm(tmp_dir, dvc):
         dvc.diff()
 
 
+def test_same_rev(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "text", commit="add file")
+
+    assert not dvc.diff("HEAD", "HEAD")
+    assert not dvc.diff("HEAD", "master")
+    assert not dvc.diff("master", "HEAD")
+
+
 def test_added(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text")
 

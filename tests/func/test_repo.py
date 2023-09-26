@@ -36,7 +36,7 @@ def test_destroy(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("file", "text")
     tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})
 
-    run_copy("file", "file2", single_stage=True)
+    run_copy("file", "file2", name="copy-file-file2")
     run_copy("file2", "file3", name="copy-file2-file3")
     run_copy("file3", "file4", name="copy-file3-file4")
 
@@ -47,7 +47,6 @@ def test_destroy(tmp_dir, dvc, run_copy):
         ".dvc",
         ".dvcignore",
         "file.dvc",
-        "file2.dvc",
         "dir.dvc",
         PROJECT_FILE,
         LOCK_FILE,

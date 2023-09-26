@@ -30,8 +30,8 @@ class CmdRemoteAdd(CmdRemote):
         with self.config.edit(self.args.level) as conf:
             if self.args.name in conf["remote"] and not self.args.force:
                 raise ConfigError(
-                    "remote '{}' already exists. Use `-f|--force` to "
-                    "overwrite it.".format(self.args.name)
+                    f"remote '{self.args.name}' already exists. Use `-f|--force` to "
+                    "overwrite it."
                 )
 
             conf["remote"][self.args.name] = {"url": self.args.url}
@@ -127,9 +127,7 @@ class CmdRemoteRename(CmdRemote):
         all_config = self.config.load_config_to_level(None)
         if self.args.new in all_config.get("remote", {}):
             raise ConfigError(
-                "Rename failed. Remote name '{}' already exists.".format(
-                    {self.args.new}
-                )
+                f"Rename failed. Remote name {self.args.new!r} already exists."
             )
 
         with self.config.edit(self.args.level) as conf:

@@ -65,14 +65,7 @@ def test_run_load_one_for_multistage_non_existing_stage_name(tmp_dir, dvc):
 
 
 def test_run_load_one_on_single_stage(tmp_dir, dvc):
-    tmp_dir.gen("foo", "foo")
-    stage = dvc.run(
-        cmd="cp foo foo2",
-        deps=["foo"],
-        metrics=["foo2"],
-        always_changed=True,
-        single_stage=True,
-    )
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
     assert isinstance(load_file(dvc, stage.path), SingleStageFile)
     assert load_file(dvc, stage.path).stages.get("random-name") == stage
     assert load_file(dvc, stage.path).stage == stage
@@ -120,15 +113,8 @@ def test_load_all_multistage(tmp_dir, dvc):
 
 
 def test_load_all_singlestage(tmp_dir, dvc):
-    tmp_dir.gen("foo", "foo")
-    stage1 = dvc.run(
-        cmd="cp foo foo2",
-        deps=["foo"],
-        metrics=["foo2"],
-        always_changed=True,
-        single_stage=True,
-    )
-    dvcfile = load_file(dvc, "foo2.dvc")
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    dvcfile = load_file(dvc, "foo.dvc")
     assert isinstance(dvcfile, SingleStageFile)
     assert len(dvcfile.stages) == 1
     stages = dvcfile.stages.values()
@@ -167,14 +153,7 @@ def test_stage_collection(tmp_dir, dvc):
         metrics=["foo2"],
         always_changed=True,
     )
-    stage3 = dvc.run(
-        cmd="cp bar bar2",
-        deps=["bar"],
-        metrics=["bar2"],
-        always_changed=True,
-        single_stage=True,
-    )
-    assert set(dvc.index.stages) == {stage1, stage3, stage2}
+    assert set(dvc.index.stages) == {stage1, stage2}
 
 
 def test_remove_stage(tmp_dir, dvc, run_copy):
@@ -227,8 +206,7 @@ def test_remove_stage_lockfile(tmp_dir, dvc, run_copy):
 
 
 def test_remove_stage_dvcfiles(tmp_dir, dvc, run_copy):
-    tmp_dir.gen("foo", "foo")
-    stage = run_copy("foo", "bar", single_stage=True)
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
 
     dvc_file = load_file(dvc, stage.path)
     assert dvc_file.exists()
@@ -407,17 +385,8 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
     assert (tmp_dir / "dvc.yaml").parse() == data
 
 
-@pytest.mark.parametrize(
-    "data",
-    (
-        {
-            "plots": {
-                "path/to/plot": {"x": "value", "y": "value"},
-                "path/to/another/plot": {"x": "value", "y": "value"},
-                "path/to/empty/plot": None,
-            },
-            "stages": STAGE_EXAMPLE,
-        },
+def test_dvcfile_load_with_plots(tmp_dir, dvc):
+    (tmp_dir / "dvc.yaml").dump(
         {
             "plots": [
                 {"path/to/plot": {"x": "value", "y": "value"}},
@@ -427,12 +396,21 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
             ],
             "stages": STAGE_EXAMPLE,
         },
-    ),
-)
-def test_dvcfile_load_with_plots(tmp_dir, dvc, data):
-    (tmp_dir / "dvc.yaml").dump(data)
+    )
     plots = list(dvc.plots.collect())
     top_level_plots = plots[0]["workspace"]["definitions"]["data"]["dvc.yaml"]["data"]
     assert all(
         name in top_level_plots for name in ("path/to/plot", "path/to/another/plot")
     )
+
+
+def test_dvcfile_dos2unix(tmp_dir, dvc):
+    from dvc_data.hashfile.hash import HashInfo
+
+    (tmp_dir / "foo.dvc").dump({"outs": [{"md5": "abc123", "size": 3, "path": "foo"}]})
+    orig_content = (tmp_dir / "foo.dvc").read_text()
+    stage = dvc.stage.load_one("foo.dvc")
+    assert stage.outs[0].hash_name == "md5-dos2unix"
+    assert stage.outs[0].hash_info == HashInfo("md5-dos2unix", "abc123")
+    stage.dump()
+    assert (tmp_dir / "foo.dvc").read_text() == orig_content

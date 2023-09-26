@@ -2,16 +2,18 @@ import logging
 import os
 import typing
 from collections import defaultdict
-from typing import Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import dpath
-from voluptuous import Any
 
 from dvc.exceptions import DvcException
 from dvc.utils.serialize import ParseError, load_path
 from dvc_data.hashfile.hash_info import HashInfo
 
 from .base import Dependency
+
+if TYPE_CHECKING:
+    from dvc.fs import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +34,39 @@ class BadParamFileError(DvcException):
     pass
 
 
+def read_param_file(
+    fs: "FileSystem",
+    path: str,
+    key_paths: Optional[List[str]] = None,
+    flatten: bool = False,
+    **load_kwargs,
+) -> Any:
+    config = load_path(path, fs, **load_kwargs)
+    if not key_paths:
+        return config
+
+    ret = {}
+    if flatten:
+        for key_path in key_paths:
+            try:
+                ret[key_path] = dpath.get(config, key_path, separator=".")
+            except KeyError:
+                continue
+        return ret
+
+    from dpath import merge
+
+    for key_path in key_paths:
+        merge(
+            ret,
+            dpath.search(config, key_path, separator="."),
+            separator=".",
+        )
+    return ret
+
+
 class ParamsDependency(Dependency):
     PARAM_PARAMS = "params"
-    PARAM_SCHEMA = {PARAM_PARAMS: Any(dict, list, None)}
     DEFAULT_PARAMS_FILE = "params.yaml"
 
     def __init__(self, stage, path, params=None, repo=None):
@@ -48,6 +80,7 @@ class ParamsDependency(Dependency):
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
         super().__init__(stage, path, repo=repo)
+        self.hash_name = self.PARAM_PARAMS
         self.hash_info = hash_info
 
     def dumpd(self, **kwargs):
@@ -76,31 +109,19 @@ class ParamsDependency(Dependency):
         self, flatten: bool = True, **kwargs: typing.Any
     ) -> Dict[str, typing.Any]:
         try:
-            config = self.read_file()
+            self.validate_filepath()
         except MissingParamsFile:
-            config = {}
+            return {}
 
-        if not self.params:
-            return config
-
-        ret = {}
-        if flatten:
-            for param in self.params:
-                try:
-                    ret[param] = dpath.get(config, param, separator=".")
-                except KeyError:
-                    continue
-            return ret
-
-        from dpath import merge
-
-        for param in self.params:
-            merge(
-                ret,
-                dpath.search(config, param, separator="."),
-                separator=".",
+        try:
+            return read_param_file(
+                self.repo.fs,
+                self.fs_path,
+                list(self.params) if self.params else None,
+                flatten=flatten,
             )
-        return ret
+        except ParseError as exc:
+            raise BadParamFileError(f"Unable to read parameters from '{self}'") from exc
 
     def workspace_status(self):
         if not self.exists:
@@ -149,13 +170,6 @@ class ParamsDependency(Dependency):
             raise ParamsIsADirectoryError(
                 f"'{self}' is a directory, expected a parameters file"
             )
-
-    def read_file(self):
-        self.validate_filepath()
-        try:
-            return load_path(self.fs_path, self.repo.fs)
-        except ParseError as exc:
-            raise BadParamFileError(f"Unable to read parameters from '{self}'") from exc
 
     def get_hash(self):
         info = self.read_params()

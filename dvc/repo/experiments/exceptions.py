@@ -24,23 +24,6 @@ class ExperimentExistsError(DvcException):
             "Experiment conflicts with existing experiment "
             f"'{name}'. To overwrite the existing experiment run:\n\n"
             f"\tdvc exp {command} -f ...\n\n"
-            f"To {command} this experiment with a different name run:\n\n"
-            f"\tdvc exp {command} -n <new_name> ...\n"
-        )
-        super().__init__(msg)
-        self.name = name
-
-
-class CheckpointExistsError(DvcException):
-    def __init__(self, name: str):
-        msg = (
-            "Reproduced checkpoint experiment conflicts with existing "
-            f"experiment '{name}'. To restart (and overwrite) the existing "
-            "experiment run:\n\n"
-            "\tdvc exp run -f ...\n\n"
-            "To resume the existing experiment, run:\n\n"
-            f"\tdvc exp apply {name}\n"
-            "\tdvc exp run\n"
         )
         super().__init__(msg)
         self.name = name
@@ -114,3 +97,10 @@ class UnresolvedRunningExpNamesError(UnresolvedExpNamesError):
 
 class ExpQueueEmptyError(DvcException):
     pass
+
+
+class ExpNotStartedError(DvcException):
+    def __init__(self, name: str):
+        super().__init__(
+            f"Queued experiment '{name}' exists but has not started running yet"
+        )

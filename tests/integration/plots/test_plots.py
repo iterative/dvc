@@ -377,7 +377,7 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
     remove("confusion.json")
     remove("image.png")
 
-    for s in {"show", "diff"}:
+    for s in ("show", "diff"):
         _, json_result, split_json_result = call(capsys, subcommand=s)
         errors = [
             {
@@ -385,7 +385,7 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
                 "source": p,
                 "rev": "workspace",
                 "type": "FileNotFoundError",
-                "msg": "",
+                "msg": f"[Errno 2] No storage files available: '{p}'",
             }
             for p in [
                 "linear.json",
@@ -440,8 +440,8 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     html_result = extract_vega_specs(
         html_path,
         [
-            "dvc.yaml::linear_train_vs_test",
-            "dvc.yaml::confusion_train_vs_test",
+            "linear_train_vs_test",
+            "confusion_train_vs_test",
         ],
     )
     ble = _update_datapoints(
@@ -456,5 +456,20 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
         },
     )
 
-    assert html_result["dvc.yaml::linear_train_vs_test"]["data"]["values"] == ble
+    assert html_result["linear_train_vs_test"]["data"]["values"] == ble
     # TODO check json results once vscode is able to handle flexible plots
+
+
+@pytest.mark.vscode
+def test_repo_with_dvclive_plots(tmp_dir, capsys, repo_with_dvclive_plots):
+    next(repo_with_dvclive_plots())
+
+    for s in ("show", "diff"):
+        _, json_result, split_json_result = call(capsys, subcommand=s)
+        expected_result = {
+            "data": {
+                "dvclive/plots/metrics/metric.tsv": [],
+            },
+        }
+        assert json_result == expected_result
+        assert split_json_result == expected_result

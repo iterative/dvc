@@ -64,6 +64,22 @@ def test_get_repo_dir(tmp_dir, erepo_dir):
     assert (tmp_dir / "dir_imported").read_text() == {"file": "contents"}
 
 
+def test_get_repo_broken_dir(tmp_dir, erepo_dir):
+    import shutil
+
+    from dvc_data.index import DataIndexDirError
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"broken": {"file": "contents"}})
+        erepo_dir.dvc.cache.local.clear()
+        shutil.rmtree(erepo_dir / "broken")
+
+    with pytest.raises(DataIndexDirError):
+        Repo.get(os.fspath(erepo_dir), "broken", "out")
+
+    assert not (tmp_dir / "out").exists()
+
+
 @pytest.mark.parametrize(
     "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
 )
@@ -129,31 +145,15 @@ def test_get_a_dvc_file(tmp_dir, erepo_dir):
         Repo.get(os.fspath(erepo_dir), "some_file.dvc")
 
 
-# https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory):
-    path = tmp_path_factory.mktemp("ext")
-    external_data = path / "ext_data"
-    external_data.write_text("ext_data")
-
-    with erepo_dir.chdir():
-        erepo_dir.dvc.add(os.fspath(external_data), external=True)
-        erepo_dir.scm_add("ext_data.dvc", commit="add external data")
-
-    Repo.get(os.fspath(erepo_dir), os.fspath(external_data), "ext_data_imported")
-    assert (tmp_dir / "ext_data_imported").read_text() == "ext_data"
-
-
 def test_non_cached_output(tmp_dir, erepo_dir):
     src = "non_cached_file"
     dst = src + "_imported"
 
     with erepo_dir.chdir():
         erepo_dir.dvc.run(
-            outs_no_cache=[src],
-            cmd="echo hello > non_cached_file",
-            single_stage=True,
+            outs_no_cache=[src], cmd="echo hello > non_cached_file", name="gen"
         )
-        erepo_dir.scm_add([src, src + ".dvc"], commit="add non-cached output")
+        erepo_dir.scm_add(["dvc.lock", "dvc.yaml"], commit="add non-cached output")
 
     Repo.get(os.fspath(erepo_dir), src, dst)
 

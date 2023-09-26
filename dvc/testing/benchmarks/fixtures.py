@@ -7,7 +7,6 @@ import pytest
 from dulwich.porcelain import clone
 from funcy import first
 from packaging import version
-from pytest_virtualenv import VirtualEnv
 
 # pylint: disable=redefined-outer-name,unused-argument
 
@@ -20,6 +19,8 @@ def bench_config(request):
 @pytest.fixture(scope="session")
 def make_dvc_venv(tmp_path_factory):
     def _make_dvc_venv(name):
+        from pytest_virtualenv import VirtualEnv
+
         name = _sanitize_venv_name(name)
         venv_dir = tmp_path_factory.mktemp(f"dvc-venv-{name}")
         return VirtualEnv(workspace=venv_dir)
@@ -89,7 +90,7 @@ def make_dvc_bin(
         dvc_bin = bench_config.dvc_bin
 
     def _dvc_bin(*args):
-        return check_output([dvc_bin, *args], text=True)  # nosec B603
+        return check_output([dvc_bin, *args], text=True)  # nosec B603  # noqa: S603
 
     _dvc_bin.version = parse_tuple(_dvc_bin("--version"))  # type: ignore[attr-defined]
     return _dvc_bin

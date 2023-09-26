@@ -1,14 +1,11 @@
 import argparse
 import logging
-from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Set
+from typing import TYPE_CHECKING
 
 from funcy import chunks, compact, log_durations
 
-from dvc.cli import completion
-from dvc.cli.actions import CommaSeparatedArgs
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers, hide_subparsers_from_help
+from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.ui import ui
 from dvc.utils import colorize
 
@@ -93,9 +90,7 @@ class CmdDataStatus(CmdBase):
                     ui.write(f"  ({hint})")
 
             if isinstance(stage_status, dict):
-                items = [
-                    ": ".join([state, file]) for file, state in stage_status.items()
-                ]
+                items = [f"{state}: {file}" for file, state in stage_status.items()]
             else:
                 items = stage_status
 
@@ -132,63 +127,6 @@ class CmdDataStatus(CmdBase):
         return self._show_status(status)
 
 
-class CmdDataLs(CmdBase):
-    @staticmethod
-    def _show_table(
-        d: Iterable[Dict[str, Any]],
-        filter_types: Set[str],
-        filter_labels: Set[str],
-        markdown: bool = False,
-    ) -> None:
-        from rich.style import Style
-
-        from dvc.compare import TabularData
-
-        td = TabularData(
-            columns=["Path", "Type", "Labels", "Description"], fill_value="-"
-        )
-        for entry in sorted(d, key=itemgetter("path")):
-            typ = entry.get("type", "")
-            desc = entry.get("desc", "-")
-            labels = entry.get("labels", [])
-
-            if filter_types and typ not in filter_types:
-                continue
-            if filter_labels and filter_labels.isdisjoint(labels):
-                continue
-
-            rich_label = ui.rich_text()
-            for index, label in enumerate(labels):
-                if index:
-                    rich_label.append(",")
-                style = Style(bold=label in filter_labels, color="green")
-                rich_label.append(label, style=style)
-
-            if markdown and desc:
-                desc = desc.partition("\n")[0]
-
-            path = ui.rich_text(entry["path"], style="cyan")
-            type_style = Style(bold=typ in filter_types, color="yellow")
-            typ = ui.rich_text(entry.get("type", ""), style=type_style)
-            td.append([path, typ or "-", rich_label or "-", desc])
-
-        td.render(markdown=markdown, rich_table=True)
-
-    def run(self):
-        from dvc.repo.data import ls
-
-        filter_labels = set(self.args.labels)
-        filter_types = set(self.args.type)
-        d = ls(self.repo, targets=self.args.targets, recursive=self.args.recursive)
-        self._show_table(
-            d,
-            filter_labels=filter_labels,
-            filter_types=filter_types,
-            markdown=self.args.markdown,
-        )
-        return 0
-
-
 def add_parser(subparsers, parent_parser):
     data_parser = subparsers.add_parser(
         "data",
@@ -216,13 +154,6 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show output in JSON format.",
-    )
-    data_status_parser.add_argument(
-        "--show-json",
-        action="store_true",
-        default=False,
-        dest="json",
-        help=argparse.SUPPRESS,
     )
     data_status_parser.add_argument(
         "--granular",
@@ -257,51 +188,3 @@ def add_parser(subparsers, parent_parser):
         help="Use cached remote index (don't check remote).",
     )
     data_status_parser.set_defaults(func=CmdDataStatus)
-
-    DATA_LS_HELP = "List data tracked by DVC with its metadata."
-    data_ls_parser = data_subparsers.add_parser(
-        "ls",
-        aliases=["list"],
-        parents=[parent_parser],
-        description=append_doc_link(DATA_LS_HELP, "data/ls"),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        add_help=False,
-    )
-    data_ls_parser.add_argument(
-        "--md",
-        "--show-md",
-        dest="markdown",
-        action="store_true",
-        default=False,
-        help="Show tabulated output in the Markdown format (GFM).",
-    )
-    data_ls_parser.add_argument(
-        "--type",
-        action=CommaSeparatedArgs,
-        default=[],
-        help="Comma-separated list of type to filter.",
-    )
-    data_ls_parser.add_argument(
-        "--labels",
-        action=CommaSeparatedArgs,
-        default=[],
-        help="Comma-separated list of labels to filter.",
-    )
-    data_ls_parser.add_argument(
-        "-R",
-        "--recursive",
-        action="store_true",
-        default=False,
-        help="Recursively list from the specified directories.",
-    )
-    data_ls_parser.add_argument(
-        "targets",
-        default=None,
-        nargs="*",
-        help=(
-            "Limit command scope to these tracked files/directories, "
-            ".dvc files, or stage names."
-        ),
-    ).complete = completion.DVCFILES_AND_STAGE
-    data_ls_parser.set_defaults(func=CmdDataLs)
-    hide_subparsers_from_help(data_subparsers)

@@ -1,4 +1,5 @@
 import os
+import shutil
 import textwrap
 
 import pytest
@@ -39,7 +40,7 @@ def test_move_not_data_source(tmp_dir, dvc):
         cmd="cp foo file1",
         outs=["file1"],
         deps=["foo"],
-        single_stage=True,
+        name="copy-foo-file1",
     )
 
     with pytest.raises(MoveNotDataSourceError):
@@ -138,10 +139,10 @@ def test_move_should_save_stage_info(tmp_dir, dvc):
 
 
 def test_should_move_to_dir_on_non_default_stage_file(tmp_dir, dvc):
-    stage_file_name = "stage.dvc"
     tmp_dir.gen({"file": "file_content"})
 
-    dvc.add("file", fname=stage_file_name)
+    dvc.add("file")
+    shutil.move("file.dvc", "stage.dvc")
     os.mkdir("directory")
 
     dvc.move("file", "directory")
@@ -193,6 +194,7 @@ def test_move_meta(tmp_dir, dvc):
         outs:
         - md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
+          hash: md5
           path: bar
         meta:
           custom_key: 42

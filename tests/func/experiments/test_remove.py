@@ -156,3 +156,26 @@ def test_remove_experiments_by_rev(tmp_dir, scm, dvc, exp_stage):
     assert "queue2" in queue_revs
     assert scm.get_ref(new_exp_ref) is not None
     assert "queue4" in queue_revs
+
+
+def test_remove_multi_rev(tmp_dir, scm, dvc, exp_stage):
+    baseline = scm.get_rev()
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    baseline_exp_ref = first(exp_refs_by_rev(scm, first(results)))
+
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], queue=True, name="queue2"
+    )
+    scm.commit("new_baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    new_exp_ref = first(exp_refs_by_rev(scm, first(results)))
+
+    assert set(dvc.experiments.remove(rev=[baseline, scm.get_rev()])) == {
+        baseline_exp_ref.name,
+        new_exp_ref.name,
+    }
+
+    assert scm.get_ref(str(baseline_exp_ref)) is None
+    assert scm.get_ref(str(new_exp_ref)) is None

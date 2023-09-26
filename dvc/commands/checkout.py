@@ -37,6 +37,7 @@ class CmdCheckout(CmdBase):
                 force=self.args.force,
                 relink=self.args.relink,
                 recursive=self.args.recursive,
+                allow_missing=self.args.allow_missing,
             )
         except CheckoutError as _exc:
             exc = _exc
@@ -100,6 +101,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Recreate links or copies from cache to workspace.",
+    )
+    checkout_parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        default=False,
+        help="Ignore errors if some of the files or directories are missing.",
     )
     checkout_parser.add_argument(
         "targets",

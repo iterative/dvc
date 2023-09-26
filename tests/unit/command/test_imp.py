@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.commands.imp import CmdImport
 
 
-def test_import(mocker):
+def test_import(mocker, dvc):
     cli_args = parse_args(
         [
             "import",
@@ -10,14 +10,17 @@ def test_import(mocker):
             "src",
             "--out",
             "out",
-            "--file",
-            "file",
             "--rev",
             "version",
-            "--desc",
-            "description",
             "--jobs",
             "3",
+            "--config",
+            "myconfig",
+            "--remote",
+            "myremote",
+            "--remote-config",
+            "k1=v1",
+            "k2=v2",
         ]
     )
     assert cli_args.func == CmdImport
@@ -31,19 +34,18 @@ def test_import(mocker):
         "repo_url",
         path="src",
         out="out",
-        fname="file",
         rev="version",
         no_exec=False,
         no_download=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=3,
+        config="myconfig",
+        remote="myremote",
+        remote_config={"k1": "v1", "k2": "v2"},
+        force=False,
     )
 
 
-def test_import_no_exec(mocker):
+def test_import_no_exec(mocker, dvc):
     cli_args = parse_args(
         [
             "import",
@@ -51,13 +53,9 @@ def test_import_no_exec(mocker):
             "src",
             "--out",
             "out",
-            "--file",
-            "file",
             "--rev",
             "version",
             "--no-exec",
-            "--desc",
-            "description",
         ]
     )
 
@@ -70,19 +68,18 @@ def test_import_no_exec(mocker):
         "repo_url",
         path="src",
         out="out",
-        fname="file",
         rev="version",
         no_exec=True,
         no_download=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
+        config=None,
+        remote=None,
+        remote_config=None,
+        force=False,
     )
 
 
-def test_import_no_download(mocker):
+def test_import_no_download(mocker, dvc):
     cli_args = parse_args(
         [
             "import",
@@ -90,13 +87,9 @@ def test_import_no_download(mocker):
             "src",
             "--out",
             "out",
-            "--file",
-            "file",
             "--rev",
             "version",
             "--no-download",
-            "--desc",
-            "description",
         ]
     )
 
@@ -109,13 +102,12 @@ def test_import_no_download(mocker):
         "repo_url",
         path="src",
         out="out",
-        fname="file",
         rev="version",
         no_exec=False,
         no_download=True,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
+        config=None,
+        remote=None,
+        remote_config=None,
+        force=False,
     )

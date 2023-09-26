@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.commands.data_sync import CmdDataFetch, CmdDataPull, CmdDataPush
 
 
-def test_fetch(mocker):
+def test_fetch(mocker, dvc):
     cli_args = parse_args(
         [
             "fetch",
@@ -18,6 +18,12 @@ def test_fetch(mocker):
             "--with-deps",
             "--recursive",
             "--run-cache",
+            "--max-size",
+            "10",
+            "--type",
+            "plots",
+            "--type",
+            "metrics",
         ]
     )
     assert cli_args.func == CmdDataFetch
@@ -37,10 +43,12 @@ def test_fetch(mocker):
         with_deps=True,
         recursive=True,
         run_cache=True,
+        max_size=10,
+        types=["plots", "metrics"],
     )
 
 
-def test_pull(mocker):
+def test_pull(mocker, dvc):
     cli_args = parse_args(
         [
             "pull",
@@ -84,7 +92,7 @@ def test_pull(mocker):
     )
 
 
-def test_push(mocker):
+def test_push(mocker, dvc):
     cli_args = parse_args(
         [
             "push",

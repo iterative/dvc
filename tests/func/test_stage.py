@@ -7,9 +7,8 @@ from dvc.dvcfile import SingleStageFile
 from dvc.exceptions import OutputDuplicationError
 from dvc.fs import LocalFileSystem
 from dvc.output import Output
-from dvc.repo import Repo, lock_repo
+from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
-from dvc.stage.run import run_stage
 from dvc.stage.utils import compute_md5
 from dvc.utils import dict_md5
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -21,16 +20,8 @@ def test_cmd_obj():
         SingleStageFile.validate({Stage.PARAM_CMD: {}})
 
 
-def test_cmd_none():
-    SingleStageFile.validate({Stage.PARAM_CMD: None})
-
-
 def test_no_cmd():
     SingleStageFile.validate({})
-
-
-def test_cmd_str():
-    SingleStageFile.validate({Stage.PARAM_CMD: "cmd"})
 
 
 def test_object():
@@ -90,21 +81,16 @@ def test_reload(tmp_dir, dvc):
 
 def test_default_wdir_ignored_in_checksum(tmp_dir, dvc):
     tmp_dir.gen("bar", "bar")
-    stage = dvc.run(
-        cmd="cp bar foo",
-        deps=["bar"],
-        outs=["foo"],
-        single_stage=True,
-    )
+    stage = dvc.run(cmd="cp bar foo", deps=["bar"], outs=["foo"], name="copy-foo-bar")
 
     d = stage.dumpd()
-    assert Stage.PARAM_WDIR not in d.keys()
+    assert Stage.PARAM_WDIR not in d
 
-    d = load_yaml(stage.relpath)
-    assert Stage.PARAM_WDIR not in d.keys()
+    d = load_yaml("dvc.yaml")
+    assert Stage.PARAM_WDIR not in d["stages"]["copy-foo-bar"]
 
     with dvc.lock:
-        stage = SingleStageFile(dvc, stage.relpath).stage
+        stage = stage.reload()
         assert not stage.changed()
 
 
@@ -118,7 +104,7 @@ def test_external_remote_output_resolution(tmp_dir, dvc, make_remote):
     dvc.run(
         cmd=f"echo file > {file_path}",
         outs_no_cache=["remote://storage/file"],
-        single_stage=True,
+        name="gen-file",
     )
     assert os.path.exists(file_path)
 
@@ -153,6 +139,7 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
             {
                 "md5": "d3b07384d113edec49eaa6238ad5ff00",
                 "size": 4,
+                "hash": "md5",
                 "path": "foo",
                 "desc": "foo desc",
                 "type": "mytype",
@@ -163,10 +150,20 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
     }
     (tmp_dir / "foo.dvc").dump(data)
     stage = dvc.stage.load_one("foo.dvc")
-    assert compute_md5(stage) == "1822617147b53ae6f9eb4b3c87c0b6f3"
+    assert compute_md5(stage) == "cde267b60ef5a00e9a35cc1999ab83a3"
     assert (
-        dict_md5({"outs": [{"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}]})
-        == "1822617147b53ae6f9eb4b3c87c0b6f3"
+        dict_md5(
+            {
+                "outs": [
+                    {
+                        "md5": "d3b07384d113edec49eaa6238ad5ff00",
+                        "hash": "md5",
+                        "path": "foo",
+                    }
+                ]
+            }
+        )
+        == "cde267b60ef5a00e9a35cc1999ab83a3"
     )
 
 
@@ -178,6 +175,7 @@ def test_meta_desc_is_preserved(tmp_dir, dvc):
             {
                 "md5": "d3b07384d113edec49eaa6238ad5ff00",
                 "size": 4,
+                "hash": "md5",
                 "path": "foo",
                 "desc": "foo desc",
                 "type": "mytype",
@@ -232,30 +230,47 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
 
 @pytest.mark.parametrize("with_deps", (False, True))
 def test_collect_symlink(tmp_dir, dvc, with_deps):
+    from dvc.exceptions import StageNotFoundError
+
     tmp_dir.gen({"data": {"foo": "foo contents"}})
     foo_path = os.path.join("data", "foo")
     dvc.add(foo_path)
 
     data_link = tmp_dir / "data_link"
     data_link.symlink_to("data")
-    stage = list(
-        dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
-    )[0]
 
-    assert stage.addressing == f"{foo_path}.dvc"
+    if with_deps:
+        # NOTE: with_deps means that we'll need to collect and use dvcfiles in the repo
+        # and we currently don't follow symlinks when collecting those, so it will not
+        # be able to find the target stage.
+        with pytest.raises(StageNotFoundError):
+            dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
+    else:
+        stage = next(
+            iter(
+                dvc.stage.collect(
+                    target=str(data_link / "foo.dvc"), with_deps=with_deps
+                )
+            )
+        )
+
+        assert stage.addressing == os.path.join("data_link", "foo.dvc")
+
+    stage = next(iter(dvc.stage.collect(target=f"{foo_path}.dvc", with_deps=with_deps)))
+
+    assert stage.addressing == os.path.join("data", "foo.dvc")
 
 
 def test_stage_strings_representation(tmp_dir, dvc, run_copy):
-    tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "bar", single_stage=True)
-    assert stage1.addressing == "bar.dvc"
-    assert repr(stage1) == "Stage: 'bar.dvc'"
-    assert str(stage1) == "stage: 'bar.dvc'"
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    assert stage1.addressing == "foo.dvc"
+    assert repr(stage1) == "Stage: 'foo.dvc'"
+    assert str(stage1) == "stage: 'foo.dvc'"
 
-    stage2 = run_copy("bar", "baz", name="copy-bar-baz")
-    assert stage2.addressing == "copy-bar-baz"
-    assert repr(stage2) == "Stage: 'copy-bar-baz'"
-    assert str(stage2) == "stage: 'copy-bar-baz'"
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+    assert stage2.addressing == "copy-foo-bar"
+    assert repr(stage2) == "Stage: 'copy-foo-bar'"
+    assert str(stage2) == "stage: 'copy-foo-bar'"
 
     folder = tmp_dir / "dir"
     folder.mkdir()
@@ -316,24 +331,6 @@ def test_stage_remove_pointer_stage(tmp_dir, dvc, run_copy):
     with dvc.lock:
         stage.remove()
     assert not (tmp_dir / stage.relpath).exists()
-
-
-@pytest.mark.parametrize("checkpoint", [True, False])
-def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
-    stage = Stage(dvc, "stage.dvc", cmd="mycmd arg1 arg2")
-    mocker.patch.object(stage, "save")
-
-    mock_cmd_run = mocker.patch("dvc.stage.run.cmd_run")
-    if checkpoint:
-        callback = mocker.Mock()
-    else:
-        callback = None
-
-    with lock_repo(dvc):
-        run_stage(stage, checkpoint_func=callback)
-    mock_cmd_run.assert_called_with(
-        stage, checkpoint_func=callback, dry=False, run_env=None
-    )
 
 
 def test_stage_add_duplicated_output(tmp_dir, dvc):

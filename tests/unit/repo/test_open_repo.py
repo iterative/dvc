@@ -1,5 +1,4 @@
 import os
-from unittest.mock import call
 
 import pytest
 
@@ -34,7 +33,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
         paths = ["/" + path.replace("\\", "/") for path in subrepo_paths]
         spy.assert_has_calls(
             [
-                call(
+                mocker.call(
                     path,
                     fs=repo.fs,
                     scm=repo.scm,
@@ -55,7 +54,7 @@ def test_subrepo_is_constructed_properly(
 
     subrepo = tmp_dir / "subrepo"
     make_subrepo(subrepo, scm)
-    local_cache = subrepo.dvc.cache.local.path
+    local_cache = subrepo.dvc.cache.local_cache_dir
 
     tmp_dir.scm_gen("bar", "bar", commit="add bar")
     subrepo.dvc_gen("foo", "foo", commit="add foo")
@@ -75,8 +74,8 @@ def test_subrepo_is_constructed_properly(
 
         assert repo.url == str(tmp_dir)
         assert repo.config["cache"]["dir"] == str(cache_dir)
-        assert repo.cache.local.path == str(cache_dir)
-        assert subrepo.cache.local.path == str(cache_dir)
+        assert repo.cache.local.path == os.path.join(cache_dir, "files", "md5")
+        assert subrepo.cache.local.path == os.path.join(cache_dir, "files", "md5")
 
         assert repo.config["cache"]["type"] == ["symlink"]
         assert repo.cache.local.cache_types == ["symlink"]
@@ -84,7 +83,5 @@ def test_subrepo_is_constructed_properly(
 
         assert subrepo.config["remote"]["auto-generated-upstream"]["url"] == local_cache
         if root_is_dvc:
-            main_cache = tmp_dir.dvc.cache.local.path
-            assert repo.config["remote"]["auto-generated-upstream"]["url"] == str(
-                main_cache
-            )
+            main_cache = tmp_dir.dvc.cache.local_cache_dir
+            assert repo.config["remote"]["auto-generated-upstream"]["url"] == main_cache

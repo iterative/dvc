@@ -127,10 +127,16 @@ def test_merge_conflict(tmp_dir, dvc, ancestor, our, their, error, caplog):
 def test_merge_different_output_options(tmp_dir, dvc, caplog):
     (tmp_dir / "ancestor").touch()
 
-    (tmp_dir / "our").write_text("outs:\n- md5: f123456789.dir\n  path: path\n")
+    (tmp_dir / "our").write_text(
+        "outs:\n- md5: f123456789.dir\n  hash: md5\n  path: path\n"
+    )
 
     (tmp_dir / "their").write_text(
-        "outs:\n- md5: f987654321.dir\n  path: path\n  cache: false\n"
+        "outs:\n"
+        "- md5: f987654321.dir\n"
+        "  hash: md5\n"
+        "  path: path\n"
+        "  cache: false\n"
     )
 
     assert (
@@ -156,9 +162,13 @@ def test_merge_different_output_options(tmp_dir, dvc, caplog):
 def test_merge_file(tmp_dir, dvc, caplog):
     (tmp_dir / "ancestor").touch()
 
-    (tmp_dir / "our").write_text("outs:\n- md5: f123456789.dir\n  path: path\n")
+    (tmp_dir / "our").write_text(
+        "outs:\n- md5: f123456789.dir\n  hash: md5\n  path: path\n"
+    )
 
-    (tmp_dir / "their").write_text("outs:\n- md5: f987654321\n  path: path\n")
+    (tmp_dir / "their").write_text(
+        "outs:\n- md5: f987654321\n  hash: md5\n  path: path\n"
+    )
 
     assert (
         main(
@@ -186,12 +196,16 @@ def test_merge_non_dvc_add(tmp_dir, dvc, caplog):
     (tmp_dir / "our").write_text(
         "outs:\n"
         "- md5: f123456789.dir\n"
+        "  hash: md5\n"
         "  path: path\n"
         "- md5: ff123456789.dir\n"
+        "  hash: md5\n"
         "  path: another\n"
     )
 
-    (tmp_dir / "their").write_text("outs:\n- md5: f987654321\n  path: path\n")
+    (tmp_dir / "their").write_text(
+        "outs:\n- md5: f987654321\n  hash: md5\n  path: path\n"
+    )
 
     assert (
         main(

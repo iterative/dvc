@@ -4,6 +4,7 @@ import shutil
 import pytest
 
 import dvc_data
+from dvc.fs import localfs
 from dvc.fs.data import DataFileSystem
 from dvc.utils.fs import remove
 from dvc_data.hashfile.build import build
@@ -137,7 +138,7 @@ def test_walk(tmp_dir, dvc):
         }
     )
 
-    dvc.add("dir", recursive=True)
+    dvc.add(localfs.find("dir"))
     fs = DataFileSystem(index=dvc.index.data["repo"])
 
     expected = [
@@ -206,14 +207,6 @@ def test_walk_not_a_dir(tmp_dir, dvc):
 
     for _ in fs.walk("foo"):
         pass
-
-
-def test_isdvc(tmp_dir, dvc):
-    tmp_dir.gen({"foo": "foo", "bar": "bar"})
-    dvc.add("foo")
-    fs = DataFileSystem(index=dvc.index.data["repo"])
-    assert fs.isdvc("foo")
-    assert not fs.isdvc("bar")
 
 
 def test_get_hash_file(tmp_dir, dvc):

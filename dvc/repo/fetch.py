@@ -1,21 +1,78 @@
 import logging
-from contextlib import suppress
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import List, Tuple
 
-from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError
-from dvc.fs import Schemes
+from dvc.ui import ui
+from dvc_data.index import DataIndex, FileStorage
 
 from . import locked
 
-if TYPE_CHECKING:
-    from dvc.data_cloud import Remote
-    from dvc.repo import Repo
-    from dvc.types import TargetType
-    from dvc_data.hashfile.db import HashFileDB
-    from dvc_data.hashfile.transfer import TransferResult
-
 logger = logging.getLogger(__name__)
+
+
+def _make_index_onerror(onerror, rev):
+    def _onerror(entry, exc):
+        if onerror:
+            return onerror(rev, entry, exc)
+
+    return _onerror
+
+
+def _collect_indexes(  # noqa: PLR0913
+    repo,
+    targets=None,
+    remote=None,
+    all_branches=False,
+    with_deps=False,
+    all_tags=False,
+    recursive=False,
+    all_commits=False,
+    revs=None,
+    max_size=None,
+    types=None,
+    config=None,
+    onerror=None,
+):
+    indexes = {}
+    collection_exc = None
+
+    config = config or {}
+    if remote:
+        core = config.get("core") or {}
+        core["remote"] = remote
+        config["core"] = core
+
+    for rev in repo.brancher(
+        revs=revs,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+    ):
+        try:
+            repo.config.merge(config)
+
+            idx = repo.index.targets_view(
+                targets,
+                with_deps=with_deps,
+                recursive=recursive,
+                max_size=max_size,
+                types=types,
+            )
+
+            data = idx.data["repo"]
+            data.onerror = _make_index_onerror(onerror, rev)
+
+            indexes[idx.data_tree.hash_info.value] = data
+        except Exception as exc:  # pylint: disable=broad-except
+            if onerror:
+                onerror(rev, None, exc)
+            collection_exc = exc
+            logger.exception("failed to collect '%s'", rev or "workspace")
+
+    if not indexes and collection_exc:
+        raise collection_exc
+
+    return indexes
 
 
 @locked
@@ -31,7 +88,10 @@ def fetch(  # noqa: C901, PLR0913
     all_commits=False,
     run_cache=False,
     revs=None,
-    odb: Optional["HashFileDB"] = None,
+    max_size=None,
+    types=None,
+    config=None,
+    onerror=None,
 ) -> int:
     """Download data items from a cloud and imported repositories
 
@@ -45,17 +105,13 @@ def fetch(  # noqa: C901, PLR0913
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
-    from dvc.repo.imports import save_imports
-    from dvc_data.hashfile.transfer import TransferResult
+    from fsspec.utils import tokenize
+
+    from dvc_data.index.fetch import collect
+    from dvc_data.index.fetch import fetch as ifetch
 
     if isinstance(targets, str):
         targets = [targets]
-
-    worktree_remote: Optional["Remote"] = None
-    with suppress(NoRemoteError):
-        _remote = self.cloud.get_remote(name=remote)
-        if _remote.worktree or _remote.fs.version_aware:
-            worktree_remote = _remote
 
     failed_count = 0
     transferred_count = 0
@@ -66,133 +122,92 @@ def fetch(  # noqa: C901, PLR0913
     except DownloadError as exc:
         failed_count += exc.amount
 
-    no_remote_msg: Optional[str] = None
-    result = TransferResult(set(), set())
-    try:
-        if worktree_remote is not None:
-            transferred_count += _fetch_worktree(
-                self,
-                worktree_remote,
-                revs=revs,
-                all_branches=all_branches,
-                all_tags=all_tags,
-                all_commits=all_commits,
-                targets=targets,
-                jobs=jobs,
-                with_deps=with_deps,
-                recursive=recursive,
-            )
-        else:
-            d, f = _fetch(
-                self,
-                targets,
-                all_branches=all_branches,
-                all_tags=all_tags,
-                all_commits=all_commits,
-                with_deps=with_deps,
-                force=True,
-                remote=remote,
-                jobs=jobs,
-                recursive=recursive,
-                revs=revs,
-                odb=odb,
-            )
-            result.transferred.update(d)
-            result.failed.update(f)
-    except NoRemoteError as exc:
-        no_remote_msg = str(exc)
-
-    for rev in self.brancher(
-        revs=revs,
+    indexes = _collect_indexes(
+        self,
+        targets=targets,
+        remote=remote,
         all_branches=all_branches,
+        with_deps=with_deps,
         all_tags=all_tags,
+        recursive=recursive,
         all_commits=all_commits,
-    ):
-        imported = save_imports(
-            self,
-            targets,
-            unpartial=not rev or rev == "workspace",
-            recursive=recursive,
+        revs=revs,
+        max_size=max_size,
+        types=types,
+        config=config,
+        onerror=onerror,
+    )
+
+    cache_key = ("fetch", tokenize(sorted(indexes.keys())))
+
+    with ui.progress(
+        desc="Collecting",
+        unit="entry",
+        leave=True,
+    ) as pb:
+        data = collect(
+            indexes.values(),
+            "remote",
+            cache_index=self.data_index,
+            cache_key=cache_key,
+            callback=pb.as_callback(),
         )
-        result.transferred.update(imported)
-        result.failed.difference_update(imported)
+    data, unversioned_count = _log_unversioned(data)
+    failed_count += unversioned_count
 
-    failed_count += len(result.failed)
+    with ui.progress(
+        desc="Fetching",
+        bar_format="{desc}",
+        leave=True,
+    ) as pb:
+        try:
+            fetch_transferred, fetch_failed = ifetch(
+                data,
+                jobs=jobs,
+                callback=pb.as_callback(),
+            )  # pylint: disable=assignment-from-no-return
+        finally:
+            for fs_index in data:
+                fs_index.close()
 
+    if fetch_transferred:
+        # NOTE: dropping cached index to force reloading from newly saved cache
+        self.drop_data_index()
+
+    transferred_count += fetch_transferred
+    failed_count += fetch_failed
     if failed_count:
-        if no_remote_msg:
-            logger.error(no_remote_msg)
         raise DownloadError(failed_count)
 
-    transferred_count += len(result.transferred)
     return transferred_count
 
 
-def _fetch(
-    repo: "Repo",
-    targets: "TargetType",
-    remote: Optional[str] = None,
-    jobs: Optional[int] = None,
-    odb: Optional["HashFileDB"] = None,
-    **kwargs,
-) -> "TransferResult":
-    from dvc_data.hashfile.transfer import TransferResult
+def _log_unversioned(data: List["DataIndex"]) -> Tuple[List["DataIndex"], int]:
+    ret: List["DataIndex"] = []
+    unversioned: List[str] = []
+    for fs_index in data:
+        remote = fs_index.storage_map[()].remote
+        if not isinstance(remote, FileStorage) or not remote.fs.version_aware:
+            ret.append(fs_index)
+            continue
 
-    result = TransferResult(set(), set())
-    used = repo.used_objs(
-        targets,
-        remote=remote,
-        jobs=jobs,
-        **kwargs,
-    )
-    if odb:
-        all_ids = set()
-        for _odb, obj_ids in used.items():
-            all_ids.update(obj_ids)
-        d, f = repo.cloud.pull(
-            all_ids,
-            jobs=jobs,
-            remote=remote,
-            odb=odb,
+        fs = remote.fs
+        index = DataIndex()
+        index.storage_map = fs_index.storage_map
+        for key, entry in fs_index.iteritems():
+            if entry.meta and not entry.meta.isdir and entry.meta.version_id is None:
+                unversioned.append(fs.unstrip_protocol(fs.path.join(remote.path, *key)))
+            else:
+                index[key] = entry
+        fs_index.close()
+        ret.append(index)
+
+    if unversioned:
+        logger.warning(
+            (
+                "Some files are missing cloud version information and will not be "
+                "fetched from the remote:\n%s"
+            ),
+            "\n".join(unversioned),
         )
-        result.transferred.update(d)
-        result.failed.update(f)
-    else:
-        for src_odb, obj_ids in sorted(
-            used.items(),
-            key=lambda item: item[0] is not None
-            and item[0].fs.protocol == Schemes.MEMORY,
-        ):
-            d, f = repo.cloud.pull(
-                obj_ids,
-                jobs=jobs,
-                remote=remote,
-                odb=src_odb,
-            )
-            result.transferred.update(d)
-            result.failed.update(f)
-    return result
-
-
-def _fetch_worktree(
-    repo: "Repo",
-    remote: "Remote",
-    revs: Optional[Sequence[str]] = None,
-    all_branches: bool = False,
-    all_tags: bool = False,
-    all_commits: bool = False,
-    targets: Optional["TargetType"] = None,
-    jobs: Optional[int] = None,
-    **kwargs,
-) -> int:
-    from dvc.repo.worktree import fetch_worktree
-
-    downloaded = 0
-    for _ in repo.brancher(
-        revs=revs,
-        all_branches=all_branches,
-        all_tags=all_tags,
-        all_commits=all_commits,
-    ):
-        downloaded += fetch_worktree(repo, remote, targets=targets, jobs=jobs, **kwargs)
-    return downloaded
+    return ret, len(unversioned)

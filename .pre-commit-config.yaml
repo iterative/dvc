@@ -23,42 +23,29 @@ repos:
       - id: mixed-line-ending
       - id: sort-simple-yaml
       - id: trailing-whitespace
-  - repo: https://github.com/lovesegfault/beautysh
-    rev: v6.2.1
-    hooks:
-      - id: beautysh
-        args: ["-i", "2"]
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
-    hooks:
-      - id: pyupgrade
-        args:
-          - --py38-plus
   - repo: https://github.com/psf/black
-    rev: 23.3.0
+    rev: 23.9.1
     hooks:
       - id: black
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:
       - id: isort
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.261'
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 'v0.0.290'
     hooks:
       - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.4
+    rev: v2.2.5
     hooks:
       - id: codespell
         additional_dependencies: ["tomli"]
   - repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
+    rev: 6.1.0
     hooks:
       - id: flake8
         additional_dependencies:
-          - flake8-bugbear
-          - flake8-comprehensions
-          - flake8-debugger
           - flake8-string-format
           - flake8-typing-imports
   - repo: https://github.com/PyCQA/bandit

@@ -75,7 +75,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
     from dvc.fs import AuthError, ConfigError, RemoteMissingDepsError
 
     if isinstance(exc, RemoteMissingDepsError):
-        from dvc.utils.pkg import PKG
+        from dvc import PKG
 
         proto = exc.protocol
         by_pkg = {
@@ -83,9 +83,9 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
             "conda": f"conda install -c conda-forge dvc-{proto}",
         }
 
-        cmd = by_pkg.get(PKG)
-        if cmd:
+        if PKG in by_pkg:
             link = format_link("https://dvc.org/doc/install")
+            cmd = by_pkg.get(PKG)
             hint = (
                 "To install dvc with those dependencies, run:\n"
                 "\n"
@@ -190,10 +190,9 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
         if level and level <= logging.DEBUG:
             from platform import platform, python_implementation, python_version
 
-            from dvc import __version__
-            from dvc.utils.pkg import PKG
+            from dvc import PKG, __version__
 
-            pyv = " ".join([python_implementation(), python_version()])
+            pyv = f"{python_implementation()} {python_version()}"
             pkg = f" ({PKG})" if PKG else ""
             logger.debug("v%s%s, %s on %s", __version__, pkg, pyv, platform())
             logger.debug("command: %s", " ".join(argv or sys.argv))
@@ -231,7 +230,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
         logger.exception("")
     except DvcParserError:
         ret = 254
-    except Exception as exc:  # noqa, pylint: disable=broad-except
+    except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
         # pylint: disable=no-member
         ret = _log_exceptions(exc) or 255
 

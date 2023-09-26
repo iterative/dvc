@@ -4,7 +4,6 @@ from uuid import uuid4
 
 import pytest
 
-from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dependency.base import Dependency, DependencyDoesNotExistError
 from dvc.dvcfile import load_file
@@ -64,22 +63,6 @@ def test_import_conflict_and_override(tmp_dir, dvc):
     assert os.path.exists("bar.dvc")
 
 
-def test_import_filename(tmp_dir, dvc, cloud):
-    external_source = cloud / "file"
-    (cloud / "file").write_text("content", encoding="utf-8")
-    ret = main(["import-url", "--file", "bar.dvc", external_source.fs_path])
-    assert ret == 0
-    assert (tmp_dir / "bar.dvc").exists()
-
-    (tmp_dir / "bar.dvc").unlink()
-    (tmp_dir / "sub").mkdir()
-
-    path = tmp_dir / "sub" / "bar.dvc"
-    ret = main(["import-url", "--file", path.fs_path, external_source.fs_path, "out"])
-    assert ret == 0
-    assert path.exists()
-
-
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
 def test_import_url_to_dir(dname, tmp_dir, dvc):
     tmp_dir.gen({"data_dir": {"file": "file content"}})
@@ -125,7 +108,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
 class TestImport(_TestImport):
     @pytest.fixture
     def stage_md5(self):
-        return "dc24e1271084ee317ac3c2656fb8812b"
+        return "7033ee831f78a4dfec2fc71405516067"
 
     @pytest.fixture
     def dir_md5(self):
@@ -167,6 +150,7 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
         - path: foo # dep comment
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
+          hash: md5
         outs:
         - path: bar # out comment
           desc: out desc
@@ -178,8 +162,9 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
             key: value
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
+          hash: md5
         meta: some metadata
-        md5: be7ade0aa89cc8d56e320867a9de9740
+        md5: 8fc199641730e3f512deac0bd9a0e0b6
         frozen: true
     """
     )
@@ -247,39 +232,11 @@ def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):
 
     assert dst.exists()
 
-    stage = load_file(dvc, "file.dvc").stage
+    dvc.commit(force=True)
 
+    stage = load_file(dvc, "file.dvc").stage
     assert stage.outs[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
     assert stage.outs[0].meta.size == 12
-
-
-def test_imp_url_with_annotations(M, tmp_dir, dvc, local_workspace):
-    local_workspace.gen("foo", "foo")
-    annot = {
-        "desc": "foo desc",
-        "labels": ["l1", "l2"],
-        "type": "t1",
-        "meta": {"key": "value"},
-    }
-    stage = dvc.imp_url(
-        "remote://workspace/foo",
-        os.fspath(tmp_dir / "foo"),
-        no_exec=True,
-        **annot,
-    )
-    assert stage.outs[0].annot == Annotation(**annot)
-    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
-
-    # try to selectively update/overwrite some annotations
-    annot = {**annot, "type": "t2"}
-    stage = dvc.imp_url(
-        "remote://workspace/foo",
-        os.fspath(tmp_dir / "foo"),
-        no_exec=True,
-        type="t2",
-    )
-    assert stage.outs[0].annot == Annotation(**annot)
-    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
 
 
 def test_import_url_fs_config(tmp_dir, dvc, workspace, mocker):
@@ -292,9 +249,19 @@ def test_import_url_fs_config(tmp_dir, dvc, workspace, mocker):
     dep_init = mocker.spy(Dependency, "__init__")
     dvc.imp_url(url, fs_config={"jobs": 42})
 
+    stage = load_file(dvc, "foo.dvc").stage
+    assert stage.deps[0].def_fs_config == {"jobs": 42}
+
     dep_init_kwargs = dep_init.call_args[1]
     assert dep_init_kwargs.get("fs_config") == {"jobs": 42}
 
     assert get_fs_config.call_args_list[0][1] == {"url": "foo"}
     assert get_fs_config.call_args_list[1][1] == {"url": url, "jobs": 42}
     assert get_fs_config.call_args_list[2][1] == {"name": "workspace"}
+
+    dep_init.reset_mock()
+
+    dvc.pull("foo.dvc")
+
+    dep_init_kwargs = dep_init.call_args[1]
+    assert dep_init_kwargs.get("fs_config") == {"jobs": 42}

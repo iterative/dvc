@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from voluptuous import Any, Optional, Required, Schema
+from voluptuous import Any, Equal, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.annotations import ANNOTATION_SCHEMA, ARTIFACT_SCHEMA
@@ -11,14 +11,12 @@ from dvc.output import (
     META_SCHEMA,
     Output,
 )
-from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
-from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
+from dvc.parsing import DO_KWD, FOREACH_KWD, MATRIX_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_MD5: output.CHECKSUM_SCHEMA,
-    StageParams.PARAM_CMD: Any(str, list, None),
     StageParams.PARAM_WDIR: Any(str, None),
     StageParams.PARAM_DEPS: Any([dependency.SCHEMA], None),
     StageParams.PARAM_OUTS: Any([output.SCHEMA], None),
@@ -35,6 +33,7 @@ DATA_SCHEMA = {
     Required("path"): str,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
+    Output.PARAM_HASH: str,
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): Any(str, list),
@@ -44,11 +43,9 @@ LOCK_FILE_STAGE_SCHEMA = {
 }
 
 LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
-
-LOCKFILE_V1_SCHEMA = LOCKFILE_STAGES_SCHEMA
-LOCKFILE_V2_SCHEMA = {
+LOCKFILE_SCHEMA = {
+    Required("schema"): Equal("2.0", "invalid schema version"),
     STAGES: LOCKFILE_STAGES_SCHEMA,
-    Required(SCHEMA_KWD): lockfile_version_schema,
 }
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
@@ -56,7 +53,7 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
         **ANNOTATION_SCHEMA,  # type: ignore[arg-type]
         Output.PARAM_CACHE: bool,
         Output.PARAM_PERSIST: bool,
-        Output.PARAM_CHECKPOINT: bool,
+        "checkpoint": bool,
         Output.PARAM_REMOTE: str,
         Output.PARAM_PUSH: bool,
     }
@@ -80,6 +77,7 @@ PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
+    MATRIX_KWD: {str: Any(str, list)},
     Required(StageParams.PARAM_CMD): Any(str, list),
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],
@@ -116,7 +114,6 @@ PLOT_DEFINITION = {
 SINGLE_PLOT_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
 ARTIFACTS = "artifacts"
 SINGLE_ARTIFACT_SCHEMA = Schema({str: ARTIFACT_SCHEMA})
-ARTIFACTS_SCHEMA = Any(str, SINGLE_ARTIFACT_SCHEMA)
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
@@ -125,16 +122,15 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
     str: either_or(STAGE_DEFINITION, FOREACH_IN, [FOREACH_KWD, DO_KWD])
 }
 MULTI_STAGE_SCHEMA = {
-    PLOTS: Any(SINGLE_PLOT_SCHEMA, [Any(str, SINGLE_PLOT_SCHEMA)]),
+    PLOTS: [Any(str, SINGLE_PLOT_SCHEMA)],
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
     VARS_KWD: VARS_SCHEMA,
     StageParams.PARAM_PARAMS: [str],
     StageParams.PARAM_METRICS: [str],
-    ARTIFACTS: ARTIFACTS_SCHEMA,
+    ARTIFACTS: SINGLE_ARTIFACT_SCHEMA,
 }
 
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)
 COMPILED_MULTI_STAGE_SCHEMA = Schema(MULTI_STAGE_SCHEMA)
 COMPILED_LOCK_FILE_STAGE_SCHEMA = Schema(LOCK_FILE_STAGE_SCHEMA)
-COMPILED_LOCKFILE_V1_SCHEMA = Schema(LOCKFILE_V1_SCHEMA)
-COMPILED_LOCKFILE_V2_SCHEMA = Schema(LOCKFILE_V2_SCHEMA)
+COMPILED_LOCKFILE_SCHEMA = Schema(LOCKFILE_SCHEMA)

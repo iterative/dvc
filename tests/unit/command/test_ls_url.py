@@ -10,7 +10,7 @@ def test_ls_url(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", recursive=False)
+    m.assert_called_once_with("src", recursive=False, fs_config=None)
 
 
 def test_recursive(mocker):
@@ -21,4 +21,4 @@ def test_recursive(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", recursive=True)
+    m.assert_called_once_with("src", recursive=True, fs_config=None)

@@ -79,9 +79,6 @@ class Config(dict):
         ConfigError: thrown if config has an invalid format.
     """
 
-    APPNAME = "dvc"
-    APPAUTHOR = "iterative"
-
     SYSTEM_LEVELS = ("system", "global")
     REPO_LEVELS = ("repo", "local")
     # In the order they shadow each other
@@ -93,20 +90,30 @@ class Config(dict):
     def __init__(
         self,
         dvc_dir: Optional["StrPath"] = None,
+        local_dvc_dir: Optional["StrPath"] = None,
         validate: bool = True,
         fs: Optional["FileSystem"] = None,
         config: Optional["DictStrAny"] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
     ):  # pylint: disable=super-init-not-called
         from dvc.fs import LocalFileSystem
 
+        dvc_dir = os.fspath(dvc_dir) if dvc_dir else None
         self.dvc_dir = dvc_dir
         self.wfs = LocalFileSystem()
         self.fs = fs or self.wfs
 
         if dvc_dir:
-            self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
+            self.dvc_dir = self.fs.path.abspath(dvc_dir)
 
-        self.load(validate=validate, config=config)
+        self.local_dvc_dir = local_dvc_dir
+        if not fs and not local_dvc_dir:
+            self.local_dvc_dir = dvc_dir
+
+        self.load(
+            validate=validate, config=config, remote=remote, remote_config=remote_config
+        )
 
     @classmethod
     def from_cwd(cls, fs: Optional["FileSystem"] = None, **kwargs):
@@ -121,14 +128,14 @@ class Config(dict):
 
     @classmethod
     def get_dir(cls, level):
-        from platformdirs import site_config_dir, user_config_dir
+        from dvc.dirs import global_config_dir, system_config_dir
 
         assert level in ("global", "system")
 
         if level == "global":
-            return user_config_dir(cls.APPNAME, cls.APPAUTHOR)
+            return global_config_dir()
         if level == "system":
-            return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
+            return system_config_dir()
 
     @cached_property
     def files(self) -> Dict[str, str]:
@@ -139,7 +146,9 @@ class Config(dict):
 
         if self.dvc_dir is not None:
             files["repo"] = self.fs.path.join(self.dvc_dir, self.CONFIG)
-            files["local"] = self.fs.path.join(self.dvc_dir, self.CONFIG_LOCAL)
+
+        if self.local_dvc_dir is not None:
+            files["local"] = self.wfs.path.join(self.local_dvc_dir, self.CONFIG_LOCAL)
 
         return files
 
@@ -157,7 +166,16 @@ class Config(dict):
         with open(config_file, "w+", encoding="utf-8"):
             return Config(dvc_dir)
 
-    def load(self, validate: bool = True, config: Optional["DictStrAny"] = None):
+    def merge(self, config):
+        merge(self, config)
+
+    def load(
+        self,
+        validate: bool = True,
+        config: Optional["DictStrAny"] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
+    ):
         """Loads config from all the config files.
 
         Raises:
@@ -172,6 +190,17 @@ class Config(dict):
             conf = self.validate(conf)
 
         self.clear()
+
+        if remote:
+            conf["core"]["remote"] = remote
+
+        if remote_config:
+            remote = remote or conf["core"].get("remote")
+            if not remote:
+                raise ValueError("Missing remote name")
+
+            merge(conf, {"remote": {remote: remote_config}})
+
         self.update(conf)
 
     def _get_fs(self, level):
@@ -179,23 +208,32 @@ class Config(dict):
         # the repo.
         return self.fs if level == "repo" else self.wfs
 
-    def _load_config(self, level):
+    @staticmethod
+    def load_file(path, fs=None) -> dict:
         from configobj import ConfigObj, ConfigObjError
 
+        from dvc.fs import localfs
+
+        fs = fs or localfs
+
+        with fs.open(path) as fobj:
+            try:
+                conf_obj = ConfigObj(fobj)
+            except UnicodeDecodeError as exc:
+                raise ConfigError(str(exc)) from exc
+            except ConfigObjError as exc:
+                raise ConfigError(str(exc)) from exc
+
+        return _parse_named(_lower_keys(conf_obj.dict()))
+
+    def _load_config(self, level):
         filename = self.files[level]
         fs = self._get_fs(level)
 
-        if fs.exists(filename):
-            with fs.open(filename) as fobj:
-                try:
-                    conf_obj = ConfigObj(fobj)
-                except UnicodeDecodeError as exc:
-                    raise ConfigError(str(exc)) from exc
-                except ConfigObjError as exc:
-                    raise ConfigError(str(exc)) from exc
-        else:
-            conf_obj = ConfigObj()
-        return _parse_named(_lower_keys(conf_obj.dict()))
+        try:
+            return self.load_file(filename, fs=fs)
+        except FileNotFoundError:
+            return {}
 
     def _save_config(self, level, conf_dict):
         from configobj import ConfigObj
@@ -223,21 +261,30 @@ class Config(dict):
         return conf
 
     @staticmethod
-    def _load_paths(conf, filename):
-        abs_conf_dir = os.path.abspath(os.path.dirname(filename))
+    def _resolve(conf_dir, path):
+        from .config_schema import ExpPath, RelPath
 
-        def resolve(path):
-            from .config_schema import RelPath
+        if re.match(r"\w+://", path):
+            return path
 
-            if os.path.isabs(path) or re.match(r"\w+://", path):
-                return path
+        if os.path.isabs(path):
+            return path
 
-            # on windows convert slashes to backslashes
-            # to have path compatible with abs_conf_dir
-            if os.path.sep == "\\" and "/" in path:
-                path = path.replace("/", "\\")
+        # on windows convert slashes to backslashes
+        # to have path compatible with abs_conf_dir
+        if os.path.sep == "\\" and "/" in path:
+            path = path.replace("/", "\\")
 
-            return RelPath(os.path.join(abs_conf_dir, path))
+        expanded = os.path.expanduser(path)
+        if os.path.isabs(expanded):
+            return ExpPath(expanded, path)
+
+        return RelPath(os.path.abspath(os.path.join(conf_dir, path)))
+
+    @classmethod
+    def _load_paths(cls, conf, filename):
+        conf_dir = os.path.abspath(os.path.dirname(filename))
+        resolve = partial(cls._resolve, conf_dir)
 
         return Config._map_dirs(conf, resolve)
 
@@ -246,10 +293,16 @@ class Config(dict):
         from dvc.fs import localfs
         from dvc.utils import relpath
 
-        from .config_schema import RelPath
+        from .config_schema import ExpPath, RelPath
 
         if re.match(r"\w+://", path):
             return path
+
+        if isinstance(path, ExpPath):
+            return path.def_path
+
+        if os.path.expanduser(path) != path:
+            return localfs.path.as_posix(path)
 
         if isinstance(path, RelPath) or not os.path.isabs(path):
             path = relpath(path, conf_dir)

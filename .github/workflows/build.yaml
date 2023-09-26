@@ -1,0 +1,92 @@
+name: Build and upload package
+on:
+  push:
+    branches:
+    - main
+  release:
+    types:
+    - published
+  workflow_dispatch:
+
+env:
+  FORCE_COLOR: 1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Verify package
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+
+    - run: python -m pip install --upgrade pip setuptools_scm build twine
+
+    - name: Force version for Test PyPI upload
+      if: ${{ !startsWith(github.ref, 'refs/tags') }}
+      run: echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
+
+    - run: echo 'PKG = "pip"'>dvc/_build.py
+    - run: python -m build
+      env:
+        SETUPTOOLS_SCM_PRETEND_VERSION_FOR_DVC: ${{ env.version }}
+    - run: twine check --strict dist/*
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Packages
+        path: dist/
+
+  test-pypi-publish:
+    name: Publish dev package to test.pypi.org
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ github.event.action == 'published' || (github.repository == 'iterative/dvc' && github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+
+    environment:
+      name: test-pypi
+      url: https://test.pypi.org/p/dvc
+
+    permissions:
+      id-token: write
+
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: Packages
+        path: dist
+
+    - name: Upload package to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        skip-existing: true
+
+  pypi-publish:
+    name: Publish released package to pypi.org
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event.action == 'published'
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dvc
+
+    permissions:
+      id-token: write
+
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: Packages
+        path: dist
+
+    - name: Upload package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1

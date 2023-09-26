@@ -1,14 +1,21 @@
+import re
+
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.refs import EXPS_NAMESPACE, ExpRefInfo
-from dvc.repo.experiments.utils import check_ref_format, resolve_name, to_studio_params
+from dvc.repo.experiments.utils import (
+    check_ref_format,
+    gen_random_name,
+    resolve_name,
+    to_studio_params,
+)
 
 
 def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
     tmp_dir.scm_gen(file, contents, commit="init")
     rev = scm.get_rev()
-    ref = "/".join([EXPS_NAMESPACE, "ab", "c123", name])
+    ref = f"{EXPS_NAMESPACE}/ab/c123/{name}"
     scm.gitpython.set_ref(ref, rev)
     return ref, rev
 
@@ -74,3 +81,7 @@ def test_run_check_ref_format(scm, name, result):
 )
 def test_to_studio_params(params, expected):
     assert to_studio_params(params) == expected
+
+
+def test_gen_random_name():
+    assert re.match("[a-zA-Z]+-[a-zA-Z]+", gen_random_name())

@@ -1,6 +1,7 @@
 import itertools
 import logging
 import os
+from dataclasses import fields
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -10,6 +11,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -21,6 +23,7 @@ from dvc.scm import Git, SCMError, iter_revs
 from .exceptions import InvalidExpRefError
 from .refs import EXEC_BRANCH, ExpRefInfo
 from .serialize import ExpRange, ExpState, SerializableError, SerializableExp
+from .utils import describe
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -151,7 +154,23 @@ def collect_queued(
     """
     if not baseline_revs:
         return {}
-    return repo.experiments.celery_queue.collect_queued_data(baseline_revs, **kwargs)
+    queued_data = {}
+    for rev, ranges in repo.experiments.celery_queue.collect_queued_data(
+        baseline_revs, **kwargs
+    ).items():
+        for exp_range in ranges:
+            for exp_state in exp_range.revs:
+                if exp_state.data:
+                    attrs = [f.name for f in fields(SerializableExp)]
+                    exp_state.data = SerializableExp(
+                        **{
+                            attr: getattr(exp_state.data, attr)
+                            for attr in attrs
+                            if attr != "metrics"
+                        }
+                    )
+        queued_data[rev] = ranges
+    return queued_data
 
 
 def collect_active(
@@ -290,7 +309,9 @@ def collect(
     if sha_only:
         baseline_names: Dict[str, Optional[str]] = {}
     else:
-        baseline_names = _describe(repo.scm, baseline_revs, refs=cached_refs)
+        baseline_names = describe(
+            repo.scm, baseline_revs, refs=cached_refs, logger=logger
+        )
 
     workspace_data = collect_rev(repo, "workspace", **kwargs)
     result: List["ExpState"] = [workspace_data]
@@ -319,62 +340,14 @@ def collect(
     return result
 
 
-def _describe(
-    scm: "Git",
-    revs: Iterable[str],
-    refs: Optional[Iterable[str]] = None,
-) -> Dict[str, Optional[str]]:
-    """Describe revisions using a tag, branch.
-
-    The first matching name will be returned for each rev. Names are preferred in this
-    order:
-        - current branch (if rev matches HEAD and HEAD is a branch)
-        - tags
-        - branches
-
-    Returns:
-        Dict mapping revisions from revs to a name.
-    """
-
-    head_rev = scm.get_rev()
-    head_ref = scm.get_ref("HEAD", follow=False)
-    if head_ref and head_ref.startswith("refs/heads/"):
-        head_branch = head_ref[len("refs/heads/") :]
-    else:
-        head_branch = None
-
-    tags = {}
-    branches = {}
-    ref_it = iter(refs) if refs else scm.iter_refs()
-    for ref in ref_it:
-        is_tag = ref.startswith("refs/tags/")
-        is_branch = ref.startswith("refs/heads/")
-        if not (is_tag or is_branch):
-            continue
-        rev = scm.get_ref(ref)
-        if not rev:
-            logger.debug("unresolved ref %s", ref)
-            continue
-        if is_tag and rev not in tags:
-            tags[rev] = ref[len("refs/tags/") :]
-        if is_branch and rev not in branches:
-            branches[rev] = ref[len("refs/heads/") :]
-    names: Dict[str, Optional[str]] = {}
-    for rev in revs:
-        if rev == head_rev and head_branch:
-            names[rev] = head_branch
-        else:
-            names[rev] = tags.get(rev) or branches.get(rev)
-    return names
-
-
 def _sorted_ranges(exp_ranges: Iterable["ExpRange"]) -> List["ExpRange"]:
-    """Return list of ExpRange sorted by timestamp."""
+    """Return list of ExpRange sorted by (timestamp, rev)."""
 
-    def _head_timestamp(exp_range: "ExpRange") -> datetime:
+    def _head_timestamp(exp_range: "ExpRange") -> Tuple[datetime, str]:
         head_exp = first(exp_range.revs)
         if head_exp and head_exp.data and head_exp.data.timestamp:
-            return head_exp.data.timestamp
-        return datetime.fromtimestamp(0)
+            return head_exp.data.timestamp, head_exp.rev
+
+        return datetime.fromtimestamp(0), ""
 
     return sorted(exp_ranges, key=_head_timestamp, reverse=True)

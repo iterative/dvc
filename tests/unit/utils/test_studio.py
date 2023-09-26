@@ -3,7 +3,23 @@ from urllib.parse import urljoin
 import pytest
 from requests import Response
 
-from dvc.utils.studio import STUDIO_URL, notify_refs
+from dvc.env import (
+    DVC_STUDIO_OFFLINE,
+    DVC_STUDIO_REPO_URL,
+    DVC_STUDIO_TOKEN,
+    DVC_STUDIO_URL,
+)
+from dvc.utils.studio import STUDIO_URL, config_to_env, env_to_config, notify_refs
+
+CONFIG = {"offline": True, "repo_url": "repo_url", "token": "token", "url": "url"}
+
+
+ENV = {
+    DVC_STUDIO_OFFLINE: True,
+    DVC_STUDIO_REPO_URL: "repo_url",
+    DVC_STUDIO_TOKEN: "token",
+    DVC_STUDIO_URL: "url",
+}
 
 
 @pytest.mark.parametrize(
@@ -43,3 +59,11 @@ def test_notify_refs(mocker, status_code, side_effect):
         timeout=5,
         allow_redirects=False,
     )
+
+
+def test_config_to_env():
+    assert config_to_env(CONFIG) == ENV
+
+
+def test_env_to_config():
+    assert env_to_config(ENV) == CONFIG

@@ -1,18 +1,19 @@
 """Manages dvc remotes that user can use with push/pull/status commands."""
 
 import logging
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional, Set, Tuple
 
 from dvc.config import NoRemoteError, RemoteConfigError
+from dvc.fs.callbacks import Callback
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
+from dvc_data.hashfile.transfer import TransferResult
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.status import CompareStatusResult
-    from dvc_data.hashfile.transfer import TransferResult
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +30,40 @@ class Remote:
 
     @cached_property
     def odb(self) -> "HashFileDB":
+        from dvc.cachemgr import CacheManager
         from dvc_data.hashfile.db import get_odb
+        from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
 
         path = self.path
         if self.worktree:
-            path = self.fs.path.join(path, ".dvc", "cache")
+            path = self.fs.path.join(
+                path, ".dvc", CacheManager.FILES_DIR, DEFAULT_ALGORITHM
+            )
+        else:
+            path = self.fs.path.join(path, CacheManager.FILES_DIR, DEFAULT_ALGORITHM)
+        return get_odb(self.fs, path, hash_name=DEFAULT_ALGORITHM, **self.config)
 
-        return get_odb(self.fs, path, hash_name="md5", **self.config)
+    @cached_property
+    def legacy_odb(self) -> "HashFileDB":
+        from dvc_data.hashfile.db import get_odb
+
+        path = self.path
+        return get_odb(self.fs, path, hash_name="md5-dos2unix", **self.config)
+
+
+def _split_legacy_hash_infos(
+    hash_infos: Iterable["HashInfo"],
+) -> Tuple[Set["HashInfo"], Set["HashInfo"]]:
+    from dvc.cachemgr import LEGACY_HASH_NAMES
+
+    legacy = set()
+    default = set()
+    for hi in hash_infos:
+        if hi.name in LEGACY_HASH_NAMES:
+            legacy.add(hi)
+        else:
+            default.add(hi)
+    return legacy, default
 
 
 class DataCloud:
@@ -63,7 +91,7 @@ class DataCloud:
         if name:
             from dvc.fs import get_cloud_fs
 
-            cls, config, fs_path = get_cloud_fs(self.repo, name=name)
+            cls, config, fs_path = get_cloud_fs(self.repo.config, name=name)
 
             if config.get("worktree"):
                 version_aware = config.get("version_aware")
@@ -101,12 +129,17 @@ class DataCloud:
         self,
         name: Optional[str] = None,
         command: str = "<command>",
+        hash_name: str = "md5",
     ) -> "HashFileDB":
+        from dvc.cachemgr import LEGACY_HASH_NAMES
+
         remote = self.get_remote(name=name, command=command)
         if remote.fs.version_aware or remote.worktree:
             raise NoRemoteError(
                 f"'{command}' is unsupported for cloud versioned remotes"
             )
+        if hash_name in LEGACY_HASH_NAMES:
+            return remote.legacy_odb
         return remote.odb
 
     def _log_missing(self, status: "CompareStatusResult"):
@@ -150,16 +183,47 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to push to. Overrides remote.
         """
-        odb = odb or self.get_remote_odb(remote, "push")
-        return self.transfer(
-            self.repo.cache.local,
-            odb,
-            objs,
-            jobs=jobs,
-            dest_index=get_index(odb),
-            cache_odb=self.repo.cache.local,
-            validate_status=self._log_missing,
-        )
+        if odb is not None:
+            return self._push(objs, jobs=jobs, odb=odb)
+        legacy_objs, default_objs = _split_legacy_hash_infos(objs)
+        result = TransferResult(set(), set())
+        if legacy_objs:
+            odb = self.get_remote_odb(remote, "push", hash_name="md5-dos2unix")
+            t, f = self._push(legacy_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        if default_objs:
+            odb = self.get_remote_odb(remote, "push")
+            t, f = self._push(default_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        return result
+
+    def _push(
+        self,
+        objs: Iterable["HashInfo"],
+        *,
+        jobs: Optional[int] = None,
+        odb: "HashFileDB",
+    ) -> "TransferResult":
+        if odb.hash_name == "md5-dos2unix":
+            cache = self.repo.cache.legacy
+        else:
+            cache = self.repo.cache.local
+        with Callback.as_tqdm_callback(
+            desc=f"Pushing to {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            return self.transfer(
+                cache,
+                odb,
+                objs,
+                jobs=jobs,
+                dest_index=get_index(odb),
+                cache_odb=cache,
+                validate_status=self._log_missing,
+                callback=cb,
+            )
 
     def pull(
         self,
@@ -177,17 +241,49 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to pull from. Overrides remote.
         """
-        odb = odb or self.get_remote_odb(remote, "pull")
-        return self.transfer(
-            odb,
-            self.repo.cache.local,
-            objs,
-            jobs=jobs,
-            src_index=get_index(odb),
-            cache_odb=self.repo.cache.local,
-            verify=odb.verify,
-            validate_status=self._log_missing,
-        )
+        if odb is not None:
+            return self._pull(objs, jobs=jobs, odb=odb)
+        legacy_objs, default_objs = _split_legacy_hash_infos(objs)
+        result = TransferResult(set(), set())
+        if legacy_objs:
+            odb = self.get_remote_odb(remote, "pull", hash_name="md5-dos2unix")
+            assert odb.hash_name == "md5-dos2unix"
+            t, f = self._pull(legacy_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        if default_objs:
+            odb = self.get_remote_odb(remote, "pull")
+            t, f = self._pull(default_objs, jobs=jobs, odb=odb)
+            result.transferred.update(t)
+            result.failed.update(f)
+        return result
+
+    def _pull(
+        self,
+        objs: Iterable["HashInfo"],
+        *,
+        jobs: Optional[int] = None,
+        odb: "HashFileDB",
+    ) -> "TransferResult":
+        if odb.hash_name == "md5-dos2unix":
+            cache = self.repo.cache.legacy
+        else:
+            cache = self.repo.cache.local
+        with Callback.as_tqdm_callback(
+            desc=f"Fetching from {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            return self.transfer(
+                odb,
+                cache,
+                objs,
+                jobs=jobs,
+                src_index=get_index(odb),
+                cache_odb=cache,
+                verify=odb.verify,
+                validate_status=self._log_missing,
+                callback=cb,
+            )
 
     def status(
         self,
@@ -206,17 +302,49 @@ class DataCloud:
                 is used.
             odb: optional ODB to check status from. Overrides remote.
         """
+        from dvc_data.hashfile.status import CompareStatusResult
+
+        if odb is not None:
+            return self._status(objs, jobs=jobs, odb=odb)
+        result = CompareStatusResult(set(), set(), set(), set())
+        legacy_objs, default_objs = _split_legacy_hash_infos(objs)
+        if legacy_objs:
+            odb = self.get_remote_odb(remote, "status", hash_name="md5-dos2unix")
+            assert odb.hash_name == "md5-dos2unix"
+            o, m, n, d = self._status(legacy_objs, jobs=jobs, odb=odb)
+            result.ok.update(o)
+            result.missing.update(m)
+            result.new.update(n)
+            result.deleted.update(d)
+        if default_objs:
+            odb = self.get_remote_odb(remote, "status")
+            o, m, n, d = self._status(default_objs, jobs=jobs, odb=odb)
+            result.ok.update(o)
+            result.missing.update(m)
+            result.new.update(n)
+            result.deleted.update(d)
+        return result
+
+    def _status(
+        self,
+        objs: Iterable["HashInfo"],
+        *,
+        jobs: Optional[int] = None,
+        odb: "HashFileDB",
+    ):
         from dvc_data.hashfile.status import compare_status
 
-        if not odb:
-            odb = self.get_remote_odb(remote, "status")
+        if odb.hash_name == "md5-dos2unix":
+            cache = self.repo.cache.legacy
+        else:
+            cache = self.repo.cache.local
         return compare_status(
-            self.repo.cache.local,
+            cache,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
-            cache_odb=self.repo.cache.local,
+            cache_odb=cache,
         )
 
     def get_url_for(self, remote, checksum):

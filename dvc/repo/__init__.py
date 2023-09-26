@@ -8,7 +8,6 @@ from typing import (
     Callable,
     ContextManager,
     Iterable,
-    List,
     Optional,
     Tuple,
     Union,
@@ -16,8 +15,6 @@ from typing import (
 
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
-from dvc.utils import env2bool
-from dvc.utils.fs import path_isin
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -25,12 +22,11 @@ if TYPE_CHECKING:
     from dvc.fs.data import DataFileSystem
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
-    from dvc.machine import MachineManager
     from dvc.scm import Git, NoSCM
     from dvc.stage import Stage
     from dvc.types import DictStrAny
     from dvc_data.hashfile.state import StateBase
-    from dvc_data.index import DataIndex
+    from dvc_data.index import DataIndex, DataIndexEntry
 
     from .experiments import Experiments
     from .index import Index
@@ -94,6 +90,7 @@ class Repo:
     from dvc.repo.status import status  # type: ignore[misc]
     from dvc.repo.update import update  # type: ignore[misc]
 
+    from .cache import check_missing as cache_check_missing  # type: ignore[misc]
     from .data import status as data_status  # type: ignore[misc]
 
     ls = staticmethod(_ls)
@@ -134,7 +131,7 @@ class Repo:
         assert root_dir
         return root_dir, dvc_dir
 
-    def __init__(  # noqa: PLR0915
+    def __init__(  # noqa: PLR0915, PLR0913
         self,
         root_dir: Optional[str] = None,
         fs: Optional["FileSystem"] = None,
@@ -145,9 +142,10 @@ class Repo:
         url: Optional[str] = None,
         repo_factory: Optional[Callable] = None,
         scm: Optional[Union["Git", "NoSCM"]] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
     ):
         from dvc.cachemgr import CacheManager
-        from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
@@ -164,6 +162,9 @@ class Repo:
         self._fs_conf = {"repo_factory": repo_factory}
         self._fs = fs or localfs
         self._scm = scm
+        self._config = config
+        self._remote = remote
+        self._remote_config = remote_config
         self._data_index = None
 
         if rev and not fs:
@@ -183,7 +184,6 @@ class Repo:
             scm=scm,
         )
 
-        self.config: Config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
 
         # used by DVCFileSystem to determine if it should traverse subrepos
@@ -236,6 +236,19 @@ class Repo:
         return self.url or self.root_dir
 
     @cached_property
+    def config(self):
+        from dvc.config import Config
+
+        return Config(
+            self.dvc_dir,
+            local_dvc_dir=self.local_dvc_dir,
+            fs=self.fs,
+            config=self._config,
+            remote=self._remote,
+            remote_config=self._remote_config,
+        )
+
+    @cached_property
     def local_dvc_dir(self):
         from dvc.fs import GitFileSystem, LocalFileSystem
 
@@ -286,7 +299,7 @@ class Repo:
             new.check_graph()
 
     @staticmethod
-    def open(url, *args, **kwargs):  # noqa: A003
+    def open(url: Optional[str], *args, **kwargs) -> "Repo":  # noqa: A003
         from .open_repo import open_repo
 
         return open_repo(url, *args, **kwargs)
@@ -336,16 +349,6 @@ class Repo:
 
         return Experiments(self)
 
-    @cached_property
-    def machine(self) -> Optional["MachineManager"]:
-        from dvc.machine import MachineManager
-
-        if self.tmp_dir and (
-            self.config["feature"].get("machine", False) or env2bool("DVC_TEST")
-        ):
-            return MachineManager(self)
-        return None
-
     @property
     def fs(self) -> "FileSystem":
         return self._fs
@@ -368,6 +371,36 @@ class Repo:
 
         return self._data_index
 
+    def drop_data_index(self) -> None:
+        try:
+            self.data_index.delete_node(("tree",))
+        except KeyError:
+            pass
+        self.data_index.commit()
+        self._reset()
+
+    def get_data_index_entry(
+        self,
+        path: str,
+        workspace: str = "repo",
+    ) -> Tuple["DataIndex", "DataIndexEntry"]:
+        if self.subrepos:
+            fs_path = self.dvcfs.from_os_path(path)
+            fs = self.dvcfs.fs
+            # pylint: disable-next=protected-access
+            key = fs._get_key_from_relative(fs_path)
+            # pylint: disable-next=protected-access
+            subrepo, _, key = fs._get_subrepo_info(key)
+            index = subrepo.index.data[workspace]
+        else:
+            index = self.index.data[workspace]
+            key = self.fs.path.relparts(path, self.root_dir)
+
+        try:
+            return index, index[key]
+        except KeyError as exc:
+            raise OutputNotFoundError(path, self) from exc
+
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
@@ -377,7 +410,7 @@ class Repo:
 
         fs = fs or localfs
         root = root or os.curdir
-        root_dir = fs.path.realpath(root)
+        root_dir = fs.path.abspath(root)
 
         if not fs.isdir(root_dir):
             raise NotDvcRepoError(f"directory '{root}' does not exist")
@@ -421,8 +454,9 @@ class Repo:
         flist = [self.config.files["local"]]
         if tmp_dir := self.tmp_dir:
             flist.append(tmp_dir)
-        if path_isin(self.cache.repo.path, self.root_dir):
-            flist.append(self.cache.repo.path)
+
+        if cache_dir := self.cache.default_local_cache_dir:
+            flist.append(cache_dir)
 
         for file in flist:
             self.scm_context.ignore(file)
@@ -500,12 +534,6 @@ class Repo:
 
         return used
 
-    @property
-    def stages(
-        self,
-    ) -> List["Stage"]:  # obsolete, only for backward-compatibility
-        return self.index.stages
-
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
         # using `outs_graph` to ensure graph checks are run
         outs = outs or self.index.outs_graph
@@ -554,12 +582,11 @@ class Repo:
         import getpass
         import hashlib
 
-        import platformdirs
-
+        from dvc.dirs import site_cache_dir
         from dvc.fs import GitFileSystem
+        from dvc.version import version_tuple
 
-        default = platformdirs.site_cache_dir("dvc", "iterative", opinion=True)
-        cache_dir = self.config["core"].get("site_cache_dir") or default
+        cache_dir = self.config["core"].get("site_cache_dir") or site_cache_dir()
 
         if isinstance(self.fs, GitFileSystem):
             relparts = ()
@@ -578,8 +605,21 @@ class Repo:
         finally:
             os.umask(umask)
 
+        # NOTE: Some number to change the generated token if none of the
+        # components were changed (useful to prevent newer dvc versions from
+        # using older broken cache). Please reset this back to 0 if other parts
+        # of the token components are changed.
+        salt = 0
+
         md5 = hashlib.md5(  # noqa: S324  # nosec B324, B303
-            str((root_dir, getpass.getuser())).encode()
+            str(
+                (
+                    root_dir,
+                    getpass.getuser(),
+                    version_tuple[0],
+                    salt,
+                )
+            ).encode()
         )
         repo_token = md5.hexdigest()
         return os.path.join(repos_dir, repo_token)
@@ -587,16 +627,21 @@ class Repo:
     def close(self):
         self.scm.close()
         self.state.close()
+        if "dvcfs" in self.__dict__:
+            self.dvcfs.close()
         if self._data_index is not None:
             self._data_index.close()
 
     def _reset(self):
         self.scm._reset()  # pylint: disable=protected-access
         self.state.close()
+        if "dvcfs" in self.__dict__:
+            self.dvcfs.close()
         self.__dict__.pop("index", None)
         self.__dict__.pop("dvcignore", None)
         self.__dict__.pop("dvcfs", None)
         self.__dict__.pop("datafs", None)
+        self.__dict__.pop("config", None)
 
     def __enter__(self):
         return self

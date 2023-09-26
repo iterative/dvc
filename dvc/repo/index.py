@@ -19,6 +19,7 @@ from typing import (
 from funcy.debug import format_time
 
 from dvc.fs import LocalFileSystem
+from dvc.fs.callbacks import DEFAULT_CALLBACK
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -26,19 +27,20 @@ if TYPE_CHECKING:
     from pygtrie import Trie
 
     from dvc.dependency import Dependency, ParamsDependency
+    from dvc.fs.callbacks import Callback
     from dvc.output import Output
     from dvc.repo import Repo
     from dvc.repo.stage import StageInfo
     from dvc.stage import Stage
     from dvc.types import TargetType
+    from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.index import DataIndex, DataIndexKey, DataIndexView
-    from dvc_objects.db import ObjectDB
     from dvc_objects.fs.base import FileSystem
 
 
 logger = logging.getLogger(__name__)
-ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]
+ObjectContainer = Dict[Optional["HashFileDB"], Set["HashInfo"]]
 
 
 def log_walk(seq):
@@ -113,13 +115,17 @@ def collect_files(
 
 
 def _load_data_from_outs(index, prefix, outs):
-    from dvc_data.index import DataIndexEntry
+    from dvc_data.index import DataIndexEntry, Meta
 
+    parents = set()
     for out in outs:
         if not out.use_cache:
             continue
 
         ws, key = out.index_key
+
+        for key_len in range(1, len(key)):
+            parents.add((ws, key[:key_len]))
 
         entry = DataIndexEntry(
             key=key,
@@ -130,15 +136,25 @@ def _load_data_from_outs(index, prefix, outs):
         if out.stage.is_import and not out.stage.is_repo_import:
             dep = out.stage.deps[0]
             entry.meta = dep.meta
-            entry.hash_info = dep.hash_info
+            if out.hash_info:
+                entry.hash_info = out.hash_info
+            else:
+                # partial import
+                entry.hash_info = dep.hash_info
 
         # FIXME PyGTrie-based DataIndex doesn't remove entry.key during
         # index.add, so we have to set the entry manually here to make
         # index.view() work correctly.
         index[(*prefix, ws, *key)] = entry
 
+    for ws, key in parents:
+        index[(*prefix, ws, *key)] = DataIndexEntry(
+            key=key, meta=Meta(isdir=True), loaded=True
+        )
+
 
 def _load_storage_from_out(storage_map, key, out):
+    from dvc.cachemgr import LEGACY_HASH_NAMES
     from dvc.config import NoRemoteError
     from dvc_data.index import FileStorage, ObjectStorage
 
@@ -157,13 +173,30 @@ def _load_storage_from_out(storage_map, key, out):
                 )
             )
         else:
-            storage_map.add_remote(ObjectStorage(key, remote.odb, index=remote.index))
+            odb = (
+                remote.legacy_odb if out.hash_name in LEGACY_HASH_NAMES else remote.odb
+            )
+            storage_map.add_remote(ObjectStorage(key, odb, index=remote.index))
     except NoRemoteError:
         pass
 
     if out.stage.is_import:
         dep = out.stage.deps[0]
-        storage_map.add_data(FileStorage(key, dep.fs, dep.fs_path))
+        if not out.hash_info:
+            from fsspec.utils import tokenize
+
+            # partial import
+            fs_cache = out.repo.cache.fs_cache
+            storage_map.add_cache(
+                FileStorage(
+                    key,
+                    fs_cache.fs,
+                    fs_cache.fs.path.join(
+                        fs_cache.path, dep.fs.protocol, tokenize(dep.fs_path)
+                    ),
+                )
+            )
+        storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path))
 
 
 class Index:
@@ -343,6 +376,50 @@ class Index:
         return dict(by_workspace)
 
     @cached_property
+    def metric_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        from .metrics.show import _collect_top_level_metrics
+
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        by_workspace["repo"] = set()
+
+        for out in self.outs:
+            if not out.metric:
+                continue
+
+            workspace, key = out.index_key
+            by_workspace[workspace].add(key)
+
+        for path in _collect_top_level_metrics(self.repo):
+            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            by_workspace["repo"].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
+    def plot_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        by_workspace["repo"] = set()
+
+        for out in self.outs:
+            if not out.plot:
+                continue
+
+            workspace, key = out.index_key
+            by_workspace[workspace].add(key)
+
+        for path in self._plot_sources:
+            key = self.repo.fs.path.parts(path)
+            by_workspace["repo"].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
     def data_tree(self):
         from dvc_data.hashfile.tree import Tree
 
@@ -379,6 +456,9 @@ class Index:
 
         for out in self.outs:
             if not out.use_cache:
+                continue
+
+            if not out.is_in_repo:
                 continue
 
             ws, key = out.index_key
@@ -455,11 +535,31 @@ class Index:
                 used[odb].update(objs)
         return used
 
+    def _types_filter(self, types, out):
+        ws, okey = out.index_key
+        for typ in types:
+            if typ == "plots":
+                keys = self.plot_keys
+            elif typ == "metrics":
+                keys = self.metric_keys
+            else:
+                raise ValueError(f"unsupported type {typ}")
+
+            for key in keys.get(ws, []):
+                if (len(key) >= len(okey) and key[: len(okey)] == okey) or (
+                    len(key) < len(okey) and okey[: len(key)] == key
+                ):
+                    return True
+
+        return False
+
     def targets_view(
         self,
         targets: Optional["TargetType"],
         stage_filter: Optional[Callable[["Stage"], bool]] = None,
         outs_filter: Optional[Callable[["Output"], bool]] = None,
+        max_size: Optional[int] = None,
+        types: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> "IndexView":
         """Return read-only view of index for the specified targets.
@@ -482,7 +582,20 @@ class Index:
             for stage_info in self.collect_targets(targets, **kwargs)
             if not stage_filter or stage_filter(stage_info.stage)
         ]
-        return IndexView(self, stage_infos, outs_filter=outs_filter)
+
+        def _outs_filter(out):
+            if max_size and out.meta and out.meta.size and out.meta.size >= max_size:
+                return False
+
+            if types and not self._types_filter(types, out):
+                return False
+
+            if outs_filter:
+                return outs_filter(out)
+
+            return True
+
+        return IndexView(self, stage_infos, outs_filter=_outs_filter)
 
 
 class _DataPrefixes(NamedTuple):
@@ -534,10 +647,12 @@ class IndexView:
             lambda: _DataPrefixes(set(), set())
         )
         for out, filter_info in self._filtered_outs:
+            if not out.use_cache:
+                continue
             workspace, key = out.index_key
             if filter_info and out.fs.path.isin(filter_info, out.fs_path):
                 key = key + out.fs.path.relparts(filter_info, out.fs_path)
-            entry = self._index.data[workspace][key]
+            entry = self._index.data[workspace].get(key)
             if entry and entry.meta and entry.meta.isdir:
                 prefixes[workspace].recursive.add(key)
             prefixes[workspace].explicit.update(key[:i] for i in range(len(key), 0, -1))
@@ -550,12 +665,32 @@ class IndexView:
         ret: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
         for out, filter_info in self._filtered_outs:
+            if not out.use_cache:
+                continue
+
             workspace, key = out.index_key
             if filter_info and out.fs.path.isin(filter_info, out.fs_path):
                 key = key + out.fs.path.relparts(filter_info, out.fs_path)
             ret[workspace].add(key)
 
         return dict(ret)
+
+    @cached_property
+    def data_tree(self):
+        from dvc_data.hashfile.tree import Tree
+
+        tree = Tree()
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            ws, key = out.index_key
+
+            tree.add((ws, *key), out.meta, out.hash_info)
+
+        tree.digest()
+
+        return tree
 
     @cached_property
     def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
@@ -579,14 +714,15 @@ class IndexView:
         return data
 
 
-def build_data_index(
+def build_data_index(  # noqa: C901
     index: Union["Index", "IndexView"],
     path: str,
     fs: "FileSystem",
     workspace: str = "repo",
     compute_hash: Optional[bool] = False,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> "DataIndex":
-    from dvc_data.index import DataIndex, DataIndexEntry
+    from dvc_data.index import DataIndex, DataIndexEntry, Meta
     from dvc_data.index.build import build_entries, build_entry
     from dvc_data.index.save import build_tree
 
@@ -595,21 +731,31 @@ def build_data_index(
         ignore = index.repo.dvcignore
 
     data = DataIndex()
+    parents = set()
     for key in index.data_keys.get(workspace, set()):
         out_path = fs.path.join(path, *key)
 
+        for key_len in range(1, len(key)):
+            parents.add(key[:key_len])
+
+        if not fs.exists(out_path):
+            continue
+
+        hash_name = _get_entry_hash_name(index, workspace, key)
         try:
             out_entry = build_entry(
                 out_path,
                 fs,
                 compute_hash=compute_hash,
                 state=index.repo.state,
+                hash_name=hash_name,
             )
         except FileNotFoundError:
             out_entry = DataIndexEntry()
 
         out_entry.key = key
         data.add(out_entry)
+        callback.relative_update(1)
 
         if not out_entry.meta or not out_entry.meta.isdir:
             continue
@@ -620,6 +766,7 @@ def build_data_index(
             compute_hash=compute_hash,
             state=index.repo.state,
             ignore=ignore,
+            hash_name=hash_name,
         ):
             if not entry.key or entry.key == ("",):
                 # NOTE: whether the root will be returned by build_entries
@@ -628,12 +775,36 @@ def build_data_index(
 
             entry.key = key + entry.key
             data.add(entry)
+            callback.relative_update(1)
 
         if compute_hash:
-            tree_meta, tree = build_tree(data, key)
+            tree_meta, tree = build_tree(data, key, name=hash_name)
             out_entry.meta = tree_meta
             out_entry.hash_info = tree.hash_info
             out_entry.loaded = True
             data.add(out_entry)
+            callback.relative_update(1)
+
+    for key in parents:
+        parent_path = fs.path.join(path, *key)
+        if not fs.exists(parent_path):
+            continue
+        direntry = DataIndexEntry(key=key, meta=Meta(isdir=True), loaded=True)
+        data.add(direntry)
+        callback.relative_update(1)
 
     return data
+
+
+def _get_entry_hash_name(
+    index: Union["Index", "IndexView"], workspace: str, key: "DataIndexKey"
+) -> str:
+    from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
+
+    try:
+        src_entry = index.data[workspace][key]
+        if src_entry.hash_info and src_entry.hash_info.name:
+            return src_entry.hash_info.name
+    except KeyError:
+        pass
+    return DEFAULT_ALGORITHM

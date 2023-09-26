@@ -1,3 +1,4 @@
+import logging
 import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, DefaultDict, Dict, List, NamedTuple, Optional
@@ -7,7 +8,7 @@ import dpath.options
 from funcy import get_in, last
 
 from dvc.repo.plots import _normpath, infer_data_sources
-from dvc.utils.plots import get_plot_id
+from dvc.utils.plots import group_definitions_by_id
 
 from .convert import _get_converter
 
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
+logger = logging.getLogger(__name__)
 
 
 def _squash_plots_properties(data: List) -> Dict:
@@ -34,14 +36,9 @@ class PlotsData:
     def group_definitions(self):
         groups = defaultdict(list)
         for rev, rev_content in self.data.items():
-            for config_file, config_file_content in (
-                rev_content.get("definitions", {}).get("data", {}).items()
-            ):
-                for plot_id, plot_definition in config_file_content.get(
-                    "data", {}
-                ).items():
-                    full_id = get_plot_id(plot_id, config_file)
-                    groups[full_id].append((rev, plot_id, plot_definition))
+            definitions = rev_content.get("definitions", {}).get("data", {})
+            for plot_id, definition in group_definitions_by_id(definitions).items():
+                groups[plot_id].append((rev, *definition))
         return dict(groups)
 
     def get_definition_data(self, target_files, rev):
@@ -113,6 +110,7 @@ def match_defs_renderers(  # noqa: C901, PLR0912
             try:
                 dps, rev_props = converter.flat_datapoints(rev)
             except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
+                logger.warning("In %r, %s", rev, str(e).lower())
                 def_errors[rev] = e
                 continue
 

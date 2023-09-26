@@ -22,7 +22,6 @@ from typing import (
 from funcy import reraise
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
     from dvc.ui.table import CellT
 
 
@@ -58,7 +57,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return self._columns[name]
 
     def items(self) -> ItemsView[str, Column]:
-        projection = {k: self.column(k) for k in self.keys()}  # noqa: SIM118
+        projection = {k: self.column(k) for k in self.keys()}
         return projection.items()
 
     def keys(self) -> List[str]:
@@ -161,24 +160,6 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             writer.writerow(row)
         return buff.getvalue()
 
-    def to_parallel_coordinates(
-        self, output_path: "StrPath", color_by: Optional[str] = None
-    ) -> "StrPath":
-        from dvc_render.html import render_html
-        from dvc_render.plotly import ParallelCoordinatesRenderer
-
-        render_html(
-            renderers=[
-                ParallelCoordinatesRenderer(
-                    self.as_dict(),
-                    color_by=color_by,
-                    fill_value=self._fill_value,
-                )
-            ],
-            output_file=output_path,
-        )
-        return output_path
-
     def add_column(self, name: str) -> None:
         self._columns[name] = Column([self._fill_value] * len(self))
         self._keys.append(name)
@@ -190,8 +171,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 self.add_column(key)
 
         row: List["CellT"] = [
-            with_value(d.get(key), self._fill_value)
-            for key in self.keys()  # noqa: SIM118
+            with_value(d.get(key), self._fill_value) for key in self.keys()
         ]
         self.append(row)
 
@@ -246,7 +226,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             to_drop -= match_line
 
         if axis == "rows":
-            for name in self.keys():  # noqa: SIM118
+            for name in self.keys():
                 self._columns[name] = Column(
                     [x for n, x in enumerate(self._columns[name]) if n not in to_drop]
                 )
@@ -294,7 +274,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 else:
                     unique_rows.append(tuple_row)
 
-            for name in self.keys():  # noqa: SIM118
+            for name in self.keys():
                 self._columns[name] = Column(
                     [
                         x

@@ -9,6 +9,15 @@ from configobj import ConfigObj
 from funcy import first
 
 from dvc.dvcfile import PROJECT_FILE
+from dvc.env import (
+    DVC_EXP_BASELINE_REV,
+    DVC_EXP_NAME,
+    DVC_ROOT,
+    DVC_STUDIO_OFFLINE,
+    DVC_STUDIO_REPO_URL,
+    DVC_STUDIO_TOKEN,
+    DVC_STUDIO_URL,
+)
 from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
@@ -340,7 +349,8 @@ def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 def test_list(tmp_dir, scm, dvc, exp_stage):
-    baseline_a = scm.get_rev()
+    baseline_old = scm.get_rev()
+
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
     ref_info_a = first(exp_refs_by_rev(scm, exp_a))
@@ -350,28 +360,36 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
     tmp_dir.scm_gen("new", "new", commit="new")
+    baseline_new = scm.get_rev()
+
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
 
-    assert dvc.experiments.ls() == {"master": [ref_info_c.name]}
+    assert dvc.experiments.ls() == {baseline_new: [(ref_info_c.name, exp_c)]}
 
     exp_list = dvc.experiments.ls(rev=ref_info_a.baseline_sha)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a[:7]: {ref_info_a.name, ref_info_b.name}
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)}
+    }
+
+    exp_list = dvc.experiments.ls(rev=[baseline_old, baseline_new])
+    assert {key: set(val) for key, val in exp_list.items()} == {
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
+        baseline_new: {(ref_info_c.name, exp_c)},
     }
 
     exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a[:7]: {ref_info_a.name, ref_info_b.name},
-        "master": {ref_info_c.name},
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
+        baseline_new: {(ref_info_c.name, exp_c)},
     }
 
     scm.checkout("branch", True)
     exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a[:7]: {ref_info_a.name, ref_info_b.name},
-        "branch": {ref_info_c.name},
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
+        baseline_new: {(ref_info_c.name, exp_c)},
     }
 
 
@@ -474,16 +492,6 @@ def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
     assert expected == metrics
 
 
-def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
-    from dvc.cli import main
-
-    mocker.patch.object(dvc.experiments, "run", return_value={"abc123": "abc123"})
-    show_mock = mocker.patch.object(dvc.metrics, "show", return_value={})
-
-    main(["exp", "run", "-m"])
-    assert show_mock.called_once()
-
-
 def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
     from dvc.utils.fs import remove
 
@@ -570,7 +578,11 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target, copy_sc
 def test_exp_run_recursive(tmp_dir, scm, dvc, run_copy_metrics):
     tmp_dir.dvc_gen("metric_t.json", '{"foo": 1}')
     run_copy_metrics(
-        "metric_t.json", "metric.json", metrics=["metric.json"], no_exec=True
+        "metric_t.json",
+        "metric.json",
+        metrics=["metric.json"],
+        no_exec=True,
+        name="copy-metric",
     )
     assert dvc.experiments.run(".", recursive=True)
     assert (tmp_dir / "metric.json").parse() == {"foo": 1}
@@ -606,16 +618,36 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     dump_run_env = dedent(
         """\
         import os
-        from dvc_studio_client.env import STUDIO_REPO_URL
-        from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
-        for v in (DVC_EXP_BASELINE_REV, DVC_EXP_NAME, STUDIO_REPO_URL):
+        from dvc.env import (
+            DVC_EXP_BASELINE_REV,
+            DVC_EXP_NAME,
+            DVC_ROOT,
+            DVC_STUDIO_OFFLINE,
+            DVC_STUDIO_REPO_URL,
+            DVC_STUDIO_TOKEN,
+            DVC_STUDIO_URL
+        )
+        for v in (
+            DVC_EXP_BASELINE_REV,
+            DVC_EXP_NAME,
+            DVC_ROOT,
+            DVC_STUDIO_OFFLINE,
+            DVC_STUDIO_REPO_URL,
+            DVC_STUDIO_TOKEN,
+            DVC_STUDIO_URL
+        ):
             with open(v, "w") as f:
                 f.write(os.environ.get(v, ""))
         """
     )
     mocker.patch(
-        "dvc.repo.experiments.queue.base.get_studio_token_and_repo_url",
-        return_value=("REPO_TOKEN", "REPO_URL"),
+        "dvc.repo.experiments.queue.base.get_studio_config",
+        return_value={
+            "token": "TOKEN",
+            "repo_url": "REPO_URL",
+            "url": "BASE_URL",
+            "offline": "false",
+        },
     )
     (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
     baseline = scm.get_rev()
@@ -624,27 +656,32 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
         name="run_env",
     )
     dvc.experiments.run()
-    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
-    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip()
-    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
+    assert (tmp_dir / DVC_EXP_BASELINE_REV).read_text().strip() == baseline
+    assert (tmp_dir / DVC_EXP_NAME).read_text().strip()
+    assert (tmp_dir / DVC_ROOT).read_text().strip() == dvc.root_dir
+    assert (tmp_dir / DVC_STUDIO_TOKEN).read_text().strip() == "TOKEN"
+    assert (tmp_dir / DVC_STUDIO_REPO_URL).read_text().strip() == "REPO_URL"
+    assert (tmp_dir / DVC_STUDIO_URL).read_text().strip() == "BASE_URL"
+    assert (tmp_dir / DVC_STUDIO_OFFLINE).read_text().strip() == "false"
 
     dvc.experiments.run(name="foo")
-    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
-    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == "foo"
-    assert (tmp_dir / "STUDIO_REPO_URL").read_text().strip() == "REPO_URL"
+    assert (tmp_dir / DVC_EXP_BASELINE_REV).read_text().strip() == baseline
+    assert (tmp_dir / DVC_EXP_NAME).read_text().strip() == "foo"
 
 
 def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing)
     dvc.experiments.run(exp_stage.addressing)
 
-    assert len(dvc.experiments.ls()["master"]) == 2
+    assert len(dvc.experiments.ls()[scm.get_rev()]) == 2
 
 
-def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
+def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage, mocker):
+    repro = mocker.spy(dvc.experiments, "reproduce_one")
     dvc.experiments.run(exp_stage.addressing, dry=True)
 
     assert len(dvc.experiments.ls()["master"]) == 0
+    assert repro.call_args.kwargs["tmp_dir"] is True
 
 
 def test_clean(tmp_dir, scm, dvc, mocker):

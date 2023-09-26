@@ -1,11 +1,11 @@
 from collections import defaultdict
 from typing import DefaultDict
 
-from ._common import *  # noqa, pylint: disable=wildcard-import
-from ._json import *  # noqa, pylint: disable=wildcard-import
-from ._py import *  # noqa, pylint: disable=wildcard-import
-from ._toml import *  # noqa, pylint: disable=wildcard-import
-from ._yaml import *  # noqa, pylint: disable=wildcard-import
+from ._common import *  # noqa: F403, pylint: disable=wildcard-import
+from ._json import *  # noqa: F403, pylint: disable=wildcard-import
+from ._py import *  # noqa: F403, pylint: disable=wildcard-import
+from ._toml import *  # noqa: F403, pylint: disable=wildcard-import
+from ._yaml import *  # noqa: F403, pylint: disable=wildcard-import
 
 LOADERS: DefaultDict[str, LoaderFn] = defaultdict(  # noqa: F405
     lambda: load_yaml  # noqa: F405
@@ -20,10 +20,10 @@ PARSERS.update(
 )
 
 
-def load_path(fs_path, fs):
+def load_path(fs_path, fs, **kwargs):
     suffix = fs.path.suffix(fs_path).lower()
     loader = LOADERS[suffix]
-    return loader(fs_path, fs=fs)
+    return loader(fs_path, fs=fs, **kwargs)
 
 
 DUMPERS: DefaultDict[str, DumperFn] = defaultdict(  # noqa: F405

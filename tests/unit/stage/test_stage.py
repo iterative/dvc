@@ -69,7 +69,7 @@ def test_stage_update(dvc, mocker):
     is_repo_import.return_value = True
     with dvc.lock:
         stage.update()
-    assert reproduce.called_once_with()
+    reproduce.assert_called_once_with(no_download=None, jobs=None)
 
     is_repo_import.return_value = False
     with pytest.raises(StageUpdateError):
@@ -90,10 +90,10 @@ def test_stage_run_ignore_sigint(dvc, mocker):
     popen = mocker.patch.object(subprocess, "Popen", return_value=proc)
     signal_mock = mocker.patch("signal.signal")
 
-    dvc.run(cmd="path", single_stage=True)
+    dvc.run(cmd="path", name="train")
 
-    assert popen.called_once()
-    assert communicate.called_once_with()
+    popen.assert_called_once()
+    communicate.assert_called_once_with()
     signal_mock.assert_any_call(signal.SIGINT, signal.SIG_IGN)
     assert signal.getsignal(signal.SIGINT) == signal.default_int_handler
 
@@ -120,24 +120,8 @@ def test_external_outs(tmp_path_factory, dvc):
     with dvc.config.edit() as conf:
         conf["remote"]["myremote"] = {"url": os.fspath(tmp_path)}
 
-    create_stage(Stage, dvc, "path.dvc", outs=["remote://myremote/foo"])
-    create_stage(Stage, dvc, "path.dvc", outs=[os.fspath(foo)], external=True)
+    with pytest.raises(StageExternalOutputsError):
+        create_stage(Stage, dvc, "path.dvc", outs=["remote://myremote/foo"])
 
-
-def test_env(dvc, mocker):
-    from dvc.env import DVC_ROOT
-    from dvc.exceptions import DvcException
-    from dvc.stage import create_stage
-
-    stage = create_stage(Stage, dvc, "path.dvc", outs=["foo", "bar"])
-
-    mocker.patch.object(stage, "_read_env", return_value={"foo": "foo"})
-    env = stage.env()
-    assert env == {DVC_ROOT: dvc.root_dir, "foo": "foo"}
-
-    def mock_read_env(out, **kwargs):
-        return {"foo": str(out)}
-
-    mocker.patch.object(stage, "_read_env", mock_read_env)
-    with pytest.raises(DvcException, match="Conflicting values for env variable"):
-        _ = stage.env()
+    create_stage(Stage, dvc, "path.dvc", outs_no_cache=["remote://myremote/foo"])
+    create_stage(Stage, dvc, "path.dvc", outs_no_cache=[os.fspath(foo)])

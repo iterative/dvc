@@ -37,11 +37,19 @@ StageSet = Set["Stage"]
 
 
 def _collect_with_deps(stages: StageList, graph: "DiGraph") -> StageSet:
+    from dvc.exceptions import StageNotFoundError
     from dvc.repo.graph import collect_pipeline
 
     res: StageSet = set()
     for stage in stages:
-        res.update(collect_pipeline(stage, graph=graph))
+        pl = list(collect_pipeline(stage, graph=graph))
+        if not pl:
+            raise StageNotFoundError(
+                f"Stage {stage} is not found in the project. "
+                "Check that there are no symlinks in the parents "
+                "leading up to it within the project."
+            )
+        res.update(pl)
     return res
 
 
@@ -122,16 +130,15 @@ class StageLoad:
             force=force,
             **stage_data,
         )
-        with self.repo.scm_context:
-            stage.dump(update_lock=update_lock)
-            try:
-                stage.ignore_outs()
-            except FileNotFoundError as exc:
-                ui.warn(
-                    f"Could not create .gitignore entry in {exc.filename}."
-                    " DVC will attempt to create .gitignore entry again when"
-                    " the stage is run."
-                )
+        stage.dump(update_lock=update_lock)
+        try:
+            stage.ignore_outs()
+        except FileNotFoundError as exc:
+            ui.warn(
+                f"Could not create .gitignore entry in {exc.filename}."
+                " DVC will attempt to create .gitignore entry again when"
+                " the stage is run."
+            )
 
         return stage
 
@@ -212,7 +219,7 @@ class StageLoad:
         self, path: Optional[str] = None, name: Optional[str] = None
     ) -> str:
         if path:
-            return self.repo.fs.path.realpath(path)
+            return self.repo.fs.path.abspath(path)
 
         path = PROJECT_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
@@ -236,7 +243,7 @@ class StageLoad:
     ) -> Iterable[str]:
         if not name:
             return stages.keys()
-        if accept_group and stages.is_foreach_generated(name):
+        if accept_group and stages.is_foreach_or_matrix_generated(name):
             return self._get_group_keys(stages, name)
         if glob:
             return fnmatch.filter(stages.keys(), name)

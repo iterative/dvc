@@ -4,7 +4,6 @@ import logging
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
@@ -14,17 +13,27 @@ class CmdParamsDiff(CmdBase):
     UNINITIALIZED = True
 
     def run(self):
-        try:
-            diff = self.repo.params.diff(
-                a_rev=self.args.a_rev,
-                b_rev=self.args.b_rev,
-                targets=self.args.targets,
-                all=self.args.all,
-                deps=self.args.deps,
+        import os
+        from os.path import relpath
+
+        diff_result = self.repo.params.diff(
+            a_rev=self.args.a_rev,
+            b_rev=self.args.b_rev,
+            targets=self.args.targets,
+            all=self.args.all,
+            deps_only=self.args.deps,
+        )
+
+        errored = [rev for rev, err in diff_result.get("errors", {}).items() if err]
+        if errored:
+            ui.error_write(
+                "DVC failed to load some metrics for following revisions:"
+                f" '{', '.join(errored)}'."
             )
-        except DvcException:
-            logger.exception("failed to show params diff")
-            return 1
+
+        start = relpath(os.getcwd(), self.repo.root_dir)
+        diff = diff_result.get("diff", {})
+        diff = {relpath(path, start): result for path, result in diff.items()}
 
         if self.args.json:
             ui.write_json(diff)
@@ -74,10 +83,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     params_diff_parser.add_argument(
-        "a_rev", nargs="?", help="Old Git commit to compare (defaults to HEAD)"
+        "a_rev",
+        nargs="?",
+        default="HEAD",
+        help="Old Git commit to compare (defaults to HEAD)",
     )
     params_diff_parser.add_argument(
         "b_rev",
+        default="workspace",
         nargs="?",
         help="New Git commit to compare (defaults to the current workspace)",
     )
@@ -105,14 +118,12 @@ def add_parser(subparsers, parent_parser):
     )
     params_diff_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     params_diff_parser.add_argument(
         "--md",
-        "--show-md",
         action="store_true",
         default=False,
         dest="markdown",

@@ -30,6 +30,9 @@ def run(  # noqa: C901, PLR0912
     Returns a dict mapping new experiment SHAs to the results
     of `repro` for that experiment.
     """
+    if kwargs.get("dry"):
+        tmp_dir = True
+
     if run_all:
         return repo.experiments.reproduce_celery(jobs=jobs)
 
@@ -86,9 +89,6 @@ def run(  # noqa: C901, PLR0912
         name_prefix = kwargs.get("name")
     else:
         sweeps = [path_overrides]
-
-    if not kwargs.get("checkpoint_resume", None):
-        kwargs["reset"] = True
 
     for idx, sweep_overrides in enumerate(sweeps):
         if hydra_sweep and name_prefix is not None:

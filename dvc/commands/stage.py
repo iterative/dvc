@@ -1,5 +1,6 @@
 import argparse
 import logging
+from contextlib import contextmanager
 from itertools import chain, filterfalse
 from typing import TYPE_CHECKING, Dict, Iterable, List
 
@@ -119,8 +120,22 @@ def parse_cmd(commands: List[str]) -> str:
     return " ".join(map(quote_argument, commands))
 
 
+@contextmanager
+def _disable_logging(highest_level=logging.CRITICAL):
+    previous_level = logging.root.manager.disable
+
+    logging.disable(highest_level)
+
+    try:
+        yield
+    finally:
+        logging.disable(previous_level)
+
+
 class CmdStageAdd(CmdBase):
     def run(self):
+        from dvc.repo import lock_repo
+
         kwargs = vars(self.args)
         kwargs.update(
             {
@@ -128,7 +143,15 @@ class CmdStageAdd(CmdBase):
                 "params": parse_params(self.args.params),
             }
         )
-        self.repo.stage.add(**kwargs)
+
+        with self.repo.scm_context, lock_repo(self.repo):
+            with _disable_logging(logging.INFO):
+                stage = self.repo.stage.add(**kwargs)
+            logger.info("Added stage %r in %r", stage.addressing, stage.relpath)
+            if self.args.run:
+                stage.run()
+                stage.dump(update_pipeline=False)
+
         return 0
 
 
@@ -172,23 +195,6 @@ def _add_common_args(parser):
         help="Declare output file or directory (do not put into DVC cache).",
         metavar="<filename>",
     ).complete = completion.FILE
-    parser.add_argument(
-        "-c",
-        "--checkpoints",
-        action="append",
-        default=[],
-        help=(
-            "Declare checkpoint output file or directory for 'dvc exp run'. "
-            "Not compatible with 'dvc repro'."
-        ),
-        metavar="<filename>",
-    ).complete = completion.FILE
-    parser.add_argument(
-        "--external",
-        action="store_true",
-        default=False,
-        help="Allow outputs that are outside of the DVC repository.",
-    )
     parser.add_argument(
         "--outs-persist",
         action="append",
@@ -256,6 +262,12 @@ def _add_common_args(parser):
             "User description of the stage (optional). "
             "This doesn't affect any DVC operations."
         ),
+    )
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        default=False,
+        help="Execute the stage after generating it.",
     )
     parser.add_argument(
         "command",

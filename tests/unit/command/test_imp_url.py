@@ -7,18 +7,14 @@ from dvc.commands.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
 
 
-def test_import_url(mocker):
+def test_import_url(mocker, dvc):
     cli_args = parse_args(
         [
             "import-url",
             "src",
             "out",
-            "--file",
-            "file",
             "--jobs",
             "4",
-            "--desc",
-            "description",
         ]
     )
     assert cli_args.func == CmdImportUrl
@@ -31,22 +27,18 @@ def test_import_url(mocker):
     m.assert_called_once_with(
         "src",
         out="out",
-        fname="file",
         no_exec=False,
         no_download=False,
         remote=None,
         to_remote=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=4,
         force=False,
         version_aware=False,
+        fs_config=None,
     )
 
 
-def test_failed_import_url(mocker, caplog):
+def test_failed_import_url(mocker, caplog, dvc):
     cli_args = parse_args(["import-url", "http://somesite.com/file_name"])
     assert cli_args.func == CmdImportUrl
 
@@ -69,17 +61,13 @@ def test_failed_import_url(mocker, caplog):
         ("--no-download", {"no_download": True, "no_exec": False}),
     ],
 )
-def test_import_url_no_exec_download_flags(mocker, flag, expected):
+def test_import_url_no_exec_download_flags(mocker, flag, expected, dvc):
     cli_args = parse_args(
         [
             "import-url",
             flag,
             "src",
             "out",
-            "--file",
-            "file",
-            "--desc",
-            "description",
         ]
     )
 
@@ -91,21 +79,17 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
     m.assert_called_once_with(
         "src",
         out="out",
-        fname="file",
         remote=None,
         to_remote=False,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
         force=False,
         version_aware=False,
+        fs_config=None,
         **expected,
     )
 
 
-def test_import_url_to_remote(mocker):
+def test_import_url_to_remote(mocker, dvc):
     cli_args = parse_args(
         [
             "import-url",
@@ -114,8 +98,6 @@ def test_import_url_to_remote(mocker):
             "--to-remote",
             "--remote",
             "remote",
-            "--desc",
-            "description",
         ]
     )
     assert cli_args.func == CmdImportUrl
@@ -128,18 +110,14 @@ def test_import_url_to_remote(mocker):
     m.assert_called_once_with(
         "s3://bucket/foo",
         out="bar",
-        fname=None,
         no_exec=False,
         no_download=False,
         remote="remote",
         to_remote=True,
-        desc="description",
-        type=None,
-        labels=None,
-        meta=None,
         jobs=None,
         force=False,
         version_aware=False,
+        fs_config=None,
     )
 
 

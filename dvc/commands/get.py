@@ -3,7 +3,7 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,9 @@ class CmdGet(CmdBaseNoRepo):
                 rev=self.args.rev,
                 jobs=self.args.jobs,
                 force=self.args.force,
+                config=self.args.config,
+                remote=self.args.remote,
+                remote_config=self.args.remote_config,
             )
             return 0
         except CloneError:
@@ -101,5 +104,28 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Override local file or folder if exists.",
+    )
+    get_parser.add_argument(
+        "--config",
+        type=str,
+        help=(
+            "Path to a config file that will be merged with the config "
+            "in the target repository."
+        ),
+    )
+    get_parser.add_argument(
+        "--remote",
+        type=str,
+        help="Remote name to set as a default in the target repository.",
+    )
+    get_parser.add_argument(
+        "--remote-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help=(
+            "Remote config options to merge with a remote's config (default or one "
+            "specified by '--remote') in the target repository."
+        ),
     )
     get_parser.set_defaults(func=CmdGet)

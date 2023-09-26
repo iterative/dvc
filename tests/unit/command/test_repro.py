@@ -12,7 +12,9 @@ common_arguments = {
     "recursive": False,
     "force_downstream": False,
     "pull": False,
+    "allow_missing": False,
     "targets": [],
+    "on_error": "fail",
 }
 repro_arguments = {
     "run_cache": True,

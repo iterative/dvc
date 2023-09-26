@@ -1,6 +1,7 @@
+from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from voluptuous import Required
+from voluptuous import Any, Required
 
 from dvc.utils import as_posix
 
@@ -16,16 +17,20 @@ class RepoDependency(Dependency):
     PARAM_URL = "url"
     PARAM_REV = "rev"
     PARAM_REV_LOCK = "rev_lock"
+    PARAM_CONFIG = "config"
+    PARAM_REMOTE = "remote"
 
     REPO_SCHEMA = {
         PARAM_REPO: {
             Required(PARAM_URL): str,
             PARAM_REV: str,
             PARAM_REV_LOCK: str,
+            PARAM_CONFIG: Any(str, dict),
+            PARAM_REMOTE: Any(str, dict),
         }
     }
 
-    def __init__(self, def_repo: Dict[str, str], stage: "Stage", *args, **kwargs):
+    def __init__(self, def_repo: Dict[str, Any], stage: "Stage", *args, **kwargs):
         self.def_repo = def_repo
         super().__init__(stage, *args, **kwargs)
 
@@ -60,7 +65,28 @@ class RepoDependency(Dependency):
             self.def_repo[self.PARAM_REV_LOCK] = rev
 
     def dumpd(self, **kwargs) -> Dict[str, Union[str, Dict[str, str]]]:
-        return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
+        repo = {self.PARAM_URL: self.def_repo[self.PARAM_URL]}
+
+        rev = self.def_repo.get(self.PARAM_REV)
+        if rev:
+            repo[self.PARAM_REV] = self.def_repo[self.PARAM_REV]
+
+        rev_lock = self.def_repo.get(self.PARAM_REV_LOCK)
+        if rev_lock:
+            repo[self.PARAM_REV_LOCK] = rev_lock
+
+        config = self.def_repo.get(self.PARAM_CONFIG)
+        if config:
+            repo[self.PARAM_CONFIG] = config
+
+        remote = self.def_repo.get(self.PARAM_REMOTE)
+        if remote:
+            repo[self.PARAM_REMOTE] = remote
+
+        return {
+            self.PARAM_PATH: self.def_path,
+            self.PARAM_REPO: repo,
+        }
 
     def update(self, rev: Optional[str] = None):
         if rev:
@@ -77,13 +103,33 @@ class RepoDependency(Dependency):
     def _make_fs(
         self, rev: Optional[str] = None, locked: bool = True
     ) -> "DVCFileSystem":
+        from dvc.config import Config
         from dvc.fs import DVCFileSystem
+
+        rem = self.def_repo.get("remote")
+        if isinstance(rem, dict):
+            remote = None
+            remote_config = rem
+        else:
+            remote = rem
+            remote_config = None
+
+        conf = self.def_repo.get("config", {})
+        if isinstance(conf, dict):
+            config = deepcopy(conf)
+        else:
+            config = Config.load_file(conf)
+
+        config["cache"] = self.repo.config["cache"]
+        config["cache"]["dir"] = self.repo.cache.local_cache_dir
 
         return DVCFileSystem(
             url=self.def_repo[self.PARAM_URL],
             rev=rev or self._get_rev(locked=locked),
             subrepos=True,
-            config={"cache": {"dir": self.repo.cache.local.path}},
+            config=config,
+            remote=remote,
+            remote_config=remote_config,
         )
 
     def _get_rev(self, locked: bool = True):

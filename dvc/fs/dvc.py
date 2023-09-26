@@ -5,7 +5,7 @@ import ntpath
 import os
 import posixpath
 import threading
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
@@ -18,7 +18,7 @@ from .data import DataFileSystem
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
-    from dvc.types import StrPath
+    from dvc.types import DictStrAny, StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -38,17 +38,24 @@ def _is_dvc_file(fname):
     return is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
 
 
-def _merge_info(repo, fs_info, dvc_info):
+def _merge_info(repo, key, fs_info, dvc_info):
     from . import utils
 
     ret = {"repo": repo}
 
     if dvc_info:
+        dvc_info["isout"] = any(
+            (len(out_key) <= len(key) and key[: len(out_key)] == out_key)
+            for out_key in repo.index.data_keys["repo"]
+        )
+        dvc_info["isdvc"] = dvc_info["isout"]
         ret["dvc_info"] = dvc_info
         ret["type"] = dvc_info["type"]
         ret["size"] = dvc_info["size"]
         if not fs_info and "md5" in dvc_info:
             ret["md5"] = dvc_info["md5"]
+        if not fs_info and "md5-dos2unix" in dvc_info:
+            ret["md5-dos2unix"] = dvc_info["md5-dos2unix"]
 
     if fs_info:
         ret["type"] = fs_info["type"]
@@ -69,14 +76,22 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     cachable = False
     root_marker = "/"
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         url: Optional[str] = None,
         rev: Optional[str] = None,
         repo: Optional["Repo"] = None,
         subrepos: bool = False,
         repo_factory: Optional[RepoFactory] = None,
-        **repo_kwargs: Any,
+        fo: Optional[str] = None,
+        # pylint:disable-next=unused-argument
+        target_options: Optional[Dict[str, Any]] = None,  # noqa: ARG002
+        # pylint:disable-next=unused-argument
+        target_protocol: Optional[str] = None,  # noqa: ARG002
+        config: Optional["DictStrAny"] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
+        **kwargs,
     ) -> None:
         """DVC + git-tracked files fs.
 
@@ -96,6 +111,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 By default, it ignores subrepos.
             repo_factory (callable): A function to initialize subrepo with.
                 The default is `Repo`.
+            config (dict): Repo config to be passed into `repo_factory`.
+            remote (str): Remote name to be passed into `repo_factory`.
+            remote_config(dict): Remote config to be passed into `repo_factory`.
 
         Examples:
             - Opening a filesystem from repo in current working directory
@@ -116,11 +134,21 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         from pygtrie import Trie
 
         super().__init__()
+        self._repo_stack = ExitStack()
         if repo is None:
-            repo = self._make_repo(url=url, rev=rev, subrepos=subrepos, **repo_kwargs)
+            url = url if url is not None else fo
+            repo = self._make_repo(
+                url=url,
+                rev=rev,
+                subrepos=subrepos,
+                config=config,
+                remote=remote,
+                remote_config=remote_config,
+            )
             assert repo is not None
             # pylint: disable=protected-access
             repo_factory = repo._fs_conf["repo_factory"]
+            self._repo_stack.enter_context(repo)
 
         if not repo_factory:
             from dvc.repo import Repo
@@ -130,7 +158,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self.repo_factory = repo_factory
 
         def _getcwd():
-            relparts = ()
+            relparts: Tuple[str, ...] = ()
             assert repo is not None
             if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
                 relparts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.root_dir)
@@ -153,13 +181,26 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
+    @functools.cached_property
+    def fsid(self) -> str:
+        from fsspec.utils import tokenize
+
+        from dvc.scm import NoSCM
+
+        return "dvcfs_" + tokenize(
+            self.repo.url or self.repo.root_dir,
+            self.repo.get_rev() if not isinstance(self.repo.scm, NoSCM) else None,
+        )
+
     def _get_key(self, path: "StrPath") -> Key:
+        path = os.fspath(path)
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
         if parts == (os.curdir,):
             return ()
         return parts
 
     def _get_key_from_relative(self, path) -> Key:
+        path = self._strip_protocol(path)
         parts = self.path.relparts(path, self.root_marker)
         if parts and parts[0] == os.curdir:
             return parts[1:]
@@ -209,6 +250,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                     scm=self.repo.scm,
                     repo_factory=self.repo_factory,
                 )
+                self._repo_stack.enter_context(repo)
                 self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
             self._subrepos_trie[key] = repo
 
@@ -251,22 +293,19 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         try:
             return self.repo.fs.open(fs_path, mode=mode)
         except FileNotFoundError:
-            repo, dvc_fs, subkey = self._get_subrepo_info(key)
+            _, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
-        kw = {}
-        if kwargs.get("cache_remote_stream", False):
-            kw["cache_odb"] = repo.cache.local
-        return dvc_fs.open(dvc_path, mode=mode, **kw)
+        return dvc_fs.open(dvc_path, mode=mode, cache=kwargs.get("cache", False))
 
     def isdvc(self, path, **kwargs) -> bool:
         """Is this entry dvc-tracked?"""
-        key = self._get_key_from_relative(path)
-        _, dvc_fs, subkey = self._get_subrepo_info(key)
-        dvc_path = _get_dvc_path(dvc_fs, subkey)
-        return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
+        try:
+            return self.info(path).get("dvc_info", {}).get("isout", False)
+        except FileNotFoundError:
+            return False
 
     def ls(  # pylint: disable=arguments-differ # noqa: C901
         self, path, detail=True, dvc_only=False, **kwargs
@@ -278,7 +317,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_infos = {}
         if dvc_fs:
             dvc_path = _get_dvc_path(dvc_fs, subkey)
-            with suppress(FileNotFoundError):
+            with suppress(FileNotFoundError, NotADirectoryError):
                 for info in dvc_fs.ls(dvc_path, detail=True):
                     dvc_infos[dvc_fs.path.name(info["name"])] = info
             dvc_exists = bool(dvc_infos) or dvc_fs.exists(dvc_path)
@@ -314,7 +353,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 continue
 
             entry_path = self.path.join(path, name)
-            info = _merge_info(repo, fs_infos.get(name), dvc_infos.get(name))
+            info = _merge_info(
+                repo, (*subkey, name), fs_infos.get(name), dvc_infos.get(name)
+            )
             info["name"] = entry_path
             infos.append(info)
             paths.append(entry_path)
@@ -340,7 +381,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 dvc_info = dvc_fs.fs.index.info(subkey)
                 dvc_path = _get_dvc_path(dvc_fs, subkey)
                 dvc_info["name"] = dvc_path
-            except FileNotFoundError:
+            except KeyError:
                 pass
 
         fs_info = None
@@ -370,7 +411,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if not dvc_info and not fs_info:
             raise FileNotFoundError
 
-        info = _merge_info(repo, fs_info, dvc_info)
+        info = _merge_info(repo, subkey, fs_info, dvc_info)
         info["name"] = path
         return info
 
@@ -387,6 +428,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs.get_file(dvc_path, lpath, **kwargs)
 
+    def close(self):
+        self._repo_stack.close()
+
 
 class DVCFileSystem(FileSystem):
     protocol = "local"
@@ -397,8 +441,12 @@ class DVCFileSystem(FileSystem):
 
     @functools.cached_property
     # pylint: disable-next=invalid-overridden-method
-    def fs(self) -> "DVCFileSystem":
+    def fs(self) -> "_DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
+
+    @property
+    def fsid(self) -> str:
+        return self.fs.fsid
 
     def isdvc(self, path, **kwargs) -> bool:
         return self.fs.isdvc(path, **kwargs)
@@ -420,3 +468,7 @@ class DVCFileSystem(FileSystem):
             path = os.path.relpath(path, self.repo.root_dir)
 
         return as_posix(path)
+
+    def close(self):
+        if "fs" in self.__dict__:
+            self.fs.close()

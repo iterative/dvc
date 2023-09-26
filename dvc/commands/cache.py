@@ -2,6 +2,7 @@ import argparse
 import os
 
 from dvc.cli import completion
+from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.commands.config import CmdConfig
 from dvc.ui import ui
@@ -36,6 +37,14 @@ class CmdCacheDir(CmdConfig):
         return 0
 
 
+class CmdCacheMigrate(CmdBase):
+    def run(self):
+        from dvc.cachemgr import migrate_2_to_3
+
+        migrate_2_to_3(self.repo, dry=self.args.dry)
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     from dvc.commands.config import parent_config_parser
 
@@ -53,8 +62,6 @@ def add_parser(subparsers, parent_parser):
         dest="cmd",
         help="Use `dvc cache CMD --help` for command-specific help.",
     )
-
-    fix_subparsers(cache_subparsers)
 
     parent_cache_config_parser = argparse.ArgumentParser(
         add_help=False, parents=[parent_config_parser]
@@ -86,3 +93,23 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
     ).complete = completion.DIR
     cache_dir_parser.set_defaults(func=CmdCacheDir)
+
+    CACHE_MIGRATE_HELP = "Migrate cached files to the DVC 3.0 cache location."
+    cache_migrate_parser = cache_subparsers.add_parser(
+        "migrate",
+        parents=[parent_parser],
+        description=append_doc_link(CACHE_HELP, "cache/migrate"),
+        help=CACHE_MIGRATE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    cache_migrate_parser.add_argument(
+        "--dry",
+        help=(
+            "Only print actions which would be taken without actually migrating "
+            "any data."
+        ),
+        action="store_true",
+    )
+    cache_migrate_parser.set_defaults(func=CmdCacheMigrate)
+
+    fix_subparsers(cache_subparsers)

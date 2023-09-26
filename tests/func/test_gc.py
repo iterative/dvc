@@ -196,11 +196,7 @@ def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, local_remote):
         assert main(["gc", "-vf", flag]) == 0
 
 
-def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
+def test_gc_cloud_remove_order(tmp_dir, scm, dvc, mocker, local_remote):
     (standalone, dir1, dir2) = tmp_dir.dvc_gen(
         {
             "file1": "standalone",
@@ -251,26 +247,6 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
     assert _count_files(dvc.cache.local.path) == 0
 
 
-def test_gc_external_output(tmp_dir, dvc, workspace):
-    workspace.gen({"foo": "foo", "bar": "bar"})
-
-    (foo_stage,) = dvc.add("remote://workspace/foo")
-    (bar_stage,) = dvc.add("remote://workspace/bar")
-
-    foo_hash = foo_stage.outs[0].hash_info.value
-    bar_hash = bar_stage.outs[0].hash_info.value
-
-    assert (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).read_text() == "foo"
-    assert (workspace / "cache" / bar_hash[:2] / bar_hash[2:]).read_text() == "bar"
-
-    (tmp_dir / "foo.dvc").unlink()
-
-    dvc.gc(workspace=True)
-
-    assert not (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
-    assert (workspace / "cache" / bar_hash[:2] / bar_hash[2:]).read_text() == "bar"
-
-
 def test_gc_all_experiments(tmp_dir, scm, dvc):
     from dvc.repo.experiments.refs import ExpRefInfo
 
@@ -288,9 +264,11 @@ def test_gc_all_experiments(tmp_dir, scm, dvc):
 
     dvc.gc(all_experiments=True, force=True)
 
-    assert not (tmp_dir / ".dvc" / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
+    assert not (
+        tmp_dir / ".dvc" / "cache" / "files" / "md5" / foo_hash[:2] / foo_hash[2:]
+    ).exists()
     assert (
-        tmp_dir / ".dvc" / "cache" / baz_hash[:2] / baz_hash[2:]
+        tmp_dir / ".dvc" / "cache" / "files" / "md5" / baz_hash[:2] / baz_hash[2:]
     ).read_text() == "baz"
 
 
@@ -306,7 +284,9 @@ def test_gc_rev_num(tmp_dir, scm, dvc):
     dvc.gc(rev="HEAD", num=num, force=True)
 
     for n, i in enumerate(reversed(range(4))):
-        cache = tmp_dir / ".dvc" / "cache" / hashes[i][:2] / hashes[i][2:]
+        cache = (
+            tmp_dir / ".dvc" / "cache" / "files" / "md5" / hashes[i][:2] / hashes[i][2:]
+        )
         if n >= num:
             assert not cache.exists()
         else:
@@ -337,11 +317,7 @@ def test_date(tmp_dir, scm, dvc):
     )  # "modified, again"
 
 
-def test_gc_not_in_remote(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
+def test_gc_not_in_remote(tmp_dir, scm, dvc, mocker, local_remote):
     (standalone, dir1, dir2) = tmp_dir.dvc_gen(
         {
             "file1": "standalone",
@@ -374,12 +350,9 @@ def test_gc_not_in_remote(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     )
 
 
-def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     tmp_dir.dvc_gen(
         {
@@ -401,21 +374,16 @@ def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker
     assert len(mocked_remove.mock_calls) == 3
 
 
-def test_gc_not_in_remote_with_remote_field(
-    tmp_dir, scm, dvc, tmp_path_factory, mocker
-):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_not_in_remote_with_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     text = textwrap.dedent(
         """\
         outs:
         - path: foo
           remote: other_remote
+          hash: md5
     """
     )
     tmp_dir.gen("foo.dvc", text)
@@ -435,18 +403,16 @@ def test_gc_not_in_remote_cloud(tmp_dir, scm, dvc):
         dvc.gc(workspace=True, not_in_remote=True, cloud=True)
 
 
-def test_gc_cloud_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_cloud_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     text = textwrap.dedent(
         """\
         outs:
         - path: foo
           remote: other_remote
+          hash: md5
     """
     )
     tmp_dir.gen("foo.dvc", text)

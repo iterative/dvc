@@ -3,7 +3,7 @@ import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -18,15 +18,14 @@ class CmdImport(CmdBase):
                 self.args.url,
                 self.args.path,
                 out=self.args.out,
-                fname=self.args.file,
                 rev=self.args.rev,
                 no_exec=self.args.no_exec,
                 no_download=self.args.no_download,
-                desc=self.args.desc,
-                type=self.args.type,
-                labels=self.args.labels,
-                meta=self.args.meta,
                 jobs=self.args.jobs,
+                config=self.args.config,
+                remote=self.args.remote,
+                remote_config=self.args.remote_config,
+                force=self.args.force,
             )
         except CloneError:
             logger.exception("failed to import '%s'", self.args.path)
@@ -42,8 +41,6 @@ class CmdImport(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    from .add import _add_annotating_args
-
     IMPORT_HELP = (
         "Download file or directory tracked by DVC or by Git "
         "into the workspace, and track it."
@@ -70,15 +67,17 @@ def add_parser(subparsers, parent_parser):
         metavar="<path>",
     ).complete = completion.DIR
     import_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Override destination file or folder if exists.",
+    )
+    import_parser.add_argument(
         "--rev",
         nargs="?",
         help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
-    )
-    import_parser.add_argument(
-        "--file",
-        help="Specify name of the .dvc file this command will generate.",
-        metavar="<filename>",
     )
     no_download_exec_group = import_parser.add_mutually_exclusive_group()
     no_download_exec_group.add_argument(
@@ -106,6 +105,27 @@ def add_parser(subparsers, parent_parser):
         ),
         metavar="<number>",
     )
-
-    _add_annotating_args(import_parser)
+    import_parser.add_argument(
+        "--config",
+        type=str,
+        help=(
+            "Path to a config file that will be merged with the config "
+            "in the target repository."
+        ),
+    )
+    import_parser.add_argument(
+        "--remote",
+        type=str,
+        help="Remote name to set as a default in the target repository.",
+    )
+    import_parser.add_argument(
+        "--remote-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help=(
+            "Remote config options to merge with a remote's config (default or one "
+            "specified by '--remote') in the target repository."
+        ),
+    )
     import_parser.set_defaults(func=CmdImport)

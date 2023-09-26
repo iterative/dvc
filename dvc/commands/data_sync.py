@@ -91,6 +91,8 @@ class CmdDataFetch(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
+                max_size=self.args.max_size,
+                types=self.args.types,
             )
             self.log_summary({"fetched": processed_files_count})
         except DvcException:
@@ -322,6 +324,22 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help="Fetch run history for all stages.",
     )
+    fetch_parser.add_argument(
+        "--max-size",
+        type=int,
+        help="Fetch data files/directories that are each below specified size (bytes).",
+    )
+    fetch_parser.add_argument(
+        "--type",
+        dest="types",
+        action="append",
+        default=[],
+        help=(
+            "Only fetch data files/directories that are of a particular "
+            "type (metrics, plots)."
+        ),
+        choices=["metrics", "plots"],
+    )
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
@@ -403,7 +421,6 @@ def add_parser(subparsers, _parent_parser):
     )
     status_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show status in JSON format.",

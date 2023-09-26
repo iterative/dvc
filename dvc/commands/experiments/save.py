@@ -27,10 +27,6 @@ class CmdExperimentsSave(CmdBase):
         else:
             name = self.repo.experiments.get_exact_name([ref])[ref]
             ui.write(f"Experiment has been saved as: {name}")
-            ui.write(
-                "\nTo promote an experiment to a Git branch run:\n\n"
-                "\tdvc exp branch <exp> <branch>\n"
-            )
 
         return 0
 
@@ -53,7 +49,6 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     save_parser.add_argument(
         "--json",
-        "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",

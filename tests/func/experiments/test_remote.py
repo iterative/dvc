@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from funcy import first
 
@@ -37,6 +35,9 @@ def test_push(tmp_dir, scm, dvc, git_upstream, exp_stage, use_url):
     dvc.experiments.push(remote, [ref_info1.name])
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
 
+    dvc.experiments.push(remote)
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info3)) == exp3
+
 
 @pytest.mark.parametrize("all_,rev,result3", [(True, False, True), (False, True, None)])
 def test_push_args(tmp_dir, scm, dvc, git_upstream, exp_stage, all_, rev, result3):
@@ -66,6 +67,29 @@ def test_push_args(tmp_dir, scm, dvc, git_upstream, exp_stage, all_, rev, result
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info3)) == result3
 
 
+def test_push_multi_rev(tmp_dir, scm, dvc, git_upstream, exp_stage):
+    remote = git_upstream.url
+    baseline = scm.get_rev()
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    exp1 = first(results)
+    ref_info1 = first(exp_refs_by_rev(scm, exp1))
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp2 = first(results)
+    ref_info2 = first(exp_refs_by_rev(scm, exp2))
+
+    scm.commit("new_baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp3 = first(results)
+    ref_info3 = first(exp_refs_by_rev(scm, exp3))
+
+    dvc.experiments.push(remote, [], rev=[baseline, scm.get_rev()])
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info2)) == exp2
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info3)) == exp3
+
+
 def test_push_diverged(tmp_dir, scm, dvc, git_upstream, exp_stage):
     git_upstream.tmp_dir.scm_gen("foo", "foo", commit="init")
     remote_rev = git_upstream.tmp_dir.scm.get_rev()
@@ -85,24 +109,6 @@ def test_push_diverged(tmp_dir, scm, dvc, git_upstream, exp_stage):
 
     dvc.experiments.push(git_upstream.remote, [ref_info.name], force=True)
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info)) == exp
-
-
-def test_push_checkpoint(tmp_dir, scm, dvc, git_upstream, checkpoint_stage):
-    results = dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
-    exp_a = first(results)
-    ref_info_a = first(exp_refs_by_rev(scm, exp_a))
-
-    dvc.experiments.push(git_upstream.remote, [ref_info_a.name], force=True)
-    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_a)) == exp_a
-
-    results = dvc.experiments.run(checkpoint_stage.addressing, checkpoint_resume=exp_a)
-    exp_b = first(results)
-    ref_info_b = first(exp_refs_by_rev(scm, exp_b))
-
-    tmp_dir.scm_gen("new", "new", commit="new")
-
-    dvc.experiments.push(git_upstream.remote, [ref_info_b.name], force=True)
-    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info_b)) == exp_b
 
 
 def test_push_ambiguous_name(tmp_dir, scm, dvc, git_upstream, exp_stage):
@@ -133,7 +139,7 @@ def test_push_ambiguous_name(tmp_dir, scm, dvc, git_upstream, exp_stage):
 
 @pytest.mark.parametrize("use_url", [True, False])
 def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
-    baseline_a = scm.get_rev()
+    baseline_old = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
     ref_info_a = first(exp_refs_by_rev(scm, exp_a))
@@ -143,6 +149,8 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
     tmp_dir.scm_gen("new", "new", commit="new")
+    baseline_new = scm.get_rev()
+
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
@@ -154,21 +162,26 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     assert downstream_exp.ls(git_remote=remote) == {}
 
     git_downstream.tmp_dir.scm.fetch_refspecs(remote, ["master:master"])
-    exp_list = downstream_exp.ls(rev=baseline_a, git_remote=remote)
+    exp_list = downstream_exp.ls(rev=baseline_old, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a[:7]: {ref_info_a.name, ref_info_b.name}
+        baseline_old: {(ref_info_a.name, None), (ref_info_b.name, None)}
     }
 
     exp_list = downstream_exp.ls(all_commits=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a[:7]: {ref_info_a.name, ref_info_b.name},
-        "master": {ref_info_c.name},
+        baseline_old: {(ref_info_a.name, None), (ref_info_b.name, None)},
+        baseline_new: {(ref_info_c.name, None)},
     }
 
 
 @pytest.mark.parametrize("use_url", [True, False])
 def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     from dvc.exceptions import InvalidArgumentError
+
+    # fetch and checkout to downstream so both repos start from same commit
+    downstream_repo = git_downstream.tmp_dir.scm.gitpython.repo
+    fetched = downstream_repo.remote(git_downstream.remote).fetch()
+    downstream_repo.git.checkout(fetched)
 
     remote = git_downstream.url if use_url else git_downstream.remote
     downstream_exp = git_downstream.tmp_dir.dvc.experiments
@@ -196,6 +209,9 @@ def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 
     downstream_exp.pull(remote, [str(ref_info1)])
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+
+    downstream_exp.pull(remote)
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info3)) == exp3
 
 
 @pytest.mark.parametrize("all_,rev,result3", [(True, False, True), (False, True, None)])
@@ -228,6 +244,30 @@ def test_pull_args(tmp_dir, scm, dvc, git_downstream, exp_stage, all_, rev, resu
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info3)) == result3
 
 
+def test_pull_multi_rev(tmp_dir, scm, dvc, git_downstream, exp_stage):
+    baseline = scm.get_rev()
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    exp1 = first(results)
+    ref_info1 = first(exp_refs_by_rev(scm, exp1))
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp2 = first(results)
+    ref_info2 = first(exp_refs_by_rev(scm, exp2))
+
+    scm.commit("new_baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp3 = first(results)
+    ref_info3 = first(exp_refs_by_rev(scm, exp3))
+
+    downstream_exp = git_downstream.tmp_dir.dvc.experiments
+    git_downstream.tmp_dir.scm.fetch_refspecs(str(tmp_dir), ["master:master"])
+    downstream_exp.pull(git_downstream.remote, [], rev=[baseline, scm.get_rev()])
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info2)) == exp2
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info3)) == exp3
+
+
 def test_pull_diverged(tmp_dir, scm, dvc, git_downstream, exp_stage):
     git_downstream.tmp_dir.scm_gen("foo", "foo", commit="init")
     remote_rev = git_downstream.tmp_dir.scm.get_rev()
@@ -244,23 +284,6 @@ def test_pull_diverged(tmp_dir, scm, dvc, git_downstream, exp_stage):
 
     downstream_exp.pull(git_downstream.remote, ref_info.name, force=True)
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info)) == exp
-
-
-def test_pull_checkpoint(tmp_dir, scm, dvc, git_downstream, checkpoint_stage):
-    results = dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
-    exp_a = first(results)
-    ref_info_a = first(exp_refs_by_rev(scm, exp_a))
-
-    downstream_exp = git_downstream.tmp_dir.dvc.experiments
-    downstream_exp.pull(git_downstream.remote, [ref_info_a.name], force=True)
-    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info_a)) == exp_a
-
-    results = dvc.experiments.run(checkpoint_stage.addressing, checkpoint_resume=exp_a)
-    exp_b = first(results)
-    ref_info_b = first(exp_refs_by_rev(scm, exp_b))
-
-    downstream_exp.pull(git_downstream.remote, [ref_info_b.name], force=True)
-    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info_b)) == exp_b
 
 
 def test_pull_ambiguous_name(tmp_dir, scm, dvc, git_downstream, exp_stage):
@@ -286,36 +309,6 @@ def test_pull_ambiguous_name(tmp_dir, scm, dvc, git_downstream, exp_stage):
     with git_downstream.tmp_dir.scm.detach_head(ref_info_a.baseline_sha):
         downstream_exp.pull(remote, ["foo"])
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info_a)) == exp_a
-
-
-def test_push_pull_cache(
-    tmp_dir, scm, dvc, git_upstream, checkpoint_stage, local_remote
-):
-    from dvc.utils.fs import remove
-    from tests.func.test_diff import digest
-
-    remote = git_upstream.remote
-    results = dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
-    exp = first(results)
-    ref_info = first(exp_refs_by_rev(scm, exp))
-
-    dvc.experiments.push(remote, [ref_info.name], push_cache=True)
-    for x in range(2, checkpoint_stage.iterations + 1):
-        hash_ = digest(str(x))
-        path = os.path.join(local_remote.url, hash_[:2], hash_[2:])
-        assert os.path.exists(path)
-        with open(path, encoding="utf-8") as f:
-            assert f.read() == str(x)
-
-    remove(dvc.cache.local.path)
-
-    dvc.experiments.pull(remote, [ref_info.name], pull_cache=True)
-    for x in range(2, checkpoint_stage.iterations + 1):
-        hash_ = digest(str(x))
-        path = os.path.join(dvc.cache.local.path, hash_[:2], hash_[2:])
-        assert os.path.exists(path)
-        with open(path, encoding="utf-8") as f:
-            assert f.read() == str(x)
 
 
 def test_auth_error_list(tmp_dir, scm, dvc, http_auth_patch):

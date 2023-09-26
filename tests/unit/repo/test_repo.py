@@ -82,23 +82,21 @@ def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
     # sanity check
     tmp_dir.gen("foo", "foo text")
     dvc.add("foo")
-    run_copy("foo", "bar", single_stage=True)
+    run_copy("foo", "bar", name="copy-foo-bar")
     assert mock_build_graph.called
 
     # check that our hack can be enabled
     mock_build_graph.reset_mock()
     dvc._skip_graph_checks = True
     tmp_dir.gen("baz", "baz text")
-    dvc.add("baz")
-    run_copy("baz", "qux", single_stage=True)
+    run_copy("baz", "qux", name="copy-baz-qux")
     assert not mock_build_graph.called
 
     # check that our hack can be disabled
     mock_build_graph.reset_mock()
     dvc._skip_graph_checks = False
     tmp_dir.gen("quux", "quux text")
-    dvc.add("quux")
-    run_copy("quux", "quuz", single_stage=True)
+    run_copy("quux", "quuz", name="copy-quux-quuz")
     assert mock_build_graph.called
 
 

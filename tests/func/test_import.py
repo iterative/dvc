@@ -4,7 +4,6 @@ import os
 import pytest
 from funcy import first
 
-from dvc.annotations import Annotation
 from dvc.cachemgr import CacheManager
 from dvc.config import NoRemoteError
 from dvc.dvcfile import load_file
@@ -13,6 +12,7 @@ from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
+from dvc_data.index.index import DataIndexDirError
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -97,6 +97,19 @@ def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
     }
 
 
+def test_import_broken_dir(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
+        erepo_dir.dvc.cache.local.clear()
+        remove(erepo_dir / "dir")
+
+    with pytest.raises(DataIndexDirError):
+        dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
+
+    assert not (tmp_dir / "dir_imported").exists()
+    assert not (tmp_dir / "dir_imported.dvc").exists()
+
+
 def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(
@@ -161,7 +174,9 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
 
     with erepo_dir.chdir():
         erepo_dir.dvc.run(
-            cmd=f"echo hello > {src}", outs_no_cache=[src], single_stage=True
+            cmd=f"echo hello > {src}",
+            outs_no_cache=[src],
+            name="gen",
         )
 
     erepo_dir.scm_add([os.fspath(erepo_dir / src)], commit="add a non-cached out")
@@ -240,13 +255,18 @@ def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
 
     dvc.pull(["foo_imported.dvc"])
-    assert (tmp_dir / "foo_imported").exists
+    assert (tmp_dir / "foo_imported").exists()
     assert (tmp_dir / "foo_imported" / "bar").read_bytes() == b"bar"
     assert (tmp_dir / "foo_imported" / "baz").read_bytes() == b"baz contents"
 
-    stage = load_file(dvc, "foo_imported.dvc").stage
+    dvc.commit(force=True)
 
-    assert stage.outs[0].hash_info.value == "bdb8641831d8fcb03939637e09011c21.dir"
+    stage = load_file(dvc, "foo_imported.dvc").stage
+    if os.name == "nt":
+        expected_hash = "2e798234df5f782340ac3ce046f8dfae.dir"
+    else:
+        expected_hash = "bdb8641831d8fcb03939637e09011c21.dir"
+    assert stage.outs[0].hash_info.value == expected_hash
 
     assert stage.outs[0].meta.size == size
     assert stage.outs[0].meta.nfiles == 3
@@ -340,7 +360,8 @@ def test_push_wildcard_from_bare_git_repo(
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
 
-        dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
+        with pytest.raises(DataIndexDirError):
+            dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
@@ -639,22 +660,73 @@ def test_parameterized_repo(tmp_dir, dvc, scm, erepo_dir, paths):
     }
 
 
-def test_import_with_annotations(M, tmp_dir, scm, dvc, erepo_dir):
+@pytest.mark.parametrize(
+    "options, def_repo",
+    [
+        ({"config": "myconfig"}, {"config": "myconfig"}),
+        ({"remote": "myremote"}, {"remote": "myremote"}),
+        ({"remote_config": {"key": "value"}}, {"remote": {"key": "value"}}),
+        (
+            {
+                "remote": "myremote",
+                "remote_config": {"key": "value"},
+            },
+            {
+                "config": {
+                    "core": {"remote": "myremote"},
+                    "remote": {
+                        "myremote": {"key": "value"},
+                    },
+                },
+            },
+        ),
+        (
+            {
+                "remote": "myremote",
+                "remote_config": {"key": "value"},
+                "config": {"otherkey": "othervalue"},
+            },
+            {
+                "config": {
+                    "core": {"remote": "myremote"},
+                    "remote": {
+                        "myremote": {"key": "value"},
+                    },
+                    "otherkey": "othervalue",
+                },
+            },
+        ),
+    ],
+)
+def test_import_configs(tmp_dir, scm, dvc, erepo_dir, options, def_repo):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
-    annot = {
-        "desc": "foo desc",
-        "labels": ["l1", "l2"],
-        "type": "t1",
-        "meta": {"key": "value"},
-    }
-    stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo", no_exec=True, **annot)
-    assert stage.outs[0].annot == Annotation(**annot)
-    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+    (tmp_dir / "myconfig").touch()
 
-    # try to selectively update/overwrite some annotations
-    annot = {**annot, "type": "t2"}
-    stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo", no_exec=True, type="t2")
-    assert stage.outs[0].annot == Annotation(**annot)
-    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+    stage = dvc.imp(
+        os.fspath(erepo_dir), "foo", "foo_imported", no_exec=True, **options
+    )
+    assert stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        **def_repo,
+    }
+
+
+def test_import_invalid_configs(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    with pytest.raises(
+        ValueError,
+        match="Can't specify config path together with both remote and remote_config",
+    ):
+        dvc.imp(
+            os.fspath(erepo_dir),
+            "foo",
+            "foo_imported",
+            no_exec=True,
+            config="myconfig",
+            remote="myremote",
+            remote_config={"key": "value"},
+        )

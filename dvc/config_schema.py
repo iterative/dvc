@@ -8,6 +8,7 @@ from voluptuous import (
     All,
     Any,
     Coerce,
+    Exclusive,
     Invalid,
     Lower,
     Optional,
@@ -74,8 +75,19 @@ def ByUrl(mapping):  # noqa: N802
     return validate
 
 
+class ExpPath(str):
+    __slots__ = ("def_path",)
+
+    def_path: str
+
+    def __new__(cls, string, def_path):
+        ret = super().__new__(cls, string)
+        ret.def_path = def_path
+        return ret
+
+
 class RelPath(str):
-    pass
+    __slots__ = ()
 
 
 class FeatureSchema(Schema):
@@ -155,13 +167,13 @@ SCHEMA = {
         "machine": Lower,
     },
     "cache": {
-        "local": str,
-        "s3": str,
-        "gs": str,
-        "hdfs": str,
-        "webhdfs": str,
-        "ssh": str,
-        "azure": str,
+        "local": str,  # obsoleted
+        "s3": str,  # obsoleted
+        "gs": str,  # obsoleted
+        "hdfs": str,  # obsoleted
+        "webhdfs": str,  # obsoleted
+        "ssh": str,  # obsoleted
+        "azure": str,  # obsoleted
         # This is for default local cache
         "dir": str,
         **LOCAL_COMMON,
@@ -325,11 +337,14 @@ SCHEMA = {
     },
     "hydra": {
         Optional("enabled", default=False): Bool,
-        "config_dir": str,
+        Exclusive("config_dir", "config_source"): str,
+        Exclusive("config_module", "config_source"): str,
         "config_name": str,
     },
     "studio": {
         "token": str,
         "url": str,
+        "repo_url": str,
+        Optional("offline", default=False): Bool,
     },
 }

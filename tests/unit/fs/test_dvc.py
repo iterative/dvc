@@ -1,10 +1,11 @@
 import os
 import posixpath
 import shutil
-from unittest import mock
 
 import pytest
+from fsspec.utils import tokenize
 
+from dvc.fs import localfs
 from dvc.fs.dvc import DVCFileSystem
 from dvc.testing.tmp_dir import make_subrepo
 from dvc_data.hashfile.build import build
@@ -162,6 +163,16 @@ def test_isdir_mixed(tmp_dir, dvc):
     assert not fs.isfile("dir")
 
 
+def test_ls_dirty(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"data": "data"})
+    (tmp_dir / "data").unlink()
+
+    tmp_dir.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    fs = DVCFileSystem(repo=dvc)
+    assert set(fs.ls("data")) == {"data/foo", "data/bar"}
+
+
 @pytest.mark.parametrize(
     "dvcfiles,extra_expected",
     [
@@ -185,7 +196,7 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
             }
         }
     )
-    dvc.add(str(tmp_dir / "dir"), recursive=True)
+    dvc.add(localfs.find("dir"))
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     fs = DVCFileSystem(repo=dvc)
 
@@ -345,33 +356,35 @@ def test_subrepos(tmp_dir, scm, dvc, mocker):
 
         return f
 
-    with mock.patch.object(
+    mock_subrepo1 = mocker.patch.object(
         fs.fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo1.dvc)
-    ):
-        assert fs.exists("dir/repo/foo") is True
-        assert fs.exists("dir/repo/bar") is False
+    )
+    assert fs.exists("dir/repo/foo") is True
+    assert fs.exists("dir/repo/bar") is False
 
-        assert fs.isfile("dir/repo/foo") is True
-        assert fs.isfile("dir/repo/dir1/bar") is True
-        assert fs.isfile("dir/repo/dir1") is False
+    assert fs.isfile("dir/repo/foo") is True
+    assert fs.isfile("dir/repo/dir1/bar") is True
+    assert fs.isfile("dir/repo/dir1") is False
 
-        assert fs.isdir("dir/repo/dir1") is True
-        assert fs.isdir("dir/repo/dir1/bar") is False
-        assert fs.isdvc("dir/repo/foo") is True
+    assert fs.isdir("dir/repo/dir1") is True
+    assert fs.isdir("dir/repo/dir1/bar") is False
+    assert fs.isdvc("dir/repo/foo") is True
+    mocker.stop(mock_subrepo1)
 
-    with mock.patch.object(
+    mock_subrepo2 = mocker.patch.object(
         fs.fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo2.dvc)
-    ):
-        assert fs.exists("dir/repo2/lorem") is True
-        assert fs.exists("dir/repo2/ipsum") is False
+    )
+    assert fs.exists("dir/repo2/lorem") is True
+    assert fs.exists("dir/repo2/ipsum") is False
 
-        assert fs.isfile("dir/repo2/lorem") is True
-        assert fs.isfile("dir/repo2/dir2/ipsum") is True
-        assert fs.isfile("dir/repo2/dir2") is False
+    assert fs.isfile("dir/repo2/lorem") is True
+    assert fs.isfile("dir/repo2/dir2/ipsum") is True
+    assert fs.isfile("dir/repo2/dir2") is False
 
-        assert fs.isdir("dir/repo2/dir2") is True
-        assert fs.isdir("dir/repo2/dir2/ipsum") is False
-        assert fs.isdvc("dir/repo2/lorem") is True
+    assert fs.isdir("dir/repo2/dir2") is True
+    assert fs.isdir("dir/repo2/dir2/ipsum") is False
+    assert fs.isdvc("dir/repo2/lorem") is True
+    mocker.stop(mock_subrepo2)
 
 
 @pytest.mark.parametrize(
@@ -541,7 +554,11 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
     fs = DVCFileSystem(repo=dvc)
     _, _, obj = build(dvc.cache.local, "dir", fs, "md5")
-    assert obj.hash_info == HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
+    if os.name == "nt":
+        expected_hash = "0d2086760aea091f1504eafc8843bb18.dir"
+    else:
+        expected_hash = "e1d9e8eae5374860ae025ec84cfd85c7.dir"
+    assert obj.hash_info == HashInfo("md5", expected_hash)
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
@@ -636,3 +653,37 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
     for root, dirs, files in fs.walk("/", ignore_subrepos=not traverse_subrepos):
         actual[root] = set(dirs + files)
     assert expected == actual
+
+
+def test_fsid_noscm(tmp_dir, dvc):
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, None)
+
+
+def test_fsid(tmp_dir, dvc, scm):
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, scm.get_rev())
+    old_fsid = fs.fsid
+
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="foo")
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid != old_fsid
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, scm.get_rev())
+
+
+def test_fsid_url(erepo_dir):
+    from dvc.repo import Repo
+
+    url = f"file://{erepo_dir.as_posix()}"
+    with Repo.open(url) as dvc:
+        fs = DVCFileSystem(repo=dvc)
+        assert fs.fsid == "dvcfs_" + tokenize(url, erepo_dir.scm.get_rev())
+        old_fsid = fs.fsid
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"foo": "foo"}, commit="foo")
+
+    with Repo.open(url) as dvc:
+        fs = DVCFileSystem(repo=dvc)
+        assert fs.fsid != old_fsid
+        assert fs.fsid == "dvcfs_" + tokenize(url, erepo_dir.scm.get_rev())

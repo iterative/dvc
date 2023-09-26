@@ -177,26 +177,31 @@ def _build_rows(
                 )
 
 
-def _sort_column(
+def _sort_column(  # noqa: C901
     sort_by: str,
     metric_names: Mapping[str, Iterable[str]],
     param_names: Mapping[str, Iterable[str]],
 ) -> Tuple[str, str, str]:
-    path, _, sort_name = sort_by.rpartition(":")
+    sep = ":"
+    parts = sort_by.split(sep)
     matches: Set[Tuple[str, str, str]] = set()
 
-    if path:
+    for split_num in range(len(parts)):
+        path = sep.join(parts[:split_num])
+        sort_name = sep.join(parts[split_num:])
+        if not path:  # handles ':metric_name' case
+            sort_by = sort_name
         if path in metric_names and sort_name in metric_names[path]:
             matches.add((path, sort_name, "metrics"))
         if path in param_names and sort_name in param_names[path]:
             matches.add((path, sort_name, "params"))
-    else:
+    if not matches:
         for path in metric_names:
-            if sort_name in metric_names[path]:
-                matches.add((path, sort_name, "metrics"))
+            if sort_by in metric_names[path]:
+                matches.add((path, sort_by, "metrics"))
         for path in param_names:
-            if sort_name in param_names[path]:
-                matches.add((path, sort_name, "params"))
+            if sort_by in param_names[path]:
+                matches.add((path, sort_by, "params"))
 
     if len(matches) == 1:
         return matches.pop()
@@ -238,19 +243,16 @@ def _exp_range_rows(
     is_base: bool = False,
     **kwargs,
 ) -> Iterator[Tuple["CellT", ...]]:
-    for i, exp in enumerate(exp_range.revs):
+    from funcy import first
+
+    if len(exp_range.revs) > 1:
+        logger.debug("Returning tip commit for legacy checkpoint exp")
+    exp = first(exp_range.revs)
+    if exp:
         row: Dict[str, "CellT"] = {k: fill_value for k in all_headers}
         row["Experiment"] = exp.name or ""
         row["rev"] = exp.rev[:7] if Git.is_sha(exp.rev) else exp.rev
-        if len(exp_range.revs) > 1:
-            if i == 0:
-                row["typ"] = "checkpoint_tip"
-            elif i == len(exp_range.revs) - 1:
-                row["typ"] = "checkpoint_base"
-            else:
-                row["typ"] = "checkpoint_commit"
-        else:
-            row["typ"] = "branch_base" if is_base else "branch_commit"
+        row["typ"] = "branch_base" if is_base else "branch_commit"
         row["parent"] = ""
         if exp_range.executor:
             row["State"] = exp_range.executor.state.capitalize()

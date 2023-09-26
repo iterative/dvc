@@ -115,8 +115,8 @@ class TmpDir(pathlib.Path):
     def _require(self, name):
         if not hasattr(self, name):
             raise TypeError(
-                "Can't use {name} for this temporary dir. "
-                'Did you forget to use "{name}" fixture?'.format(name=name)
+                f"Can't use {name} for this temporary dir. "
+                f'Did you forget to use "{name}" fixture?'
             )
 
     # Bootstrapping methods

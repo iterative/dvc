@@ -14,7 +14,6 @@ from typing import (
 )
 
 from dvc.exceptions import DvcException
-from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
 
-DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
 PROJECT_FILE = "dvc.yaml"
 LOCK_FILE = "dvc.lock"
@@ -56,10 +54,7 @@ class ParametrizedDumpError(DvcException):
 
 
 def is_valid_filename(path):
-    return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
-        DVC_FILE,
-        PROJECT_FILE,
-    ]
+    return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) == PROJECT_FILE
 
 
 def is_dvc_file(path):
@@ -102,9 +97,7 @@ class FileMixin:
         self.verify = verify
 
     def __repr__(self):
-        return "{}: {}".format(
-            self.__class__.__name__, relpath(self.path, self.repo.root_dir)
-        )
+        return f"{self.__class__.__name__}: {relpath(self.path, self.repo.root_dir)}"
 
     def __hash__(self):
         return hash(self.path)
@@ -358,36 +351,8 @@ class ProjectFile(FileMixin):
         raise NotImplementedError
 
 
-def get_lockfile_schema(d):
-    from dvc.schema import COMPILED_LOCKFILE_V1_SCHEMA, COMPILED_LOCKFILE_V2_SCHEMA
-
-    schema = {
-        LOCKFILE_VERSION.V1: COMPILED_LOCKFILE_V1_SCHEMA,
-        LOCKFILE_VERSION.V2: COMPILED_LOCKFILE_V2_SCHEMA,
-    }
-
-    version = LOCKFILE_VERSION.from_dict(d)
-    return schema[version]
-
-
-def migrate_lock_v1_to_v2(d, version_info):
-    stages = dict(d)
-
-    for key in stages:
-        d.pop(key)
-
-    # forcing order, meta should always be at the top
-    d.update(version_info)
-    d["stages"] = stages
-
-
-def lockfile_schema(data: _T) -> _T:
-    schema = get_lockfile_schema(data)
-    return schema(data)
-
-
 class Lockfile(FileMixin):
-    SCHEMA = staticmethod(lockfile_schema)  # type: ignore[assignment]
+    from dvc.schema import COMPILED_LOCKFILE_SCHEMA as SCHEMA
 
     def _verify_filename(self):
         pass  # lockfile path is hardcoded, so no need to verify here
@@ -401,21 +366,12 @@ class Lockfile(FileMixin):
             self._check_gitignored()
             return {}, ""
 
-    @property
-    def latest_version_info(self):
-        version = LOCKFILE_VERSION.V2.value  # pylint:disable=no-member
-        return {SCHEMA_KWD: version}
-
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage, **kwargs)
 
         with modify_yaml(self.path, fs=self.repo.fs) as data:
-            version = LOCKFILE_VERSION.from_dict(data)
-            if version == LOCKFILE_VERSION.V1:
-                logger.info("Migrating lock file '%s' from v1 to v2", self.relpath)
-                migrate_lock_v1_to_v2(data, self.latest_version_info)
-            elif not data:
-                data.update(self.latest_version_info)
+            if not data:
+                data.update({"schema": "2.0"})
                 # order is important, meta should always be at the top
                 logger.info("Generating lock file '%s'", self.relpath)
 
@@ -436,8 +392,7 @@ class Lockfile(FileMixin):
             return
 
         d, _ = self._load_yaml(round_trip=True)
-        version = LOCKFILE_VERSION.from_dict(d)
-        data = d if version == LOCKFILE_VERSION.V1 else d.get("stages", {})
+        data = d.get("stages", {})
         if stage.name not in data:
             return
 

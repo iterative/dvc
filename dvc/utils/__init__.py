@@ -6,9 +6,12 @@ import logging
 import os
 import re
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, Optional, Tuple
 
 import colorama
+
+if TYPE_CHECKING:
+    from dvc.fs import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -218,23 +221,13 @@ def _visual_center(line, width):
 
 
 def relpath(path, start=os.curdir):
-    path = os.fspath(path)
+    path = os.path.abspath(os.fspath(path))
     start = os.path.abspath(os.fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
-    if os.name == "nt":
-        # Since python 3.8 os.realpath resolves network shares to their UNC
-        # path. So, to be certain that relative paths correctly captured,
-        # we need to resolve to UNC path first. We resolve only the drive
-        # name so that we don't follow any 'real' symlinks on the path
-        def resolve_network_drive_windows(path_to_resolve):
-            drive, tail = os.path.splitdrive(path_to_resolve)
-            return os.path.join(os.path.realpath(drive), tail)
+    if os.name == "nt" and not os.path.commonprefix([start, path]):
+        return path
 
-        path = resolve_network_drive_windows(os.path.abspath(path))
-        start = resolve_network_drive_windows(start)
-        if not os.path.commonprefix([start, path]):
-            return path
     return os.path.relpath(path, start)
 
 
@@ -255,7 +248,7 @@ def env2bool(var, undefined=False):
     return bool(re.search("1|y|yes|true", var, flags=re.I))
 
 
-def resolve_output(inp, out, force=False):
+def resolve_output(inp: str, out: Optional[str], force=False) -> str:
     from urllib.parse import urlparse
 
     from dvc.exceptions import FileExistsLocallyError
@@ -319,7 +312,7 @@ def resolve_paths(repo, out, always_local=False):
 
 
 def format_link(link):
-    return "<{blue}{link}{nc}>".format(
+    return "<{blue}{link}{nc}>".format(  # noqa: UP032
         blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
     )
 
@@ -423,3 +416,11 @@ def errored_revisions(rev_data: Dict) -> List:
         if nested_contains(data, "error"):
             result.append(revision)
     return result
+
+
+def expand_paths(fs: "FileSystem", paths: Iterable[str]) -> Iterator[str]:
+    for path in paths:
+        if fs.isdir(path):
+            yield from fs.find(path)
+        else:
+            yield path

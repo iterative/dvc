@@ -1,15 +1,16 @@
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Literal, Optional
 
 from dvc.exceptions import DvcException
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
-from dvc.utils import onerror_collect, relpath
+from dvc.utils import relpath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.repo.metrics.show import FileResult
 
 
 class DeserializeError(DvcException):
@@ -29,8 +30,8 @@ class SerializableExp:
 
     rev: str
     timestamp: Optional[datetime] = None
-    params: Dict[str, Any] = field(default_factory=dict)
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    params: Dict[str, "FileResult"] = field(default_factory=dict)
+    metrics: Dict[str, "FileResult"] = field(default_factory=dict)
     deps: Dict[str, "ExpDep"] = field(default_factory=dict)
     outs: Dict[str, "ExpOut"] = field(default_factory=dict)
     meta: Dict[str, Any] = field(default_factory=dict)
@@ -40,7 +41,6 @@ class SerializableExp:
         cls,
         repo: "Repo",
         rev: Optional[str] = None,
-        onerror: Optional[Callable] = None,
         param_deps: bool = False,
         **kwargs,
     ) -> "SerializableExp":
@@ -51,25 +51,11 @@ class SerializableExp:
         """
         from dvc.dependency import ParamsDependency, RepoDependency
 
-        if not onerror:
-            onerror = onerror_collect
-
         rev = rev or repo.get_rev()
         assert rev
-        # NOTE: _gather_params/_gather_metrics return defaultdict which is not
-        # supported in dataclasses.asdict() on all python releases
-        # see https://bugs.python.org/issue35540
-        params = dict(_gather_params(repo, deps=param_deps, onerror=onerror))
-        metrics = dict(
-            _gather_metrics(
-                repo,
-                targets=None,
-                rev=rev[:7],
-                recursive=False,
-                onerror=onerror_collect,
-            )
-        )
-        meta = cls._gather_meta(repo)
+
+        params = _gather_params(repo, deps_only=param_deps, on_error="return")
+        metrics = _gather_metrics(repo, on_error="return")
         return cls(
             rev=rev,
             params=params,
@@ -94,15 +80,8 @@ class SerializableExp:
                 for out in repo.index.outs
                 if not (out.is_metric or out.is_plot)
             },
-            meta=meta,
             **kwargs,
         )
-
-    @staticmethod
-    def _gather_meta(repo: "Repo") -> Dict[str, Any]:
-        return {
-            "has_checkpoints": any(stage.is_checkpoint for stage in repo.index.stages)
-        }
 
     def dumpd(self) -> Dict[str, Any]:
         return asdict(self)
@@ -126,11 +105,8 @@ class SerializableExp:
 
     @property
     def contains_error(self) -> bool:
-        return (
-            self.params.get("error")
-            or any(value.get("error") for value in self.params.values())
-            or self.metrics.get("error")
-            or any(value.get("error") for value in self.metrics.values())
+        return any(value.get("error") for value in self.params.values()) or any(
+            value.get("error") for value in self.metrics.values()
         )
 
 

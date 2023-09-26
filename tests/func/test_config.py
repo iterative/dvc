@@ -218,7 +218,7 @@ def test_list_bad_args(tmp_dir, dvc, caplog, args):
 
 
 def test_set_invalid_key(dvc):
-    with pytest.raises(ConfigError, match=r"extra keys not allowed"):  # noqa: PT012
+    with pytest.raises(ConfigError, match=r"extra keys not allowed"):
         with dvc.config.edit() as conf:
             conf["core"]["invalid_key"] = "value"
 
@@ -227,9 +227,7 @@ def test_merging_two_levels(dvc):
     with dvc.config.edit() as conf:
         conf["remote"]["test"] = {"url": "ssh://example.com"}
 
-    with pytest.raises(  # noqa: PT012
-        ConfigError, match=r"expected 'url' for dictionary value"
-    ):
+    with pytest.raises(ConfigError, match=r"expected 'url' for dictionary value"):
         with dvc.config.edit("global") as conf:
             conf["remote"]["test"] = {"password": "1"}
 
@@ -267,14 +265,16 @@ def test_load_relative_paths(dvc, field, remote_url):
 
     # check if written paths are correct
     dvc_dir = dvc.config.dvc_dir
-    assert dvc.config["remote"]["test"][field] == os.path.join(
-        dvc_dir, "..", "file.txt"
+    assert dvc.config["remote"]["test"][field] == os.path.abspath(
+        os.path.join(dvc_dir, "..", "file.txt")
     )
 
     # load config and check that it contains what we expect
     # (relative paths are evaluated correctly)
     cfg = Config(dvc_dir)
-    assert cfg["remote"]["test"][field] == os.path.join(dvc_dir, "..", "file.txt")
+    assert cfg["remote"]["test"][field] == os.path.abspath(
+        os.path.join(dvc_dir, "..", "file.txt")
+    )
 
 
 def test_config_gdrive_fields(tmp_dir, dvc):

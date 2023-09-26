@@ -31,15 +31,13 @@ RWLOCK_LOCK = "rwlock.lock"
 class RWLockFileCorruptedError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "Unable to read RWLock-file '{}'. JSON structure is corrupted".format(
-                relpath(path)
-            )
+            f"Unable to read RWLock-file {relpath(path)!r}. JSON structure is corrupted"
         )
 
 
 class RWLockFileFormatError(DvcException):
     def __init__(self, path):
-        super().__init__(f"RWLock-file '{relpath(path)}' format error.")
+        super().__init__(f"RWLock-file {relpath(path)!r} format error.")
 
 
 @contextmanager
@@ -106,7 +104,7 @@ def _check_blockers(tmp_dir, lock, info, *, mode, waiters):  # noqa: C901, PLR09
                 logger.warning(
                     (
                         "Process '%s' with (Pid %s), in RWLock-file '%s'"
-                        " had been killed. Auto remove it from the lock file."
+                        " had been killed. Auto removed it from the lock file."
                     ),
                     cmd,
                     pid,

@@ -56,7 +56,7 @@ def add_logging_level(level_name, level_num, method_name=None):
 
 class LoggingException(Exception):
     def __init__(self, record):
-        msg = f"failed to log {str(record)}"
+        msg = f"failed to log {record!s}"
         super().__init__(msg)
 
 
@@ -160,7 +160,7 @@ class LoggerHandler(logging.StreamHandler):
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
-        except Exception:  # noqa, pylint: disable=broad-except
+        except Exception:  # noqa: BLE001, pylint: disable=broad-except
             self.handleError(record)
 
 

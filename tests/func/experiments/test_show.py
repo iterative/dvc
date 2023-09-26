@@ -243,40 +243,6 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage, test_queue)
     }
 
 
-@pytest.mark.vscode
-@pytest.mark.parametrize("workspace", [True, False])
-def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace):
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
-    )
-    exp_rev = first(results)
-
-    baseline = dvc.experiments.show()[1]
-    assert baseline.data.meta.get("has_checkpoints")
-    checkpoints = first(baseline.experiments)
-    # 2 checkpoints + final commit
-    assert len(checkpoints) == checkpoint_stage.iterations + 1
-    assert first(checkpoints).rev == exp_rev
-
-    capsys.readouterr()
-    assert main(["exp", "show", "--no-pager"]) == 0
-    cap = capsys.readouterr()
-
-    for i, exp in enumerate(checkpoints):
-        rev = exp.rev
-        if i == 0:
-            name = dvc.experiments.get_exact_name([rev])[rev]
-            name = f"{rev[:7]} [{name}]"
-            fs = "╓"
-        elif i == len(checkpoints) - 1:
-            name = rev[:7]
-            fs = "╨"
-        else:
-            name = rev[:7]
-            fs = "╟"
-        assert f"{fs} {name}" in cap.out
-
-
 def test_show_filter(
     tmp_dir,
     scm,
@@ -386,6 +352,20 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
     assert main(["exp", "show", "--no-pager", "--sort-by=metrics.yaml:foo"]) == 0
 
 
+def test_show_sort_metric_sep(tmp_dir, scm, dvc, caplog):
+    metrics_path = tmp_dir / "metrics:1.json"
+    metrics_path.write_text('{"my::metric": 1, "other_metric": 0.5}')
+    metrics_path = tmp_dir / "metrics:2.json"
+    metrics_path.write_text('{"my::metric": 2}')
+    dvcyaml_path = tmp_dir / "dvc.yaml"
+    dvcyaml_path.write_text("metrics: ['metrics:1.json', 'metrics:2.json']")
+    dvc.experiments.save()
+    assert (
+        main(["exp", "show", "--no-pager", "--sort-by=metrics:1.json:my::metric"]) == 0
+    )
+    assert main(["exp", "show", "--no-pager", "--sort-by=:other_metric"]) == 0
+
+
 @pytest.mark.vscode
 @pytest.mark.parametrize(
     "status, pid_exists",
@@ -486,7 +466,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     assert "metrics.yaml:foo,params.yaml:foo,copy.py" in cap.out
     assert f",workspace,baseline,,,3,3,{data_hash}" in cap.out
     assert (
-        ",master,baseline,{},,1,1,{}".format(
+        ",master,baseline,{},,1,1,{}".format(  # noqa: UP032
             _get_rev_isotimestamp(baseline_rev), data_hash
         )
         in cap.out
@@ -549,85 +529,6 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     cap = capsys.readouterr()
     assert "params.yaml:goobar" in cap.out
     assert "metrics.yaml:goobar" in cap.out
-
-
-def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys, copy_script):
-    from dvc.commands.experiments import show
-
-    webbroser_open = mocker.patch("webbrowser.open")
-    show_experiments = mocker.spy(show, "show_experiments")
-
-    params_file = tmp_dir / "params.yaml"
-    params_data = {
-        "foo": 1,
-        "bar": 1,
-    }
-    (tmp_dir / params_file).dump(params_data)
-
-    dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo", "bar"],
-        name="copy-file",
-        deps=["copy.py"],
-    )
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            "copy.py",
-            "params.yaml",
-            "metrics.yaml",
-            ".gitignore",
-        ]
-    )
-    scm.commit("init")
-
-    dvc.experiments.run(params=["foo=2"])
-
-    assert main(["exp", "show", "--pcp"]) == 0
-    kwargs = show_experiments.call_args[1]
-
-    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
-    assert all(rev in html_text for rev in ["workspace", "master"])
-    assert "[exp-" not in html_text
-
-    assert '{"label": "metrics.yaml:foo", "values": [2.0, 1.0]}' in html_text
-    assert '{"label": "params.yaml:foo", "values": [2.0, 1.0]}' in html_text
-    assert '"line": {"color": [1, 0]' in html_text
-    assert '"label": "metrics.yaml:bar"' not in html_text
-    assert '"label": "Created"' not in html_text
-
-    assert main(["exp", "show", "--pcp", "--sort-by", "metrics.yaml:foo"]) == 0
-    kwargs = show_experiments.call_args[1]
-
-    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
-    assert '"line": {"color": [2.0, 1.0]' in html_text
-
-    assert main(["exp", "show", "--pcp", "--out", "experiments"]) == 0
-    kwargs = show_experiments.call_args[1]
-
-    assert kwargs["out"] == "experiments"
-    assert (tmp_dir / "experiments" / "index.html").exists()
-
-    assert main(["exp", "show", "--pcp", "--open"]) == 0
-
-    webbroser_open.assert_called()
-
-    params_data = {"foo": 1, "bar": 1, "foobar": 2}
-    (tmp_dir / params_file).dump(params_data)
-    assert main(["exp", "show", "--pcp"]) == 0
-    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
-    assert '{"label": "foobar", "values": [2.0, null, null]}' in html_text
-
-    assert main(["exp", "show", "--pcp", "--drop", "foobar"]) == 0
-    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
-    assert '"label": "Created"' not in html_text
-    assert '"label": "foobar"' not in html_text
-
-    assert main(["exp", "show", "--pcp", "--drop", "Experiment"]) == 0
-    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
-    assert '"label": "Experiment"' not in html_text
 
 
 @pytest.mark.vscode
@@ -795,7 +696,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
 
     assert f",master,baseline,{_get_rev_isotimestamp(scores_rev)},,1,,1" in cap.out
     assert (
-        ",{},baseline,{},,,1,1".format(
+        ",{},baseline,{},,,1,1".format(  # noqa: UP032
             metrics_rev[:7], _get_rev_isotimestamp(metrics_rev)
         )
         in cap.out

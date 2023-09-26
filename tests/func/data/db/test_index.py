@@ -8,7 +8,7 @@ from dvc_data.hashfile.db import get_index
 
 
 @pytest.fixture
-def index(dvc, local_remote, mocker):
+def index(tmp_dir, dvc, local_remote):
     odb = dvc.cloud.get_remote_odb("upstream")
     return get_index(odb)
 
@@ -58,23 +58,13 @@ def test_clear_on_download_err(tmp_dir, dvc, index, mocker):
     out = tmp_dir.dvc_gen({"dir": {"foo": "foo content"}})[0].outs[0]
     dvc.push()
 
-    for _, _, hi in out.obj:
-        remove(dvc.cache.local.get(hi.value).path)
-    remove(out.fs_path)
-
     assert list(index.hashes())
 
-    def unreliable_download(_from_fs, from_info, _to_fs, to_info, **kwargs):
-        on_error = kwargs["on_error"]
-        assert on_error
-        if isinstance(from_info, str):
-            from_info = [from_info]
-        if isinstance(to_info, str):
-            to_info = [to_info]
-        for from_i, to_i in zip(from_info, to_info):
-            on_error(from_i, to_i, Exception())
+    for _, _, hi in out.obj:
+        remove(dvc.cache.local.get(hi.value).path)
+        remove(dvc.cloud.get_remote().odb.get(hi.value).path)
+    remove(out.fs_path)
 
-    mocker.patch("dvc_objects.fs.generic.transfer", unreliable_download)
     with pytest.raises(DownloadError):
         dvc.pull()
     assert not list(index.hashes())

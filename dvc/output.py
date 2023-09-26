@@ -1,10 +1,11 @@
+import errno
 import logging
 import os
 import posixpath
 from collections import defaultdict
 from contextlib import suppress
 from operator import itemgetter
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, Union
 from urllib.parse import urlparse
 
 from funcy import collecting, first, project
@@ -18,33 +19,32 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     DvcException,
     MergeError,
-    RemoteCacheRequiredError,
 )
+from dvc.utils import format_link
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile import check as ocheck
 from dvc_data.hashfile import load as oload
 from dvc_data.hashfile.build import build
 from dvc_data.hashfile.checkout import checkout
+from dvc_data.hashfile.db import HashFileDB, add_update_tree
+from dvc_data.hashfile.hash import DEFAULT_ALGORITHM
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer as otransfer
-from dvc_data.hashfile.tree import Tree
+from dvc_data.hashfile.tree import Tree, du
 from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
-from .fs.callbacks import DEFAULT_CALLBACK
+from .fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
 from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.obj import HashFile
     from dvc_data.index import DataIndexKey
-    from dvc_objects.db import ObjectDB
 
-    from .fs.callbacks import Callback
     from .ignore import DvcIgnoreFilter
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
 
 # NOTE: currently there are only 3 possible checksum names:
 #
-#    1) md5 (LOCAL, SSH);
+#    1) md5 (LOCAL, SSH) (actually DVC 2.x md5-dos2unix)
 #    2) etag (S3, GS, OSS, AZURE, HTTP);
 #    3) checksum (HDFS);
 #
@@ -73,7 +73,7 @@ CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
 HDFS_PARAM_CHECKSUM = "checksum"
 S3_PARAM_CHECKSUM = "etag"
 CHECKSUMS_SCHEMA = {
-    LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    "md5": CHECKSUM_SCHEMA,  # DVC 2.x md5-dos2unix
     HDFS_PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     S3_PARAM_CHECKSUM: CASE_SENSITIVE_CHECKSUM_SCHEMA,
 }
@@ -91,11 +91,12 @@ def loadd_from(stage, d_list):
         metric = d.pop(Output.PARAM_METRIC, False)
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
-        checkpoint = d.pop(Output.PARAM_CHECKPOINT, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
         push = d.pop(Output.PARAM_PUSH, True)
+        hash_name = d.pop(Output.PARAM_HASH, None)
+        fs_config = d.pop(Output.PARAM_FS_CONFIG, None)
         ret.append(
             _get(
                 stage,
@@ -105,11 +106,12 @@ def loadd_from(stage, d_list):
                 metric=metric,
                 plot=plot,
                 persist=persist,
-                checkpoint=checkpoint,
                 remote=remote,
                 **annot,
                 files=files,
                 push=push,
+                hash_name=hash_name,
+                fs_config=fs_config,
             )
         )
     return ret
@@ -122,7 +124,6 @@ def loads_from(
     metric=False,
     plot=False,
     persist=False,
-    checkpoint=False,
     remote=None,
     push=True,
 ):
@@ -135,7 +136,6 @@ def loads_from(
             metric=metric,
             plot=plot,
             persist=persist,
-            checkpoint=checkpoint,
             remote=remote,
             push=push,
         )
@@ -191,7 +191,6 @@ def load_from_pipeline(stage, data, typ="outs"):
             [
                 Output.PARAM_CACHE,
                 Output.PARAM_PERSIST,
-                Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
                 Output.PARAM_PUSH,
                 *ANNOTATION_FIELDS,
@@ -232,15 +231,27 @@ def merge_file_meta_from_cloud(entry: Dict) -> Dict:
     return entry
 
 
-def _serialize_tree_obj_to_files(obj: "Tree") -> List[Dict[str, Any]]:
+def _serialize_tree_obj_to_files(obj: Tree) -> List[Dict[str, Any]]:
     key = obj.PARAM_RELPATH
     return sorted(
         (
-            {key: posixpath.sep.join(parts), **hi.to_dict(), **meta.to_dict()}
+            {
+                key: posixpath.sep.join(parts),
+                **_serialize_hi_to_dict(hi),
+                **meta.to_dict(),
+            }
             for parts, meta, hi in obj
         ),
         key=itemgetter(key),
     )
+
+
+def _serialize_hi_to_dict(hash_info: Optional[HashInfo]) -> Dict[str, Any]:
+    if hash_info:
+        if hash_info.name == "md5-dos2unix":
+            return {"md5": hash_info.value}
+        return hash_info.to_dict()
+    return {}
 
 
 class OutputDoesNotExistError(DvcException):
@@ -276,12 +287,16 @@ class OutputIsIgnoredError(DvcException):
         super().__init__(f"Path '{match.file}' is ignored by\n{lines}")
 
 
+class CheckoutCallback(TqdmCallback):
+    # disable branching for checkouts
+    branch = Callback.branch  # type: ignore[assignment]
+
+
 class Output:
     IS_DEPENDENCY = False
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
-    PARAM_CHECKPOINT = "checkpoint"
     PARAM_FILES = "files"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
@@ -298,15 +313,8 @@ class Output:
     PARAM_REMOTE = "remote"
     PARAM_PUSH = "push"
     PARAM_CLOUD = "cloud"
-
-    METRIC_SCHEMA = Any(
-        None,
-        bool,
-        {
-            PARAM_METRIC_TYPE: Any(str, None),
-            PARAM_METRIC_XPATH: Any(str, None),
-        },
-    )
+    PARAM_HASH = "hash"
+    PARAM_FS_CONFIG = "fs_config"
 
     DoesNotExistError: Type[DvcException] = OutputDoesNotExistError
     IsNotFileOrDirError: Type[DvcException] = OutputIsNotFileOrDirError
@@ -322,7 +330,6 @@ class Output:
         metric=False,
         plot=False,
         persist=False,
-        checkpoint=False,
         desc=None,
         type=None,  # noqa: A002, pylint: disable=redefined-builtin
         labels=None,
@@ -332,6 +339,7 @@ class Output:
         fs_config=None,
         files: Optional[List[Dict[str, Any]]] = None,
         push: bool = True,
+        hash_name: Optional[str] = DEFAULT_ALGORITHM,
     ):
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
@@ -345,10 +353,15 @@ class Output:
         if meta.version_id or files:
             fs_kwargs["version_aware"] = True
 
+        self.def_fs_config = fs_config
         if fs_config is not None:
             fs_kwargs.update(**fs_config)
 
-        fs_cls, fs_config, fs_path = get_cloud_fs(self.repo, url=path, **fs_kwargs)
+        fs_cls, fs_config, fs_path = get_cloud_fs(
+            self.repo.config if self.repo else {},
+            url=path,
+            **fs_kwargs,
+        )
         self.fs = fs_cls(**fs_config)
 
         if (
@@ -389,7 +402,6 @@ class Output:
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
-        self.checkpoint = checkpoint
         self.can_push = push
 
         self.fs_path = self._parse_path(self.fs, fs_path)
@@ -404,21 +416,32 @@ class Output:
             )
             self.meta.version_id = version_id
 
-        if self.is_in_repo:
-            self.hash_name = "md5"
-        else:
-            self.hash_name = self.fs.PARAM_CHECKSUM
-
-        self.hash_info = HashInfo(
-            name=self.hash_name,
-            value=getattr(self.meta, self.hash_name, None),
-        )
+        self.hash_name, self.hash_info = self._compute_hash_info_from_meta(hash_name)
         self._compute_meta_hash_info_from_files()
+
+    def _compute_hash_info_from_meta(
+        self, hash_name: Optional[str]
+    ) -> Tuple[str, HashInfo]:
+        if self.is_in_repo:
+            if hash_name is None:
+                # Legacy 2.x output, use "md5-dos2unix" but read "md5" from
+                # file meta
+                hash_name = "md5-dos2unix"
+                meta_name = "md5"
+            else:
+                meta_name = hash_name
+        else:
+            hash_name = meta_name = self.fs.PARAM_CHECKSUM
+        assert hash_name
+
+        hash_info = HashInfo(
+            name=hash_name,
+            value=getattr(self.meta, meta_name, None),
+        )
+        return hash_name, hash_info
 
     def _compute_meta_hash_info_from_files(self) -> None:
         if self.files:
-            from dvc_data.hashfile.db import HashFileDB
-
             tree = Tree.from_list(self.files, hash_name=self.hash_name)
             tree.digest(with_meta=True)
             self.odb = HashFileDB(tree.fs, tree.path + ".odb")
@@ -431,7 +454,7 @@ class Output:
             self.meta.remote = first(f.get("remote") for f in self.files)
         elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
-            if not self.hash_info and self.hash_name != "md5":
+            if not self.hash_info and self.hash_name not in ("md5", "md5-dos2unix"):
                 md5 = getattr(self.meta, "md5", None)
                 if md5:
                     self.hash_info = HashInfo("md5", md5)
@@ -455,9 +478,7 @@ class Output:
         return fs.path.abspath(fs.path.normpath(fs_path))
 
     def __repr__(self):
-        return "{class_name}: '{def_path}'".format(
-            class_name=type(self).__name__, def_path=self.def_path
-        )
+        return f"{type(self).__name__}: {self.def_path!r}"
 
     def __str__(self):
         if self.fs.protocol != "local":
@@ -469,6 +490,9 @@ class Output:
             or os.path.isabs(self.def_path)
         ):
             return str(self.def_path)
+
+        if not self.fs.path.isin(self.fs_path, self.repo.root_dir):
+            return self.fs_path
 
         cur_dir = self.fs.path.getcwd()
         if self.fs.path.isin(cur_dir, self.repo.root_dir):
@@ -495,7 +519,7 @@ class Output:
             return False
 
         return self.repo and self.fs.path.isin(
-            self.fs.path.realpath(self.fs_path),
+            self.fs_path,
             self.repo.root_dir,
         )
 
@@ -508,11 +532,19 @@ class Output:
 
     @property
     def cache(self):
-        odb_name = "repo" if self.is_in_repo else self.protocol
-        odb = getattr(self.repo.cache, odb_name)
-        if self.use_cache and odb is None:
-            raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
-        return odb
+        from dvc.cachemgr import LEGACY_HASH_NAMES
+
+        assert self.is_in_repo
+        odb_name = "legacy" if self.hash_name in LEGACY_HASH_NAMES else "repo"
+        return getattr(self.repo.cache, odb_name)
+
+    @property
+    def local_cache(self):
+        from dvc.cachemgr import LEGACY_HASH_NAMES
+
+        if self.hash_name in LEGACY_HASH_NAMES:
+            return self.repo.cache.legacy
+        return self.repo.cache.local
 
     @property
     def cache_path(self):
@@ -524,12 +556,24 @@ class Output:
         _, hash_info = self._get_hash_meta()
         return hash_info
 
+    def _build(
+        self, *args, no_progress_bar=False, **kwargs
+    ) -> Tuple["HashFileDB", "Meta", "HashFile"]:
+        from dvc.ui import ui
+
+        with ui.progress(
+            unit="file",
+            desc=f"Collecting files and computing hashes in {self}",
+            disable=no_progress_bar,
+        ) as pb:
+            return build(*args, callback=pb.as_callback(), **kwargs)
+
     def _get_hash_meta(self):
         if self.use_cache:
             odb = self.cache
         else:
-            odb = self.repo.cache.local
-        _, meta, obj = build(
+            odb = self.local_cache
+        _, meta, obj = self._build(
             odb,
             self.fs_path,
             self.fs,
@@ -655,6 +699,14 @@ class Output:
     # pylint: enable=no-member
 
     def save(self) -> None:
+        if self.use_cache and not self.is_in_repo:
+            raise DvcException(
+                f"Saving cached external output {self!s} is not supported "
+                "since DVC 3.0. See "
+                f"{format_link('https://dvc.org/doc/user-guide/upgrade')} "
+                "for more info."
+            )
+
         if not self.exists:
             raise self.DoesNotExistError(self)
 
@@ -669,8 +721,9 @@ class Output:
         if self.metric:
             self.verify_metric()
 
+        self._update_legacy_hash_name()
         if self.use_cache:
-            _, self.meta, self.obj = build(
+            _, self.meta, self.obj = self._build(
                 self.cache,
                 self.fs_path,
                 self.fs,
@@ -678,8 +731,8 @@ class Output:
                 ignore=self.dvcignore,
             )
         else:
-            _, self.meta, self.obj = build(
-                self.repo.cache.local,
+            _, self.meta, self.obj = self._build(
+                self.local_cache,
                 self.fs_path,
                 self.fs,
                 self.hash_name,
@@ -691,6 +744,10 @@ class Output:
 
         self.hash_info = self.obj.hash_info
         self.files = None
+
+    def _update_legacy_hash_name(self):
+        if self.hash_name == "md5-dos2unix" and self.changed_checksum():
+            self.hash_name = "md5"
 
     def set_exec(self) -> None:
         if self.isfile() and self.meta.isexec:
@@ -727,31 +784,41 @@ class Output:
                 obj = self._commit_granular_dir(filter_info, hardlink, jobs=jobs)
             else:
                 jobs = jobs or min((self.fs.jobs, self.cache.fs.jobs))
-                staging, _, obj = build(
+                staging, _, obj = self._build(
                     self.cache,
                     filter_info or self.fs_path,
                     self.fs,
                     self.hash_name,
                     ignore=self.dvcignore,
                 )
-                otransfer(
-                    staging,
-                    self.cache,
-                    {obj.hash_info},
-                    jobs=jobs,
-                    shallow=False,
-                    hardlink=hardlink,
-                )
+
+                with Callback.as_tqdm_callback(
+                    desc=f"Committing {self} to cache",
+                    unit="file",
+                ) as cb:
+                    otransfer(
+                        staging,
+                        self.cache,
+                        {obj.hash_info},
+                        jobs=jobs,
+                        shallow=False,
+                        hardlink=hardlink,
+                        callback=cb,
+                    )
+
             if relink:
-                self._checkout(
-                    filter_info or self.fs_path,
-                    self.fs,
-                    obj,
-                    self.cache,
-                    relink=True,
-                    state=self.repo.state,
-                    prompt=prompt.confirm,
-                )
+                rel = self.fs.path.relpath(filter_info or self.fs_path)
+                with CheckoutCallback(desc=f"Checking out {rel}", unit="files") as cb:
+                    self._checkout(
+                        filter_info or self.fs_path,
+                        self.fs,
+                        obj,
+                        self.cache,
+                        relink=True,
+                        state=self.repo.state,
+                        prompt=prompt.confirm,
+                        progress_callback=cb,
+                    )
                 self.set_exec()
 
     def _commit_granular_dir(
@@ -759,7 +826,7 @@ class Output:
     ) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
         jobs = jobs or min((self.fs.jobs, self.cache.fs.jobs))
-        staging, _, obj = build(
+        staging, _, obj = self._build(
             self.cache,
             self.fs_path,
             self.fs,
@@ -770,17 +837,25 @@ class Output:
         save_obj = obj.filter(prefix)
         assert isinstance(save_obj, Tree)
         checkout_obj = save_obj.get_obj(self.cache, prefix)
-        otransfer(
-            staging,
-            self.cache,
-            {save_obj.hash_info} | {oid for _, _, oid in save_obj},
-            jobs=jobs,
-            shallow=True,
-            hardlink=hardlink,
-        )
+
+        with Callback.as_tqdm_callback(
+            desc=f"Committing {self} to cache",
+            unit="file",
+        ) as cb:
+            otransfer(
+                staging,
+                self.cache,
+                {save_obj.hash_info} | {oid for _, _, oid in save_obj},
+                jobs=jobs,
+                shallow=True,
+                hardlink=hardlink,
+                callback=cb,
+            )
         return checkout_obj
 
     def dumpd(self, **kwargs):  # noqa: C901, PLR0912
+        from dvc.cachemgr import LEGACY_HASH_NAMES
+
         ret: Dict[str, Any] = {}
         with_files = (
             (not self.IS_DEPENDENCY or self.stage.is_import)
@@ -791,7 +866,12 @@ class Output:
         if not with_files:
             meta_d = self.meta.to_dict()
             meta_d.pop("isdir", None)
-            ret.update(self.hash_info.to_dict())
+            if self.hash_name in LEGACY_HASH_NAMES:
+                # 2.x checksums get serialized with file meta
+                name = "md5" if self.hash_name == "md5-dos2unix" else self.hash_name
+                ret.update({name: self.hash_info.value})
+            else:
+                ret.update(self.hash_info.to_dict())
             ret.update(split_file_meta_from_cloud(meta_d))
 
         if self.is_in_repo:
@@ -799,7 +879,13 @@ class Output:
         else:
             path = self.def_path
 
+        if self.hash_name not in LEGACY_HASH_NAMES:
+            ret[self.PARAM_HASH] = "md5"
+
         ret[self.PARAM_PATH] = path
+
+        if self.def_fs_config:
+            ret[self.PARAM_FS_CONFIG] = self.def_fs_config
 
         if not self.IS_DEPENDENCY:
             ret.update(self.annot.to_dict())
@@ -821,9 +907,6 @@ class Output:
 
             if self.persist:
                 ret[self.PARAM_PERSIST] = self.persist
-
-            if self.checkpoint:
-                ret[self.PARAM_CHECKPOINT] = self.checkpoint
 
             if self.remote:
                 ret[self.PARAM_REMOTE] = self.remote
@@ -894,22 +977,23 @@ class Output:
         relink: bool = False,
         filter_info: Optional[str] = None,
         allow_missing: bool = False,
-        checkpoint_reset: bool = False,
         **kwargs,
     ) -> Optional[Tuple[bool, Optional[bool]]]:
+        # callback passed act as a aggregate callback.
+        # do not let checkout to call set_size and change progressbar.
+        class CallbackProxy(Callback):
+            def relative_update(self, inc: int = 1) -> None:
+                progress_callback.relative_update(inc)
+                return super().relative_update(inc)
+
+        callback = CallbackProxy()
         if not self.use_cache:
-            if progress_callback != DEFAULT_CALLBACK:
-                progress_callback.relative_update(self.get_files_number(filter_info))
+            callback.relative_update(self.get_files_number(filter_info))
             return None
 
         obj = self.get_obj(filter_info=filter_info)
         if not obj and (filter_info and filter_info != self.fs_path):
             # backward compatibility
-            return None
-
-        if self.checkpoint and checkpoint_reset:
-            if self.exists:
-                self.remove()
             return None
 
         added = not self.exists
@@ -921,21 +1005,24 @@ class Output:
                 obj,
                 self.cache,
                 force=force,
-                progress_callback=progress_callback,
+                progress_callback=callback,
                 relink=relink,
                 state=self.repo.state,
                 prompt=prompt.confirm,
                 **kwargs,
             )
         except CheckoutError:
-            if allow_missing or self.checkpoint:
+            if allow_missing:
                 return None
             raise
         self.set_exec()
         return added, False if added else modified
 
     def remove(self, ignore_remove=False):
-        self.fs.remove(self.fs_path, recursive=True)
+        try:
+            self.fs.remove(self.fs_path, recursive=True)
+        except FileNotFoundError:
+            pass
         if self.protocol != Schemes.LOCAL:
             return
 
@@ -962,7 +1049,9 @@ class Output:
         if odb is None:
             odb = self.cache
 
-        cls, config, from_info = get_cloud_fs(self.repo, url=source)
+        cls, config, from_info = get_cloud_fs(
+            self.repo.config if self.repo else {}, url=source
+        )
         from_fs = cls(**config)
 
         # When running import-url --to-remote / add --to-remote/-o ... we
@@ -976,22 +1065,27 @@ class Output:
 
         upload = not (update and from_fs.isdir(from_info))
         jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
-        staging, self.meta, obj = build(
+        staging, self.meta, obj = self._build(
             odb,
             from_info,
             from_fs,
-            "md5",
+            DEFAULT_ALGORITHM,
             upload=upload,
             no_progress_bar=no_progress_bar,
         )
-        otransfer(
-            staging,
-            odb,
-            {obj.hash_info},
-            jobs=jobs,
-            hardlink=False,
-            shallow=False,
-        )
+        with Callback.as_tqdm_callback(
+            desc=f"Transferring to {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            otransfer(
+                staging,
+                odb,
+                {obj.hash_info},
+                jobs=jobs,
+                hardlink=False,
+                shallow=False,
+                callback=cb,
+            )
 
         self.hash_info = obj.hash_info
         self.files = None
@@ -1011,10 +1105,10 @@ class Output:
         return len(obj) if obj else 0
 
     def unprotect(self):
-        if self.exists:
+        if self.exists and self.use_cache:
             self.cache.unprotect(self.fs_path)
 
-    def get_dir_cache(self, **kwargs):
+    def get_dir_cache(self, **kwargs) -> Optional["Tree"]:
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
 
@@ -1028,14 +1122,17 @@ class Output:
                 self.repo.cloud.pull([obj.hash_info], **kwargs)
 
         if self.obj:
+            assert isinstance(self.obj, Tree)
             return self.obj
 
         try:
-            self.obj = oload(self.cache, self.hash_info)
+            obj = oload(self.cache, self.hash_info)
+            assert isinstance(obj, Tree)
         except (FileNotFoundError, ObjectFormatError):
-            self.obj = None
+            obj = None
 
-        return self.obj
+        self.obj = obj
+        return obj
 
     def _collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
@@ -1060,7 +1157,7 @@ class Output:
             if not force and not prompt.confirm(msg.format(self.fs_path)):
                 raise CollectCacheError(  # noqa: B904
                     "unable to fully collect used cache"
-                    " without cache for directory '{}'".format(self)
+                    f" without cache for directory '{self}'"
                 )
             return None
 
@@ -1072,10 +1169,11 @@ class Output:
             return obj.filter(prefix)
         return obj
 
-    def get_used_objs(  # noqa: C901
+    def get_used_objs(  # noqa: C901, PLR0911
         self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+    ) -> Dict[Optional["HashFileDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""
+        from dvc.cachemgr import LEGACY_HASH_NAMES
 
         if not self.use_cache:
             return {}
@@ -1089,19 +1187,15 @@ class Output:
 
         if not self.hash_info:
             msg = (
-                "Output '{}'({}) is missing version info. "
+                f"Output '{self}'({self.stage}) is missing version info. "
                 "Cache for it will not be collected. "
-                "Use `dvc repro` to get your pipeline up to date.".format(
-                    self, self.stage
-                )
+                "Use `dvc repro` to get your pipeline up to date."
             )
             if self.exists:
                 msg += (
                     "\n"
-                    "You can also use `dvc commit {stage.addressing}` "
-                    "to associate existing '{out}' with {stage}.".format(
-                        out=self, stage=self.stage
-                    )
+                    f"You can also use `dvc commit {self.stage.addressing}` "
+                    f"to associate existing '{self}' with {self.stage}."
                 )
             logger.warning(msg)
             return {}
@@ -1118,11 +1212,17 @@ class Output:
             return {}
 
         if self.remote:
-            remote = self.repo.cloud.get_remote_odb(name=self.remote)
-        else:
-            remote = None
-
-        return {remote: self._named_obj_ids(obj)}
+            remote_odb = self.repo.cloud.get_remote_odb(
+                name=self.remote, hash_name=self.hash_name
+            )
+            other_odb = self.repo.cloud.get_remote_odb(
+                name=self.remote,
+                hash_name=(
+                    "md5" if self.hash_name in LEGACY_HASH_NAMES else "md5-dos2unix"
+                ),
+            )
+            return {remote_odb: self._named_obj_ids(obj), other_odb: set()}
+        return {None: self._named_obj_ids(obj)}
 
     def _named_obj_ids(self, obj):
         name = str(self)
@@ -1157,13 +1257,14 @@ class Output:
             self.hash_name,
             Meta.PARAM_SIZE,
             Meta.PARAM_NFILES,
+            Output.PARAM_HASH,
         ]
 
         for opt in ignored:
             my.pop(opt, None)
             other.pop(opt, None)
 
-        if my != other:
+        if my != other or self.hash_name != out.hash_name:
             raise MergeError("unable to auto-merge outputs with different options")
 
         if not out.is_dir_checksum:
@@ -1171,7 +1272,7 @@ class Output:
 
     def merge(self, ancestor, other, allowed=None):
         from dvc_data.hashfile.tree import MergeError as TreeMergeError
-        from dvc_data.hashfile.tree import du, merge
+        from dvc_data.hashfile.tree import merge
 
         assert other
 
@@ -1203,6 +1304,180 @@ class Output:
             size=du(self.cache, merged),
             nfiles=len(merged),
         )
+
+    def unstage(self, path: str) -> Tuple["Meta", "Tree"]:
+        from pygtrie import Trie
+
+        from dvc_objects.fs.path import Path
+
+        assert isinstance(self.fs.path, Path)
+        rel_key = tuple(self.fs.path.parts(self.fs.path.relpath(path, self.fs_path)))
+
+        if self.hash_info:
+            tree = self.get_dir_cache()
+            if tree is None:
+                raise DvcException(f"could not read {self.hash_info.value!r}")
+        else:
+            tree = Tree()
+
+        trie = tree.as_trie()
+        assert isinstance(trie, Trie)
+
+        try:
+            del trie[rel_key:]  # type: ignore[misc]
+        except KeyError:
+            raise FileNotFoundError(  # noqa: B904
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                path,
+            )
+
+        new = tree.from_trie(trie)
+        new.digest()
+        return Meta(nfiles=len(new), isdir=True), new
+
+    def apply(
+        self,
+        path: str,
+        obj: Union["Tree", "HashFile"],
+        meta: "Meta",
+    ) -> Tuple["Meta", "Tree"]:
+        from pygtrie import Trie
+
+        from dvc_objects.fs.path import Path
+
+        assert isinstance(self.fs.path, Path)
+        append_only = True
+        rel_key = tuple(self.fs.path.parts(self.fs.path.relpath(path, self.fs_path)))
+
+        if self.hash_info:
+            tree = self.get_dir_cache()
+            if tree is None:
+                raise DvcException(f"could not read {self.hash_info.value!r}")
+        else:
+            tree = Tree()
+
+        trie = tree.as_trie()
+        assert isinstance(trie, Trie)
+
+        try:
+            del trie[rel_key:]  # type: ignore[misc]
+        except KeyError:
+            pass
+        else:
+            append_only = False
+
+        items = {}
+        if isinstance(obj, Tree):
+            items = {(*rel_key, *key): (m, o) for key, m, o in obj}
+        else:
+            items = {rel_key: (meta, obj.hash_info)}
+        trie.update(items)
+
+        new = Tree.from_trie(trie)
+        new.digest()
+
+        size = self.meta.size if self.meta and self.meta.size else None
+        if append_only and size and meta.size is not None:
+            # if files were only appended, we can sum to the existing size
+            size += meta.size
+        elif self.hash_info and self.hash_info == new.hash_info:
+            # if hashes are same, sizes must have been the same
+            size = self.meta.size
+        else:
+            size = None
+
+        meta = Meta(nfiles=len(new), size=size, isdir=True)
+        return meta, new
+
+    def add(  # noqa: C901
+        self, path: Optional[str] = None, no_commit: bool = False, relink: bool = True
+    ) -> Optional["HashFile"]:
+        path = path or self.fs_path
+        if self.hash_info and not self.is_dir_checksum and self.fs_path != path:
+            raise DvcException(
+                f"Cannot modify '{self}' which is being tracked as a file"
+            )
+
+        assert self.repo
+        self._update_legacy_hash_name()
+        cache = self.cache if self.use_cache else self.local_cache
+        assert isinstance(cache, HashFileDB)
+
+        new: "HashFile"
+        try:
+            assert self.hash_name
+            staging, meta, obj = self._build(
+                cache,
+                path,
+                self.fs,
+                self.hash_name,
+                ignore=self.dvcignore,
+                dry_run=not self.use_cache,
+            )
+        except FileNotFoundError as exc:
+            if self.fs_path == path:
+                raise self.DoesNotExistError(self) from exc
+            if not self.is_dir_checksum:
+                raise
+
+            meta, new = self.unstage(path)
+            staging, obj = None, None
+        else:
+            assert obj
+            assert staging
+            if self.fs_path != path:
+                meta, new = self.apply(path, obj, meta)
+                add_update_tree(staging, new)
+            else:
+                new = obj
+
+        self.obj = new
+        self.hash_info = self.obj.hash_info
+        self.meta = meta
+        self.files = None
+        self.ignore()
+
+        if no_commit or not self.use_cache:
+            return obj
+
+        if isinstance(new, Tree):
+            add_update_tree(cache, new)
+
+        if not obj:
+            return obj
+
+        assert staging
+        assert obj.hash_info
+        with Callback.as_tqdm_callback(
+            desc=f"Adding {self} to cache",
+            unit="file",
+        ) as cb:
+            otransfer(
+                staging,
+                self.cache,
+                {obj.hash_info},
+                hardlink=relink,
+                shallow=False,
+                callback=cb,
+            )
+
+        if relink:
+            with CheckoutCallback(
+                desc=f"Checking out {path}", unit="files"
+            ) as callback:
+                self._checkout(
+                    path,
+                    self.fs,
+                    obj,
+                    self.cache,
+                    relink=True,
+                    state=self.repo.state,
+                    prompt=prompt.confirm,
+                    progress_callback=callback,
+                )
+            self.set_exec()
+        return obj
 
     @property
     def fspath(self):
@@ -1263,10 +1538,9 @@ ARTIFACT_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     Required(Output.PARAM_PATH): str,
-    Output.PARAM_PLOT: bool,
     Output.PARAM_PERSIST: bool,
-    Output.PARAM_CHECKPOINT: bool,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
+    Output.PARAM_HASH: str,
 }
 
 DIR_FILES_SCHEMA: Dict[str, Any] = {
@@ -1280,8 +1554,8 @@ SCHEMA = {
     **ARTIFACT_SCHEMA,
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
-    Output.PARAM_METRIC: Output.METRIC_SCHEMA,
     Output.PARAM_REMOTE: str,
     Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
+    Output.PARAM_FS_CONFIG: dict,
 }

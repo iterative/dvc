@@ -153,21 +153,25 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
             outs=["confusion_test.json"],
             commit="confusion_test",
         )
-        plots_config = {
-            "linear_train_vs_test": {
-                "x": "x",
-                "y": {"linear_train.json": "y", "linear_test.json": "y"},
-                "title": "linear plot",
+        plots_config = [
+            {
+                "linear_train_vs_test": {
+                    "x": "x",
+                    "y": {"linear_train.json": "y", "linear_test.json": "y"},
+                    "title": "linear plot",
+                }
             },
-            "confusion_train_vs_test": {
-                "x": "actual",
-                "y": {
-                    "confusion_train.json": "predicted",
-                    "confusion_test.json": "predicted",
-                },
-                "template": "confusion",
+            {
+                "confusion_train_vs_test": {
+                    "x": "actual",
+                    "y": {
+                        "confusion_train.json": "predicted",
+                        "confusion_test.json": "predicted",
+                    },
+                    "template": "confusion",
+                }
             },
-        }
+        ]
 
         from dvc.utils.serialize import modify_yaml
 
@@ -184,6 +188,61 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
                 "confusion_test.json": confusion_test_v1,
             },
             "configs": {"dvc.yaml": plots_config},
+        }
+
+    return make
+
+
+@pytest.fixture
+def repo_with_dvclive_plots(tmp_dir, scm, dvc, run_copy_metrics):
+    def make():
+        metrics = [
+            {"step": 1, "metric": 0.1},
+            {"step": 2, "metric": 0.2},
+            {"step": 3, "metric": 0.3},
+        ]
+
+        metrics_path = tmp_dir / "dvclive" / "plots" / "metrics" / "metric.tsv"
+        metrics_path.parent.mkdir(parents=True)
+        metrics_path.dump_json(metrics)
+
+        plots_config_v1 = [
+            {
+                "plots/metrics": {
+                    "x": "step",
+                }
+            }
+        ]
+
+        from dvc.utils.serialize import modify_yaml
+
+        dvcyaml_path_v1 = tmp_dir / "dvclive" / "dvc.yaml"
+        with modify_yaml(dvcyaml_path_v1) as dvcfile_content:
+            dvcfile_content["plots"] = plots_config_v1
+        scm.add([metrics_path, dvcyaml_path_v1])
+        scm.commit("add dvclive 2.x plots")
+
+        yield {
+            "data": {metrics_path: metrics},
+            "configs": {dvcyaml_path_v1: plots_config_v1},
+        }
+
+        plots_config_v2 = [
+            {
+                "dvclive/plots/metrics": {
+                    "x": "step",
+                }
+            }
+        ]
+
+        dvcyaml_path_v1.unlink()
+        dvcyaml_path_v2 = tmp_dir / "dvc.yaml"
+        with modify_yaml(dvcyaml_path_v2) as dvcfile_content:
+            dvcfile_content["plots"] = plots_config_v2
+
+        yield {
+            "data": {metrics_path: metrics},
+            "configs": {dvcyaml_path_v2: plots_config_v2},
         }
 
     return make

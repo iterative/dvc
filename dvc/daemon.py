@@ -28,7 +28,9 @@ def _popen(cmd, **kwargs) -> Popen:
             os.path.abspath(os.path.dirname(__file__)), "__main__.py"
         )
         prefix += [main_entrypoint]
-    return Popen(prefix + cmd, close_fds=True, shell=False, **kwargs)  # nosec B603
+    return Popen(
+        prefix + cmd, close_fds=True, shell=False, **kwargs  # nosec B603  # noqa: S603
+    )
 
 
 def _spawn_windows(cmd, env):

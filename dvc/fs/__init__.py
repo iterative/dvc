@@ -1,3 +1,4 @@
+from typing import Optional
 from urllib.parse import urlparse
 
 from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
@@ -18,7 +19,7 @@ from dvc_objects.fs import (  # noqa: F401
     system,
     utils,
 )
-from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
+from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401, TCH001
 from dvc_objects.fs.errors import (  # noqa: F401
     AuthError,
     ConfigError,
@@ -48,18 +49,49 @@ known_implementations.update(
 # pylint: enable=unused-import
 
 
-def download(fs, fs_path, to, jobs=None):
+def download(
+    fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
+) -> int:
     with Callback.as_tqdm_callback(
         desc=f"Downloading {fs.path.name(fs_path)}",
         unit="files",
     ) as cb:
-        fs.get(fs_path, to.fs_path, batch_size=jobs, callback=cb)
+        # NOTE: We use dvc-objects generic.copy over fs.get since it makes file
+        # download atomic and avoids fsspec glob/regex path expansion.
+        if fs.isdir(fs_path):
+            from_infos = [
+                path
+                for path in fs.find(fs_path)
+                if not path.endswith(fs.path.flavour.sep)
+            ]
+            if not from_infos:
+                localfs.makedirs(to, exist_ok=True)
+                return 0
+            to_infos = [
+                localfs.path.join(to, *fs.path.relparts(info, fs_path))
+                for info in from_infos
+            ]
+        else:
+            from_infos = [fs_path]
+            to_infos = [to]
+
+        cb.set_size(len(from_infos))
+        jobs = jobs or fs.jobs
+        generic.copy(
+            fs,
+            from_infos,
+            localfs,
+            to_infos,
+            callback=cb,
+            batch_size=jobs,
+        )
+        return len(to_infos)
 
 
 def parse_external_url(url, config=None):
     remote_config = dict(config) if config else {}
     remote_config["url"] = url
-    fs_cls, fs_config, fs_path = get_cloud_fs(None, **remote_config)
+    fs_cls, fs_config, fs_path = get_cloud_fs({}, **remote_config)
     fs = fs_cls(**fs_config)
     return fs, fs_path
 
@@ -105,18 +137,14 @@ def _resolve_remote_refs(config, remote_conf):
         return remote_conf
 
     base = get_fs_config(config, name=parsed.netloc)
-    cls, _, _ = _get_cloud_fs(config, **base)
+    cls, _, _ = get_cloud_fs(config, **base)
     relpath = parsed.path.lstrip("/").replace("/", cls.sep)
     url = cls.sep.join((base["url"], relpath))
     return {**base, **remote_conf, "url": url}
 
 
-def get_cloud_fs(repo, **kwargs):
-    repo_config = repo.config if repo else {}
-    return _get_cloud_fs(repo_config, **kwargs)
-
-
-def _get_cloud_fs(repo_config, **kwargs):
+def get_cloud_fs(repo_config, **kwargs):
+    repo_config = repo_config or {}
     core_config = repo_config.get("core", {})
 
     remote_conf = get_fs_config(repo_config, **kwargs)

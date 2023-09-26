@@ -10,14 +10,12 @@ from shortuuid import uuid
 
 from dvc.lock import LockError
 from dvc.repo.experiments.refs import (
-    EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
-    EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
     EXEC_NAMESPACE,
-    EXPS_TEMP,
+    TEMP_NAMESPACE,
 )
 from dvc.repo.experiments.utils import EXEC_TMP_DIR, get_exp_rwlock
 from dvc.scm import SCM, Git
@@ -67,7 +65,6 @@ class TempDirExecutor(BaseLocalExecutor):
     # debugging user code), and suppress other DVC hints (like `git add`
     # suggestions) that are not applicable outside of workspace runs
     WARN_UNTRACKED = True
-    QUIET = True
     DEFAULT_LOCATION = "tempdir"
 
     @retry(180, errors=LockError, timeout=1)
@@ -90,9 +87,9 @@ class TempDirExecutor(BaseLocalExecutor):
         if infofile:
             self.info.dump_json(infofile)
 
-        temp_head = f"{EXPS_TEMP}/head-{uuid()}"
-        temp_merge = f"{EXPS_TEMP}/merge-{uuid()}"
-        temp_baseline = f"{EXPS_TEMP}/baseline-{uuid()}"
+        temp_head = f"{TEMP_NAMESPACE}/head-{uuid()}"
+        temp_merge = f"{TEMP_NAMESPACE}/merge-{uuid()}"
+        temp_baseline = f"{TEMP_NAMESPACE}/baseline-{uuid()}"
 
         temp_ref_dict = {
             temp_head: entry.head_rev,
@@ -124,9 +121,6 @@ class TempDirExecutor(BaseLocalExecutor):
                 if self.scm.get_ref(EXEC_BRANCH):
                     self.scm.remove_ref(EXEC_BRANCH)
 
-            if self.scm.get_ref(EXEC_CHECKPOINT):
-                self.scm.remove_ref(EXEC_CHECKPOINT)
-
         # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
         # committing
         assert isinstance(self.scm, Git)
@@ -157,7 +151,7 @@ class TempDirExecutor(BaseLocalExecutor):
         self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
     ):
         """Initialize DVC cache."""
-        self._update_config({"cache": {"dir": repo.cache.repo.path}})
+        self._update_config({"cache": {"dir": repo.cache.local_cache_dir}})
 
     def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)
@@ -189,7 +183,6 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._detach_stack = ExitStack()
-        self._orig_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
 
     @classmethod
     def from_stash_entry(
@@ -251,6 +244,3 @@ class WorkspaceExecutor(BaseLocalExecutor):
             self.scm.remove_ref(EXEC_MERGE)
             if self.scm.get_ref(EXEC_BRANCH):
                 self.scm.remove_ref(EXEC_BRANCH)
-            checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
-            if checkpoint and checkpoint != self._orig_checkpoint:
-                self.scm.set_ref(EXEC_APPLY, checkpoint)

@@ -34,7 +34,6 @@ PARAM_CACHE = Output.PARAM_CACHE
 PARAM_METRIC = Output.PARAM_METRIC
 PARAM_PLOT = Output.PARAM_PLOT
 PARAM_PERSIST = Output.PARAM_PERSIST
-PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
 PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
 PARAM_PUSH = Output.PARAM_PUSH
@@ -49,8 +48,6 @@ def _get_flags(out):
 
     if not out.use_cache:
         yield PARAM_CACHE, False
-    if out.checkpoint:
-        yield PARAM_CHECKPOINT, True
     if out.persist:
         yield PARAM_PERSIST, True
     if out.plot and isinstance(out.plot, dict):
@@ -152,13 +149,20 @@ def to_pipeline_file(stage: "PipelineStage"):
 
 
 def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
-    from dvc.output import _serialize_tree_obj_to_files, split_file_meta_from_cloud
+    from dvc.cachemgr import LEGACY_HASH_NAMES
+    from dvc.output import (
+        _serialize_hi_to_dict,
+        _serialize_tree_obj_to_files,
+        split_file_meta_from_cloud,
+    )
     from dvc_data.hashfile.tree import Tree
 
     assert stage.cmd
 
     def _dumpd(item: "Output"):
         ret: Dict[str, Any] = {item.PARAM_PATH: item.def_path}
+        if item.hash_name not in LEGACY_HASH_NAMES:
+            ret[item.PARAM_HASH] = "md5"
         if item.hash_info.isdir and kwargs.get("with_files"):
             obj = item.obj or item.get_obj()
             if obj:
@@ -170,7 +174,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
         else:
             meta_d = item.meta.to_dict()
             meta_d.pop("isdir", None)
-            ret.update(item.hash_info.to_dict())
+            ret.update(_serialize_hi_to_dict(item.hash_info))
             ret.update(split_file_meta_from_cloud(meta_d))
         return ret
 

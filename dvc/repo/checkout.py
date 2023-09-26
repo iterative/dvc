@@ -1,15 +1,21 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, List, Set
+from typing import TYPE_CHECKING, Dict, List
 
-from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
+from dvc.exceptions import (
+    CheckoutError,
+    CheckoutErrorSuggestGit,
+    DvcException,
+    NoOutputOrStageError,
+)
+from dvc.ui import ui
 from dvc.utils import relpath
 
 from . import locked
 
 if TYPE_CHECKING:
-    from . import Repo
-    from .stage import StageInfo
+    from dvc_data.index import BaseDataIndex, DataIndexEntry
+    from dvc_objects.fs.base import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -30,37 +36,64 @@ def _remove_unused_links(repo):
     return ret
 
 
-def get_all_files_numbers(pairs):
-    return sum(stage.get_all_files_number(filter_info) for stage, filter_info in pairs)
+def _build_out_changes(index, changes):
+    from dvc_data.index.checkout import MODIFY
+
+    out_keys = []
+    for out in index.outs:
+        if not out.use_cache:
+            continue
+
+        ws, key = out.index_key
+        if ws != "repo":
+            continue
+
+        out_keys.append(key)
+
+    out_changes = {}
+    for key, change in changes.items():
+        for out_key in out_keys:
+            if len(out_key) > len(key) or key[: len(out_key)] != out_key:
+                continue
+
+            if key == out_key:
+                out_changes[out_key] = change.typ
+            elif not out_changes.get(out_key):
+                out_changes[out_key] = MODIFY
+            break
+
+    return out_changes
 
 
-def _collect_pairs(
-    self: "Repo", targets, with_deps: bool, recursive: bool
-) -> Set["StageInfo"]:
-    from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
-
-    pairs: Set["StageInfo"] = set()
-    for target in targets:
+def _check_can_delete(
+    entries: List["DataIndexEntry"],
+    index: "BaseDataIndex",
+    path: str,
+    fs: "FileSystem",
+):
+    entry_paths = []
+    for entry in entries:
         try:
-            pairs.update(
-                self.stage.collect_granular(
-                    target, with_deps=with_deps, recursive=recursive
-                )
-            )
-        except (
-            StageFileDoesNotExistError,
-            StageFileBadNameError,
-            NoOutputOrStageError,
-        ) as exc:
-            if not target:
-                raise
-            raise CheckoutErrorSuggestGit(target) from exc
+            cache_fs, cache_path = index.storage_map.get_cache(entry)
+        except ValueError:
+            continue
 
-    return pairs
+        if cache_fs.exists(cache_path):
+            continue
+
+        entry_paths.append(fs.path.join(path, *(entry.key or ())))
+
+    if not entry_paths:
+        return
+
+    raise DvcException(
+        "Can't remove the following unsaved files without confirmation. "
+        "Use `--force` to force.\n" + "\n".join(entry_paths)
+    )
 
 
 @locked
-def checkout(
+def checkout(  # noqa: C901
     self,
     targets=None,
     with_deps=False,
@@ -70,13 +103,14 @@ def checkout(
     allow_missing=False,
     **kwargs,
 ):
-    from dvc.fs.callbacks import Callback
+    from dvc.repo.index import build_data_index
+    from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
+    from dvc_data.index.checkout import ADD, DELETE, MODIFY, apply, compare
 
     stats: Dict[str, List[str]] = {
         "added": [],
         "deleted": [],
         "modified": [],
-        "failed": [],
     }
     if not targets:
         targets = [None]
@@ -85,28 +119,91 @@ def checkout(
     if isinstance(targets, str):
         targets = [targets]
 
-    pairs = _collect_pairs(self, targets, with_deps, recursive)
-    total = get_all_files_numbers(pairs)
-    with Callback.as_tqdm_callback(
+    def onerror(target, exc):
+        if target and isinstance(
+            exc,
+            (
+                StageFileDoesNotExistError,
+                StageFileBadNameError,
+                NoOutputOrStageError,
+            ),
+        ):
+            raise CheckoutErrorSuggestGit(target) from exc
+        raise  # pylint: disable=misplaced-bare-raise
+
+    view = self.index.targets_view(
+        targets,
+        recursive=recursive,
+        with_deps=with_deps,
+        onerror=onerror,
+    )
+
+    with ui.progress(
+        unit="entry",
+        desc="Building workspace index",
+        leave=True,
+    ) as pb:
+        old = build_data_index(
+            view,
+            self.root_dir,
+            self.fs,
+            compute_hash=True,
+            callback=pb.as_callback(),
+        )
+
+    new = view.data["repo"]
+
+    with ui.progress(
+        desc="Comparing indexes",
+        unit="entry",
+        leave=True,
+    ) as pb:
+        diff = compare(old, new, relink=relink, delete=True, callback=pb.as_callback())
+
+    if not force:
+        _check_can_delete(diff.files_delete, new, self.root_dir, self.fs)
+
+    failed = set()
+    out_paths = [out.fs_path for out in view.outs if out.use_cache and out.is_in_repo]
+
+    def checkout_onerror(src_path, dest_path, _exc):
+        logger.debug(
+            "failed to create '%s' from '%s'", dest_path, src_path, exc_info=True
+        )
+
+        for out_path in out_paths:
+            if self.fs.path.isin_or_eq(dest_path, out_path):
+                failed.add(out_path)
+
+    with ui.progress(
         unit="file",
-        desc="Checkout",
-        disable=total == 0,
-    ) as cb:
-        cb.set_size(total)
-        for stage, filter_info in pairs:
-            result = stage.checkout(
-                force=force,
-                progress_callback=cb,
-                relink=relink,
-                filter_info=filter_info,
-                allow_missing=allow_missing,
-                **kwargs,
-            )
-            for key, items in result.items():
-                stats[key].extend(_fspath_dir(path) for path in items)
+        desc="Applying changes",
+        leave=True,
+    ) as pb:
+        apply(
+            diff,
+            self.root_dir,
+            self.fs,
+            callback=pb.as_callback(),
+            update_meta=False,
+            onerror=checkout_onerror,
+            state=self.state,
+            **kwargs,
+        )
 
-    if stats.get("failed"):
-        raise CheckoutError(stats["failed"], stats)
+    out_changes = _build_out_changes(view, diff.changes)
 
-    del stats["failed"]
+    typ_map = {ADD: "added", DELETE: "deleted", MODIFY: "modified"}
+    for key, typ in out_changes.items():
+        out_path = self.fs.path.join(self.root_dir, *key)
+
+        if out_path in failed:
+            self.fs.remove(out_path, recursive=True)
+        else:
+            self.state.save_link(out_path, self.fs)
+            stats[typ_map[typ]].append(_fspath_dir(out_path))
+
+    if failed and not allow_missing:
+        raise CheckoutError([relpath(out_path) for out_path in failed], stats)
+
     return stats

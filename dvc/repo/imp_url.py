@@ -18,17 +18,12 @@ def imp_url(  # noqa: C901, PLR0913
     self: "Repo",
     url,
     out=None,
-    fname=None,
     erepo=None,
     frozen=True,
     no_download=False,
     no_exec=False,
     remote=None,
     to_remote=False,
-    desc=None,
-    type=None,  # noqa: A002, pylint: disable=redefined-builtin
-    labels=None,
-    meta=None,
     jobs=None,
     force=False,
     fs_config=None,
@@ -62,16 +57,13 @@ def imp_url(  # noqa: C901, PLR0913
     stage = self.stage.create(
         single_stage=True,
         validate=False,
-        fname=fname or path,
+        fname=path,
         wdir=wdir,
         deps=[url],
         outs=[out],
         erepo=erepo,
         fs_config=fs_config,
     )
-
-    out_obj = stage.outs[0]
-    out_obj.annot.update(desc=desc, type=type, labels=labels, meta=meta)
 
     try:
         self.check_graph(stages={stage})

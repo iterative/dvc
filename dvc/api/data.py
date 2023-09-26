@@ -36,21 +36,22 @@ def get_url(path, repo=None, rev=None, remote=None):
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
-    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
-        with _wrap_exceptions(_repo, path):
-            fs_path = _repo.dvcfs.from_os_path(path)
+    from dvc.config import NoRemoteError
+    from dvc_data.index import StorageKeyError
 
-            with reraise(FileNotFoundError, PathMissingError(path, repo)):
-                info = _repo.dvcfs.info(fs_path)
-
-            dvc_info = info.get("dvc_info")
-            if not dvc_info:
-                raise OutputNotFoundError(path, repo)
-
-            dvc_repo = info["repo"]  # pylint: disable=unsubscriptable-object
-            md5 = dvc_info["md5"]
-
-            return dvc_repo.cloud.get_url_for(remote, checksum=md5)
+    repo_kwargs: Dict[str, Any] = {}
+    if remote:
+        repo_kwargs["config"] = {"core": {"remote": remote}}
+    with Repo.open(
+        repo, rev=rev, subrepos=True, uninitialized=True, **repo_kwargs
+    ) as _repo:
+        index, entry = _repo.get_data_index_entry(path)
+        with reraise(
+            (StorageKeyError, ValueError),
+            NoRemoteError(f"no remote specified in {_repo}"),
+        ):
+            remote_fs, remote_path = index.storage_map.get_remote(entry)
+            return remote_fs.unstrip_protocol(remote_path)
 
 
 class _OpenContextManager(GCM):
@@ -66,13 +67,15 @@ class _OpenContextManager(GCM):
         raise AttributeError("dvc.api.open() should be used in a with statement.")
 
 
-def open(  # noqa, pylint: disable=redefined-builtin
+def open(  # noqa: A001, pylint: disable=redefined-builtin
     path: str,
     repo: Optional[str] = None,
     rev: Optional[str] = None,
     remote: Optional[str] = None,
     mode: str = "r",
     encoding: Optional[str] = None,
+    config: Optional[Dict[str, Any]] = None,
+    remote_config: Optional[Dict[str, Any]] = None,
 ):
     """
     Opens a file tracked in a DVC project.
@@ -114,6 +117,11 @@ def open(  # noqa, pylint: disable=redefined-builtin
             Defaults to None.
             This should only be used in text mode.
             Mirrors the namesake parameter in builtin `open()`_.
+        config(dict, optional): config to be passed to the DVC repository.
+            Defaults to None.
+        remote_config(dict, optional): remote config to be passed to the DVC
+            repository.
+            Defaults to None.
 
     Returns:
         _OpenContextManager: A context manager that generatse a corresponding
@@ -209,14 +217,29 @@ def open(  # noqa, pylint: disable=redefined-builtin
         "rev": rev,
         "mode": mode,
         "encoding": encoding,
+        "config": config,
+        "remote_config": remote_config,
     }
     return _OpenContextManager(_open, args, kwargs)
 
 
-def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    repo_kwargs: Dict[str, Any] = {"subrepos": True, "uninitialized": True}
-    if remote:
-        repo_kwargs["config"] = {"core": {"remote": remote}}
+def _open(
+    path,
+    repo=None,
+    rev=None,
+    remote=None,
+    mode="r",
+    encoding=None,
+    config=None,
+    remote_config=None,
+):
+    repo_kwargs: Dict[str, Any] = {
+        "subrepos": True,
+        "uninitialized": True,
+        "remote": remote,
+        "config": config,
+        "remote_config": remote_config,
+    }
 
     with Repo.open(repo, rev=rev, **repo_kwargs) as _repo:
         with _wrap_exceptions(_repo, path):
@@ -251,13 +274,29 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
                 raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 
 
-def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
+def read(
+    path,
+    repo=None,
+    rev=None,
+    remote=None,
+    mode="r",
+    encoding=None,
+    config=None,
+    remote_config=None,
+):
     """
     Returns the contents of a tracked file (by DVC or Git). For Git repos, HEAD
     is used unless a rev argument is supplied. The default remote is tried
     unless a remote argument is supplied.
     """
     with open(
-        path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
+        path,
+        repo=repo,
+        rev=rev,
+        remote=remote,
+        mode=mode,
+        encoding=encoding,
+        config=config,
+        remote_config=remote_config,
     ) as fd:
         return fd.read()

@@ -4,12 +4,7 @@ from typing import TYPE_CHECKING, Dict, List
 from scmrepo.exceptions import SCMError
 
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
-from dvc.repo.experiments.refs import (
-    EXEC_CHECKPOINT,
-    EXEC_NAMESPACE,
-    EXPS_NAMESPACE,
-    EXPS_STASH,
-)
+from dvc.repo.experiments.refs import EXEC_NAMESPACE, EXPS_NAMESPACE, EXPS_STASH
 from dvc.repo.experiments.utils import get_exp_rwlock, iter_remote_refs
 
 logger = logging.getLogger(__name__)
@@ -33,9 +28,7 @@ def get_remote_executor_refs(scm: "Git", remote_url: str) -> List[str]:
         remote_url,
         base=EXPS_NAMESPACE,
     ):
-        if ref == EXEC_CHECKPOINT or (
-            not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH
-        ):
+        if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
             refs.append(ref)
     return refs
 
@@ -67,7 +60,7 @@ def fetch_running_exp_from_temp_dir(
         result[rev] = info.asdict()
         if info.git_url and fetch_refs and info.status > TaskStatus.PREPARING:
 
-            def on_diverged(_ref: str, _checkpoint: bool):
+            def on_diverged(_ref: str):
                 return True
 
             executor = TempDirExecutor.from_info(info)

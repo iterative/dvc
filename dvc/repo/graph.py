@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Iterator, List, Set
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Set, TypeVar
 
 from dvc.fs import localfs
 from dvc.utils.fs import path_isin
@@ -7,6 +7,8 @@ if TYPE_CHECKING:
     from networkx import DiGraph
 
     from dvc.stage import Stage
+
+T = TypeVar("T")
 
 
 def check_acyclic(graph: "DiGraph") -> None:
@@ -29,6 +31,9 @@ def check_acyclic(graph: "DiGraph") -> None:
 
 def get_pipeline(pipelines, node):
     found = [i for i in pipelines if i.has_node(node)]
+    if not found:
+        return None
+
     assert len(found) == 1
     return found[0]
 
@@ -39,10 +44,28 @@ def get_pipelines(graph: "DiGraph"):
     return [graph.subgraph(c).copy() for c in nx.weakly_connected_components(graph)]
 
 
+def get_subgraph_of_nodes(
+    graph: "DiGraph", sources: Optional[List[Any]] = None, downstream: bool = False
+) -> "DiGraph":
+    from networkx import dfs_postorder_nodes, reverse_view
+
+    if not sources:
+        return graph
+
+    g = reverse_view(graph) if downstream else graph
+    nodes = []
+    for source in sources:
+        nodes.extend(dfs_postorder_nodes(g, source))
+    return graph.subgraph(nodes)
+
+
 def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:
     import networkx as nx
 
     pipeline = get_pipeline(get_pipelines(graph), stage)
+    if not pipeline:
+        return iter([])
+
     return nx.dfs_postorder_nodes(pipeline, stage)
 
 
@@ -135,10 +158,9 @@ def build_outs_graph(graph, outs_trie):
 
     outs_graph.add_nodes_from(outs_trie.values())
     for stage in graph.nodes():
+        if stage.is_repo_import:
+            continue
         for dep in stage.deps:
-            if dep.fs_path is None:
-                # RepoDependency don't have a path
-                continue
             dep_key = dep.fs.path.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
