@@ -1,5 +1,6 @@
 import logging
 import time
+from collections import defaultdict
 from functools import partial
 from typing import (
     TYPE_CHECKING,
@@ -319,6 +320,22 @@ class Index:
         for stage in self.stages:
             yield from stage.outs
 
+    @cached_property
+    def out_data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+
+        by_workspace["repo"] = set()
+        by_workspace["local"] = set()
+
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            ws, key = out.index_key
+            by_workspace[ws].add(key)
+
+        return dict(by_workspace)
+
     @property
     def decorated_outs(self) -> Iterator["Output"]:
         for output in self.outs:
@@ -359,8 +376,6 @@ class Index:
 
     @cached_property
     def data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
-        from collections import defaultdict
-
         by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
         by_workspace["repo"] = set()
@@ -377,8 +392,6 @@ class Index:
 
     @cached_property
     def metric_keys(self) -> Dict[str, Set["DataIndexKey"]]:
-        from collections import defaultdict
-
         from .metrics.show import _collect_top_level_metrics
 
         by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
@@ -400,8 +413,6 @@ class Index:
 
     @cached_property
     def plot_keys(self) -> Dict[str, Set["DataIndexKey"]]:
-        from collections import defaultdict
-
         by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
         by_workspace["repo"] = set()
@@ -520,8 +531,6 @@ class Index:
         jobs: Optional[int] = None,
         push: bool = False,
     ) -> "ObjectContainer":
-        from collections import defaultdict
-
         used: "ObjectContainer" = defaultdict(set)
         pairs = self.collect_targets(targets, recursive=recursive, with_deps=with_deps)
         for stage, filter_info in pairs:
@@ -640,9 +649,23 @@ class IndexView:
         yield from {out for (out, _) in self._filtered_outs}
 
     @cached_property
-    def _data_prefixes(self) -> Dict[str, "_DataPrefixes"]:
-        from collections import defaultdict
+    def out_data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
+        by_workspace["repo"] = set()
+        by_workspace["local"] = set()
+
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            ws, key = out.index_key
+            by_workspace[ws].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
+    def _data_prefixes(self) -> Dict[str, "_DataPrefixes"]:
         prefixes: Dict[str, "_DataPrefixes"] = defaultdict(
             lambda: _DataPrefixes(set(), set())
         )
@@ -660,8 +683,6 @@ class IndexView:
 
     @cached_property
     def data_keys(self) -> Dict[str, Set["DataIndexKey"]]:
-        from collections import defaultdict
-
         ret: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
         for out, filter_info in self._filtered_outs:
@@ -714,7 +735,7 @@ class IndexView:
         return data
 
 
-def build_data_index(  # noqa: C901
+def build_data_index(  # noqa: C901, PLR0912
     index: Union["Index", "IndexView"],
     path: str,
     fs: "FileSystem",
@@ -777,14 +798,6 @@ def build_data_index(  # noqa: C901
             data.add(entry)
             callback.relative_update(1)
 
-        if compute_hash:
-            tree_meta, tree = build_tree(data, key, name=hash_name)
-            out_entry.meta = tree_meta
-            out_entry.hash_info = tree.hash_info
-            out_entry.loaded = True
-            data.add(out_entry)
-            callback.relative_update(1)
-
     for key in parents:
         parent_path = fs.path.join(path, *key)
         if not fs.exists(parent_path):
@@ -792,6 +805,23 @@ def build_data_index(  # noqa: C901
         direntry = DataIndexEntry(key=key, meta=Meta(isdir=True), loaded=True)
         data.add(direntry)
         callback.relative_update(1)
+
+    if compute_hash:
+        out_keys = index.out_data_keys.get(workspace, set())
+        data_keys = index.data_keys.get(workspace, set())
+        for key in data_keys.intersection(out_keys):
+            hash_name = _get_entry_hash_name(index, workspace, key)
+
+            out_entry = data.get(key)
+            if not out_entry or not out_entry.isdir:
+                continue
+
+            tree_meta, tree = build_tree(data, key, name=hash_name)
+            out_entry.meta = tree_meta
+            out_entry.hash_info = tree.hash_info
+            out_entry.loaded = True
+            data.add(out_entry)
+            callback.relative_update(1)
 
     return data
 

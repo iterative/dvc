@@ -22,7 +22,7 @@ def _hash(entry):
     return None
 
 
-def _diff(old, new, with_missing=False):
+def _diff(old, new, data_keys, with_missing=False):
     from dvc_data.index.diff import ADD, DELETE, MODIFY, RENAME
     from dvc_data.index.diff import diff as idiff
 
@@ -34,12 +34,23 @@ def _diff(old, new, with_missing=False):
         "not in cache": [],
     }
 
+    def meta_cmp_key(meta):
+        if not meta:
+            return meta
+        return meta.isdir
+
     for change in idiff(
         old,
         new,
         with_renames=True,
-        hash_only=True,
+        meta_cmp_key=meta_cmp_key,
+        roots=data_keys,
     ):
+        if (change.old and change.old.isdir and not change.old.hash_info) or (
+            change.new and change.new.isdir and not change.new.hash_info
+        ):
+            continue
+
         if change.typ == ADD:
             ret["added"].append(
                 {
@@ -116,6 +127,7 @@ def diff(
         b_rev = "workspace"
         with_missing = True
 
+    data_keys = set()
     for rev in self.brancher(revs=[a_rev, b_rev]):
         if rev == "workspace" and b_rev != "workspace":
             # brancher always returns workspace, but we only need to compute
@@ -131,6 +143,8 @@ def diff(
             onerror=onerror,
             recursive=recursive,
         )
+
+        data_keys.update(view.data_keys.get("repo", set()))
 
         if rev == "workspace":
             from .index import build_data_index
@@ -165,4 +179,4 @@ def diff(
         new = indexes[b_rev]
 
     with ui.status("Calculating diff"):
-        return _diff(old, new, with_missing=with_missing)
+        return _diff(old, new, data_keys, with_missing=with_missing)
