@@ -131,13 +131,11 @@ def verify_vega(
         paths = [["data", "values"], ["encoding", "color"]]
         tmp1 = deepcopy(html_template)
         tmp2 = deepcopy(filled_template)
-        tmp3 = deepcopy(split_template)
         tmp3 = json.loads(
-            tmp3.replace("<DVC_METRIC_X_LABEL>", x_label).replace(
-                "<DVC_METRIC_Y_LABEL>", y_label
-            )
+            split_template[:]
+            .replace("<DVC_METRIC_X_LABEL>", x_label)
+            .replace("<DVC_METRIC_Y_LABEL>", y_label)
         )
-
         for path in paths:
             dpath.set(tmp1, path, {})
             dpath.set(tmp2, path, {})
