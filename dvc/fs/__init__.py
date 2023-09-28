@@ -49,7 +49,9 @@ known_implementations.update(
 # pylint: enable=unused-import
 
 
-def download(fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None):
+def download(
+    fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
+) -> int:
     with Callback.as_tqdm_callback(
         desc=f"Downloading {fs.path.name(fs_path)}",
         unit="files",
@@ -63,7 +65,8 @@ def download(fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
                 if not path.endswith(fs.path.flavour.sep)
             ]
             if not from_infos:
-                return localfs.makedirs(to, exist_ok=True)
+                localfs.makedirs(to, exist_ok=True)
+                return 0
             to_infos = [
                 localfs.path.join(to, *fs.path.relparts(info, fs_path))
                 for info in from_infos
@@ -82,6 +85,7 @@ def download(fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
             callback=cb,
             batch_size=jobs,
         )
+        return len(to_infos)
 
 
 def parse_external_url(url, config=None):

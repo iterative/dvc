@@ -295,7 +295,7 @@ class BaseExecutor(ABC):
             stages = dvc.commit([], force=True, relink=False)
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
-                dvc.scm.add(include_untracked)
+                dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
             cls.commit(
                 dvc.scm,  # type: ignore[arg-type]
                 exp_hash,

@@ -99,10 +99,16 @@ class StageCache:
         if not os.path.exists(cache_dir):
             return None
 
-        for value in os.listdir(cache_dir):
-            cache = self._load_cache(key, value)
-            if cache:
-                return cache
+        newest_entry = first(
+            sorted(
+                os.listdir(cache_dir),
+                key=lambda f: os.path.getmtime(os.path.join(cache_dir, f)),
+                reverse=True,
+            )
+        )
+        cache = self._load_cache(key, newest_entry)
+        if cache:
+            return cache
 
         return None
 

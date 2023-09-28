@@ -395,6 +395,11 @@ class Experiments:
 
         return remove(self.repo, *args, **kwargs)
 
+    def rename(self, *args, **kwargs):
+        from dvc.repo.experiments.rename import rename
+
+        return rename(self.repo, *args, **kwargs)
+
     def clean(self, *args, **kwargs):
         from dvc.repo.experiments.clean import clean
 

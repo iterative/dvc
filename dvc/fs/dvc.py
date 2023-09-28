@@ -18,7 +18,7 @@ from .data import DataFileSystem
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
-    from dvc.types import StrPath
+    from dvc.types import DictStrAny, StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     cachable = False
     root_marker = "/"
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         url: Optional[str] = None,
         rev: Optional[str] = None,
@@ -88,7 +88,10 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         target_options: Optional[Dict[str, Any]] = None,  # noqa: ARG002
         # pylint:disable-next=unused-argument
         target_protocol: Optional[str] = None,  # noqa: ARG002
-        **repo_kwargs: Any,
+        config: Optional["DictStrAny"] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
+        **kwargs,
     ) -> None:
         """DVC + git-tracked files fs.
 
@@ -108,6 +111,9 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 By default, it ignores subrepos.
             repo_factory (callable): A function to initialize subrepo with.
                 The default is `Repo`.
+            config (dict): Repo config to be passed into `repo_factory`.
+            remote (str): Remote name to be passed into `repo_factory`.
+            remote_config(dict): Remote config to be passed into `repo_factory`.
 
         Examples:
             - Opening a filesystem from repo in current working directory
@@ -131,7 +137,14 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         self._repo_stack = ExitStack()
         if repo is None:
             url = url if url is not None else fo
-            repo = self._make_repo(url=url, rev=rev, subrepos=subrepos, **repo_kwargs)
+            repo = self._make_repo(
+                url=url,
+                rev=rev,
+                subrepos=subrepos,
+                config=config,
+                remote=remote,
+                remote_config=remote_config,
+            )
             assert repo is not None
             # pylint: disable=protected-access
             repo_factory = repo._fs_conf["repo_factory"]
@@ -187,6 +200,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return parts
 
     def _get_key_from_relative(self, path) -> Key:
+        path = self._strip_protocol(path)
         parts = self.path.relparts(path, self.root_marker)
         if parts and parts[0] == os.curdir:
             return parts[1:]

@@ -14,6 +14,10 @@ class CmdDataBase(CmdBase):
         from dvc.utils.humanize import get_summary
 
         default_msg = "Everything is up to date."
+
+        if not self.args.remote and not self.repo.config["core"].get("remote"):
+            ui.warn("No remote provided and no default remote set.")
+
         ui.write(get_summary(stats.items()) or default_msg)
 
 

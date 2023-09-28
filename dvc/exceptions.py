@@ -1,6 +1,6 @@
 """Exceptions raised by the dvc."""
 import errno
-from typing import TYPE_CHECKING, Dict, List, Set
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 from dvc.utils import format_link
 
@@ -336,3 +336,24 @@ class CacheLinkError(DvcException):
 class PrettyDvcException(DvcException):
     def __pretty_exc__(self, **kwargs):
         """Print prettier exception message."""
+
+
+class ArtifactNotFoundError(DvcException):
+    """Thrown if an artifact is not found in the DVC repo.
+
+    Args:
+        name (str): artifact name.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        version: Optional[str] = None,
+        stage: Optional[str] = None,
+    ):
+        self.name = name
+        self.version = version
+        self.stage = stage
+
+        desc = f" @ {stage or version}" if (stage or version) else ""
+        super().__init__(f"Unable to find artifact '{name}{desc}'")

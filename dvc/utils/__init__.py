@@ -248,7 +248,7 @@ def env2bool(var, undefined=False):
     return bool(re.search("1|y|yes|true", var, flags=re.I))
 
 
-def resolve_output(inp, out, force=False):
+def resolve_output(inp: str, out: Optional[str], force=False) -> str:
     from urllib.parse import urlparse
 
     from dvc.exceptions import FileExistsLocallyError
