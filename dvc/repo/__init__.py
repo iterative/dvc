@@ -578,6 +578,26 @@ class Repo:
         return DVCFileSystem(repo=self, subrepos=self.subrepos, **self._fs_conf)
 
     @cached_property
+    def _btime(self):
+        if not self.tmp_dir:
+            return None
+
+        # Not all python versions/filesystems/platforms provide creation
+        # time (st_birthtime, stx_btime, etc), so we use our own dummy
+        # file and its mtime instead.
+        path = os.path.join(self.tmp_dir, "btime")
+
+        try:
+            with open(path, "x"):  # pylint: disable=unspecified-encoding
+                pass
+        except FileNotFoundError:
+            return None
+        except FileExistsError:
+            pass
+
+        return os.path.getmtime(path)
+
+    @cached_property
     def site_cache_dir(self) -> str:
         import getpass
         import hashlib
@@ -611,10 +631,15 @@ class Repo:
         # of the token components are changed.
         salt = 0
 
+        # NOTE: This helps us avoid accidentally reusing cache for repositories
+        # that just happened to be at the same path as old deleted ones.
+        btime = self._btime or getattr(os.stat(root_dir), "st_birthtime", None)
+
         md5 = hashlib.md5(  # noqa: S324  # nosec B324, B303
             str(
                 (
                     root_dir,
+                    btime,
                     getpass.getuser(),
                     version_tuple[0],
                     salt,
