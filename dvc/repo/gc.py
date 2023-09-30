@@ -132,7 +132,7 @@ def gc(  # noqa: PLR0913, C901
         num_removed = ogc(odb, used_obj_ids, jobs=jobs, dry=dry)
         if num_removed:
             logger.info("Removed %d objects from %s cache.", num_removed, scheme)
-        if not num_removed:
+        else:
             logger.info("No unused '%s' cache to remove.", scheme)
 
     if not cloud:
