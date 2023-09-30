@@ -22,6 +22,7 @@ def test_(dvc, scm, mocker):
             "--force",
             "--jobs",
             "3",
+            "--dry",
             "--projects",
             "project1",
             "project2",
@@ -49,6 +50,7 @@ def test_(dvc, scm, mocker):
         rev=None,
         num=None,
         not_in_remote=False,
+        dry=True,
     )
 
     cli_args = parse_args(["gc"])

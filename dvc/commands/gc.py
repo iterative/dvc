@@ -81,6 +81,7 @@ class CmdGC(CmdBase):
             rev=self.args.rev,
             num=self.args.num,
             not_in_remote=self.args.not_in_remote,
+            dry=self.args.dry,
         )
         return 0
 
@@ -212,5 +213,11 @@ def add_parser(subparsers, parent_parser):
             "Useful if you share a single cache across repos."
         ),
         metavar="<paths>",
+    )
+    gc_parser.add_argument(
+        "--dry",
+        action="store_true",
+        default=False,
+        help=("Only print what would get removed without actually removing."),
     )
     gc_parser.set_defaults(func=CmdGC)
