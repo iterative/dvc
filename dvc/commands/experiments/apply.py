@@ -4,21 +4,13 @@ import logging
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsApply(CmdBase):
     def run(self):
-        if not self.args.force:
-            ui.write(
-                "The --no-force option is deprecated and will be removed in a future"
-                " DVC release. To revert the result of 'exp apply', run:\n"
-                "\n\tgit reset --hard\n"
-                "\tgit stash apply refs/exps/apply/stash\n"
-            )
-        self.repo.experiments.apply(self.args.experiment)
+        self.repo.experiments.apply(self.args.experiment, force=self.args.force)
 
         return 0
 
@@ -33,10 +25,11 @@ def add_parser(experiments_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_apply_parser.add_argument(
-        "--no-force",
-        action="store_false",
-        dest="force",
-        help="Fail if this command would overwrite conflicting changes.",
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Do not prompt when removing working directory files.",
     )
     experiments_apply_parser.add_argument(
         "experiment", help="Experiment to be applied."
