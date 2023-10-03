@@ -55,7 +55,7 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_rename_parser.add_argument(
         "name",
-        help="Name of new experiment.",
+        help="New name for the experiment.",
         metavar="<name>",
     )
     experiments_rename_parser.add_argument(
