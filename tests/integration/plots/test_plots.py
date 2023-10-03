@@ -102,6 +102,7 @@ def verify_vega(
     html_result,
     json_result,
     split_json_result,
+    title,
     x_label,
     y_label,
 ):
@@ -125,7 +126,7 @@ def verify_vega(
     assert "<DVC_METRIC_Y_LABEL>" in split_json_result[0]["content"]
 
     def _assert_templates_equal(
-        html_template, filled_template, split_template, x_label, y_label
+        html_template, filled_template, split_template, title, x_label, y_label
     ):
         # besides split anchors, json and split json should be equal
         paths = [["data", "values"], ["encoding", "color"]]
@@ -133,8 +134,19 @@ def verify_vega(
         tmp2 = deepcopy(filled_template)
         tmp3 = json.loads(
             split_template[:]
+            .replace("<DVC_METRIC_TITLE>", title)
             .replace("<DVC_METRIC_X_LABEL>", x_label)
             .replace("<DVC_METRIC_Y_LABEL>", y_label)
+            .replace(
+                '"<DVC_METRIC_ZOOM_AND_PAN>"',
+                json.dumps(
+                    {
+                        "name": "grid",
+                        "select": "interval",
+                        "bind": "scales",
+                    }
+                ),
+            )
         )
         for path in paths:
             dpath.set(tmp1, path, {})
@@ -147,6 +159,7 @@ def verify_vega(
         html_result,
         json_result[0]["content"],
         split_json_result[0]["content"],
+        title,
         x_label,
         y_label,
     )
@@ -235,15 +248,16 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
     )
     verify_image(tmp_dir, "workspace", "image.png", image_v1, html_path, json_data)
 
-    for plot, x_label, y_label in [
-        ("linear.json", "x", "y"),
-        ("confusion.json", "predicted", "actual"),
+    for plot, title, x_label, y_label in [
+        ("linear.json", "linear", "x", "y"),
+        ("confusion.json", "confusion matrix", "predicted", "actual"),
     ]:
         verify_vega(
             "workspace",
             html_result[plot],
             json_data[plot],
             split_json_data[plot],
+            title,
             x_label,
             y_label,
         )
@@ -264,15 +278,16 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
     verify_image(tmp_dir, "workspace", "image.png", image_v2, html_path, json_data)
     verify_image(tmp_dir, "HEAD", "image.png", image_v1, html_path, json_data)
 
-    for plot, x_label, y_label in [
-        ("linear.json", "x", "y"),
-        ("confusion.json", "predicted", "actual"),
+    for plot, title, x_label, y_label in [
+        ("linear.json", "linear", "x", "y"),
+        ("confusion.json", "confusion matrix", "predicted", "actual"),
     ]:
         verify_vega(
             ["HEAD", "workspace"],
             html_result[plot],
             json_data[plot],
             split_json_data[plot],
+            title,
             x_label,
             y_label,
         )
@@ -340,15 +355,16 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
             },
         )
 
-        for plot, x_label, y_label in [
-            ("../linear.json", "x", "y"),
-            ("../confusion.json", "predicted", "actual"),
+        for plot, title, x_label, y_label in [
+            ("../linear.json", "linear", "x", "y"),
+            ("../confusion.json", "confusion matrix", "predicted", "actual"),
         ]:
             verify_vega(
                 ["HEAD", "workspace"],
                 html_result[plot],
                 json_data[plot],
                 split_json_data[plot],
+                title,
                 x_label,
                 y_label,
             )
