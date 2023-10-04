@@ -629,7 +629,7 @@ class Repo:
         # components were changed (useful to prevent newer dvc versions from
         # using older broken cache). Please reset this back to 0 if other parts
         # of the token components are changed.
-        salt = 0
+        salt = 1
 
         # NOTE: This helps us avoid accidentally reusing cache for repositories
         # that just happened to be at the same path as old deleted ones.
