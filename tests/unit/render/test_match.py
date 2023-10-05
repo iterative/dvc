@@ -173,7 +173,7 @@ def test_match_renderers(M):
     ]
     assert renderer.properties == {
         "anchors_y_definitions": [{"filename": "file.json", "field": "y"}],
-        "anchor_revs": ["v1", "revision_with_no_data"],
+        "revs_with_datapoints": ["v1"],
         "title": "plot_id_1",
         "x": "x",
         "y": "y",

@@ -101,8 +101,6 @@ def match_defs_renderers(  # noqa: C901, PLR0912
             else:
                 renderer_cls = VegaRenderer
                 renderer_id = plot_id
-                if rev not in revs:
-                    revs.append(rev)
 
             converter = _get_converter(renderer_cls, inner_id, props, definitions_data)
 
@@ -112,6 +110,8 @@ def match_defs_renderers(  # noqa: C901, PLR0912
 
             try:
                 dps, rev_props = converter.flat_datapoints(rev)
+                if dps and rev not in revs:
+                    revs.append(rev)
             except Exception as e:  # noqa: BLE001
                 logger.warning("In %r, %s", rev, str(e).lower())
                 def_errors[rev] = e
@@ -125,7 +125,7 @@ def match_defs_renderers(  # noqa: C901, PLR0912
             first_props["title"] = renderer_id
 
         if revs:
-            first_props["anchor_revs"] = revs
+            first_props["revs_with_datapoints"] = revs
 
         if renderer_cls is not None:
             renderer = renderer_cls(plot_datapoints, renderer_id, **first_props)
