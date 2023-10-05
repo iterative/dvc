@@ -16,6 +16,7 @@ from typing import (
 
 from funcy import ldistinct
 
+from dvc.config import RemoteConfigError
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
 from dvc.stage.cache import RunCacheNotSupported
@@ -249,7 +250,7 @@ def reproduce(
         logger.debug("Pulling run cache")
         try:
             self.stage_cache.pull(None)
-        except RunCacheNotSupported as e:
+        except (RunCacheNotSupported, RemoteConfigError) as e:
             logger.warning("Failed to pull run cache: %s", e)
 
     graph = None
