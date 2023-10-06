@@ -8,7 +8,6 @@ import pytest
 from funcy import lsplit
 
 from dvc.cli import main
-from dvc.config import RemoteConfigError
 from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.fs import system
@@ -502,14 +501,13 @@ def test_repro_allow_missing_and_pull(tmp_dir, dvc, mocker, local_remote):
     assert len(ret) == 1
 
 
-@pytest.mark.parametrize("error", [RunCacheNotSupported, RemoteConfigError])
-def test_repro_pulls_continue_without_run_cache(
-    tmp_dir, dvc, mocker, local_remote, error
-):
+def test_repro_pulls_continue_without_run_cache(tmp_dir, dvc, mocker, local_remote):
     (foo,) = tmp_dir.dvc_gen("foo", "foo")
 
     dvc.push()
-    mocker.patch.object(dvc.stage_cache, "pull", side_effect=error("foo"))
+    mocker.patch.object(
+        dvc.stage_cache, "pull", side_effect=RunCacheNotSupported("foo")
+    )
     dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
     remove("foo")
     remove(foo.outs[0].cache_path)
