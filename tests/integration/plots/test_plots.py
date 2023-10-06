@@ -134,6 +134,10 @@ def verify_vega(
         tmp2 = deepcopy(filled_template)
         tmp3 = json.loads(
             split_template[:]
+            .replace('"<DVC_METRIC_COLUMN_WIDTH>"', "300")
+            .replace('"<DVC_METRIC_PLOT_HEIGHT>"', "300")
+            .replace('"<DVC_METRIC_PLOT_WIDTH>"', "300")
+            .replace('"<DVC_METRIC_ROW_HEIGHT>"', "300")
             .replace("<DVC_METRIC_TITLE>", title)
             .replace("<DVC_METRIC_X_LABEL>", x_label)
             .replace("<DVC_METRIC_Y_LABEL>", y_label)
