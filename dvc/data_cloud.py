@@ -135,7 +135,7 @@ class DataCloud:
 
         remote = self.get_remote(name=name, command=command)
         if remote.fs.version_aware or remote.worktree:
-            raise NoRemoteError(
+            raise RemoteConfigError(
                 f"'{command}' is unsupported for cloud versioned remotes"
             )
         if hash_name in LEGACY_HASH_NAMES:

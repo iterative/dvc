@@ -4,7 +4,7 @@ import pytest
 from funcy import first
 
 from dvc.dvcfile import LOCK_FILE
-from dvc.stage.cache import _get_stage_hash
+from dvc.stage.cache import RunCacheNotSupported, _get_stage_hash
 from dvc.utils.fs import remove
 
 
@@ -229,3 +229,15 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
     assert (tmp_dir / "bar").exists()
     assert not (tmp_dir / "foo").unlink()
     assert (tmp_dir / LOCK_FILE).exists()
+
+
+def test_push_pull_unsupported(tmp_dir, dvc, mocker, run_copy):
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    mocker.patch.object(
+        dvc.cloud, "get_remote_odb", side_effect=RunCacheNotSupported("foo")
+    )
+    with pytest.raises(RunCacheNotSupported):
+        dvc.push(run_cache=True)
+    with pytest.raises(RunCacheNotSupported):
+        dvc.pull(run_cache=True)

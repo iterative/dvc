@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 from funcy import first
 
 from dvc import fs
+from dvc.config import RemoteConfigError
 from dvc.exceptions import CollectCacheError, DvcException
 from dvc.utils import dict_sha256, relpath
 
@@ -274,15 +275,21 @@ class StageCache:
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        dest_odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "push --run-cache", hash_name="md5-dos2unix"
-        )
+        try:
+            dest_odb = odb or self.repo.cloud.get_remote_odb(
+                remote, "push --run-cache", hash_name="md5-dos2unix"
+            )
+        except RemoteConfigError as e:
+            raise RunCacheNotSupported(e) from e
         return self.transfer(self.repo.cache.legacy, dest_odb)
 
     def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "fetch --run-cache", hash_name="md5-dos2unix"
-        )
+        try:
+            odb = odb or self.repo.cloud.get_remote_odb(
+                remote, "fetch --run-cache", hash_name="md5-dos2unix"
+            )
+        except RemoteConfigError as e:
+            raise RunCacheNotSupported(e) from e
         return self.transfer(odb, self.repo.cache.legacy)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):
