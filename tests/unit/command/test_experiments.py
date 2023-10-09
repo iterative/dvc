@@ -479,6 +479,24 @@ def test_experiments_save(dvc, scm, mocker):
     )
 
 
+def test_experiments_save_message(dvc, scm, mocker):
+    cli_args = parse_args(["exp", "save", "-m", "custom commit message"])
+    assert cli_args.func == CmdExperimentsSave
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.save.save", return_value="acabb")
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo,
+        name=None,
+        force=False,
+        include_untracked=[],
+        message="custom commit message",
+    )
+
+
 def test_experiments_clean(dvc, scm, mocker):
     cli_args = parse_args(["experiments", "clean"])
     assert cli_args.func == CmdExperimentsClean

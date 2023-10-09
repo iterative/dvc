@@ -72,7 +72,7 @@ def add_parser(experiments_subparsers, parent_parser):
         metavar="<path>",
     )
     save_parser.add_argument(
-        "-M",
+        "-m",
         "--message",
         type=str,
         default=None,

@@ -49,7 +49,7 @@ def add_parser(experiments_subparsers, parent_parser):
         ),
     )
     exec_run_parser.add_argument(
-        "-M",
+        "-m",
         "--message",
         type=str,
         default=None,
