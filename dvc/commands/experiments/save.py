@@ -78,4 +78,9 @@ def add_parser(experiments_subparsers, parent_parser):
         default=None,
         help="Custom commit message to use when committing the experiment.",
     )
+    save_parser.add_argument(
+        "-M",  # obsolete
+        dest="message",
+        help=argparse.SUPPRESS,
+    )
     save_parser.set_defaults(func=CmdExperimentsSave)

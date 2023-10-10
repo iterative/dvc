@@ -106,3 +106,8 @@ def _add_run_common(parser):
         default=None,
         help="Custom commit message to use when committing the experiment.",
     )
+    parser.add_argument(
+        "-M",  # obsolete
+        dest="message",
+        help=argparse.SUPPRESS,
+    )
