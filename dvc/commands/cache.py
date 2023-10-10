@@ -40,8 +40,11 @@ class CmdCacheDir(CmdConfig):
 class CmdCacheMigrate(CmdBase):
     def run(self):
         from dvc.cachemgr import migrate_2_to_3
+        from dvc.repo.commit import commit_2_to_3
 
         migrate_2_to_3(self.repo, dry=self.args.dry)
+        if self.args.dvc_files:
+            commit_2_to_3(self.repo, dry=self.args.dry)
         return 0
 
 
@@ -101,6 +104,14 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(CACHE_HELP, "cache/migrate"),
         help=CACHE_MIGRATE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    cache_migrate_parser.add_argument(
+        "--dvc-files",
+        help=(
+            "Migrate entries in all existing DVC files in the repository "
+            "to the DVC 3.0 format."
+        ),
+        action="store_true",
     )
     cache_migrate_parser.add_argument(
         "--dry",

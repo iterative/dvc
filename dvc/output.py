@@ -721,7 +721,7 @@ class Output:
         if self.metric:
             self.verify_metric()
 
-        self._update_legacy_hash_name()
+        self.update_legacy_hash_name()
         if self.use_cache:
             _, self.meta, self.obj = self._build(
                 self.cache,
@@ -745,8 +745,8 @@ class Output:
         self.hash_info = self.obj.hash_info
         self.files = None
 
-    def _update_legacy_hash_name(self):
-        if self.hash_name == "md5-dos2unix" and self.changed_checksum():
+    def update_legacy_hash_name(self, force: bool = False):
+        if self.hash_name == "md5-dos2unix" and (force or self.changed_checksum()):
             self.hash_name = "md5"
 
     def set_exec(self) -> None:
@@ -1391,7 +1391,7 @@ class Output:
             )
 
         assert self.repo
-        self._update_legacy_hash_name()
+        self.update_legacy_hash_name()
         cache = self.cache if self.use_cache else self.local_cache
         assert isinstance(cache, HashFileDB)
 
