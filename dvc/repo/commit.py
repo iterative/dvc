@@ -1,6 +1,12 @@
+from typing import TYPE_CHECKING
+
 from dvc import prompt
 
 from . import locked
+from .scm_context import scm_context
+
+if TYPE_CHECKING:
+    from . import Repo
 
 
 def _prepare_message(stage, changes):
@@ -68,3 +74,48 @@ def commit(
         )
         stage.dump(update_pipeline=False)
     return [s.stage for s in stages_info]
+
+
+@locked
+@scm_context
+def commit_2_to_3(repo: "Repo", dry: bool = False):
+    """Force-commit all legacy outputs to use DVC 3.0 hashes."""
+    from dvc.dvcfile import ProjectFile
+    from dvc.ui import ui
+
+    view = repo.index.targets_view(
+        targets=None,
+        outs_filter=lambda o: o.hash_name == "md5-dos2unix",
+        recursive=True,
+    )
+    migrated = set()
+    for out in view.outs:
+        dvcfile = out.stage.dvcfile.relpath
+        if isinstance(out.stage.dvcfile, ProjectFile):
+            # pylint: disable-next=protected-access
+            lockfile = out.stage.dvcfile._lockfile.relpath
+            migrated.add(f"{dvcfile} ({lockfile})")
+        else:
+            migrated.add(dvcfile)
+    if not migrated:
+        ui.write("No DVC files in the repo to migrate to the 3.0 format.")
+        return
+    if dry:
+        ui.write("Entries in following DVC files will be migrated to the 3.0 format:")
+        ui.write("\n".join(sorted(f"\t{file}" for file in migrated)))
+        return
+    for stage, filter_info in view._stage_infos:  # pylint: disable=protected-access
+        outs_filter = view._outs_filter  # pylint: disable=protected-access
+        outs = {
+            out
+            for out in stage.filter_outs(filter_info)
+            if outs_filter is not None and outs_filter(out)
+        }
+        if outs:
+            for out in outs:
+                out.update_legacy_hash_name(force=True)
+            stage.save(allow_missing=True)
+            stage.commit(allow_missing=True, relink=True)
+            if not isinstance(stage.dvcfile, ProjectFile):
+                ui.write(f"Updating DVC file '{stage.dvcfile.relpath}'")
+            stage.dump(update_pipeline=False)
