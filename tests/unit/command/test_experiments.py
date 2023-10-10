@@ -150,6 +150,27 @@ def test_experiments_run(dvc, scm, mocker):
     cmd.repo.experiments.run.assert_called_with(**default_arguments)
 
 
+@pytest.mark.parametrize("flag", ["-m", "-M", "--message"])
+def test_experiments_run_message(dvc, scm, mocker, flag):
+    default_arguments = {
+        "params": [],
+        "name": None,
+        "queue": False,
+        "run_all": False,
+        "jobs": 1,
+        "tmp_dir": False,
+        "copy_paths": [],
+        "message": "mymessage",
+    }
+    default_arguments.update(repro_arguments)
+
+    cmd = CmdExperimentsRun(parse_args(["exp", "run", flag, "mymessage"]))
+    mocker.patch.object(cmd.repo, "reproduce")
+    mocker.patch.object(cmd.repo.experiments, "run")
+    cmd.run()
+    cmd.repo.experiments.run.assert_called_with(**default_arguments)
+
+
 def test_experiments_branch(dvc, scm, mocker):
     m = mocker.patch("dvc.repo.experiments.branch.branch", return_value={})
 
@@ -479,8 +500,9 @@ def test_experiments_save(dvc, scm, mocker):
     )
 
 
-def test_experiments_save_message(dvc, scm, mocker):
-    cli_args = parse_args(["exp", "save", "-m", "custom commit message"])
+@pytest.mark.parametrize("flag", ["-m", "-M", "--message"])
+def test_experiments_save_message(dvc, scm, mocker, flag):
+    cli_args = parse_args(["exp", "save", flag, "custom commit message"])
     assert cli_args.func == CmdExperimentsSave
 
     cmd = cli_args.func(cli_args)
