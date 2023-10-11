@@ -34,8 +34,8 @@ def rename(
     if not is_valid_name_format(new_name):
         raise InvalidArgumentError(
             f"Invalid exp name {new_name}, the exp name cannot contain `/` and"
-            "must follow rules in"
-            "https://git-scm.com/docs/git-check-ref-format"
+            " must follow rules in"
+            " https://git-scm.com/docs/git-check-ref-format"
         )
 
     if exp_name:

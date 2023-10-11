@@ -476,13 +476,24 @@ def test_experiments_rename_flag(dvc, scm, mocker, capsys, caplog):
     )
 
 
-def test_experiments_rename_invalid(dvc, scm, mocker, capsys, caplog):
+def test_experiments_rename_invalid_usage(dvc, scm, mocker, capsys, caplog):
     cmd = CmdExperimentsRename(parse_args(["exp", "rename", "exp-1"]))
     with pytest.raises(InvalidArgumentError) as excinfo:
         cmd.run()
     assert (
         str(excinfo.value)
         == "An experiment to rename and a new experiment name are required."
+    )
+
+
+def test_experiments_rename_invalid_name(dvc, scm, mocker, capsys, caplog):
+    cmd = CmdExperimentsRename(parse_args(["exp", "rename", "exp-1", "exp:1"]))
+    with pytest.raises(InvalidArgumentError) as excinfo:
+        cmd.run()
+    assert (
+        str(excinfo.value)
+        == "Invalid exp name exp:1, the exp name cannot contain `/` and must follow "
+        "rules in https://git-scm.com/docs/git-check-ref-format"
     )
 
 
