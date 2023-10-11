@@ -5,7 +5,7 @@ from dvc.repo.experiments.exceptions import (
     ExperimentExistsError,
     UnresolvedExpNamesError,
 )
-from dvc.repo.experiments.utils import resolve_name
+from dvc.repo.experiments.utils import check_ref_format, resolve_name
 from dvc.scm import Git
 
 from .refs import ExpRefInfo
@@ -43,6 +43,7 @@ def rename(
             if repo.scm.get_ref(str(new_ref)) and not force:
                 raise ExperimentExistsError(new_name)
 
+            check_ref_format(repo.scm, new_ref)
             _rename_exp(scm=repo.scm, ref_info=result, new_name=new_name)
             renamed.append(name)
 

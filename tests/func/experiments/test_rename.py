@@ -1,5 +1,6 @@
 import pytest
 
+from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.exceptions import (
     ExperimentExistsError,
     UnresolvedExpNamesError,
@@ -31,3 +32,13 @@ def test_existing_name(dvc, exp_stage):
         dvc.experiments.rename("second-name", "first-name")
 
     dvc.experiments.rename("second-name", "first-name", force=True)
+
+
+def test_invalid_name(dvc, exp_stage):
+    dvc.experiments.run(exp_stage.addressing, name="test-name", params=["foo=1"])
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.rename("invalid*name", "test-name")
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.rename("invalid/name", "test-name")
