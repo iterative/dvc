@@ -7,6 +7,7 @@ from dvc.repo.experiments.refs import EXPS_NAMESPACE, ExpRefInfo
 from dvc.repo.experiments.utils import (
     check_ref_format,
     gen_random_name,
+    is_valid_name_format,
     resolve_name,
     to_studio_params,
 )
@@ -42,10 +43,17 @@ def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
     "name,result",
     [
         ("name", True),
+        ("name-group", True),
+        ("name.group", True),
+        ("name.lock", False),
+        ("rev..rev", False),
         ("group/name", False),
         ("na me", False),
+        (f"na{chr(127)}me", False),
+        ("na\nme", False),
+        ("na\rme", False),
         ("invalid/.name", False),
-        ("@", pytest.param(False, marks=pytest.mark.xfail)),
+        ("@", False),
         (":", False),
         ("^", False),
         ("*", False),
@@ -55,6 +63,7 @@ def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
 )
 def test_run_check_ref_format(scm, name, result):
     ref = ExpRefInfo("abc123", name)
+    assert is_valid_name_format(name) == result
     if result:
         check_ref_format(scm, ref)
     else:
