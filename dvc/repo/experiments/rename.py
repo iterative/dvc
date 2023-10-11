@@ -3,9 +3,10 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from dvc.repo.experiments.exceptions import (
     ExperimentExistsError,
+    InvalidArgumentError,
     UnresolvedExpNamesError,
 )
-from dvc.repo.experiments.utils import resolve_name
+from dvc.repo.experiments.utils import is_valid_name_format, resolve_name
 from dvc.scm import Git
 
 from .refs import ExpRefInfo
@@ -29,6 +30,13 @@ def rename(
 
     if exp_name == new_name:
         return None
+
+    if not is_valid_name_format(new_name):
+        raise InvalidArgumentError(
+            f"Invalid exp name {new_name}, the exp name cannot contain `/` and"
+            "must follow rules in"
+            "https://git-scm.com/docs/git-check-ref-format"
+        )
 
     if exp_name:
         results: Dict[str, Union[ExpRefInfo, None]] = resolve_name(
