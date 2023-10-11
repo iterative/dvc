@@ -1,5 +1,6 @@
 import os
 import random
+import re
 import sys
 from collections import defaultdict
 from functools import wraps
@@ -273,9 +274,23 @@ def resolve_name(
     return result
 
 
+def is_valid_name_format(name: str) -> bool:
+    # https://github.com/git/git/blob/master/Documentation/git-check-ref-format.txt
+    invalid_chars = set("/\\ @^~:*?[]\177")  # \177 is DEL
+    return not any(
+        [
+            bool(invalid_chars & set(name)),
+            ".." in name,
+            name.startswith("."),
+            name.endswith((".lock", ".")),
+            re.search(r"[\x00-\x1F]", name) is not None,  # ascii control characters
+        ]
+    )
+
+
 def check_ref_format(scm: "Git", ref: ExpRefInfo):
     # "/" forbidden, only in dvc exp as we didn't support it for now.
-    if not scm.check_ref_format(str(ref)) or "/" in ref.name:
+    if not scm.check_ref_format(str(ref)) or not is_valid_name_format(ref.name):
         raise InvalidArgumentError(
             f"Invalid exp name {ref.name}, the exp name must follow rules in "
             "https://git-scm.com/docs/git-check-ref-format"
