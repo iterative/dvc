@@ -290,7 +290,7 @@ def is_valid_name_format(name: str) -> bool:
 
 def check_ref_format(scm: "Git", ref: ExpRefInfo):
     # "/" forbidden, only in dvc exp as we didn't support it for now.
-    if not scm.check_ref_format(str(ref)) or not is_valid_name_format(ref.name):
+    if not is_valid_name_format(ref.name) or not scm.check_ref_format(str(ref)):
         raise InvalidArgumentError(
             f"Invalid exp name {ref.name}, the exp name must follow rules in "
             "https://git-scm.com/docs/git-check-ref-format"
