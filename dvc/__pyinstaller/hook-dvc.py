@@ -16,6 +16,7 @@ datas += copy_metadata("aiohttp")
 datas += copy_metadata("aiohttp_retry")
 
 hiddenimports = [
+    "dvc._build",
     "dvc_azure",
     "dvc_gdrive",
     "dvc_gs",
