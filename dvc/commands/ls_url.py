@@ -11,12 +11,14 @@ logger = logging.getLogger(__name__)
 
 class CmdListUrl(CmdBaseNoRepo):
     def run(self):
+        from dvc.config import Config
         from dvc.repo import Repo
 
         entries = Repo.ls_url(
             self.args.url,
             recursive=self.args.recursive,
             fs_config=self.args.fs_config,
+            config=Config.from_cwd(),
         )
         if entries:
             show_entries(entries, with_color=True, with_size=self.args.size)

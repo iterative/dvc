@@ -88,11 +88,11 @@ def download(
         return len(to_infos)
 
 
-def parse_external_url(url, config=None):
-    remote_config = dict(config) if config else {}
+def parse_external_url(url, fs_config=None, config=None):
+    remote_config = dict(fs_config) if fs_config else {}
     remote_config["url"] = url
-    fs_cls, fs_config, fs_path = get_cloud_fs({}, **remote_config)
-    fs = fs_cls(**fs_config)
+    fs_cls, resolved_fs_config, fs_path = get_cloud_fs(config, **remote_config)
+    fs = fs_cls(**resolved_fs_config)
     return fs, fs_path
 
 

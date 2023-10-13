@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class CmdGetUrl(CmdBaseNoRepo):
     def run(self):
+        from dvc.config import Config
         from dvc.repo import Repo
 
         try:
@@ -20,6 +21,7 @@ class CmdGetUrl(CmdBaseNoRepo):
                 jobs=self.args.jobs,
                 force=self.args.force,
                 fs_config=self.args.fs_config,
+                config=Config.from_cwd(),
             )
             return 0
         except DvcException:
