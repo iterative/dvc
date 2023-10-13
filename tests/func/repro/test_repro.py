@@ -442,7 +442,7 @@ def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc, mult
     assert not (tmp_dir / "bar").exists()
 
 
-def test_repro_pulls_mising_data_source(tmp_dir, dvc, mocker, local_remote):
+def test_repro_pulls_missing_data_source(tmp_dir, dvc, mocker, local_remote):
     (foo,) = tmp_dir.dvc_gen("foo", "foo")
 
     dvc.push()
@@ -454,7 +454,7 @@ def test_repro_pulls_mising_data_source(tmp_dir, dvc, mocker, local_remote):
     assert dvc.reproduce(pull=True)
 
 
-def test_repro_pulls_mising_import(tmp_dir, dvc, mocker, erepo_dir, local_remote):
+def test_repro_pulls_missing_import(tmp_dir, dvc, mocker, erepo_dir, local_remote):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="first")
 

@@ -241,7 +241,7 @@ class Experiments:
                 self.check_baseline(last_applied)
             return last_applied
         except BaselineMismatchError:
-            # If HEAD has moved since the the last applied experiment,
+            # If HEAD has moved since the last applied experiment,
             # the applied experiment is no longer relevant
             self.scm.remove_ref(EXEC_APPLY)
         return None

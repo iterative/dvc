@@ -4,7 +4,7 @@ from dvc.stage.cache import RunCacheNotSupported
 from dvc.utils.fs import remove
 
 
-def test_repro_pulls_mising_data_source(tmp_dir, dvc, mocker, local_remote):
+def test_repro_pulls_missing_data_source(tmp_dir, dvc, mocker, local_remote):
     (foo,) = tmp_dir.dvc_gen("foo", "foo")
 
     dvc.push()
@@ -16,7 +16,7 @@ def test_repro_pulls_mising_data_source(tmp_dir, dvc, mocker, local_remote):
     assert dvc.reproduce(pull=True)
 
 
-def test_repro_pulls_mising_import(tmp_dir, dvc, mocker, erepo_dir, local_remote):
+def test_repro_pulls_missing_import(tmp_dir, dvc, mocker, erepo_dir, local_remote):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="first")
 
