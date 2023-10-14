@@ -205,7 +205,7 @@ def boxify(message, border_color=None):
 
 
 def _visual_width(line):
-    """Get the the number of columns required to display a string"""
+    """Get the number of columns required to display a string"""
 
     return len(re.sub(colorama.ansitowin32.AnsiToWin32.ANSI_CSI_RE, "", line))
 
