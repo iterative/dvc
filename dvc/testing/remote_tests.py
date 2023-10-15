@@ -169,22 +169,40 @@ class TestRemote:
 
 
 class TestRemoteVersionAware:
-    def test_file(self, tmp_dir, dvc, remote_version_aware):  # pylint: disable=W0613
+    def test_file(
+        self, tmp_dir, dvc, run_copy, remote_version_aware
+    ):  # pylint: disable=W0613
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
+        run_copy("foo", "foo_copy", name="copy")
 
         dvc.push()
-        assert "version_id" in (tmp_dir / "foo.dvc").read_text()
+        foo_dvc = (tmp_dir / "foo.dvc").read_text()
+        assert "version_id" in foo_dvc
         stage = stage.reload()
         out = stage.outs[0]
         assert out.meta.version_id
+        dvc_lock = (tmp_dir / "dvc.lock").read_text()
 
         remove(dvc.cache.local.path)
         remove(tmp_dir / "foo")
 
         dvc.pull()
         assert (tmp_dir / "foo").read_text() == "foo"
+        assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
-    def test_dir(self, tmp_dir, dvc, remote_version_aware):  # pylint: disable=W0613
+        dvc.push()
+        assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+        dvc.reproduce()
+        dvc.push()
+        assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+    def test_dir(
+        self, tmp_dir, dvc, run_copy, remote_version_aware
+    ):  # pylint: disable=W0613
         (stage,) = tmp_dir.dvc_gen(
             {
                 "data_dir": {
@@ -196,8 +214,10 @@ class TestRemoteVersionAware:
         )
 
         dvc.push()
-        assert "files" in (tmp_dir / "data_dir.dvc").read_text()
-        assert "version_id" in (tmp_dir / "data_dir.dvc").read_text()
+
+        data_dir_dvc = (tmp_dir / "data_dir.dvc").read_text()
+        assert "files" in data_dir_dvc
+        assert "version_id" in data_dir_dvc
         stage = stage.reload()
         out = stage.outs[0]
         assert out.files
@@ -213,6 +233,19 @@ class TestRemoteVersionAware:
         assert (
             tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
         ).read_text() == "data_sub"
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+
+        run_copy("data_dir", "data_dir_copy", name="copy")
+        dvc_lock = (tmp_dir / "dvc.lock").read_text()
+
+        dvc.push()
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+        assert (tmp_dir / "dvc.lock").read_text() != dvc_lock
+        dvc_lock = (tmp_dir / "dvc.lock").read_text()
+
+        dvc.push()
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
 
 class TestRemoteWorktree:
