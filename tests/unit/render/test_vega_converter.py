@@ -24,6 +24,7 @@ def test_finding_lists(dictionary, expected_result):
     assert list(result) == expected_result
 
 
+@pytest.mark.studio
 @pytest.mark.parametrize(
     "input_data,properties,expected_datapoints,expected_properties",
     [

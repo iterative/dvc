@@ -114,10 +114,6 @@ class VegaConverter(Converter):
         self.plot_id = plot_id
         self.inferred_properties: Dict = {}
 
-        # TODO we should be handling that in `convert`,
-        #      to avoid stateful `self.inferred_properties`
-        self._infer_x_y()
-
     def _infer_y_from_data(self):
         if self.plot_id in self.data:
             for lst in _lists(self.data[self.plot_id]):
@@ -296,16 +292,11 @@ class VegaConverter(Converter):
     ):
         """
         Convert the data. Fill necessary fields ('x', 'y') and return both
-        generated datapoints and updated properties. If `x` is not provided,
-        leave it as None, fronteds should handle it.
-
-        NOTE: Studio uses this method.
-              The only thing studio FE handles is filling `x` and `y`.
-              `x/y_label` should be filled here.
-
-              Datapoints are not stripped according to config, because users
-              might be utilizing other fields in their custom plots.
+        generated datapoints and updated properties. `x`, `y` values and labels
+        are inferred and always provided.
         """
+        self._infer_x_y()
+
         datapoints = self._find_datapoints()
         properties = {**self.properties, **self.inferred_properties}
 
