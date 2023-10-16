@@ -3,7 +3,6 @@
 import inspect
 import logging
 import os
-import platform
 import sys
 from subprocess import Popen  # nosec B404
 from typing import List
@@ -93,13 +92,8 @@ def _spawn_posix(cmd, env):
     sys.stderr.close()
     os.closerange(0, 3)
 
-    if platform.system() == "Darwin":
-        # workaround for MacOS bug
-        # https://github.com/iterative/dvc/issues/4294
-        _popen(cmd, env=env).communicate()
-    else:
-        os.environ.update(env)
-        main(cmd)
+    os.environ.update(env)
+    main(cmd)
 
     os._exit(0)  # pylint: disable=protected-access
 
