@@ -261,7 +261,7 @@ class StageLoad:
         Args:
             path: if not provided, default `dvc.yaml` is assumed.
             name: required for `dvc.yaml` files, ignored for `.dvc` files.
-            accept_group: if true, all of the the stages generated from `name`
+            accept_group: if true, all of the stages generated from `name`
                 foreach are returned.
             glob: if true, `name` is considered as a glob, which is
                 used to filter list of stages from the given `path`.

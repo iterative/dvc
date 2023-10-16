@@ -107,7 +107,7 @@ def test_workspace_executor_failed_status(dvc, scm, failed_exp_stage, queue_type
         assert executor_info.status == TaskStatus.FAILED
 
 
-def test_executor_status_compatiblity():
+def test_executor_status_compatibility():
     data = {
         "git_url": "file:///Users/home",
         "baseline_rev": "123",

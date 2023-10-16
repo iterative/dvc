@@ -127,7 +127,7 @@ def test_branch_config(tmp_dir, scm):
         dvc.close()
 
 
-def test_dynamic_cache_initalization(tmp_dir, scm):
+def test_dynamic_cache_initialization(tmp_dir, scm):
     dvc = Repo.init()
     with dvc.config.edit() as conf:
         conf["cache"]["ssh"] = "foo"
