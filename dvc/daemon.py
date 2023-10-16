@@ -3,7 +3,6 @@
 import inspect
 import logging
 import os
-import platform
 import sys
 from subprocess import Popen  # nosec B404
 from typing import List
@@ -58,50 +57,45 @@ def _spawn_windows(cmd, env):
 def _spawn_posix(cmd, env):
     from dvc.cli import main
 
-    if platform.system() == "Darwin":
-        # workaround for MacOS bug
-        # https://github.com/iterative/dvc/issues/4294
-        _popen(cmd, env=env)
-    else:
-        # `fork` will copy buffers, so we need to flush them before forking.
-        # Otherwise, we will get duplicated outputs.
-        if sys.stdout and not sys.stdout.closed:
-            sys.stdout.flush()
-        if sys.stderr and not sys.stderr.closed:
-            sys.stderr.flush()
+    # `fork` will copy buffers, so we need to flush them before forking.
+    # Otherwise, we will get duplicated outputs.
+    if sys.stdout and not sys.stdout.closed:
+        sys.stdout.flush()
+    if sys.stderr and not sys.stderr.closed:
+        sys.stderr.flush()
 
-        # NOTE: using os._exit instead of sys.exit, because dvc built
-        # with PyInstaller has trouble with SystemExit exception and throws
-        # errors such as "[26338] Failed to execute script __main__"
-        try:
-            # pylint: disable-next=no-member
-            pid = os.fork()  # type: ignore[attr-defined]
-            if pid > 0:
-                return
-        except OSError:
-            logger.exception("failed at first fork")
-            os._exit(1)  # pylint: disable=protected-access
+    # NOTE: using os._exit instead of sys.exit, because dvc built
+    # with PyInstaller has trouble with SystemExit exception and throws
+    # errors such as "[26338] Failed to execute script __main__"
+    try:
+        # pylint: disable-next=no-member
+        pid = os.fork()  # type: ignore[attr-defined]
+        if pid > 0:
+            return
+    except OSError:
+        logger.exception("failed at first fork")
+        os._exit(1)  # pylint: disable=protected-access
 
-        os.setsid()  # type: ignore[attr-defined]  # pylint: disable=no-member
+    os.setsid()  # type: ignore[attr-defined]  # pylint: disable=no-member
 
-        try:
-            # pylint: disable-next=no-member
-            pid = os.fork()  # type: ignore[attr-defined]
-            if pid > 0:
-                os._exit(0)  # pylint: disable=protected-access
-        except OSError:
-            logger.exception("failed at second fork")
-            os._exit(1)  # pylint: disable=protected-access
+    try:
+        # pylint: disable-next=no-member
+        pid = os.fork()  # type: ignore[attr-defined]
+        if pid > 0:
+            os._exit(0)  # pylint: disable=protected-access
+    except OSError:
+        logger.exception("failed at second fork")
+        os._exit(1)  # pylint: disable=protected-access
 
-        sys.stdin.close()
-        sys.stdout.close()
-        sys.stderr.close()
-        os.closerange(0, 3)
+    sys.stdin.close()
+    sys.stdout.close()
+    sys.stderr.close()
+    os.closerange(0, 3)
 
-        os.environ.update(env)
-        main(cmd)
+    os.environ.update(env)
+    main(cmd)
 
-        os._exit(0)  # pylint: disable=protected-access
+    os._exit(0)  # pylint: disable=protected-access
 
 
 def _spawn(cmd, env):
