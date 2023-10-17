@@ -210,7 +210,9 @@ def _merge_push_meta(
         assert isinstance(old_tree, Tree)
         entry.hash_info = old_tree.hash_info
         entry.meta = out.meta
+        entries = [entry]
         for subkey, entry in index.iteritems(key):
+            entries.append(entry)
             if entry.meta is not None and entry.meta.isdir:
                 continue
             fs_path = repo.fs.path.join(repo.root_dir, *subkey)
@@ -225,6 +227,10 @@ def _merge_push_meta(
                 # this dir (entry will have the latest remote version
                 # ID after checkout)
                 entry.meta = meta
+
+        for entry in entries:
+            index.add(entry)
+
         tree_meta, new_tree = build_tree(index, key)
         out.obj = new_tree
         out.hash_info = new_tree.hash_info

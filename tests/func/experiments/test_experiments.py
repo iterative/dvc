@@ -25,8 +25,8 @@ from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import SCMError, resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
+from dvc.testing.scripts import COPY_SCRIPT
 from dvc.utils.serialize import PythonFileCorruptedError
-from tests.scripts import COPY_SCRIPT
 
 
 @pytest.mark.parametrize("name", [None, "foo"])

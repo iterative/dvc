@@ -1,8 +1,11 @@
 import os
+import pathlib
 import subprocess  # nosec B404
 from typing import Dict, Tuple
 
 import pytest
+
+from .scripts import copy_script
 
 # pylint: disable=redefined-outer-name,unused-argument
 
@@ -28,6 +31,8 @@ __all__ = [
     "local_workspace",
     "docker_compose_project_name",
     "docker_services",
+    "copy_script",
+    "run_copy",
 ]
 
 CACHE: Dict[Tuple[bool, bool, bool], str] = {}
@@ -261,3 +266,20 @@ def docker_services(
         executor.execute(docker_setup)
         # note: we are not tearing down the containers here
         return Services(executor)
+
+
+@pytest.fixture
+def run_copy(tmp_dir, copy_script, dvc):  # noqa: ARG001
+    def run_copy(src, dst, **run_kwargs):
+        wdir = pathlib.Path(run_kwargs.get("wdir", "."))
+        wdir = pathlib.Path("../" * len(wdir.parts))
+        script_path = wdir / "copy.py"
+
+        return dvc.run(
+            cmd=f"python {script_path} {src} {dst}",
+            outs=[dst],
+            deps=[src, f"{script_path}"],
+            **run_kwargs,
+        )
+
+    return run_copy
