@@ -3,6 +3,7 @@
 import inspect
 import logging
 import os
+import platform
 import sys
 from subprocess import Popen  # nosec B404
 from typing import List
@@ -54,6 +55,14 @@ def _spawn_windows(cmd, env):
         _suppress_resource_warning(popen)
 
 
+def _redirect_streams_to_null():
+    # See discussion in https://github.com/iterative/dvc/pull/10026
+    fd = os.open(os.devnull, os.O_RDWR)
+    for fd2 in range(3):
+        os.dup2(fd, fd2)
+    os.close(fd)
+
+
 def _spawn_posix(cmd, env):
     from dvc.cli import main
 
@@ -87,13 +96,14 @@ def _spawn_posix(cmd, env):
         logger.exception("failed at second fork")
         os._exit(1)  # pylint: disable=protected-access
 
-    sys.stdin.close()
-    sys.stdout.close()
-    sys.stderr.close()
-    os.closerange(0, 3)
-
-    os.environ.update(env)
-    main(cmd)
+    _redirect_streams_to_null()
+    if platform.system() == "Darwin":
+        # workaround for MacOS bug
+        # https://github.com/iterative/dvc/issues/4294
+        _popen(cmd, env=env).communicate()
+    else:
+        os.environ.update(env)
+        main(cmd)
 
     os._exit(0)  # pylint: disable=protected-access
 
