@@ -320,7 +320,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             with suppress(FileNotFoundError, NotADirectoryError):
                 for info in dvc_fs.ls(dvc_path, detail=True):
                     dvc_infos[dvc_fs.path.name(info["name"])] = info
-            dvc_exists = bool(dvc_infos) or dvc_fs.exists(dvc_path)
+                dvc_exists = True
 
         fs_exists = False
         fs_infos = {}
@@ -333,20 +333,19 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                     fs, fs_path, detail=True, ignore_subrepos=ignore_subrepos
                 ):
                     fs_infos[fs.path.name(info["name"])] = info
+                fs_exists = True
             except (FileNotFoundError, NotADirectoryError):
                 pass
 
-            fs_exists = bool(fs_infos) or fs.exists(fs_path)
+        if not (dvc_exists or fs_exists):
+            # broken symlink or TreeError
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
 
         dvcfiles = kwargs.get("dvcfiles", False)
 
         infos = []
         paths = []
         names = set(dvc_infos.keys()) | set(fs_infos.keys())
-
-        if not names and (dvc_exists or fs_exists):
-            # broken symlink or TreeError
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
 
         for name in names:
             if not dvcfiles and _is_dvc_file(name):
