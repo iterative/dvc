@@ -173,10 +173,10 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
     args = None
 
     outer_log_level = logger.level
+    level = None
     try:
         args = parse_args(argv)
 
-        level = None
         if args.quiet:
             level = logging.CRITICAL
         elif args.verbose == 1:
@@ -235,10 +235,16 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
         ret = _log_exceptions(exc) or 255
 
     try:
+        import os
+
         from dvc import analytics
 
         if analytics.is_enabled():
             analytics.collect_and_send_report(args, ret)
+
+        logger.trace(  # type: ignore[attr-defined]
+            "Process %s exiting with %s", os.getpid(), ret
+        )
 
         return ret
     finally:
