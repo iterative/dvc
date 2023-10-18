@@ -173,6 +173,23 @@ def test_ls_dirty(tmp_dir, dvc):
     assert set(fs.ls("data")) == {"data/foo", "data/bar"}
 
 
+def test_ls_file_not_found(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"data": "data"})
+
+    fs = DVCFileSystem(repo=dvc)
+    with pytest.raises(FileNotFoundError):
+        fs.ls("missing")
+
+
+def test_ls_dir_empty(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"data": "data"})
+    empty = tmp_dir / "empty"
+    empty.mkdir()
+
+    fs = DVCFileSystem(repo=dvc)
+    assert set(fs.ls("empty")) == set()
+
+
 @pytest.mark.parametrize(
     "dvcfiles,extra_expected",
     [
