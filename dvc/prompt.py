@@ -1,7 +1,6 @@
 """Manages user prompts."""
 
 import logging
-import sys
 from getpass import getpass
 from typing import Collection, Optional
 
@@ -9,7 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 def ask(prompt: str, limited_to: Optional[Collection[str]] = None):
-    if not sys.stdout.isatty():
+    from dvc.ui import Console
+
+    if not Console.isatty():
         return None
 
     while True:

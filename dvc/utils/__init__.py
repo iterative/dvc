@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, Optional, Tupl
 import colorama
 
 if TYPE_CHECKING:
+    from typing import TextIO
+
     from dvc.fs import FileSystem
 
 logger = logging.getLogger(__name__)
@@ -424,3 +426,9 @@ def expand_paths(fs: "FileSystem", paths: Iterable[str]) -> Iterator[str]:
             yield from fs.find(path)
         else:
             yield path
+
+
+def isatty(stream: "Optional[TextIO]") -> bool:
+    if stream is None:
+        return False
+    return stream.isatty()

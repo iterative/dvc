@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 import time
 from typing import TYPE_CHECKING, Optional
 
@@ -123,7 +122,7 @@ class Updater:
     def _notify(self, latest: str, pkg: Optional[str] = PKG) -> None:
         from dvc.ui import ui
 
-        if not sys.stdout.isatty():
+        if not ui.isatty():
             return
 
         message = self._get_message(latest, pkg=pkg)
