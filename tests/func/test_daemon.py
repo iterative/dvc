@@ -11,6 +11,7 @@ from typing import Dict
 
 import pytest
 
+from dvc import version_tuple
 from dvc.daemon import _get_dvc_args
 from dvc.env import (
     DVC_ANALYTICS_ENDPOINT,
@@ -20,15 +21,16 @@ from dvc.env import (
 )
 from dvc.updater import Updater
 
+version = ".".join(map(str, version_tuple[:3]))
 UPDATER_INFO = {
-    "version": "3.26.2",
+    "version": version,
     "packages": {
         "linux": {
-            "deb": "https://dvc.org/download/linux-deb/dvc-3.26.2",
-            "rpm": "https://dvc.org/download/linux-rpm/dvc-3.26.2",
+            "deb": f"https://dvc.org/download/linux-deb/dvc-{version}",
+            "rpm": f"https://dvc.org/download/linux-rpm/dvc-{version}",
         },
-        "windows": {"exe": "https://dvc.org/download/win/dvc-3.26.2"},
-        "osx": {"pkg": "https://dvc.org/download/osx/dvc-3.26.2"},
+        "windows": {"exe": f"https://dvc.org/download/win/dvc-{version}"},
+        "osx": {"pkg": f"https://dvc.org/download/osx/dvc-{version}"},
     },
 }
 
@@ -80,12 +82,17 @@ def test_analytics(tmp_path, server):
     addr = server.server_address
     logfile = tmp_path / "logfile"
 
+    env = {
+        **os.environ,
+        DVC_DAEMON_LOGFILE: str(logfile),
+        DVC_ANALYTICS_ENDPOINT: "http://{}:{}".format(*addr),
+    }
+    env.pop("DVC_TEST", None)
+    env.pop("DVC_NO_ANALYTICS", None)
+
     output = subprocess.check_output(
         [*_get_dvc_args(), "config", "-l", "-vv"],
-        env={
-            DVC_DAEMON_LOGFILE: str(logfile),
-            DVC_ANALYTICS_ENDPOINT: "http://{}:{}".format(*addr),
-        },
+        env=env,
         text=True,
     )
 
@@ -108,14 +115,19 @@ def test_updater(tmp_dir, dvc, server):
     addr = server.server_address
     logfile = tmp_dir / "logfile"
 
+    env = {
+        **os.environ,
+        DVC_DAEMON_LOGFILE: str(logfile),
+        DVC_UPDATER_ENDPOINT: "http://{}:{}".format(*addr),
+        # prevent running analytics daemon
+        DVC_NO_ANALYTICS: "true",
+    }
+    env.pop("DVC_TEST", None)
+    env.pop("CI", None)
+
     subprocess.check_output(
         [*_get_dvc_args(), "version", "-vv"],
-        env={
-            DVC_DAEMON_LOGFILE: str(logfile),
-            DVC_UPDATER_ENDPOINT: "http://{}:{}".format(*addr),
-            # prevent running analytics daemon
-            DVC_NO_ANALYTICS: "true",
-        },
+        env=env,
         text=True,
     )
 
