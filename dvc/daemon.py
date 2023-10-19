@@ -73,6 +73,7 @@ def run_detached(
         env=env,
         startupinfo=startupinfo,
         creationflags=creationflags,
+        start_new_session=True,
         **kwargs,
     )
     _suppress_resource_warning(popen)

@@ -12,7 +12,12 @@ from typing import Dict
 import pytest
 
 from dvc.daemon import _get_dvc_args
-from dvc.env import DVC_DAEMON_LOGFILE, DVC_NO_ANALYTICS, DVC_UPDATER_ENDPOINT
+from dvc.env import (
+    DVC_ANALYTICS_ENDPOINT,
+    DVC_DAEMON_LOGFILE,
+    DVC_NO_ANALYTICS,
+    DVC_UPDATER_ENDPOINT,
+)
 from dvc.updater import Updater
 
 UPDATER_INFO = {
@@ -35,13 +40,13 @@ def make_request_handler():
         # save requests count for each method
         hits: Dict[str, int] = defaultdict(lambda: 0)
 
-        def do_POST(self):
+        def do_POST(self):  # noqa: N802
             # analytics endpoint
             self.hits["POST"] += 1
             self.send_response(200)
             super().end_headers()
 
-        def do_GET(self):
+        def do_GET(self):  # noqa: N802
             # updater endpoint
             self.hits["GET"] += 1
             self.send_response(200)
@@ -78,8 +83,8 @@ def test_analytics(tmp_path, server):
     output = subprocess.check_output(
         [*_get_dvc_args(), "config", "-l", "-vv"],
         env={
-            "DVC_DAEMON_LOGFILE": str(logfile),
-            "DVC_ANALYTICS_ENDPOINT": "http://{}:{}".format(*addr),
+            DVC_DAEMON_LOGFILE: str(logfile),
+            DVC_ANALYTICS_ENDPOINT: "http://{}:{}".format(*addr),
         },
         text=True,
     )
@@ -90,7 +95,7 @@ def test_analytics(tmp_path, server):
             report_file = match.group(1).strip()
             break
     else:
-        assert False, "no match for the report file"
+        raise AssertionError("no match for the report file")
 
     # wait until the file disappears
     retry_until(lambda: not os.path.exists(report_file), 10)
