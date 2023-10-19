@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional
 from packaging import version
 
 from dvc import PKG, __version__
+from dvc.env import DVC_UPDATER_ENDPOINT
 
 if TYPE_CHECKING:
     from dvc.ui import RichText
@@ -100,9 +101,10 @@ class Updater:
 
         import requests
 
-        logger.debug("Checking updates in %s", self.URL)
+        url = os.environ.get(DVC_UPDATER_ENDPOINT, self.URL)
+        logger.debug("Checking updates in %s", url)
         try:
-            resp = requests.get(self.URL, timeout=self.TIMEOUT_GET)
+            resp = requests.get(url, timeout=self.TIMEOUT_GET)
             info = resp.json()
         except requests.exceptions.RequestException as exc:
             logger.trace("", exc_info=True)  # type: ignore[attr-defined]

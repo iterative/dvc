@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from .env import DVC_NO_ANALYTICS
+from .env import DVC_ANALYTICS_ENDPOINT, DVC_NO_ANALYTICS
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ def send(path):
     """
     import requests
 
-    url = "https://analytics.dvc.org"
+    url = os.environ.get(DVC_ANALYTICS_ENDPOINT, "https://analytics.dvc.org")
     headers = {"content-type": "application/json"}
 
     with open(path, encoding="utf-8") as fobj:
