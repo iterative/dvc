@@ -2,12 +2,14 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
 from collections import defaultdict
+from contextlib import contextmanager
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from threading import Thread
-from typing import Dict
+from typing import Dict, Iterator
 
 import pytest
 
@@ -59,9 +61,15 @@ def make_request_handler():
     return RequestHandler
 
 
+@contextmanager
+def make_server(port: int = 0) -> Iterator["HTTPServer"]:
+    with HTTPServer(("localhost", port), make_request_handler()) as httpd:
+        yield httpd
+
+
 @pytest.fixture
 def server():
-    with HTTPServer(("localhost", 0), make_request_handler()) as httpd:
+    with make_server() as httpd:
         thread = Thread(target=httpd.serve_forever)
         thread.daemon = True
         thread.start()
@@ -140,3 +148,13 @@ def test_updater(tmp_dir, dvc, server):
     assert server.RequestHandlerClass.hits == {"GET": 1}
     # check that the file is saved correctly
     assert json.loads(updater_file.read_text(encoding="utf8")) == UPDATER_INFO
+
+
+if __name__ == "__main__":
+    # python -m tests.func.test_daemon [<port>]
+    port = int(sys.argv[1]) if len(sys.argv) >= 2 else 0
+    with make_server(port) as httpd:
+        print(  # noqa:  T201
+            "Running server on http://{}:{}".format(*httpd.server_address)
+        )
+        httpd.serve_forever()
