@@ -3,7 +3,6 @@
 import logging
 import os
 import pydoc
-import sys
 
 from rich.pager import Pager
 
@@ -51,7 +50,9 @@ def make_pager(cmd=None):
 
 
 def find_pager():
-    if not sys.stdout.isatty():
+    from . import Console
+
+    if not Console.isatty():
         return None
 
     # pylint: disable=redefined-outer-name

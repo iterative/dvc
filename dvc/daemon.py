@@ -129,12 +129,12 @@ def _spawn_posix(
 
     # disconnect from the terminal
     fd = os.open(os.devnull, os.O_RDWR)
-    os.dup2(fd, sys.stdin.fileno())
+    os.dup2(fd, 0)
     os.close(fd)
 
     with open(output_file or os.devnull, "ab") as f:
-        os.dup2(f.fileno(), sys.stdout.fileno())
-        os.dup2(f.fileno(), sys.stderr.fileno())
+        os.dup2(f.fileno(), 1)
+        os.dup2(f.fileno(), 2)
 
     if platform.system() == "Darwin":
         # workaround for MacOS bug

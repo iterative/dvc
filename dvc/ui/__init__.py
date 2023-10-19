@@ -340,10 +340,13 @@ class Console:
     def status(self, status: str, **kwargs: Any) -> "Status":
         return self.error_console.status(status, **kwargs)
 
-    def isatty(self) -> bool:
+    @staticmethod
+    def isatty() -> bool:
         import sys
 
-        return sys.stdout.isatty()
+        from dvc import utils
+
+        return utils.isatty(sys.stdout)
 
     def open_browser(self, file: "StrPath") -> int:
         import webbrowser
