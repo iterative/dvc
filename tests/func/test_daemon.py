@@ -40,7 +40,7 @@ UPDATER_INFO_STR = json.dumps(UPDATER_INFO).encode("utf8")
 def make_request_handler():
     class RequestHandler(SimpleHTTPRequestHandler):
         # save requests count for each method
-        hits: Dict[str, int] = defaultdict(lambda: 0)
+        hits: Dict[str, int] = defaultdict(int)
 
         def do_POST(self):  # noqa: N802
             # analytics endpoint
