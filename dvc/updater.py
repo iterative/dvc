@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional
 from packaging import version
 
 from dvc import PKG, __version__
+from dvc.env import DVC_UPDATER_ENDPOINT
 
 if TYPE_CHECKING:
     from dvc.ui import RichText
@@ -46,6 +47,7 @@ class Updater:
             with self.lock:
                 func()
         except LockError:
+            logger.trace("", exc_info=True)  # type: ignore[attr-defined]
             logger.debug(
                 "Failed to acquire '%s' before %s updates",
                 self.lock.lockfile,
@@ -77,6 +79,7 @@ class Updater:
                 info = json.load(fobj)
                 latest = info["version"]
             except Exception as e:  # noqa: BLE001  # pylint: disable=W0703
+                logger.trace("", exc_info=True)  # type: ignore[attr-defined]
                 logger.debug("'%s' is not a valid json: %s", self.updater_file, e)
                 self.fetch()
                 return
@@ -98,14 +101,23 @@ class Updater:
 
         import requests
 
+        url = os.environ.get(DVC_UPDATER_ENDPOINT, self.URL)
+        logger.debug("Checking updates in %s", url)
         try:
-            resp = requests.get(self.URL, timeout=self.TIMEOUT_GET)
+            resp = requests.get(url, timeout=self.TIMEOUT_GET)
             info = resp.json()
         except requests.exceptions.RequestException as exc:
+            logger.trace("", exc_info=True)  # type: ignore[attr-defined]
             logger.debug("Failed to retrieve latest version: %s", exc)
             return
 
+        logger.trace(  # type: ignore[attr-defined]
+            "received payload: %s (status=%s)", info, resp.status_code
+        )
         with open(self.updater_file, "w+", encoding="utf-8") as fobj:
+            logger.trace(  # type: ignore[attr-defined]
+                "Saving latest version info to %s", self.updater_file
+            )
             json.dump(info, fobj)
 
     def _notify(self, latest: str, pkg: Optional[str] = PKG) -> None:

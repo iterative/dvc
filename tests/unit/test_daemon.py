@@ -5,7 +5,7 @@ from dvc import daemon
 
 
 def test_daemon(mocker):
-    mock_windows = mocker.patch("dvc.daemon._spawn_windows")
+    mock_windows = mocker.patch("dvc.daemon._spawn_subprocess")
     mock_posix = mocker.patch("dvc.daemon._spawn_posix")
     daemon.daemon(["updater"])
 
@@ -18,7 +18,7 @@ def test_daemon(mocker):
         mock_posix.assert_called()
         args = mock_posix.call_args[0]
 
-    env = args[1]
+    env = args[2]
     assert "PYTHONPATH" in env
 
     file_path = os.path.abspath(inspect.stack()[0][1])
