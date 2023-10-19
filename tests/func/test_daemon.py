@@ -44,6 +44,12 @@ def make_request_handler():
         # save requests count for each method
         hits: Dict[str, int] = defaultdict(int)
 
+        def log_message(self, format, *args) -> None:  # noqa: A002
+            super().log_message(format, *args)
+            if length := self.headers.get("Content-Length"):
+                data = self.rfile.read(int(length)).decode("utf8")
+                sys.stderr.write(f"{data}\n")
+
         def do_POST(self):  # noqa: N802
             # analytics endpoint
             self.hits["POST"] += 1
