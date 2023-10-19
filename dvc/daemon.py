@@ -173,12 +173,14 @@ def _spawn_subprocess(
     output_file: Optional[str] = None,
 ) -> Optional[int]:
     # adapt run_detached to _spawn's interface
-    file: "ContextManager[_FILE]" = nullcontext(subprocess.DEVNULL)
+    file: "ContextManager[Any]" = nullcontext()
+    kw = {}
     if output_file:
         file = open(output_file, "ab")  # noqa: SIM115
+        kw = {"stdout": file, "stderr": file}
 
-    with file as f:
-        return run_detached(executable + args, env, stdout=f, stderr=f)
+    with file:
+        return run_detached(executable + args, env, **kw)
 
 
 def _spawn(
