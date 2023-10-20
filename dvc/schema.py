@@ -117,7 +117,7 @@ SINGLE_ARTIFACT_SCHEMA = Schema({str: ARTIFACT_SCHEMA})
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
-    'dep_files': str,
+    "dep_files": str,
 }
 SINGLE_PIPELINE_STAGE_SCHEMA = {
     str: either_or(STAGE_DEFINITION, FOREACH_IN, [FOREACH_KWD, DO_KWD])
