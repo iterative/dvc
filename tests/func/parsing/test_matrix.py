@@ -74,23 +74,20 @@ def test_matrix_key_present(tmp_dir, dvc, matrix):
     definition = MatrixDefinition(resolver, resolver.context, "build", data)
 
     assert definition.resolve_all() == {
-        f"build@{key}": {"cmd": f"echo {key}"}
-        for key in (
-            "win-3.7-dict0-list0",
-            "win-3.7-dict0-list1",
-            "win-3.7-dict1-list0",
-            "win-3.7-dict1-list1",
-            "win-3.8-dict0-list0",
-            "win-3.8-dict0-list1",
-            "win-3.8-dict1-list0",
-            "win-3.8-dict1-list1",
-            "linux-3.7-dict0-list0",
-            "linux-3.7-dict0-list1",
-            "linux-3.7-dict1-list0",
-            "linux-3.7-dict1-list1",
-            "linux-3.8-dict0-list0",
-            "linux-3.8-dict0-list1",
-            "linux-3.8-dict1-list0",
-            "linux-3.8-dict1-list1",
-        )
+        "build@win-3.7-dict0-list0": {"cmd": "echo win-3.7-dict0-list0"},
+        "build@win-3.7-dict0-list1": {"cmd": "echo win-3.7-dict0-list1"},
+        "build@win-3.7-dict1-list0": {"cmd": "echo win-3.7-dict1-list0"},
+        "build@win-3.7-dict1-list1": {"cmd": "echo win-3.7-dict1-list1"},
+        "build@win-3.8-dict0-list0": {"cmd": "echo win-3.8-dict0-list0"},
+        "build@win-3.8-dict0-list1": {"cmd": "echo win-3.8-dict0-list1"},
+        "build@win-3.8-dict1-list0": {"cmd": "echo win-3.8-dict1-list0"},
+        "build@win-3.8-dict1-list1": {"cmd": "echo win-3.8-dict1-list1"},
+        "build@linux-3.7-dict0-list0": {"cmd": "echo linux-3.7-dict0-list0"},
+        "build@linux-3.7-dict0-list1": {"cmd": "echo linux-3.7-dict0-list1"},
+        "build@linux-3.7-dict1-list0": {"cmd": "echo linux-3.7-dict1-list0"},
+        "build@linux-3.7-dict1-list1": {"cmd": "echo linux-3.7-dict1-list1"},
+        "build@linux-3.8-dict0-list0": {"cmd": "echo linux-3.8-dict0-list0"},
+        "build@linux-3.8-dict0-list1": {"cmd": "echo linux-3.8-dict0-list1"},
+        "build@linux-3.8-dict1-list0": {"cmd": "echo linux-3.8-dict1-list0"},
+        "build@linux-3.8-dict1-list1": {"cmd": "echo linux-3.8-dict1-list1"},
     }
