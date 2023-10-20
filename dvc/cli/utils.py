@@ -2,6 +2,10 @@ import argparse
 
 
 class DictAction(argparse.Action):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("metavar", "<name>=<value>")
+        super().__init__(*args, **kwargs)
+
     def __call__(self, parser, args, values, option_string=None):  # noqa: ARG002
         d = getattr(args, self.dest) or {}
 
