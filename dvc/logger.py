@@ -182,9 +182,11 @@ def set_loggers_level(level: int = logging.INFO) -> None:
 
 
 def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
+    from dvc.utils import isatty
+
     colorama.init()
 
-    formatter = ColorFormatter(log_colors=log_colors and sys.stdout.isatty())
+    formatter = ColorFormatter(log_colors=log_colors and isatty(sys.stdout))
 
     console_info = LoggerHandler(sys.stdout)
     console_info.setLevel(logging.INFO)
@@ -205,7 +207,7 @@ def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
 
     show_traceback = bool(os.environ.get(DVC_SHOW_TRACEBACK))
     err_formatter = ColorFormatter(
-        log_colors=log_colors and sys.stderr.isatty(), show_traceback=show_traceback
+        log_colors=log_colors and isatty(sys.stderr), show_traceback=show_traceback
     )
     console_errors = LoggerHandler(sys.stderr)
     console_errors.setLevel(logging.WARNING)

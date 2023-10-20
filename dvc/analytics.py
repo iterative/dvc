@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from .env import DVC_NO_ANALYTICS
+from .env import DVC_ANALYTICS_ENDPOINT, DVC_NO_ANALYTICS
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,10 @@ def collect_and_send_report(args=None, return_code=None):
 
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
+
+    logger.trace(  # type: ignore[attr-defined]
+        "Saving analytics report to %s", fobj.name
+    )
     daemon(["analytics", fobj.name])
 
 
@@ -65,7 +69,7 @@ def send(path):
     """
     import requests
 
-    url = "https://analytics.dvc.org"
+    url = os.environ.get(DVC_ANALYTICS_ENDPOINT, "https://analytics.dvc.org")
     headers = {"content-type": "application/json"}
 
     with open(path, encoding="utf-8") as fobj:
@@ -73,11 +77,16 @@ def send(path):
 
     report.update(_runtime_info())
 
+    logger.debug("uploading report to %s", url)
+    logger.trace("Sending %s to %s", report, url)  # type: ignore[attr-defined]
+
     try:
         requests.post(url, json=report, headers=headers, timeout=5)
-    except requests.exceptions.RequestException:
-        logger.debug("failed to send analytics report", exc_info=True)
+    except requests.exceptions.RequestException as e:
+        logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+        logger.debug("failed to send analytics report %s", str(e))
 
+    logger.trace("removing report %s", path)  # type: ignore[attr-defined]
     os.remove(path)
 
 

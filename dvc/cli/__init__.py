@@ -165,9 +165,9 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
     # the copied parent's standard file descriptors. If we make any logging
     # calls in this state it will cause an exception due to writing to a closed
     # file descriptor.
-    if sys.stderr.closed:  # pylint: disable=using-constant-test
+    if not sys.stderr or sys.stderr.closed:  # pylint: disable=using-constant-test
         logging.disable()
-    elif sys.stdout.closed:  # pylint: disable=using-constant-test
+    elif not sys.stdout or sys.stdout.closed:  # pylint: disable=using-constant-test
         logging.disable(logging.INFO)
 
     args = None
@@ -199,7 +199,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
 
         logger.trace(args)  # type: ignore[attr-defined]
 
-        if not sys.stdout.closed and not args.quiet:
+        if sys.stdout and not sys.stdout.closed and not args.quiet:
             from dvc.ui import ui
 
             ui.enable()
