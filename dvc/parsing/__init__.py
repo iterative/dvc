@@ -160,8 +160,7 @@ class DataResolver:
             format_and_raise(exc, "'vars'", self.relpath)
 
         # Hardcoding prefixes to be from a given directory
-        prefixes = [path.stem for path in Path('data/raw').glob('*.txt')]
-        self.context['prefix'] = prefixes
+        self.context['file'] = [{'name': path.name, 'stem': path.stem} for path in Path('data/raw').glob('*')]
 
         # we use `tracked_vars` to keep a dictionary of used variables
         # by the interpolated entries.
