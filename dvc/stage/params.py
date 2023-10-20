@@ -12,4 +12,4 @@ class StageParams:
     PARAM_METRICS = "metrics"
     PARAM_PLOTS = "plots"
     PARAM_DESC = "desc"
-    PARAM_INCDIR = "incdir"
+    PARAM_INCDIR = "dep_files"

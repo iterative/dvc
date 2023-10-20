@@ -4,6 +4,7 @@ from pathlib import Path
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import product
+import re
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -159,8 +160,14 @@ class DataResolver:
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
 
-        # Hardcoding prefixes to be from a given directory
-        self.context['file'] = [{'name': path.name, 'stem': path.stem} for path in Path('data/raw').glob('*')]
+        stages = d['stages']
+        for stage in stages:
+            if 'foreach' in stages[stage] and 'dep_files' in stages[stage]:
+                varname = re.match(r'\${(\w+)}', stages[stage]['foreach']).group(1)
+                # Hardcoding prefixes to be from a given directory
+                directory = Path(stages[stage]['dep_files'])
+                assert directory.is_dir()
+                self.context[varname] = [{'name': path.name, 'stem': path.stem} for path in Path(directory).glob('*')]
 
         # we use `tracked_vars` to keep a dictionary of used variables
         # by the interpolated entries.
