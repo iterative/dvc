@@ -502,7 +502,7 @@ class MatrixDefinition:
 
         # Matrix entries will have `key` and `item` added to the context.
         # Warn users if these are already in the context from the global vars.
-        self._warn_if_overwriting(["key", "item"])
+        self._warn_if_overwriting([self.pair.key, self.pair.value])
         return iterable
 
     def _warn_if_overwriting(self, keys: List[str]):
