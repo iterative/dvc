@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import product
@@ -157,6 +158,10 @@ class DataResolver:
             self.context.load_from_vars(*args, default=DEFAULT_PARAMS_FILE)
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
+
+        # Hardcoding prefixes to be from a given directory
+        prefixes = [path.stem for path in Path('data/raw').glob('*.txt')]
+        self.context['prefix'] = prefixes
 
         # we use `tracked_vars` to keep a dictionary of used variables
         # by the interpolated entries.
