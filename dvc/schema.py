@@ -25,6 +25,7 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_META: object,
     StageParams.PARAM_ALWAYS_CHANGED: bool,
     StageParams.PARAM_DESC: str,
+    StageParams.PARAM_INCDIR: str,
 }
 
 DATA_SCHEMA = {
@@ -90,6 +91,7 @@ STAGE_DEFINITION = {
     Optional(StageParams.PARAM_OUTS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     Optional(StageParams.PARAM_METRICS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
+    Optional(StageParams.PARAM_INCDIR): str,
 }
 
 
@@ -128,6 +130,7 @@ MULTI_STAGE_SCHEMA = {
     StageParams.PARAM_PARAMS: [str],
     StageParams.PARAM_METRICS: [str],
     ARTIFACTS: SINGLE_ARTIFACT_SCHEMA,
+    StageParams.PARAM_INCDIR: [str],
 }
 
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)
