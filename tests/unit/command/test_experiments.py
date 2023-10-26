@@ -27,19 +27,7 @@ def test_experiments_apply(dvc, scm, mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(cmd.repo, "exp_rev", force=False)
-
-
-def test_experiments_apply_force(dvc, scm, mocker):
-    cli_args = parse_args(["experiments", "apply", "exp_rev", "--force"])
-    assert cli_args.func == CmdExperimentsApply
-
-    cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.repo.experiments.apply.apply", return_value={})
-
-    assert cmd.run() == 0
-
-    m.assert_called_once_with(cmd.repo, "exp_rev", force=True)
+    m.assert_called_once_with(cmd.repo, "exp_rev")
 
 
 def test_experiments_diff(dvc, scm, mocker):
