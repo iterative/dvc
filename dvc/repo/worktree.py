@@ -1,10 +1,9 @@
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
 
 from funcy import first
 
-from dvc.exceptions import DvcException
 from dvc.fs.callbacks import Callback
 from dvc.stage.exceptions import StageUpdateError
 
@@ -102,90 +101,6 @@ def _get_remote(
     if name in (None, default.name):
         return default
     return repo.cloud.get_remote(name, command)
-
-
-def push_worktree(
-    repo: "Repo",
-    remote: "Remote",
-    targets: Optional["TargetType"] = None,
-    jobs: Optional[int] = None,
-    **kwargs: Any,
-) -> int:
-    from dvc.repo.index import build_data_index
-    from dvc_data.index.checkout import VersioningNotSupported, apply, compare
-
-    pushed = 0
-    stages: Set["Stage"] = set()
-
-    for remote_name, view in worktree_view_by_remotes(
-        repo.index, push=True, targets=targets, **kwargs
-    ):
-        remote_obj = _get_remote(repo, remote_name, remote, "push")
-        new_index = view.data["repo"]
-        if remote_obj.worktree:
-            logger.debug("indexing latest worktree for '%s'", remote_obj.path)
-            old_index = build_data_index(view, remote_obj.path, remote_obj.fs)
-            logger.debug("Pushing worktree changes to '%s'", remote_obj.path)
-        else:
-            old_index = None
-            logger.debug("Pushing version-aware files to '%s'", remote_obj.path)
-
-        if remote_obj.worktree:
-            diff_kwargs: Dict[str, Any] = {
-                "meta_only": True,
-                "meta_cmp_key": partial(_meta_checksum, remote_obj.fs),
-            }
-        else:
-            diff_kwargs = {}
-
-        with Callback.as_tqdm_callback(
-            unit="entry",
-            desc=f"Comparing indexes for remote {remote_obj.name!r}",
-        ) as cb:
-            diff = compare(
-                old_index,
-                new_index,
-                callback=cb,
-                delete=remote_obj.worktree,
-                **diff_kwargs,
-            )
-
-        total = len(new_index)
-        with Callback.as_tqdm_callback(
-            unit="file",
-            desc=f"Pushing to remote {remote_obj.name!r}",
-            disable=total == 0,
-        ) as cb:
-            cb.set_size(total)
-            try:
-                apply(
-                    diff,
-                    remote_obj.path,
-                    remote_obj.fs,
-                    callback=cb,
-                    latest_only=remote_obj.worktree,
-                    jobs=jobs,
-                )
-                pushed += len(diff.files_create)
-            except VersioningNotSupported:
-                logger.exception("")
-                raise DvcException(
-                    f"remote {remote_obj.name!r} does not support versioning"
-                ) from None
-
-        if remote_obj.index is not None:
-            for key, entry in new_index.iteritems():
-                remote_obj.index[key] = entry
-            remote_obj.index.commit()
-
-        for out in view.outs:
-            workspace, _key = out.index_key
-            _merge_push_meta(out, repo.index.data[workspace], remote_obj.name)
-            stages.add(out.stage)
-
-    for stage in stages:
-        stage.dump(with_files=True, update_pipeline=False)
-    return pushed
 
 
 def _merge_push_meta(

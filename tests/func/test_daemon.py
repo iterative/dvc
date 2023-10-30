@@ -3,7 +3,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 from collections import defaultdict
 from contextlib import contextmanager
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -11,6 +10,7 @@ from pathlib import Path
 from threading import Thread
 from typing import Dict, Iterator
 
+import psutil
 import pytest
 
 from dvc import version_tuple
@@ -82,16 +82,6 @@ def server():
         yield httpd
 
 
-def retry_until(pred, timeout):
-    timeout_ns = timeout * 1e9
-    start = time.perf_counter_ns()
-    while time.perf_counter_ns() - start < timeout_ns:
-        if pred():
-            return
-        time.sleep(0.01)
-    raise RuntimeError(f"timed out after {timeout}s")
-
-
 def test_analytics(tmp_path, server):
     addr = server.server_address
     logfile = tmp_path / "logfile"
@@ -110,18 +100,17 @@ def test_analytics(tmp_path, server):
         text=True,
     )
 
-    pattern = r".*Saving analytics report to (.*)"
-    for line in output.splitlines():
-        if match := re.search(pattern, line):
-            report_file = match.group(1).strip()
-            break
-    else:
-        raise AssertionError("no match for the report file")
+    match = re.search(r".*Saving analytics report to (.*)", output, flags=re.M)
+    assert match, "no match for the report file"
+    report_file = match.group(1).strip()
 
-    # wait until the file disappears
-    retry_until(lambda: not os.path.exists(report_file), 10)
-    # wait till the daemon exits
-    retry_until(lambda: "exiting with 0" in logfile.read_text(encoding="utf8"), 5)
+    match = re.search(r".*Spawned .*analytics.* with pid (.*)", output, flags=re.M)
+    assert match, "no match for the pid"
+    pid = int(match.group(1).strip())
+
+    psutil.Process(pid).wait(timeout=10)
+    assert not os.path.exists(report_file)
+    assert f"Process {pid} exiting with 0" in logfile.read_text(encoding="utf8")
     assert server.RequestHandlerClass.hits == {"POST": 1}
 
 
@@ -139,20 +128,21 @@ def test_updater(tmp_dir, dvc, server):
     env.pop("DVC_TEST", None)
     env.pop("CI", None)
 
-    subprocess.check_output(
+    output = subprocess.check_output(
         [*_get_dvc_args(), "version", "-vv"],
         env=env,
         text=True,
     )
 
-    updater_file = Path(dvc.tmp_dir) / Updater.UPDATER_FILE
+    match = re.search(r".*Spawned .*updater.* with pid (.*)", output, flags=re.M)
+    assert match, "no match for the pid"
+    pid = int(match.group(1).strip())
 
-    # wait until the updater file appears
-    retry_until(updater_file.is_file, 10)
-    # wait till the daemon exits
-    retry_until(lambda: "exiting with 0" in logfile.read_text(encoding="utf8"), 5)
+    psutil.Process(pid).wait(timeout=10)
+    assert f"Process {pid} exiting with 0" in logfile.read_text(encoding="utf8")
     assert server.RequestHandlerClass.hits == {"GET": 1}
     # check that the file is saved correctly
+    updater_file = Path(dvc.tmp_dir) / Updater.UPDATER_FILE
     assert json.loads(updater_file.read_text(encoding="utf8")) == UPDATER_INFO
 
 
