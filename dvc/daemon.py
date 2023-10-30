@@ -152,7 +152,7 @@ def _spawn(
     executable: Optional[Union[str, List[str]]] = None,
     env: Optional[Mapping[str, str]] = None,
     output_file: Optional[str] = None,
-) -> Optional[int]:
+) -> int:
     file: "ContextManager[Any]" = nullcontext()
     kwargs = {}
     if output_file:
