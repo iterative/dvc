@@ -59,10 +59,9 @@ def _collect_indexes(  # noqa: PLR0913
                 types=types,
             )
 
-            data = idx.data["repo"]
-            data.onerror = _make_index_onerror(onerror, rev)
+            idx.data["repo"].onerror = _make_index_onerror(onerror, rev)
 
-            indexes[idx.data_tree.hash_info.value] = data
+            indexes[rev or "workspace"] = idx
         except Exception as exc:  # pylint: disable=broad-except
             if onerror:
                 onerror(rev, None, exc)
@@ -138,7 +137,10 @@ def fetch(  # noqa: C901, PLR0913
         onerror=onerror,
     )
 
-    cache_key = ("fetch", tokenize(sorted(indexes.keys())))
+    cache_key = (
+        "fetch",
+        tokenize(sorted(idx.data_tree.hash_info.value for idx in indexes.values())),
+    )
 
     with ui.progress(
         desc="Collecting",
@@ -146,7 +148,7 @@ def fetch(  # noqa: C901, PLR0913
         leave=True,
     ) as pb:
         data = collect(
-            indexes.values(),
+            [idx.data["repo"] for idx in indexes.values()],
             "remote",
             cache_index=self.data_index,
             cache_key=cache_key,
