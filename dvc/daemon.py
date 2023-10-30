@@ -96,11 +96,15 @@ def _fork_process() -> int:
     return pid
 
 
-def _posix_detached_subprocess(args: Sequence[str], **kwargs) -> Optional[int]:
+def _posix_detached_subprocess(args: Sequence[str], **kwargs) -> int:
     # double fork and execute a subprocess so that there are no zombies
+    read_end, write_end = os.pipe()
     pid = _fork_process()
     if pid > 0:  # in parent
-        return None
+        os.close(write_end)
+        pid_str = os.read(read_end, 32).decode("utf8")
+        os.close(read_end)
+        return int(pid_str)
 
     proc = subprocess.Popen(
         args,
@@ -108,11 +112,15 @@ def _posix_detached_subprocess(args: Sequence[str], **kwargs) -> Optional[int]:
         close_fds=True,
         **kwargs,
     )
+    os.close(read_end)
+    os.write(write_end, str(proc.pid).encode("utf8"))
+    os.close(write_end)
+
     exit_code = proc.wait()
     os._exit(exit_code)
 
 
-def _detached_subprocess(args: Sequence[str], **kwargs) -> Optional[int]:
+def _detached_subprocess(args: Sequence[str], **kwargs) -> int:
     """Run in a detached subprocess."""
     kwargs.setdefault("stdin", subprocess.DEVNULL)
     kwargs.setdefault("stdout", subprocess.DEVNULL)
@@ -120,8 +128,7 @@ def _detached_subprocess(args: Sequence[str], **kwargs) -> Optional[int]:
 
     if os.name == "nt":
         return _win_detached_subprocess(args, **kwargs)
-    _posix_detached_subprocess(args, **kwargs)
-    return None
+    return _posix_detached_subprocess(args, **kwargs)
 
 
 def _map_log_level_to_flag() -> Optional[str]:
@@ -177,4 +184,4 @@ def daemonize(args: List[str], executable: Union[None, str, List[str]] = None) -
 
     logger.debug("Trying to spawn %r", args)
     pid = _spawn(args, executable, env, output_file=env.get(DVC_DAEMON_LOGFILE))
-    logger.debug("Spawned %r%s", args, f" with pid {pid}" if pid else "")
+    logger.debug("Spawned %r with pid %s", args, pid)
