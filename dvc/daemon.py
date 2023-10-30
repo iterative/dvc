@@ -3,20 +3,10 @@
 import inspect
 import logging
 import os
-import platform
 import subprocess  # nosec B404
 import sys
 from contextlib import nullcontext
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Union
 
 if TYPE_CHECKING:
     from typing import ContextManager
@@ -72,15 +62,8 @@ def _get_dvc_args() -> List[str]:
     return args
 
 
-def _run_daemon(func: Callable[[], Any], output_file: Optional[str] = None) -> None:
+def _fork_process() -> int:
     assert os.name == "posix"
-
-    # `fork` will copy buffers, so we need to flush them before forking.
-    # Otherwise, we will get duplicated outputs.
-    if sys.stdout and not sys.stdout.closed:
-        sys.stdout.flush()
-    if sys.stderr and not sys.stderr.closed:
-        sys.stderr.flush()
 
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exception and throws
@@ -89,7 +72,7 @@ def _run_daemon(func: Callable[[], Any], output_file: Optional[str] = None) -> N
         # pylint: disable-next=no-member
         pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
-            return
+            return pid
     except OSError:
         logger.exception("failed at first fork")
         os._exit(1)  # pylint: disable=protected-access
@@ -107,47 +90,42 @@ def _run_daemon(func: Callable[[], Any], output_file: Optional[str] = None) -> N
 
     # disconnect from the terminal
     fd = os.open(os.devnull, os.O_RDWR)
-    os.dup2(fd, 0)
+    for fd2 in range(3):
+        os.dup2(fd, fd2)
     os.close(fd)
-
-    with open(output_file or os.devnull, "ab") as f:
-        os.dup2(f.fileno(), 1)
-        os.dup2(f.fileno(), 2)
-
-    func()
-    os._exit(0)  # pylint: disable=protected-access
+    return pid
 
 
-def _posix_detached_subprocess(*args, **kwargs) -> None:
-    kwargs.setdefault("shell", False)
-    kwargs.setdefault("close_fds", True)
-
-    def _run_subprocess() -> None:
-        subprocess.Popen(*args, **kwargs).communicate()  # noqa: S603 # nosec B603
-
+def _posix_detached_subprocess(args: Sequence[str], **kwargs) -> Optional[int]:
     # double fork and execute a subprocess so that there are no zombies
-    _run_daemon(_run_subprocess)
+    pid = _fork_process()
+    if pid > 0:  # in parent
+        return None
+
+    proc = subprocess.Popen(
+        args,
+        shell=False,  # noqa: S603 # nosec B603
+        close_fds=True,
+        **kwargs,
+    )
+    exit_code = proc.wait()
+    os._exit(exit_code)
 
 
-def _detached_subprocess(*args, **kwargs) -> Optional[int]:
+def _detached_subprocess(args: Sequence[str], **kwargs) -> Optional[int]:
     """Run in a detached subprocess."""
-
     kwargs.setdefault("stdin", subprocess.DEVNULL)
     kwargs.setdefault("stdout", subprocess.DEVNULL)
     kwargs.setdefault("stderr", subprocess.DEVNULL)
 
     if os.name == "nt":
-        return _win_detached_subprocess(*args, **kwargs)
-    _posix_detached_subprocess(*args, **kwargs)
+        return _win_detached_subprocess(args, **kwargs)
+    _posix_detached_subprocess(args, **kwargs)
     return None
 
 
 def _map_log_level_to_flag() -> Optional[str]:
-    flags = {
-        logging.CRITICAL: "-q",
-        logging.DEBUG: "-v",
-        logging.TRACE: "-vv",  # type: ignore[attr-defined]
-    }
+    flags = {logging.DEBUG: "-v", logging.TRACE: "-vv"}  # type: ignore[attr-defined]
     return flags.get(logger.getEffectiveLevel())
 
 
@@ -158,22 +136,8 @@ def daemon(args: List[str]) -> None:
         args (list): list of arguments to append to `dvc daemon` command.
     """
     if flag := _map_log_level_to_flag():
-        args.append(flag)
+        args = [*args, flag]
     daemonize(["daemon", *args])
-
-
-def _run_dvc_main_in_daemon(
-    args: List[str],
-    env: Optional[Mapping[str, str]] = None,
-    output_file: Optional[str] = None,
-) -> None:
-    from dvc.cli import main
-
-    def _run_main() -> None:
-        os.environ.update(env or {})
-        main(args)
-
-    return _run_daemon(_run_main, output_file=output_file)
 
 
 def _spawn(
@@ -182,13 +146,6 @@ def _spawn(
     env: Optional[Mapping[str, str]] = None,
     output_file: Optional[str] = None,
 ) -> Optional[int]:
-    if os.name not in ("posix", "nt"):
-        raise NotImplementedError
-
-    if os.name == "posix" and platform.system() != "Darwin":
-        _run_dvc_main_in_daemon(args, env, output_file=output_file)
-        return None
-
     file: "ContextManager[Any]" = nullcontext()
     kwargs = {}
     if output_file:
@@ -205,6 +162,9 @@ def _spawn(
 
 
 def daemonize(args: List[str], executable: Union[None, str, List[str]] = None) -> None:
+    if os.name not in ("posix", "nt"):
+        return None
+
     if os.environ.get(DVC_DAEMON):
         logger.debug("skipping launching a new daemon.")
         return
