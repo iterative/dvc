@@ -63,7 +63,7 @@ class CmdGC(CmdBase):
         logger.warning(msg)
 
         msg = "Are you sure you want to proceed?"
-        if not self.args.force and not ui.confirm(msg):
+        if not self.args.dry and not self.args.force and not ui.confirm(msg):
             return 1
 
         self.repo.gc(
