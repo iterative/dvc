@@ -499,7 +499,25 @@ class MatrixDefinition:
             iterable = self.context.resolve(self.matrix_data, unwrap=False)
         except (ContextError, ParseError) as exc:
             format_and_raise(exc, f"'{self.where}.{self.name}.matrix'", self.relpath)
+
+        # Matrix entries will have `key` and `item` added to the context.
+        # Warn users if these are already in the context from the global vars.
+        self._warn_if_overwriting([self.pair.key, self.pair.value])
         return iterable
+
+    def _warn_if_overwriting(self, keys: List[str]):
+        warn_for = [k for k in keys if k in self.context]
+        if warn_for:
+            linking_verb = "is" if len(warn_for) == 1 else "are"
+            logger.warning(
+                (
+                    "%s %s already specified, "
+                    "will be overwritten for stages generated from '%s'"
+                ),
+                " and ".join(warn_for),
+                linking_verb,
+                self.name,
+            )
 
     @cached_property
     def normalized_iterable(self) -> Dict[str, "DictStrAny"]:
@@ -540,7 +558,7 @@ class MatrixDefinition:
         with reraise(KeyError, EntryNotFound(err_message)):
             value = self.normalized_iterable[key]
 
-        temp_dict = {self.pair.value: value}
+        temp_dict = {self.pair.key: key, self.pair.value: value}
         with self.context.set_temporarily(temp_dict, reserve=True):
             # optimization: item and key can be removed on __exit__() as they
             # are top-level values, and are not merged recursively.
