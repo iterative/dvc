@@ -26,6 +26,10 @@ class CmdGC(CmdBase):
             not_in_remote=self.args.not_in_remote,
         )
 
+        # Don't prompt during dry run
+        if self.args.dry:
+            self.args.force = True
+
         if self.args.rev:
             self.args.num = self.args.num or 1
 
@@ -63,7 +67,7 @@ class CmdGC(CmdBase):
         logger.warning(msg)
 
         msg = "Are you sure you want to proceed?"
-        if not self.args.dry and not self.args.force and not ui.confirm(msg):
+        if not self.args.force and not ui.confirm(msg):
             return 1
 
         self.repo.gc(
