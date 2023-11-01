@@ -4,38 +4,21 @@ import logging
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdImportDb(CmdBase):
     def run(self):
-        from fal.dbt import FalDbt
-        from funcy import print_durations
-
-        from dvc.repo.open_repo import _cached_clone
-
-        clone = _cached_clone(self.args.url, self.args.rev)
-        faldbt = FalDbt(profiles_dir="~/.dbt", project_dir=clone)
-
-        if not self.args.sql:
-            name = self.args.to_materialize
-            out = self.args.out or f"{name}.csv"
-            with print_durations(f"ref {name}"), ui.status(f"Downloading {name}"):
-                model = faldbt.ref(name)
-        else:
-            query = self.args.to_materialize
-            out = self.args.out or "result.csv"
-            with print_durations(f"execute_sql {query}"), ui.status(
-                "Executing sql query"
-            ):
-                model = faldbt.execute_sql(query)
-
-        with print_durations(f"to_csv {out}"), ui.status(f"Saving to {out}"):
-            model.to_csv(out)
-
-        ui.write(f"Saved file to {out}", styled=True)
+        self.repo.imp_db(
+            url=self.args.url,
+            target=self.args.to_materialize,
+            type="query" if self.args.sql else "model",
+            out=self.args.out,
+            rev=self.args.rev,
+            force=self.args.force,
+        )
+        return 0
 
 
 def add_parser(subparsers, parent_parser):

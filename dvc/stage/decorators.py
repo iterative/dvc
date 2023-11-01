@@ -7,6 +7,7 @@ from funcy import decorator
 def rwlocked(call, read=None, write=None):
     import sys
 
+    from dvc.dependency.db import DbDependency
     from dvc.dependency.repo import RepoDependency
     from dvc.rwlock import rwlock
 
@@ -27,7 +28,7 @@ def rwlocked(call, read=None, write=None):
             for item in getattr(stage, attr)
             # There is no need to lock RepoDependency deps, as there is no
             # corresponding OutputREPO, so we can't even write it.
-            if not isinstance(item, RepoDependency)
+            if not isinstance(item, (RepoDependency, DbDependency))
         ]
 
     cmd = " ".join(sys.argv)

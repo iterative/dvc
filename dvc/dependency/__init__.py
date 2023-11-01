@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Mapping, Set
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
+from .db import DbDependency
 from .param import ParamsDependency
 from .repo import RepoDependency
 
@@ -16,10 +17,15 @@ SCHEMA: Mapping[str, Any] = {
     **RepoDependency.REPO_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
     Output.PARAM_FS_CONFIG: dict,
+    **DbDependency.DB_SCHEMA,
 }
 
 
 def _get(stage, p, info, **kwargs):
+    if info and info.get(DbDependency.PARAM_DB):
+        repo = info.pop(RepoDependency.PARAM_REPO)
+        db = info.pop(DbDependency.PARAM_DB)
+        return DbDependency(repo, stage, p, info, db=db)
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)
         return RepoDependency(repo, stage, p, info)
@@ -44,9 +50,11 @@ def loadd_from(stage, d_list):
     return ret
 
 
-def loads_from(stage, s_list, erepo=None, fs_config=None):
+def loads_from(stage, s_list, erepo=None, fs_config=None, db=None):
     assert isinstance(s_list, list)
     info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
+    if db:
+        info.update({DbDependency.PARAM_DB: db})
     return [
         _get(
             stage,

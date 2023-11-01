@@ -105,7 +105,7 @@ def create_stage(cls: Type[_T], repo, path, **kwargs) -> _T:
     fill_stage_outputs(stage, **kwargs)
     check_no_externals(stage)
     fill_stage_dependencies(
-        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config"])
+        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config", "db"])
     )
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)
@@ -282,8 +282,23 @@ class Stage(params.StageParams):
         return isinstance(self.deps[0], RepoDependency)
 
     @property
+    def is_db_import(self) -> bool:
+        if not self.is_import:
+            return False
+
+        from dvc.dependency import DbDependency
+
+        return isinstance(self.deps[0], DbDependency)
+
+    @property
     def is_versioned_import(self) -> bool:
-        return self.is_import and self.deps[0].fs.version_aware
+        from dvc.dependency import DbDependency
+
+        return (
+            self.is_import
+            and not isinstance(self.deps[0], DbDependency)
+            and self.deps[0].fs.version_aware
+        )
 
     def short_description(self) -> Optional["str"]:
         desc: Optional["str"] = None

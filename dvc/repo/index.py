@@ -135,7 +135,11 @@ def _load_data_from_outs(index, prefix, outs):
             hash_info=out.hash_info,
         )
 
-        if out.stage.is_import and not out.stage.is_repo_import:
+        if (
+            out.stage.is_import
+            and not out.stage.is_repo_import
+            and not out.stage.is_db_import
+        ):
             dep = out.stage.deps[0]
             entry.meta = dep.meta
             if out.hash_info:
@@ -182,6 +186,9 @@ def _load_storage_from_out(storage_map, key, out):
             storage_map.add_remote(ObjectStorage(key, odb, index=remote.index))
     except NoRemoteError:
         pass
+
+    if out.stage.is_db_import:
+        return
 
     if out.stage.is_import:
         dep = out.stage.deps[0]
