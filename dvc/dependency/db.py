@@ -61,7 +61,7 @@ class DbDependency(Dependency):
     def __str__(self):
         from .repo import RepoDependency
 
-        repo = self.def_repo.get(RepoDependency.PARAM_REPO)
+        repo = self.def_repo.get(RepoDependency.PARAM_URL)
         rev = self.def_repo.get(RepoDependency.PARAM_REV)
 
         db = self.db_info.get(self.PARAM_MODEL)
@@ -77,14 +77,35 @@ class DbDependency(Dependency):
             repo_info += f"@{rev}"
         return db + (f"({repo_info})" if repo_info else "")
 
+    @property
+    def locked_rev(self):
+        from .repo import RepoDependency
+
+        return self.def_repo.get(RepoDependency.PARAM_REV_LOCK) or self.rev
+
+    @property
+    def rev(self):
+        from .repo import RepoDependency
+
+        return self.def_repo.get(RepoDependency.PARAM_REV)
+
     def workspace_status(self):
-        return False
+        current = self._get_clone(self.locked_rev or self.rev).get_rev()
+        updated = self._get_clone(self.rev).get_rev()
+
+        if current != updated:
+            return {str(self): "update available"}
+        return {}
 
     def status(self):
         return self.workspace_status()
 
     def save(self):
-        pass
+        from .repo import RepoDependency
+
+        rev = self._get_clone(self.locked_rev or self.rev).get_rev()
+        if self.def_repo.get(RepoDependency.PARAM_REV_LOCK) is None:
+            self.def_repo[RepoDependency.PARAM_REV_LOCK] = rev
 
     def dumpd(self, **kwargs) -> Dict[str, Union[str, Dict[str, str]]]:
         from .repo import RepoDependency
@@ -95,37 +116,33 @@ class DbDependency(Dependency):
             RepoDependency.PARAM_REPO: RepoDependency._dump_def_repo(self.def_repo),
         }
 
-    def update(self, rev=None):
+    def _get_clone(self, rev):
         from dvc.repo.open_repo import _cached_clone
 
+        from .repo import RepoDependency
+
+        url = self.def_repo.get(RepoDependency.PARAM_URL)
+        repo_root = self.repo.root_dir if self.repo else os.getcwd()
+        return SCM(_cached_clone(url, rev) if url else repo_root)
+
+    def update(self, rev=None):
         from .repo import RepoDependency
 
         if rev:
             self.def_repo[RepoDependency.PARAM_REV] = rev
         else:
-            rev = self.def_repo.get(RepoDependency.PARAM_REV)
-
-        url = self.def_repo.get(RepoDependency.PARAM_URL)
-        repo_root = self.repo.root_dir if self.repo else os.getcwd()
-        project_dir = _cached_clone(url, rev) if url else repo_root
-        self.def_repo[RepoDependency.PARAM_REV_LOCK] = SCM(project_dir).get_rev()
+            rev = self.rev
+        self.def_repo[RepoDependency.PARAM_REV_LOCK] = self._get_clone(rev).get_rev()
 
     def download(self, to, jobs=None, export_format=None):  # noqa: ARG002
-        from dvc.repo.open_repo import _cached_clone
         from dvc.ui import ui
 
         from .repo import RepoDependency
 
-        url = self.def_repo.get(RepoDependency.PARAM_URL)
-        rev = self.def_repo.get(RepoDependency.PARAM_REV)
-        rev_lock = self.def_repo.get(RepoDependency.PARAM_REV_LOCK)
+        repo = self._get_clone(self.locked_rev or self.rev)
+        self.def_repo[RepoDependency.PARAM_REV_LOCK] = repo.get_rev()
 
-        repo_root = self.repo.root_dir if self.repo else os.getcwd()
-        project_dir = _cached_clone(url, rev or rev_lock) if url else repo_root
-
-        self.def_repo[RepoDependency.PARAM_REV_LOCK] = SCM(project_dir).get_rev()
-
-        self._download_dbt(project_dir, to, export_format=export_format)
+        self._download_dbt(repo.root_dir, to, export_format=export_format)
 
         ui.write(f"Saved file to {to}", styled=True)
 
@@ -134,15 +151,23 @@ class DbDependency(Dependency):
 
         from dvc.ui import ui
 
-        with log_streams():
-            from fal.dbt import FalDbt
-
-            faldbt = FalDbt(profiles_dir="~/.dbt", project_dir=project_dir)
+        dbt_tmp_dir = os.path.join(self.repo.tmp_dir, "dbt")
+        os.environ.update(
+            {
+                "DBT_LOG_PATH": os.path.join(dbt_tmp_dir, "logs"),
+                "DBT_TARGET_PATH": os.path.join(dbt_tmp_dir, "target"),
+            }
+        )
 
         @contextmanager
         def log_status(msg, log=logger.debug):
             with log_durations(log, msg), ui.status(msg):
                 yield
+
+        with log_status("Initializing dbt"), log_streams():
+            from fal.dbt import FalDbt
+
+            faldbt = FalDbt(profiles_dir=None, project_dir=project_dir)
 
         if model := self.db_info.get(self.PARAM_MODEL):
             with log_status(f"Downloading {model}"), log_streams():
@@ -161,4 +186,7 @@ class DbDependency(Dependency):
             "json": model.to_json,
         }
         with log_status(f"Saving to {to}"), log_streams():
-            return exporter[export_format](to.fs_path)
+            exporter[export_format](to.fs_path)
+
+        os.environ.pop("DBT_LOG_PATH", None)
+        os.environ.pop("DBT_TARGET_PATH", None)

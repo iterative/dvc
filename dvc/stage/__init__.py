@@ -459,8 +459,13 @@ class Stage(params.StageParams):
         no_download=None,
         jobs=None,
     ) -> None:
+        from dvc.dependency import DbDependency
+
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
+
+        # always force update DbDependency since we don't know if it's changed
+        force = isinstance(self.deps[0], DbDependency)
         update_import(
             self,
             rev=rev,
@@ -468,6 +473,7 @@ class Stage(params.StageParams):
             remote=remote,
             no_download=no_download,
             jobs=jobs,
+            force=force,
         )
 
     def reload(self) -> "Stage":
