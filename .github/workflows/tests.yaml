@@ -39,6 +39,7 @@ jobs:
       run: |
         pip install --upgrade pip wheel
         pip install -e ".[dev]"
+        pip install -U "platformdirs<4,>=3.1.1"
     - uses: pre-commit/action@v3.0.0
     - name: run tests
       timeout-minutes: 40

@@ -1,6 +1,6 @@
 import logging
 import os
-from contextlib import contextmanager, redirect_stdout
+from contextlib import chdir, contextmanager, redirect_stdout
 from typing import TYPE_CHECKING, Any, Dict, Union
 
 from dvc.scm import SCM
@@ -142,22 +142,14 @@ class DbDependency(Dependency):
         repo = self._get_clone(self.locked_rev or self.rev)
         self.def_repo[RepoDependency.PARAM_REV_LOCK] = repo.get_rev()
 
-        self._download_dbt(repo.root_dir, to, export_format=export_format)
-
+        with chdir(repo.root_dir):
+            self._download_dbt(to, export_format=export_format)
         ui.write(f"Saved file to {to}", styled=True)
 
-    def _download_dbt(self, project_dir, to, export_format=None):
+    def _download_dbt(self, to, export_format=None):
         from funcy import log_durations
 
         from dvc.ui import ui
-
-        dbt_tmp_dir = os.path.join(self.repo.tmp_dir, "dbt")
-        os.environ.update(
-            {
-                "DBT_LOG_PATH": os.path.join(dbt_tmp_dir, "logs"),
-                "DBT_TARGET_PATH": os.path.join(dbt_tmp_dir, "target"),
-            }
-        )
 
         @contextmanager
         def log_status(msg, log=logger.debug):
@@ -167,7 +159,7 @@ class DbDependency(Dependency):
         with log_status("Initializing dbt"), log_streams():
             from fal.dbt import FalDbt
 
-            faldbt = FalDbt(profiles_dir=None, project_dir=project_dir)
+            faldbt = FalDbt()
 
         if model := self.db_info.get(self.PARAM_MODEL):
             with log_status(f"Downloading {model}"), log_streams():
@@ -187,6 +179,3 @@ class DbDependency(Dependency):
         }
         with log_status(f"Saving to {to}"), log_streams():
             exporter[export_format](to.fs_path)
-
-        os.environ.pop("DBT_LOG_PATH", None)
-        os.environ.pop("DBT_TARGET_PATH", None)
