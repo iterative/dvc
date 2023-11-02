@@ -1,6 +1,6 @@
 import logging
 import os
-from contextlib import chdir, contextmanager, redirect_stdout
+from contextlib import contextmanager, redirect_stdout
 from typing import TYPE_CHECKING, Any, Dict, Union
 
 from dvc.scm import SCM
@@ -142,8 +142,13 @@ class DbDependency(Dependency):
         repo = self._get_clone(self.locked_rev or self.rev)
         self.def_repo[RepoDependency.PARAM_REV_LOCK] = repo.get_rev()
 
-        with chdir(repo.root_dir):
+        cwd = os.getcwd()
+        os.chdir(repo.root_dir)
+        try:
             self._download_dbt(to, export_format=export_format)
+        finally:
+            os.chdir(cwd)
+
         ui.write(f"Saved file to {to}", styled=True)
 
     def _download_dbt(self, to, export_format=None):
