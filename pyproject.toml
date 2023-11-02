@@ -71,7 +71,7 @@ dependencies = [
 [project.optional-dependencies]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
 azure = ["dvc-azure>=2.23.0"]
-db = ["dbt-core", "dbt-fal", "dbt-snowflake"]
+db = ["dbt-core", "dbt-fal==1.5.9", "dbt-snowflake"]
 dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,tests,webdav,webhdfs,db]"]
 gdrive = ["dvc-gdrive==2.20"]
 gs = ["dvc-gs==2.22.1"]
