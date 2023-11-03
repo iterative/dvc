@@ -90,8 +90,8 @@ Their results can be filtered and compared based on hyperparameters and metrics,
 
 .. _`VS Code Extension`:
 
-Visual Studio Code Extension
-============================
+VS Code Extension
+=================
 
 |VS Code|
 
