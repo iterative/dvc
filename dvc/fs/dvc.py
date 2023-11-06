@@ -4,6 +4,7 @@ import ntpath
 import os
 import posixpath
 import threading
+from collections import deque
 from contextlib import ExitStack, suppress
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
 
@@ -60,6 +61,7 @@ def _merge_info(repo, key, fs_info, dvc_info):
     if fs_info:
         ret["type"] = fs_info["type"]
         ret["size"] = fs_info["size"]
+        ret["fs_info"] = fs_info
         isexec = False
         if fs_info["type"] == "file":
             isexec = utils.is_exec(fs_info["mode"])
@@ -420,6 +422,45 @@ class _DVCFileSystem(AbstractFileSystem):
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs.get_file(dvc_path, lpath, **kwargs)
+
+    def du(self, path, total=True, maxdepth=None, withdirs=False, **kwargs):
+        if maxdepth is not None:
+            raise NotImplementedError
+
+        sizes = {}
+        dus = {}
+        todo = deque([self.info(path)])
+        while todo:
+            info = todo.popleft()
+            isdir = info["type"] == "directory"
+            size = info["size"] or 0
+            name = info["name"]
+
+            if not isdir:
+                sizes[name] = size
+                continue
+
+            dvc_info = info.get("dvc_info") or {}
+            fs_info = info.get("fs_info")
+            entry = dvc_info.get("entry")
+            if (
+                dvc_info
+                and not fs_info
+                and entry is not None
+                and entry.size is not None
+            ):
+                dus[name] = entry.size
+                continue
+
+            if withdirs:
+                sizes[name] = size
+
+            todo.extend(self.ls(info["name"], detail=True))
+
+        if total:
+            return sum(sizes.values()) + sum(dus.values())
+
+        return sizes
 
     def close(self):
         self._repo_stack.close()
