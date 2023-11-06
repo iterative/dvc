@@ -7,6 +7,7 @@ from dvc import __version__
 from dvc.commands import (
     add,
     artifacts,
+    auth,
     cache,
     check_ignore,
     checkout,
@@ -93,6 +94,7 @@ COMMANDS = [
     check_ignore,
     data,
     artifacts,
+    auth,
 ]
 
 
