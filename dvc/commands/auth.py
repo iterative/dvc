@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 
+from funcy import get_in
+
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
 
@@ -83,6 +85,21 @@ class CmdAuthLogin(CmdBase):
             conf["studio"]["url"] = hostname
 
 
+class CmdAuthLogout(CmdBase):
+    def run(self):
+        from dvc.ui import ui
+
+        with self.config.edit("global") as conf:
+            if not get_in(conf, ["studio", "token"]):
+                ui.error_write("Not logged in to Studio.")
+                return 1
+
+            del conf["studio"]["token"]
+
+        ui.write("Logged out from Studio")
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     AUTH_HELP = "Authenticate dvc with Iterative Studio"
     AUTH_DESCRIPTION = (
@@ -151,3 +168,16 @@ def add_parser(subparsers, parent_parser):
         "DVC will also use this if it cannot launch browser on your behalf.",
     )
     login_parser.set_defaults(func=CmdAuthLogin)
+
+    AUTH_LOGOUT_HELP = "Logout user from Studio"
+    AUTH_LOGOUT_DESCRIPTION = "This command helps to log out user from DVC Studio.\n"
+
+    logout_parser = auth_subparsers.add_parser(
+        "logout",
+        parents=[parent_parser],
+        description=append_doc_link(AUTH_LOGOUT_DESCRIPTION, "auth/logout"),
+        help=AUTH_LOGOUT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    logout_parser.set_defaults(func=CmdAuthLogout)
