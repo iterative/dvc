@@ -100,6 +100,20 @@ class CmdAuthLogout(CmdBase):
         return 0
 
 
+class CmdAuthToken(CmdBase):
+    def run(self):
+        from dvc.ui import ui
+
+        conf = self.config.read("global")
+        token = get_in(conf, ["studio", "token"])
+        if not token:
+            ui.error_write("Not logged in to Studio.")
+            return 1
+
+        ui.write(token)
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     AUTH_HELP = "Authenticate dvc with Iterative Studio"
     AUTH_DESCRIPTION = (
@@ -181,3 +195,17 @@ def add_parser(subparsers, parent_parser):
     )
 
     logout_parser.set_defaults(func=CmdAuthLogout)
+
+    AUTH_TOKEN_HELP = (
+        "View the token dvc uses to contact Studio"  # noqa: S105 # nosec B105
+    )
+
+    logout_parser = auth_subparsers.add_parser(
+        "token",
+        parents=[parent_parser],
+        description=append_doc_link(AUTH_TOKEN_HELP, "auth/token"),
+        help=AUTH_TOKEN_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    logout_parser.set_defaults(func=CmdAuthToken)
