@@ -240,6 +240,7 @@ SCHEMA = {
                     "token": str,
                     "use_https": Bool,
                     "user": str,
+                    "password": str,
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
