@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Mapping, Set
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
-from .db import DbDependency
+from .db import DB_SCHEMA, PARAM_DB, DbDependency, DbtDependency
 from .param import ParamsDependency
 from .repo import RepoDependency
 
@@ -15,17 +15,20 @@ from .repo import RepoDependency
 SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
+    **DB_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
     Output.PARAM_FS_CONFIG: dict,
-    **DbDependency.DB_SCHEMA,
 }
 
 
 def _get(stage, p, info, **kwargs):
-    if info and info.get(DbDependency.PARAM_DB):
-        repo = info.pop(RepoDependency.PARAM_REPO)
-        db = info.pop(DbDependency.PARAM_DB)
-        return DbDependency(repo, stage, p, info, db=db)
+    db = info.get(PARAM_DB, {})
+    if DbDependency.PARAM_QUERY in db:
+        return DbDependency(stage, info)
+    if db:
+        repo = info.pop(RepoDependency.PARAM_REPO, None)
+        return DbtDependency(repo, stage, info)
+
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)
         return RepoDependency(repo, stage, p, info)
@@ -54,7 +57,7 @@ def loads_from(stage, s_list, erepo=None, fs_config=None, db=None):
     assert isinstance(s_list, list)
     info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
     if db:
-        info.update({DbDependency.PARAM_DB: db})
+        info.update({"db": db})
     return [
         _get(
             stage,

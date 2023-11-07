@@ -286,17 +286,17 @@ class Stage(params.StageParams):
         if not self.is_import:
             return False
 
-        from dvc.dependency import DbDependency
+        from dvc.dependency import DbDependency, DbtDependency
 
-        return isinstance(self.deps[0], DbDependency)
+        return isinstance(self.deps[0], (DbDependency, DbtDependency))
 
     @property
     def is_versioned_import(self) -> bool:
-        from dvc.dependency import DbDependency
+        from dvc.dependency import DbDependency, DbtDependency
 
         return (
             self.is_import
-            and not isinstance(self.deps[0], DbDependency)
+            and not isinstance(self.deps[0], (DbDependency, DbtDependency))
             and self.deps[0].fs.version_aware
         )
 
@@ -459,13 +459,11 @@ class Stage(params.StageParams):
         no_download=None,
         jobs=None,
     ) -> None:
-        from dvc.dependency import DbDependency
-
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
 
-        # always force update DbDependency since we don't know if it's changed
-        force = isinstance(self.deps[0], DbDependency)
+        # always force update DbDep/DbtDep since we don't know if it's changed
+        force = self.is_db_import
         update_import(
             self,
             rev=rev,

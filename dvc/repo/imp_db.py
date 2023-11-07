@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from dvc.exceptions import OutputDuplicationError
 from dvc.repo.scm_context import scm_context
@@ -12,28 +12,41 @@ from . import locked
 
 @locked
 @scm_context
-def imp_db(
+def imp_db(  # noqa: PLR0913
     self: "Repo",
-    url: str,
-    target: str,
-    type: str = "model",  # noqa: A002, pylint: disable=redefined-builtin
-    out: Optional[str] = None,
+    url: Optional[str] = None,
     rev: Optional[str] = None,
+    project_dir: Optional[str] = None,
+    sql: Optional[str] = None,
+    model: Optional[str] = None,
+    version: Optional[int] = None,
     frozen: bool = True,
-    force: bool = False,
+    profile: Optional[str] = None,
+    target: Optional[str] = None,
     export_format: str = "csv",
+    out: Optional[str] = None,
+    force: bool = False,
 ):
-    erepo = {"url": url}
-    if rev:
-        erepo["rev"] = rev
+    erepo = None
+    if model and url:
+        erepo = {"url": url}
+        if rev:
+            erepo["rev"] = rev
 
-    assert type in ("model", "query")
     assert export_format in ("csv", "json")
-    if not out:
-        out = "results.csv" if type == "query" else f"{target}.{export_format}"
 
-    db = {type: target, "export_format": export_format}
-    out = resolve_output(url, out, force=force)
+    db: Dict[str, Any] = {"export_format": export_format}
+    if profile:
+        db["profile"] = profile
+
+    if model:
+        out = out or f"{model}.{export_format}"
+        db.update({"model": model, "version": version, "project_dir": project_dir})
+    else:
+        out = out or "results.csv"
+        db["query"] = sql
+
+    out = resolve_output(url or ".", out, force=force)
     path, wdir, out = resolve_paths(self, out, always_local=True)
     stage = self.stage.create(
         single_stage=True,
@@ -47,6 +60,7 @@ def imp_db(
         db=db,
     )
 
+    stage.deps[0].target = target
     try:
         self.check_graph(stages={stage})
     except OutputDuplicationError as exc:
