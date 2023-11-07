@@ -211,7 +211,6 @@ module = [
     "agate.*",
     "celery.*",
     "configobj.*",
-    "fal.dbt.*",
     "dpath.*",
     "distro",
     "dvc_http",
