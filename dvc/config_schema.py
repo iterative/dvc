@@ -239,6 +239,7 @@ SCHEMA = {
                     "ssl_verify": Any(Bool, str),
                     "token": str,
                     "use_https": Bool,
+                    "user": str,
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
