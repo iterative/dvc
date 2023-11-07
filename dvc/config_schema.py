@@ -350,4 +350,8 @@ SCHEMA = {
         "repo_url": str,
         Optional("offline", default=False): Bool,
     },
+    "db": {
+        "profile": str,
+        "target": str,
+    },
 }
