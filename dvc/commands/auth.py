@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import sys
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
@@ -20,6 +19,14 @@ class CmdAuthLogin(CmdBase):
         from dvc.utils.studio import STUDIO_URL, check_token_authorization
 
         scopes = self.args.scopes or DEFAULT_SCOPES
+        if invalid_scopes := list(
+            filter(lambda s: s not in AVAILABLE_SCOPES, scopes.split(","))
+        ):
+            ui.error_write(
+                f"Following scopes are not valid: {', '.join(invalid_scopes)}"
+            )
+            return 1
+
         name = self.args.name or gen_random_name()
         hostname = self.args.hostname or os.environ.get(DVC_STUDIO_URL) or STUDIO_URL
 
@@ -31,13 +38,14 @@ class CmdAuthLogin(CmdBase):
             ui.write(
                 "failed to authenticate: This 'device_code' has expired.(expired_token)"
             )
-            sys.exit(1)
+            return 1
 
         self.save_config(hostname, access_token)
         ui.write(
-            f"Authentication successful. The token will be"
+            f"Authentication successful. The token will be "
             f"available as {name} in Studio profile."
         )
+        return 0
 
     def initiate_authorization(self, hostname, data):
         import webbrowser
