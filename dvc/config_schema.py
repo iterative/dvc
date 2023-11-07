@@ -241,6 +241,7 @@ SCHEMA = {
                     "use_https": Bool,
                     "user": str,
                     "password": str,
+                    "data_proxy_target": str,
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
