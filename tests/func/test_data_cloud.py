@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+from os.path import join
 
 import pytest
 from flaky.flaky_decorator import flaky
@@ -8,7 +9,9 @@ from flaky.flaky_decorator import flaky
 import dvc_data
 from dvc.cli import main
 from dvc.exceptions import CheckoutError
+from dvc.repo import Repo
 from dvc.repo.open_repo import clean_repos
+from dvc.scm import Git
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.remote_tests import (  # noqa: F401
     TestRemote,
@@ -17,6 +20,7 @@ from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
 from dvc_data.hashfile.hash_info import HashInfo
+from tests.func.test_data_status import EMPTY_STATUS
 
 
 def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
@@ -576,3 +580,31 @@ def test_pull_allow_missing(tmp_dir, dvc, local_remote):
 
     stats = dvc.pull(allow_missing=True)
     assert stats["fetched"] == 1
+
+
+def test_partial_fetch(M, tmp_dir, local_cloud, erepo_dir):
+    erepo_dir.dvc_gen({"a": {"b": {"d": "d"}, "c": {"e": "e"}}}, commit="add a")
+    root, file1, file2 = join("a", ""), join("a", "b", "d"), join("a", "c", "e")
+
+    erepo_dir.add_remote(name="upstream", config=local_cloud.config)
+    erepo_dir.dvc.push()
+
+    Git.clone(erepo_dir.fs_path, os.curdir).close()
+
+    dvc = Repo()
+    assert dvc.data_status(granular=True) == {
+        **EMPTY_STATUS,
+        "git": M.any,
+        "not_in_cache": M.unordered(root, file1, file2),
+        "uncommitted": {"deleted": M.unordered(root, file1, file2)},
+    }
+    assert dvc.fetch(file1) == 2
+    assert dvc.checkout(file1) == {
+        "added": [root],
+        "deleted": [],
+        "modified": [],
+    }
+    assert dvc.fetch(file2) == 0
+
+    # should now be equal, and have same amount of files
+    assert set(dvc.cache.local.all()) == set(erepo_dir.dvc.cache.local.all())
