@@ -200,6 +200,9 @@ class TestRemoteVersionAware:
         assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
+        dvc.push()
+        assert (remote_version_aware / "foo").read_text() == "foo"
+
     def test_dir(
         self, tmp_dir, dvc, run_copy, remote_version_aware
     ):  # pylint: disable=W0613
@@ -246,6 +249,9 @@ class TestRemoteVersionAware:
         dvc.push()
         assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+        dvc.push()
+        assert (remote_version_aware / "data_dir" / "data").read_text() == "data"
 
 
 class TestRemoteWorktree:
