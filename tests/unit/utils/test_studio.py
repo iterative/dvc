@@ -77,11 +77,10 @@ def test_env_to_config():
 
 
 def test_start_device_login(mocker):
-    response = Response()
-    response.status_code = 200
-    mocker.patch.object(response, "json", side_effect=[{"user_code": "MOCKCODE"}])
-
-    mock_post = mocker.patch("requests.Session.post", return_value=response)
+    mock_post = mocker.patch(
+        "requests.Session.post",
+        return_value=mock_response(mocker, 200, {"user_code": "MOCKCODE"}),
+    )
 
     start_device_login(
         data={"client_name": "dvc", "token_name": "token_name", "scopes": "live"},
@@ -98,11 +97,12 @@ def test_start_device_login(mocker):
 
 
 def test_check_token_authorization_expired(mocker):
+    mocker.patch("time.sleep")
     mock_post = mocker.patch(
         "requests.Session.post",
         side_effect=[
-            _mock_response(mocker, 400, {"detail": "authorization_pending"}),
-            _mock_response(mocker, 400, {"detail": "authorization_expired"}),
+            mock_response(mocker, 400, {"detail": "authorization_pending"}),
+            mock_response(mocker, 400, {"detail": "authorization_expired"}),
         ],
     )
 
@@ -123,11 +123,12 @@ def test_check_token_authorization_expired(mocker):
 
 
 def test_check_token_authorization_error(mocker):
+    mocker.patch("time.sleep")
     mock_post = mocker.patch(
         "requests.Session.post",
         side_effect=[
-            _mock_response(mocker, 400, {"detail": "authorization_pending"}),
-            _mock_response(mocker, 500, {"detail": "unexpected_error"}),
+            mock_response(mocker, 400, {"detail": "authorization_pending"}),
+            mock_response(mocker, 500, {"detail": "unexpected_error"}),
         ],
     )
 
@@ -146,12 +147,13 @@ def test_check_token_authorization_error(mocker):
 
 
 def test_check_token_authorization_success(mocker):
+    mocker.patch("time.sleep")
     mock_post = mocker.patch(
         "requests.Session.post",
         side_effect=[
-            _mock_response(mocker, 400, {"detail": "authorization_pending"}),
-            _mock_response(mocker, 400, {"detail": "authorization_pending"}),
-            _mock_response(mocker, 200, {"access_token": "isat_token"}),
+            mock_response(mocker, 400, {"detail": "authorization_pending"}),
+            mock_response(mocker, 400, {"detail": "authorization_pending"}),
+            mock_response(mocker, 200, {"access_token": "isat_token"}),
         ],
     )
 
@@ -171,7 +173,7 @@ def test_check_token_authorization_success(mocker):
     )
 
 
-def _mock_response(mocker, status_code, json):
+def mock_response(mocker, status_code, json):
     response = Response()
     response.status_code = status_code
     mocker.patch.object(response, "json", side_effect=[json])

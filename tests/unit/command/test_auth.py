@@ -19,7 +19,7 @@ def test_auth_login_invalid_scope():
 @mock.patch("dvc.utils.studio.check_token_authorization")
 @mock.patch("dvc.utils.studio.start_device_login")
 def test_auth_login_token_check_failed(
-    mock_start_device_login, mock_check_token_authorization, dvc
+    mock_start_device_login, mock_check_token_authorization
 ):
     mock_start_device_login.return_value = MOCK_RESPONSE
     mock_check_token_authorization.return_value = None
@@ -51,9 +51,7 @@ def test_auth_login_success(
 
 @mock.patch("dvc.utils.studio.check_token_authorization")
 @mock.patch("dvc.utils.studio.start_device_login")
-def test_auth_login_arguments(
-    mock_start_device_login, mock_check_token_authorization, dvc, M
-):
+def test_auth_login_arguments(mock_start_device_login, mock_check_token_authorization):
     mock_start_device_login.return_value = MOCK_RESPONSE
     mock_check_token_authorization.return_value = "isat_access_token"
 
