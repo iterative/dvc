@@ -63,11 +63,22 @@ def notify_refs(
     )
     data = {"repo_url": repo_url, "client": "dvc", "refs": refs}
 
-    d = None
     try:
         r = post("webhook/dvc", token, data, base_url=base_url)
     except requests.RequestException as e:
-        _handle_request_exception(e)
+        logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+
+        msg = str(e)
+        if e.response is None:
+            logger.warning("failed to notify Studio: %s", msg.lower())
+            return {}
+
+        r = e.response
+        d = ignore(Exception, default={})(r.json)()
+        status = r.status_code
+        if detail := d.get("detail"):
+            msg = f"{detail} ({status=})"
+        logger.warning("failed to notify Studio: %s", msg.lower())
     else:
         d = r.json()
 
@@ -86,18 +97,19 @@ def start_device_login(
         f" ({base_url})" if base_url else "",
     )
 
-    try:
-        r = post("api/device-login", "", data=data, base_url=base_url)
-    except requests.RequestException as e:
-        _handle_request_exception(e)
-        raise
-    else:
-        d = r.json()
-
-    if d:
-        logger.trace(  # type: ignore[attr-defined]
-            "received response: %s (status=%r)", d, r.status_code
+    r = post("api/device-login", "", data=data, base_url=base_url)
+    if r.status_code == 400:
+        logger.error(
+            "Failed to start authentication with Studio: %s", r.json().get("detail")
         )
+        return
+
+    r.raise_for_status()
+    d = r.json()
+
+    logger.trace(  # type: ignore[attr-defined]
+        "received response: %s (status=%r)", d, r.status_code
+    )
     return d
 
 
@@ -114,42 +126,22 @@ def check_token_authorization(*, uri, device_code):
 
     counter = 1
     while True:
-        try:
-            logger.debug("Polling attempt #%s", counter)
-            r = session.post(uri, json=data, timeout=5, allow_redirects=False)
-            counter += 1
-            if r.status_code == 400:
-                d = ignore(Exception, default={})(r.json)()
-                detail = d.get("detail")
-                if detail == "authorization_pending":
-                    # Wait 5 seconds before retrying.
-                    time.sleep(5)
-                    continue
-                if detail == "authorization_expired":
-                    return
+        logger.debug("Polling attempt #%s", counter)
+        r = session.post(uri, json=data, timeout=5, allow_redirects=False)
+        counter += 1
+        if r.status_code == 400:
+            d = ignore(Exception, default={})(r.json)()
+            detail = d.get("detail")
+            if detail == "authorization_pending":
+                # Wait 5 seconds before retrying.
+                time.sleep(5)
+                continue
+            if detail == "authorization_expired":
+                return
 
-            r.raise_for_status()
+        r.raise_for_status()
 
-            return r.json()["access_token"]
-        except requests.RequestException as e:
-            _handle_request_exception(e)
-            raise
-
-
-def _handle_request_exception(e):
-    logger.trace("", exc_info=True)  # type: ignore[attr-defined]
-
-    msg = str(e)
-    if e.response is None:
-        logger.warning("failed to contact Studio: %s", msg.lower())
-        return {}
-
-    r = e.response
-    d = ignore(Exception, default={})(r.json)()
-    status = r.status_code
-    if detail := d.get("detail"):
-        msg = f"{detail} ({status=})"
-    logger.warning("failed to contact Studio: %s", msg.lower())
+        return r.json()["access_token"]
 
 
 def config_to_env(config: Dict[str, Any]) -> Dict[str, Any]:
