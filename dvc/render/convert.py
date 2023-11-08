@@ -26,7 +26,7 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
         if split:
             content, split_content = renderer.get_partial_filled_template()
         else:
-            content = renderer.get_filled_template(as_string=False)
+            content = renderer.get_filled_template()
             split_content = {}
 
         return [

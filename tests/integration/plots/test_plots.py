@@ -114,16 +114,20 @@ def verify_vega(
         assert j[0]["type"] == "vega"
         assert set(j[0]["revisions"]) == set(versions)
 
-    assert json_result[0]["content"]["data"]["values"] == json.loads(
-        split_json_result[0]["anchor_definitions"]["<DVC_METRIC_DATA>"]
+    assert (
+        json_result[0]["content"]["data"]["values"]
+        == split_json_result[0]["anchor_definitions"]["<DVC_METRIC_DATA>"]
     )
+
     assert set(versions) == set(json_result[0]["revisions"])
 
     assert json_result[0]["content"]["data"]["values"]
     assert html_result["data"]["values"]
-    assert "<DVC_METRIC_DATA>" in split_json_result[0]["content"]
-    assert "<DVC_METRIC_X_LABEL>" in split_json_result[0]["content"]
-    assert "<DVC_METRIC_Y_LABEL>" in split_json_result[0]["content"]
+
+    content_str = json.dumps(split_json_result[0]["content"])
+    assert "<DVC_METRIC_DATA>" in content_str
+    assert "<DVC_METRIC_X_LABEL>" in content_str
+    assert "<DVC_METRIC_Y_LABEL>" in content_str
 
     def _assert_templates_equal(
         html_template, filled_template, split_template, title, x_label, y_label
@@ -133,7 +137,7 @@ def verify_vega(
         tmp1 = deepcopy(html_template)
         tmp2 = deepcopy(filled_template)
         tmp3 = json.loads(
-            split_template[:]
+            json.dumps(split_template)
             .replace('"<DVC_METRIC_COLUMN_WIDTH>"', "300")
             .replace('"<DVC_METRIC_PLOT_HEIGHT>"', "300")
             .replace('"<DVC_METRIC_PLOT_WIDTH>"', "300")
@@ -486,11 +490,9 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
 
     assert html_result["linear_train_vs_test"]["data"]["values"] == ble
     assert (
-        json.loads(
-            split_json_result["data"]["linear_train_vs_test"][0]["anchor_definitions"][
-                "<DVC_METRIC_DATA>"
-            ]
-        )
+        split_json_result["data"]["linear_train_vs_test"][0]["anchor_definitions"][
+            "<DVC_METRIC_DATA>"
+        ]
         == ble
     )
 
@@ -501,7 +503,7 @@ def test_repo_with_dvclive_plots(tmp_dir, capsys, repo_with_dvclive_plots):
 
     for s in ("show", "diff"):
         _, json_result, split_json_result = call(capsys, subcommand=s)
-        expected_result = {
+        expected_result: Dict[str, Dict[str, list[str]]] = {
             "data": {
                 "dvclive/plots/metrics/metric.tsv": [],
             },

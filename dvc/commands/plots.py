@@ -135,7 +135,7 @@ class CmdPlots(CmdBase):
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
-                    ui.write_json(renderer.get_filled_template(as_string=False))
+                    ui.write_json(renderer.get_filled_template())
                 return 0
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"
