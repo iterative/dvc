@@ -24,6 +24,8 @@ from dvc.progress import Tqdm
 if TYPE_CHECKING:
     from scmrepo.progress import GitProgressEvent
 
+    from dvc.fs import FileSystem
+
 
 class SCMError(DvcException):
     """Base class for source control management errors."""
@@ -262,3 +264,30 @@ def iter_revs(
 
     rev_resolver = partial(resolve_rev, scm)
     return group_by(rev_resolver, results)
+
+
+def lfs_prefetch(fs: "FileSystem", paths: List[str]):
+    from scmrepo.git.lfs import fetch as _lfs_fetch
+
+    from dvc.fs.dvc import DVCFileSystem
+    from dvc.fs.git import GitFileSystem
+
+    if isinstance(fs, DVCFileSystem) and isinstance(fs.repo.fs, GitFileSystem):
+        git_fs = fs.repo.fs
+        scm = fs.repo.scm
+        assert isinstance(scm, Git)
+    else:
+        return
+
+    try:
+        if "filter=lfs" not in git_fs.open(".gitattributes").read():
+            return
+    except OSError:
+        return
+    with TqdmGit(desc="Checking for Git-LFS objects") as pbar:
+        _lfs_fetch(
+            scm,
+            [git_fs.rev],
+            include=[(path if path.startswith("/") else f"/{path}") for path in paths],
+            progress=pbar.update_git,
+        )
