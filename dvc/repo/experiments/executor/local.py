@@ -148,7 +148,10 @@ class TempDirExecutor(BaseLocalExecutor):
                 conf_obj.write(fobj)
 
     def init_cache(
-        self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
+        self,
+        repo: "Repo",
+        rev: str,  # noqa: ARG002
+        run_cache: bool = True,  # noqa: ARG002
     ):
         """Initialize DVC cache."""
         self._update_config({"cache": {"dir": repo.cache.local_cache_dir}})

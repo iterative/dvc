@@ -9,9 +9,7 @@ if os.path.isfile(sys.argv[1]):
     shutil.copyfile(sys.argv[1], sys.argv[2])
 else:
     shutil.copytree(sys.argv[1], sys.argv[2])
-""".replace(
-    "\r\n", "\n"
-)
+""".replace("\r\n", "\n")
 
 
 def _add_script(tmp_dir, path, contents=""):

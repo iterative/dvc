@@ -36,9 +36,7 @@ def apply(repo: "Repo", rev: str, **kwargs):  # noqa: C901
         (
             exp_ref_info,
             queue_entry,
-        ) = exps.celery_queue.get_ref_and_entry_by_names(
-            rev
-        )[rev]
+        ) = exps.celery_queue.get_ref_and_entry_by_names(rev)[rev]
         if exp_ref_info:
             exp_rev = repo.scm.get_ref(str(exp_ref_info))
         elif queue_entry:

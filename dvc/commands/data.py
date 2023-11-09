@@ -106,9 +106,7 @@ class CmdDataStatus(CmdBase):
         return 0
 
     def run(self) -> int:
-        with log_durations(
-            logger.trace, "in data_status"  # type: ignore[attr-defined]
-        ):
+        with log_durations(logger.trace, "in data_status"):  # type: ignore[attr-defined]
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
