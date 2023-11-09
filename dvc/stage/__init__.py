@@ -559,9 +559,7 @@ class Stage(params.StageParams):
             raise CacheLinkError(link_failures)
 
     @rwlocked(write=["outs"])
-    def add_outs(  # noqa: C901
-        self, filter_info=None, allow_missing: bool = False, **kwargs
-    ):
+    def add_outs(self, filter_info=None, allow_missing: bool = False, **kwargs):
         from dvc.output import OutputDoesNotExistError
 
         link_failures = []
@@ -582,7 +580,7 @@ class Stage(params.StageParams):
             raise CacheLinkError(link_failures)
 
     @rwlocked(read=["deps", "outs"])
-    def run(  # noqa: C901
+    def run(
         self,
         dry=False,
         no_commit=False,

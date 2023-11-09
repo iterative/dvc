@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def apply(repo: "Repo", rev: str, **kwargs):  # noqa: C901
+def apply(repo: "Repo", rev: str, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
     from dvc.scm import RevError, resolve_rev
 

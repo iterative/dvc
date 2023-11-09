@@ -244,8 +244,6 @@ module = [
 ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
 
 [tool.ruff]
-# external flake8 codes that should be preserved
-external = ["B301", "C901", "E302", "W601"]
 ignore = [
     "N818", "S101", "ISC001", "PT004", "PT007", "RET501", "RET502", "RET503", "SIM105", "SIM108",
     "SIM117", "TRY003", "TRY200", "TRY300", "PLR2004", "PLW2901", "RUF012"
@@ -288,7 +286,3 @@ extend-ignore-names = ["M", "SCM"]
 
 [tool.ruff.pylint]
 max-args = 10
-
-[tool.bandit]
-exclude_dirs = ["tests", "dvc/repo/experiments/utils.py"]
-skips = ["B101"]

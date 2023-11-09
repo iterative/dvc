@@ -54,7 +54,7 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(  # noqa: C901
+def show_experiments(
     td: "TabularData",
     headers: Dict[str, Iterable[str]],
     keep=None,

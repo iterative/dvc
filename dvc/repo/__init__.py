@@ -634,7 +634,7 @@ class Repo:
         # that just happened to be at the same path as old deleted ones.
         btime = self._btime or getattr(os.stat(root_dir), "st_birthtime", None)
 
-        md5 = hashlib.md5(  # noqa: S324  # nosec B324, B303
+        md5 = hashlib.md5(  # noqa: S324
             str(
                 (
                     root_dir,

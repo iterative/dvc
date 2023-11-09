@@ -1,7 +1,7 @@
 import logging
 import os
 import signal
-import subprocess  # nosec B404
+import subprocess
 import threading
 
 from dvc.utils import fix_env
@@ -83,7 +83,7 @@ def _run(executable, cmd, **kwargs):
     exec_cmd = _make_cmd(executable, cmd)
 
     try:
-        p = subprocess.Popen(exec_cmd, **kwargs)  # nosec B603 # noqa: S603
+        p = subprocess.Popen(exec_cmd, **kwargs)  # noqa: S603
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 

@@ -165,7 +165,7 @@ class StageLoader(Mapping):
         return len(self.resolver.get_keys())
 
     def __contains__(self, name):
-        return self.resolver.has_key(name)  # noqa: W601
+        return self.resolver.has_key(name)
 
     def is_foreach_or_matrix_generated(self, name: str) -> bool:
         return (
