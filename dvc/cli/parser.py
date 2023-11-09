@@ -7,7 +7,6 @@ from dvc import __version__
 from dvc.commands import (
     add,
     artifacts,
-    auth,
     cache,
     check_ignore,
     checkout,
@@ -43,6 +42,7 @@ from dvc.commands import (
     repro,
     root,
     stage,
+    studio,
     unprotect,
     update,
     version,
@@ -94,7 +94,7 @@ COMMANDS = [
     check_ignore,
     data,
     artifacts,
-    auth,
+    studio,
 ]
 
 

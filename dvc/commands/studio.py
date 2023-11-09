@@ -13,7 +13,7 @@ DEFAULT_SCOPES = "live,dvc_experiment,view_url,dql,download_model"
 AVAILABLE_SCOPES = ["live", "dvc_experiment", "view_url", "dql", "download_model"]
 
 
-class CmdAuthLogin(CmdBase):
+class CmdStudioLogin(CmdBase):
     def run(self):
         from dvc.env import DVC_STUDIO_URL
         from dvc.repo.experiments.utils import gen_random_name
@@ -67,7 +67,7 @@ class CmdAuthLogin(CmdBase):
                 f"A web browser has been opened at \n{verification_uri}.\n"
                 f"Please continue the login in the web browser.\n"
                 f"If no web browser is available or if the web browser fails to open,\n"
-                f"use device code flow with `dvc auth login --use-device-code`."
+                f"use device code flow with `dvc studio login --use-device-code`."
             )
             url = f"{verification_uri}?code={user_code}"
             opened = webbrowser.open(url)
@@ -85,7 +85,7 @@ class CmdAuthLogin(CmdBase):
             conf["studio"]["url"] = hostname
 
 
-class CmdAuthLogout(CmdBase):
+class CmdStudioLogout(CmdBase):
     def run(self):
         from dvc.ui import ui
 
@@ -100,7 +100,7 @@ class CmdAuthLogout(CmdBase):
         return 0
 
 
-class CmdAuthToken(CmdBase):
+class CmdStudioToken(CmdBase):
     def run(self):
         from dvc.ui import ui
 
@@ -115,36 +115,36 @@ class CmdAuthToken(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    AUTH_HELP = "Authenticate dvc with Iterative Studio"
-    AUTH_DESCRIPTION = (
+    STUDIO_HELP = "Authenticate dvc with Iterative Studio"
+    STUDIO_DESCRIPTION = (
         "Authorize dvc with Studio and set the token. When this is\n"
         "set, DVC uses this to share live experiments and notify\n"
         "Studio about pushed experiments."
     )
 
-    auth_parser = subparsers.add_parser(
-        "auth",
+    studio_parser = subparsers.add_parser(
+        "studio",
         parents=[parent_parser],
-        description=append_doc_link(AUTH_DESCRIPTION, "auth"),
-        help=AUTH_HELP,
+        description=append_doc_link(STUDIO_DESCRIPTION, "studio"),
+        help=STUDIO_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    auth_subparsers = auth_parser.add_subparsers(
+    studio_subparser = studio_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc auth CMD --help` to display command-specific help.",
+        help="Use `dvc studio CMD --help` to display command-specific help.",
     )
-    fix_subparsers(auth_subparsers)
+    fix_subparsers(studio_subparser)
 
-    AUTH_LOGIN_HELP = "Authenticate DVC with Studio host"
-    AUTH_LOGIN_DESCRIPTION = (
+    STUDIO_LOGIN_HELP = "Authenticate DVC with Studio host"
+    STUDIO_LOGIN_DESCRIPTION = (
         "By default, this command authorize dvc with Studio with\n"
         " default scopes and a random  name as token name."
     )
-    login_parser = auth_subparsers.add_parser(
+    login_parser = studio_subparser.add_parser(
         "login",
         parents=[parent_parser],
-        description=append_doc_link(AUTH_LOGIN_DESCRIPTION, "auth/login"),
-        help=AUTH_LOGIN_HELP,
+        description=append_doc_link(STUDIO_LOGIN_DESCRIPTION, "studio/login"),
+        help=STUDIO_LOGIN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -181,31 +181,31 @@ def add_parser(subparsers, parent_parser):
         "You will be presented with user code to enter in browser.\n"
         "DVC will also use this if it cannot launch browser on your behalf.",
     )
-    login_parser.set_defaults(func=CmdAuthLogin)
+    login_parser.set_defaults(func=CmdStudioLogin)
 
-    AUTH_LOGOUT_HELP = "Logout user from Studio"
-    AUTH_LOGOUT_DESCRIPTION = "This command helps to log out user from DVC Studio.\n"
+    STUDIO_LOGOUT_HELP = "Logout user from Studio"
+    STUDIO_LOGOUT_DESCRIPTION = "This command helps to log out user from DVC Studio.\n"
 
-    logout_parser = auth_subparsers.add_parser(
+    logout_parser = studio_subparser.add_parser(
         "logout",
         parents=[parent_parser],
-        description=append_doc_link(AUTH_LOGOUT_DESCRIPTION, "auth/logout"),
-        help=AUTH_LOGOUT_HELP,
+        description=append_doc_link(STUDIO_LOGOUT_DESCRIPTION, "studio/logout"),
+        help=STUDIO_LOGOUT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    logout_parser.set_defaults(func=CmdAuthLogout)
+    logout_parser.set_defaults(func=CmdStudioLogout)
 
-    AUTH_TOKEN_HELP = (
+    STUDIO_TOKEN_HELP = (
         "View the token dvc uses to contact Studio"  # noqa: S105 # nosec B105
     )
 
-    logout_parser = auth_subparsers.add_parser(
+    logout_parser = studio_subparser.add_parser(
         "token",
         parents=[parent_parser],
-        description=append_doc_link(AUTH_TOKEN_HELP, "auth/token"),
-        help=AUTH_TOKEN_HELP,
+        description=append_doc_link(STUDIO_TOKEN_HELP, "studio/token"),
+        help=STUDIO_TOKEN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    logout_parser.set_defaults(func=CmdAuthToken)
+    logout_parser.set_defaults(func=CmdStudioToken)

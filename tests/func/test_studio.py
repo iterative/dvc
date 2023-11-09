@@ -1,7 +1,7 @@
 from dvc.cli import main
-from dvc.commands.auth import DEFAULT_SCOPES
+from dvc.commands.studio import DEFAULT_SCOPES
 from dvc.utils.studio import STUDIO_URL
-from tests.unit.command.test_auth import MOCK_RESPONSE
+from tests.unit.command.test_studio import MOCK_RESPONSE
 from tests.unit.utils.test_studio import mock_response
 
 
@@ -14,7 +14,7 @@ def test_auth_expired(mocker, M):
         ],
     )
 
-    assert main(["auth", "login"]) == 1
+    assert main(["studio", "login"]) == 1
 
     assert mock_post.call_count == 2
     assert mock_post.call_args_list == [
@@ -34,7 +34,7 @@ def test_auth_expired(mocker, M):
     ]
 
 
-def test_auth_success(mocker, dvc):
+def test_studio_success(mocker, dvc):
     mocker.patch("time.sleep")
     mock_post = mocker.patch(
         "requests.Session.post",
@@ -48,7 +48,7 @@ def test_auth_success(mocker, dvc):
     assert (
         main(
             [
-                "auth",
+                "studio",
                 "login",
                 "--name",
                 "token_name",
