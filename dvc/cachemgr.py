@@ -137,7 +137,7 @@ def migrate_2_to_3(repo: "Repo", dry: bool = False):
     src = repo.cache.legacy
     dest = repo.cache.local
     if dry:
-        oids = list(src._list_oids())  # pylint: disable=protected-access
+        oids = list(src._list_oids())
         ui.write(
             f"{len(oids)} files will be re-hashed and migrated to the DVC 3.0 cache "
             "location."

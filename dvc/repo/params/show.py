@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _collect_top_level_params(repo: "Repo") -> Iterator[str]:
-    top_params = repo.index._params  # pylint: disable=protected-access
+    top_params = repo.index._params
     for dvcfile, params in top_params.items():
         wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
         for file in params:

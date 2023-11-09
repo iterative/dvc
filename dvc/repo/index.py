@@ -243,7 +243,6 @@ class Index:
 
         onerror = onerror or repo.stage_collection_error_handler
         for _, idx in collect_files(repo, onerror=onerror):
-            # pylint: disable=protected-access
             stages.extend(idx.stages)
             metrics.update(idx._metrics)
             plots.update(idx._plots)
@@ -505,7 +504,7 @@ class Index:
         if not onerror:
 
             def onerror(_target, _exc):
-                raise  # pylint: disable=misplaced-bare-raise
+                raise
 
         targets = ensure_list(targets)
         if not targets:
@@ -616,7 +615,7 @@ class _DataPrefixes(NamedTuple):
 class IndexView:
     """Read-only view of Index.data using filtered stages."""
 
-    def __init__(  # pylint: disable=redefined-outer-name
+    def __init__(
         self,
         index: Index,
         stage_infos: Iterable["StageInfo"],

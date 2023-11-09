@@ -37,8 +37,6 @@ def worktree_view_by_remotes(
     push: bool = False,
     **kwargs: Any,
 ) -> Iterable[Tuple[Optional[str], "IndexView"]]:
-    # pylint: disable=protected-access
-
     from dvc.repo.index import IndexView
 
     def outs_filter(view: "IndexView", remote: Optional[str]):

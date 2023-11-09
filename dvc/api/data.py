@@ -55,7 +55,7 @@ def get_url(path, repo=None, rev=None, remote=None):
 
 
 class _OpenContextManager(GCM):
-    def __init__(self, func, args, kwds):  # pylint: disable=super-init-not-called
+    def __init__(self, func, args, kwds):
         self.gen = func(*args, **kwds)
         self.func, self.args, self.kwds = (  # type: ignore[assignment]
             func,

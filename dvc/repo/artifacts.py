@@ -101,7 +101,7 @@ class Artifacts:
         for (
             dvcfile,
             dvcfile_artifacts,
-        ) in self.repo.index._artifacts.items():  # pylint: disable=protected-access
+        ) in self.repo.index._artifacts.items():
             dvcyaml = relpath(dvcfile, self.repo.root_dir)
             artifacts[dvcyaml] = {}
             for name, value in dvcfile_artifacts.items():

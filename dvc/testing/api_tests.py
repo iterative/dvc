@@ -4,8 +4,6 @@ from dvc import api
 from dvc.api import DVCFileSystem
 from dvc.utils.fs import remove
 
-# pylint: disable=unused-argument
-
 
 class TestAPI:
     def test_get_url(self, tmp_dir, dvc, remote):

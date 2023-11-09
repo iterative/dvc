@@ -96,7 +96,7 @@ class Config(dict):
         config: Optional["DictStrAny"] = None,
         remote: Optional[str] = None,
         remote_config: Optional["DictStrAny"] = None,
-    ):  # pylint: disable=super-init-not-called
+    ):
         from dvc.fs import LocalFileSystem
 
         dvc_dir = os.fspath(dvc_dir) if dvc_dir else None

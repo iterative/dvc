@@ -43,8 +43,6 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
-# pylint: disable=redefined-outer-name, attribute-defined-outside-init
-
 import os
 import pathlib
 import sys
@@ -71,19 +69,16 @@ class TmpDir(pathlib.Path):
 
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:
-            cls = (  # pylint: disable=self-cls-assignment
-                WindowsTmpDir if os.name == "nt" else PosixTmpDir
-            )
+            cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
         # init parameter and `_init` method has been removed in Python 3.10.
         kw = {"init": False} if sys.version_info < (3, 10) else {}
-        # pylint: disable-next=unexpected-keyword-arg
         self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
         if not self._flavour.is_supported:
             raise NotImplementedError(
                 f"cannot instantiate {cls.__name__!r} on your system"
             )
         if sys.version_info < (3, 10):
-            self._init()  # pylint: disable=no-member
+            self._init()
         return self
 
     def init(self, *, scm=False, dvc=False, subdir=False):
@@ -222,7 +217,7 @@ class TmpDir(pathlib.Path):
         finally:
             self.scm.checkout(old)
 
-    def read_text(self, *args, **kwargs):  # pylint: disable=signature-differs
+    def read_text(self, *args, **kwargs):
         # NOTE: on windows we'll get PermissionError instead of
         # IsADirectoryError when we try to `open` a directory, so we can't
         # rely on exception flow control

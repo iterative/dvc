@@ -125,7 +125,7 @@ def restore_fields(stage: "Stage") -> None:
         return
 
     # will be used to restore comments later
-    # pylint: disable=protected-access
+
     stage._stage_text = old._stage_text
     stage.meta = old.meta
     stage.desc = old.desc
@@ -809,7 +809,7 @@ class PipelineStage(Stage):
 
         assert isinstance(self.dvcfile, ProjectFile)
 
-        self.dvcfile._reset()  # pylint: disable=protected-access
+        self.dvcfile._reset()
         return self.dvcfile.stages[self.name]
 
     def _status_stage(self, ret) -> None:

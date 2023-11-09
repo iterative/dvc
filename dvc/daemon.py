@@ -75,18 +75,18 @@ def _fork_process() -> int:
             return pid
     except OSError:
         logger.exception("failed at first fork")
-        os._exit(1)  # pylint: disable=protected-access
+        os._exit(1)
 
-    os.setsid()  # type: ignore[attr-defined]  # pylint: disable=no-member
+    os.setsid()  # type: ignore[attr-defined]
 
     try:
         # pylint: disable-next=no-member
         pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
-            os._exit(0)  # pylint: disable=protected-access
+            os._exit(0)
     except OSError:
         logger.exception("failed at second fork")
-        os._exit(1)  # pylint: disable=protected-access
+        os._exit(1)
 
     # disconnect from the terminal
     fd = os.open(os.devnull, os.O_RDWR)

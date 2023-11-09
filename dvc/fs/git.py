@@ -39,7 +39,7 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
         )
 
     @functools.cached_property
-    def fs(  # pylint: disable=invalid-overridden-method
+    def fs(
         self,
     ) -> "FsspecGitFileSystem":
         from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
@@ -47,7 +47,7 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
         return FsspecGitFileSystem(**self.fs_args)
 
     @functools.cached_property
-    def path(self):  # pylint: disable=invalid-overridden-method
+    def path(self):
         return self.fs.path
 
     @property

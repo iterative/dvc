@@ -8,8 +8,6 @@ from dulwich.porcelain import clone
 from funcy import first
 from packaging import version
 
-# pylint: disable=redefined-outer-name,unused-argument
-
 
 @pytest.fixture(scope="session")
 def bench_config(request):

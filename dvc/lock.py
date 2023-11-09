@@ -59,7 +59,7 @@ class LockBase(ABC):
 
 
 class LockNoop(LockBase):
-    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
+    def __init__(self, *args, **kwargs):
         self._lock = False
 
     def lock(self):
@@ -149,9 +149,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         tmp_dir (str): a directory to store claim files.
     """
 
-    def __init__(
-        self, lockfile, tmp_dir=None, **kwargs
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, lockfile, tmp_dir=None, **kwargs):
         import socket
 
         self._tmp_dir = tmp_dir
@@ -176,7 +174,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         self._owned = True
         self._retry_errnos = []
 
-    def lock(self):  # pylint: disable=arguments-differ
+    def lock(self):
         try:
             super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:

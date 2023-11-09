@@ -136,12 +136,12 @@ class SCMContext:
         self.files_to_track = set()
 
     def __enter__(self) -> "SCMContext":
-        self._cm = self()  # pylint: disable=attribute-defined-outside-init
-        return self._cm.__enter__()  # pylint: disable=no-member
+        self._cm = self()
+        return self._cm.__enter__()
 
     def __exit__(self, *exc_args) -> None:
         assert self._cm
-        self._cm.__exit__(*exc_args)  # pylint: disable=no-member
+        self._cm.__exit__(*exc_args)
 
 
 def scm_context(method, autostage: Optional[bool] = None, quiet: Optional[bool] = None):

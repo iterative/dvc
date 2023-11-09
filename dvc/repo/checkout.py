@@ -129,7 +129,7 @@ def checkout(  # noqa: C901
             ),
         ):
             raise CheckoutErrorSuggestGit(target) from exc
-        raise  # pylint: disable=misplaced-bare-raise
+        raise
 
     view = self.index.targets_view(
         targets,

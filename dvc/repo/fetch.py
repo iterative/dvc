@@ -62,7 +62,7 @@ def _collect_indexes(  # noqa: PLR0913
             idx.data["repo"].onerror = _make_index_onerror(onerror, rev)
 
             indexes[rev or "workspace"] = idx
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             if onerror:
                 onerror(rev, None, exc)
             collection_exc = exc
@@ -167,7 +167,7 @@ def fetch(  # noqa: C901, PLR0913
                 data,
                 jobs=jobs,
                 callback=pb.as_callback(),
-            )  # pylint: disable=assignment-from-no-return
+            )
         finally:
             for fs_index in data:
                 fs_index.close()

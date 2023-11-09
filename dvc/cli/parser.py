@@ -95,12 +95,12 @@ COMMANDS = [
 
 
 def _find_parser(parser, cmd_cls):
-    defaults = parser._defaults  # pylint: disable=protected-access
+    defaults = parser._defaults
     if not cmd_cls or cmd_cls == defaults.get("func"):
         parser.print_help()
         raise DvcParserError
 
-    actions = parser._actions  # pylint: disable=protected-access
+    actions = parser._actions
     for action in actions:
         if not isinstance(action.choices, dict):
             # NOTE: we are only interested in subparsers
@@ -112,7 +112,7 @@ def _find_parser(parser, cmd_cls):
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
+    def error(self, message, cmd_cls=None):
         logger.error(message)
         _find_parser(self, cmd_cls)
 

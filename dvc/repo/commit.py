@@ -104,8 +104,8 @@ def commit_2_to_3(repo: "Repo", dry: bool = False):
         ui.write("Entries in following DVC files will be migrated to the 3.0 format:")
         ui.write("\n".join(sorted(f"\t{file}" for file in migrated)))
         return
-    for stage, filter_info in view._stage_infos:  # pylint: disable=protected-access
-        outs_filter = view._outs_filter  # pylint: disable=protected-access
+    for stage, filter_info in view._stage_infos:
+        outs_filter = view._outs_filter
         outs = {
             out
             for out in stage.filter_outs(filter_info)

@@ -259,7 +259,7 @@ class BaseExecutor(ABC):
             chain(
                 _collect_top_level_metrics(repo),
                 _collect_top_level_params(repo),
-                repo.index._plot_sources,  # pylint: disable=protected-access
+                repo.index._plot_sources,
             )
         )
 

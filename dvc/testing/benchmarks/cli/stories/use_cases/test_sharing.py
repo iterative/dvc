@@ -1,7 +1,5 @@
 import shutil
 
-# pylint: disable=unused-argument
-
 
 def test_sharing(bench_dvc, tmp_dir, dvc, dataset, remote):
     bench_dvc("add", dataset)

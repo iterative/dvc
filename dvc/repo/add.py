@@ -140,7 +140,6 @@ def progress_iter(stages: Dict[str, StageInfo]) -> Iterator[Tuple[str, StageInfo
                 pbar.refresh()
             yield item, stage_info
             if total == 1:  # restore bar format for stats
-                # pylint: disable=no-member
                 pbar.bar_format = pbar.BAR_FMT_DEFAULT
 
 

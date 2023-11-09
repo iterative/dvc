@@ -94,7 +94,7 @@ def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
                 flags={"allow_objects": True},
             )
             OmegaConf.set_struct(new_data, True)
-            # pylint: disable=protected-access
+
             ConfigLoaderImpl._apply_overrides_to_config(parsed, new_data)
             new_data = OmegaConf.to_object(new_data)
         except hydra_errors as e:

@@ -7,9 +7,7 @@ if TYPE_CHECKING:
 
 
 class Table(RichTable):
-    def add_column(  # pylint: disable=arguments-differ
-        self, *args: Any, collapse: bool = False, **kwargs: Any
-    ) -> None:
+    def add_column(self, *args: Any, collapse: bool = False, **kwargs: Any) -> None:
         super().add_column(*args, **kwargs)
         self.columns[-1].collapse = collapse  # type: ignore[attr-defined]
 
@@ -48,7 +46,6 @@ class Table(RichTable):
         return widths
 
     def _collapse_widths(  # type: ignore[override]
-        # pylint: disable=arguments-differ
         self,
         widths: List[int],
         wrapable: List[bool],
