@@ -77,7 +77,6 @@ gs = ["dvc-gs==2.22.1"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
     "mypy==1.5.1",
-    "pylint==3.0.1",
     "types-colorama",
     "types-psutil",
     "types-pyinstaller",
@@ -247,23 +246,6 @@ module = [
 
 [tool.codespell]
 ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
-
-[tool.pylint.message_control]
-disable = [
-    "cyclic-import", "design", "duplicate-code", "fixme", "format", "import-outside-toplevel", "invalid-name",
-    "missing-class-docstring", "missing-function-docstring", "missing-module-docstring", "multiple-imports",
-    "raise-missing-from", "refactoring", "spelling",
-    "ungrouped-imports", "unused-wildcard-import", "wrong-import-order", "wrong-import-position",
-]
-enable = ["c-extension-no-member", "no-else-return"]
-
-[tool.pylint.typecheck]
-generated-members = ["argparse.Namespace", "logger.trace", "logging.TRACE", "pytest.lazy_fixture", "sys.getwindowsversion"]
-signature-mutators = ["funcy.decorators.decorator"]
-
-[tool.pylint.variables]
-dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)"
-ignored-argument-names = "_.*|args|kwargs"
 
 [tool.ruff]
 # external flake8 codes that should be preserved
