@@ -2,7 +2,7 @@ default_language_version:
   python: python3
 
 ci:
-  skip: [mypy, pylint, dvc-pre-commit]
+  skip: [mypy, dvc-pre-commit]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -60,13 +60,6 @@ repos:
     - id: mypy
       name: mypy
       entry: mypy
-      files: ^dvc/
-      language: system
-      types: [python]
-      require_serial: true
-    - id: pylint
-      name: pylint
-      entry: pylint
       files: ^dvc/
       language: system
       types: [python]
