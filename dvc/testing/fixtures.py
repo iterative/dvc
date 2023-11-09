@@ -1,6 +1,6 @@
 import os
 import pathlib
-import subprocess  # nosec B404
+import subprocess
 from typing import Dict, Tuple
 
 import pytest
@@ -236,7 +236,7 @@ def docker_services(
         pytest.skip("disabled for Windows on CI")
 
     try:
-        subprocess.check_output(  # nosec B607, B602,
+        subprocess.check_output(
             "docker ps",  # noqa: S607
             stderr=subprocess.STDOUT,
             shell=True,  # noqa: S602
@@ -250,7 +250,7 @@ def docker_services(
         subprocess.check_output(
             cmd,
             stderr=subprocess.STDOUT,
-            shell=True,  # nosec B602 # noqa: S602
+            shell=True,  # noqa: S602
         )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")

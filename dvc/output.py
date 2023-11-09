@@ -1157,7 +1157,7 @@ class Output:
             return obj.filter(prefix)
         return obj
 
-    def get_used_objs(  # noqa: C901, PLR0911
+    def get_used_objs(  # noqa: PLR0911
         self, **kwargs
     ) -> Dict[Optional["HashFileDB"], Set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""

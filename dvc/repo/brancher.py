@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def brancher(  # noqa: E302
+def brancher(
     self,
     revs=None,
     all_branches=False,

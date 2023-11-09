@@ -75,7 +75,7 @@ def _collect_indexes(  # noqa: PLR0913
 
 
 @locked
-def fetch(  # noqa: C901, PLR0913
+def fetch(  # noqa: PLR0913
     self,
     targets=None,
     jobs=None,

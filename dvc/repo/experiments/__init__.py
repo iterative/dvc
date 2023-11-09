@@ -141,7 +141,7 @@ class Experiments:
             **kwargs,
         )
 
-    def reproduce_celery(  # noqa: C901
+    def reproduce_celery(
         self, entries: Optional[Iterable["QueueEntry"]] = None, **kwargs
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}

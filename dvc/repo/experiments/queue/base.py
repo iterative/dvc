@@ -297,7 +297,7 @@ class BaseStashQueue(ABC):
                 output.
         """
 
-    def _stash_exp(  # noqa: C901
+    def _stash_exp(
         self,
         *args,
         params: Optional[Dict[str, List[str]]] = None,
@@ -425,7 +425,7 @@ class BaseStashQueue(ABC):
         return msg
 
     def _pack_args(self, *args, **kwargs) -> None:
-        import pickle  # nosec B403
+        import pickle
 
         if os.path.exists(self.args_file) and self.scm.is_tracked(self.args_file):
             logger.warning(
@@ -440,7 +440,7 @@ class BaseStashQueue(ABC):
             )
             with open(self.args_file, "rb") as fobj:
                 try:
-                    data = pickle.load(fobj)  # noqa: S301  # nosec B301
+                    data = pickle.load(fobj)  # noqa: S301
                 except Exception:  # noqa: BLE001, pylint: disable=broad-except
                     data = {}
             extra = int(data.get("extra", 0)) + 1

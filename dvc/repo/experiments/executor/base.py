@@ -1,6 +1,6 @@
 import logging
 import os
-import pickle  # nosec B403
+import pickle
 import shutil
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -364,7 +364,7 @@ class BaseExecutor(ABC):
     @staticmethod
     def unpack_repro_args(path):
         with open(path, "rb") as fobj:
-            data = pickle.load(fobj)  # noqa: S301 # nosec B301
+            data = pickle.load(fobj)  # noqa: S301
         return data["args"], data["kwargs"]
 
     def fetch_exps(
@@ -583,7 +583,7 @@ class BaseExecutor(ABC):
 
     @classmethod
     @contextmanager
-    def _repro_dvc(  # noqa: C901
+    def _repro_dvc(
         cls,
         info: "ExecutorInfo",
         infofile: Optional[str] = None,
