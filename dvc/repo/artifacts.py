@@ -205,7 +205,7 @@ class Artifacts:
         out: Optional[str] = None,
         force: bool = False,
         jobs: Optional[int] = None,
-        studio_config: Optional[Dict[str, Any]] = None,
+        dvc_studio_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> Tuple[int, str]:
         from dvc_studio_client.model_registry import get_download_uris
@@ -216,16 +216,16 @@ class Artifacts:
         out = out or os.getcwd()
         to_infos: List[str] = []
         from_infos: List[str] = []
-        if studio_config is None:
-            studio_config = {}
-        studio_config["repo_url"] = repo_url
+        if dvc_studio_config is None:
+            dvc_studio_config = {}
+        dvc_studio_config["repo_url"] = repo_url
         try:
-            kwargs["dvc_studio_config"] = studio_config
             for path, url in get_download_uris(
                 repo_url,
                 name,
                 version=version,
                 stage=stage,
+                dvc_studio_config=dvc_studio_config,
                 **kwargs,
             ).items():
                 to_info = localfs.path.join(out, path)
@@ -312,7 +312,7 @@ class Artifacts:
             remote_config=remote_config,
         ) as repo:
             logger.trace("Trying repo [studio] config")  # type: ignore[attr-defined]
-            studio_config = dict(repo.config.get("studio"))
+            dvc_studio_config = dict(repo.config.get("studio"))
             try:
                 return cls._download_studio(
                     url,
@@ -322,7 +322,7 @@ class Artifacts:
                     out=out,
                     force=force,
                     jobs=jobs,
-                    dvc_studio_config=studio_config,
+                    dvc_studio_config=dvc_studio_config,
                 )
             except FileExistsLocallyError:
                 raise
