@@ -679,8 +679,6 @@ class Output:
             return False
         return self.fs.isfile(self.fs_path)
 
-    # pylint: disable=no-member
-
     def ignore(self) -> None:
         if not self.use_scm_ignore:
             return
@@ -1021,7 +1019,6 @@ class Output:
             self.ignore_remove()
 
     def move(self, out):
-        # pylint: disable=no-member
         if self.protocol == "local" and self.use_scm_ignore:
             self.repo.scm_context.ignore_remove(self.fspath)
 
@@ -1132,7 +1129,7 @@ class Output:
 
         try:
             self.get_dir_cache(jobs=jobs, remote=remote)
-        except RemoteMissingDepsError:  # pylint: disable=try-except-raise
+        except RemoteMissingDepsError:
             raise
         except DvcException:
             logger.debug("failed to pull cache for '%s'", self)

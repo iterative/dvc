@@ -16,7 +16,7 @@ def rwlocked(call, read=None, write=None):
     if write is None:
         write = []
 
-    stage = call._args[0]  # pylint: disable=protected-access
+    stage = call._args[0]
 
     assert stage.repo.lock.is_locked
 
@@ -47,7 +47,7 @@ def unlocked_repo(f):
     @wraps(f)
     def wrapper(stage, *args, **kwargs):
         stage.repo.lock.unlock()
-        stage.repo._reset()  # pylint: disable=protected-access
+        stage.repo._reset()
         try:
             ret = f(stage, *args, **kwargs)
         finally:
@@ -65,7 +65,7 @@ def relock_repo(f):
             ret = f(stage, *args, **kwargs)
         finally:
             stage.repo.lock.unlock()
-            stage.repo._reset()  # pylint: disable=protected-access
+            stage.repo._reset()
         return ret
 
     return wrapper

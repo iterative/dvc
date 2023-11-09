@@ -100,9 +100,7 @@ def SCM(
     ...
 
 
-def SCM(
-    root_dir, *, search_parent_directories=True, no_scm=False
-):  # pylint: disable=invalid-name
+def SCM(root_dir, *, search_parent_directories=True, no_scm=False):
     """Returns SCM instance that corresponds to a repo at the specified
     path.
 

@@ -9,7 +9,7 @@ def diff(
     repo: "Repo",
     a_rev: str = "HEAD",
     b_rev: str = "workspace",
-    all: bool = False,  # noqa: A002 # pylint: disable=redefined-builtin
+    all: bool = False,  # noqa: A002
     **kwargs,
 ) -> "DiffResult":
     if repo.scm.no_commits:

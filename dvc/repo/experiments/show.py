@@ -144,11 +144,7 @@ def _build_rows(
             row["Created"] = format_time(
                 baseline.data.timestamp, fill_value=fill_value, **kwargs
             )
-            row.update(
-                _data_cells(  # pylint: disable=missing-kwoa
-                    baseline, fill_value=fill_value, **kwargs
-                )
-            )
+            row.update(_data_cells(baseline, fill_value=fill_value, **kwargs))
         yield tuple(row.values())
         if baseline.experiments:
             if sort_by:
@@ -262,11 +258,7 @@ def _exp_range_rows(
             row["Created"] = format_time(
                 exp.data.timestamp, fill_value=fill_value, **kwargs
             )
-            row.update(
-                _data_cells(  # pylint: disable=missing-kwoa
-                    exp, fill_value=fill_value, **kwargs
-                )
-            )
+            row.update(_data_cells(exp, fill_value=fill_value, **kwargs))
         yield tuple(row.values())
 
 

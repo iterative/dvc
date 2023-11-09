@@ -72,7 +72,7 @@ def collect_exp(
             else:
                 logger.debug("Experiment failed (Exec result was None)")
                 celery_queue.stash_failed(entry)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             # Log exceptions but do not re-raise so that task chain execution
             # continues
             logger.exception("Failed to collect experiment")

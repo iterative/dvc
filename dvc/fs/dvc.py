@@ -72,7 +72,7 @@ def _get_dvc_path(dvc_fs, subkey):
     return dvc_fs.path.join(*subkey) if subkey else ""
 
 
-class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
+class _DVCFileSystem(AbstractFileSystem):
     cachable = False
     root_marker = "/"
 
@@ -84,9 +84,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         subrepos: bool = False,
         repo_factory: Optional[RepoFactory] = None,
         fo: Optional[str] = None,
-        # pylint:disable-next=unused-argument
         target_options: Optional[Dict[str, Any]] = None,  # noqa: ARG002
-        # pylint:disable-next=unused-argument
         target_protocol: Optional[str] = None,  # noqa: ARG002
         config: Optional["DictStrAny"] = None,
         remote: Optional[str] = None,
@@ -146,7 +144,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 remote_config=remote_config,
             )
             assert repo is not None
-            # pylint: disable=protected-access
+
             repo_factory = repo._fs_conf["repo_factory"]
             self._repo_stack.enter_context(repo)
 
@@ -282,9 +280,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_fs = self._datafss.get(repo_key)
         return repo, dvc_fs, subkey
 
-    def _open(
-        self, path, mode="rb", **kwargs
-    ):  # pylint: disable=arguments-renamed, arguments-differ
+    def _open(self, path, mode="rb", **kwargs):
         if mode != "rb":
             raise OSError(errno.EROFS, os.strerror(errno.EROFS))
 
@@ -307,9 +303,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-    def ls(  # pylint: disable=arguments-differ # noqa: C901
-        self, path, detail=True, dvc_only=False, **kwargs
-    ):
+    def ls(self, path, detail=True, dvc_only=False, **kwargs):  # noqa: C901
         key = self._get_key_from_relative(path)
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
@@ -414,7 +408,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         info["name"] = path
         return info
 
-    def get_file(self, rpath, lpath, **kwargs):  # pylint: disable=arguments-differ
+    def get_file(self, rpath, lpath, **kwargs):
         key = self._get_key_from_relative(rpath)
         fs_path = self._from_key(key)
         try:
@@ -439,7 +433,6 @@ class DVCFileSystem(FileSystem):
         return config
 
     @functools.cached_property
-    # pylint: disable-next=invalid-overridden-method
     def fs(self) -> "_DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
 
@@ -451,7 +444,7 @@ class DVCFileSystem(FileSystem):
         return self.fs.isdvc(path, **kwargs)
 
     @property
-    def path(self) -> Path:  # pylint: disable=invalid-overridden-method
+    def path(self) -> Path:
         return self.fs.path
 
     @property

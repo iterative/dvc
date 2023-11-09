@@ -9,8 +9,6 @@ import sys
 
 import pytest
 
-# pylint: disable=unused-argument,unexpected-keyword-arg
-
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires 3.10 glob.glob")
 def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):

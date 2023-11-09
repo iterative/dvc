@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union
 

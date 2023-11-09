@@ -54,7 +54,6 @@ def console_width(table: "Table", console: "RichConsole", val: int) -> Iterator[
     # NOTE: rich does not have native support for unlimited width
     # via pager. we override rich table compression by setting
     # console width to the full width of the table
-    # pylint: disable=protected-access
 
     console_options = console.options
     original = console_options.max_width

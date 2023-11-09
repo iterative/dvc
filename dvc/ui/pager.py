@@ -55,7 +55,6 @@ def find_pager():
     if not Console.isatty():
         return None
 
-    # pylint: disable=redefined-outer-name
     pager = os.getenv(DVC_PAGER)
     if not pager:
         pager = os.getenv(PAGER_ENV)

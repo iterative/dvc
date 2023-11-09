@@ -150,7 +150,7 @@ class ApplyStash(Stash):
             yield stash_rev
             if stash_rev:
                 self._apply_difference(stash_rev, rev)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             self.revert_workspace()
             raise
 

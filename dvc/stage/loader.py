@@ -123,7 +123,7 @@ class StageLoader(Mapping):
     def lockfile_needs_update(self):
         # if lockfile does not have all of the entries that dvc.yaml says it
         # should have, provide a debug message once
-        # pylint: disable=protected-access
+
         lockfile = self.dvcfile._lockfile.relpath
         logger.debug("Lockfile '%s' needs to be updated.", lockfile)
 
@@ -207,7 +207,7 @@ class SingleStageLoader(Mapping):
             dvcfile.repo.fs, dvcfile.path, d.get(Stage.PARAM_WDIR)
         )
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
-        stage._stage_text = stage_text  # pylint: disable=protected-access
+        stage._stage_text = stage_text
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS) or [])
         stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS) or [])
         return stage

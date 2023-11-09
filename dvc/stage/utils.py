@@ -294,7 +294,7 @@ def _get_stage_files(stage: "Stage") -> List[str]:
     file = stage.dvcfile
     ret.append(file.relpath)
     if isinstance(file, ProjectFile):
-        ret.append(file._lockfile.relpath)  # pylint: disable=protected-access
+        ret.append(file._lockfile.relpath)
 
     for dep in stage.deps:
         if (

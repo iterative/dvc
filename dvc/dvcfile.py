@@ -237,9 +237,7 @@ class ProjectFile(FileMixin):
         self.__dict__.pop("resolver", None)
         self.__dict__.pop("stages", None)
 
-    def dump(
-        self, stage, update_pipeline=True, update_lock=True, **kwargs
-    ):  # pylint: disable=arguments-differ
+    def dump(self, stage, update_pipeline=True, update_lock=True, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 

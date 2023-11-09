@@ -116,7 +116,7 @@ def push(  # noqa: C901, PLR0913
                 data,
                 jobs=jobs,
                 callback=pb.as_callback(),
-            )  # pylint: disable=assignment-from-no-return
+            )
     finally:
         ws_idx = indexes.get("workspace")
         if ws_idx is not None:

@@ -158,7 +158,7 @@ class WorkspaceQueue(BaseStashQueue):
         return None
 
     @staticmethod
-    def collect_executor(  # pylint: disable=unused-argument
+    def collect_executor(
         exp: "Experiments",
         executor: "BaseExecutor",  # noqa: ARG004
         exec_result: "ExecutorResult",

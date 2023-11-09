@@ -324,9 +324,7 @@ class Context(CtxDict):
             keys = [keys] if isinstance(keys, str) else keys
             params_file.update({key: node.value for key in keys})
 
-    def select(
-        self, key: str, unwrap: bool = False
-    ):  # pylint: disable=arguments-differ
+    def select(self, key: str, unwrap: bool = False):
         """Select the item using key, similar to `__getitem__`
            but can track the usage of the data on interpolation
            as well and can get from nested data structure by using

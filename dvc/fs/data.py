@@ -22,7 +22,7 @@ class DataFileSystem(FileSystem):
         return config
 
     @functools.cached_property
-    def fs(  # pylint: disable=invalid-overridden-method
+    def fs(
         self,
     ) -> "_DataFileSystem":
         from dvc_data.fs import DataFileSystem as _DataFileSystem

@@ -74,7 +74,6 @@ def get_executable():
 
 
 def _run(executable, cmd, **kwargs):
-    # pylint: disable=protected-access
     main_thread = isinstance(
         threading.current_thread(),
         threading._MainThread,  # type: ignore[attr-defined]

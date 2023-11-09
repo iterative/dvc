@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def lock_repo(repo: "Repo"):
-    # pylint: disable=protected-access
     depth: int = repo._lock_depth
     repo._lock_depth += 1
 
@@ -588,7 +587,7 @@ class Repo:
         path = os.path.join(self.tmp_dir, "btime")
 
         try:
-            with open(path, "x"):  # pylint: disable=unspecified-encoding
+            with open(path, "x"):
                 pass
         except FileNotFoundError:
             return None
@@ -658,7 +657,7 @@ class Repo:
             self._data_index.close()
 
     def _reset(self):
-        self.scm._reset()  # pylint: disable=protected-access
+        self.scm._reset()
         self.state.close()
         if "dvcfs" in self.__dict__:
             self.dvcfs.close()

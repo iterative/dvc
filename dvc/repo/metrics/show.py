@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def _collect_top_level_metrics(repo: "Repo") -> Iterator[str]:
-    top_metrics = repo.index._metrics  # pylint: disable=protected-access
+    top_metrics = repo.index._metrics
     for dvcfile, metrics in top_metrics.items():
         wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
         for file in metrics:
