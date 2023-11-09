@@ -1,6 +1,7 @@
 [flake8]
 max_line_length = 88
 extend-ignore=
+    E501
     # Whitespace before ':'
     E203
     # Line break occurred before a binary operator

@@ -33,9 +33,7 @@ MAPPING_VALUES_NOT_ALLOWED_OUTPUT = """\
 './dvc.yaml' is invalid.
 
 Mapping values are not allowed {}, in line 3, column 8
-  3 │   cmd: python script.py""".format(
-    "in this context" if ruamel_clib else "here"
-)
+  3 │   cmd: python script.py""".format("in this context" if ruamel_clib else "here")
 
 
 NO_HYPHEN_INDICATOR_IN_BLOCK = """\

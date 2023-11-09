@@ -57,9 +57,7 @@ class Table(RichTable):
         If table is still too wide after collapsing, rich's automatic overflow
         handling will be used.
         """
-        collapsible = [
-            column.collapse for column in self.columns  # type: ignore[attr-defined]
-        ]
+        collapsible = [column.collapse for column in self.columns]  # type: ignore[attr-defined]
         total_width = sum(widths)
         excess_width = total_width - max_width
         if any(collapsible):

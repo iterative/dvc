@@ -143,10 +143,6 @@ namespaces = false
 [tool.setuptools_scm]
 write_to = "dvc/_dvc_version.py"
 
-[tool.isort]
-known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
-profile = "black"
-
 [tool.pytest.ini_options]
 addopts = "-ra --cov-config pyproject.toml --dist worksteal"
 filterwarnings = [
@@ -251,11 +247,11 @@ ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
 # external flake8 codes that should be preserved
 external = ["B301", "C901", "E302", "W601"]
 ignore = [
-    "N818", "S101", "PT004", "PT007", "RET501", "RET502", "RET503", "SIM105", "SIM108",
+    "N818", "S101", "ISC001", "PT004", "PT007", "RET501", "RET502", "RET503", "SIM105", "SIM108",
     "SIM117", "TRY003", "TRY200", "TRY300", "PLR2004", "PLW2901", "RUF012"
 ]
 select = [
-    "F", "E", "W", "C90", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10",
+    "F", "E", "W", "C90", "I", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10",
     "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
     "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
     "FLY", "PERF101", "RUF",
