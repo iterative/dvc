@@ -200,9 +200,7 @@ def add_parser(subparsers, parent_parser):
 
     logout_parser.set_defaults(func=CmdStudioLogout)
 
-    STUDIO_TOKEN_HELP = (
-        "View the token dvc uses to contact Studio"  # noqa: S105 # nosec B105
-    )
+    STUDIO_TOKEN_HELP = "View the token dvc uses to contact Studio"  # noqa: S105 # nosec B105
 
     logout_parser = studio_subparser.add_parser(
         "token",
