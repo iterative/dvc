@@ -90,7 +90,7 @@ def get_model(
     target: Optional[str] = None,
 ) -> "Table":
     model = _ref(name, package, version=version)
-    q = f"select * from {model}"  # noqa: S608 # nosec B608
+    q = f"select * from {model}"  # noqa: S608
     return _dbt_show(
         inline=q,
         profile=profile,

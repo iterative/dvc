@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, Union
@@ -6,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 from funcy import compact
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.scm import SCM
 
 from .base import Dependency
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from dvc.stage import Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 PARAM_DB = "db"
@@ -51,9 +51,7 @@ def export_to(table: "Table", to: str, export_format: str = "csv") -> None:
 class AbstractDependency(Dependency):
     """Dependency without workspace/fs/fs_path"""
 
-    def __init__(
-        self, stage: "Stage", info, *args, **kwargs
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, stage: "Stage", info, *args, **kwargs):
         self.repo = stage.repo
         self.stage = stage
         self.fs = None
@@ -133,9 +131,7 @@ class DbtDependency(AbstractDependency):
         PARAM_PROJECT_DIR: str,
     }
 
-    def __init__(
-        self, def_repo: Dict[str, Any], stage: "Stage", info, *args, **kwargs
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, def_repo: Dict[str, Any], stage: "Stage", info, *args, **kwargs):
         self.def_repo = def_repo or {}
         self.target = None
         super().__init__(stage, info, *args, **kwargs)
@@ -204,7 +200,6 @@ class DbtDependency(AbstractDependency):
 
         def_repo = {}
         if self.def_repo:
-            # pylint: disable-next=protected-access
             def_repo = RepoDependency._dump_def_repo(self.def_repo)
 
         db_info = compact(self.info.get(PARAM_DB, {}))
