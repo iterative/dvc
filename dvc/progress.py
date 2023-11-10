@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 
 from dvc.env import DVC_IGNORE_ISATTY
-from dvc.log import logger
 from dvc.utils import env2bool
 
 if TYPE_CHECKING:
     from dvc.fs.callbacks import TqdmCallback
 
-logger = logger.getChild(__name__)
+logger = logging.getLogger(__name__)
 tqdm.set_lock(RLock())
 
 

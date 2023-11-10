@@ -7,7 +7,8 @@ import os
 import sys
 
 import colorama
-from tqdm import tqdm
+
+from dvc.progress import Tqdm
 
 
 def add_logging_level(level_name, level_num, method_name=None):
@@ -153,7 +154,7 @@ class LoggerHandler(logging.StreamHandler):
                         pass
 
             msg = self.format(record)
-            tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
+            Tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
