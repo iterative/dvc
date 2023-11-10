@@ -132,8 +132,8 @@ class ParamsDependency(Dependency):
         from funcy import ldistinct
 
         status: Dict[str, Any] = defaultdict(dict)
-        assert isinstance(self.hash_info.value, dict)
         info = self.hash_info.value if self.hash_info else {}
+        assert isinstance(info, dict)
         actual = self.read_params()
 
         # NOTE: we want to preserve the order of params as specified in the
