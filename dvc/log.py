@@ -7,4 +7,4 @@ class LoggerWithTrace(logging.Logger):
     trace = logging.debug
 
 
-logger: "LoggerWithTrace" = logging.getLogger("dvc")  # type: ignore[assignment]
+logger: "LoggerWithTrace" = logging.getLogger()  # type: ignore[assignment]

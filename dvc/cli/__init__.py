@@ -12,6 +12,9 @@ from dvc.log import logger
 "".encode("idna")
 
 
+logger = logger.getChild(__name__)
+
+
 class DvcParserError(Exception):
     """Base class for CLI parser errors."""
 
