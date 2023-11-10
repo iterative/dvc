@@ -73,14 +73,12 @@ class StageLoader(Mapping):
 
             hash_name = info.pop(Output.PARAM_HASH, None)
             item.meta = Meta.from_dict(merge_file_meta_from_cloud(info))
-            # pylint: disable-next=protected-access
             item.hash_name, item.hash_info = item._compute_hash_info_from_meta(
                 hash_name
             )
             files = get_in(checksums, [key, path, item.PARAM_FILES], None)
             if files:
                 item.files = [merge_file_meta_from_cloud(f) for f in files]
-            # pylint: disable-next=protected-access
             item._compute_meta_hash_info_from_files()
 
     @classmethod

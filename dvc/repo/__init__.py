@@ -386,9 +386,7 @@ class Repo:
         if self.subrepos:
             fs_path = self.dvcfs.from_os_path(path)
             fs = self.dvcfs.fs
-            # pylint: disable-next=protected-access
             key = fs._get_key_from_relative(fs_path)
-            # pylint: disable-next=protected-access
             subrepo, _, key = fs._get_subrepo_info(key)
             index = subrepo.index.data[workspace]
         else:

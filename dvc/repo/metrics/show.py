@@ -76,7 +76,7 @@ def _read_metrics(
     for metric in metrics:
         try:
             yield metric, _read_metric(fs, metric, **load_kwargs)
-        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+        except Exception as exc:  # noqa: BLE001
             logger.debug(exc)
             yield metric, exc
 
@@ -219,7 +219,7 @@ def show(
                 on_error=on_error,
             )
             res[rev] = Result(data=result)
-        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+        except Exception as exc:  # noqa: BLE001
             if on_error == "raise":
                 raise
 

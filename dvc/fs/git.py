@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from dvc.scm import Git
 
 
-class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
+class GitFileSystem(FileSystem):
     """Proxies the repo file access methods to Git objects"""
 
     protocol = "local"

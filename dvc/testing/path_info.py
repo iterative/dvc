@@ -17,7 +17,6 @@ class _BasePath:
         return self.isin_or_eq(other) or other.isin(self)
 
     def isin_or_eq(self, other):
-        # pylint: disable-next=no-member
         return self == other or self.isin(other)  # type: ignore[attr-defined]
 
 
@@ -36,7 +35,6 @@ class PathInfo(pathlib.PurePath, _BasePath):
         return cls._from_parts(args)  # type: ignore[attr-defined]
 
     def as_posix(self):
-        # pylint: disable-next=no-member
         f = self._flavour  # type: ignore[attr-defined]
         # Unlike original implementation [1] that uses `str()` we actually need
         # to use `fspath`, because we've overridden `__str__` method to return

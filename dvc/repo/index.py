@@ -304,7 +304,7 @@ class Index:
 
     def check_graph(self) -> None:
         if not getattr(self.repo, "_skip_graph_checks", False):
-            self.graph  # noqa: B018, pylint: disable=pointless-statement
+            self.graph  # noqa: B018
 
     @property
     def params(self) -> Iterator["ParamsDependency"]:

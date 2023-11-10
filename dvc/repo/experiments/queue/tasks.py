@@ -44,7 +44,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> "BaseExecutor":
 
 @shared_task
 def collect_exp(
-    proc_dict: Dict[str, Any],  # noqa: ARG001, pylint: disable=unused-argument
+    proc_dict: Dict[str, Any],  # noqa: ARG001
     entry_dict: Dict[str, Any],
 ) -> str:
     """Collect results for an experiment.

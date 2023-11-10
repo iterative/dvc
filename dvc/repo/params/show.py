@@ -108,7 +108,7 @@ def _read_params(
     for file_path, key_paths in params.items():
         try:
             yield file_path, read_param_file(fs, file_path, key_paths, **load_kwargs)
-        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+        except Exception as exc:  # noqa: BLE001
             logger.debug(exc)
             yield file_path, exc
 
@@ -192,7 +192,7 @@ def show(
                 on_error=on_error,
             )
             res[rev] = Result(data=params)
-        except Exception as exc:  # noqa: BLE001 # pylint:disable=broad-exception-caught
+        except Exception as exc:  # noqa: BLE001
             if on_error == "raise":
                 raise
             logger.warning("failed to load params in revision %r, %s", rev, str(exc))

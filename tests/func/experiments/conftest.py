@@ -1,6 +1,5 @@
 import pytest
 
-# pylint: disable-next=unused-argument
 from tests.unit.repo.experiments.conftest import (  # noqa: F401
     exp_stage,
     failed_exp_stage,

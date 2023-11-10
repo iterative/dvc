@@ -73,7 +73,7 @@ def collect_rev(
         if not (rev == "workspace" or param_deps or data.contains_error):
             cache.put(data, force=True)
         return ExpState(rev=rev, data=data)
-    except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+    except Exception as exc:  # noqa: BLE001
         logger.debug("", exc_info=True)
         error = SerializableError(str(exc), type(exc).__name__)
         return ExpState(rev=rev, error=error)

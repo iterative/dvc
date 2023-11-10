@@ -331,7 +331,7 @@ class Output:
         plot=False,
         persist=False,
         desc=None,
-        type=None,  # noqa: A002, pylint: disable=redefined-builtin
+        type=None,  # noqa: A002
         labels=None,
         meta=None,
         remote=None,
@@ -693,8 +693,6 @@ class Output:
             return
 
         self.repo.scm_context.ignore_remove(self.fspath)
-
-    # pylint: enable=no-member
 
     def save(self) -> None:
         if self.use_cache and not self.is_in_repo:

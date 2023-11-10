@@ -71,7 +71,6 @@ def _fork_process() -> int:
     # with PyInstaller has trouble with SystemExit exception and throws
     # errors such as "[26338] Failed to execute script __main__"
     try:
-        # pylint: disable-next=no-member
         pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
             return pid
@@ -82,7 +81,6 @@ def _fork_process() -> int:
     os.setsid()  # type: ignore[attr-defined]
 
     try:
-        # pylint: disable-next=no-member
         pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
             os._exit(0)

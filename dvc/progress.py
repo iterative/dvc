@@ -48,7 +48,7 @@ class Tqdm(tqdm):
         desc=None,
         leave=False,
         bar_format=None,
-        bytes=False,  # noqa: A002, pylint: disable=redefined-builtin
+        bytes=False,  # noqa: A002
         file=None,
         total=None,
         postfix=None,
