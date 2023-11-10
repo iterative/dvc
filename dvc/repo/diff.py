@@ -135,7 +135,6 @@ def diff(
             continue
 
         def onerror(target, _exc):
-            # pylint: disable-next=cell-var-from-loop
             missing_targets[rev].add(target)  # noqa: B023
 
         view = self.index.targets_view(

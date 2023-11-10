@@ -149,7 +149,6 @@ class LoggerHandler(logging.StreamHandler):
                         self.emit_pretty_exception(exc, verbose=_is_verbose())
                         if not _is_verbose():
                             return
-                    # pylint: disable-next=broad-except
                     except Exception:  # noqa: BLE001, S110
                         pass
 
@@ -158,7 +157,7 @@ class LoggerHandler(logging.StreamHandler):
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
-        except Exception:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception:  # noqa: BLE001
             self.handleError(record)
 
 

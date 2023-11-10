@@ -44,9 +44,6 @@ known_implementations.update(
 )
 
 
-# pylint: enable=unused-import
-
-
 def download(
     fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
 ) -> int:
@@ -164,8 +161,8 @@ def get_cloud_fs(repo_config, **kwargs):
         # should be treated as being a root path.
         fs_path = cls.root_marker
     else:
-        fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
+        fs_path = cls._strip_protocol(url)
 
-    extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
+    extras = cls._get_kwargs_from_urls(url)
     conf = {**extras, **remote_conf}  # remote config takes priority
     return cls, conf, fs_path

@@ -92,7 +92,6 @@ def commit_2_to_3(repo: "Repo", dry: bool = False):
     for out in view.outs:
         dvcfile = out.stage.dvcfile.relpath
         if isinstance(out.stage.dvcfile, ProjectFile):
-            # pylint: disable-next=protected-access
             lockfile = out.stage.dvcfile._lockfile.relpath
             migrated.add(f"{dvcfile} ({lockfile})")
         else:

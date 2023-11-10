@@ -1,11 +1,11 @@
 from collections import defaultdict
 from typing import DefaultDict
 
-from ._common import *  # noqa: F403, pylint: disable=wildcard-import
-from ._json import *  # noqa: F403, pylint: disable=wildcard-import
-from ._py import *  # noqa: F403, pylint: disable=wildcard-import
-from ._toml import *  # noqa: F403, pylint: disable=wildcard-import
-from ._yaml import *  # noqa: F403, pylint: disable=wildcard-import
+from ._common import *  # noqa: F403
+from ._json import *  # noqa: F403
+from ._py import *  # noqa: F403
+from ._toml import *  # noqa: F403
+from ._yaml import *  # noqa: F403
 
 LOADERS: DefaultDict[str, LoaderFn] = defaultdict(  # noqa: F405
     lambda: load_yaml  # noqa: F405

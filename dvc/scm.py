@@ -14,7 +14,7 @@ from typing import (
 )
 
 from funcy import group_by
-from scmrepo.base import Base  # noqa: F401, pylint: disable=unused-import
+from scmrepo.base import Base  # noqa: F401
 from scmrepo.git import Git
 from scmrepo.noscm import NoSCM
 

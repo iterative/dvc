@@ -229,7 +229,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
         logger.exception("")
     except DvcParserError:
         ret = 254
-    except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+    except Exception as exc:  # noqa: BLE001
         ret = _log_exceptions(exc) or 255
 
     try:

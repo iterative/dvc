@@ -166,7 +166,6 @@ class FileMixin:
             **kwargs,
         )
 
-    # pylint: disable-next=unused-argument
     def remove(self, force=False):  # noqa: ARG002
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self.path)
@@ -208,7 +207,6 @@ class SingleStageFile(FileMixin):
         dump_yaml(self.path, serialize.to_single_stage_file(stage, **kwargs))
         self.repo.scm_context.track_file(self.relpath)
 
-    # pylint: disable-next=unused-argument
     def remove_stage(self, stage):  # noqa: ARG002
         self.remove()
 

@@ -65,9 +65,9 @@ def yappi_profile(
         else:
             if ctx_id is not None:
                 print(f"\nThread {ctx_id}")  # noqa: T201
-            st.print_all()  # pylint:disable=no-member
+            st.print_all()
             if ctx_id is None:
-                threads.print_all()  # pylint:disable=no-member
+                threads.print_all()
 
     yappi.clear_stats()
 
@@ -117,7 +117,7 @@ def debug():
         yield
     except Exception:
         try:
-            import ipdb as pdb  # noqa: T100, pylint: disable=import-error
+            import ipdb as pdb  # noqa: T100
         except ImportError:
             import pdb  # type: ignore[no-redef]  # noqa: T100
         pdb.post_mortem()

@@ -109,7 +109,7 @@ def match_defs_renderers(  # noqa: C901, PLR0912
 
             try:
                 dps, rev_props = converter.flat_datapoints(rev)
-            except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
+            except Exception as e:  # noqa: BLE001
                 logger.warning("In %r, %s", rev, str(e).lower())
                 def_errors[rev] = e
                 continue

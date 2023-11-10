@@ -138,9 +138,6 @@ def restore_fields(stage: "Stage") -> None:
 
 
 class Stage(params.StageParams):
-    # pylint:disable=no-value-for-parameter
-    # rwlocked() confuses pylint
-
     def __init__(  # noqa: PLR0913
         self,
         repo,

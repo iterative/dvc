@@ -301,7 +301,7 @@ class URLMissingError(DvcException):
         super().__init__(f"The path '{url}' does not exist")
 
 
-class IsADirectoryError(DvcException):  # noqa: A001,pylint:disable=redefined-builtin
+class IsADirectoryError(DvcException):  # noqa: A001
     """Raised when a file operation is requested on a directory."""
 
 

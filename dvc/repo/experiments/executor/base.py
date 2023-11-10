@@ -687,7 +687,7 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:  # noqa: BLE001, pylint: disable=W0703
+        except BaseException as exc:  # noqa: BLE001
             logger.warning(
                 (
                     "Something went wrong while auto pushing experiment "

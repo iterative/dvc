@@ -238,7 +238,7 @@ class Artifacts:
                 from_infos.append(url)
         except DvcException:
             raise
-        except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception as exc:  # noqa: BLE001
             raise DvcException(
                 f"Failed to download artifact '{name}' via Studio"
             ) from exc
@@ -298,7 +298,7 @@ class Artifacts:
             )
         except FileExistsLocallyError:
             raise
-        except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception as exc:  # noqa: BLE001
             saved_exc = exc
 
         if config and not isinstance(config, dict):
@@ -326,7 +326,7 @@ class Artifacts:
                 )
             except FileExistsLocallyError:
                 raise
-            except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+            except Exception as exc:  # noqa: BLE001
                 saved_exc = exc
 
             try:
@@ -340,7 +340,7 @@ class Artifacts:
                 )
             except FileExistsLocallyError:
                 raise
-            except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+            except Exception as exc:  # noqa: BLE001
                 if saved_exc:
                     logger.exception(str(saved_exc), exc_info=saved_exc.__cause__)
                 raise DvcException(

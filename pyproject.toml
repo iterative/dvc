@@ -255,6 +255,7 @@ select = [
     "FLY", "PERF101", "RUF",
 ]
 show-source = true
+show-fixes = true
 
 [tool.ruff.flake8-pytest-style]
 fixture-parentheses = false

@@ -82,12 +82,12 @@ def escape_str(value):
 
 
 @singledispatch
-def to_str(obj, config=None) -> str:  # noqa: ARG001, pylint: disable=unused-argument
+def to_str(obj, config=None) -> str:  # noqa: ARG001
     return str(obj)
 
 
 @to_str.register(bool)
-def _(obj: bool, config=None):  # noqa: ARG001, pylint: disable=unused-argument
+def _(obj: bool, config=None):  # noqa: ARG001
     return "true" if obj else "false"
 
 
