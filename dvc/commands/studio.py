@@ -15,25 +15,21 @@ AVAILABLE_SCOPES = ["live", "dvc_experiment", "view_url", "dql", "download_model
 
 class CmdStudioLogin(CmdBase):
     def run(self):
+        from dvc_studio_client.auth import check_token_authorization
+
         from dvc.env import DVC_STUDIO_URL
         from dvc.repo.experiments.utils import gen_random_name
         from dvc.ui import ui
-        from dvc.utils.studio import STUDIO_URL, check_token_authorization
-
-        scopes = self.args.scopes or DEFAULT_SCOPES
-        if invalid_scopes := list(
-            filter(lambda s: s not in AVAILABLE_SCOPES, scopes.split(","))
-        ):
-            ui.error_write(
-                f"Following scopes are not valid: {', '.join(invalid_scopes)}"
-            )
-            return 1
+        from dvc.utils.studio import STUDIO_URL
 
         name = self.args.name or gen_random_name()
         hostname = self.args.hostname or os.environ.get(DVC_STUDIO_URL) or STUDIO_URL
 
-        data = {"client_name": "dvc", "token_name": name, "scopes": scopes}
-        device_code, token_uri = self.initiate_authorization(hostname, data)
+        try:
+            device_code, token_uri = self.initiate_authorization(name, hostname)
+        except ValueError as e:
+            ui.error_write(str(e))
+            return 1
 
         access_token = check_token_authorization(uri=token_uri, device_code=device_code)
         if not access_token:
@@ -49,13 +45,21 @@ class CmdStudioLogin(CmdBase):
         )
         return 0
 
-    def initiate_authorization(self, hostname, data):
+    def initiate_authorization(self, name, hostname):
         import webbrowser
 
-        from dvc.ui import ui
-        from dvc.utils.studio import start_device_login
+        from dvc_studio_client.auth import start_device_login
 
-        response = start_device_login(data=data, base_url=hostname)
+        from dvc.ui import ui
+
+        scopes = self.args.scopes or DEFAULT_SCOPES
+
+        response = start_device_login(
+            client_name="dvc",
+            base_url=hostname,
+            token_name=name,
+            scopes=scopes.split(","),
+        )
         verification_uri = response["verification_uri"]
         user_code = response["user_code"]
         device_code = response["device_code"]

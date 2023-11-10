@@ -87,63 +87,6 @@ def notify_refs(
     return d
 
 
-def start_device_login(
-    *,
-    data,
-    base_url=STUDIO_URL,
-):
-    logger.debug(
-        "Starting device login for Studio%s",
-        f" ({base_url})" if base_url else "",
-    )
-
-    r = post("api/device-login", "", data=data, base_url=base_url)
-    if r.status_code == 400:
-        logger.error(
-            "Failed to start authentication with Studio: %s", r.json().get("detail")
-        )
-        return
-
-    r.raise_for_status()
-    d = r.json()
-
-    logger.trace(  # type: ignore[attr-defined]
-        "received response: %s (status=%r)", d, r.status_code
-    )
-    return d
-
-
-def check_token_authorization(*, uri, device_code):
-    import time
-
-    logger.debug("Polling to find if the user code is authorized")
-
-    data = {"code": device_code}
-    session = requests.Session()
-    session.mount(uri, HTTPAdapter(max_retries=3))
-
-    logger.debug("Checking with %s to %s", device_code, uri)
-
-    counter = 1
-    while True:
-        logger.debug("Polling attempt #%s", counter)
-        r = session.post(uri, json=data, timeout=5, allow_redirects=False)
-        counter += 1
-        if r.status_code == 400:
-            d = ignore(Exception, default={})(r.json)()
-            detail = d.get("detail")
-            if detail == "authorization_pending":
-                # Wait 5 seconds before retrying.
-                time.sleep(5)
-                continue
-            if detail == "authorization_expired":
-                return
-
-        r.raise_for_status()
-
-        return r.json()["access_token"]
-
-
 def config_to_env(config: Dict[str, Any]) -> Dict[str, Any]:
     env = {}
     if "offline" in config:

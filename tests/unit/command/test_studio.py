@@ -16,8 +16,8 @@ def test_studio_login_invalid_scope():
     assert main(["studio", "login", "--scopes", "invalid!"]) == 1
 
 
-@mock.patch("dvc.utils.studio.check_token_authorization")
-@mock.patch("dvc.utils.studio.start_device_login")
+@mock.patch("dvc_studio_client.auth.check_token_authorization")
+@mock.patch("dvc_studio_client.auth.start_device_login")
 def test_studio_login_token_check_failed(
     mock_start_device_login, mock_check_token_authorization
 ):
@@ -27,8 +27,8 @@ def test_studio_login_token_check_failed(
     assert main(["studio", "login"]) == 1
 
 
-@mock.patch("dvc.utils.studio.check_token_authorization")
-@mock.patch("dvc.utils.studio.start_device_login")
+@mock.patch("dvc_studio_client.auth.check_token_authorization")
+@mock.patch("dvc_studio_client.auth.start_device_login")
 def test_studio_login_success(
     mock_start_device_login, mock_check_token_authorization, dvc, M
 ):
@@ -38,7 +38,9 @@ def test_studio_login_success(
     assert main(["studio", "login"]) == 0
     assert mock_start_device_login.call_args.kwargs == {
         "base_url": STUDIO_URL,
-        "data": {"client_name": "dvc", "scopes": DEFAULT_SCOPES, "token_name": M.any},
+        "client_name": "dvc",
+        "scopes": DEFAULT_SCOPES.split(","),
+        "token_name": M.any,
     }
     mock_check_token_authorization.assert_called_with(
         uri=MOCK_RESPONSE["token_uri"], device_code=MOCK_RESPONSE["device_code"]
@@ -49,8 +51,8 @@ def test_studio_login_success(
     assert config["studio"]["url"] == STUDIO_URL
 
 
-@mock.patch("dvc.utils.studio.check_token_authorization")
-@mock.patch("dvc.utils.studio.start_device_login")
+@mock.patch("dvc_studio_client.auth.check_token_authorization")
+@mock.patch("dvc_studio_client.auth.start_device_login")
 def test_studio_login_arguments(
     mock_start_device_login, mock_check_token_authorization
 ):
@@ -74,14 +76,16 @@ def test_studio_login_arguments(
     )
 
     mock_start_device_login.assert_called_with(
-        data={"client_name": "dvc", "token_name": "token_name", "scopes": "live"},
+        client_name="dvc",
         base_url="https://example.com",
+        token_name="token_name",
+        scopes=["live"],
     )
     mock_check_token_authorization.assert_called()
 
 
-@mock.patch("dvc.utils.studio.check_token_authorization")
-@mock.patch("dvc.utils.studio.start_device_login")
+@mock.patch("dvc_studio_client.auth.check_token_authorization")
+@mock.patch("dvc_studio_client.auth.start_device_login")
 @mock.patch("webbrowser.open")
 def test_studio_device_code(
     mock_webbrowser_open, mock_start_device_login, mock_check_token_authorization
