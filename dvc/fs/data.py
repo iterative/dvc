@@ -1,8 +1,8 @@
 import functools
-import logging
 import os
 from typing import TYPE_CHECKING
 
+from dvc.log import logger
 from dvc.utils import as_posix
 from dvc_objects.fs.base import FileSystem
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from dvc_data.fs import DataFileSystem as _DataFileSystem
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class DataFileSystem(FileSystem):

@@ -1,8 +1,8 @@
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 
 from .collections import merge_dicts, remove_missing_keys, to_omegaconf
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from dvc.types import StrPath
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def compose_and_dump(
@@ -60,7 +60,7 @@ def compose_and_dump(
         dumper(output_file, OmegaConf.to_object(cfg))
     else:
         Path(output_file).write_text(OmegaConf.to_yaml(cfg), encoding="utf-8")
-    logger.trace(  # type: ignore[attr-defined]
+    logger.trace(
         "Hydra composition enabled. Contents dumped to %s:\n %s", output_file, cfg
     )
 

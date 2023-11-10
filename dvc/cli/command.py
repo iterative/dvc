@@ -1,12 +1,13 @@
-import logging
 import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
+from dvc.log import logger
+
 if TYPE_CHECKING:
     from dvc.config import Config
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdBase(ABC):

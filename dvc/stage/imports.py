@@ -1,8 +1,7 @@
-import logging
-
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _update_import_on_remote(stage, remote, jobs):

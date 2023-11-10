@@ -21,6 +21,7 @@ from funcy import first
 
 from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import (
     UnresolvedQueueExpNamesError,
     UnresolvedRunningExpNamesError,
@@ -48,7 +49,7 @@ if TYPE_CHECKING:
 
     from .base import QueueGetResult
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class _MessageEntry(NamedTuple):
@@ -209,9 +210,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
-            logger.trace(  # type: ignore[attr-defined]
-                "Found queued task %s", entry_dict["stash_rev"]
-            )
+            logger.trace("Found queued task %s", entry_dict["stash_rev"])
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_processed(self) -> Generator[_MessageEntry, None, None]:
@@ -227,9 +226,7 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if not result.ready():
-                logger.trace(  # type: ignore[attr-defined]
-                    "Found active task %s", entry.stash_rev
-                )
+                logger.trace("Found active task %s", entry.stash_rev)
                 yield _TaskEntry(result, entry)
 
     def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
@@ -237,9 +234,7 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if result.ready():
-                logger.trace(  # type: ignore[attr-defined]
-                    "Found done task %s", entry.stash_rev
-                )
+                logger.trace("Found done task %s", entry.stash_rev)
                 yield _TaskEntry(result, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:

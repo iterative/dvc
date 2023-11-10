@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import TYPE_CHECKING, Dict, List
 
@@ -8,6 +7,7 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import relpath
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from dvc_data.index import BaseDataIndex, DataIndexEntry
     from dvc_objects.fs.base import FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _fspath_dir(path):

@@ -1,11 +1,11 @@
 import argparse
-import logging
 
 from dvc.cli.utils import append_doc_link
 from dvc.commands.repro import CmdRepro
 from dvc.commands.repro import add_arguments as add_repro_arguments
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdExperimentsRun(CmdRepro):

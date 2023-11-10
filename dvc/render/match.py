@@ -1,4 +1,3 @@
-import logging
 import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, DefaultDict, Dict, List, NamedTuple, Optional
@@ -7,6 +6,7 @@ import dpath
 import dpath.options
 from funcy import get_in, last
 
+from dvc.log import logger
 from dvc.repo.plots import _normpath, infer_data_sources
 from dvc.utils.plots import group_definitions_by_id
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _squash_plots_properties(data: List) -> Dict:

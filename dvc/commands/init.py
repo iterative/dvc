@@ -1,15 +1,15 @@
 import argparse
-import logging
 
 import colorama
 
 from dvc import analytics
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.utils import boxify
 from dvc.utils import format_link as fmt_link
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _welcome_message():

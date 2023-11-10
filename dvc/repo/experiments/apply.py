@@ -1,7 +1,7 @@
-import logging
 import os
 from typing import TYPE_CHECKING, Optional
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked

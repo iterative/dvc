@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 from typing import TYPE_CHECKING, Optional
@@ -7,11 +6,12 @@ from packaging import version
 
 from dvc import PKG, __version__
 from dvc.env import DVC_UPDATER_ENDPOINT
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from dvc.ui import RichText
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class Updater:
@@ -46,7 +46,7 @@ class Updater:
             with self.lock:
                 func()
         except LockError:
-            logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+            logger.trace("", exc_info=True)
             logger.debug(
                 "Failed to acquire '%s' before %s updates",
                 self.lock.lockfile,
@@ -78,7 +78,7 @@ class Updater:
                 info = json.load(fobj)
                 latest = info["version"]
             except Exception as e:  # noqa: BLE001
-                logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+                logger.trace("", exc_info=True)
                 logger.debug("'%s' is not a valid json: %s", self.updater_file, e)
                 self.fetch()
                 return
@@ -106,17 +106,13 @@ class Updater:
             resp = requests.get(url, timeout=self.TIMEOUT_GET)
             info = resp.json()
         except requests.exceptions.RequestException as exc:
-            logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+            logger.trace("", exc_info=True)
             logger.debug("Failed to retrieve latest version: %s", exc)
             return
 
-        logger.trace(  # type: ignore[attr-defined]
-            "received payload: %s (status=%s)", info, resp.status_code
-        )
+        logger.trace("received payload: %s (status=%s)", info, resp.status_code)
         with open(self.updater_file, "w+", encoding="utf-8") as fobj:
-            logger.trace(  # type: ignore[attr-defined]
-                "Saving latest version info to %s", self.updater_file
-            )
+            logger.trace("Saving latest version info to %s", self.updater_file)
             json.dump(info, fobj)
 
     def _notify(self, latest: str, pkg: Optional[str] = PKG) -> None:

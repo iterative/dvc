@@ -1,4 +1,3 @@
-import logging
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -16,6 +15,7 @@ from scmrepo.git.backend.base import SyncStatus
 
 from dvc.env import DVC_STUDIO_TOKEN, DVC_STUDIO_URL
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, TqdmGit, iter_revs
@@ -29,7 +29,7 @@ from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class UploadError(DvcException):

@@ -1,5 +1,4 @@
 import errno
-import logging
 import os
 import posixpath
 from collections import defaultdict
@@ -20,6 +19,7 @@ from dvc.exceptions import (
     DvcException,
     MergeError,
 )
+from dvc.log import logger
 from dvc.utils import format_link
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile import check as ocheck
@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 
     from .ignore import DvcIgnoreFilter
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 CHECKSUM_SCHEMA = Any(

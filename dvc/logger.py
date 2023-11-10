@@ -7,9 +7,7 @@ import os
 import sys
 
 import colorama
-
-from dvc.env import DVC_SHOW_TRACEBACK
-from dvc.progress import Tqdm
+from tqdm import tqdm
 
 
 def add_logging_level(level_name, level_num, method_name=None):
@@ -155,7 +153,7 @@ class LoggerHandler(logging.StreamHandler):
                         pass
 
             msg = self.format(record)
-            Tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
+            tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
@@ -204,7 +202,7 @@ def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     console_trace.setFormatter(formatter)
     console_trace.addFilter(exclude_filter(logging.DEBUG))
 
-    show_traceback = bool(os.environ.get(DVC_SHOW_TRACEBACK))
+    show_traceback = bool(os.environ.get("DVC_SHOW_TRACEBACK"))
     err_formatter = ColorFormatter(
         log_colors=log_colors and isatty(sys.stderr), show_traceback=show_traceback
     )

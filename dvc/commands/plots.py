@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 from typing import TYPE_CHECKING, Dict, List, Optional
 
@@ -9,6 +8,7 @@ from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from dvc.render.match import RendererWithErrors
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _show_json(

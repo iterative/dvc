@@ -1,13 +1,13 @@
-import logging
 from typing import List, Tuple
 
 from dvc.exceptions import DownloadError
+from dvc.log import logger
 from dvc.ui import ui
 from dvc_data.index import DataIndex, FileStorage
 
 from . import locked
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _make_index_onerror(onerror, rev):

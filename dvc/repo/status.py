@@ -1,11 +1,11 @@
-import logging
 from itertools import chain, compress
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 
 from . import locked
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _joint_status(pairs):

@@ -1,7 +1,7 @@
-import logging
 from typing import TYPE_CHECKING, List, Optional
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 
 from . import locked
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.repo.index import ObjectContainer
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _validate_args(**kwargs):

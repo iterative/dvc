@@ -21,6 +21,7 @@ from funcy.debug import format_time
 
 from dvc.fs import LocalFileSystem
 from dvc.fs.callbacks import DEFAULT_CALLBACK
+from dvc.log import logger
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -40,7 +41,7 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 ObjectContainer = Dict[Optional["HashFileDB"], Set["HashInfo"]]
 
 
@@ -49,9 +50,7 @@ def log_walk(seq):
         start = time.perf_counter()
         yield root, dirs, files
         duration = format_time(time.perf_counter() - start)
-        logger.trace(  # type: ignore[attr-defined]
-            "%s in collecting stages from %s", duration, root
-        )
+        logger.trace("%s in collecting stages from %s", duration, root)
 
 
 def collect_files(

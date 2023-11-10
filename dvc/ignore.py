@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 from collections import namedtuple
@@ -10,12 +9,13 @@ from pathspec.util import normalize_file
 from pygtrie import Trie
 
 from dvc.fs import Schemes, localfs
+from dvc.log import logger
 from dvc.pathspec_math import PatternInfo, merge_patterns
 
 if TYPE_CHECKING:
     from dvc.fs import AnyFSPath, FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class DvcIgnore:

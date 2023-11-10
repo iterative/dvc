@@ -1,4 +1,3 @@
-import logging
 import re
 from contextlib import contextmanager
 from typing import Dict, Iterable, Iterator, NamedTuple, Optional
@@ -6,12 +5,13 @@ from typing import Dict, Iterable, Iterator, NamedTuple, Optional
 from scmrepo.git import Stash
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc_objects.fs.local import localfs
 from dvc_objects.fs.utils import as_atomic
 
 from .refs import APPLY_HEAD, APPLY_STASH
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ExpStashEntry(NamedTuple):

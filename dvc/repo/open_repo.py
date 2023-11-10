@@ -1,4 +1,3 @@
-import logging
 import os
 import tempfile
 import threading
@@ -7,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 from funcy import retry, wrap_with
 
 from dvc.exceptions import NotDvcRepoError
+from dvc.log import logger
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
@@ -14,7 +14,7 @@ from dvc.utils import relpath
 if TYPE_CHECKING:
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @map_scm_exception()

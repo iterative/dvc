@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import os
 from typing import (
     TYPE_CHECKING,
@@ -14,6 +13,7 @@ from typing import (
 )
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from .parsing import DataResolver
     from .stage import Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 _T = TypeVar("_T")
 
 DVC_FILE_SUFFIX = ".dvc"

@@ -1,4 +1,3 @@
-import logging
 import os
 import posixpath
 from pathlib import Path
@@ -12,6 +11,7 @@ from dvc.exceptions import (
     FileExistsLocallyError,
     InvalidArgumentError,
 )
+from dvc.log import logger
 from dvc.utils import relpath, resolve_output
 from dvc.utils.objects import cached_property
 from dvc.utils.serialize import modify_yaml
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def check_name_format(name: str) -> None:
@@ -286,7 +286,7 @@ class Artifacts:
         name = _reformat_name(name)
         saved_exc: Optional[Exception] = None
         try:
-            logger.trace("Trying studio-only config")  # type: ignore[attr-defined]
+            logger.trace("Trying studio-only config")
             return cls._download_studio(
                 url,
                 name,
@@ -311,7 +311,7 @@ class Artifacts:
             remote=remote,
             remote_config=remote_config,
         ) as repo:
-            logger.trace("Trying repo [studio] config")  # type: ignore[attr-defined]
+            logger.trace("Trying repo [studio] config")
             dvc_studio_config = dict(repo.config.get("studio"))
             try:
                 return cls._download_studio(

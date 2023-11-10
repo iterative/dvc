@@ -1,15 +1,15 @@
-import logging
 import os
 
 from dvc.config import Config
 from dvc.exceptions import InitError, InvalidArgumentError
 from dvc.ignore import init as init_dvcignore
+from dvc.log import logger
 from dvc.repo import Repo
 from dvc.scm import SCM, SCMError
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):  # noqa: C901

@@ -1,4 +1,3 @@
-import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -10,6 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 from funcy import identity, lfilter, nullcontext, select
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.parsing.interpolate import (
     get_expression,
     get_matches,
@@ -20,7 +20,7 @@ from dvc.parsing.interpolate import (
     validate_value,
 )
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 SeqOrMap = Union[Sequence, Mapping]
 DictStr = Dict[str, Any]
 
@@ -434,7 +434,7 @@ class Context(CtxDict):
                 self.merge_from(fs, default, wdir)
             else:
                 msg = "%s does not exist, it won't be used in parametrization"
-                logger.trace(msg, to_import)  # type: ignore[attr-defined]
+                logger.trace(msg, to_import)
 
         stage_name = stage_name or ""
         for index, item in enumerate(vars_):

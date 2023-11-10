@@ -1,4 +1,3 @@
-import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -12,11 +11,12 @@ from dvc.env import (
     DVC_STUDIO_TOKEN,
     DVC_STUDIO_URL,
 )
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from requests import Response
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 STUDIO_URL = "https://studio.iterative.ai"
 
@@ -33,7 +33,7 @@ def post(
     session = requests.Session()
     session.mount(url, HTTPAdapter(max_retries=max_retries))
 
-    logger.trace("Sending %s to %s", data, url)  # type: ignore[attr-defined]
+    logger.trace("Sending %s to %s", data, url)
 
     headers = {"Authorization": f"token {token}"}
     r = session.post(
@@ -66,7 +66,7 @@ def notify_refs(
     try:
         r = post("webhook/dvc", token, data, base_url=base_url)
     except requests.RequestException as e:
-        logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+        logger.trace("", exc_info=True)
 
         msg = str(e)
         if e.response is None:
@@ -83,9 +83,7 @@ def notify_refs(
         d = r.json()
 
     if d:
-        logger.trace(  # type: ignore[attr-defined]
-            "received response: %s (status=%r)", d, r.status_code
-        )
+        logger.trace("received response: %s (status=%r)", d, r.status_code)
     return d
 
 

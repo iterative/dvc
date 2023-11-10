@@ -1,10 +1,10 @@
-import logging
 import os
 from collections import defaultdict
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from dvc.dependency.param import ParamsDependency, read_param_file
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.metrics.show import FileResult, Result
 from dvc.stage import PipelineStage
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _collect_top_level_params(repo: "Repo") -> Iterator[str]:

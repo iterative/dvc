@@ -1,4 +1,3 @@
-import logging
 import os
 from itertools import chain
 from typing import (
@@ -17,6 +16,7 @@ from typing import (
 from funcy import ldistinct
 from scmrepo.exceptions import SCMError
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.scm import NoSCMError
 from dvc.utils import as_posix, expand_paths
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _collect_top_level_metrics(repo: "Repo") -> Iterator[str]:

@@ -1,15 +1,15 @@
-import logging
 import os
 import signal
 import subprocess
 import threading
 
+from dvc.log import logger
 from dvc.utils import fix_env
 
 from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _make_cmd(executable, cmd):

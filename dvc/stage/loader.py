@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
@@ -7,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 from funcy import get_in, lcat, once, project
 
 from dvc import dependency, output
+from dvc.log import logger
 from dvc.parsing import FOREACH_KWD, JOIN, MATRIX_KWD, EntryNotFound
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.meta import Meta
@@ -19,7 +19,7 @@ from .utils import fill_stage_dependencies, resolve_paths
 if TYPE_CHECKING:
     from dvc.dvcfile import ProjectFile, SingleStageFile
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class StageLoader(Mapping):
@@ -138,9 +138,7 @@ class StageLoader(Mapping):
 
         if self.lockfile_data and name not in self.lockfile_data:
             self.lockfile_needs_update()
-            logger.trace(  # type: ignore[attr-defined]
-                "No lock entry found for '%s:%s'", self.dvcfile.relpath, name
-            )
+            logger.trace("No lock entry found for '%s:%s'", self.dvcfile.relpath, name)
 
         resolved_stage = resolved_data[name]
         stage = self.load_stage(

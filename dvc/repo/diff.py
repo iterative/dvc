@@ -1,13 +1,13 @@
 import errno
-import logging
 import os
 from collections import defaultdict
 from typing import Dict, List, Optional
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _path(entry):

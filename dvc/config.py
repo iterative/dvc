@@ -1,5 +1,4 @@
 """DVC config objects."""
-import logging
 import os
 import re
 from contextlib import contextmanager
@@ -9,6 +8,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.log import logger
 
 from .utils.objects import cached_property
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.types import DictStrAny, StrPath
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ConfigError(DvcException):

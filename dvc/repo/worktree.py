@@ -1,10 +1,10 @@
-import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
 
 from funcy import first
 
 from dvc.fs.callbacks import Callback
+from dvc.log import logger
 from dvc.stage.exceptions import StageUpdateError
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from dvc_data.index import DataIndex, DataIndexView
     from dvc_objects.fs.base import FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 # for files, if our version's checksum (etag) matches the latest remote

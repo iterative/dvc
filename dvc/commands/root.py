@@ -1,11 +1,11 @@
 import argparse
-import logging
 
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.utils import relpath
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdRoot(CmdBaseNoRepo):

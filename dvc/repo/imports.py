@@ -1,8 +1,9 @@
-import logging
 import os
 from functools import partial
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, List, Set, Tuple, Union
+
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from dvc.dependency.base import Dependency
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def unfetched_view(

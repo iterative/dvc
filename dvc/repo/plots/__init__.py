@@ -1,6 +1,5 @@
 import csv
 import io
-import logging
 import os
 from collections import defaultdict
 from copy import deepcopy
@@ -23,7 +22,8 @@ import dpath.options
 from funcy import first, ldistinct, project, reraise
 
 from dvc.exceptions import DvcException
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.log import logger
+from dvc.utils import error_handler, errored_revisions
 from dvc.utils.objects import cached_property
 from dvc.utils.serialize import PARSERS, EncodingError
 from dvc.utils.threadpool import ThreadPoolExecutor
@@ -37,7 +37,12 @@ if TYPE_CHECKING:
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
+
+
+def onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
+    logger.debug("", exc_info=True)
+    result["error"] = exception
 
 
 SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS

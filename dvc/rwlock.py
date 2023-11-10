@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 from collections import defaultdict
 from contextlib import contextmanager
@@ -7,12 +6,14 @@ from contextlib import contextmanager
 import psutil
 from voluptuous import Invalid, Optional, Required, Schema
 
+from dvc.log import logger
+
 from .exceptions import DvcException
 from .fs import localfs
 from .lock import make_lock
 from .utils import relpath
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}

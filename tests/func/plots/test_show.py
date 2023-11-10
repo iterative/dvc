@@ -7,8 +7,7 @@ from dvc.cli import main
 from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
-from dvc.repo.plots import PlotMetricTypeError
-from dvc.utils import onerror_collect
+from dvc.repo.plots import PlotMetricTypeError, onerror_collect
 from dvc.utils.fs import remove
 from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError, modify_yaml
 from tests.utils.plots import get_plot

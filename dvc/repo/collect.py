@@ -1,11 +1,12 @@
-import logging
 from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple
+
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 FilterFn = Callable[["Output"], bool]

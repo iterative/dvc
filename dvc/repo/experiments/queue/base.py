@@ -1,4 +1,3 @@
-import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
@@ -23,6 +22,7 @@ from funcy import retry
 from dvc.dependency import ParamsDependency
 from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVC_ROOT
 from dvc.lock import LockError
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.serialize import ExpRange
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @dataclass(frozen=True)
