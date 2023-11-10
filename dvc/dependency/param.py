@@ -1,4 +1,3 @@
-import logging
 import os
 import typing
 from collections import defaultdict
@@ -7,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import dpath
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.utils.serialize import ParseError, load_path
 from dvc_data.hashfile.hash_info import HashInfo
 
@@ -15,7 +15,7 @@ from .base import Dependency
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class MissingParamsError(DvcException):

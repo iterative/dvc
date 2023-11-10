@@ -1,4 +1,3 @@
-import logging
 import os
 from collections import defaultdict
 from contextlib import contextmanager
@@ -15,6 +14,7 @@ from typing import (
 
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
+from dvc.log import logger
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from .index import Index
     from .scm_context import SCMContext
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @contextmanager

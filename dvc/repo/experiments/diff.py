@@ -1,9 +1,8 @@
-import logging
-
+from dvc.log import logger
 from dvc.utils.diff import diff as _diff
 from dvc.utils.diff import format_dict
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):

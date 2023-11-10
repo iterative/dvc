@@ -1,16 +1,16 @@
-import logging
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional, Tuple
 
 from scmrepo.git import Git
 
 from dvc.exceptions import NotDvcRepoError
+from dvc.log import logger
 from dvc.scm import iter_revs
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def brancher(
@@ -71,7 +71,7 @@ def brancher(
 
     scm = self.scm
 
-    logger.trace("switching fs to workspace")  # type: ignore[attr-defined]
+    logger.trace("switching fs to workspace")
     self.fs = LocalFileSystem(url=self.root_dir)
     yield "workspace"
 
@@ -115,11 +115,11 @@ def _switch_fs(
     from dvc.fs import GitFileSystem, LocalFileSystem
 
     if rev == "workspace":
-        logger.trace("switching fs to workspace")  # type: ignore[attr-defined]
+        logger.trace("switching fs to workspace")
         repo.fs = LocalFileSystem(url=repo.root_dir)
         return
 
-    logger.trace("switching fs to revision %s", rev[:7])  # type: ignore[attr-defined]
+    logger.trace("switching fs to revision %s", rev[:7])
     assert isinstance(repo.scm, Git)
     fs = GitFileSystem(scm=repo.scm, rev=rev)
     root_dir = repo.fs.path.join("/", *repo_root_parts)

@@ -1,5 +1,4 @@
 import itertools
-import logging
 import os
 from dataclasses import fields
 from datetime import datetime
@@ -18,6 +17,7 @@ from typing import (
 from funcy import first
 from scmrepo.exceptions import SCMError as InnerSCMError
 
+from dvc.log import logger
 from dvc.scm import Git, SCMError, iter_revs
 
 from .exceptions import InvalidExpRefError
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     from .cache import ExpCache
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def collect_rev(

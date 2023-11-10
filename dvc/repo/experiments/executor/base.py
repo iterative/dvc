@@ -27,6 +27,7 @@ from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH, ExpRefInfo
 from dvc.repo.experiments.utils import to_studio_params
@@ -45,7 +46,7 @@ if TYPE_CHECKING:
     from dvc.scm import Git
     from dvc.stage import PipelineStage, Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ExecutorResult(NamedTuple):
@@ -492,9 +493,7 @@ class BaseExecutor(ABC):
                 targets = kwargs.get("targets")
 
             repro_force = kwargs.get("force", False)
-            logger.trace(  # type: ignore[attr-defined]
-                "Executor repro with force = '%s'", str(repro_force)
-            )
+            logger.trace("Executor repro with force = '%s'", str(repro_force))
 
             repro_dry = kwargs.get("dry")
 

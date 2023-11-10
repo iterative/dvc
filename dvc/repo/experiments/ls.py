@@ -1,14 +1,14 @@
-import logging
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple, Union
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
 from .utils import exp_refs_by_baseline
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked

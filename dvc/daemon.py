@@ -8,6 +8,8 @@ import sys
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Union
 
+from dvc.log import logger
+
 if TYPE_CHECKING:
     from typing import ContextManager
 
@@ -15,7 +17,7 @@ from dvc.env import DVC_DAEMON, DVC_DAEMON_LOGFILE
 from dvc.utils import fix_env, is_binary
 from dvc.utils.collections import ensure_list
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _suppress_resource_warning(popen: subprocess.Popen) -> None:

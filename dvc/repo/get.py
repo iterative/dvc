@@ -1,15 +1,15 @@
-import logging
 import os
 from typing import TYPE_CHECKING, Union
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.utils import resolve_output
 
 if TYPE_CHECKING:
     from dvc.fs.dvc import DVCFileSystem
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class GetDVCFileError(DvcException):

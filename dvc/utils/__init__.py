@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import logging
 import os
 import re
 import sys
@@ -15,7 +14,6 @@ if TYPE_CHECKING:
 
     from dvc.fs import FileSystem
 
-logger = logging.getLogger(__name__)
 
 LARGE_DIR_SIZE = 100
 TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
@@ -360,10 +358,6 @@ def parse_target(
         if not name:
             ret = (target, None)
             return ret if is_valid_filename(target) else ret[::-1]
-
-    if not path:
-        logger.trace("Assuming file to be '%s'", default)  # type: ignore[attr-defined]
-
     return path or default, name
 
 
@@ -403,11 +397,6 @@ def error_handler(func):
         return result
 
     return wrapper
-
-
-def onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
-    logger.debug("", exc_info=True)
-    result["error"] = exception
 
 
 def errored_revisions(rev_data: Dict) -> List:

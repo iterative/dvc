@@ -1,5 +1,4 @@
 import errno
-import logging
 import os
 import shutil
 import stat
@@ -7,11 +6,12 @@ import sys
 from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class BasePathNotInCheckedPathException(DvcException):

@@ -1,8 +1,7 @@
-import logging
-
 from dvc.cli.command import CmdBase
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdQueueWorker(CmdBase):

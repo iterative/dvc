@@ -1,12 +1,12 @@
 import argparse
-import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdGetUrl(CmdBaseNoRepo):

@@ -1,5 +1,4 @@
 import fnmatch
-import logging
 import typing
 from contextlib import suppress
 from functools import wraps
@@ -10,11 +9,12 @@ from dvc.exceptions import (
     OutputDuplicationError,
     OutputNotFoundError,
 )
+from dvc.log import logger
 from dvc.repo import lock_repo
 from dvc.ui import ui
 from dvc.utils import as_posix, parse_target
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 if typing.TYPE_CHECKING:
     from networkx import DiGraph

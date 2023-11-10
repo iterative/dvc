@@ -1,6 +1,5 @@
 """Draws DAG in ASCII."""
 
-import logging
 import math
 import os
 
@@ -8,7 +7,9 @@ from grandalf.graphs import Edge, Graph, Vertex
 from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import EdgeViewer, route_with_lines
 
-logger = logging.getLogger(__name__)
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 
 class VertexViewer:

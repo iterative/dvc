@@ -1,4 +1,3 @@
-import logging
 import os
 import string
 from collections import defaultdict
@@ -22,6 +21,7 @@ from funcy import project
 
 from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, DvcException, MergeError
+from dvc.log import logger
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
 
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db import ObjectDB
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 # Disallow all punctuation characters except hyphen and underscore
 INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
 Env = Dict[str, str]

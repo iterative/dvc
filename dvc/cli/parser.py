@@ -1,6 +1,5 @@
 """Main parser for the dvc cli."""
 import argparse
-import logging
 import os
 from functools import lru_cache
 
@@ -46,10 +45,11 @@ from dvc.commands import (
     update,
     version,
 )
+from dvc.log import logger
 
 from . import DvcParserError
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 COMMANDS = [
     init,

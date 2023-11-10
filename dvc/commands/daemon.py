@@ -1,10 +1,9 @@
-import logging
-
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import fix_subparsers
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdDaemonBase(CmdBaseNoRepo):

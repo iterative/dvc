@@ -1,14 +1,14 @@
 import argparse
-import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import DictAction, append_doc_link
 from dvc.commands.ls.ls_colors import LsColors
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _format_entry(entry, fmt):

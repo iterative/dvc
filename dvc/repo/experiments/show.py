@@ -1,4 +1,3 @@
-import logging
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from typing import (
@@ -18,6 +17,7 @@ from typing import (
 )
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 from dvc.scm import Git
 from dvc.ui import ui
 from dvc.utils.flatten import flatten
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
     from .serialize import ExpRange, ExpState
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def show(

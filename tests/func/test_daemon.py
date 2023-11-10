@@ -4,7 +4,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from threading import Thread
@@ -108,7 +108,8 @@ def test_analytics(tmp_path, server):
     assert match, "no match for the pid"
     pid = int(match.group(1).strip())
 
-    psutil.Process(pid).wait(timeout=10)
+    with suppress(psutil.NoSuchProcess):
+        psutil.Process(pid).wait(timeout=10)
     assert not os.path.exists(report_file)
     assert f"Process {pid} exiting with 0" in logfile.read_text(encoding="utf8")
     assert server.RequestHandlerClass.hits == {"POST": 1}
@@ -138,7 +139,8 @@ def test_updater(tmp_dir, dvc, server):
     assert match, "no match for the pid"
     pid = int(match.group(1).strip())
 
-    psutil.Process(pid).wait(timeout=10)
+    with suppress(psutil.NoSuchProcess):
+        psutil.Process(pid).wait(timeout=10)
     assert f"Process {pid} exiting with 0" in logfile.read_text(encoding="utf8")
     assert server.RequestHandlerClass.hits == {"GET": 1}
     # check that the file is saved correctly

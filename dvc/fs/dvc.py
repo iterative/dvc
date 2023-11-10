@@ -1,6 +1,5 @@
 import errno
 import functools
-import logging
 import ntpath
 import os
 import posixpath
@@ -11,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Un
 from fsspec.spec import AbstractFileSystem
 from funcy import wrap_with
 
+from dvc.log import logger
 from dvc_objects.fs.base import FileSystem
 from dvc_objects.fs.path import Path
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.types import DictStrAny, StrPath
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 RepoFactory = Union[Callable[..., "Repo"], Type["Repo"]]
 Key = Tuple[str, ...]

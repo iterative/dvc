@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, List, Optional, Tuple
@@ -8,12 +7,13 @@ from funcy import first
 from dvc import fs
 from dvc.config import RemoteConfigError
 from dvc.exceptions import CollectCacheError, DvcException
+from dvc.log import logger
 from dvc.utils import dict_sha256, relpath
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class RunCacheNotFoundError(DvcException):

@@ -1,6 +1,6 @@
-import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import (
     ExperimentExistsError,
     UnresolvedExpNamesError,
@@ -13,7 +13,7 @@ from .refs import ExpRefInfo
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def rename(

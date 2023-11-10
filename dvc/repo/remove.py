@@ -1,7 +1,7 @@
-import logging
 import typing
 
 from dvc.dvcfile import DVC_FILE_SUFFIX
+from dvc.log import logger
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileIsNotDvcFileError,
@@ -13,7 +13,7 @@ from . import locked
 if typing.TYPE_CHECKING:
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked

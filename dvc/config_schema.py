@@ -1,4 +1,3 @@
-import logging
 import os
 from urllib.parse import urlparse
 
@@ -16,7 +15,9 @@ from voluptuous import (
     Schema,
 )
 
-logger = logging.getLogger(__name__)
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 Bool = All(
     Lower,

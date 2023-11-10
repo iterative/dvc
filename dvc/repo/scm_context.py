@@ -14,6 +14,7 @@ from typing import (
     Union,
 )
 
+from dvc.log import logger
 from dvc.utils import relpath
 from dvc.utils.collections import ensure_list
 
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from dvc.scm import Base
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class SCMContext:
