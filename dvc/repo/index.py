@@ -2,6 +2,7 @@ import logging
 import time
 from collections import defaultdict
 from functools import partial
+from itertools import chain
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -19,6 +20,7 @@ from typing import (
 
 from funcy.debug import format_time
 
+from dvc.dependency import ParamsDependency
 from dvc.fs import LocalFileSystem
 from dvc.fs.callbacks import DEFAULT_CALLBACK
 from dvc.log import logger
@@ -28,7 +30,7 @@ if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
 
-    from dvc.dependency import Dependency, ParamsDependency
+    from dvc.dependency import Dependency
     from dvc.fs.callbacks import Callback
     from dvc.output import Output
     from dvc.repo import Repo
@@ -411,6 +413,24 @@ class Index:
         return dict(by_workspace)
 
     @cached_property
+    def param_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from .params.show import _collect_top_level_params
+
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+        by_workspace["repo"] = set()
+
+        param_paths = _collect_top_level_params(self.repo)
+        default_file: str = ParamsDependency.DEFAULT_PARAMS_FILE
+        if self.repo.fs.exists(f"{self.repo.fs.root_marker}{default_file}"):
+            param_paths = chain(param_paths, [default_file])
+
+        for path in param_paths:
+            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            by_workspace["repo"].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
     def plot_keys(self) -> Dict[str, Set["DataIndexKey"]]:
         by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
 
@@ -550,6 +570,8 @@ class Index:
                 keys = self.plot_keys
             elif typ == "metrics":
                 keys = self.metric_keys
+            elif typ == "params":
+                keys = self.param_keys
             else:
                 raise ValueError(f"unsupported type {typ}")
 
