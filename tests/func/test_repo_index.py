@@ -315,3 +315,26 @@ def test_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
     (stage,) = tmp_dir.dvc_gen({"data/raw/tracked.csv": "5,6,7,8"})
     index = Index.from_repo(dvc)
     assert index.stages == [stage]
+
+
+def test_param_keys_returns_default_file(tmp_dir, dvc):
+    tmp_dir.gen({"params.yaml": "param: 100\n"})
+    index = Index.from_repo(dvc)
+    assert index.param_keys == {"repo": {("params.yaml",)}}
+
+
+def test_param_keys_no_params(dvc):
+    index = Index.from_repo(dvc)
+    assert index.param_keys == {"repo": set()}
+
+
+def test_param_keys_top_level_params(tmp_dir, dvc):
+    params_file_path = "classifier/custom_params_file.yaml"
+    top_level_params = f"""
+params:
+  - {params_file_path}
+    """
+    tmp_dir.gen(params_file_path, "param: 100\n")
+    tmp_dir.gen("dvc.yaml", top_level_params)
+    index = Index.from_repo(dvc)
+    assert index.param_keys == {"repo": {("classifier", "custom_params_file.yaml")}}
