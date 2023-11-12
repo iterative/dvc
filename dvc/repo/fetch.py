@@ -157,6 +157,10 @@ def fetch(  # noqa: PLR0913
     data, unversioned_count = _log_unversioned(data)
     failed_count += unversioned_count
 
+    if onerror:
+        for fs_index in data:
+            fs_index.onerror = _make_index_onerror(onerror, None)
+
     with ui.progress(
         desc="Fetching",
         bar_format="{desc}",
