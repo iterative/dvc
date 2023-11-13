@@ -46,7 +46,7 @@ ANNOTATION_SCHEMA = {
     Annotation.PARAM_LABELS: [str],
     Annotation.PARAM_META: object,
 }
-ARTIFACT_SCHEMA = {
+ARTIFACT_SCHEMA: Dict[Any, Any] = {
     Required(Artifact.PARAM_PATH): str,
     **ANNOTATION_SCHEMA,  # type: ignore[arg-type]
 }
