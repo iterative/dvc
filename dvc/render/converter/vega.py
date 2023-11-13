@@ -218,9 +218,9 @@ class VegaConverter(Converter):
 
         all_datapoints = []
         if ys:
-            all_y_files, all_y_fields = list(zip(*ys))
-            all_y_fields = set(all_y_fields)
-            all_y_files = set(all_y_files)
+            _all_y_files, _all_y_fields = list(zip(*ys))
+            all_y_fields = set(_all_y_fields)
+            all_y_files = set(_all_y_files)
         else:
             all_y_files = set()
             all_y_fields = set()
@@ -233,7 +233,7 @@ class VegaConverter(Converter):
 
         # get common prefix to drop from file names
         if len(all_y_files) > 1:
-            common_prefix_len = len(os.path.commonpath(all_y_files))
+            common_prefix_len = len(os.path.commonpath(list(all_y_files)))
         else:
             common_prefix_len = 0
 

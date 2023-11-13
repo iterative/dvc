@@ -4,11 +4,11 @@ import posixpath
 from collections import defaultdict
 from contextlib import suppress
 from operator import itemgetter
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Type, Union
 from urllib.parse import urlparse
 
+import voluptuous as vol
 from funcy import collecting, first, project
-from voluptuous import All, And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
 from dvc.exceptions import (
@@ -50,16 +50,16 @@ if TYPE_CHECKING:
 logger = logger.getChild(__name__)
 
 
-CHECKSUM_SCHEMA = Any(
+CHECKSUM_SCHEMA = vol.Any(
     None,
-    And(str, Length(max=0), SetTo(None)),
-    And(Any(str, And(int, Coerce(str))), Length(min=3), Lower),
+    vol.And(str, vol.Length(max=0), vol.SetTo(None)),
+    vol.And(vol.Any(str, vol.And(int, vol.Coerce(str))), vol.Length(min=3), vol.Lower),
 )
 
-CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
+CASE_SENSITIVE_CHECKSUM_SCHEMA = vol.Any(
     None,
-    And(str, Length(max=0), SetTo(None)),
-    And(Any(str, And(int, Coerce(str))), Length(min=3)),
+    vol.And(str, vol.Length(max=0), vol.SetTo(None)),
+    vol.And(vol.Any(str, vol.And(int, vol.Coerce(str))), vol.Length(min=3)),
 )
 
 # NOTE: currently there are only 3 possible checksum names:
@@ -1518,21 +1518,21 @@ META_SCHEMA = {
     Meta.PARAM_VERSION_ID: str,
 }
 
-CLOUD_SCHEMA = All({str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}}, Length(max=1))
+CLOUD_SCHEMA = vol.All({str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}}, vol.Length(max=1))
 
-ARTIFACT_SCHEMA = {
+ARTIFACT_SCHEMA: Dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
-    Required(Output.PARAM_PATH): str,
+    vol.Required(Output.PARAM_PATH): str,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
     Output.PARAM_HASH: str,
 }
 
-DIR_FILES_SCHEMA: Dict[str, Any] = {
+DIR_FILES_SCHEMA: Dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
-    Required(Tree.PARAM_RELPATH): str,
+    vol.Required(Tree.PARAM_RELPATH): str,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
 }
 

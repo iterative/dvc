@@ -145,7 +145,8 @@ def show_stack():
         signal.signal(signal.SIGQUIT, _sigshow)
 
     try:
-        signal.signal(signal.SIGINFO, _sigshow)  # only available on macOS
+        # only available on macOS
+        signal.signal(signal.SIGINFO, _sigshow)  # type: ignore[attr-defined]
     except AttributeError:
         pass
     yield

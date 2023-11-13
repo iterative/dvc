@@ -1,7 +1,7 @@
 from copy import deepcopy
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
-from voluptuous import Any, Required
+import voluptuous as vol
 
 from dvc.utils import as_posix
 
@@ -22,11 +22,11 @@ class RepoDependency(Dependency):
 
     REPO_SCHEMA = {
         PARAM_REPO: {
-            Required(PARAM_URL): str,
+            vol.Required(PARAM_URL): str,
             PARAM_REV: str,
             PARAM_REV_LOCK: str,
-            PARAM_CONFIG: Any(str, dict),
-            PARAM_REMOTE: Any(str, dict),
+            PARAM_CONFIG: vol.Any(str, dict),
+            PARAM_REMOTE: vol.Any(str, dict),
         }
     }
 
