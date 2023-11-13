@@ -371,10 +371,11 @@ class Repo:
         return self._data_index
 
     def drop_data_index(self) -> None:
-        try:
-            self.data_index.delete_node(("tree",))
-        except KeyError:
-            pass
+        for key in self.data_index.ls((), detail=False):
+            try:
+                self.data_index.delete_node(key)
+            except KeyError:
+                pass
         self.data_index.commit()
         self._reset()
 
@@ -626,7 +627,7 @@ class Repo:
         # components were changed (useful to prevent newer dvc versions from
         # using older broken cache). Please reset this back to 0 if other parts
         # of the token components are changed.
-        salt = 1
+        salt = 2
 
         # NOTE: This helps us avoid accidentally reusing cache for repositories
         # that just happened to be at the same path as old deleted ones.
