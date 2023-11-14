@@ -172,6 +172,8 @@ class TestRemoteVersionAware:
         run_copy("foo", "foo_copy", name="copy")
 
         dvc.push()
+        assert (remote_version_aware / "foo").read_text() == "foo"
+        assert (remote_version_aware / "foo_copy").read_text() == "foo"
         foo_dvc = (tmp_dir / "foo.dvc").read_text()
         assert "version_id" in foo_dvc
         stage = stage.reload()
@@ -181,18 +183,24 @@ class TestRemoteVersionAware:
 
         remove(dvc.cache.local.path)
         remove(tmp_dir / "foo")
+        remove(tmp_dir / "foo_copy")
 
         dvc.pull()
         assert (tmp_dir / "foo").read_text() == "foo"
+        assert (tmp_dir / "foo_copy").read_text() == "foo"
         assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
         dvc.push()
+        assert (remote_version_aware / "foo").read_text() == "foo"
+        assert (remote_version_aware / "foo_copy").read_text() == "foo"
         assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
         dvc.reproduce()
         dvc.push()
+        assert (remote_version_aware / "foo").read_text() == "foo"
+        assert (remote_version_aware / "foo_copy").read_text() == "foo"
         assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
@@ -240,6 +248,12 @@ class TestRemoteVersionAware:
         dvc.push()
         assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+        dvc.cache.local.clear()
+        remove(tmp_dir / "data_dir")
+        dvc.push()
+        assert (remote_version_aware / "data_dir").exists()
+        assert (remote_version_aware / "data_dir" / "data").exists()
 
 
 class TestRemoteWorktree:

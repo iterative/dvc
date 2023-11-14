@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 from dvc.exceptions import DownloadError
 from dvc.log import logger
@@ -6,6 +6,10 @@ from dvc.ui import ui
 from dvc_data.index import DataIndex, FileStorage
 
 from . import locked
+
+if TYPE_CHECKING:
+    from dvc.output import Output
+    from dvc.stage import Stage
 
 logger = logger.getChild(__name__)
 
@@ -32,6 +36,7 @@ def _collect_indexes(  # noqa: PLR0913
     types=None,
     config=None,
     onerror=None,
+    push=False,
 ):
     indexes = {}
     collection_exc = None
@@ -41,6 +46,16 @@ def _collect_indexes(  # noqa: PLR0913
         core = config.get("core") or {}
         core["remote"] = remote
         config["core"] = core
+
+    def stage_filter(stage: "Stage") -> bool:
+        if push and stage.is_repo_import:
+            return False
+        return True
+
+    def outs_filter(out: "Output") -> bool:
+        if push and not out.can_push:
+            return False
+        return True
 
     for rev in repo.brancher(
         revs=revs,
@@ -57,6 +72,8 @@ def _collect_indexes(  # noqa: PLR0913
                 recursive=recursive,
                 max_size=max_size,
                 types=types,
+                stage_filter=stage_filter,
+                outs_filter=outs_filter,
             )
 
             idx.data["repo"].onerror = _make_index_onerror(onerror, rev)

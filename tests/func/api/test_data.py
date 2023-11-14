@@ -41,7 +41,7 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
             # NOTE: need file to be other size for Mac
             erepo_dir.dvc_gen("version", "branchver", commit="add version")
 
-    erepo_dir.dvc.push(all_branches=True)
+    assert erepo_dir.dvc.push(all_branches=True) == 2
 
     # Remove cache to force download
     remove(erepo_dir.dvc.cache.local.path)
