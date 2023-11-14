@@ -87,6 +87,7 @@ def push(  # noqa: PLR0913
         recursive=recursive,
         all_commits=all_commits,
         revs=revs,
+        push=True,
     )
 
     cache_key = (
@@ -107,6 +108,7 @@ def push(  # noqa: PLR0913
             push=True,
         )
 
+    push_transferred, push_failed = 0, 0
     try:
         with ui.progress(
             desc="Pushing",
@@ -130,6 +132,11 @@ def push(  # noqa: PLR0913
 
         for fs_index in data:
             fs_index.close()
+
+        if push_transferred:
+            # NOTE: dropping cached index to force reloading from newly saved
+            # metadata from version-aware remotes
+            self.drop_data_index()
 
     transferred_count += push_transferred
     failed_count += push_failed
