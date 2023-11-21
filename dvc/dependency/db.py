@@ -24,6 +24,12 @@ PARAM_PROFILE = "profile"
 PARAM_FILE_FORMAT = "file_format"
 
 
+def _get_db_config(config: Dict) -> Dict:
+    conf = config.get("feature", {})
+    pref = "db_"
+    return {k.lstrip(pref): v for k, v in conf.items() if k.startswith(pref)}
+
+
 @contextmanager
 def log_status(msg, log=logger.debug) -> Iterator["Status"]:
     from funcy import log_durations
@@ -105,7 +111,7 @@ class DbDependency(AbstractDependency):
 
         from dvc.utils.db import _check_dbt, _profiles_dir, execute_sql
 
-        db_config = self.repo.config.get("db", {})
+        db_config = _get_db_config(self.repo.config)
         profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
         target = self.target or db_config.get("target")
         file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
@@ -259,7 +265,7 @@ class DbtDependency(AbstractDependency):
         if not model:
             raise DvcException("Cannot download, no model specified")
 
-        db_config = self.repo.config.get("db", {})
+        db_config = _get_db_config(self.repo.config)
         version = version or db_info.get(self.PARAM_VERSION)
         profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
         target = self.target or db_info.get("target")
