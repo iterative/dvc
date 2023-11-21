@@ -22,21 +22,24 @@ SCHEMA: Mapping[str, Any] = {
 
 
 def _get(stage, p, info, **kwargs):
+    if not info:
+        assert p
+        return Dependency(stage, p, info, **kwargs)
+
     db = info.get(PARAM_DB, {})
+    repo = info.pop(RepoDependency.PARAM_REPO, None)
+    params = info.pop(ParamsDependency.PARAM_PARAMS, None)
+
     if DbDependency.PARAM_QUERY in db:
         return DbDependency(stage, info)
     if db:
-        repo = info.pop(RepoDependency.PARAM_REPO, None)
         return DbtDependency(repo, stage, info)
 
-    if info and info.get(RepoDependency.PARAM_REPO):
-        repo = info.pop(RepoDependency.PARAM_REPO)
+    assert p
+    if repo:
         return RepoDependency(repo, stage, p, info)
-
-    if info and info.get(ParamsDependency.PARAM_PARAMS):
-        params = info.pop(ParamsDependency.PARAM_PARAMS)
+    if params:
         return ParamsDependency(stage, p, params)
-
     return Dependency(stage, p, info, **kwargs)
 
 
