@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from dvc.exceptions import OutputDuplicationError
 from dvc.repo.scm_context import scm_context
+from dvc.ui import ui
 from dvc.utils import resolve_output, resolve_paths
 
 if TYPE_CHECKING:
@@ -23,24 +24,29 @@ def imp_db(  # noqa: PLR0913
     frozen: bool = True,
     profile: Optional[str] = None,
     target: Optional[str] = None,
-    export_format: str = "csv",
+    output_format: str = "csv",
     out: Optional[str] = None,
     force: bool = False,
 ):
+    ui.warn("WARNING: import-db is an experimental feature.")
+    ui.warn(
+        "The functionality may change or break without notice, "
+        "which could lead to unexpected behavior."
+    )
     erepo = None
     if model and url:
         erepo = {"url": url}
         if rev:
             erepo["rev"] = rev
 
-    assert export_format in ("csv", "json")
+    assert output_format in ("csv", "json")
 
-    db: Dict[str, Any] = {"export_format": export_format}
+    db: Dict[str, Any] = {"file_format": output_format}
     if profile:
         db["profile"] = profile
 
     if model:
-        out = out or f"{model}.{export_format}"
+        out = out or f"{model}.{output_format}"
         db.update({"model": model, "version": version, "project_dir": project_dir})
     else:
         out = out or "results.csv"

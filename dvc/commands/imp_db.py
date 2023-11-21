@@ -21,7 +21,7 @@ class CmdImportDb(CmdBase):
             model=self.args.model,
             profile=self.args.profile,
             target=self.args.target,
-            export_format=self.args.export_format,
+            output_format=self.args.output_format,
             out=self.args.out,
             force=self.args.force,
         )
@@ -66,7 +66,7 @@ def add_parser(subparsers, parent_parser):
     import_parser.add_argument("--profile", help="Profile to use")
     import_parser.add_argument("--target", help="Target to use")
     import_parser.add_argument(
-        "--export-format",
+        "--output-format",
         default="csv",
         const="csv",
         nargs="?",

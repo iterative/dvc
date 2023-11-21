@@ -44,9 +44,9 @@ def chdir(path):
         os.chdir(wdir)
 
 
-def export_to(table: "Table", to: str, export_format: str = "csv") -> None:
+def export_to(table: "Table", to: str, file_format: str = "csv") -> None:
     exporter = {"csv": table.to_csv, "json": table.to_json}
-    return exporter[export_format](to)
+    return exporter[file_format](to)
 
 
 class AbstractDependency(Dependency):
@@ -97,7 +97,7 @@ class DbDependency(AbstractDependency):
     def update(self, rev=None):
         """nothing to update."""
 
-    def download(self, to, jobs=None, export_format=None):  # noqa: ARG002
+    def download(self, to, jobs=None, file_format=None):  # noqa: ARG002
         db_info = self.info.get(PARAM_DB, {})
         query = db_info.get(self.PARAM_QUERY)
         if not query:
@@ -108,7 +108,7 @@ class DbDependency(AbstractDependency):
         db_config = self.repo.config.get("db", {})
         profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
         target = self.target or db_config.get("target")
-        export_format = export_format or db_info.get(PARAM_FILE_FORMAT, "csv")
+        file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
 
         _check_dbt(self.PARAM_QUERY)
         profiles_dir = _profiles_dir(self.repo.root_dir)
@@ -123,7 +123,7 @@ class DbDependency(AbstractDependency):
             )
         # NOTE: we keep everything in memory, and then export it out later.
         with log_status(f"Saving to {to}"):
-            return export_to(table, to.fs_path, export_format)
+            return export_to(table, to.fs_path, file_format)
 
 
 class DbtDependency(AbstractDependency):
@@ -231,7 +231,7 @@ class DbtDependency(AbstractDependency):
             rev = self.rev
         self.def_repo[RepoDependency.PARAM_REV_LOCK] = self._get_clone(rev).get_rev()
 
-    def download(self, to, jobs=None, export_format=None):  # noqa: ARG002
+    def download(self, to, jobs=None, file_format=None):  # noqa: ARG002
         from dvc.ui import ui
 
         from .repo import RepoDependency
@@ -248,10 +248,10 @@ class DbtDependency(AbstractDependency):
         project_path = os.path.join(wdir, project_dir) if project_dir else root
 
         with chdir(project_path):
-            self._download_db(to, export_format=export_format)
+            self._download_db(to, file_format=file_format)
         ui.write(f"Saved file to {to}", styled=True)
 
-    def _download_db(self, to, version=None, export_format=None):
+    def _download_db(self, to, version=None, file_format=None):
         from dvc.utils.db import get_model
 
         db_info = self.info.get(PARAM_DB, {})
@@ -263,13 +263,13 @@ class DbtDependency(AbstractDependency):
         version = version or db_info.get(self.PARAM_VERSION)
         profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
         target = self.target or db_info.get("target")
-        export_format = export_format or db_info.get(PARAM_FILE_FORMAT, "csv")
+        file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
 
         with log_status("Downloading model"):
             table = get_model(model, version=version, profile=profile, target=target)
         # NOTE: we keep everything in memory, and then export it out later.
         with log_status(f"Saving to {to}"):
-            export_to(table, to.fs_path, export_format=export_format)
+            export_to(table, to.fs_path, file_format=file_format)
 
 
 DB_SCHEMA = {
