@@ -1,6 +1,6 @@
-import importlib.util
 import os
 from contextlib import contextmanager
+from importlib.util import find_spec
 from typing import (
     TYPE_CHECKING,
     List,
@@ -30,8 +30,7 @@ class DbtInternalError(DvcException):
 
 
 def _check_dbt(action: Optional[str]):
-    # Using `dbt.cli` instead of `dbt`, as it is a namespace package.
-    if not importlib.util.find_spec("dbt.cli"):
+    if not (find_spec("dbt") and find_spec("dbt.cli")):
         action = f" {action}" if action else ""
         raise DvcException(f"Could not run{action}. dbt-core is not installed")
     packaging.check_required_version(pkg="dbt-core")
