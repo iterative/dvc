@@ -318,6 +318,8 @@ SCHEMA = {
     "feature": FeatureSchema(
         {
             Optional("machine", default=False): Bool,
+            "db_profile": str,
+            "db_target": str,
         },
     ),
     "plots": {

@@ -18,7 +18,13 @@ def _update_import_on_remote(stage, remote, jobs):
 
 
 def update_import(
-    stage, rev=None, to_remote=False, remote=None, no_download=None, jobs=None
+    stage,
+    rev=None,
+    to_remote=False,
+    remote=None,
+    no_download=None,
+    jobs=None,
+    force=False,
 ):
     stage.deps[0].update(rev=rev)
 
@@ -30,7 +36,7 @@ def update_import(
         if to_remote:
             _update_import_on_remote(stage, remote, jobs)
         else:
-            stage.reproduce(no_download=no_download, jobs=jobs)
+            stage.reproduce(no_download=no_download, jobs=jobs, force=force)
     finally:
         if no_download and changed:
             # Avoid retaining stale information
@@ -55,7 +61,7 @@ def sync_import(
     else:
         stage.save_deps()
         if no_download:
-            if stage.is_repo_import:
+            if stage.is_repo_import or stage.is_db_import:
                 stage.deps[0].update()
         else:
             stage.deps[0].download(

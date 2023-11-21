@@ -135,6 +135,8 @@ def build_graph(stages, outs_trie=None):
     for stage in stages:
         if stage.is_repo_import:
             continue
+        if stage.is_db_import:
+            continue
 
         for dep in stage.deps:
             dep_key = dep.fs.path.parts(dep.fs_path)
@@ -159,6 +161,8 @@ def build_outs_graph(graph, outs_trie):
     outs_graph.add_nodes_from(outs_trie.values())
     for stage in graph.nodes():
         if stage.is_repo_import:
+            continue
+        if stage.is_db_import:
             continue
         for dep in stage.deps:
             dep_key = dep.fs.path.parts(dep.fs_path)

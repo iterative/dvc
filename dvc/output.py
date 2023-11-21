@@ -1523,7 +1523,7 @@ CLOUD_SCHEMA = vol.All({str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}}, vol.Length(ma
 ARTIFACT_SCHEMA: Dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
-    vol.Required(Output.PARAM_PATH): str,
+    Output.PARAM_PATH: str,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
     Output.PARAM_HASH: str,

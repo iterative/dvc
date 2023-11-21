@@ -71,7 +71,8 @@ dependencies = [
 [project.optional-dependencies]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
 azure = ["dvc-azure>=2.23.0"]
-dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,tests,webdav,webhdfs]"]
+db = ["dbt-core>=1.5"]
+dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,tests,webdav,webhdfs,db]"]
 gdrive = ["dvc-gdrive==2.20"]
 gs = ["dvc-gs==2.22.1"]
 hdfs = ["dvc-hdfs==2.19"]
@@ -207,6 +208,7 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = [
+    "agate.*",
     "celery.*",
     "configobj.*",
     "dpath.*",
