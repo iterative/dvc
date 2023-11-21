@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, Union
 
 from funcy import compact
 
@@ -12,6 +12,7 @@ from .base import Dependency
 
 if TYPE_CHECKING:
     from agate import Table
+    from rich.status import Status
 
     from dvc.stage import Stage
 
@@ -20,17 +21,17 @@ logger = logger.getChild(__name__)
 
 PARAM_DB = "db"
 PARAM_PROFILE = "profile"
-PARAM_EXPORT_FORMAT = "export_format"  # TODO: kebab-case or snake_case?
+PARAM_FILE_FORMAT = "file_format"
 
 
 @contextmanager
-def log_status(msg, log=logger.debug):
+def log_status(msg, log=logger.debug) -> Iterator["Status"]:
     from funcy import log_durations
 
     from dvc.ui import ui
 
-    with log_durations(log, msg), ui.status(msg):
-        yield
+    with log_durations(log, msg), ui.status(msg) as status:
+        yield status
 
 
 @contextmanager
@@ -97,26 +98,30 @@ class DbDependency(AbstractDependency):
         """nothing to update."""
 
     def download(self, to, jobs=None, export_format=None):  # noqa: ARG002
-        from dvc.utils.db import _profiles_dir, execute_sql
-
         db_info = self.info.get(PARAM_DB, {})
         query = db_info.get(self.PARAM_QUERY)
         if not query:
             raise DvcException("Cannot download: no query specified")
 
+        from dvc.utils.db import _check_dbt, _profiles_dir, execute_sql
+
         db_config = self.repo.config.get("db", {})
-
-        profiles_dir = _profiles_dir(self.repo.root_dir)
         profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
-
         target = self.target or db_config.get("target")
+        export_format = export_format or db_info.get(PARAM_FILE_FORMAT, "csv")
 
-        with log_status("Executing query"):
+        _check_dbt(self.PARAM_QUERY)
+        profiles_dir = _profiles_dir(self.repo.root_dir)
+        with log_status("Executing query") as status:
             table = execute_sql(
-                query, profiles_dir, self.repo.root_dir, profile, target=target
+                query,
+                profiles_dir,
+                self.repo.root_dir,
+                profile,
+                target=target,
+                status=status,
             )
-
-        export_format = export_format or db_info.get(PARAM_EXPORT_FORMAT, "csv")
+        # NOTE: we keep everything in memory, and then export it out later.
         with log_status(f"Saving to {to}"):
             return export_to(table, to.fs_path, export_format)
 
@@ -241,6 +246,7 @@ class DbtDependency(AbstractDependency):
             wdir = self.stage.wdir
 
         project_path = os.path.join(wdir, project_dir) if project_dir else root
+
         with chdir(project_path):
             self._download_db(to, export_format=export_format)
         ui.write(f"Saved file to {to}", styled=True)
@@ -257,11 +263,11 @@ class DbtDependency(AbstractDependency):
         version = version or db_info.get(self.PARAM_VERSION)
         profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
         target = self.target or db_info.get("target")
+        export_format = export_format or db_info.get(PARAM_FILE_FORMAT, "csv")
 
         with log_status("Downloading model"):
             table = get_model(model, version=version, profile=profile, target=target)
-
-        export_format = export_format or db_info.get(PARAM_EXPORT_FORMAT, "csv")
+        # NOTE: we keep everything in memory, and then export it out later.
         with log_status(f"Saving to {to}"):
             export_to(table, to.fs_path, export_format=export_format)
 
@@ -269,7 +275,7 @@ class DbtDependency(AbstractDependency):
 DB_SCHEMA = {
     PARAM_DB: {
         PARAM_PROFILE: str,
-        PARAM_EXPORT_FORMAT: str,
+        PARAM_FILE_FORMAT: str,
         **DbDependency.QUERY_SCHEMA,
         **DbtDependency.DBT_SCHEMA,
     },
