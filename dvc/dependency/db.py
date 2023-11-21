@@ -135,7 +135,7 @@ class DbDependency(AbstractDependency):
 class DbtDependency(AbstractDependency):
     PARAM_MODEL = "model"
     PARAM_VERSION = "version"
-    PARAM_PROJECT_DIR = "project_dir"  # TODO: kebab-case or snake_case?
+    PARAM_PROJECT_DIR = "project_dir"
     DBT_SCHEMA = {
         PARAM_MODEL: str,
         PARAM_VERSION: str,
