@@ -9,35 +9,36 @@ data2 = Table([(i, i) for i in range(10, 20)], ["id", "value"])
 def test_sql(mocker, tmp_dir, dvc):
     mocker.patch("dvc.utils.db.execute_sql", side_effect=[data1, data2])
     stage = dvc.imp_db(
-        sql="select * from model", profile="profile", output_format="csv"
+        sql="select * from model", profile="profile", output_format="json"
     )
 
-    db = {"file_format": "csv", "profile": "profile", "query": "select * from model"}
+    db = {"file_format": "json", "profile": "profile", "query": "select * from model"}
+
     assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "af4810b5c2caaba8397383e5a7f4962f",
+        "md5": "dae475048115315c8c26a10538e4b2ec",
         "frozen": True,
         "deps": [{"db": db}],
         "outs": [
             {
-                "md5": "b3192d487fc41364dbc7e6f2b09f5018",
-                "size": 45,
                 "hash": "md5",
-                "path": "results.csv",
+                "md5": "56226d443067b195c90b427db557e1f2",
+                "path": "results.json",
+                "size": 243,
             }
         ],
     }
 
     dvc.update(stage.addressing)
     assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "72938294b93ab8f66eab8464b13d3b49",
+        "md5": "79b42f9ddb2a3ed999eb494ccab470c6",
         "frozen": True,
         "deps": [{"db": db}],
         "outs": [
             {
-                "md5": "261b6552650139a1de234935ebe1155a",
-                "size": 69,
                 "hash": "md5",
-                "path": "results.csv",
+                "md5": "08d806ee7e1f309c4561750805f02276",
+                "path": "results.json",
+                "size": 290,
             }
         ],
     }
@@ -45,33 +46,33 @@ def test_sql(mocker, tmp_dir, dvc):
 
 def test_model(mocker, tmp_dir, dvc):
     mocker.patch("dvc.utils.db.get_model", side_effect=[data1, data2])
-    stage = dvc.imp_db(model="model", output_format="csv")
+    stage = dvc.imp_db(model="model", output_format="json")
 
     assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "0c398e09fd89633dd296b3ad1bad7d45",
+        "md5": "a8157fb5b28457e1910506e9d4d4fca3",
         "frozen": True,
-        "deps": [{"db": {"file_format": "csv", "model": "model"}}],
+        "deps": [{"db": {"file_format": "json", "model": "model"}}],
         "outs": [
             {
-                "md5": "b3192d487fc41364dbc7e6f2b09f5018",
-                "size": 45,
                 "hash": "md5",
-                "path": "model.csv",
+                "md5": "56226d443067b195c90b427db557e1f2",
+                "path": "model.json",
+                "size": 243,
             }
         ],
     }
 
     dvc.update(stage.addressing)
     assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "b542acb4ec4efb0354af6b6e95d3c13a",
+        "md5": "2f84287f109fc2b8755a9e64ad910b5d",
         "frozen": True,
-        "deps": [{"db": {"file_format": "csv", "model": "model"}}],
+        "deps": [{"db": {"file_format": "json", "model": "model"}}],
         "outs": [
             {
-                "md5": "261b6552650139a1de234935ebe1155a",
-                "size": 69,
                 "hash": "md5",
-                "path": "model.csv",
+                "md5": "08d806ee7e1f309c4561750805f02276",
+                "path": "model.json",
+                "size": 290,
             }
         ],
     }
