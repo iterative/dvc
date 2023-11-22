@@ -49,7 +49,7 @@ def imp_db(  # noqa: PLR0913
         out = out or f"{model}.{output_format}"
         db.update({"model": model, "version": version, "project_dir": project_dir})
     else:
-        out = out or "results.csv"
+        out = out or f"results.{output_format}"
         db["query"] = sql
 
     out = resolve_output(url or ".", out, force=force)
