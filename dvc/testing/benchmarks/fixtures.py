@@ -9,7 +9,6 @@ import virtualenv
 from dulwich.porcelain import clone
 from funcy import first
 from packaging import version
-from pytest_benchmark.utils import subprocess
 
 from dvc.types import StrPath
 
@@ -20,17 +19,16 @@ def bench_config(request):
 
 
 class VirtualEnv:
-    def __init__(self, path: StrPath = os.curdir) -> None:
+    def __init__(self, path: StrPath) -> None:
         self.path = Path(path)
         self.bin = self.path / ("Scripts" if os.name == "nt" else "bin")
 
     def create(self) -> None:
-        assert not self.path.exists()
         virtualenv.cli_run([os.fspath(self.path)])
 
     def run(self, cmd: str, *args: str, env: Optional[Dict[str, str]] = None) -> None:
         exe = self.which(cmd)
-        subprocess.check_output([exe, *args], env=env)
+        check_output([exe, *args], env=env) # noqa: S603
 
     def which(self, cmd: str) -> str:
         assert self.bin.exists()
