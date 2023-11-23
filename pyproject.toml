@@ -90,9 +90,9 @@ s3 = ["dvc-s3==2.23.0"]
 ssh = ["dvc-ssh>=2.22.1,<3"]
 ssh_gssapi = ["dvc-ssh[gssapi]>=2.22.1,<3"]
 testing = [
-  "pytest-test-utils",
   "pytest-benchmark[histogram]",
-  "pytest-virtualenv",
+  "pytest-test-utils",
+  "virtualenv",
 ]
 tests = [
     "dvc[testing]",
@@ -156,8 +156,6 @@ filterwarnings = [
     # google.logging: https://github.com/googleapis/python-logging/issues/730
     # Also happens with `zc.lockfile`.
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
-    # tpi imports pkg_resources
-    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
     # see https://github.com/networkx/networkx/issues/5723.
     "ignore:nx.nx_pydot.* depends on the pydot package, which has.*known issues and is not actively maintained:DeprecationWarning",
 ]
@@ -230,12 +228,11 @@ module = [
     "pyparsing",
     "pytest_benchmark.*",
     "pytest_docker.plugin",
-    "pytest_virtualenv.*",
     "ruamel.*",
     "ruamel.yaml.*",
     "shortuuid",
     "shtab",
-    "tpi.*",
+    "virtualenv",
     "viztracer",
     "voluptuous",
     "yappi",
