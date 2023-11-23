@@ -15,7 +15,7 @@ def system_config_dir():
 
 
 def global_config_dir():
-    return os.getenv(env.DVC_SYSTEM_CONFIG_DIR) or platformdirs.user_config_dir(
+    return os.getenv(env.DVC_GLOBAL_CONFIG_DIR) or platformdirs.user_config_dir(
         APPNAME, APPAUTHOR
     )
 
