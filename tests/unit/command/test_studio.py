@@ -1,5 +1,7 @@
 from unittest import mock
 
+from dvc_studio_client.auth import AuthorizationExpired
+
 from dvc.cli import main
 from dvc.commands.studio import DEFAULT_SCOPES
 from dvc.utils.studio import STUDIO_URL
@@ -9,6 +11,7 @@ MOCK_RESPONSE = {
     "user_code": "MOCKCODE",
     "device_code": "random-value",
     "token_uri": STUDIO_URL + "/api/device-login/token",
+    "token_name": "random-name",
 }
 
 
@@ -22,7 +25,7 @@ def test_studio_login_token_check_failed(
     mock_start_device_login, mock_check_token_authorization
 ):
     mock_start_device_login.return_value = MOCK_RESPONSE
-    mock_check_token_authorization.return_value = None
+    mock_check_token_authorization.side_effect = AuthorizationExpired
 
     assert main(["studio", "login"]) == 1
 

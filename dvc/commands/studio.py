@@ -1,87 +1,46 @@
 import argparse
-import logging
 import os
 
 from funcy import get_in
 
-from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.commands.config import CmdConfig
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 DEFAULT_SCOPES = "live,dvc_experiment,view_url,dql,download_model"
-AVAILABLE_SCOPES = ["live", "dvc_experiment", "view_url", "dql", "download_model"]
 
 
-class CmdStudioLogin(CmdBase):
+class CmdStudioLogin(CmdConfig):
     def run(self):
-        from dvc_studio_client.auth import check_token_authorization
+        from dvc_studio_client.auth import StudioAuthError, initiate_authorization
 
         from dvc.env import DVC_STUDIO_URL
-        from dvc.repo.experiments.utils import gen_random_name
         from dvc.ui import ui
         from dvc.utils.studio import STUDIO_URL
 
-        name = self.args.name or gen_random_name()
+        name = self.args.name
         hostname = self.args.hostname or os.environ.get(DVC_STUDIO_URL) or STUDIO_URL
+        scopes = self.args.scopes or DEFAULT_SCOPES
 
         try:
-            device_code, token_uri = self.initiate_authorization(name, hostname)
-        except ValueError as e:
-            ui.error_write(str(e))
-            return 1
-
-        access_token = check_token_authorization(uri=token_uri, device_code=device_code)
-        if not access_token:
-            ui.write(
-                "failed to authenticate: This 'device_code' has expired.(expired_token)"
+            token_name, access_token = initiate_authorization(
+                name=name,
+                hostname=hostname,
+                scopes=scopes,
+                use_device_code=self.args.use_device_code,
             )
+        except StudioAuthError as e:
+            ui.error_write(str(e))
             return 1
 
         self.save_config(hostname, access_token)
         ui.write(
             f"Authentication successful. The token will be "
-            f"available as {name} in Studio profile."
+            f"available as {token_name} in Studio profile."
         )
         return 0
-
-    def initiate_authorization(self, name, hostname):
-        import webbrowser
-
-        from dvc_studio_client.auth import start_device_login
-
-        from dvc.ui import ui
-
-        scopes = self.args.scopes or DEFAULT_SCOPES
-
-        response = start_device_login(
-            client_name="dvc",
-            base_url=hostname,
-            token_name=name,
-            scopes=scopes.split(","),
-        )
-        verification_uri = response["verification_uri"]
-        user_code = response["user_code"]
-        device_code = response["device_code"]
-        token_uri = response["token_uri"]
-
-        opened = False
-        if not self.args.use_device_code:
-            ui.write(
-                f"A web browser has been opened at \n{verification_uri}.\n"
-                f"Please continue the login in the web browser.\n"
-                f"If no web browser is available or if the web browser fails to open,\n"
-                f"use device code flow with `dvc studio login --use-device-code`."
-            )
-            url = f"{verification_uri}?code={user_code}"
-            opened = webbrowser.open(url)
-
-        if not opened:
-            ui.write(
-                f"Please open the following url in your browser.\n{verification_uri}"
-            )
-            ui.write(f"And enter the user code below {user_code} to authorize.")
-        return device_code, token_uri
 
     def save_config(self, hostname, token):
         with self.config.edit("global") as conf:
@@ -89,7 +48,7 @@ class CmdStudioLogin(CmdBase):
             conf["studio"]["url"] = hostname
 
 
-class CmdStudioLogout(CmdBase):
+class CmdStudioLogout(CmdConfig):
     def run(self):
         from dvc.ui import ui
 
@@ -104,7 +63,7 @@ class CmdStudioLogout(CmdBase):
         return 0
 
 
-class CmdStudioToken(CmdBase):
+class CmdStudioToken(CmdConfig):
     def run(self):
         from dvc.ui import ui
 

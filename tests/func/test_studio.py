@@ -24,7 +24,6 @@ def test_auth_expired(mocker, M):
         json={
             "client_name": "dvc",
             "scopes": DEFAULT_SCOPES.split(","),
-            "token_name": M.any,
         },
         headers={"Content-type": "application/json"},
         timeout=5,
