@@ -2,11 +2,15 @@ import os
 import shutil
 from pathlib import Path
 from subprocess import check_output
+from typing import Dict, Optional
 
 import pytest
+import virtualenv
 from dulwich.porcelain import clone
 from funcy import first
 from packaging import version
+
+from dvc.types import StrPath
 
 
 @pytest.fixture(scope="session")
@@ -14,14 +18,31 @@ def bench_config(request):
     return request.config.bench_config
 
 
+class VirtualEnv:
+    def __init__(self, path: StrPath) -> None:
+        self.path = Path(path)
+        self.bin = self.path / ("Scripts" if os.name == "nt" else "bin")
+
+    def create(self) -> None:
+        virtualenv.cli_run([os.fspath(self.path)])
+
+    def run(self, cmd: str, *args: str, env: Optional[Dict[str, str]] = None) -> None:
+        exe = self.which(cmd)
+        check_output([exe, *args], env=env)  # noqa: S603
+
+    def which(self, cmd: str) -> str:
+        assert self.bin.exists()
+        return shutil.which(cmd, path=self.bin) or cmd
+
+
 @pytest.fixture(scope="session")
 def make_dvc_venv(tmp_path_factory):
     def _make_dvc_venv(name):
-        from pytest_virtualenv import VirtualEnv
-
         name = _sanitize_venv_name(name)
         venv_dir = tmp_path_factory.mktemp(f"dvc-venv-{name}")
-        return VirtualEnv(workspace=venv_dir)
+        venv = VirtualEnv(venv_dir)
+        venv.create()
+        return venv
 
     return _make_dvc_venv
 
@@ -74,16 +95,16 @@ def make_dvc_bin(
         venv = dvc_venvs.get(dvc_rev)
         if not venv:
             venv = make_dvc_venv(dvc_rev)
-            venv.run("pip install -U pip")
+            venv.run("pip", "install", "-U", "pip")
             if bench_config.dvc_install_deps:
                 egg = f"dvc[{bench_config.dvc_install_deps}]"
             else:
                 egg = "dvc"
-            venv.run(f"pip install git+file://{dvc_git_repo}@{dvc_rev}#egg={egg}")
+            venv.run("pip", "install", f"git+file://{dvc_git_repo}@{dvc_rev}#egg={egg}")
             if dvc_rev in ["2.18.1", "2.11.0", "2.6.3"]:
-                venv.run("pip install fsspec==2022.11.0")
+                venv.run("pip", "install", "fsspec==2022.11.0")
             dvc_venvs[dvc_rev] = venv
-        dvc_bin = venv.virtualenv / "bin" / "dvc"
+        dvc_bin = venv.which("dvc")
     else:
         dvc_bin = bench_config.dvc_bin
 
