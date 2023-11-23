@@ -28,7 +28,7 @@ class VirtualEnv:
 
     def run(self, cmd: str, *args: str, env: Optional[Dict[str, str]] = None) -> None:
         exe = self.which(cmd)
-        check_output([exe, *args], env=env) # noqa: S603
+        check_output([exe, *args], env=env)  # noqa: S603
 
     def which(self, cmd: str) -> str:
         assert self.bin.exists()
