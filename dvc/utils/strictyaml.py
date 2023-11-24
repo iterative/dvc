@@ -8,10 +8,13 @@ Not to be confused with strictyaml, a python library with similar motivations.
 """
 import re
 import typing
-from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar
 
+import dpath
+from ruamel.yaml.comments import CommentedMap, CommentedSeq, LineCol
+
 from dvc.exceptions import PrettyDvcException
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils.serialize import (
     EncodingError,
@@ -31,6 +34,7 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 merge_conflict_marker = re.compile("^([<=>]{7}) .*$", re.MULTILINE)
+logger = logger.getChild(__name__)
 
 
 def make_relpath(path: str) -> str:
@@ -141,49 +145,53 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             ui.error_write(line, styled=True)
 
 
-def determine_linecol(
-    data, paths, max_steps=5
-) -> Tuple[Optional[int], Optional[int], int]:
-    """Determine linecol from the CommentedMap for the `paths` location.
-
-    CommentedMap from `ruamel.yaml` has `.lc` property from which we can read
-    `.line` and `.col`. This is available in the collections type,
-    i.e. list and dictionaries.
-
-    But this may fail on non-collection types. For example, if the `paths` is
-    ['stages', 'metrics'], metrics being a boolean type does not have `lc`
-    prop.
-    ```
-    stages:
-      metrics: true
-    ```
-
-    To provide some context to the user, we step up to the
-    path ['stages'], which being a collection type, will have `lc` prop
-    with which we can find line and col.
-
-    This may end up being not accurate, so we try to show the same amount of
-    lines of code for `n` number of steps taken upwards. In a worst case,
-    it may be just 1 step (as non-collection item cannot have child items),
-    but `schema validator` may provide us arbitrary path. So, this caps the
-    number of steps upward to just 5. If it does not find any linecols, it'll
-    abort.
-    """
-    from dpath import get
-
-    step = 1
+def _normalize_linecol(lc: LineCol | tuple[Any, Any]) -> tuple[int, int]:
     line, col = None, None
-    while paths and step < max_steps:
-        value = get(data, paths, default=None)
-        if value is not None:
-            with suppress(AttributeError, TypeError):
-                line = value.lc.line + 1  # type: ignore[attr-defined]
-                col = value.lc.col + 1  # type: ignore[attr-defined]
-                break
-        step += 1
-        *paths, _ = paths
 
-    return line, col, step
+    if isinstance(lc, LineCol):
+        line = lc.line
+        col = lc.col
+    elif isinstance(lc, tuple):
+        line = int(lc[0])
+        col = int(lc[1])
+
+    if not (isinstance(line, int) and isinstance(col, int)):
+        raise TypeError(f"Unable to determine neither line nor col ({line}:{col})")
+
+    return line + 1, col + 1
+
+
+def determine_linecol(data: Any, location: dpath.Glob) -> Tuple[int, int]:
+    """
+    Return the line and column number for the given location in the data.
+
+    Args:
+        data: The data must be a parsed YAML document represented as a Python object,
+            obtained by calling `ruamel.yaml.YAML(typ='rt').load()` on a YAML file.
+            The function expects the data to contain information about the original YAML
+            document's structure, including the line and column numbers where each
+            element appears.
+        location: The glob pattern to match a key or item in the data.
+
+    Raises:
+        ValueError: Raised if more than one leaf matches the glob.
+        KeyError: Raised if the location not found.
+
+    Returns:
+        A tuple containing the line and column number of the matched location.
+    """
+    if isinstance((obj := dpath.get(data, location)), CommentedSeq | CommentedMap):
+        return _normalize_linecol(obj.lc)
+
+    obj = dpath.get(data, location[:-1])
+    if isinstance(obj, CommentedMap):
+        return _normalize_linecol(obj.lc.key(location[-1]))
+    if isinstance(obj, CommentedSeq):
+        return _normalize_linecol(obj.lc.item(int(location[-1])))
+
+    raise TypeError(
+        f"Expected commented seq or map, got {type(obj)} at path {location!r}"
+    )
 
 
 class YAMLValidationError(PrettyDvcException):
@@ -211,7 +219,7 @@ class YAMLValidationError(PrettyDvcException):
         for index, error in enumerate(self.exc.errors):
             if index and lines[-1]:
                 lines.append("")
-            line, col, step = determine_linecol(data, error.path)
+            line, col = determine_linecol(data, error.path)
             parts = [error.error_message]
             if error.path:
                 parts.append("in " + " -> ".join(str(p) for p in error.path))
@@ -220,14 +228,8 @@ class YAMLValidationError(PrettyDvcException):
             if col:
                 parts.append(f"column {col}")
             lines.append(_prepare_cause(", ".join(parts)))
-
-            if line:
-                # we show one line above the error
-                # we try to show few more lines if we could not
-                # reliably figure out where the error was
-                lr = (line - 1, line + step - 1)
-                code = _prepare_code_snippets(self.text, line_range=lr)
-                lines.append(code)
+            code = _prepare_code_snippets(self.text, line_range=(line - 1, line + 1))
+            lines.append(code)
         return lines
 
     def __pretty_exc__(self, **kwargs: Any) -> None:

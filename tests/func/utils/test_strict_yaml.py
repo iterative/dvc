@@ -4,13 +4,15 @@ import pytest
 from ruamel.yaml import __with_libyaml__ as ruamel_clib
 
 from dvc.cli import main
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 DUPLICATE_KEYS = """\
 stages:
   stage1:
     cmd: python train.py
-    cmd: python train.py
-"""
+    cmd: python train.py"""
 
 DUPLICATE_KEYS_OUTPUT = """\
 './dvc.yaml' is invalid.
@@ -26,8 +28,7 @@ Found duplicate key "cmd" with value "python train.py" (original value:\
 MAPPING_VALUES_NOT_ALLOWED = """\
 stages:
   stage1
-    cmd: python script.py
-"""
+    cmd: python script.py"""
 
 MAPPING_VALUES_NOT_ALLOWED_OUTPUT = """\
 './dvc.yaml' is invalid.
@@ -43,8 +44,7 @@ stages:
     outs:
       - logs:
           cache: false
-      metrics:
-"""
+      metrics:"""
 
 NO_HYPHEN_INDICATOR_IN_BLOCK_OUTPUT = """\
 './dvc.yaml' is invalid.
@@ -64,8 +64,7 @@ UNCLOSED_SCALAR = """\
 stages:
   stage1:
     cmd: python script.py
-    desc: "this is my stage one
-"""
+    desc: "this is my stage one"""
 
 UNCLOSED_SCALAR_OUTPUT = """\
 './dvc.yaml' is invalid.
@@ -73,8 +72,8 @@ UNCLOSED_SCALAR_OUTPUT = """\
 While scanning a quoted scalar, in line 4, column 11
   4 │   desc: "this is my stage one
 
-Found unexpected end of stream, in line 5, column 1
-  5"""
+Found unexpected end of stream, in line 4, column 32
+  4 │   desc: "this is my stage one"""
 
 
 NOT_A_DICT = "3"
@@ -83,8 +82,7 @@ NOT_A_DICT_OUTPUT = "'./dvc.yaml' validation failed: expected a dictionary.\n"
 
 EMPTY_STAGE = """\
 stages:
-  stage1:
-"""
+  stage1:"""
 
 EMPTY_STAGE_OUTPUT = """\
 './dvc.yaml' validation failed.
@@ -98,8 +96,7 @@ expected a dictionary, in stages -> stage1, line 2, column 3
 MISSING_CMD = """\
 stages:
   stage1:
-    cmd: {}
-"""
+    cmd: {}"""
 
 MISSING_CMD_OUTPUT = """\
 './dvc.yaml' validation failed.
@@ -114,16 +111,14 @@ stages:
   stage1:
     cmd: python script.py
     deps:
-      - src:
-"""
+      - src:"""
 
 DEPS_AS_DICT_OUTPUT = """\
 './dvc.yaml' validation failed.
 
 expected str, in stages -> stage1 -> deps -> 0, line 5, column 9
   4 │   deps:
-  5 │     - src:
-"""
+  5 │     - src:"""
 
 OUTS_AS_STR = """\
 stages:
@@ -138,10 +133,10 @@ stages:
 OUTS_AS_STR_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected a list, in stages -> train -> outs, line 3, column 5
-  2   train:
-  3 │   cmd:
-  4 │     - python train.py"""
+expected a list, in stages -> train -> outs, line 7, column 5
+  6 │     - config.cfg
+  7 │   outs:
+  8 │     models/"""
 
 
 NULL_VALUE_ON_OUTS = """\
@@ -152,17 +147,14 @@ stages:
     - logs:
         cache: false
         persist: true
-        remote:
-"""
+        remote:"""
 
 NULL_VALUE_ON_OUTS_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 6, \
-column\n9
-  5 │   - logs:
-  6 │   │   cache: false
-  7 │   │   persist: true"""
+expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 8, column\n9
+  7 │   │   persist: true
+  8 │   │   remote:"""
 
 ADDITIONAL_KEY_ON_OUTS = """\
 stages:
@@ -171,15 +163,13 @@ stages:
     outs:
     - logs:
         cache: false
-        not_existing_key: false
-"""
+        not_existing_key: false"""
 
 ADDITIONAL_KEY_ON_OUTS_OUTPUT = """\
 './dvc.yaml' validation failed.
 
 extra keys not allowed, in stages -> stage1 -> outs -> 0 -> logs ->
-not_existing_key, line 6, column 9
-  5 │   - logs:
+not_existing_key, line 7, column 9
   6 │   │   cache: false
   7 │   │   not_existing_key: false"""
 
@@ -189,30 +179,26 @@ stages:
   group:
     foreach: 3
     do:
-      cmd: python script${i}.py
-"""
+      cmd: python script${i}.py"""
 
 FOREACH_SCALAR_VALUE_OUTPUT = """\
 './dvc.yaml' validation failed.
 
 expected dict, in stages -> group -> foreach, line 3, column 5
   2   group:
-  3 │   foreach: 3
-  4 │   do:"""
+  3 │   foreach: 3"""
 
 FOREACH_DO_NULL = """\
 stages:
   stage1:
     foreach: [1,2,3]
-    do:
-"""
+    do:"""
 
 
 FOREACH_DO_NULL_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected a dictionary, in stages -> stage1 -> do, line 3, column 5
-  2   stage1:
+expected a dictionary, in stages -> stage1 -> do, line 4, column 5
   3 │   foreach: [1,2,3]
   4 │   do:"""
 
@@ -223,16 +209,14 @@ stages:
     foreach: [1,2,3]
     do:
       outs:
-      - ${item}
-"""
+      - ${item}"""
 
 
 FOREACH_WITH_CMD_DO_MISSING = """\
 stages:
   stage1:
     foreach: [1,2,3]
-    cmd: python script${item}.py
-"""
+    cmd: python script${item}.py"""
 
 
 FOREACH_WITH_CMD_DO_MISSING_OUTPUT = """\
@@ -271,8 +255,7 @@ stages:
     - load_data.py
 >>>>>>> branch
     outs:
-    - data
-"""
+    - data"""
 
 MERGE_CONFLICTS_OUTPUT = """\
 './dvc.yaml' is invalid (possible merge conflicts).
@@ -352,13 +335,15 @@ def test_exceptions(
     expected,
 ):
     tmp_dir.gen("dvc.yaml", text)
-
     capsys.readouterr()  # clear outputs
+
     assert main(["stage", "list"]) != 0
+
     out, err = capsys.readouterr()
+    logger.debug(expected)
+    logger.debug(err)
 
     assert not out
-
     # strip whitespace on the right: output is always left-justified
     # by rich.syntax.Syntax:
     for expected_line, err_line in zip(expected.splitlines(), err.splitlines()):
@@ -388,11 +373,15 @@ def test_on_revision(
     tmp_dir.scm_gen("dvc.yaml", text, commit="add dvc.yaml")
     capsys.readouterr()  # clear outputs
 
-    assert main(["ls", f"file://{tmp_dir.as_posix()}", "--rev", "HEAD"]) != 0
+    assert main(["list", f"file://{tmp_dir.as_posix()}", "--rev", "HEAD"]) != 0
 
     out, err = capsys.readouterr()
+    expected = expected.format(short_rev=scm.get_rev()[:7])
+    logger.debug(expected)
+    logger.debug(err)
+
     assert not out
-    assert expected.format(short_rev=scm.get_rev()[:7]) in err
+    assert expected in err
 
 
 def test_make_relpath(tmp_dir, monkeypatch):
