@@ -7,11 +7,7 @@ Used for parsing dvc.yaml, dvc.lock and .dvc files.
 Not to be confused with strictyaml, a python library with similar motivations.
 """
 import re
-import typing
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar
-
-import dpath
-from ruamel.yaml.comments import CommentedMap, CommentedSeq, LineCol
+from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Optional, Tuple, TypeVar
 
 from dvc.exceptions import PrettyDvcException
 from dvc.log import logger
@@ -24,8 +20,10 @@ from dvc.utils.serialize import (
 )
 
 if TYPE_CHECKING:
+    from dpath import Glob
     from rich.syntax import Syntax
     from ruamel.yaml import StreamMark
+    from ruamel.yaml.comments import LineCol
     from voluptuous import MultipleInvalid
 
     from dvc.fs import FileSystem
@@ -145,7 +143,9 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             ui.error_write(line, styled=True)
 
 
-def _normalize_linecol(lc: LineCol | tuple[Any, Any]) -> tuple[int, int]:
+def _normalize_linecol(lc: "LineCol | tuple[Any, Any]") -> tuple[int, int]:
+    from ruamel.yaml.comments import LineCol
+
     line, col = None, None
 
     if isinstance(lc, LineCol):
@@ -161,7 +161,7 @@ def _normalize_linecol(lc: LineCol | tuple[Any, Any]) -> tuple[int, int]:
     return line + 1, col + 1
 
 
-def determine_linecol(data: Any, location: dpath.Glob) -> Tuple[int, int]:
+def determine_linecol(data: Any, location: "Glob") -> Tuple[int, int]:
     """
     Return the line and column number for the given location in the data.
 
@@ -180,10 +180,13 @@ def determine_linecol(data: Any, location: dpath.Glob) -> Tuple[int, int]:
     Returns:
         A tuple containing the line and column number of the matched location.
     """
-    if isinstance((obj := dpath.get(data, location)), CommentedSeq | CommentedMap):
+    from dpath import get
+    from ruamel.yaml.comments import CommentedMap, CommentedSeq
+
+    if isinstance((obj := get(data, location)), CommentedSeq | CommentedMap):
         return _normalize_linecol(obj.lc)
 
-    obj = dpath.get(data, location[:-1])
+    obj = get(data, location[:-1])
     if isinstance(obj, CommentedMap):
         return _normalize_linecol(obj.lc.key(location[-1]))
     if isinstance(obj, CommentedSeq):
@@ -214,7 +217,7 @@ class YAMLValidationError(PrettyDvcException):
             message += f": {len(self.exc.errors)} errors"
         super().__init__(f"{message}")
 
-    def _prepare_context(self, data: typing.Mapping) -> List[object]:
+    def _prepare_context(self, data: Mapping) -> List[object]:
         lines: List[object] = []
         for index, error in enumerate(self.exc.errors):
             if index and lines[-1]:
