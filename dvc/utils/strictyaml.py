@@ -141,7 +141,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             ui.error_write(line, styled=True)
 
 
-def _normalize_linecol(lc: "LineCol | tuple[Any, Any]") -> tuple[int, int]:
+def _normalize_linecol(lc: "LineCol | Tuple[Any, Any]") -> Tuple[int, int]:
     from ruamel.yaml.comments import LineCol
 
     line, col = None, None
@@ -181,7 +181,7 @@ def determine_linecol(data: Any, location: "Glob") -> Tuple[int, int]:
     from dpath import get
     from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
-    if isinstance((obj := get(data, location)), CommentedSeq | CommentedMap):
+    if isinstance((obj := get(data, location)), (CommentedSeq, CommentedMap)):
         return _normalize_linecol(obj.lc)
 
     obj = get(data, location[:-1])
