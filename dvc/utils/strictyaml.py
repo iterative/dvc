@@ -10,7 +10,6 @@ import re
 from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Optional, Tuple, TypeVar
 
 from dvc.exceptions import PrettyDvcException
-from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils.serialize import (
     EncodingError,
@@ -32,7 +31,6 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 merge_conflict_marker = re.compile("^([<=>]{7}) .*$", re.MULTILINE)
-logger = logger.getChild(__name__)
 
 
 def make_relpath(path: str) -> str:
