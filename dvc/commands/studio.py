@@ -9,12 +9,10 @@ from dvc.log import logger
 
 logger = logger.getChild(__name__)
 
-DEFAULT_SCOPES = "live,dvc_experiment,view_url,dql,download_model"
-
 
 class CmdStudioLogin(CmdConfig):
     def run(self):
-        from dvc_studio_client.auth import StudioAuthError, initiate_authorization
+        from dvc_studio_client.auth import StudioAuthError, get_access_token
 
         from dvc.env import DVC_STUDIO_URL
         from dvc.ui import ui
@@ -22,14 +20,15 @@ class CmdStudioLogin(CmdConfig):
 
         name = self.args.name
         hostname = self.args.hostname or os.environ.get(DVC_STUDIO_URL) or STUDIO_URL
-        scopes = self.args.scopes or DEFAULT_SCOPES
+        scopes = self.args.scopes
 
         try:
-            token_name, access_token = initiate_authorization(
-                name=name,
+            token_name, access_token = get_access_token(
+                token_name=name,
                 hostname=hostname,
                 scopes=scopes,
                 use_device_code=self.args.use_device_code,
+                client_name="dvc",
             )
         except StudioAuthError as e:
             ui.error_write(str(e))

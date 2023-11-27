@@ -3,64 +3,33 @@ from unittest import mock
 from dvc_studio_client.auth import AuthorizationExpired
 
 from dvc.cli import main
-from dvc.commands.studio import DEFAULT_SCOPES
 from dvc.utils.studio import STUDIO_URL
-
-MOCK_RESPONSE = {
-    "verification_uri": STUDIO_URL + "/auth/device-login",
-    "user_code": "MOCKCODE",
-    "device_code": "random-value",
-    "token_uri": STUDIO_URL + "/api/device-login/token",
-    "token_name": "random-name",
-}
 
 
 def test_studio_login_invalid_scope():
     assert main(["studio", "login", "--scopes", "invalid!"]) == 1
 
 
-@mock.patch("dvc_studio_client.auth.check_token_authorization")
-@mock.patch("dvc_studio_client.auth.start_device_login")
-def test_studio_login_token_check_failed(
-    mock_start_device_login, mock_check_token_authorization
-):
-    mock_start_device_login.return_value = MOCK_RESPONSE
-    mock_check_token_authorization.side_effect = AuthorizationExpired
+@mock.patch("dvc_studio_client.auth.get_access_token")
+def test_studio_login_token_check_failed(mock_get_access_token):
+    mock_get_access_token.side_effect = AuthorizationExpired
 
     assert main(["studio", "login"]) == 1
 
 
-@mock.patch("dvc_studio_client.auth.check_token_authorization")
-@mock.patch("dvc_studio_client.auth.start_device_login")
-def test_studio_login_success(
-    mock_start_device_login, mock_check_token_authorization, dvc, M
-):
-    mock_start_device_login.return_value = MOCK_RESPONSE
-    mock_check_token_authorization.return_value = "isat_access_token"
-
+@mock.patch("dvc_studio_client.auth.get_access_token")
+def test_studio_login_success(mock_get_access_token, dvc):
+    mock_get_access_token.return_value = ("token_name", "isat_access_token")
     assert main(["studio", "login"]) == 0
-    assert mock_start_device_login.call_args.kwargs == {
-        "base_url": STUDIO_URL,
-        "client_name": "dvc",
-        "scopes": DEFAULT_SCOPES.split(","),
-        "token_name": M.any,
-    }
-    mock_check_token_authorization.assert_called_with(
-        uri=MOCK_RESPONSE["token_uri"], device_code=MOCK_RESPONSE["device_code"]
-    )
 
     config = dvc.config.load_one("global")
     assert config["studio"]["token"] == "isat_access_token"
     assert config["studio"]["url"] == STUDIO_URL
 
 
-@mock.patch("dvc_studio_client.auth.check_token_authorization")
-@mock.patch("dvc_studio_client.auth.start_device_login")
-def test_studio_login_arguments(
-    mock_start_device_login, mock_check_token_authorization
-):
-    mock_start_device_login.return_value = MOCK_RESPONSE
-    mock_check_token_authorization.return_value = "isat_access_token"
+@mock.patch("dvc_studio_client.auth.get_access_token")
+def test_studio_login_arguments(mock_get_access_token):
+    mock_get_access_token.return_value = ("token_name", "isat+access_token")
 
     assert (
         main(
@@ -72,29 +41,25 @@ def test_studio_login_arguments(
                 "--hostname",
                 "https://example.com",
                 "--scopes",
-                "live",
+                "experiments",
             ]
         )
         == 0
     )
 
-    mock_start_device_login.assert_called_with(
-        client_name="dvc",
-        base_url="https://example.com",
+    mock_get_access_token.assert_called_with(
         token_name="token_name",
-        scopes=["live"],
+        hostname="https://example.com",
+        scopes="experiments",
+        use_device_code=False,
+        client_name="dvc",
     )
-    mock_check_token_authorization.assert_called()
 
 
-@mock.patch("dvc_studio_client.auth.check_token_authorization")
-@mock.patch("dvc_studio_client.auth.start_device_login")
+@mock.patch("dvc_studio_client.auth.get_access_token")
 @mock.patch("webbrowser.open")
-def test_studio_device_code(
-    mock_webbrowser_open, mock_start_device_login, mock_check_token_authorization
-):
-    mock_start_device_login.return_value = MOCK_RESPONSE
-    mock_check_token_authorization.return_value = "isat_access_token"
+def test_studio_device_code(mock_webbrowser_open, mock_get_access_token):
+    mock_get_access_token.return_value = ("token_name", "isat+access_token")
 
     assert main(["studio", "login", "--use-device-code"]) == 0
 

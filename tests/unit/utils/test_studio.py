@@ -13,6 +13,7 @@ from dvc.utils.studio import STUDIO_URL, config_to_env, env_to_config, notify_re
 
 CONFIG = {"offline": True, "repo_url": "repo_url", "token": "token", "url": "url"}
 
+
 ENV = {
     DVC_STUDIO_OFFLINE: True,
     DVC_STUDIO_REPO_URL: "repo_url",

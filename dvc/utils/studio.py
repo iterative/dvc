@@ -66,7 +66,7 @@ def notify_refs(
     try:
         r = post("webhook/dvc", token, data, base_url=base_url)
     except requests.RequestException as e:
-        logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+        logger.trace("", exc_info=True)
 
         msg = str(e)
         if e.response is None:
