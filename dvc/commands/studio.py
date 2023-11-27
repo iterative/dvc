@@ -36,7 +36,7 @@ class CmdStudioLogin(CmdConfig):
 
         self.save_config(hostname, access_token)
         ui.write(
-            f"Authentication successful. The token will be "
+            "Authentication successful. The token will be "
             f"available as {token_name} in Studio profile."
         )
         return 0
