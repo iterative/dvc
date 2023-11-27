@@ -3,17 +3,14 @@
 Any other tests should likely be mocked tests in `test_import_db` rather than here.
 """
 
-import io
 import os
 import sqlite3
 from contextlib import closing
-from typing import TYPE_CHECKING
 
 import pytest
+from agate import Table
 
-if TYPE_CHECKING:
-    from agate import Table
-
+from dvc.types import StrPath
 
 dbt_connections = pytest.importorskip(
     "dbt.adapters.sql.connections", reason="dbt-core not installed"
@@ -50,15 +47,13 @@ def seed_db(db_path):
     def inner(values):
         conn.executemany("INSERT INTO model(value) VALUES(?)", [(i,) for i in values])
         conn.commit()
-        with closing(conn.execute("SELECT * FROM model")) as cursor:
-            return SQLConnectionManager.get_result_from_cursor(cursor, None)
 
     with closing(conn):
         yield inner
 
 
 @pytest.fixture
-def dbt_profile(tmp_dir, db_path):
+def dbt_profile(tmp_dir, scm, db_path):
     (tmp_dir / "profiles.yml").dump(
         {
             "sqlite_profile": {
@@ -76,27 +71,36 @@ def dbt_profile(tmp_dir, db_path):
             }
         }
     )
+    scm.add_commit(["profiles.yml"], message="add profiles.yml")
     return "sqlite_profile"
 
 
 @pytest.fixture
-def dbt_project(tmp_dir, dbt_profile):
+def dbt_project(tmp_dir, scm, dbt_profile):
     (tmp_dir / "dbt_project.yml").dump({"name": "project", "profile": dbt_profile})
+    scm.add_commit(["dbt_project.yml"], message="add dbt_project")
     return tmp_dir
 
 
 @pytest.fixture
 def dbt_model(dbt_project):
-    dbt_project.gen({"models": {"model.sql": "select * from models"}})
+    dbt_project.scm_gen(
+        {"models": {"model.sql": "select * from models"}}, commit="add models"
+    )
     return "model"
 
 
-@pytest.fixture(params=("sql", "model"))
-def import_db_parameters(request):
+@pytest.fixture(params=("sql", "model", "external_model"))
+def import_db_parameters(request: pytest.FixtureRequest):
     if request.param == "sql":
         profile = request.getfixturevalue("dbt_profile")
         return {"sql": "select * from model", "profile": profile}
-    return {"model": request.getfixturevalue("dbt_model")}
+
+    dbt_project = request.getfixturevalue("dbt_project")
+    return {
+        "model": request.getfixturevalue("dbt_model"),
+        "url": None if request.param == "model" else os.fspath(dbt_project),
+    }
 
 
 @pytest.fixture
@@ -106,23 +110,26 @@ def file_name(import_db_parameters):
     return "results"
 
 
-def format_output(table: "Table", output_format: str):
-    output = io.StringIO()
-    getattr(table, f"to_{output_format}")(output)
-    return output.getvalue()
+def load_table(file: StrPath, typ: str) -> "Table":
+    return getattr(Table, f"from_{typ}")(file)
 
 
 @pytest.mark.filterwarnings("ignore::ResourceWarning")  # dbt leaks fileobj from logger
 @pytest.mark.parametrize("output_format", ("csv", "json"))
-def test_e2e(tmp_dir, dvc, seed_db, import_db_parameters, file_name, output_format):
-    results: "Table" = seed_db(values=range(5))
+def test_e2e(
+    tmp_dir, scm, dvc, seed_db, import_db_parameters, file_name, output_format
+):
+    seed_db(values=range(5))
 
     stage = dvc.imp_db(**import_db_parameters, output_format=output_format)
 
     output_file = tmp_dir / f"{file_name}.{output_format}"
-    assert output_file.read_text() == format_output(results, output_format)
+    output = load_table(output_file, output_format)
+    assert output.rows == [(i + 1, i) for i in range(5)]
 
-    results: "Table" = seed_db(values=range(6, 10))
+    seed_db(values=range(5, 10))
 
     dvc.update(stage.addressing)
-    assert output_file.read_text() == format_output(results, output_format)
+
+    output = load_table(output_file, output_format)
+    assert output.rows == [(i + 1, i) for i in range(10)]

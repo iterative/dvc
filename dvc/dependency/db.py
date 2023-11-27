@@ -1,5 +1,5 @@
 import os
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import TYPE_CHECKING, Any, Dict, Iterator, Union
 
 from funcy import compact
@@ -244,16 +244,16 @@ class DbtDependency(AbstractDependency):
 
         project_dir = self.info.get(PARAM_DB, {}).get(self.PARAM_PROJECT_DIR, "")
         if self.def_repo:
-            repo = self._get_clone(self.locked_rev or self.rev)
+            ctx = repo = self._get_clone(self.locked_rev or self.rev)
             self.def_repo[RepoDependency.PARAM_REV_LOCK] = repo.get_rev()
             root = wdir = repo.root_dir
         else:
+            ctx = nullcontext()
             root = self.repo.root_dir
             wdir = self.stage.wdir
 
         project_path = os.path.join(wdir, project_dir) if project_dir else root
-
-        with chdir(project_path):
+        with ctx, chdir(project_path):
             self._download_db(to, file_format=file_format)
         ui.write(f"Saved file to {to}", styled=True)
 
