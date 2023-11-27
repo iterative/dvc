@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from dvc.render import ANCHOR_DEFINITIONS, REVISION, REVISIONS, SRC, TYPE_KEY
+from dvc.render import ANCHOR_DEFINITIONS, FILENAME, REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.convert import to_json
 
 
@@ -42,14 +42,14 @@ def test_to_json_vega_split(mocker):
             {
                 "x": 1,
                 "y": 2,
-                "rev": "foo",
-                "filename": "foo.json",
+                REVISION: "foo",
+                FILENAME: "foo.json",
             },
             {
                 "x": 2,
                 "y": 1,
-                "rev": "bar",
-                "filename": "foo.json",
+                REVISION: "bar",
+                FILENAME: "foo.json",
             },
         ],
     }

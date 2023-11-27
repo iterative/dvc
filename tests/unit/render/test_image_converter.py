@@ -1,4 +1,4 @@
-from dvc.render import REVISION, SRC
+from dvc.render import FILENAME, REVISION, SRC
 from dvc.render.converter.image import ImageConverter
 
 
@@ -9,7 +9,7 @@ def test_image_converter_no_out():
 
     assert datapoints[0] == {
         REVISION: "r",
-        "filename": "image.png",
+        FILENAME: "image.png",
         SRC: converter._encode_image(b"content"),
     }
 
@@ -22,7 +22,7 @@ def test_image_converter_with_out(tmp_dir):
 
     assert datapoints[0] == {
         REVISION: "r",
-        "filename": "image.png",
+        FILENAME: "image.png",
         SRC: str(tmp_dir / "foo" / "r_image.png"),
     }
 
@@ -38,7 +38,7 @@ def test_image_converter_with_slash_in_revision(tmp_dir):
 
     assert datapoints[0] == {
         REVISION: "feature/r",
-        "filename": "image.png",
+        FILENAME: "image.png",
         SRC: str(tmp_dir / "foo" / "feature_r_image.png"),
     }
 

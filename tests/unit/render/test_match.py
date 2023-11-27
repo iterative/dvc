@@ -1,8 +1,13 @@
 import pytest
 from funcy import set_in
 
+from dvc.render import FIELD, FILENAME, REVISION
 from dvc.render.converter.vega import VegaConverter
-from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_renderers
+from dvc.render.match import (
+    PlotsData,
+    _squash_plots_properties,
+    match_defs_renderers,
+)
 
 
 @pytest.mark.parametrize(
@@ -157,22 +162,22 @@ def test_match_renderers(M):
     renderer = renderer_with_errors[0]
     assert renderer.datapoints == [
         {
-            "rev": "v1",
-            "filename": "file.json",
-            "field": "y",
+            REVISION: "v1",
+            FILENAME: "file.json",
+            FIELD: "y",
             "x": 1,
             "y": 1,
         },
         {
-            "rev": "v1",
-            "filename": "file.json",
-            "field": "y",
+            REVISION: "v1",
+            FILENAME: "file.json",
+            FIELD: "y",
             "x": 2,
             "y": 2,
         },
     ]
     assert renderer.properties == {
-        "anchors_y_definitions": [{"filename": "file.json", "field": "y"}],
+        "anchors_y_definitions": [{FILENAME: "file.json", FIELD: "y"}],
         "revs_with_datapoints": ["v1"],
         "title": "plot_id_1",
         "x": "x",
