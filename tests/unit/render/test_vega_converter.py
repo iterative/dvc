@@ -410,6 +410,107 @@ def test_finding_lists(dictionary, expected_result):
             },
             id="multi_file_y_same_prefix",
         ),
+        pytest.param(
+            {
+                "f": {"metric": [{"x1": 1, "v": 0.1}]},
+                "f2": {"metric": [{"x2": 100, "v": 0.1}]},
+            },
+            {"y": {"f": ["v"], "f2": ["v"]}, "x": {"f": "x1", "f2": "x2"}},
+            [
+                {
+                    "x1": 1,
+                    "v": 0.1,
+                    "dvc_inferred_x_value": 1,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
+                },
+                {
+                    "x2": 100,
+                    "v": 0.1,
+                    "dvc_inferred_x_value": 100,
+                    REVISION: "r",
+                    FILENAME: "f2",
+                    FIELD: "v",
+                },
+            ],
+            {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v"},
+                    {FILENAME: "f2", FIELD: "v"},
+                ],
+                "x": "dvc_inferred_x_value",
+                "y": "v",
+                "x_label": "x",
+                "y_label": "v",
+            },
+            id="multiple_x_fields",
+        ),
+        pytest.param(
+            {
+                "f": {
+                    "metric": [
+                        {"v": 1, "v2": 0.1, "x1": 100},
+                        {"v": 2, "v2": 0.2, "x1": 1000},
+                    ]
+                },
+                "f2": {"metric": [{"x2": -2}, {"x2": -4}]},
+            },
+            {"y": ["v", "v2"], "x": {"f": "x1", "f2": "x2"}},
+            [
+                {
+                    "dvc_inferred_x_value": 100,
+                    "dvc_inferred_y_value": 1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "x1": 100,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
+                },
+                {
+                    "dvc_inferred_x_value": 1000,
+                    "dvc_inferred_y_value": 2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "x1": 1000,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
+                },
+                {
+                    "dvc_inferred_x_value": -2,
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "x1": 100,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
+                },
+                {
+                    "dvc_inferred_x_value": -4,
+                    "dvc_inferred_y_value": 0.2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "x1": 1000,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
+                },
+            ],
+            {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v"},
+                    {FILENAME: "f", FIELD: "v2"},
+                ],
+                "x": "dvc_inferred_x_value",
+                "y": "dvc_inferred_y_value",
+                "x_label": "x",
+                "y_label": "y",
+            },
+            id="y_list_x_dict",
+        ),
     ],
 )
 def test_convert(
