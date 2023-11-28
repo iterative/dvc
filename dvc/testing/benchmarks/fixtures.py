@@ -5,7 +5,6 @@ from subprocess import check_output
 from typing import Dict, Optional
 
 import pytest
-import virtualenv
 from dulwich.porcelain import clone
 from funcy import first
 from packaging import version
@@ -24,6 +23,8 @@ class VirtualEnv:
         self.bin = self.path / ("Scripts" if os.name == "nt" else "bin")
 
     def create(self) -> None:
+        import virtualenv
+
         virtualenv.cli_run([os.fspath(self.path)])
 
     def run(self, cmd: str, *args: str, env: Optional[Dict[str, str]] = None) -> None:
