@@ -112,7 +112,6 @@ class VegaConverter(Converter):
     ):
         super().__init__(plot_id, data, properties)
         self.plot_id = plot_id
-        self.inferred_properties: Dict = {}
 
     def _infer_y_from_data(self):
         if self.plot_id in self.data:
@@ -120,34 +119,38 @@ class VegaConverter(Converter):
                 if all(isinstance(item, dict) for item in lst):
                     datapoint = first(lst)
                     field = last(datapoint.keys())
-                    self.inferred_properties["y"] = {self.plot_id: field}
-                    break
+                    return {self.plot_id: field}
+        return None
 
     def _infer_x_y(self):
         x = self.properties.get("x", None)
         y = self.properties.get("y", None)
 
+        inferred_properties: Dict = {}
+
         # Infer x.
         if isinstance(x, str):
-            self.inferred_properties["x"] = {}
+            inferred_properties["x"] = {}
             # If multiple y files, duplicate x for each file.
             if isinstance(y, dict):
                 for file, fields in y.items():
                     # Duplicate x for each y.
                     if isinstance(fields, list):
-                        self.inferred_properties["x"][file] = [x] * len(fields)
+                        inferred_properties["x"][file] = [x] * len(fields)
                     else:
-                        self.inferred_properties["x"][file] = x
+                        inferred_properties["x"][file] = x
             # Otherwise use plot ID as file.
             else:
-                self.inferred_properties["x"][self.plot_id] = x
+                inferred_properties["x"][self.plot_id] = x
 
         # Infer y.
         if y is None:
-            self._infer_y_from_data()
+            inferred_properties["y"] = self._infer_y_from_data()
         # If y files not provided, use plot ID as file.
         elif not isinstance(y, dict):
-            self.inferred_properties["y"] = {self.plot_id: y}
+            inferred_properties["y"] = {self.plot_id: y}
+
+        return inferred_properties
 
     def _find_datapoints(self):
         result = {}
@@ -303,10 +306,10 @@ class VegaConverter(Converter):
         generated datapoints and updated properties. `x`, `y` values and labels
         are inferred and always provided.
         """
-        self._infer_x_y()
+        inferred_properties = self._infer_x_y()
 
         datapoints = self._find_datapoints()
-        properties = {**self.properties, **self.inferred_properties}
+        properties = {**self.properties, **inferred_properties}
 
         properties["y_label"] = self.infer_y_label(properties)
         properties["x_label"] = self.infer_x_label(properties)
