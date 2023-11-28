@@ -11,7 +11,8 @@ def test_sharing(bench_dvc, tmp_dir, dvc, dataset, remote):
     shutil.rmtree(dataset)
     shutil.rmtree(tmp_dir / ".dvc" / "cache")
 
-    bench_dvc("pull")
-    bench_dvc("pull", name="noop")
+    bench_dvc("fetch")
+    bench_dvc("fetch", name="noop")
 
+    bench_dvc("checkout")
     bench_dvc("checkout", name="noop")
