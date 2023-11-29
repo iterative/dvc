@@ -5,6 +5,8 @@ from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
 
 from dvc.config import ConfigError as RepoConfigError
 from dvc.config_schema import SCHEMA, Invalid
+
+# pylint: disable=unused-import
 from dvc_objects.fs import (  # noqa: F401
     LocalFileSystem,
     MemoryFileSystem,
@@ -27,7 +29,7 @@ from dvc_objects.fs.path import Path  # noqa: F401
 
 from .callbacks import Callback
 from .data import DataFileSystem  # noqa: F401
-from .dvc import DVCFileSystem  # noqa: F401
+from .dvc import DVCFileSystem
 from .git import GitFileSystem  # noqa: F401
 
 known_implementations.update(
@@ -47,6 +49,8 @@ known_implementations.update(
 def download(
     fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
 ) -> int:
+    from dvc.scm import lfs_prefetch
+
     with Callback.as_tqdm_callback(
         desc=f"Downloading {fs.path.name(fs_path)}",
         unit="files",
@@ -70,6 +74,8 @@ def download(
             from_infos = [fs_path]
             to_infos = [to]
 
+        if isinstance(fs, DVCFileSystem):
+            lfs_prefetch(fs, from_infos)
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
         generic.copy(

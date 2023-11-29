@@ -101,7 +101,7 @@ def _get_remote(
     return repo.cloud.get_remote(name, command)
 
 
-def _merge_push_meta(
+def _merge_push_meta(  # noqa: C901
     out: "Output",
     index: Union["DataIndex", "DataIndexView"],
     remote: Optional[str] = None,
@@ -116,7 +116,11 @@ def _merge_push_meta(
     from dvc_data.index.save import build_tree
 
     _, key = out.index_key
-    entry = index[key]
+
+    entry = index.get(key)
+    if entry is None:
+        return
+
     repo = out.stage.repo
     if out.isdir():
         old_tree = out.get_obj()
