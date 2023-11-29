@@ -5,6 +5,7 @@ from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
 from .db import DB_SCHEMA, PARAM_DB, DbDependency, DbtDependency
+from .dvcx import DvcxDependency
 from .param import ParamsDependency
 from .repo import RepoDependency
 
@@ -35,6 +36,8 @@ def _get(stage, p, info, **kwargs):
         return DbtDependency(repo, stage, info)
 
     assert p
+    if DvcxDependency.is_dataset(p):
+        return DvcxDependency(stage, p, info)
     if repo:
         return RepoDependency(repo, stage, p, info)
     return Dependency(stage, p, info, **kwargs)

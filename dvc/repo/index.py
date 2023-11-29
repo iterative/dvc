@@ -139,6 +139,7 @@ def _load_data_from_outs(index, prefix, outs):
             out.stage.is_import
             and not out.stage.is_repo_import
             and not out.stage.is_db_import
+            and not out.stage.is_dvcx_import
         ):
             dep = out.stage.deps[0]
             entry.meta = dep.meta
@@ -188,6 +189,8 @@ def _load_storage_from_out(storage_map, key, out):
         pass
 
     if out.stage.is_db_import:
+        return
+    if out.stage.is_dvcx_import:
         return
 
     if out.stage.is_import:

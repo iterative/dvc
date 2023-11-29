@@ -61,7 +61,7 @@ def sync_import(
     else:
         stage.save_deps()
         if no_download:
-            if stage.is_repo_import or stage.is_db_import:
+            if stage.is_repo_import or stage.is_db_import or stage.is_dvcx_import:
                 stage.deps[0].update()
         else:
             stage.deps[0].download(

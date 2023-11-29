@@ -14,7 +14,7 @@ from . import locked
 
 @locked
 @scm_context
-def imp_url(  # noqa: PLR0913
+def imp_url(  # noqa: PLR0913, C901
     self: "Repo",
     url,
     out=None,
@@ -29,7 +29,16 @@ def imp_url(  # noqa: PLR0913
     fs_config=None,
     version_aware: bool = False,
 ):
+    from dvc.dependency.dvcx import DvcxDependency
+
+    no_cache = False
     out = resolve_output(url, out, force=force)
+    # strip `@` suffix from output
+    if parts := DvcxDependency.parse(url):
+        # strip version spec from output
+        out, _ = parts
+        no_cache = True
+
     path, wdir, out = resolve_paths(self, out, always_local=to_remote and not out)
 
     if to_remote and (no_exec or no_download or version_aware):
@@ -54,15 +63,16 @@ def imp_url(  # noqa: PLR0913
             fs_config = {}
         fs_config["version_aware"] = True
 
+    outs_d = {"outs_no_cache" if no_cache else "outs": [out]}
     stage = self.stage.create(
         single_stage=True,
         validate=False,
         fname=path,
         wdir=wdir,
         deps=[url],
-        outs=[out],
         erepo=erepo,
         fs_config=fs_config,
+        **outs_d,  # type: ignore[arg-type]
     )
 
     try:
@@ -80,7 +90,7 @@ def imp_url(  # noqa: PLR0913
         stage.save_deps()
         stage.md5 = stage.compute_md5()
     else:
-        if stage.deps[0].fs.version_aware:
+        if isinstance(stage.deps[0], DvcxDependency) or stage.deps[0].fs.version_aware:
             stage.outs[0].can_push = False
         stage.run(jobs=jobs, no_download=no_download)
 

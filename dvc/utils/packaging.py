@@ -25,7 +25,7 @@ def check_required_version(pkg: str, dist: str = "dvc", log_level=logging.WARNIN
     if specifier and version and version not in specifier:
         logger.log(
             log_level,
-            "%s%s is required, but you have %r installed which is incompatible.",
+            "%s%s is required, but you have %s installed which is incompatible.",
             pkg,
             specifier,
             version,

@@ -291,12 +291,20 @@ class Stage(params.StageParams):
         return isinstance(self.deps[0], (DbDependency, DbtDependency))
 
     @property
+    def is_dvcx_import(self) -> bool:
+        from dvc.dependency import DvcxDependency
+
+        return self.deps and isinstance(self.deps[0], DvcxDependency)
+
+    @property
     def is_versioned_import(self) -> bool:
-        from dvc.dependency import DbDependency, DbtDependency
+        from dvc.dependency import DbDependency, DbtDependency, DvcxDependency
 
         return (
             self.is_import
-            and not isinstance(self.deps[0], (DbDependency, DbtDependency))
+            and not isinstance(
+                self.deps[0], (DbDependency, DbtDependency, DvcxDependency)
+            )
             and self.deps[0].fs.version_aware
         )
 
@@ -463,7 +471,7 @@ class Stage(params.StageParams):
             raise StageUpdateError(self.relpath)
 
         # always force update DbDep/DbtDep since we don't know if it's changed
-        force = self.is_db_import
+        force = self.is_db_import or self.is_dvcx_import
         update_import(
             self,
             rev=rev,

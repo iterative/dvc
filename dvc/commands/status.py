@@ -8,7 +8,7 @@ logger = logger.getChild(__name__)
 
 
 class CmdDataStatus(CmdDataBase):
-    STATUS_LEN = 20
+    STATUS_LEN = 30
     STATUS_INDENT = "\t"
     UP_TO_DATE_MSG = "Data and pipelines are up to date."
     IN_SYNC_MSG = "Cache and remote '{remote}' are in sync."

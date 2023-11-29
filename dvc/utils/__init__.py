@@ -248,12 +248,17 @@ def env2bool(var, undefined=False):
     return bool(re.search("1|y|yes|true", var, flags=re.I))
 
 
-def resolve_output(inp: str, out: Optional[str], force=False) -> str:
+def strip_scheme(url: str):
     from urllib.parse import urlparse
 
+    result = urlparse(url)
+    return result.netloc + result.path
+
+
+def resolve_output(inp: str, out: Optional[str], force=False) -> str:
     from dvc.exceptions import FileExistsLocallyError
 
-    name = os.path.basename(os.path.normpath(urlparse(inp).path))
+    name = os.path.basename(os.path.normpath(strip_scheme(inp)))
     if not out:
         ret = name
     elif os.path.isdir(out):
