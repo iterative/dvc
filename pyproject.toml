@@ -127,9 +127,6 @@ dvc = "dvc.cli:main"
 [project.entry-points."fsspec.specs"]
 dvc = "dvc.api:DVCFileSystem"
 
-[project.entry-points."pytest11"]
-dvc-testing = "dvc.testing.plugin"
-
 [project.entry-points."pyinstaller40"]
 hook-dirs = "dvc.__pyinstaller:get_hook_dirs"
 tests = "dvc.__pyinstaller:get_PyInstaller_tests"
