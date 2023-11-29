@@ -148,6 +148,7 @@ def to_pipeline_file(stage: "PipelineStage"):
 
 def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     from dvc.cachemgr import LEGACY_HASH_NAMES
+    from dvc.dependency import DatasetDependency
     from dvc.output import (
         _serialize_hi_to_dict,
         _serialize_tree_obj_to_files,
@@ -158,6 +159,9 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     assert stage.cmd
 
     def _dumpd(item: "Output"):
+        if isinstance(item, DatasetDependency):
+            return item.dumpd()
+
         ret: dict[str, Any] = {item.PARAM_PATH: item.def_path}
         if item.hash_name not in LEGACY_HASH_NAMES:
             ret[item.PARAM_HASH] = "md5"

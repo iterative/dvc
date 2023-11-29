@@ -117,6 +117,7 @@ def build_graph(stages, outs_trie=None):
     """
     import networkx as nx
 
+    from dvc.dependency import DatasetDependency
     from dvc.exceptions import StagePathAsOutputError
 
     from .trie import build_outs_trie
@@ -140,6 +141,8 @@ def build_graph(stages, outs_trie=None):
             continue
 
         for dep in stage.deps:
+            if isinstance(dep, DatasetDependency):
+                continue
             dep_key = dep.fs.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
@@ -157,6 +160,8 @@ def build_graph(stages, outs_trie=None):
 def build_outs_graph(graph, outs_trie):
     import networkx as nx
 
+    from dvc.dependency import DatasetDependency
+
     outs_graph = nx.DiGraph()
 
     outs_graph.add_nodes_from(outs_trie.values())
@@ -166,6 +171,8 @@ def build_outs_graph(graph, outs_trie):
         if stage.is_db_import:
             continue
         for dep in stage.deps:
+            if isinstance(dep, DatasetDependency):
+                continue
             dep_key = dep.fs.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
