@@ -74,7 +74,7 @@ def _get_dvc_path(dvc_fs, subkey):
 
 class _DVCFileSystem(AbstractFileSystem):
     cachable = False
-    root_marker = "/"
+    root_marker = "/" if os.name != "nt" else ""
 
     def __init__(  # noqa: PLR0913
         self,
