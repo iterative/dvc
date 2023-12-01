@@ -2,6 +2,7 @@ import errno
 import functools
 import ntpath
 import os
+import pathlib
 import posixpath
 import threading
 from contextlib import ExitStack, suppress
@@ -199,7 +200,7 @@ class _DVCFileSystem(AbstractFileSystem):
 
     def _get_key_from_relative(self, path) -> Key:
         path = self._strip_protocol(path)
-        parts = self.path.relparts(path, self.root_marker)
+        parts = pathlib.Path(path).parts
         if parts and parts[0] == os.curdir:
             return parts[1:]
         return parts
