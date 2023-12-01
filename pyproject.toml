@@ -111,6 +111,7 @@ tests = [
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
     'tzdata; sys_platform == "win32"',  # for testing with celery
     "dbt-sqlite", # optional dependency for testing `import-db`
+    "connectorx[pyarrow]", # optional dependency for `import-db`
 ]
 webdav = ["dvc-webdav==2.19.1"]
 webhdfs = ["dvc-webhdfs==2.19"]
@@ -206,6 +207,7 @@ module = [
     "agate.*",
     "celery.*",
     "configobj.*",
+    "connectorx",
     "dpath.*",
     "distro",
     "dvc_http",
@@ -220,6 +222,7 @@ module = [
     "iterative_telemetry",
     "kombu.*",
     "networkx.*",  # https://github.com/networkx/networkx/issues/3988
+    "pyarrow",
     "pygtrie.*",
     "pyinstrument",
     "pyparsing",

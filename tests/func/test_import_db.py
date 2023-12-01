@@ -44,6 +44,45 @@ def test_sql(mocker, tmp_dir, dvc):
     }
 
 
+def test_sql_conn_string(mocker, tmp_dir, dvc):
+    with dvc.config.edit(level="local") as conf:
+        conf["db_connection"] = {"conn": "conn"}
+
+    mocker.patch("dvc.utils.db._connectorx_query", side_effect=[data1, data2])
+    stage = dvc.imp_db(
+        sql="select * from model", connection="conn", output_format="json"
+    )
+    db = {"file_format": "json", "connection": "conn", "query": "select * from model"}
+    assert (tmp_dir / stage.relpath).parse() == {
+        "md5": "f0dcca8e8411907adb25aa547d7c432c",
+        "frozen": True,
+        "deps": [{"db": db}],
+        "outs": [
+            {
+                "hash": "md5",
+                "md5": "56226d443067b195c90b427db557e1f2",
+                "path": "results.json",
+                "size": 243,
+            }
+        ],
+    }
+
+    dvc.update(stage.addressing)
+    assert (tmp_dir / stage.relpath).parse() == {
+        "md5": "8c0441b206d8ee7c7b9e3d54871c3cbb",
+        "frozen": True,
+        "deps": [{"db": db}],
+        "outs": [
+            {
+                "hash": "md5",
+                "md5": "08d806ee7e1f309c4561750805f02276",
+                "path": "results.json",
+                "size": 290,
+            }
+        ],
+    }
+
+
 def test_model(mocker, tmp_dir, dvc):
     mocker.patch("dvc.utils.db.get_model", side_effect=[data1, data2])
     stage = dvc.imp_db(model="model", output_format="json")

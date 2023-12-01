@@ -5,6 +5,7 @@ Any other tests should likely be mocked tests in `test_import_db` rather than he
 
 import os
 import sqlite3
+import urllib
 from contextlib import closing
 
 import pytest
@@ -12,10 +13,6 @@ from agate import Table
 
 from dvc.types import StrPath
 
-dbt_connections = pytest.importorskip(
-    "dbt.adapters.sql.connections", reason="dbt-core not installed"
-)
-SQLConnectionManager = dbt_connections.SQLConnectionManager
 pytest.importorskip("dbt.adapters.sqlite", reason="dbt-sqlite not installed")
 
 
@@ -40,6 +37,14 @@ def db_path(tmp_dir):
 
 
 @pytest.fixture
+def db_conn_string(db_path):
+    path = db_path.fs_path
+    if os.name == "nt":
+        path = urllib.parse.quote(path)
+    return f"sqlite://{path}"
+
+
+@pytest.fixture
 def seed_db(db_path):
     conn = sqlite3.connect(db_path)
     conn.execute("CREATE TABLE model (id INTEGER PRIMARY KEY, value INTEGER)")
@@ -50,6 +55,15 @@ def seed_db(db_path):
 
     with closing(conn):
         yield inner
+
+
+@pytest.fixture
+def db_config(dvc, db_conn_string):
+    # only needed for `sql_conn` tests
+    db_conf = {"conn": db_conn_string}
+    with dvc.config.edit(level="local") as conf:
+        conf["db_connection"] = db_conf
+    return db_conf
 
 
 @pytest.fixture
@@ -90,11 +104,14 @@ def dbt_model(dbt_project):
     return "model"
 
 
-@pytest.fixture(params=("sql", "model", "external_model"))
+@pytest.fixture(params=("sql", "model", "external_model", "sql_conn"))
 def import_db_parameters(request: pytest.FixtureRequest):
     if request.param == "sql":
         profile = request.getfixturevalue("dbt_profile")
         return {"sql": "select * from model", "profile": profile}
+    if request.param == "sql_conn":
+        (conn, _), *_ = request.getfixturevalue("db_config").items()
+        return {"sql": "select * from model", "connection": conn}
 
     dbt_project = request.getfixturevalue("dbt_project")
     return {

@@ -24,6 +24,7 @@ class CmdImportDb(CmdBase):
             output_format=self.args.output_format,
             out=self.args.out,
             force=self.args.force,
+            connection=self.args.connection,
         )
         return 0
 
@@ -85,6 +86,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Override destination file or folder if exists.",
+    )
+    import_parser.add_argument(
+        "--conn",
+        dest="connection",
+        nargs="?",
+        help="Database connection to use, needs to be set in config",
     )
 
     import_parser.set_defaults(func=CmdImportDb)

@@ -1,5 +1,6 @@
 import os
 from contextlib import contextmanager
+from dataclasses import dataclass
 from importlib.util import find_spec
 from typing import (
     TYPE_CHECKING,
@@ -17,6 +18,7 @@ from dvc.log import logger
 from . import packaging
 
 if TYPE_CHECKING:
+    import pyarrow as pa
     from agate import Table
     from dbt.config.profile import Profile
     from dbt.contracts.results import RunResult
@@ -205,6 +207,30 @@ def _suppress_status(status: Optional["Status"]):
     yield
     if status:
         status.start()
+
+
+@dataclass
+class ArrowWrapper:
+    """Wrapper to make exporting APIs compatible with agate"""
+
+    df: "pa.Table"
+
+    def to_json(self, f):
+        return self.df.to_pandas().to_json(f, orient="records")
+
+    def to_csv(self, f):
+        from pyarrow import csv
+
+        return csv.write_csv(self.df, f)
+
+
+def _connectorx_query(url: str, query: str) -> "ArrowWrapper":
+    try:
+        import connectorx
+    except ModuleNotFoundError as exc:
+        raise DvcException("You need to install connectorx") from exc
+
+    return ArrowWrapper(connectorx.read_sql(url, query, return_type="arrow"))
 
 
 @check_dbt("query")

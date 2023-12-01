@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from rich.status import Status
 
     from dvc.stage import Stage
+    from dvc.utils.db import ArrowWrapper
 
 logger = logger.getChild(__name__)
 
@@ -50,7 +51,9 @@ def chdir(path):
         os.chdir(wdir)
 
 
-def export_to(table: "Table", to: str, file_format: str = "csv") -> None:
+def export_to(
+    table: "Union[Table, ArrowWrapper]", to: str, file_format: str = "csv"
+) -> None:
     exporter = {"csv": table.to_csv, "json": table.to_json}
     return exporter[file_format](to)
 
@@ -69,7 +72,8 @@ class AbstractDependency(Dependency):
 
 class DbDependency(AbstractDependency):
     PARAM_QUERY = "query"
-    QUERY_SCHEMA = {PARAM_QUERY: str}
+    PARAM_CONNECTION = "connection"
+    QUERY_SCHEMA = {PARAM_QUERY: str, PARAM_CONNECTION: str}
 
     def __init__(self, stage: "Stage", info, *args, **kwargs):
         super().__init__(stage, info, *args, **kwargs)
@@ -103,30 +107,45 @@ class DbDependency(AbstractDependency):
     def update(self, rev=None):
         """nothing to update."""
 
-    def download(self, to, jobs=None, file_format=None):  # noqa: ARG002
+    def download(self, to, jobs=None, connection=None, file_format=None):  # noqa: ARG002
         db_info = self.info.get(PARAM_DB, {})
         query = db_info.get(self.PARAM_QUERY)
         if not query:
             raise DvcException("Cannot download: no query specified")
 
-        from dvc.utils.db import _check_dbt, _profiles_dir, execute_sql
+        from dvc.utils.db import (
+            _check_dbt,
+            _connectorx_query,
+            _profiles_dir,
+            execute_sql,
+        )
 
         db_config = _get_db_config(self.repo.config)
+
         profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
         target = self.target or db_config.get("target")
         file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
 
-        _check_dbt(self.PARAM_QUERY)
-        profiles_dir = _profiles_dir(self.repo.root_dir)
+        db_connections = self.repo.config.get("db_connection", {})
+        connection = connection or db_info.get(self.PARAM_CONNECTION)
+        if connection and connection not in db_connections:
+            raise DvcException(f"connection {connection} not found in config")
+
         with log_status("Executing query") as status:
-            table = execute_sql(
-                query,
-                profiles_dir,
-                self.repo.root_dir,
-                profile,
-                target=target,
-                status=status,
-            )
+            if connection:
+                table = _connectorx_query(db_connections[connection], query)
+            else:
+                _check_dbt(self.PARAM_QUERY)
+                profiles_dir = _profiles_dir(self.repo.root_dir)
+                table = execute_sql(
+                    query,
+                    profiles_dir,
+                    self.repo.root_dir,
+                    profile,
+                    target=target,
+                    status=status,
+                )
+
         # NOTE: we keep everything in memory, and then export it out later.
         with log_status(f"Saving to {to}"):
             return export_to(table, to.fs_path, file_format)

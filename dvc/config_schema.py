@@ -352,4 +352,5 @@ SCHEMA = {
         "repo_url": str,
         Optional("offline", default=False): Bool,
     },
+    "db_connection": {str: str},
 }
