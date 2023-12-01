@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from funcy import first
 
@@ -360,3 +362,16 @@ def test_get(tmp_dir, scm, dvc, exp_stage, erepo_dir, use_ref):
             rev=exp_ref.name if use_ref else exp_rev,
         )
         assert (erepo_dir / "params.yaml").read_text().strip() == "foo: 2"
+
+
+def test_push_invalid_workspace(
+    tmp_dir, scm, dvc, git_upstream, exp_stage, local_remote, caplog
+):
+    dvc.experiments.run()
+
+    with open("dvc.yaml", mode="a") as f:
+        f.write("\ninvalid")
+
+    with caplog.at_level(logging.ERROR, logger="dvc"):
+        dvc.experiments.push(git_upstream.remote, push_cache=True)
+        assert "failed to collect" not in caplog.text

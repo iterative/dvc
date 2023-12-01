@@ -22,7 +22,7 @@ def _make_index_onerror(onerror, rev):
     return _onerror
 
 
-def _collect_indexes(  # noqa: PLR0913
+def _collect_indexes(  # noqa: PLR0913,C901
     repo,
     targets=None,
     remote=None,
@@ -80,6 +80,8 @@ def _collect_indexes(  # noqa: PLR0913
 
             indexes[rev or "workspace"] = idx
         except Exception as exc:
+            if rev == "workspace" and rev not in revs:
+                continue
             if onerror:
                 onerror(rev, None, exc)
             collection_exc = exc
