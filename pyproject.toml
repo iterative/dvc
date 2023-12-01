@@ -112,6 +112,7 @@ tests = [
     'tzdata; sys_platform == "win32"',  # for testing with celery
     "dbt-sqlite", # optional dependency for testing `import-db`
     "connectorx[pyarrow]", # optional dependency for `import-db`
+    "pandas",
 ]
 webdav = ["dvc-webdav==2.19.1"]
 webhdfs = ["dvc-webhdfs==2.19"]
