@@ -209,7 +209,6 @@ module = [
     "agate.*",
     "celery.*",
     "configobj.*",
-    "connectorx",
     "dpath.*",
     "distro",
     "dvc_http",
@@ -224,7 +223,6 @@ module = [
     "iterative_telemetry",
     "kombu.*",
     "networkx.*",  # https://github.com/networkx/networkx/issues/3988
-    "pyarrow",
     "pygtrie.*",
     "pyinstrument",
     "pyparsing",
