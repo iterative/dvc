@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager, nullcontext
-from typing import TYPE_CHECKING, Any, Dict, Iterator, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Union
 
 from funcy import compact
 
@@ -11,9 +11,9 @@ from dvc.scm import SCM
 from .base import Dependency
 
 if TYPE_CHECKING:
-    from agate import Table
     from rich.status import Status
 
+    from dvc.output import Output
     from dvc.stage import Stage
 
 logger = logger.getChild(__name__)
@@ -24,20 +24,23 @@ PARAM_PROFILE = "profile"
 PARAM_FILE_FORMAT = "file_format"
 
 
-def _get_db_config(config: Dict) -> Dict:
+def _get_dbt_config(config: Dict) -> Dict:
     conf = config.get("feature", {})
-    pref = "db_"
+    pref = "dbt_"
     return {k.lstrip(pref): v for k, v in conf.items() if k.startswith(pref)}
 
 
 @contextmanager
-def log_status(msg, log=logger.debug) -> Iterator["Status"]:
+def log_status(
+    msg, status: Optional["Status"] = None, log=logger.debug
+) -> Iterator["Status"]:
     from funcy import log_durations
 
     from dvc.ui import ui
 
-    with log_durations(log, msg), ui.status(msg) as status:
-        yield status
+    with log_durations(log, msg), status or ui.status(msg) as st:
+        st.update(msg)
+        yield st
 
 
 @contextmanager
@@ -50,15 +53,10 @@ def chdir(path):
         os.chdir(wdir)
 
 
-def export_to(table: "Table", to: str, file_format: str = "csv") -> None:
-    exporter = {"csv": table.to_csv, "json": table.to_json}
-    return exporter[file_format](to)
-
-
 class AbstractDependency(Dependency):
     """Dependency without workspace/fs/fs_path"""
 
-    def __init__(self, stage: "Stage", info, *args, **kwargs):
+    def __init__(self, stage: "Stage", info: Dict[str, Any], *args, **kwargs):
         self.repo = stage.repo
         self.stage = stage
         self.fs = None
@@ -69,7 +67,8 @@ class AbstractDependency(Dependency):
 
 class DbDependency(AbstractDependency):
     PARAM_QUERY = "query"
-    QUERY_SCHEMA = {PARAM_QUERY: str}
+    PARAM_CONNECTION = "connection"
+    QUERY_SCHEMA = {PARAM_QUERY: str, PARAM_CONNECTION: str}
 
     def __init__(self, stage: "Stage", info, *args, **kwargs):
         super().__init__(stage, info, *args, **kwargs)
@@ -103,33 +102,37 @@ class DbDependency(AbstractDependency):
     def update(self, rev=None):
         """nothing to update."""
 
-    def download(self, to, jobs=None, file_format=None):  # noqa: ARG002
+    def download(self, to, jobs=None, file_format=None, **kwargs):  # noqa: ARG002
+        from dvc.database import export, get_adapter
+
         db_info = self.info.get(PARAM_DB, {})
         query = db_info.get(self.PARAM_QUERY)
         if not query:
             raise DvcException("Cannot download: no query specified")
 
-        from dvc.utils.db import _check_dbt, _profiles_dir, execute_sql
+        dbt_config = _get_dbt_config(self.repo.config)
+        profile = db_info.get(PARAM_PROFILE) or dbt_config.get(PARAM_PROFILE)
+        target = self.target or dbt_config.get("target")
 
-        db_config = _get_db_config(self.repo.config)
-        profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
-        target = self.target or db_config.get("target")
-        file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
+        connection = db_info.get(self.PARAM_CONNECTION)
+        db_config = self.repo.config.get("db", {})
+        config = db_config.get(connection)
+        if connection and not config:
+            raise DvcException(f"connection {connection} not found in config")
 
-        _check_dbt(self.PARAM_QUERY)
-        profiles_dir = _profiles_dir(self.repo.root_dir)
-        with log_status("Executing query") as status:
-            table = execute_sql(
-                query,
-                profiles_dir,
-                self.repo.root_dir,
-                profile,
-                target=target,
-                status=status,
-            )
-        # NOTE: we keep everything in memory, and then export it out later.
-        with log_status(f"Saving to {to}"):
-            return export_to(table, to.fs_path, file_format)
+        project_dir = self.repo.root_dir
+        with get_adapter(
+            config, project_dir=project_dir, profile=profile, target=target
+        ) as db:
+            logger.debug("using adapter: %s", db)
+            with log_status("Testing connection") as status:
+                db.test_connection(onerror=status.stop)
+
+            file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
+            with log_status("Executing query") as status, db.query(query) as serializer:
+                logger.debug("using serializer: %s", serializer)
+                with log_status(f"Saving to {to}", status=status):
+                    return export(serializer, to.fs_path, format=file_format)
 
 
 class DbtDependency(AbstractDependency):
@@ -237,7 +240,12 @@ class DbtDependency(AbstractDependency):
             rev = self.rev
         self.def_repo[RepoDependency.PARAM_REV_LOCK] = self._get_clone(rev).get_rev()
 
-    def download(self, to, jobs=None, file_format=None):  # noqa: ARG002
+    def download(
+        self,
+        to: "Output",
+        jobs: Optional[int] = None,  # noqa: ARG002
+        file_format: Optional[str] = None,
+    ) -> None:
         from dvc.ui import ui
 
         from .repo import RepoDependency
@@ -257,25 +265,33 @@ class DbtDependency(AbstractDependency):
             self._download_db(to, file_format=file_format)
         ui.write(f"Saved file to {to}", styled=True)
 
-    def _download_db(self, to, version=None, file_format=None):
-        from dvc.utils.db import get_model
+    def _download_db(
+        self,
+        to: "Output",
+        version: Optional[int] = None,
+        file_format: Optional[str] = None,
+    ) -> None:
+        from dvc.database import export, get_model
 
         db_info = self.info.get(PARAM_DB, {})
         model = db_info.get(self.PARAM_MODEL)
+        version = version or db_info.get(self.PARAM_VERSION)
+        file_format = file_format or db_info.get(PARAM_FILE_FORMAT) or "csv"
+        assert file_format
         if not model:
             raise DvcException("Cannot download, no model specified")
 
-        db_config = _get_db_config(self.repo.config)
-        version = version or db_info.get(self.PARAM_VERSION)
-        profile = db_info.get(PARAM_PROFILE) or db_config.get(PARAM_PROFILE)
-        target = self.target or db_info.get("target")
-        file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
+        dbt_config = _get_dbt_config(self.repo.config)
+        profile = db_info.get(PARAM_PROFILE) or dbt_config.get(PARAM_PROFILE)
+        target = self.target or db_info.get("target") or dbt_config.get("target")
 
         with log_status("Downloading model"):
-            table = get_model(model, version=version, profile=profile, target=target)
+            serializer = get_model(
+                model, version=version, profile=profile, target=target
+            )
         # NOTE: we keep everything in memory, and then export it out later.
         with log_status(f"Saving to {to}"):
-            export_to(table, to.fs_path, file_format=file_format)
+            export(serializer, to.fs_path, format=file_format)
 
 
 DB_SCHEMA = {

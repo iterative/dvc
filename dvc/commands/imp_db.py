@@ -1,11 +1,66 @@
 import argparse
 
+from funcy import compact, merge
+
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
+from dvc.ui import ui
 
 logger = logger.getChild(__name__)
+
+
+class CmdTestDb(CmdBase):
+    def run(self):
+        from dvc.database import get_adapter
+        from dvc.database.dbt_utils import DBT_PROJECT_FILE, is_dbt_project
+        from dvc.dependency.db import _get_dbt_config
+        from dvc.exceptions import DvcException
+
+        connection = self.args.connection
+
+        db_config = self.repo.config.get("db", {})
+        config = db_config.get(connection, {})
+        if connection and not config:
+            raise DvcException(f"connection {connection} not found in config")
+
+        cli_config = compact(
+            {
+                "url": self.args.url,
+                "username": self.args.username,
+                "password": self.args.password,
+            }
+        )
+        conn_config = merge(config, cli_config)
+
+        cli_dbt_config = {"profile": self.args.profile, "target": self.args.target}
+        dbt_config = merge(_get_dbt_config(self.repo.config), cli_dbt_config)
+
+        project_dir = self.repo.root_dir
+        if not conn_config or not dbt_config:
+            if is_dbt_project(project_dir):
+                ui.write("Using", DBT_PROJECT_FILE, "for testing", styled=True)
+            else:
+                raise DvcException(
+                    f"no config set and {DBT_PROJECT_FILE} is missing; "
+                    "provide arguments or set a configuration"
+                )
+
+        adapter = get_adapter(conn_config, project_dir=project_dir, **dbt_config)
+        with adapter as db:
+            ui.write(f"Testing with {db}", styled=True)
+
+            creds = getattr(db, "creds", {})
+            for k, v in creds.items():
+                ui.write("\t", f"{k}:", v, styled=True)
+
+            if creds:
+                ui.write()
+
+            db.test_connection()
+
+        ui.write("Connection successful", styled=True)
 
 
 class CmdImportDb(CmdBase):
@@ -24,6 +79,7 @@ class CmdImportDb(CmdBase):
             output_format=self.args.output_format,
             out=self.args.out,
             force=self.args.force,
+            connection=self.args.connection,
         )
         return 0
 
@@ -86,5 +142,25 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Override destination file or folder if exists.",
     )
+    import_parser.add_argument(
+        "--conn",
+        dest="connection",
+        nargs="?",
+        help="Database connection to use, needs to be set in config",
+    )
 
     import_parser.set_defaults(func=CmdImportDb)
+
+    test_db_parser = subparsers.add_parser(
+        "test-db",
+        parents=[parent_parser],
+        description=append_doc_link(IMPORT_HELP, "test-db"),
+        add_help=False,
+    )
+    test_db_parser.add_argument("--conn", dest="connection")
+    test_db_parser.add_argument("--url")
+    test_db_parser.add_argument("--password")
+    test_db_parser.add_argument("--username")
+    test_db_parser.add_argument("--profile")
+    test_db_parser.add_argument("--target")
+    test_db_parser.set_defaults(func=CmdTestDb)

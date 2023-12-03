@@ -12,10 +12,6 @@ from agate import Table
 
 from dvc.types import StrPath
 
-dbt_connections = pytest.importorskip(
-    "dbt.adapters.sql.connections", reason="dbt-core not installed"
-)
-SQLConnectionManager = dbt_connections.SQLConnectionManager
 pytest.importorskip("dbt.adapters.sqlite", reason="dbt-sqlite not installed")
 
 
@@ -50,6 +46,14 @@ def seed_db(db_path):
 
     with closing(conn):
         yield inner
+
+
+@pytest.fixture
+def db_config(dvc, db_path):
+    # only needed for `sql_conn` tests
+    with dvc.config.edit(level="local") as conf:
+        conf["db"] = {"conn": {"url": f"sqlite:///{db_path.fs_path}"}}
+    return "conn"
 
 
 @pytest.fixture
@@ -90,11 +94,14 @@ def dbt_model(dbt_project):
     return "model"
 
 
-@pytest.fixture(params=("sql", "model", "external_model"))
+@pytest.fixture(params=("sql", "model", "external_model", "sql_conn"))
 def import_db_parameters(request: pytest.FixtureRequest):
     if request.param == "sql":
         profile = request.getfixturevalue("dbt_profile")
         return {"sql": "select * from model", "profile": profile}
+    if request.param == "sql_conn":
+        conn = request.getfixturevalue("db_config")
+        return {"sql": "select * from model", "connection": conn}
 
     dbt_project = request.getfixturevalue("dbt_project")
     return {
