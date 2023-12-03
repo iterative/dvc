@@ -15,7 +15,7 @@ class PandasSQLSerializer:
     def to_csv(self, file: str) -> None:
         import pandas as pd
 
-        with open(file, mode="w") as f:
+        with open(file, mode="wb") as f:
             idfs = pd.read_sql_query(self.sql, self.con, chunksize=self.chunksize)
             for i, df in enumerate(idfs):
                 df.to_csv(f, header=i == 0, index=False)
