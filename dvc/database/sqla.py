@@ -10,7 +10,7 @@ from sqlalchemy.exc import NoSuchModuleError
 from dvc.exceptions import DvcException
 from dvc.log import logger
 
-from .serializer import SQLAlchemySerializer
+from .serializer import PandasSQLSerializer
 
 logger = logger.getChild(__name__)
 
@@ -29,9 +29,10 @@ def url_from_config(config: Union[str, URL, Dict[str, str]]) -> URL:
 class SQLAlchemyAdapter:
     engine: Engine
 
-    def query(self, sql: str) -> SQLAlchemySerializer:
-        conn = self.engine.connect().execution_options(stream_results=True)
-        return SQLAlchemySerializer(text(sql), conn)
+    @contextmanager
+    def query(self, sql: str) -> Iterator[PandasSQLSerializer]:
+        with self.engine.connect().execution_options(stream_results=True) as conn:
+            yield PandasSQLSerializer(text(sql), conn)
 
     def test_connection(self, onerror: Optional[Callable[[], Any]] = None) -> None:
         try:

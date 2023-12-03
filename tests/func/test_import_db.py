@@ -13,8 +13,8 @@ serializers = AgateSerializer(data1), AgateSerializer(data2)
 @pytest.fixture
 def adapter(mocker):
     m = mocker.patch("dvc.database.get_adapter")
-    adapter = mocker.Mock()
-    adapter.query.side_effect = serializers
+    adapter = mocker.MagicMock()
+    adapter.query.return_value.__enter__.side_effect = serializers
     m.return_value.__enter__.return_value = adapter
     return m
 

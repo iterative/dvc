@@ -31,13 +31,16 @@ def _get_dbt_config(config: Dict) -> Dict:
 
 
 @contextmanager
-def log_status(msg, log=logger.debug) -> Iterator["Status"]:
+def log_status(
+    msg, status: Optional["Status"] = None, log=logger.debug
+) -> Iterator["Status"]:
     from funcy import log_durations
 
     from dvc.ui import ui
 
-    with log_durations(log, msg), ui.status(msg) as status:
-        yield status
+    with log_durations(log, msg), status or ui.status(msg) as st:
+        st.update(msg)
+        yield st
 
 
 @contextmanager
@@ -121,14 +124,15 @@ class DbDependency(AbstractDependency):
         with get_adapter(
             config, project_dir=project_dir, profile=profile, target=target
         ) as db:
+            logger.debug("using adapter: %s", db)
             with log_status("Testing connection") as status:
                 db.test_connection(onerror=status.stop)
-            with log_status("Executing query"):
-                serializer = db.query(query)
 
             file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
-            with log_status(f"Saving to {to}"):
-                return export(serializer, to.fs_path, format=file_format)
+            with log_status("Executing query") as status, db.query(query) as serializer:
+                logger.debug("using serializer: %s", serializer)
+                with log_status(f"Saving to {to}", status=status):
+                    return export(serializer, to.fs_path, format=file_format)
 
 
 class DbtDependency(AbstractDependency):
