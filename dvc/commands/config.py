@@ -111,7 +111,6 @@ class CmdConfig(CmdBaseNoRepo):
                 del conf[section][opt]
             else:
                 conf.update(set_in(conf, [section, opt], self.args.value))
-                self._check(conf, remote_or_db, section)
 
         if self.args.name == "cache.type":
             logger.warning(
