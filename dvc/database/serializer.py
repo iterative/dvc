@@ -1,0 +1,50 @@
+from contextlib import closing
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    import sqlalchemy as sa
+    from agate import Table
+
+
+@dataclass
+class SQLAlchemySerializer:
+    sql: "sa.TextClause"
+    con: "sa.Connection"
+    chunksize: int = 10_000
+
+    def to_csv(self, file: str) -> None:
+        import pandas as pd
+
+        with closing(self.con), open(file, mode="w") as f:
+            idfs = pd.read_sql_query(self.sql, self.con, chunksize=self.chunksize)
+            for i, df in enumerate(idfs):
+                df.to_csv(f, header=i == 0, index=False)
+
+    def to_json(self, file: str) -> None:
+        import pandas as pd
+
+        with closing(self.con):
+            df = pd.read_sql_query(self.sql, self.con)
+            df.to_json(file, orient="records")
+
+
+@dataclass
+class AgateSerializer:
+    table: "Table"
+
+    def to_csv(self, file: str) -> None:
+        return self.table.to_csv(file)
+
+    def to_json(self, file: str) -> None:
+        return self.table.to_json(file)
+
+
+def export(
+    serializer: Union[SQLAlchemySerializer, AgateSerializer],
+    file: str,
+    format: str = "csv",  # noqa: A002
+) -> None:
+    if format == "csv":
+        return serializer.to_csv(file)
+    return serializer.to_json(file)

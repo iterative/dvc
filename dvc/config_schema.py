@@ -318,8 +318,8 @@ SCHEMA = {
     "feature": FeatureSchema(
         {
             Optional("machine", default=False): Bool,
-            "db_profile": str,
-            "db_target": str,
+            "dbt_profile": str,
+            "dbt_target": str,
         },
     ),
     "plots": {
@@ -352,5 +352,11 @@ SCHEMA = {
         "repo_url": str,
         Optional("offline", default=False): Bool,
     },
-    "db_connection": {str: str},
+    "db": {
+        str: {
+            "url": str,
+            "username": str,
+            "password": str,
+        },
+    },
 }

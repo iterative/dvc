@@ -1,13 +1,25 @@
 """import_db tests without involving any databases."""
-
+import pytest
 from agate import Table
+
+from dvc.database.serializer import AgateSerializer
 
 data1 = Table([(i, i) for i in range(1, 10)], ["id", "value"])
 data2 = Table([(i, i) for i in range(10, 20)], ["id", "value"])
 
+serializers = AgateSerializer(data1), AgateSerializer(data2)
 
-def test_sql(mocker, tmp_dir, dvc):
-    mocker.patch("dvc.utils.db.execute_sql", side_effect=[data1, data2])
+
+@pytest.fixture
+def adapter(mocker):
+    m = mocker.patch("dvc.database.get_adapter")
+    adapter = mocker.Mock()
+    adapter.query.side_effect = serializers
+    m.return_value.__enter__.return_value = adapter
+    return m
+
+
+def test_sql(adapter, tmp_dir, dvc):
     stage = dvc.imp_db(
         sql="select * from model", profile="profile", output_format="json"
     )
@@ -44,11 +56,10 @@ def test_sql(mocker, tmp_dir, dvc):
     }
 
 
-def test_sql_conn_string(mocker, tmp_dir, dvc):
+def test_sql_conn_string(adapter, tmp_dir, dvc):
     with dvc.config.edit(level="local") as conf:
-        conf["db_connection"] = {"conn": "conn"}
+        conf["db"] = {"conn": {"url": "conn"}}
 
-    mocker.patch("dvc.utils.db._connectorx_query", side_effect=[data1, data2])
     stage = dvc.imp_db(
         sql="select * from model", connection="conn", output_format="json"
     )
@@ -84,7 +95,7 @@ def test_sql_conn_string(mocker, tmp_dir, dvc):
 
 
 def test_model(mocker, tmp_dir, dvc):
-    mocker.patch("dvc.utils.db.get_model", side_effect=[data1, data2])
+    mocker.patch("dvc.database.get_model", side_effect=serializers)
     stage = dvc.imp_db(model="model", output_format="json")
 
     assert (tmp_dir / stage.relpath).parse() == {

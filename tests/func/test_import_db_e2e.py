@@ -41,7 +41,7 @@ def db_conn_string(db_path):
     path = db_path.fs_path
     if os.name == "nt":
         path = urllib.parse.quote(path)
-    return f"sqlite://{path}"
+    return f"sqlite:///{path}"
 
 
 @pytest.fixture
@@ -60,10 +60,9 @@ def seed_db(db_path):
 @pytest.fixture
 def db_config(dvc, db_conn_string):
     # only needed for `sql_conn` tests
-    db_conf = {"conn": db_conn_string}
     with dvc.config.edit(level="local") as conf:
-        conf["db_connection"] = db_conf
-    return db_conf
+        conf["db"] = {"conn": {"url": db_conn_string}}
+    return "conn", db_conn_string
 
 
 @pytest.fixture
@@ -110,7 +109,7 @@ def import_db_parameters(request: pytest.FixtureRequest):
         profile = request.getfixturevalue("dbt_profile")
         return {"sql": "select * from model", "profile": profile}
     if request.param == "sql_conn":
-        (conn, _), *_ = request.getfixturevalue("db_config").items()
+        conn, _ = request.getfixturevalue("db_config")
         return {"sql": "select * from model", "connection": conn}
 
     dbt_project = request.getfixturevalue("dbt_project")
