@@ -5,7 +5,6 @@ Any other tests should likely be mocked tests in `test_import_db` rather than he
 
 import os
 import sqlite3
-import urllib
 from contextlib import closing
 
 import pytest
@@ -37,14 +36,6 @@ def db_path(tmp_dir):
 
 
 @pytest.fixture
-def db_conn_string(db_path):
-    path = db_path.fs_path
-    if os.name == "nt":
-        path = urllib.parse.quote(path)
-    return f"sqlite:///{path}"
-
-
-@pytest.fixture
 def seed_db(db_path):
     conn = sqlite3.connect(db_path)
     conn.execute("CREATE TABLE model (id INTEGER PRIMARY KEY, value INTEGER)")
@@ -58,11 +49,11 @@ def seed_db(db_path):
 
 
 @pytest.fixture
-def db_config(dvc, db_conn_string):
+def db_config(dvc, db_path):
     # only needed for `sql_conn` tests
     with dvc.config.edit(level="local") as conf:
-        conf["db"] = {"conn": {"url": db_conn_string}}
-    return "conn", db_conn_string
+        conf["db"] = {"conn": {"url": f"sqlite:///{db_path.fs_path}"}}
+    return "conn"
 
 
 @pytest.fixture
@@ -109,7 +100,7 @@ def import_db_parameters(request: pytest.FixtureRequest):
         profile = request.getfixturevalue("dbt_profile")
         return {"sql": "select * from model", "profile": profile}
     if request.param == "sql_conn":
-        conn, _ = request.getfixturevalue("db_config")
+        conn = request.getfixturevalue("db_config")
         return {"sql": "select * from model", "connection": conn}
 
     dbt_project = request.getfixturevalue("dbt_project")
