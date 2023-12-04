@@ -9,7 +9,7 @@ def pytest_report_header(config):
     return (
         "dvc-bench: ("
         f"size: '{bconf.size}',"
-        f"revs: '{bconf.revs}'"
+        f"revs: '{bconf.dvc_revs}'"
         ")"
     )
 
