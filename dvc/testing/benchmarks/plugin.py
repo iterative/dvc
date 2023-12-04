@@ -6,7 +6,7 @@ DEFAULT_PROJECT_GIT_REPO = "https://github.com/iterative/example-get-started"
 
 def pytest_report_header(config):
     bconf = config.bench_config
-    return "dvc-bench: (" f"size: '{bconf.size}'," f"revs: '{bconf.dvc_revs}'" ")"
+    return "dvc-bench: (" f"dataset: '{bconf.dataset}'," f"revs: '{bconf.dvc_revs}'" ")"
 
 
 def pytest_generate_tests(metafunc):
@@ -18,7 +18,7 @@ def pytest_generate_tests(metafunc):
 
 class DVCBenchConfig:
     def __init__(self):
-        self.size = "small"
+        self.dataset = "small"
         self.dvc_bin = DEFAULT_DVC_BIN
         self.dvc_revs = None
         self.dvc_git_repo = DEFAULT_DVC_GIT_REPO
@@ -34,7 +34,7 @@ def pytest_configure(config):
     )
 
     config.bench_config = DVCBenchConfig()
-    config.bench_config.size = config.getoption("--size")
+    config.bench_config.dataset = config.getoption("--dataset")
     config.bench_config.dvc_bin = config.getoption("--dvc-bin")
     config.bench_config.dvc_revs = config.getoption("--dvc-revs")
     config.bench_config.dvc_git_repo = config.getoption("--dvc-git-repo")
@@ -46,10 +46,10 @@ def pytest_configure(config):
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--size",
-        choices=["tiny", "small", "large", "mnist", "openorca"],
+        "--dataset",
+        type=str,
         default="small",
-        help="Size of the dataset/datafile to use in tests",
+        help="Dataset name to use in tests (e.g. tiny/small/large/mnist/etc)",
     )
 
     parser.addoption(
