@@ -372,6 +372,6 @@ def test_push_invalid_workspace(
     with open("dvc.yaml", mode="a") as f:
         f.write("\ninvalid")
 
-    with caplog.at_level(logging.ERROR, logger="dvc"):
+    with caplog.at_level(logging.WARNING, logger="dvc"):
         dvc.experiments.push(git_upstream.remote, push_cache=True)
         assert "failed to collect" not in caplog.text

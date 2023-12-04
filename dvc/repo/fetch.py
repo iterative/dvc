@@ -79,13 +79,13 @@ def _collect_indexes(  # noqa: PLR0913,C901
             idx.data["repo"].onerror = _make_index_onerror(onerror, rev)
 
             indexes[rev or "workspace"] = idx
-        except Exception as exc:
-            if rev == "workspace" and rev not in revs:
+        except Exception as exc:  # noqa: BLE001
+            if revs and rev == "workspace" and rev not in revs:
                 continue
             if onerror:
                 onerror(rev, None, exc)
             collection_exc = exc
-            logger.exception("failed to collect '%s'", rev or "workspace")
+            logger.warning("failed to collect '%s'", rev or "workspace")
 
     if not indexes and collection_exc:
         raise collection_exc
