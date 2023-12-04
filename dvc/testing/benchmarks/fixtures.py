@@ -193,7 +193,7 @@ def make_dataset(request, bench_config, tmp_dir, dvc_bench_git_repo):
 
         path = tmp_dir / "dataset"
         root = dvc_bench_git_repo
-        src = root / "data" / bench_config.size / "dataset"
+        src = root / "data" / bench_config.dataset / "dataset"
         src_dvc = src.with_suffix(".dvc")
 
         dvc = Repo(root)
