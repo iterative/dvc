@@ -47,7 +47,7 @@ def pytest_configure(config):
 def pytest_addoption(parser):
     parser.addoption(
         "--size",
-        choices=["tiny", "small", "large", "mnist"],
+        choices=["tiny", "small", "large", "mnist", "openorca"],
         default="small",
         help="Size of the dataset/datafile to use in tests",
     )
