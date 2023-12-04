@@ -20,6 +20,7 @@ def brancher(
     all_tags=False,
     all_commits=False,
     all_experiments=False,
+    workspace=True,
     commit_date: Optional[str] = None,
     sha_only=False,
     num=1,
@@ -31,6 +32,7 @@ def brancher(
         all_branches (bool): iterate over all available branches.
         all_commits (bool): iterate over all commits.
         all_tags (bool): iterate over all available tags.
+        workspace (bool): include workspace.
         commit_date (str): Keep experiments from the commits after(include)
                             a certain date. Date must match the extended
                             ISO 8601 format (YYYY-MM-DD).
@@ -73,7 +75,8 @@ def brancher(
 
     logger.trace("switching fs to workspace")
     self.fs = LocalFileSystem(url=self.root_dir)
-    yield "workspace"
+    if workspace:
+        yield "workspace"
 
     revs = revs.copy() if revs else []
     if "workspace" in revs:

@@ -22,7 +22,7 @@ def _make_index_onerror(onerror, rev):
     return _onerror
 
 
-def _collect_indexes(  # noqa: PLR0913,C901
+def _collect_indexes(  # noqa: PLR0913
     repo,
     targets=None,
     remote=None,
@@ -62,6 +62,7 @@ def _collect_indexes(  # noqa: PLR0913,C901
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
+        workspace=False,
     ):
         try:
             repo.config.merge(config)
@@ -80,8 +81,6 @@ def _collect_indexes(  # noqa: PLR0913,C901
 
             indexes[rev or "workspace"] = idx
         except Exception as exc:  # noqa: BLE001
-            if revs and rev == "workspace" and rev not in revs:
-                continue
             if onerror:
                 onerror(rev, None, exc)
             collection_exc = exc
