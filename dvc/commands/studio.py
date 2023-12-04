@@ -36,8 +36,9 @@ class CmdStudioLogin(CmdConfig):
 
         self.save_config(hostname, access_token)
         ui.write(
-            "Authentication successful. The token will be "
-            f"available as {token_name} in Studio profile."
+            "Authentication has been successfully completed."
+            "The generated token will now be accessible as"
+            f" {token_name} in the user's Studio profile."
         )
         return 0
 
@@ -77,11 +78,13 @@ class CmdStudioToken(CmdConfig):
 
 
 def add_parser(subparsers, parent_parser):
-    STUDIO_HELP = "Authenticate DVC with Iterative Studio"
+    STUDIO_HELP = "Commands to authenticate DVC with Iterative Studio"
     STUDIO_DESCRIPTION = (
-        "Authenticate DVC with Studio and set the token. When this is\n"
-        "set, DVC uses this to share live experiments and notify\n"
-        "Studio about pushed experiments."
+        "Authenticate DVC with Studio and set the token."
+        " Once this token has been properly configured,\n"
+        " DVC will utilize it for seamlessly sharing live experiments\n"
+        " and sending notifications to Studio regarding any experiments"
+        " that have been pushed."
     )
 
     studio_parser = subparsers.add_parser(
@@ -99,8 +102,8 @@ def add_parser(subparsers, parent_parser):
 
     STUDIO_LOGIN_HELP = "Authenticate DVC with Studio host"
     STUDIO_LOGIN_DESCRIPTION = (
-        "By default, this command authenticate DVC with Studio with\n"
-        " default scopes and a random  name as token name."
+        "By default, this command authenticates the DVC with Studio\n"
+        " using default scopes and assigns a random name as the token name."
     )
     login_parser = studio_subparser.add_parser(
         "login",
@@ -146,7 +149,9 @@ def add_parser(subparsers, parent_parser):
     login_parser.set_defaults(func=CmdStudioLogin)
 
     STUDIO_LOGOUT_HELP = "Logout user from Studio"
-    STUDIO_LOGOUT_DESCRIPTION = "This command helps to log out user from DVC Studio.\n"
+    STUDIO_LOGOUT_DESCRIPTION = (
+        "This removes the studio token from your global config.\n"
+    )
 
     logout_parser = studio_subparser.add_parser(
         "logout",

@@ -53,7 +53,7 @@ def test_studio_login_arguments(mocker):
         hostname="https://example.com",
         scopes="experiments",
         use_device_code=True,
-        client_name="dvc",
+        client_name="DVC",
     )
 
 
