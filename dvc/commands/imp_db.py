@@ -38,7 +38,7 @@ class CmdTestDb(CmdBase):
         dbt_config = merge(_get_dbt_config(self.repo.config), cli_dbt_config)
 
         project_dir = self.repo.root_dir
-        if not conn_config or not dbt_config:
+        if not (conn_config or dbt_config):
             if is_dbt_project(project_dir):
                 ui.write("Using", DBT_PROJECT_FILE, "for testing", styled=True)
             else:
@@ -151,10 +151,11 @@ def add_parser(subparsers, parent_parser):
 
     import_parser.set_defaults(func=CmdImportDb)
 
+    TEST_DB_HELP = "Test the database connection"
     test_db_parser = subparsers.add_parser(
         "test-db",
         parents=[parent_parser],
-        description=append_doc_link(IMPORT_HELP, "test-db"),
+        description=append_doc_link(TEST_DB_HELP, "test-db"),
         add_help=False,
     )
     test_db_parser.add_argument("--conn", dest="connection")
