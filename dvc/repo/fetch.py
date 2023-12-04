@@ -85,7 +85,7 @@ def _collect_indexes(  # noqa: PLR0913,C901
             if onerror:
                 onerror(rev, None, exc)
             collection_exc = exc
-            logger.warning("failed to collect '%s'", rev or "workspace")
+            logger.warning("failed to collect '%s', skipping", rev or "workspace")
 
     if not indexes and collection_exc:
         raise collection_exc
