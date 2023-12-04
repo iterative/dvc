@@ -28,7 +28,7 @@ class CmdStudioLogin(CmdConfig):
                 hostname=hostname,
                 scopes=scopes,
                 use_device_code=self.args.use_device_code,
-                client_name="dvc",
+                client_name="DVC",
             )
         except StudioAuthError as e:
             ui.error_write(str(e))
@@ -77,9 +77,9 @@ class CmdStudioToken(CmdConfig):
 
 
 def add_parser(subparsers, parent_parser):
-    STUDIO_HELP = "Authenticate dvc with Iterative Studio"
+    STUDIO_HELP = "Authenticate DVC with Iterative Studio"
     STUDIO_DESCRIPTION = (
-        "Authenticate dvc with Studio and set the token. When this is\n"
+        "Authenticate DVC with Studio and set the token. When this is\n"
         "set, DVC uses this to share live experiments and notify\n"
         "Studio about pushed experiments."
     )
@@ -93,13 +93,13 @@ def add_parser(subparsers, parent_parser):
     )
     studio_subparser = studio_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc studio CMD --help` to display command-specific help.",
+        help="Use `DVC studio CMD --help` to display command-specific help.",
     )
     fix_subparsers(studio_subparser)
 
     STUDIO_LOGIN_HELP = "Authenticate DVC with Studio host"
     STUDIO_LOGIN_DESCRIPTION = (
-        "By default, this command authenticate dvc with Studio with\n"
+        "By default, this command authenticate DVC with Studio with\n"
         " default scopes and a random  name as token name."
     )
     login_parser = studio_subparser.add_parser(
