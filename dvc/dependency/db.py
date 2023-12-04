@@ -1,8 +1,8 @@
 import os
 from contextlib import contextmanager, nullcontext
-from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional, Union
 
-from funcy import compact
+from funcy import compact, log_durations
 
 from dvc.exceptions import DvcException
 from dvc.log import logger
@@ -51,6 +51,19 @@ def chdir(path):
         yield
     finally:
         os.chdir(wdir)
+
+
+@contextmanager
+def download_progress(to: "Output") -> Iterator[Callable[[int], Any]]:
+    from dvc.ui import ui
+    from dvc.ui._rich_progress import DbDownloadProgress
+
+    with log_durations(logger.debug, f"Saving to {to}"), DbDownloadProgress(
+        console=ui.error_console,
+    ) as progress:
+        task = progress.add_task("Saving", total=None, output=to)
+        yield lambda n: progress.advance(task, advance=n)
+        progress.update(task, description="Saved", total=0)
 
 
 class AbstractDependency(Dependency):
@@ -102,7 +115,13 @@ class DbDependency(AbstractDependency):
     def update(self, rev=None):
         """nothing to update."""
 
-    def download(self, to, jobs=None, file_format=None, **kwargs):  # noqa: ARG002
+    def download(
+        self,
+        to: "Output",
+        jobs: Optional[int] = None,  # noqa: ARG002
+        file_format: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         from dvc.database import export, get_adapter
 
         db_info = self.info.get(PARAM_DB, {})
@@ -129,10 +148,14 @@ class DbDependency(AbstractDependency):
                 db.test_connection(onerror=status.stop)
 
             file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
+            assert file_format
             with log_status("Executing query") as status, db.query(query) as serializer:
+                status.stop()
                 logger.debug("using serializer: %s", serializer)
-                with log_status(f"Saving to {to}", status=status):
-                    return export(serializer, to.fs_path, format=file_format)
+                with download_progress(to) as progress:
+                    return export(
+                        serializer, to.fs_path, format=file_format, progress=progress
+                    )
 
 
 class DbtDependency(AbstractDependency):
@@ -246,8 +269,6 @@ class DbtDependency(AbstractDependency):
         jobs: Optional[int] = None,  # noqa: ARG002
         file_format: Optional[str] = None,
     ) -> None:
-        from dvc.ui import ui
-
         from .repo import RepoDependency
 
         project_dir = self.info.get(PARAM_DB, {}).get(self.PARAM_PROJECT_DIR, "")
@@ -263,7 +284,6 @@ class DbtDependency(AbstractDependency):
         project_path = os.path.join(wdir, project_dir) if project_dir else root
         with ctx, chdir(project_path):
             self._download_db(to, file_format=file_format)
-        ui.write(f"Saved file to {to}", styled=True)
 
     def _download_db(
         self,
@@ -290,8 +310,8 @@ class DbtDependency(AbstractDependency):
                 model, version=version, profile=profile, target=target
             )
         # NOTE: we keep everything in memory, and then export it out later.
-        with log_status(f"Saving to {to}"):
-            export(serializer, to.fs_path, format=file_format)
+        with download_progress(to) as progress:
+            export(serializer, to.fs_path, format=file_format, progress=progress)
 
 
 DB_SCHEMA = {
