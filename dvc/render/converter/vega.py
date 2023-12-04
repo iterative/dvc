@@ -209,8 +209,8 @@ class VegaConverter(Converter):
             x_file, x_field = xs[0]
 
         num_xs = len(xs)
-        unify_x_fields = num_xs > 1 and len({x[1] for x in xs}) > 1
-        props_update["x"] = "dvc_inferred_x_value" if unify_x_fields else x_field
+        multiple_x_fields = num_xs > 1 and len({x[1] for x in xs}) > 1
+        props_update["x"] = "dvc_inferred_x_value" if multiple_x_fields else x_field
 
         ys = list(_get_ys(properties, file2datapoints))
 
@@ -269,7 +269,7 @@ class VegaConverter(Converter):
                 try:
                     _update_from_field(
                         datapoints,
-                        field="dvc_inferred_x_value" if unify_x_fields else x_field,
+                        field="dvc_inferred_x_value" if multiple_x_fields else x_field,
                         source_datapoints=x_datapoints,
                         source_field=x_field,
                     )
