@@ -32,6 +32,7 @@ def _collect_indexes(  # noqa: PLR0913
     recursive=False,
     all_commits=False,
     revs=None,
+    workspace=True,
     max_size=None,
     types=None,
     config=None,
@@ -62,7 +63,7 @@ def _collect_indexes(  # noqa: PLR0913
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
-        workspace=False,
+        workspace=workspace,
     ):
         try:
             repo.config.merge(config)
@@ -105,6 +106,7 @@ def fetch(  # noqa: PLR0913
     all_commits=False,
     run_cache=False,
     revs=None,
+    workspace=True,
     max_size=None,
     types=None,
     config=None,
@@ -149,6 +151,7 @@ def fetch(  # noqa: PLR0913
         recursive=recursive,
         all_commits=all_commits,
         revs=revs,
+        workspace=workspace,
         max_size=max_size,
         types=types,
         config=config,

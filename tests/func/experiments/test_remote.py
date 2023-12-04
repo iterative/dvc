@@ -364,7 +364,7 @@ def test_get(tmp_dir, scm, dvc, exp_stage, erepo_dir, use_ref):
         assert (erepo_dir / "params.yaml").read_text().strip() == "foo: 2"
 
 
-def test_push_invalid_workspace(
+def test_push_pull_invalid_workspace(
     tmp_dir, scm, dvc, git_upstream, exp_stage, local_remote, caplog
 ):
     dvc.experiments.run()
@@ -374,4 +374,5 @@ def test_push_invalid_workspace(
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
         dvc.experiments.push(git_upstream.remote, push_cache=True)
+        dvc.experiments.pull(git_upstream.remote, pull_cache=True)
         assert "failed to collect" not in caplog.text

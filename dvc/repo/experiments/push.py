@@ -188,4 +188,6 @@ def _push_cache(
     assert isinstance(repo.scm, Git)
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc push experiment '%s'", refs)
-    return repo.push(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)
+    return repo.push(
+        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, workspace=False
+    )
