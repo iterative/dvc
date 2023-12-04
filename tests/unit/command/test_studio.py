@@ -1,4 +1,4 @@
-from dvc_studio_client.auth import AuthorizationExpired
+from dvc_studio_client.auth import AuthenticationExpired
 
 from dvc.cli import main
 from dvc.utils.studio import STUDIO_URL
@@ -6,7 +6,7 @@ from dvc.utils.studio import STUDIO_URL
 
 def test_studio_login_token_check_failed(mocker):
     mocker.patch(
-        "dvc_studio_client.auth.get_access_token", side_effect=AuthorizationExpired
+        "dvc_studio_client.auth.get_access_token", side_effect=AuthenticationExpired
     )
 
     assert main(["studio", "login"]) == 1
