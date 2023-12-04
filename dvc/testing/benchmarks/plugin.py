@@ -4,6 +4,11 @@ DEFAULT_DVC_BENCH_GIT_REPO = "https://github.com/iterative/dvc-bench"
 DEFAULT_PROJECT_GIT_REPO = "https://github.com/iterative/example-get-started"
 
 
+def pytest_report_header(config):
+    bconf = config.bench_config
+    return "dvc-bench: (" f"size: '{bconf.size}'," f"revs: '{bconf.dvc_revs}'" ")"
+
+
 def pytest_generate_tests(metafunc):
     str_revs = metafunc.config.getoption("--dvc-revs")
     revs = str_revs.split(",") if str_revs else [None]
