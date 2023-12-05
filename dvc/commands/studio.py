@@ -138,7 +138,6 @@ def add_parser(subparsers, parent_parser):
     )
 
     login_parser.add_argument(
-        "-o",
         "--no-open",
         action="store_true",
         default=False,
