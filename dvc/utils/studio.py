@@ -35,7 +35,7 @@ def post(
 
     logger.trace("Sending %s to %s", data, url)
 
-    headers = {"Authorization": f"token {token}"} if token else None
+    headers = {"Authorization": f"token {token}"}
     r = session.post(
         url, json=data, headers=headers, timeout=timeout, allow_redirects=False
     )
