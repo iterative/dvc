@@ -42,6 +42,7 @@ from dvc.commands import (
     repro,
     root,
     stage,
+    studio,
     unprotect,
     update,
     version,
@@ -93,6 +94,7 @@ COMMANDS = [
     check_ignore,
     data,
     artifacts,
+    studio,
 ]
 
 
