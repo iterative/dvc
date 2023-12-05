@@ -76,7 +76,7 @@ gdrive = ["dvc-gdrive==2.20"]
 gs = ["dvc-gs==2.22.1"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
-    "mypy==1.7.0",
+    "mypy==1.7.1",
     "pandas-stubs",
     "types-colorama",
     "types-psutil",
