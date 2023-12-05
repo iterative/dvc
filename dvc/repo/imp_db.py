@@ -27,6 +27,7 @@ def imp_db(  # noqa: PLR0913
     output_format: str = "csv",
     out: Optional[str] = None,
     force: bool = False,
+    connection: Optional[str] = None,
 ):
     ui.warn("WARNING: import-db is an experimental feature.")
     ui.warn(
@@ -50,7 +51,7 @@ def imp_db(  # noqa: PLR0913
         db.update({"model": model, "version": version, "project_dir": project_dir})
     else:
         out = out or f"results.{output_format}"
-        db["query"] = sql
+        db.update({"query": sql, "connection": connection})
 
     out = resolve_output(url or ".", out, force=force)
     path, wdir, out = resolve_paths(self, out, always_local=True)

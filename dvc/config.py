@@ -390,10 +390,10 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result: Dict[str, Dict] = {"remote": {}, "machine": {}}
+    result: Dict[str, Dict] = {"remote": {}, "machine": {}, "db": {}}
 
     for section, val in conf.items():
-        match = re_find(r'^\s*(remote|machine)\s*"(.*)"\s*$', section)
+        match = re_find(r'^\s*(remote|machine|db)\s*"(.*)"\s*$', section)
         if match:
             key, name = match
             result[key][name] = val
@@ -408,7 +408,7 @@ def _pack_named(conf):
     result = compact(conf)
 
     # Transform remote.name -> 'remote "name"'
-    for key in ("remote", "machine"):
+    for key in ("remote", "machine", "db"):
         for name, val in conf[key].items():
             result[f'{key} "{name}"'] = val
         result.pop(key, None)

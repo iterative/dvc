@@ -1,6 +1,8 @@
 import argparse
 import os
 
+from funcy import set_in
+
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -8,7 +10,7 @@ from dvc.ui import ui
 
 logger = logger.getChild(__name__)
 
-NAME_REGEX = r"^(?P<remote>remote\.)?(?P<section>[^\.]*)\.(?P<option>[^\.]*)$"
+NAME_REGEX = r"^(?P<top>(remote|db)\.)?(?P<section>[^\.]*)\.(?P<option>[^\.]*)$"
 
 
 def _name_type(value):
@@ -17,10 +19,12 @@ def _name_type(value):
     match = re.match(NAME_REGEX, value)
     if not match:
         raise argparse.ArgumentTypeError(
-            "name argument should look like remote.name.option or section.option"
+            "name argument should look like remote.name.option or "
+            "db.name.option or section.option"
         )
+    top = match.group("top")
     return (
-        bool(match.group("remote")),
+        top.strip(".") if top else None,
         match.group("section").lower(),
         match.group("option").lower(),
     )
@@ -49,12 +53,11 @@ class CmdConfig(CmdBaseNoRepo):
             logger.error("name argument is required")
             return 1
 
-        remote, section, opt = self.args.name
+        remote_or_db, section, opt = self.args.name
 
         if self.args.value is None and not self.args.unset:
-            return self._get(remote, section, opt)
-
-        return self._set(remote, section, opt)
+            return self._get(remote_or_db, section, opt)
+        return self._set(remote_or_db, section, opt)
 
     def _list(self):
         if any((self.args.name, self.args.value, self.args.unset)):
@@ -75,18 +78,18 @@ class CmdConfig(CmdBaseNoRepo):
 
         return 0
 
-    def _get(self, remote, section, opt):
+    def _get(self, remote_or_db, section, opt):
         from dvc.config import ConfigError
 
         levels = self._get_appropriate_levels(self.args.level)[::-1]
 
         for level in levels:
             conf = self.config.read(level)
-            if remote:
-                conf = conf["remote"]
+            if remote_or_db:
+                conf = conf[remote_or_db]
 
             try:
-                self._check(conf, remote, section, opt)
+                self._check(conf, remote_or_db, section, opt)
             except ConfigError:
                 if self.args.level:
                     raise
@@ -99,16 +102,15 @@ class CmdConfig(CmdBaseNoRepo):
 
         return 0
 
-    def _set(self, remote, section, opt):
+    def _set(self, remote_or_db, section, opt):
         with self.config.edit(self.args.level) as conf:
-            if remote:
-                conf = conf["remote"]
+            if remote_or_db:
+                conf = conf[remote_or_db]
             if self.args.unset:
-                self._check(conf, remote, section, opt)
+                self._check(conf, remote_or_db, section, opt)
                 del conf[section][opt]
             else:
-                self._check(conf, remote, section)
-                conf[section][opt] = self.args.value
+                conf.update(set_in(conf, [section, opt], self.args.value))
 
         if self.args.name == "cache.type":
             logger.warning(
@@ -119,10 +121,10 @@ class CmdConfig(CmdBaseNoRepo):
 
         return 0
 
-    def _check(self, conf, remote, section, opt=None):
+    def _check(self, conf, remote_or_db, section, opt=None):
         from dvc.config import ConfigError
 
-        name = "remote" if remote else "section"
+        name = remote_or_db or "section"
         if section not in conf:
             raise ConfigError(f"{name} '{section}' doesn't exist")
 
