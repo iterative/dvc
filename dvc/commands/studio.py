@@ -27,7 +27,7 @@ class CmdStudioLogin(CmdConfig):
                 token_name=name,
                 hostname=hostname,
                 scopes=scopes,
-                use_device_code=self.args.use_device_code,
+                use_device_code=self.args.no_open,
                 client_name="DVC",
             )
         except StudioAuthError as e:
@@ -139,7 +139,7 @@ def add_parser(subparsers, parent_parser):
 
     login_parser.add_argument(
         "-d",
-        "--use-device-code",
+        "--no-open",
         action="store_true",
         default=False,
         help="Use authentication flow based on user code.\n"

@@ -42,7 +42,7 @@ def test_studio_login_arguments(mocker):
                 "https://example.com",
                 "--scopes",
                 "experiments",
-                "--use-device-code",
+                "--no-open",
             ]
         )
         == 0
