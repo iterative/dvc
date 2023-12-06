@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.cli import main
-from dvc.render import REVISION_FIELD, VERSION_FIELD
+from dvc.render import ANCHOR_DEFINITIONS, FILENAME, REVISION
 
 JSON_OUT = "vis_data"
 
@@ -102,6 +102,9 @@ def verify_vega(
     html_result,
     json_result,
     split_json_result,
+    title,
+    x_label,
+    y_label,
 ):
     if isinstance(versions, str):
         versions = [versions]
@@ -111,27 +114,60 @@ def verify_vega(
         assert j[0]["type"] == "vega"
         assert set(j[0]["revisions"]) == set(versions)
 
-    assert json_result[0]["datapoints"] == split_json_result[0]["datapoints"]
-    assert set(versions) == set(json_result[0]["datapoints"].keys())
+    assert (
+        json_result[0]["content"]["data"]["values"]
+        == split_json_result[0][ANCHOR_DEFINITIONS]["<DVC_METRIC_DATA>"]
+    )
+
+    assert set(versions) == set(json_result[0]["revisions"])
 
     assert json_result[0]["content"]["data"]["values"]
     assert html_result["data"]["values"]
-    assert split_json_result[0]["content"]["data"]["values"] == "<DVC_METRIC_DATA>"
 
-    def _assert_templates_equal(html_template, filled_template, split_template):
-        # besides data, json and split json should be equal
-        path = ["data", "values"]
+    content_str = json.dumps(split_json_result[0]["content"])
+    assert "<DVC_METRIC_DATA>" in content_str
+    assert "<DVC_METRIC_X_LABEL>" in content_str
+    assert "<DVC_METRIC_Y_LABEL>" in content_str
+
+    def _assert_templates_equal(
+        html_template, filled_template, split_template, title, x_label, y_label
+    ):
+        # besides split anchors, json and split json should be equal
+        paths = [["data", "values"], ["encoding", "color"]]
         tmp1 = deepcopy(html_template)
         tmp2 = deepcopy(filled_template)
-        tmp3 = deepcopy(split_template)
-        dpath.set(tmp1, path, {})
-        dpath.set(tmp2, path, {})
-        dpath.set(tmp3, path, {})
+        tmp3 = json.loads(
+            json.dumps(split_template)
+            .replace('"<DVC_METRIC_PLOT_HEIGHT>"', "300")
+            .replace('"<DVC_METRIC_PLOT_WIDTH>"', "300")
+            .replace("<DVC_METRIC_TITLE>", title)
+            .replace("<DVC_METRIC_X_LABEL>", x_label)
+            .replace("<DVC_METRIC_Y_LABEL>", y_label)
+            .replace(
+                '"<DVC_METRIC_ZOOM_AND_PAN>"',
+                json.dumps(
+                    {
+                        "name": "grid",
+                        "select": "interval",
+                        "bind": "scales",
+                    }
+                ),
+            )
+        )
+        for path in paths:
+            dpath.set(tmp1, path, {})
+            dpath.set(tmp2, path, {})
+            dpath.set(tmp3, path, {})
 
         assert tmp1 == tmp2 == tmp3
 
     _assert_templates_equal(
-        html_result, json_result[0]["content"], split_json_result[0]["content"]
+        html_result,
+        json_result[0]["content"],
+        split_json_result[0]["content"],
+        title,
+        x_label,
+        y_label,
     )
 
 
@@ -193,17 +229,13 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
     ] == _update_datapoints(
         linear_v1,
         {
-            VERSION_FIELD: {
-                "revision": "workspace",
-                "filename": "linear.json",
-                "field": "y",
-            },
+            REVISION: "workspace",
         },
     )
     assert html_result["linear.json"]["data"]["values"] == _update_datapoints(
         linear_v1,
         {
-            REVISION_FIELD: "workspace",
+            REVISION: "workspace",
         },
     )
     assert json_data["confusion.json"][0]["content"]["data"][
@@ -211,27 +243,29 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
     ] == _update_datapoints(
         confusion_v1,
         {
-            VERSION_FIELD: {
-                "revision": "workspace",
-                "filename": "confusion.json",
-                "field": "actual",
-            },
+            REVISION: "workspace",
         },
     )
     assert html_result["confusion.json"]["data"]["values"] == _update_datapoints(
         confusion_v1,
         {
-            REVISION_FIELD: "workspace",
+            REVISION: "workspace",
         },
     )
     verify_image(tmp_dir, "workspace", "image.png", image_v1, html_path, json_data)
 
-    for plot in ["linear.json", "confusion.json"]:
+    for plot, title, x_label, y_label in [
+        ("linear.json", "linear", "x", "y"),
+        ("confusion.json", "confusion matrix", "predicted", "actual"),
+    ]:
         verify_vega(
             "workspace",
             html_result[plot],
             json_data[plot],
             split_json_data[plot],
+            title,
+            x_label,
+            y_label,
         )
 
     verify_vega_props("confusion.json", json_data, **confusion_props)
@@ -250,12 +284,18 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
     verify_image(tmp_dir, "workspace", "image.png", image_v2, html_path, json_data)
     verify_image(tmp_dir, "HEAD", "image.png", image_v1, html_path, json_data)
 
-    for plot in ["linear.json", "confusion.json"]:
+    for plot, title, x_label, y_label in [
+        ("linear.json", "linear", "x", "y"),
+        ("confusion.json", "confusion matrix", "predicted", "actual"),
+    ]:
         verify_vega(
             ["HEAD", "workspace"],
             html_result[plot],
             json_data[plot],
             split_json_data[plot],
+            title,
+            x_label,
+            y_label,
         )
     verify_vega_props("confusion.json", json_data, **confusion_props)
     path = tmp_dir / "subdir"
@@ -277,31 +317,23 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
         ] == _update_datapoints(
             linear_v2,
             {
-                VERSION_FIELD: {
-                    "revision": "workspace",
-                    "filename": "../linear.json",
-                    "field": "y",
-                },
+                REVISION: "workspace",
             },
         ) + _update_datapoints(
             linear_v1,
             {
-                VERSION_FIELD: {
-                    "revision": "HEAD",
-                    "filename": "../linear.json",
-                    "field": "y",
-                },
+                REVISION: "HEAD",
             },
         )
         assert html_result["../linear.json"]["data"]["values"] == _update_datapoints(
             linear_v2,
             {
-                REVISION_FIELD: "workspace",
+                REVISION: "workspace",
             },
         ) + _update_datapoints(
             linear_v1,
             {
-                REVISION_FIELD: "HEAD",
+                REVISION: "HEAD",
             },
         )
         assert json_data["../confusion.json"][0]["content"]["data"][
@@ -309,43 +341,38 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
         ] == _update_datapoints(
             confusion_v2,
             {
-                VERSION_FIELD: {
-                    "revision": "workspace",
-                    "filename": "../confusion.json",
-                    "field": "actual",
-                },
+                REVISION: "workspace",
             },
         ) + _update_datapoints(
             confusion_v1,
             {
-                VERSION_FIELD: {
-                    "revision": "HEAD",
-                    "filename": "../confusion.json",
-                    "field": "actual",
-                },
+                REVISION: "HEAD",
             },
         )
         assert html_result["../confusion.json"]["data"]["values"] == _update_datapoints(
             confusion_v2,
             {
-                REVISION_FIELD: "workspace",
+                REVISION: "workspace",
             },
         ) + _update_datapoints(
             confusion_v1,
             {
-                REVISION_FIELD: "HEAD",
+                REVISION: "HEAD",
             },
         )
 
-        for plot in [
-            "../linear.json",
-            "../confusion.json",
+        for plot, title, x_label, y_label in [
+            ("../linear.json", "linear", "x", "y"),
+            ("../confusion.json", "confusion matrix", "predicted", "actual"),
         ]:
             verify_vega(
                 ["HEAD", "workspace"],
                 html_result[plot],
                 json_data[plot],
                 split_json_data[plot],
+                title,
+                x_label,
+                y_label,
             )
         verify_image(
             path,
@@ -434,7 +461,7 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     repo_state = repo_with_config_plots()
     plots = next(repo_state)
 
-    html_path, _, __ = call(capsys)
+    html_path, _, split_json_result = call(capsys)
 
     assert os.path.exists(html_path)
     html_result = extract_vega_specs(
@@ -444,20 +471,28 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
             "confusion_train_vs_test",
         ],
     )
+
     ble = _update_datapoints(
         plots["data"]["linear_train.json"],
         {
-            REVISION_FIELD: "linear_train.json",
+            REVISION: "workspace",
+            FILENAME: "linear_train.json",
         },
     ) + _update_datapoints(
         plots["data"]["linear_test.json"],
         {
-            REVISION_FIELD: "linear_test.json",
+            REVISION: "workspace",
+            FILENAME: "linear_test.json",
         },
     )
 
     assert html_result["linear_train_vs_test"]["data"]["values"] == ble
-    # TODO check json results once vscode is able to handle flexible plots
+    assert (
+        split_json_result["data"]["linear_train_vs_test"][0][ANCHOR_DEFINITIONS][
+            "<DVC_METRIC_DATA>"
+        ]
+        == ble
+    )
 
 
 @pytest.mark.vscode
@@ -466,7 +501,7 @@ def test_repo_with_dvclive_plots(tmp_dir, capsys, repo_with_dvclive_plots):
 
     for s in ("show", "diff"):
         _, json_result, split_json_result = call(capsys, subcommand=s)
-        expected_result = {
+        expected_result: Dict[str, Dict[str, list[str]]] = {
             "data": {
                 "dvclive/plots/metrics/metric.tsv": [],
             },
