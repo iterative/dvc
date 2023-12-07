@@ -46,6 +46,7 @@ def push(  # noqa: PLR0913
     all_commits=False,
     run_cache=False,
     revs=None,
+    workspace=True,
     glob=False,
 ):
     from fsspec.utils import tokenize
@@ -87,6 +88,7 @@ def push(  # noqa: PLR0913
         recursive=recursive,
         all_commits=all_commits,
         revs=revs,
+        workspace=workspace,
         push=True,
     )
 
