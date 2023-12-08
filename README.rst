@@ -214,6 +214,7 @@ Community and Support
 * `Discord Chat <https://dvc.org/chat>`_
 * `Email <mailto:support@dvc.org>`_
 * `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
+* `To tryout dvc as a beginner, refer to this simple project to get started <https://github.com/iterative/example-get-started>`_
 
 Copyright
 =========
