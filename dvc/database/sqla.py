@@ -26,7 +26,7 @@ def url_from_config(config: Union[str, URL, Dict[str, str]]) -> URL:
 
 
 @dataclass
-class SQLAlchemyAdapter:
+class SQLAlchemyClient:
     engine: Engine
 
     @contextmanager
@@ -61,13 +61,13 @@ def handle_error(url: URL):
 
 
 @contextmanager
-def adapter(
+def client(
     url_or_config: Union[str, URL, Dict[str, str]], **engine_kwargs: Any
-) -> Iterator[SQLAlchemyAdapter]:
+) -> Iterator[SQLAlchemyClient]:
     url = url_from_config(url_or_config)
     with handle_error(url):
         engine = create_engine(url, **engine_kwargs)
     try:
-        yield SQLAlchemyAdapter(engine)
+        yield SQLAlchemyClient(engine)
     finally:
         engine.dispose()
