@@ -4,19 +4,19 @@ from . import dbt_query, sqla
 from .dbt_models import get_model
 from .serializer import export
 
-Adapter = Union[sqla.SQLAlchemyAdapter, dbt_query.DbtAdapter]
+Client = Union[sqla.SQLAlchemyClient, dbt_query.DbtClient]
 
 
-def get_adapter(
+def get_client(
     config,
     project_dir: Optional[str] = None,
     profile: Optional[str] = None,
     target: Optional[str] = None,
     **kwargs: Any,
-) -> "ContextManager[Adapter]":
+) -> "ContextManager[Client]":
     if config:
-        return sqla.adapter(config, **kwargs)
-    return dbt_query.adapter(project_dir=project_dir, profile=profile, target=target)
+        return sqla.client(config, **kwargs)
+    return dbt_query.client(project_dir=project_dir, profile=profile, target=target)
 
 
-__all__ = ["export", "get_adapter", "get_model", "Adapter"]
+__all__ = ["export", "get_client", "get_model", "Client"]

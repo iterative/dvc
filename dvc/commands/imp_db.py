@@ -13,7 +13,7 @@ logger = logger.getChild(__name__)
 
 class CmdTestDb(CmdBase):
     def run(self):
-        from dvc.database import get_adapter
+        from dvc.database import get_client
         from dvc.database.dbt_utils import DBT_PROJECT_FILE, is_dbt_project
         from dvc.dependency.db import _get_dbt_config
         from dvc.exceptions import DvcException
@@ -47,7 +47,7 @@ class CmdTestDb(CmdBase):
                     "provide arguments or set a configuration"
                 )
 
-        adapter = get_adapter(conn_config, project_dir=project_dir, **dbt_config)
+        adapter = get_client(conn_config, project_dir=project_dir, **dbt_config)
         with adapter as db:
             ui.write(f"Testing with {db}", styled=True)
 

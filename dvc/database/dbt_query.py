@@ -17,7 +17,7 @@ logger = logger.getChild(__name__)
 
 
 @define
-class DbtAdapter:
+class DbtClient:
     adapter: "BaseAdapter" = field(repr=lambda o: type(o).__qualname__)
     creds: Dict[str, Any] = field(repr=False)
 
@@ -59,12 +59,12 @@ class DbtAdapter:
 
 @contextmanager
 @check_dbt("query")
-def adapter(
+def client(
     project_dir: Optional[str] = None,
     profiles_dir: Optional[str] = None,
     profile: Optional[str] = None,
     target: Optional[str] = None,
-) -> Iterator["DbtAdapter"]:
+) -> Iterator["DbtClient"]:
     from dbt.adapters import factory as adapters_factory
     from dbt.adapters.base.impl import BaseAdapter
 
@@ -85,4 +85,4 @@ def adapter(
         except:  # noqa: E722
             creds = {}
 
-        yield DbtAdapter(adapter, creds)
+        yield DbtClient(adapter, creds)
