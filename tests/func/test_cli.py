@@ -96,7 +96,7 @@ def test_config_unset(dvc):
     cmd = args.func(args)
     assert isinstance(cmd, CmdConfig)
     assert args.unset
-    assert args.name == (False, "section", "option")
+    assert args.name == (None, "section", "option")
     assert args.value == value
 
 

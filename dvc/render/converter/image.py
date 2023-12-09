@@ -2,7 +2,7 @@ import base64
 import os
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-from dvc.render import FILENAME_FIELD, REVISION_FIELD, SRC_FIELD
+from dvc.render import FILENAME, REVISION, SRC
 
 from . import Converter
 
@@ -58,9 +58,9 @@ class ImageConverter(Converter):
             else:
                 src = self._encode_image(image_data)
             datapoint = {
-                REVISION_FIELD: revision,
-                FILENAME_FIELD: filename,
-                SRC_FIELD: src,
+                REVISION: revision,
+                FILENAME: filename,
+                SRC: src,
             }
             datapoints.append(datapoint)
         return datapoints, properties

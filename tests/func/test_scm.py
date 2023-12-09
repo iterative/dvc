@@ -3,7 +3,7 @@ import os
 import pytest
 from git import Repo
 
-from dvc.scm import SCM, Git, NoSCM, SCMError
+from dvc.scm import SCM, Git, NoSCM, SCMError, lfs_prefetch
 
 
 def test_init_none(tmp_dir):
@@ -27,3 +27,20 @@ def test_init_sub_dir(tmp_dir):
 
     scm = SCM(os.fspath(subdir))
     assert scm.root_dir == os.fspath(tmp_dir)
+
+
+def test_lfs_prefetch(tmp_dir, dvc, scm, mocker):
+    mock_fetch = mocker.patch("scmrepo.git.lfs.fetch")
+    rev = scm.get_rev()
+
+    with dvc.switch(rev):
+        lfs_prefetch(dvc.dvcfs, ["foo"])
+        mock_fetch.assert_not_called()
+
+    tmp_dir.scm_gen(
+        ".gitattributes", ".lfs filter=lfs diff=lfs merge=lfs -text", commit="init lfs"
+    )
+    rev = scm.get_rev()
+    with dvc.switch(rev):
+        lfs_prefetch(dvc.dvcfs, ["foo"])
+        mock_fetch.assert_called_once()

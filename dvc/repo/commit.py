@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Set
 
 from dvc import prompt
 
@@ -7,6 +7,7 @@ from .scm_context import scm_context
 
 if TYPE_CHECKING:
     from . import Repo
+    from .index import IndexView
 
 
 def _prepare_message(stage, changes):
@@ -88,14 +89,7 @@ def commit_2_to_3(repo: "Repo", dry: bool = False):
         outs_filter=lambda o: o.hash_name == "md5-dos2unix",
         recursive=True,
     )
-    migrated = set()
-    for out in view.outs:
-        dvcfile = out.stage.dvcfile.relpath
-        if isinstance(out.stage.dvcfile, ProjectFile):
-            lockfile = out.stage.dvcfile._lockfile.relpath
-            migrated.add(f"{dvcfile} ({lockfile})")
-        else:
-            migrated.add(dvcfile)
+    migrated = _migrateable_dvcfiles(view)
     if not migrated:
         ui.write("No DVC files in the repo to migrate to the 3.0 format.")
         return
@@ -110,11 +104,41 @@ def commit_2_to_3(repo: "Repo", dry: bool = False):
             for out in stage.filter_outs(filter_info)
             if outs_filter is not None and outs_filter(out)
         }
+        modified = False
         if outs:
             for out in outs:
                 out.update_legacy_hash_name(force=True)
+            modified = True
+        deps = {dep for dep in stage.deps if not stage.is_import and dep.is_in_repo}
+        if deps:
+            for dep in deps:
+                dep.update_legacy_hash_name(force=True)
+            modified = True
+        if modified:
             stage.save(allow_missing=True)
             stage.commit(allow_missing=True, relink=True)
             if not isinstance(stage.dvcfile, ProjectFile):
                 ui.write(f"Updating DVC file '{stage.dvcfile.relpath}'")
             stage.dump(update_pipeline=False)
+
+
+def _migrateable_dvcfiles(view: "IndexView") -> Set[str]:
+    from dvc.dvcfile import ProjectFile
+
+    migrated = set()
+    for stage, filter_info in view._stage_infos:
+        outs_filter = view._outs_filter
+        dvcfile = stage.dvcfile.relpath
+        assert outs_filter
+        if any(outs_filter(out) for out in stage.filter_outs(filter_info)) or (
+            not stage.is_import
+            and any(
+                dep.is_in_repo and dep.hash_name == "md5-dos2unix" for dep in stage.deps
+            )
+        ):
+            if isinstance(stage.dvcfile, ProjectFile):
+                lockfile = stage.dvcfile._lockfile.relpath
+                migrated.add(f"{dvcfile} ({lockfile})")
+            else:
+                migrated.add(dvcfile)
+    return migrated

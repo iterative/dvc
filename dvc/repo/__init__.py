@@ -76,6 +76,7 @@ class Repo:
     from dvc.repo.get import get as _get  # type: ignore[misc]
     from dvc.repo.get_url import get_url as _get_url  # type: ignore[misc]
     from dvc.repo.imp import imp  # type: ignore[misc]
+    from dvc.repo.imp_db import imp_db  # type: ignore[misc]
     from dvc.repo.imp_url import imp_url  # type: ignore[misc]
     from dvc.repo.install import install  # type: ignore[misc]
     from dvc.repo.ls import ls as _ls  # type: ignore[misc]

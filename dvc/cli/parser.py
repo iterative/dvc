@@ -26,6 +26,7 @@ from dvc.commands import (
     get_url,
     git_hook,
     imp,
+    imp_db,
     imp_url,
     init,
     install,
@@ -41,6 +42,7 @@ from dvc.commands import (
     repro,
     root,
     stage,
+    studio,
     unprotect,
     update,
     version,
@@ -65,6 +67,7 @@ COMMANDS = [
     data_sync,
     gc,
     imp,
+    imp_db,
     imp_url,
     config,
     checkout,
@@ -91,6 +94,7 @@ COMMANDS = [
     check_ignore,
     data,
     artifacts,
+    studio,
 ]
 
 

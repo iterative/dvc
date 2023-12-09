@@ -59,49 +59,6 @@ def _show_json(
     ui.write_json(compact({"errors": all_errors, "data": data}), highlight=False)
 
 
-def _adjust_vega_renderers(renderers):
-    from dvc.render import REVISION_FIELD, VERSION_FIELD
-    from dvc_render import VegaRenderer
-
-    for r in renderers:
-        if isinstance(r, VegaRenderer):
-            if _data_versions_count(r) > 1:
-                summary = _summarize_version_infos(r)
-                for dp in r.datapoints:
-                    vi = dp.pop(VERSION_FIELD, {})
-                    keys = list(vi.keys())
-                    for key in keys:
-                        if not (len(summary.get(key, set())) > 1):
-                            vi.pop(key)
-                    if vi:
-                        dp["rev"] = "::".join(vi.values())
-            else:
-                for dp in r.datapoints:
-                    dp[REVISION_FIELD] = dp[VERSION_FIELD]["revision"]
-                    dp.pop(VERSION_FIELD, {})
-
-
-def _summarize_version_infos(renderer):
-    from collections import defaultdict
-
-    from dvc.render import VERSION_FIELD
-
-    result = defaultdict(set)
-
-    for dp in renderer.datapoints:
-        for key, value in dp.get(VERSION_FIELD, {}).items():
-            result[key].add(value)
-    return dict(result)
-
-
-def _data_versions_count(renderer):
-    from itertools import product
-
-    summary = _summarize_version_infos(renderer)
-    x = product(summary.get("filename", {None}), summary.get("field", {None}))
-    return len(set(x))
-
-
 class CmdPlots(CmdBase):
     def _func(self, *args, **kwargs):
         raise NotImplementedError
@@ -175,11 +132,10 @@ class CmdPlots(CmdBase):
                 return 0
 
             renderers = [r.renderer for r in renderers_with_errors]
-            _adjust_vega_renderers(renderers)
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
-                    ui.write_json(renderer.get_filled_template(as_string=False))
+                    ui.write_json(renderer.get_filled_template())
                 return 0
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"

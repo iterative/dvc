@@ -77,12 +77,14 @@ def fill_stage_outputs(stage, **kwargs):
         )
 
 
-def fill_stage_dependencies(stage, deps=None, erepo=None, params=None, fs_config=None):
+def fill_stage_dependencies(
+    stage, deps=None, erepo=None, params=None, fs_config=None, db=None
+):
     from dvc.dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
-    stage.deps += loads_from(stage, deps or [], erepo=erepo, fs_config=fs_config)
+    stage.deps += loads_from(stage, deps or [], erepo=erepo, fs_config=fs_config, db=db)
     stage.deps += loads_params(stage, params or [])
 
 

@@ -29,15 +29,16 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 dynamic = ["version"]
+
 dependencies = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "distro>=1.3",
     "dpath<3,>=2.1.0",
-    "dvc-data>=2.22.0,<2.23.0",
+    "dvc-data>=2.22.6,<2.23.0",
     "dvc-http>=2.29.0",
-    "dvc-render>=0.3.1,<1",
-    "dvc-studio-client>=0.13.0,<1",
+    "dvc-render>=1.0.0,<2",
+    "dvc-studio-client>=0.17.1,<1",
     "dvc-task>=0.3.0,<1",
     "flatten_dict<1,>=0.4.1",
     # https://github.com/iterative/dvc/issues/9654
@@ -58,7 +59,7 @@ dependencies = [
     "requests>=2.22",
     "rich>=12",
     "ruamel.yaml>=0.17.11",
-    "scmrepo>=1.4.1,<2",
+    "scmrepo>=1.5.0,<2",
     "shortuuid>=0.5",
     "shtab<2,>=1.3.4",
     "tabulate>=0.8.7",
@@ -76,7 +77,8 @@ gdrive = ["dvc-gdrive==2.20"]
 gs = ["dvc-gs==2.22.1"]
 hdfs = ["dvc-hdfs==2.19"]
 lint = [
-    "mypy==1.7.0",
+    "mypy==1.7.1",
+    "pandas-stubs",
     "types-colorama",
     "types-psutil",
     "types-pyinstaller",
@@ -85,14 +87,14 @@ lint = [
     "types-toml",
     "types-tqdm",
 ]
-oss = ["dvc-oss>=2.20.0"]
+oss = ["dvc-oss>=2.22.0"]
 s3 = ["dvc-s3==2.23.0"]
 ssh = ["dvc-ssh>=2.22.1,<3"]
 ssh_gssapi = ["dvc-ssh[gssapi]>=2.22.1,<3"]
 testing = [
-  "pytest-test-utils",
   "pytest-benchmark[histogram]",
-  "pytest-virtualenv",
+  "pytest-test-utils",
+  "virtualenv",
 ]
 tests = [
     "dvc[testing]",
@@ -110,6 +112,9 @@ tests = [
     "pytest-xdist>=3.2",
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
     'tzdata; sys_platform == "win32"',  # for testing with celery
+    "dbt-sqlite", # optional dependency for testing `import-db`
+    "sqlalchemy>=1,<3", # optional dependency for `import-db`
+    "pandas>=1",
 ]
 webdav = ["dvc-webdav==2.19.1"]
 webhdfs = ["dvc-webhdfs==2.19"]
@@ -126,9 +131,6 @@ dvc = "dvc.cli:main"
 [project.entry-points."fsspec.specs"]
 dvc = "dvc.api:DVCFileSystem"
 
-[project.entry-points."pytest11"]
-dvc-testing = "dvc.testing.plugin"
-
 [project.entry-points."pyinstaller40"]
 hook-dirs = "dvc.__pyinstaller:get_hook_dirs"
 tests = "dvc.__pyinstaller:get_PyInstaller_tests"
@@ -144,7 +146,7 @@ namespaces = false
 write_to = "dvc/_dvc_version.py"
 
 [tool.pytest.ini_options]
-addopts = "-ra --cov-config pyproject.toml --dist worksteal"
+addopts = "-ra --cov-config pyproject.toml --dist worksteal --benchmark-skip"
 filterwarnings = [
     "error::ResourceWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
@@ -155,8 +157,6 @@ filterwarnings = [
     # google.logging: https://github.com/googleapis/python-logging/issues/730
     # Also happens with `zc.lockfile`.
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
-    # tpi imports pkg_resources
-    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
     # see https://github.com/networkx/networkx/issues/5723.
     "ignore:nx.nx_pydot.* depends on the pydot package, which has.*known issues and is not actively maintained:DeprecationWarning",
 ]
@@ -207,6 +207,7 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = [
+    "agate.*",
     "celery.*",
     "configobj.*",
     "dpath.*",
@@ -228,12 +229,11 @@ module = [
     "pyparsing",
     "pytest_benchmark.*",
     "pytest_docker.plugin",
-    "pytest_virtualenv.*",
     "ruamel.*",
     "ruamel.yaml.*",
     "shortuuid",
     "shtab",
-    "tpi.*",
+    "virtualenv",
     "viztracer",
     "voluptuous",
     "yappi",

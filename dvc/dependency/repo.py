@@ -64,28 +64,31 @@ class RepoDependency(Dependency):
         if self.def_repo.get(self.PARAM_REV_LOCK) is None:
             self.def_repo[self.PARAM_REV_LOCK] = rev
 
-    def dumpd(self, **kwargs) -> Dict[str, Union[str, Dict[str, str]]]:
-        repo = {self.PARAM_URL: self.def_repo[self.PARAM_URL]}
+    @classmethod
+    def _dump_def_repo(cls, def_repo) -> Dict[str, str]:
+        repo = {cls.PARAM_URL: def_repo[cls.PARAM_URL]}
 
-        rev = self.def_repo.get(self.PARAM_REV)
+        rev = def_repo.get(cls.PARAM_REV)
         if rev:
-            repo[self.PARAM_REV] = self.def_repo[self.PARAM_REV]
+            repo[cls.PARAM_REV] = def_repo[cls.PARAM_REV]
 
-        rev_lock = self.def_repo.get(self.PARAM_REV_LOCK)
+        rev_lock = def_repo.get(cls.PARAM_REV_LOCK)
         if rev_lock:
-            repo[self.PARAM_REV_LOCK] = rev_lock
+            repo[cls.PARAM_REV_LOCK] = rev_lock
 
-        config = self.def_repo.get(self.PARAM_CONFIG)
+        config = def_repo.get(cls.PARAM_CONFIG)
         if config:
-            repo[self.PARAM_CONFIG] = config
+            repo[cls.PARAM_CONFIG] = config
 
-        remote = self.def_repo.get(self.PARAM_REMOTE)
+        remote = def_repo.get(cls.PARAM_REMOTE)
         if remote:
-            repo[self.PARAM_REMOTE] = remote
+            repo[cls.PARAM_REMOTE] = remote
+        return repo
 
+    def dumpd(self, **kwargs) -> Dict[str, Union[str, Dict[str, str]]]:
         return {
             self.PARAM_PATH: self.def_path,
-            self.PARAM_REPO: repo,
+            self.PARAM_REPO: self._dump_def_repo(self.def_repo),
         }
 
     def update(self, rev: Optional[str] = None):

@@ -80,7 +80,7 @@ def match_defs_renderers(  # noqa: C901, PLR0912
     for plot_id, group in plots_data.group_definitions().items():
         plot_datapoints: List[Dict] = []
         props = _squash_plots_properties(group)
-        final_props: Dict = {}
+        first_props: Dict = {}
 
         def_errors: Dict[str, Exception] = {}
         src_errors: DefaultDict[str, Dict[str, Exception]] = defaultdict(dict)
@@ -90,6 +90,7 @@ def match_defs_renderers(  # noqa: C901, PLR0912
         if templates_dir is not None:
             props["template_dir"] = templates_dir
 
+        revs = []
         for rev, inner_id, plot_definition in group:
             plot_sources = infer_data_sources(inner_id, plot_definition)
             definitions_data = plots_data.get_definition_data(plot_sources, rev)
@@ -109,19 +110,24 @@ def match_defs_renderers(  # noqa: C901, PLR0912
 
             try:
                 dps, rev_props = converter.flat_datapoints(rev)
+                if dps and rev not in revs:
+                    revs.append(rev)
             except Exception as e:  # noqa: BLE001
                 logger.warning("In %r, %s", rev, str(e).lower())
                 def_errors[rev] = e
                 continue
 
-            if not final_props and rev_props:
-                final_props = rev_props
+            if not first_props and rev_props:
+                first_props = rev_props
             plot_datapoints.extend(dps)
 
-        if "title" not in final_props:
-            final_props["title"] = renderer_id
+        if "title" not in first_props:
+            first_props["title"] = renderer_id
+
+        if revs:
+            first_props["revs_with_datapoints"] = revs
 
         if renderer_cls is not None:
-            renderer = renderer_cls(plot_datapoints, renderer_id, **final_props)
+            renderer = renderer_cls(plot_datapoints, renderer_id, **first_props)
             renderers.append(RendererWithErrors(renderer, dict(src_errors), def_errors))
     return renderers

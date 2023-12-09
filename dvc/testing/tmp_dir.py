@@ -70,16 +70,20 @@ class TmpDir(pathlib.Path):
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:
             cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
-        # init parameter and `_init` method has been removed in Python 3.10.
-        kw = {"init": False} if sys.version_info < (3, 10) else {}
-        self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
-        if not self._flavour.is_supported:
-            raise NotImplementedError(
-                f"cannot instantiate {cls.__name__!r} on your system"
-            )
-        if sys.version_info < (3, 10):
-            self._init()
-        return self
+
+        if sys.version_info >= (3, 12):
+            return object.__new__(cls)
+        else:  # noqa: RET505
+            # init parameter and `_init` method has been removed in Python 3.10.
+            kw = {"init": False} if sys.version_info < (3, 10) else {}
+            self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
+            if not self._flavour.is_supported:
+                raise NotImplementedError(
+                    f"cannot instantiate {cls.__name__!r} on your system"
+                )
+            if sys.version_info < (3, 10):
+                self._init()
+            return self
 
     def init(self, *, scm=False, dvc=False, subdir=False):
         from dvc.repo import Repo
