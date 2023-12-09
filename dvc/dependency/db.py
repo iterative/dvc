@@ -122,7 +122,7 @@ class DbDependency(AbstractDependency):
         file_format: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        from dvc.database import export, get_adapter
+        from dvc.database import export, get_client
 
         db_info = self.info.get(PARAM_DB, {})
         query = db_info.get(self.PARAM_QUERY)
@@ -140,7 +140,7 @@ class DbDependency(AbstractDependency):
             raise DvcException(f"connection {connection} not found in config")
 
         project_dir = self.repo.root_dir
-        with get_adapter(
+        with get_client(
             config, project_dir=project_dir, profile=profile, target=target
         ) as db:
             logger.debug("using adapter: %s", db)

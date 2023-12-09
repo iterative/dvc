@@ -11,15 +11,15 @@ serializers = AgateSerializer(data1), AgateSerializer(data2)
 
 
 @pytest.fixture
-def adapter(mocker):
-    m = mocker.patch("dvc.database.get_adapter")
-    adapter = mocker.MagicMock()
-    adapter.query.return_value.__enter__.side_effect = serializers
-    m.return_value.__enter__.return_value = adapter
+def client(mocker):
+    m = mocker.patch("dvc.database.get_client")
+    client = mocker.MagicMock()
+    client.query.return_value.__enter__.side_effect = serializers
+    m.return_value.__enter__.return_value = client
     return m
 
 
-def test_sql(adapter, tmp_dir, dvc):
+def test_sql(client, tmp_dir, dvc):
     stage = dvc.imp_db(
         sql="select * from model", profile="profile", output_format="json"
     )
@@ -56,7 +56,7 @@ def test_sql(adapter, tmp_dir, dvc):
     }
 
 
-def test_sql_conn_string(adapter, tmp_dir, dvc):
+def test_sql_conn_string(client, tmp_dir, dvc):
     with dvc.config.edit(level="local") as conf:
         conf["db"] = {"conn": {"url": "conn"}}
 
