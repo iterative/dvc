@@ -7,7 +7,17 @@ Used for parsing dvc.yaml, dvc.lock and .dvc files.
 Not to be confused with strictyaml, a python library with similar motivations.
 """
 import re
-from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Optional, Tuple, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+)
 
 from dvc.exceptions import PrettyDvcException
 from dvc.ui import ui
@@ -19,7 +29,6 @@ from dvc.utils.serialize import (
 )
 
 if TYPE_CHECKING:
-    from dpath import Glob
     from rich.syntax import Syntax
     from ruamel.yaml import StreamMark
     from ruamel.yaml.comments import LineCol
@@ -159,17 +168,22 @@ def _normalize_linecol(lc: "LineCol | Tuple[Any, Any]") -> Tuple[int, int]:
     return line + 1, col + 1
 
 
-def determine_linecol(data: Any, location: "Glob") -> Tuple[int, int]:
+def determine_linecol(
+    yaml_data: Any, glob_pattern: Sequence[str], key_or_value: bool = False
+) -> Tuple[int, int]:
     """
     Return the line and column number for the given location in the data.
 
     Args:
-        data: The data must be a parsed YAML document represented as a Python object,
-            obtained by calling `ruamel.yaml.YAML(typ='rt').load()` on a YAML file.
-            The function expects the data to contain information about the original YAML
-            document's structure, including the line and column numbers where each
-            element appears.
-        location: The glob pattern to match a key or item in the data.
+        yaml_data: The data must be a parsed YAML document represented as a Python
+            object, obtained by calling `ruamel.yaml.YAML(typ='rt').load()` on a YAML
+            file. The function expects the data to contain information about the
+            original YAML document's structure, including the line and column numbers
+            where each element appears.
+        glob_pattern: The glob pattern to match a key or item in the data.
+        key_or_value: A boolean flag that controls whether the result points to the key
+            or value of the matching key/value pair. Ignored when matching an item
+            within a sequence. Defaults to False.
 
     Raises:
         ValueError: Raised if more than one leaf matches the glob.
@@ -181,17 +195,18 @@ def determine_linecol(data: Any, location: "Glob") -> Tuple[int, int]:
     from dpath import get
     from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
-    if isinstance((obj := get(data, location)), (CommentedSeq, CommentedMap)):
-        return _normalize_linecol(obj.lc)
-
-    obj = get(data, location[:-1])
+    obj = get(yaml_data, glob_pattern[:-1])
     if isinstance(obj, CommentedMap):
-        return _normalize_linecol(obj.lc.key(location[-1]))
+        return _normalize_linecol(
+            obj.lc.key(glob_pattern[-1])
+            if key_or_value
+            else obj.lc.value(glob_pattern[-1])
+        )
     if isinstance(obj, CommentedSeq):
-        return _normalize_linecol(obj.lc.item(int(location[-1])))
+        return _normalize_linecol(obj.lc.item(int(glob_pattern[-1])))
 
     raise TypeError(
-        f"Expected commented seq or map, got {type(obj)} at path {location!r}"
+        f"Expected commented seq or map, got {type(obj)} at path {glob_pattern!r}"
     )
 
 
@@ -220,7 +235,20 @@ class YAMLValidationError(PrettyDvcException):
         for index, error in enumerate(self.exc.errors):
             if index and lines[-1]:
                 lines.append("")
-            line, col = determine_linecol(data, error.path)
+
+            try:
+                line, col = determine_linecol(
+                    data,
+                    error.path,
+                    # Handle the case where a validation error indicates that additional
+                    # keys are not permitted.
+                    key_or_value="extra keys not allowed" in error.error_message,
+                )
+            except KeyError:
+                # Handle the case where a validation error occurs because a required
+                # key is missing.
+                line, col = determine_linecol(data, error.path[:-1], True)
+
             parts = [error.error_message]
             if error.path:
                 parts.append("in " + " -> ".join(str(p) for p in error.path))

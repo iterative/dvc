@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from ruamel.yaml import __with_libyaml__ as ruamel_clib
 
@@ -7,6 +5,7 @@ from dvc.cli import main
 from dvc.log import logger
 
 logger = logger.getChild(__name__)
+
 
 DUPLICATE_KEYS = """\
 stages:
@@ -87,10 +86,9 @@ stages:
 EMPTY_STAGE_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected a dictionary, in stages -> stage1, line 2, column 3
+expected a dictionary, in stages -> stage1, line 2, column 10
   1 stages:
-  2   stage1:
-  3"""
+  2   stage1:"""
 
 
 MISSING_CMD = """\
@@ -133,8 +131,7 @@ stages:
 OUTS_AS_STR_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected a list, in stages -> train -> outs, line 7, column 5
-  6 │     - config.cfg
+expected a list, in stages -> train -> outs, line 8, column 7
   7 │   outs:
   8 │     models/"""
 
@@ -152,7 +149,7 @@ stages:
 NULL_VALUE_ON_OUTS_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 8, column\n9
+expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 8, column\n16
   7 │   │   persist: true
   8 │   │   remote:"""
 
@@ -184,9 +181,11 @@ stages:
 FOREACH_SCALAR_VALUE_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected dict, in stages -> group -> foreach, line 3, column 5
+expected dict, in stages -> group -> foreach, line 3, column 14
   2   group:
-  3 │   foreach: 3"""
+  3 │   foreach: 3
+  4 │   do:"""
+
 
 FOREACH_DO_NULL = """\
 stages:
@@ -194,11 +193,10 @@ stages:
     foreach: [1,2,3]
     do:"""
 
-
 FOREACH_DO_NULL_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected a dictionary, in stages -> stage1 -> do, line 4, column 5
+expected a dictionary, in stages -> stage1 -> do, line 4, column 8
   3 │   foreach: [1,2,3]
   4 │   do:"""
 
@@ -211,6 +209,14 @@ stages:
       outs:
       - ${item}"""
 
+FOREACH_DO_MISSING_CMD_OUTPUT = """\
+'./dvc.yaml' validation failed.
+
+required key not provided, in stages -> stage1 -> do -> cmd, line 4, column 5
+  3 │   foreach: [1,2,3]
+  4 │   do:
+  5 │     outs:"""
+
 
 FOREACH_WITH_CMD_DO_MISSING = """\
 stages:
@@ -218,28 +224,17 @@ stages:
     foreach: [1,2,3]
     cmd: python script${item}.py"""
 
-
 FOREACH_WITH_CMD_DO_MISSING_OUTPUT = """\
 './dvc.yaml' validation failed: 2 errors.
 
-extra keys not allowed, in stages -> stage1 -> cmd, line 3, column 5
-  2   stage1:
+extra keys not allowed, in stages -> stage1 -> cmd, line 4, column 5
   3 │   foreach: [1,2,3]
   4 │   cmd: python script${item}.py
 
-required key not provided, in stages -> stage1 -> do, line 3, column 5
+required key not provided, in stages -> stage1 -> do, line 2, column 3
+  1 stages:
   2   stage1:
-  3 │   foreach: [1,2,3]
-  4 │   cmd: python script${item}.py"""
-
-
-FOREACH_DO_MISSING_CMD_OUTPUT = """\
-'./dvc.yaml' validation failed.
-
-required key not provided, in stages -> stage1 -> do -> cmd, line 5, column 7
-  4 │   do:
-  5 │     outs:
-  6 │     - ${item}"""
+  3 │   foreach: [1,2,3]"""
 
 
 MERGE_CONFLICTS = """\
@@ -324,13 +319,11 @@ def fixed_width_term(mocker):
     )
 
 
+@pytest.mark.usefixtures("dvc", "force_posixpath", "fixed_width_term")
 @pytest.mark.parametrize("text, expected", examples.values(), ids=examples.keys())
 def test_exceptions(
     tmp_dir,
-    dvc,
     capsys,
-    force_posixpath,
-    fixed_width_term,
     text,
     expected,
 ):
@@ -346,10 +339,13 @@ def test_exceptions(
     assert not out
     # strip whitespace on the right: output is always left-justified
     # by rich.syntax.Syntax:
-    for expected_line, err_line in zip(expected.splitlines(), err.splitlines()):
+    expected_lines, err_lines = expected.splitlines(), err.splitlines()
+    for expected_line, err_line in zip(expected_lines, err_lines):
         assert expected_line == err_line.rstrip(" ")
+    assert len(expected_lines) == len(err_lines)
 
 
+@pytest.mark.usefixtures("dvc", "force_posixpath", "fixed_width_term")
 @pytest.mark.parametrize(
     "text, expected",
     [
@@ -363,9 +359,6 @@ def test_exceptions(
 def test_on_revision(
     tmp_dir,
     scm,
-    dvc,
-    force_posixpath,
-    fixed_width_term,
     capsys,
     text,
     expected,
@@ -384,32 +377,8 @@ def test_on_revision(
     assert expected in err
 
 
-def test_make_relpath(tmp_dir, monkeypatch):
-    from dvc.utils.strictyaml import make_relpath
-
-    path = tmp_dir / "dvc.yaml"
-    expected_path = "./dvc.yaml" if os.name == "posix" else ".\\dvc.yaml"
-    assert make_relpath(path) == expected_path
-
-    (tmp_dir / "dir").mkdir(exist_ok=True)
-    monkeypatch.chdir("dir")
-
-    expected_path = "../dvc.yaml" if os.name == "posix" else "..\\dvc.yaml"
-    assert make_relpath(path) == expected_path
-
-
-def test_fallback_exception_message(tmp_dir, dvc, mocker, caplog):
-    # When trying to pretty print exception messages, we fallback to old way
-    # of printing things.
-    mocker.patch(
-        "dvc.utils.strictyaml.YAMLSyntaxError.__pretty_exc__",
-        side_effect=ValueError,
-    )
-    mocker.patch(
-        "dvc.utils.strictyaml.YAMLValidationError.__pretty_exc__",
-        side_effect=ValueError,
-    )
-
+@pytest.mark.usefixtures("dvc")
+def test_fallback_exception_message(tmp_dir, caplog):
     # syntax errors
     dvc_file = tmp_dir / "dvc.yaml"
     dvc_file.write_text(MAPPING_VALUES_NOT_ALLOWED)

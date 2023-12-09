@@ -145,12 +145,9 @@ class LoggerHandler(logging.StreamHandler):
             if record.exc_info:
                 _, exc, *_ = record.exc_info
                 if hasattr(exc, "__pretty_exc__"):
-                    try:
-                        self.emit_pretty_exception(exc, verbose=_is_verbose())
-                        if not _is_verbose():
-                            return
-                    except Exception:  # noqa: BLE001, S110
-                        pass
+                    self.emit_pretty_exception(exc, verbose=_is_verbose())
+                    if not _is_verbose():
+                        return
 
             msg = self.format(record)
             Tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
