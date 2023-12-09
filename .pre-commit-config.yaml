@@ -13,7 +13,7 @@ repos:
       - id: check-executables-have-shebangs
       - id: check-json
       - id: check-merge-conflict
-        exclude: "tests/integration/test_dvcfile_validation.py"
+        exclude: "tests/func/test_dvcfile_validation.py"
         args: ['--assume-in-merge']
       - id: check-toml
       - id: check-yaml
