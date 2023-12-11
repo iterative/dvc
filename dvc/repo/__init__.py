@@ -12,7 +12,12 @@ from typing import (
     Union,
 )
 
-from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
+from dvc.exceptions import (
+    DvcException,
+    NotDvcRepoError,
+    OutputNotFoundError,
+    RevCollectionError,
+)
 from dvc.ignore import DvcIgnoreFilter
 from dvc.log import logger
 from dvc.utils.objects import cached_property
@@ -487,6 +492,7 @@ class Repo:
         revs=None,
         num=1,
         push: bool = False,
+        skip_failed: bool = False,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -505,7 +511,7 @@ class Repo:
         """
         used = defaultdict(set)
 
-        for _ in self.brancher(
+        for rev in self.brancher(
             revs=revs,
             all_branches=all_branches,
             all_tags=all_tags,
@@ -514,17 +520,23 @@ class Repo:
             commit_date=commit_date,
             num=num,
         ):
-            for odb, objs in self.index.used_objs(
-                targets,
-                remote=remote,
-                force=force,
-                jobs=jobs,
-                recursive=recursive,
-                with_deps=with_deps,
-                push=push,
-            ).items():
-                used[odb].update(objs)
-
+            try:
+                for odb, objs in self.index.used_objs(
+                    targets,
+                    remote=remote,
+                    force=force,
+                    jobs=jobs,
+                    recursive=recursive,
+                    with_deps=with_deps,
+                    push=push,
+                ).items():
+                    used[odb].update(objs)
+            except DvcException as exc:
+                rev = rev or "workspace"
+                if skip_failed:
+                    logger.warning("Failed to collect '%s', skipping", rev)
+                else:
+                    raise RevCollectionError(rev) from exc
         if used_run_cache:
             for odb, objs in self.stage_cache.get_used_objs(
                 used_run_cache, remote=remote, force=force, jobs=jobs

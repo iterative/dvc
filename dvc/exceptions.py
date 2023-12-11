@@ -357,3 +357,15 @@ class ArtifactNotFoundError(DvcException):
 
         desc = f" @ {stage or version}" if (stage or version) else ""
         super().__init__(f"Unable to find artifact '{name}{desc}'")
+
+
+class RevCollectionError(DvcException):
+    """Thrown if a revision failed to be collected.
+
+    Args:
+        rev (str): revision that failed (or "workspace").
+    """
+
+    def __init__(self, rev):
+        self.rev = rev
+        super().__init__(f"Failed to collect '{rev}'")

@@ -68,6 +68,7 @@ def gc(  # noqa: PLR0913, C901
     num: Optional[int] = None,
     not_in_remote: bool = False,
     dry: bool = False,
+    skip_failed: bool = False,
 ):
     # require `workspace` to be true to come into effect.
     # assume `workspace` to be enabled if any of `all_tags`, `all_commits`,
@@ -113,6 +114,7 @@ def gc(  # noqa: PLR0913, C901
                 jobs=jobs,
                 revs=[rev] if rev else None,
                 num=num or 1,
+                skip_failed=skip_failed,
             ).items():
                 if odb not in odb_to_obj_ids:
                     odb_to_obj_ids[odb] = set()

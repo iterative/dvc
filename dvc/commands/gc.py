@@ -86,6 +86,7 @@ class CmdGC(CmdBase):
             num=self.args.num,
             not_in_remote=self.args.not_in_remote,
             dry=self.args.dry,
+            skip_failed=self.args.skip_failed,
         )
         return 0
 
@@ -187,6 +188,12 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to collect garbage in",
         metavar="<name>",
+    )
+    gc_parser.add_argument(
+        "--skip-failed",
+        action="store_true",
+        default=False,
+        help="Skip revisions that fail when collected.",
     )
     gc_parser.add_argument(
         "-f",

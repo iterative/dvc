@@ -26,6 +26,7 @@ def test_(dvc, scm, mocker):
             "--projects",
             "project1",
             "project2",
+            "--skip-failed",
         ]
     )
     assert cli_args.func == CmdGC
@@ -51,6 +52,7 @@ def test_(dvc, scm, mocker):
         num=None,
         not_in_remote=False,
         dry=True,
+        skip_failed=True,
     )
 
     cli_args = parse_args(["gc"])
