@@ -111,8 +111,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
 
     remove(dir_stage.outs[0].cache_path)
 
-    with pytest.raises(CollectCacheError):
+    with pytest.raises(RevCollectionError) as exc:
         dvc.gc(workspace=True)
+    assert type(exc.value.__cause__) == CollectCacheError
 
     assert _count_files(dvc.cache.local.path) == 4
     dvc.gc(force=True, workspace=True)
