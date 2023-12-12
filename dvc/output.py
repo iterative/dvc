@@ -1092,7 +1092,10 @@ class Output:
 
     def unprotect(self):
         if self.exists and self.use_cache:
-            self.cache.unprotect(self.fs_path)
+            with Callback.as_tqdm_callback(
+                size=self.meta.nfiles or -1, desc=f"Unprotecting {self}"
+            ) as callback:
+                self.cache.unprotect(self.fs_path, callback=callback)
 
     def get_dir_cache(self, **kwargs) -> Optional["Tree"]:
         if not self.is_dir_checksum:
