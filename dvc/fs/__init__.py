@@ -27,7 +27,7 @@ from dvc_objects.fs.errors import (  # noqa: F401
 )
 from dvc_objects.fs.path import Path  # noqa: F401
 
-from .callbacks import Callback
+from .callbacks import Callback  # noqa: F401
 from .data import DataFileSystem  # noqa: F401
 from .dvc import DVCFileSystem
 from .git import GitFileSystem  # noqa: F401
@@ -51,7 +51,9 @@ def download(
 ) -> int:
     from dvc.scm import lfs_prefetch
 
-    with Callback.as_tqdm_callback(
+    from .callbacks import TqdmCallback
+
+    with TqdmCallback(
         desc=f"Downloading {fs.path.name(fs_path)}",
         unit="files",
     ) as cb:

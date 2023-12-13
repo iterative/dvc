@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
 
 from funcy import first
 
-from dvc.fs.callbacks import Callback
 from dvc.log import logger
 from dvc.stage.exceptions import StageUpdateError
 
@@ -247,11 +246,12 @@ def _fetch_out_changes(
     remote_index: Union["DataIndex", "DataIndexView"],
     remote: "Remote",
 ):
+    from dvc.fs.callbacks import TqdmCallback
     from dvc_data.index.checkout import apply, compare
 
     old, new = _get_diff_indexes(out, local_index, remote_index)
 
-    with Callback.as_tqdm_callback(
+    with TqdmCallback(
         unit="entry",
         desc="Comparing indexes",
     ) as cb:
@@ -265,9 +265,7 @@ def _fetch_out_changes(
         )
 
     total = len(new)
-    with Callback.as_tqdm_callback(
-        unit="file", desc=f"Updating '{out}'", disable=total == 0
-    ) as cb:
+    with TqdmCallback(unit="file", desc=f"Updating '{out}'", disable=total == 0) as cb:
         cb.set_size(total)
         apply(
             diff,
