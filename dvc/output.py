@@ -786,7 +786,7 @@ class Output:
                     self.hash_name,
                     ignore=self.dvcignore,
                 )
-                with Callback.as_tqdm_callback(
+                with TqdmCallback(
                     desc=f"Committing {self} to cache",
                     unit="file",
                 ) as cb:
@@ -826,7 +826,7 @@ class Output:
         save_obj = obj.filter(prefix)
         assert isinstance(save_obj, Tree)
         checkout_obj = save_obj.get_obj(self.cache, prefix)
-        with Callback.as_tqdm_callback(
+        with TqdmCallback(
             desc=f"Committing {self} to cache",
             unit="file",
         ) as cb:
@@ -1059,7 +1059,7 @@ class Output:
             upload=upload,
             no_progress_bar=no_progress_bar,
         )
-        with Callback.as_tqdm_callback(
+        with TqdmCallback(
             desc=f"Transferring to {odb.fs.unstrip_protocol(odb.path)}",
             unit="file",
         ) as cb:
@@ -1092,7 +1092,7 @@ class Output:
 
     def unprotect(self):
         if self.exists and self.use_cache:
-            with Callback.as_tqdm_callback(
+            with TqdmCallback(
                 size=self.meta.nfiles or -1, desc=f"Unprotecting {self}"
             ) as callback:
                 self.cache.unprotect(self.fs_path, callback=callback)
@@ -1438,7 +1438,7 @@ class Output:
 
         assert staging
         assert obj.hash_info
-        with Callback.as_tqdm_callback(
+        with TqdmCallback(
             desc=f"Adding {self} to cache",
             unit="file",
         ) as cb:

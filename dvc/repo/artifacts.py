@@ -210,7 +210,8 @@ class Artifacts:
     ) -> Tuple[int, str]:
         from dvc_studio_client.model_registry import get_download_uris
 
-        from dvc.fs import Callback, HTTPFileSystem, generic, localfs
+        from dvc.fs import HTTPFileSystem, generic, localfs
+        from dvc.fs.callbacks import TqdmCallback
 
         logger.debug("Trying to download artifact '%s' via studio", name)
         out = out or os.getcwd()
@@ -244,7 +245,7 @@ class Artifacts:
             ) from exc
         fs = HTTPFileSystem()
         jobs = jobs or fs.jobs
-        with Callback.as_tqdm_callback(
+        with TqdmCallback(
             desc=f"Downloading '{name}' from '{repo_url}'",
             unit="files",
         ) as cb:

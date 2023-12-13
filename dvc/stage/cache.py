@@ -231,7 +231,7 @@ class StageCache:
 
     def transfer(self, from_odb, to_odb):
         from dvc.fs import HTTPFileSystem, LocalFileSystem
-        from dvc.fs.callbacks import Callback
+        from dvc.fs.callbacks import TqdmCallback
 
         from_fs = from_odb.fs
         to_fs = to_odb.fs
@@ -266,7 +266,7 @@ class StageCache:
 
             src_name = from_fs.path.name(src)
             parent_name = from_fs.path.name(from_fs.path.parent(src))
-            with Callback.as_tqdm_callback(
+            with TqdmCallback(
                 desc=src_name,
                 bytes=True,
             ) as cb:

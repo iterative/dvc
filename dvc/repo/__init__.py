@@ -449,9 +449,9 @@ class Repo:
         return init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
 
     def unprotect(self, target):
-        from dvc_objects.fs.callbacks import Callback
+        from dvc.fs.callbacks import TqdmCallback
 
-        with Callback.as_tqdm_callback(desc=f"Unprotecting {target}") as callback:
+        with TqdmCallback(desc=f"Unprotecting {target}") as callback:
             return self.cache.repo.unprotect(target, callback=callback)
 
     def _ignore(self):

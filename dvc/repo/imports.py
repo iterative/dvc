@@ -100,10 +100,10 @@ def save_imports(
     Returns:
         Objects which were downloaded from source location.
     """
+    from dvc.fs.callbacks import TqdmCallback
     from dvc.stage.exceptions import DataSourceChanged
     from dvc_data.index import md5, save
     from dvc_data.index.checkout import apply, compare
-    from dvc_objects.fs.callbacks import Callback
 
     downloaded: Set["HashInfo"] = set()
 
@@ -122,7 +122,7 @@ def save_imports(
             if not cache.fs.exists(cache.path):
                 os.makedirs(cache.path)
             with TemporaryDirectory(dir=cache.path) as tmpdir:
-                with Callback.as_tqdm_callback(
+                with TqdmCallback(
                     desc="Downloading imports from source",
                     unit="files",
                 ) as cb:

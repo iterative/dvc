@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING, Iterable, Optional, Set, Tuple
 
 from dvc.config import NoRemoteError, RemoteConfigError
-from dvc.fs.callbacks import Callback
 from dvc.log import logger
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
@@ -206,11 +205,13 @@ class DataCloud:
         jobs: Optional[int] = None,
         odb: "HashFileDB",
     ) -> "TransferResult":
+        from dvc.fs.callbacks import TqdmCallback
+
         if odb.hash_name == "md5-dos2unix":
             cache = self.repo.cache.legacy
         else:
             cache = self.repo.cache.local
-        with Callback.as_tqdm_callback(
+        with TqdmCallback(
             desc=f"Pushing to {odb.fs.unstrip_protocol(odb.path)}",
             unit="file",
         ) as cb:
@@ -265,11 +266,13 @@ class DataCloud:
         jobs: Optional[int] = None,
         odb: "HashFileDB",
     ) -> "TransferResult":
+        from dvc.fs.callbacks import TqdmCallback
+
         if odb.hash_name == "md5-dos2unix":
             cache = self.repo.cache.legacy
         else:
             cache = self.repo.cache.local
-        with Callback.as_tqdm_callback(
+        with TqdmCallback(
             desc=f"Fetching from {odb.fs.unstrip_protocol(odb.path)}",
             unit="file",
         ) as cb:
