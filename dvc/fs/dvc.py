@@ -131,55 +131,53 @@ class _DVCFileSystem(AbstractFileSystem):
             ...    rev="main",
             ... )
         """
-        from pygtrie import Trie
-
         super().__init__()
+        self._repo = repo
+        self._repo_factory = repo_factory
+        self._traverse_subrepos = subrepos
         self._repo_stack = ExitStack()
-        if repo is None:
-            url = url if url is not None else fo
-            repo = self._make_repo(
-                url=url,
-                rev=rev,
-                subrepos=subrepos,
-                config=config,
-                remote=remote,
-                remote_config=remote_config,
-            )
-            assert repo is not None
+        self._repo_kwargs = {
+            "url": url if url is not None else fo,
+            "rev": rev,
+            "subrepos": subrepos,
+            "config": config,
+            "remote": remote,
+            "remote_config": remote_config,
+        }
 
-            repo_factory = repo._fs_conf["repo_factory"]
-            self._repo_stack.enter_context(repo)
+        self.path = Path(self.sep, getcwd=self._getcwd)
 
-        if not repo_factory:
+    @functools.cached_property
+    def repo(self):
+        if self._repo:
+            return self._repo
+
+        repo = self._make_repo(**self._repo_kwargs)
+
+        self._repo_stack.enter_context(repo)
+        self._repo = repo
+        return repo
+
+    @functools.cached_property
+    def repo_factory(self):
+        if self._repo_factory:
+            return self._repo_factory
+
+        if self._repo:
             from dvc.repo import Repo
 
-            self.repo_factory: RepoFactory = Repo
-        else:
-            self.repo_factory = repo_factory
+            return Repo
 
-        def _getcwd():
-            relparts: Tuple[str, ...] = ()
-            assert repo is not None
-            if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
-                relparts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.root_dir)
-            return self.root_marker + self.sep.join(relparts)
+        return self.repo._fs_conf["repo_factory"]
 
-        self.path = Path(self.sep, getcwd=_getcwd)
-        self.repo = repo
-        self.hash_jobs = repo.fs.hash_jobs
-        self._traverse_subrepos = subrepos
-
-        self._subrepos_trie = Trie()
-        """Keeps track of each and every path with the corresponding repo."""
-
-        key = self._get_key(self.repo.root_dir)
-        self._subrepos_trie[key] = repo
-
-        self._datafss = {}
-        """Keep a datafs instance of each repo."""
-
-        if hasattr(repo, "dvc_dir"):
-            self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
+    def _getcwd(self):
+        relparts: Tuple[str, ...] = ()
+        assert self.repo is not None
+        if self.repo.fs.path.isin(self.repo.fs.path.getcwd(), self.repo.root_dir):
+            relparts = self.repo.fs.path.relparts(
+                self.repo.fs.path.getcwd(), self.repo.root_dir
+            )
+        return self.root_marker + self.sep.join(relparts)
 
     @functools.cached_property
     def fsid(self) -> str:
@@ -199,6 +197,17 @@ class _DVCFileSystem(AbstractFileSystem):
             return ()
         return parts
 
+    @functools.cached_property
+    def _subrepos_trie(self):
+        """Keeps track of each and every path with the corresponding repo."""
+
+        from pygtrie import Trie
+
+        trie = Trie()
+        key = self._get_key(self.repo.root_dir)
+        trie[key] = self.repo
+        return trie
+
     def _get_key_from_relative(self, path) -> Key:
         path = self._strip_protocol(path)
         parts = self.path.relparts(path, self.root_marker)
@@ -208,6 +217,18 @@ class _DVCFileSystem(AbstractFileSystem):
 
     def _from_key(self, parts: Key) -> str:
         return self.repo.fs.path.join(self.repo.root_dir, *parts)
+
+    @functools.cached_property
+    def _datafss(self):
+        """Keep a datafs instance of each repo."""
+
+        datafss = {}
+
+        if hasattr(self.repo, "dvc_dir"):
+            key = self._get_key(self.repo.root_dir)
+            datafss[key] = DataFileSystem(index=self.repo.index.data["repo"])
+
+        return datafss
 
     @property
     def repo_url(self):
