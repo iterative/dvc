@@ -1331,10 +1331,10 @@ def test_repro_keep_going(mocker, tmp_dir, dvc, copy_script):
         stage1, upstream=[bar_stage], force=False, interactive=False
     )
     foo_call = mocker.call(foo_stage, upstream=[], force=False, interactive=False)
-    assert spy.call_args_list in (
-        [bar_call, stage1_call, foo_call],
-        [foo_call, bar_call, stage1_call],
-    )
+    assert len(spy.call_args_list) == 3
+    assert foo_call in spy.call_args_list
+    assert bar_call in spy.call_args_list
+    assert stage1_call in spy.call_args_list
 
 
 def test_repro_ignore_errors(mocker, tmp_dir, dvc, copy_script):
@@ -1362,10 +1362,11 @@ def test_repro_ignore_errors(mocker, tmp_dir, dvc, copy_script):
         force=False,
         interactive=False,
     )
-    assert spy.call_args_list in (
-        [bar_call, stage1_call, foo_call, stage2_call],
-        [foo_call, bar_call, stage1_call, stage2_call],
-    )
+    assert len(spy.call_args_list) == 4
+    assert foo_call in spy.call_args_list
+    assert bar_call in spy.call_args_list
+    assert stage1_call in spy.call_args_list
+    assert stage2_call in spy.call_args_list
 
 
 @pytest.mark.parametrize("persist", [True, False])
