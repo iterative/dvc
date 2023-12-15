@@ -5,7 +5,7 @@ from typing_extensions import Annotated
 
 
 class DVCDataset(BaseModel):
-    type: Literal["dvc"] = "dvc"  # noqa: A003
+    type: Literal["dvc"] = "dvc"
     name: str
     url: str
     path: str
@@ -13,13 +13,13 @@ class DVCDataset(BaseModel):
 
 
 class WebDataset(BaseModel):
-    type: Literal["webdataset"] = "webdataset"  # noqa: A003
+    type: Literal["webdataset"] = "webdataset"
     name: str
     url: str
 
 
 class DVCxDataset(BaseModel):
-    type: Literal["dvcx"] = "dvcx"  # noqa: A003
+    type: Literal["dvcx"] = "dvcx"
     name: str
     version: Optional[int] = None
 

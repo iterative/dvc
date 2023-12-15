@@ -22,11 +22,13 @@ def _get_datasets() -> Dict[str, Dict[str, Any]]:
 
 
 def _get_raw(name: str) -> Dict[str, Any]:
-    return _get_datasets()[name]
+    datasets = _get_datasets()
+    return datasets[name]
 
 
 def get(cls: "Type[T]", name: str) -> "T":
     from pydantic import TypeAdapter
 
     d = _get_raw(name)
-    return TypeAdapter(cls).validate_python(d)
+    t = TypeAdapter(cls)
+    return t.validate_python(d)

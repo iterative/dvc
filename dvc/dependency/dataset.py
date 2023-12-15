@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, ClassVar, Dict
 from urllib.parse import urlparse
 
 from funcy import compact, merge
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class DatasetDependency(AbstractDependency):
     PARAM_DATASET = "dataset"
-    DATASET_SCHEMA = {PARAM_DATASET: dict}
+    DATASET_SCHEMA: ClassVar[Dict] = {PARAM_DATASET: dict}
 
     def __init__(self, stage: "Stage", p, info, *args, **kwargs):
         super().__init__(stage, info, *args, **kwargs)
