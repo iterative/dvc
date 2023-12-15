@@ -39,7 +39,7 @@ jobs:
         SETUPTOOLS_SCM_PRETEND_VERSION_FOR_DVC: ${{ env.version }}
     - run: twine check --strict dist/*
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: Packages
         path: dist/
