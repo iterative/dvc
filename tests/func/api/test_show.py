@@ -30,6 +30,7 @@ TEST_METRICS: List[Dict[str, Dict[str, float]]] = [
 def params_repo(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: 1")
     tmp_dir.gen("params.json", '{"bar": 2, "foobar": 3}')
+    tmp_dir.gen("params.cfg", "[section.sub]\nfoo = 1")
     tmp_dir.gen("other_params.json", '{"foo": {"bar": 4}}')
 
     dvc.run(
@@ -40,7 +41,7 @@ def params_repo(tmp_dir, scm, dvc):
     dvc.run(
         name="stage-1",
         cmd="echo stage-1",
-        params=["foo", "params.json:bar"],
+        params=["foo", "params.json:bar", "params.cfg:"],
     )
 
     dvc.run(
@@ -59,6 +60,7 @@ def params_repo(tmp_dir, scm, dvc):
         [
             "params.yaml",
             "params.json",
+            "params.cfg",
             "other_params.json",
             "dvc.yaml",
             "dvc.lock",
@@ -149,6 +151,7 @@ def test_params_show_no_args(params_repo):
         "bar": 2,
         "foobar": 3,
         "other_params.json:foo": {"bar": 4},
+        "section": {"sub": {"foo": 1}},
     }
 
 
@@ -159,7 +162,11 @@ def test_params_show_targets(params_repo):
         "bar": 2,
         "foobar": 3,
     }
-    assert api.params_show("params.yaml", stages="stage-1") == {"bar": 2, "foo": 5}
+    assert api.params_show("params.yaml", stages="stage-1") == {
+        "bar": 2,
+        "foo": 5,
+        "section": {"sub": {"foo": 1}},
+    }
 
 
 def test_params_show_deps(params_repo):
@@ -169,6 +176,7 @@ def test_params_show_deps(params_repo):
         "bar": 2,
         "foobar": 3,
         "other_params.json:foo": {"bar": 4},
+        "section": {"sub": {"foo": 1}},
     }
 
 
@@ -211,6 +219,7 @@ def test_params_show_revs(params_repo):
         "bar": 2,
         "foobar": 3,
         "other_params.json:foo": {"bar": 4},
+        "section": {"sub": {"foo": 1}},
     }
 
 

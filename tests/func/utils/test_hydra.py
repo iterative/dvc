@@ -112,6 +112,38 @@ def test_apply_overrides(tmp_dir, suffix, overrides, expected):
     assert params_file.parse() == expected
 
 
+def test_apply_ini_overrides(tmp_dir):
+    from dvc.utils.hydra import apply_overrides
+
+    params_file = tmp_dir / "params.ini"
+    params_file.dump(
+        {
+            "section": {
+                "foo": [{"bar": 1}, {"baz": 2}],
+                "goo": {"bag": 3.0},
+                "lorem": False,
+            },
+        }
+    )
+
+    # Test with valid overrides
+    valid_overrides = ["section.foo=baz", "section.goo=bar", "+section.items=[1,2,3]"]
+    apply_overrides(path=params_file.name, overrides=valid_overrides)
+    assert params_file.parse() == {
+        "section": {
+            "foo": "baz",
+            "goo": "bar",
+            "lorem": False,
+            "items": [1, 2, 3],
+        }
+    }
+
+    # Test with invalid overrides
+    invalid_overrides = ["foobar=2", "lorem=3,2", "+lorem=3", "foo[0]=bar"]
+    with pytest.raises(InvalidArgumentError):
+        apply_overrides(path=params_file.name, overrides=invalid_overrides)
+
+
 @pytest.mark.parametrize(
     "overrides",
     [["foobar=2"], ["lorem=3,2"], ["+lorem=3"], ["foo[0]=bar"]],
@@ -140,7 +172,7 @@ def hydra_setup(tmp_dir, config_dir, config_name):
     return str(config_dir)
 
 
-@pytest.mark.parametrize("suffix", ["yaml", "toml", "json"])
+@pytest.mark.parametrize("suffix", ["yaml", "toml", "json", "ini"])
 @pytest.mark.parametrize(
     "overrides,expected",
     [
