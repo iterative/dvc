@@ -13,7 +13,6 @@ from funcy import wrap_with
 
 from dvc.log import logger
 from dvc_objects.fs.base import FileSystem
-from dvc_objects.fs.path import Path
 
 from .data import DataFileSystem
 
@@ -71,7 +70,7 @@ def _merge_info(repo, key, fs_info, dvc_info):
 
 
 def _get_dvc_path(dvc_fs, subkey):
-    return dvc_fs.path.join(*subkey) if subkey else ""
+    return dvc_fs.join(*subkey) if subkey else ""
 
 
 class _DVCFileSystem(AbstractFileSystem):
@@ -145,7 +144,51 @@ class _DVCFileSystem(AbstractFileSystem):
             "remote_config": remote_config,
         }
 
-        self.path = Path(self.sep, getcwd=self._getcwd)
+    def getcwd(self):
+        relparts: Tuple[str, ...] = ()
+        assert self.repo is not None
+        if self.repo.fs.isin(self.repo.fs.getcwd(), self.repo.root_dir):
+            relparts = self.repo.fs.relparts(self.repo.fs.getcwd(), self.repo.root_dir)
+        return self.root_marker + self.sep.join(relparts)
+
+    @classmethod
+    def join(cls, *parts: str) -> str:
+        return posixpath.join(*parts)
+
+    @classmethod
+    def parts(cls, path: str) -> Tuple[str, ...]:
+        ret = []
+        while True:
+            path, part = posixpath.split(path)
+
+            if part:
+                ret.append(part)
+                continue
+
+            if path:
+                ret.append(path)
+
+            break
+
+        ret.reverse()
+
+        return tuple(ret)
+
+    def normpath(self, path: str) -> str:
+        return posixpath.normpath(path)
+
+    def abspath(self, path: str) -> str:
+        if not posixpath.isabs(path):
+            path = self.join(self.getcwd(), path)
+        return self.normpath(path)
+
+    def relpath(self, path: str, start: Optional[str] = None) -> str:
+        if start is None:
+            start = "."
+        return posixpath.relpath(self.abspath(path), start=self.abspath(start))
+
+    def relparts(self, path: str, start: Optional[str] = None) -> Tuple[str, ...]:
+        return self.parts(self.relpath(path, start=start))
 
     @functools.cached_property
     def repo(self):
@@ -170,15 +213,6 @@ class _DVCFileSystem(AbstractFileSystem):
 
         return self.repo._fs_conf["repo_factory"]
 
-    def _getcwd(self):
-        relparts: Tuple[str, ...] = ()
-        assert self.repo is not None
-        if self.repo.fs.path.isin(self.repo.fs.path.getcwd(), self.repo.root_dir):
-            relparts = self.repo.fs.path.relparts(
-                self.repo.fs.path.getcwd(), self.repo.root_dir
-            )
-        return self.root_marker + self.sep.join(relparts)
-
     @functools.cached_property
     def fsid(self) -> str:
         from fsspec.utils import tokenize
@@ -192,7 +226,7 @@ class _DVCFileSystem(AbstractFileSystem):
 
     def _get_key(self, path: "StrPath") -> Key:
         path = os.fspath(path)
-        parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
+        parts = self.repo.fs.relparts(path, self.repo.root_dir)
         if parts == (os.curdir,):
             return ()
         return parts
@@ -210,13 +244,13 @@ class _DVCFileSystem(AbstractFileSystem):
 
     def _get_key_from_relative(self, path) -> Key:
         path = self._strip_protocol(path)
-        parts = self.path.relparts(path, self.root_marker)
+        parts = self.relparts(path, self.root_marker)
         if parts and parts[0] == os.curdir:
             return parts[1:]
         return parts
 
     def _from_key(self, parts: Key) -> str:
-        return self.repo.fs.path.join(self.repo.root_dir, *parts)
+        return self.repo.fs.join(self.repo.root_dir, *parts)
 
     @functools.cached_property
     def _datafss(self):
@@ -282,7 +316,7 @@ class _DVCFileSystem(AbstractFileSystem):
 
         from dvc.repo import Repo
 
-        repo_path = self.repo.fs.path.join(dir_path, Repo.DVC_DIR)
+        repo_path = self.repo.fs.join(dir_path, Repo.DVC_DIR)
         return self.repo.fs.isdir(repo_path)
 
     def _get_subrepo_info(
@@ -336,7 +370,7 @@ class _DVCFileSystem(AbstractFileSystem):
             dvc_path = _get_dvc_path(dvc_fs, subkey)
             with suppress(FileNotFoundError, NotADirectoryError):
                 for info in dvc_fs.ls(dvc_path, detail=True):
-                    dvc_infos[dvc_fs.path.name(info["name"])] = info
+                    dvc_infos[dvc_fs.name(info["name"])] = info
                 dvc_exists = True
 
         fs_exists = False
@@ -349,7 +383,7 @@ class _DVCFileSystem(AbstractFileSystem):
                 for info in repo.dvcignore.ls(
                     fs, fs_path, detail=True, ignore_subrepos=ignore_subrepos
                 ):
-                    fs_infos[fs.path.name(info["name"])] = info
+                    fs_infos[fs.name(info["name"])] = info
                 fs_exists = True
             except (FileNotFoundError, NotADirectoryError):
                 pass
@@ -368,7 +402,7 @@ class _DVCFileSystem(AbstractFileSystem):
             if not dvcfiles and _is_dvc_file(name):
                 continue
 
-            entry_path = self.path.join(path, name)
+            entry_path = self.join(path, name)
             info = _merge_info(
                 repo, (*subkey, name), fs_infos.get(name), dvc_infos.get(name)
             )
@@ -416,7 +450,7 @@ class _DVCFileSystem(AbstractFileSystem):
         # NOTE: if some parent in fs_path turns out to be a file, it means
         # that the whole repofs branch doesn't exist.
         if dvc_info and not fs_info:
-            for parent in fs.path.parents(fs_path):
+            for parent in fs.parents(fs_path):
                 try:
                     if fs.info(parent)["type"] != "directory":
                         dvc_info = None
@@ -498,16 +532,15 @@ class DVCFileSystem(FileSystem):
     def fs(self) -> "_DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
 
+    def getcwd(self):
+        return self.fs.getcwd()
+
     @property
     def fsid(self) -> str:
         return self.fs.fsid
 
     def isdvc(self, path, **kwargs) -> bool:
         return self.fs.isdvc(path, **kwargs)
-
-    @property
-    def path(self) -> Path:
-        return self.fs.path
 
     @property
     def repo(self) -> "Repo":

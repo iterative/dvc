@@ -35,10 +35,10 @@ logger = logger.getChild(__name__)
 def _collect_top_level_metrics(repo: "Repo") -> Iterator[str]:
     top_metrics = repo.index._metrics
     for dvcfile, metrics in top_metrics.items():
-        wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
+        wdir = repo.fs.relpath(repo.fs.parent(dvcfile), repo.root_dir)
         for file in metrics:
-            path = repo.fs.path.join(wdir, as_posix(file))
-            yield repo.fs.path.normpath(path)
+            path = repo.fs.join(wdir, as_posix(file))
+            yield repo.fs.normpath(path)
 
 
 def _extract_metrics(metrics, path: str):
@@ -101,7 +101,7 @@ def _collect_metrics(
 
     if not targets or outs_only:
         outs = metrics_from_target(repo, stages) if stages else repo.index.metrics
-        relpath = repo.fs.path.relpath
+        relpath = repo.fs.relpath
         metrics.extend(relpath(out.fs_path, repo.root_dir) for out in outs)
 
     if not targets and not outs_only and not stages:
@@ -128,8 +128,8 @@ class Result(TypedDict, total=False):
 
 
 def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
-    relpath = fs.path.relpath
-    cwd = fs.path.getcwd()
+    relpath = fs.relpath
+    cwd = fs.getcwd()
 
     start = relpath(cwd, root_dir)
     data = d.get("data")
@@ -156,7 +156,7 @@ def _gather_metrics(
     fs = repo.dvcfs
     for fs_path, result in _read_metrics(fs, files, cache=True):
         repo_path = fs_path.lstrip(fs.root_marker)
-        repo_os_path = os.sep.join(fs.path.parts(repo_path))
+        repo_os_path = os.sep.join(fs.parts(repo_path))
         if not isinstance(result, Exception):
             data.update({repo_os_path: FileResult(data=result)})
             continue

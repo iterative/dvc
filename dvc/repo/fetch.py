@@ -219,7 +219,7 @@ def _log_unversioned(data: List["DataIndex"]) -> Tuple[List["DataIndex"], int]:
         index.storage_map = fs_index.storage_map
         for key, entry in fs_index.iteritems():
             if entry.meta and not entry.meta.isdir and entry.meta.version_id is None:
-                unversioned.append(fs.unstrip_protocol(fs.path.join(remote.path, *key)))
+                unversioned.append(fs.unstrip_protocol(fs.join(remote.path, *key)))
             else:
                 index[key] = entry
         fs_index.close()

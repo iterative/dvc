@@ -181,7 +181,7 @@ def _add_transfer(
 
 def _add(stage: "Stage", source: Optional[str] = None, no_commit: bool = False) -> None:
     out = stage.outs[0]
-    path = out.fs.path.abspath(source) if source else None
+    path = out.fs.abspath(source) if source else None
     try:
         stage.add_outs(path, no_commit=no_commit)
     except CacheLinkError:

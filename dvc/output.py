@@ -378,7 +378,7 @@ class Output:
         if (
             self.repo
             and self.fs.protocol == "local"
-            and not self.fs.path.isabs(self.def_path)
+            and not self.fs.isabs(self.def_path)
         ):
             self.fs = self.repo.fs
 
@@ -411,7 +411,7 @@ class Output:
         self.remote = remote
 
         if self.fs.version_aware:
-            _, version_id = self.fs.path.coalesce_version(
+            _, version_id = self.fs.coalesce_version(
                 self.def_path, self.meta.version_id
             )
             self.meta.version_id = version_id
@@ -465,7 +465,7 @@ class Output:
             parsed.scheme != "remote"
             and self.stage
             and self.stage.repo.fs == fs
-            and not fs.path.isabs(fs_path)
+            and not fs.isabs(fs_path)
         ):
             # NOTE: we can path either from command line or .dvc file,
             # so we should expect both posix and windows style paths.
@@ -473,9 +473,9 @@ class Output:
             #
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
-            fs_path = fs.path.join(self.stage.wdir, fs_path)
+            fs_path = fs.join(self.stage.wdir, fs_path)
 
-        return fs.path.abspath(fs.path.normpath(fs_path))
+        return fs.abspath(fs.normpath(fs_path))
 
     def __repr__(self):
         return f"{type(self).__name__}: {self.def_path!r}"
@@ -491,14 +491,14 @@ class Output:
         ):
             return str(self.def_path)
 
-        if not self.fs.path.isin(self.fs_path, self.repo.root_dir):
+        if not self.fs.isin(self.fs_path, self.repo.root_dir):
             return self.fs_path
 
-        cur_dir = self.fs.path.getcwd()
-        if self.fs.path.isin(cur_dir, self.repo.root_dir):
-            return self.fs.path.relpath(self.fs_path, cur_dir)
+        cur_dir = self.fs.getcwd()
+        if self.fs.isin(cur_dir, self.repo.root_dir):
+            return self.fs.relpath(self.fs_path, cur_dir)
 
-        return self.fs.path.relpath(self.fs_path, self.repo.root_dir)
+        return self.fs.relpath(self.fs_path, self.repo.root_dir)
 
     def clear(self):
         self.hash_info = HashInfo.from_dict({})
@@ -515,10 +515,10 @@ class Output:
         if urlparse(self.def_path).scheme == "remote":
             return False
 
-        if self.fs.path.isabs(self.def_path):
+        if self.fs.isabs(self.def_path):
             return False
 
-        return self.repo and self.fs.path.isin(
+        return self.repo and self.fs.isin(
             self.fs_path,
             self.repo.root_dir,
         )
@@ -607,11 +607,11 @@ class Output:
     def index_key(self) -> Tuple[str, "DataIndexKey"]:
         if self.is_in_repo:
             workspace = "repo"
-            key = self.repo.fs.path.relparts(self.fs_path, self.repo.root_dir)
+            key = self.repo.fs.relparts(self.fs_path, self.repo.root_dir)
         else:
             workspace = self.fs.protocol
-            no_drive = self.fs.path.flavour.splitdrive(self.fs_path)[1]
-            key = self.fs.path.parts(no_drive)[1:]
+            no_drive = self.fs.flavour.splitdrive(self.fs_path)[1]
+            key = self.fs.parts(no_drive)[1:]
         return workspace, key
 
     def changed_checksum(self):
@@ -799,7 +799,7 @@ class Output:
                         callback=cb,
                     )
             if relink:
-                rel = self.fs.path.relpath(filter_info or self.fs_path)
+                rel = self.fs.relpath(filter_info or self.fs_path)
                 with CheckoutCallback(desc=f"Checking out {rel}", unit="files") as cb:
                     self._checkout(
                         filter_info or self.fs_path,
@@ -814,7 +814,7 @@ class Output:
                 self.set_exec()
 
     def _commit_granular_dir(self, filter_info, hardlink) -> Optional["HashFile"]:
-        prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
+        prefix = self.fs.parts(self.fs.relpath(filter_info, self.fs_path))
         staging, _, obj = self._build(
             self.cache,
             self.fs_path,
@@ -862,7 +862,7 @@ class Output:
             ret.update(split_file_meta_from_cloud(meta_d))
 
         if self.is_in_repo:
-            path = self.fs.path.as_posix(relpath(self.fs_path, self.stage.wdir))
+            path = self.fs.as_posix(relpath(self.fs_path, self.stage.wdir))
         else:
             path = self.def_path
 
@@ -949,7 +949,7 @@ class Output:
             return None
 
         assert obj
-        fs_path = self.fs.path
+        fs_path = self.fs
         if filter_info and filter_info != self.fs_path:
             prefix = fs_path.relparts(filter_info, self.fs_path)
             assert isinstance(obj, Tree)
@@ -1154,7 +1154,7 @@ class Output:
         assert obj is None or isinstance(obj, Tree)
         if filter_info and filter_info != self.fs_path:
             assert obj
-            prefix = self.fs.path.parts(self.fs.path.relpath(filter_info, self.fs_path))
+            prefix = self.fs.parts(self.fs.relpath(filter_info, self.fs_path))
             return obj.filter(prefix)
         return obj
 
@@ -1297,10 +1297,7 @@ class Output:
     def unstage(self, path: str) -> Tuple["Meta", "Tree"]:
         from pygtrie import Trie
 
-        from dvc_objects.fs.path import Path
-
-        assert isinstance(self.fs.path, Path)
-        rel_key = tuple(self.fs.path.parts(self.fs.path.relpath(path, self.fs_path)))
+        rel_key = tuple(self.fs.parts(self.fs.relpath(path, self.fs_path)))
 
         if self.hash_info:
             tree = self.get_dir_cache()
@@ -1333,11 +1330,8 @@ class Output:
     ) -> Tuple["Meta", "Tree"]:
         from pygtrie import Trie
 
-        from dvc_objects.fs.path import Path
-
-        assert isinstance(self.fs.path, Path)
         append_only = True
-        rel_key = tuple(self.fs.path.parts(self.fs.path.relpath(path, self.fs_path)))
+        rel_key = tuple(self.fs.parts(self.fs.relpath(path, self.fs_path)))
 
         if self.hash_info:
             tree = self.get_dir_cache()

@@ -60,12 +60,12 @@ def brancher(
     from dvc.fs import LocalFileSystem
 
     repo_root_parts: Tuple[str, ...] = ()
-    if self.fs.path.isin(self.root_dir, self.scm.root_dir):
-        repo_root_parts = self.fs.path.relparts(self.root_dir, self.scm.root_dir)
+    if self.fs.isin(self.root_dir, self.scm.root_dir):
+        repo_root_parts = self.fs.relparts(self.root_dir, self.scm.root_dir)
 
     cwd_parts: Tuple[str, ...] = ()
-    if self.fs.path.isin(self.fs.path.getcwd(), self.scm.root_dir):
-        cwd_parts = self.fs.path.relparts(self.fs.path.getcwd(), self.scm.root_dir)
+    if self.fs.isin(self.fs.getcwd(), self.scm.root_dir):
+        cwd_parts = self.fs.relparts(self.fs.getcwd(), self.scm.root_dir)
 
     saved_fs = self.fs
     saved_root = self.root_dir
@@ -125,18 +125,18 @@ def _switch_fs(
     logger.trace("switching fs to revision %s", rev[:7])
     assert isinstance(repo.scm, Git)
     fs = GitFileSystem(scm=repo.scm, rev=rev)
-    root_dir = repo.fs.path.join("/", *repo_root_parts)
+    root_dir = repo.fs.join("/", *repo_root_parts)
     if not fs.exists(root_dir):
         raise NotDvcRepoError(f"Commit '{rev[:7]}' does not contain a DVC repo")
 
     repo.fs = fs
     repo.root_dir = root_dir
-    repo.dvc_dir = fs.path.join(root_dir, repo.DVC_DIR)
+    repo.dvc_dir = fs.join(root_dir, repo.DVC_DIR)
     repo._reset()
 
     if cwd_parts:
-        cwd = repo.fs.path.join("/", *cwd_parts)
-        repo.fs.path.chdir(cwd)
+        cwd = repo.fs.join("/", *cwd_parts)
+        repo.fs.chdir(cwd)
 
 
 @contextmanager
@@ -148,12 +148,12 @@ def switch(repo: "Repo", rev: str) -> Iterator[str]:
         rev = resolve_rev(repo.scm, rev)
 
     repo_root_parts: Tuple[str, ...] = ()
-    if repo.fs.path.isin(repo.root_dir, repo.scm.root_dir):
-        repo_root_parts = repo.fs.path.relparts(repo.root_dir, repo.scm.root_dir)
+    if repo.fs.isin(repo.root_dir, repo.scm.root_dir):
+        repo_root_parts = repo.fs.relparts(repo.root_dir, repo.scm.root_dir)
 
     cwd_parts: Tuple[str, ...] = ()
-    if repo.fs.path.isin(repo.fs.path.getcwd(), repo.scm.root_dir):
-        cwd_parts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.scm.root_dir)
+    if repo.fs.isin(repo.fs.getcwd(), repo.scm.root_dir):
+        cwd_parts = repo.fs.relparts(repo.fs.getcwd(), repo.scm.root_dir)
 
     saved_fs = repo.fs
     saved_root = repo.root_dir

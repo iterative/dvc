@@ -25,7 +25,6 @@ from dvc_objects.fs.errors import (  # noqa: F401
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc_objects.fs.path import Path  # noqa: F401
 
 from .callbacks import Callback  # noqa: F401
 from .data import DataFileSystem  # noqa: F401
@@ -54,23 +53,20 @@ def download(
     from .callbacks import TqdmCallback
 
     with TqdmCallback(
-        desc=f"Downloading {fs.path.name(fs_path)}",
+        desc=f"Downloading {fs.name(fs_path)}",
         unit="files",
     ) as cb:
         # NOTE: We use dvc-objects generic.copy over fs.get since it makes file
         # download atomic and avoids fsspec glob/regex path expansion.
         if fs.isdir(fs_path):
             from_infos = [
-                path
-                for path in fs.find(fs_path)
-                if not path.endswith(fs.path.flavour.sep)
+                path for path in fs.find(fs_path) if not path.endswith(fs.flavour.sep)
             ]
             if not from_infos:
                 localfs.makedirs(to, exist_ok=True)
                 return 0
             to_infos = [
-                localfs.path.join(to, *fs.path.relparts(info, fs_path))
-                for info in from_infos
+                localfs.join(to, *fs.relparts(info, fs_path)) for info in from_infos
             ]
         else:
             from_infos = [fs_path]

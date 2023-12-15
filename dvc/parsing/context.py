@@ -384,7 +384,7 @@ class Context(CtxDict):
 
     def merge_from(self, fs, item: str, wdir: str, overwrite=False):
         path, _, keys_str = item.partition(":")
-        path = fs.path.normpath(fs.path.join(wdir, path))
+        path = fs.normpath(fs.join(wdir, path))
 
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
         if path in self.imports:
@@ -429,7 +429,7 @@ class Context(CtxDict):
         default: Optional[str] = None,
     ):
         if default:
-            to_import = fs.path.join(wdir, default)
+            to_import = fs.join(wdir, default)
             if fs.exists(to_import):
                 self.merge_from(fs, default, wdir)
             else:

@@ -131,10 +131,11 @@ def _merge_push_meta(  # noqa: C901
             entries.append(entry)
             if entry.meta is not None and entry.meta.isdir:
                 continue
-            fs_path = repo.fs.path.join(repo.root_dir, *subkey)
-            meta, hash_info = old_tree.get(
-                repo.fs.path.relparts(fs_path, out.fs_path)
-            ) or (None, None)
+            fs_path = repo.fs.join(repo.root_dir, *subkey)
+            meta, hash_info = old_tree.get(repo.fs.relparts(fs_path, out.fs_path)) or (
+                None,
+                None,
+            )
             entry.hash_info = hash_info
             if entry.meta:
                 entry.meta.remote = remote
@@ -354,11 +355,11 @@ def _get_update_diff_index(
             # downloading
             if out.isdir():
                 if not entry.meta.isdir:
-                    fs_path = repo.fs.path.join(repo.root_dir, *entry.key)
+                    fs_path = repo.fs.join(repo.root_dir, *entry.key)
                     tree = out.obj
                     assert isinstance(tree, Tree)
                     _, entry.hash_info = tree.get(  # type: ignore[misc]
-                        repo.fs.path.relparts(fs_path, out.fs_path)
+                        repo.fs.relparts(fs_path, out.fs_path)
                     )
             else:
                 entry.hash_info = out.hash_info

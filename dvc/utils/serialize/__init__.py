@@ -21,7 +21,7 @@ PARSERS.update(
 
 
 def load_path(fs_path, fs, **kwargs):
-    suffix = fs.path.suffix(fs_path).lower()
+    suffix = fs.suffix(fs_path).lower()
     loader = LOADERS[suffix]
     return loader(fs_path, fs=fs, **kwargs)
 

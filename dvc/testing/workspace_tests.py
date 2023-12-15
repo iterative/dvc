@@ -163,8 +163,8 @@ class TestImportURLVersionAware:
 
 
 def match_files(fs, entries, expected):
-    entries_content = {(fs.path.normpath(d["path"]), d["isdir"]) for d in entries}
-    expected_content = {(fs.path.normpath(d["path"]), d["isdir"]) for d in expected}
+    entries_content = {(fs.normpath(d["path"]), d["isdir"]) for d in entries}
+    expected_content = {(fs.normpath(d["path"]), d["isdir"]) for d in expected}
     assert entries_content == expected_content
 
 
@@ -177,7 +177,7 @@ class TestLsUrl:
         match_files(
             fs,
             result,
-            [{"path": fs.path.join(fs_path, fname), "isdir": False}],
+            [{"path": fs.join(fs_path, fname), "isdir": False}],
         )
 
     def test_dir(self, cloud):

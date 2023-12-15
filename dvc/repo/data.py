@@ -205,7 +205,7 @@ class Status(TypedDict):
 
 def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> List[str]:
     """Transform files rel. to Git root to DVC root, and drop outside files."""
-    rel = repo.fs.path.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
+    rel = repo.fs.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
 
     # if we have repo root in a different location than scm's root,
     # i.e. subdir repo, all git_paths need to be transformed rel. to the DVC
@@ -215,11 +215,11 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> List[str]
         length = len(prefix)
         files = (file[length:] for file in files if file.startswith(prefix))
 
-    start = repo.fs.path.relpath(repo.fs.path.getcwd(), repo.root_dir)
+    start = repo.fs.relpath(repo.fs.getcwd(), repo.root_dir)
     if start in (os.curdir, ""):
         return list(files)
     # we need to convert repo relative paths to curdir relative.
-    return [repo.fs.path.relpath(file, start) for file in files]
+    return [repo.fs.relpath(file, start) for file in files]
 
 
 def status(

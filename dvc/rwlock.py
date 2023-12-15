@@ -43,10 +43,10 @@ class RWLockFileFormatError(DvcException):
 
 @contextmanager
 def _edit_rwlock(lock_dir, fs, hardlink):
-    path = fs.path.join(lock_dir, RWLOCK_FILE)
+    path = fs.join(lock_dir, RWLOCK_FILE)
 
     rwlock_guard = make_lock(
-        fs.path.join(lock_dir, RWLOCK_LOCK),
+        fs.join(lock_dir, RWLOCK_LOCK),
         tmp_dir=lock_dir,
         hardlink_lock=hardlink,
     )
@@ -82,7 +82,7 @@ def _check_blockers(tmp_dir, lock, info, *, mode, waiters):  # noqa: C901, PLR09
     to_release = defaultdict(list)
     for path, infos in lock[mode].items():
         for waiter_path in waiters:
-            if localfs.path.overlaps(waiter_path, path):
+            if localfs.overlaps(waiter_path, path):
                 break
         else:
             continue

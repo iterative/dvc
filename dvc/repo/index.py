@@ -97,7 +97,7 @@ def collect_files(
     for root, dirs, files in walk_iter:
         dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
         for file in filter(dvcfile_filter, files):
-            file_path = fs.path.join(root, file)
+            file_path = fs.join(root, file)
             try:
                 index = Index.from_file(repo, file_path)
             except DvcException as exc:
@@ -201,7 +201,7 @@ def _load_storage_from_out(storage_map, key, out):
                 FileStorage(
                     key,
                     fs_cache.fs,
-                    fs_cache.fs.path.join(
+                    fs_cache.fs.join(
                         fs_cache.path, dep.fs.protocol, tokenize(dep.fs_path)
                     ),
                 )
@@ -414,7 +414,7 @@ class Index:
             by_workspace[workspace].add(key)
 
         for path in _collect_top_level_metrics(self.repo):
-            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            key = self.repo.fs.relparts(path, self.repo.root_dir)
             by_workspace["repo"].add(key)
 
         return dict(by_workspace)
@@ -432,7 +432,7 @@ class Index:
             param_paths = chain(param_paths, [default_file])
 
         for path in param_paths:
-            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            key = self.repo.fs.relparts(path, self.repo.root_dir)
             by_workspace["repo"].add(key)
 
         return dict(by_workspace)
@@ -451,7 +451,7 @@ class Index:
             by_workspace[workspace].add(key)
 
         for path in self._plot_sources:
-            key = self.repo.fs.path.parts(path)
+            key = self.repo.fs.parts(path)
             by_workspace["repo"].add(key)
 
         return dict(by_workspace)
@@ -701,8 +701,8 @@ class IndexView:
             if not out.use_cache:
                 continue
             workspace, key = out.index_key
-            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
-                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            if filter_info and out.fs.isin(filter_info, out.fs_path):
+                key = key + out.fs.relparts(filter_info, out.fs_path)
             entry = self._index.data[workspace].get(key)
             if entry and entry.meta and entry.meta.isdir:
                 prefixes[workspace].recursive.add(key)
@@ -718,8 +718,8 @@ class IndexView:
                 continue
 
             workspace, key = out.index_key
-            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
-                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            if filter_info and out.fs.isin(filter_info, out.fs_path):
+                key = key + out.fs.relparts(filter_info, out.fs_path)
             ret[workspace].add(key)
 
         return dict(ret)
@@ -782,7 +782,7 @@ def build_data_index(  # noqa: C901, PLR0912
     data = DataIndex()
     parents = set()
     for key in index.data_keys.get(workspace, set()):
-        out_path = fs.path.join(path, *key)
+        out_path = fs.join(path, *key)
 
         for key_len in range(1, len(key)):
             parents.add(key[:key_len])
@@ -827,7 +827,7 @@ def build_data_index(  # noqa: C901, PLR0912
             callback.relative_update(1)
 
     for key in parents:
-        parent_path = fs.path.join(path, *key)
+        parent_path = fs.join(path, *key)
         if not fs.exists(parent_path):
             continue
         direntry = DataIndexEntry(key=key, meta=Meta(isdir=True), loaded=True)

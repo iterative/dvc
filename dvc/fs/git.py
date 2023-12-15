@@ -46,9 +46,11 @@ class GitFileSystem(FileSystem):
 
         return FsspecGitFileSystem(**self.fs_args)
 
-    @functools.cached_property
-    def path(self):
-        return self.fs.path
+    def getcwd(self):
+        return self.fs.getcwd()
+
+    def chdir(self, path):
+        self.fs.chdir(path)
 
     @property
     def rev(self) -> str:
