@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Un
 
 from dvc.dependency.param import ParamsDependency, read_param_file
 from dvc.log import logger
-from dvc.repo import locked
 from dvc.repo.metrics.show import FileResult, Result
 from dvc.stage import PipelineStage
 from dvc.utils import as_posix, expand_paths
@@ -158,7 +157,6 @@ def _gather_params(
     return data
 
 
-@locked
 def show(
     repo: "Repo",
     targets: Optional[List[str]] = None,

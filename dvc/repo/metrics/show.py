@@ -17,7 +17,6 @@ from funcy import ldistinct
 from scmrepo.exceptions import SCMError
 
 from dvc.log import logger
-from dvc.repo import locked
 from dvc.scm import NoSCMError
 from dvc.utils import as_posix, expand_paths
 from dvc.utils.collections import ensure_list
@@ -185,7 +184,6 @@ def _hide_workspace(
     return res
 
 
-@locked
 def show(
     repo: "Repo",
     targets: Optional[List[str]] = None,
