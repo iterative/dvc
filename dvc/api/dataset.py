@@ -21,6 +21,12 @@ def _get_datasets() -> Dict[str, Dict[str, Any]]:
         return repo.index.datasets
 
 
+def _get_raw(name: str) -> Dict[str, Any]:
+    return _get_datasets()[name]
+
+
 def get(cls: "Type[T]", name: str) -> "T":
-    datasets = _get_datasets()
-    return cls.model_validate(datasets[name])
+    from pydantic import TypeAdapter
+
+    d = _get_raw(name)
+    return TypeAdapter(cls).validate_python(d)
