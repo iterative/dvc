@@ -143,11 +143,11 @@ class DataResolver:
         self.parsing_config = repo.config.get("parsing", {})
 
         if os.path.isabs(wdir):
-            wdir = fs.path.relpath(wdir)
+            wdir = fs.relpath(wdir)
             wdir = "" if wdir == os.curdir else wdir
 
         self.wdir = wdir
-        self.relpath = fs.path.normpath(fs.path.join(self.wdir, "dvc.yaml"))
+        self.relpath = fs.normpath(fs.join(self.wdir, "dvc.yaml"))
 
         vars_ = d.get(VARS_KWD, [])
         check_interpolations(vars_, VARS_KWD, self.relpath)
@@ -248,7 +248,7 @@ class EntryDefinition:
             wdir = to_str(context.resolve_str(wdir))
         except (ContextError, ParseError) as exc:
             format_and_raise(exc, f"'{self.where}.{name}.wdir'", self.relpath)
-        return self.resolver.fs.path.join(self.wdir, wdir)
+        return self.resolver.fs.join(self.wdir, wdir)
 
     def resolve(self, **kwargs):
         try:

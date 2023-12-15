@@ -656,7 +656,7 @@ class Stage(params.StageParams):
 
     def filter_outs(self, fs_path) -> Iterable["Output"]:
         def _func(o):
-            return o.fs.path.isin_or_eq(fs_path, o.fs_path)
+            return o.fs.isin_or_eq(fs_path, o.fs_path)
 
         return filter(_func, self.outs) if fs_path else self.outs
 

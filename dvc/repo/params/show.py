@@ -21,10 +21,10 @@ logger = logger.getChild(__name__)
 def _collect_top_level_params(repo: "Repo") -> Iterator[str]:
     top_params = repo.index._params
     for dvcfile, params in top_params.items():
-        wdir = repo.fs.path.relpath(repo.fs.path.parent(dvcfile), repo.root_dir)
+        wdir = repo.fs.relpath(repo.fs.parent(dvcfile), repo.root_dir)
         for file in params:
-            path = repo.fs.path.join(wdir, as_posix(file))
-            yield repo.fs.path.normpath(path)
+            path = repo.fs.join(wdir, as_posix(file))
+            yield repo.fs.normpath(path)
 
 
 def params_from_target(
@@ -55,7 +55,7 @@ def _collect_params(
 
     if not targets or stages:
         deps = params_from_target(repo, stages) if stages else repo.index.params
-        relpath = repo.fs.path.relpath
+        relpath = repo.fs.relpath
         params.extend(
             {relpath(dep.fs_path, repo.root_dir): list(dep.params)} for dep in deps
         )
@@ -93,7 +93,7 @@ def _collect_vars(repo, params, stages=None) -> Dict:
                 # to reduce noise and duplication, they are skipped
 
                 # `file` is relative
-                abspath = repo.fs.path.abspath(file)
+                abspath = repo.fs.abspath(file)
                 repo_path = repo.dvcfs.from_os_path(abspath)
                 if repo_path in params:
                     continue
@@ -138,7 +138,7 @@ def _gather_params(
     fs = repo.dvcfs
     for fs_path, result in _read_params(fs, files_keypaths, cache=True):
         repo_path = fs_path.lstrip(fs.root_marker)
-        repo_os_path = os.sep.join(fs.path.parts(repo_path))
+        repo_os_path = os.sep.join(fs.parts(repo_path))
         if not isinstance(result, Exception):
             data.update({repo_os_path: FileResult(data=result)})
             continue

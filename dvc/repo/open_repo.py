@@ -71,7 +71,7 @@ def erepo_factory(url, root_dir, cache_config):
         _config = cache_config.copy()
         if os.path.isdir(url):
             fs = fs or localfs
-            repo_path = os.path.join(url, *fs.path.relparts(path, root_dir))
+            repo_path = os.path.join(url, *fs.relparts(path, root_dir))
             _config.update(_get_remote_config(repo_path))
         return Repo(path, fs=fs, config=_config, **_kwargs)
 

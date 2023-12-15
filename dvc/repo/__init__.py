@@ -114,7 +114,7 @@ class Repo:
         try:
             root_dir = self.find_root(root_dir, fs)
             fs = fs or localfs
-            dvc_dir = fs.path.join(root_dir, self.DVC_DIR)
+            dvc_dir = fs.join(root_dir, self.DVC_DIR)
         except NotDvcRepoError:
             if not uninitialized:
                 raise
@@ -207,7 +207,7 @@ class Repo:
                 self.fs.makedirs(self.tmp_dir, exist_ok=True)
 
                 self.lock = make_lock(
-                    self.fs.path.join(self.tmp_dir, "lock"),
+                    self.fs.join(self.tmp_dir, "lock"),
                     tmp_dir=self.tmp_dir,
                     hardlink_lock=self.config["core"].get("hardlink_lock", False),
                     friendly=True,
@@ -251,7 +251,7 @@ class Repo:
         )
 
     @cached_property
-    def local_dvc_dir(self):
+    def local_dvc_dir(self) -> Optional[str]:
         from dvc.fs import GitFileSystem, LocalFileSystem
 
         if not self.dvc_dir:
@@ -263,10 +263,10 @@ class Repo:
         if not isinstance(self.fs, GitFileSystem):
             return None
 
-        relparts = ()
+        relparts: Tuple[str, ...] = ()
         if self.root_dir != "/":
             # subrepo
-            relparts = self.fs.path.relparts(self.root_dir, "/")
+            relparts = self.fs.relparts(self.root_dir, "/")
 
         dvc_dir = os.path.join(
             self.scm.root_dir,
@@ -395,7 +395,7 @@ class Repo:
             index = subrepo.index.data[workspace]
         else:
             index = self.index.data[workspace]
-            key = self.fs.path.relparts(path, self.root_dir)
+            key = self.fs.relparts(path, self.root_dir)
 
         try:
             return index, index[key]
@@ -411,18 +411,18 @@ class Repo:
 
         fs = fs or localfs
         root = root or os.curdir
-        root_dir = fs.path.abspath(root)
+        root_dir = fs.abspath(root)
 
         if not fs.isdir(root_dir):
             raise NotDvcRepoError(f"directory '{root}' does not exist")
 
         while True:
-            dvc_dir = fs.path.join(root_dir, cls.DVC_DIR)
+            dvc_dir = fs.join(root_dir, cls.DVC_DIR)
             if fs.isdir(dvc_dir):
                 return root_dir
             if isinstance(fs, LocalFileSystem) and os.path.ismount(root_dir):
                 break
-            parent = fs.path.parent(root_dir)
+            parent = fs.parent(root_dir)
             if parent == root_dir:
                 break
             root_dir = parent
@@ -440,7 +440,7 @@ class Repo:
 
         fs = fs or localfs
         root_dir = cls.find_root(root, fs=fs)
-        return fs.path.join(root_dir, cls.DVC_DIR)
+        return fs.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False) -> "Repo":
@@ -542,19 +542,19 @@ class Repo:
         # using `outs_graph` to ensure graph checks are run
         outs = outs or self.index.outs_graph
 
-        abs_path = self.fs.path.abspath(path)
+        abs_path = self.fs.abspath(path)
         fs_path = abs_path
 
         def func(out):
             def eq(one, two):
                 return one == two
 
-            match = eq if strict else out.fs.path.isin_or_eq
+            match = eq if strict else out.fs.isin_or_eq
 
             if out.protocol == "local" and match(fs_path, out.fs_path):
                 return True
 
-            if recursive and out.fs.path.isin(out.fs_path, fs_path):
+            if recursive and out.fs.isin(out.fs_path, fs_path):
                 return True
 
             return False
@@ -566,7 +566,7 @@ class Repo:
         return matched
 
     def is_dvc_internal(self, path):
-        path_parts = self.fs.path.normpath(path).split(self.fs.sep)
+        path_parts = self.fs.normpath(path).split(self.fs.sep)
         return self.DVC_DIR in path_parts
 
     @cached_property
@@ -613,10 +613,10 @@ class Repo:
         cache_dir = self.config["core"].get("site_cache_dir") or site_cache_dir()
 
         if isinstance(self.fs, GitFileSystem):
-            relparts = ()
+            relparts: Tuple[str, ...] = ()
             if self.root_dir != "/":
                 # subrepo
-                relparts = self.fs.path.relparts(self.root_dir, "/")
+                relparts = self.fs.relparts(self.root_dir, "/")
             root_dir = os.path.join(self.scm.root_dir, *relparts)
         else:
             root_dir = self.root_dir

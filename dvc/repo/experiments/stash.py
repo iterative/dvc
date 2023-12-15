@@ -171,7 +171,7 @@ class ApplyStash(Stash):
         right_fs = self.scm.get_fs(right_rev)
         paths = [path for path in left_fs.find("/") if not right_fs.exists(path)]
         dest_paths = [
-            localfs.path.join(self.scm.root_dir, left_fs.path.relpath(path, "/"))
+            localfs.join(self.scm.root_dir, left_fs.relpath(path, "/"))
             for path in paths
         ]
         for src, dest in zip(paths, dest_paths):

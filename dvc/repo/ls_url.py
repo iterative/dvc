@@ -18,7 +18,7 @@ def ls_url(url, *, fs_config=None, recursive=False, config=None):
 
         for info in files.values():
             ls_info = {
-                "path": fs.path.relpath(info["name"], fs_path),
+                "path": fs.relpath(info["name"], fs_path),
                 "isdir": info["type"] == "directory",
                 "size": info.get("size"),
             }

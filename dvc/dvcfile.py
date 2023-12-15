@@ -294,7 +294,7 @@ class ProjectFile(FileMixin):
     def resolver(self) -> "DataResolver":
         from .parsing import DataResolver
 
-        wdir = self.repo.fs.path.parent(self.path)
+        wdir = self.repo.fs.parent(self.path)
         return DataResolver(self.repo, wdir, self.contents)
 
     @cached_property

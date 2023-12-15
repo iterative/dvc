@@ -184,9 +184,9 @@ def resolve_wdir(wdir, path):
 
 
 def resolve_paths(fs, path, wdir=None):
-    path = fs.path.abspath(path)
+    path = fs.abspath(path)
     wdir = wdir or os.curdir
-    wdir = fs.path.abspath(fs.path.join(fs.path.dirname(path), wdir))
+    wdir = fs.abspath(fs.join(fs.dirname(path), wdir))
     return path, wdir
 
 

@@ -287,7 +287,7 @@ def resolve_paths(repo, out, always_local=False):
         # urlparse interprets windows drive letters as URL scheme
         scheme = ""
 
-    if scheme or not localfs.path.isin_or_eq(abspath, repo.root_dir):
+    if scheme or not localfs.isin_or_eq(abspath, repo.root_dir):
         wdir = os.getcwd()
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
         os.path.isdir(abspath) and localfs.is_symlink(abspath)

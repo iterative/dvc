@@ -29,6 +29,9 @@ class DataFileSystem(FileSystem):
 
         return _DataFileSystem(**self.fs_args)
 
+    def getcwd(self):
+        return self.fs.getcwd()
+
     def isdvc(self, path, **kwargs):
         return self.fs.isdvc(path, **kwargs)
 

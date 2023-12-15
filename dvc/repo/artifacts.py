@@ -229,7 +229,7 @@ class Artifacts:
                 dvc_studio_config=dvc_studio_config,
                 **kwargs,
             ).items():
-                to_info = localfs.path.join(out, path)
+                to_info = localfs.join(out, path)
                 if localfs.exists(to_info) and not force:
                     hint = "\nTo override it, re-run with '--force'."
                     raise FileExistsLocallyError(  # noqa: TRY301
@@ -254,7 +254,7 @@ class Artifacts:
                 fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs
             )
 
-        return len(to_infos), relpath(localfs.path.commonpath(to_infos))
+        return len(to_infos), relpath(localfs.commonpath(to_infos))
 
     @classmethod
     def get(  # noqa: PLR0913

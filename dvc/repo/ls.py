@@ -89,7 +89,7 @@ def _ls(
         if not recursive:
             files.update(dirs)
 
-        parts = fs.path.relparts(root, fs_path)
+        parts = fs.relparts(root, fs_path)
         if parts == (".",):
             parts = ()
 

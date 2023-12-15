@@ -219,7 +219,7 @@ class StageLoad:
         self, path: Optional[str] = None, name: Optional[str] = None
     ) -> str:
         if path:
-            return self.repo.fs.path.abspath(path)
+            return self.repo.fs.abspath(path)
 
         path = PROJECT_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
@@ -348,7 +348,7 @@ class StageLoad:
         if recursive and self.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
 
-            path = self.fs.path.abspath(target)
+            path = self.fs.abspath(target)
             return collect_inside_path(path, graph or self.repo.index.graph)
 
         stages = self.from_target(target, glob=glob)
@@ -393,7 +393,7 @@ class StageLoad:
             if not (recursive and self.fs.isdir(target)):
                 try:
                     (out,) = self.repo.find_outs_by_path(target, strict=False)
-                    return [StageInfo(out.stage, self.fs.path.abspath(target))]
+                    return [StageInfo(out.stage, self.fs.abspath(target))]
                 except OutputNotFoundError:
                     pass
 

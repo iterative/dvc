@@ -35,11 +35,9 @@ class Remote:
 
         path = self.path
         if self.worktree:
-            path = self.fs.path.join(
-                path, ".dvc", CacheManager.FILES_DIR, DEFAULT_ALGORITHM
-            )
+            path = self.fs.join(path, ".dvc", CacheManager.FILES_DIR, DEFAULT_ALGORITHM)
         else:
-            path = self.fs.path.join(path, CacheManager.FILES_DIR, DEFAULT_ALGORITHM)
+            path = self.fs.join(path, CacheManager.FILES_DIR, DEFAULT_ALGORITHM)
         return get_odb(self.fs, path, hash_name=DEFAULT_ALGORITHM, **self.config)
 
     @cached_property
