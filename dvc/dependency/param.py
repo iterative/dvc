@@ -55,6 +55,7 @@ def read_param_file(
         return ret
 
     from copy import deepcopy
+
     from dpath import merge
 
     for key_path in key_paths:
