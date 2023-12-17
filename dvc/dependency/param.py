@@ -55,10 +55,10 @@ def read_param_file(
         return ret
 
     from copy import deepcopy
-    
+
     from dpath import merge
     from funcy import distinct
-    
+
     for key_path in distinct(key_paths):
         merge(
             ret,
