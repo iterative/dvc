@@ -241,11 +241,19 @@ class TestRemoteVersionAware:
         dvc_lock = (tmp_dir / "dvc.lock").read_text()
 
         dvc.push()
+        assert (remote_version_aware / "data_dir").exists()
+        assert (remote_version_aware / "data_dir" / "data").exists()
+        assert (remote_version_aware / "data_dir_copy").exists()
+        assert (remote_version_aware / "data_dir_copy" / "data").exists()
         assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
         assert (tmp_dir / "dvc.lock").read_text() != dvc_lock
         dvc_lock = (tmp_dir / "dvc.lock").read_text()
 
         dvc.push()
+        assert (remote_version_aware / "data_dir").exists()
+        assert (remote_version_aware / "data_dir" / "data").exists()
+        assert (remote_version_aware / "data_dir_copy").exists()
+        assert (remote_version_aware / "data_dir_copy" / "data").exists()
         assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
@@ -254,6 +262,10 @@ class TestRemoteVersionAware:
         dvc.push()
         assert (remote_version_aware / "data_dir").exists()
         assert (remote_version_aware / "data_dir" / "data").exists()
+        assert (remote_version_aware / "data_dir_copy").exists()
+        assert (remote_version_aware / "data_dir_copy" / "data").exists()
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
 
 class TestRemoteWorktree:
