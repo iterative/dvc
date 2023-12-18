@@ -54,15 +54,13 @@ def read_param_file(
                 continue
         return ret
 
-    from copy import deepcopy
-
     from dpath import merge
     from funcy import distinct
 
     for key_path in distinct(key_paths):
         merge(
             ret,
-            deepcopy(dpath.search(config, key_path, separator=".")),
+            dpath.search(config, key_path, separator="."),
             separator=".",
         )
     return ret
