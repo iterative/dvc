@@ -55,7 +55,7 @@ def read_param_file(
         return ret
 
     from copy import deepcopy
-        
+
     from dpath import merge
     from funcy import distinct
 
