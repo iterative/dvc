@@ -128,7 +128,7 @@ def run_stage(
     **kwargs,
 ):
     if not force:
-        if allow_missing and kwargs.get("pull") and not dry:
+        if kwargs.get("pull") and not dry:
             _pull_missing_deps(stage)
 
         from .cache import RunCacheNotFoundError
