@@ -124,7 +124,6 @@ def run_stage(
     dry=False,
     force=False,
     run_env=None,
-    allow_missing: bool = False,
     **kwargs,
 ):
     if not force:
