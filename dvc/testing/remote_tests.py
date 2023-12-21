@@ -171,7 +171,7 @@ class TestRemoteVersionAware:
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
         run_copy("foo", "foo_copy", name="copy")
 
-        dvc.push()
+        assert dvc.push()
         assert (remote_version_aware / "foo").read_text() == "foo"
         assert (remote_version_aware / "foo_copy").read_text() == "foo"
         foo_dvc = (tmp_dir / "foo.dvc").read_text()
@@ -185,26 +185,26 @@ class TestRemoteVersionAware:
         remove(tmp_dir / "foo")
         remove(tmp_dir / "foo_copy")
 
-        dvc.pull()
+        assert dvc.pull()
         assert (tmp_dir / "foo").read_text() == "foo"
         assert (tmp_dir / "foo_copy").read_text() == "foo"
         assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
-        dvc.push()
+        assert not dvc.push()
         assert (remote_version_aware / "foo").read_text() == "foo"
         assert (remote_version_aware / "foo_copy").read_text() == "foo"
         assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
         dvc.reproduce()
-        dvc.push()
+        assert not dvc.push()
         assert (remote_version_aware / "foo").read_text() == "foo"
         assert (remote_version_aware / "foo_copy").read_text() == "foo"
         assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
-    def test_dir(self, tmp_dir, dvc, run_copy, remote_version_aware):
+    def test_dir(self, tmp_dir, dvc, run_copy, remote_version_aware):  # noqa: PLR0915
         (stage,) = tmp_dir.dvc_gen(
             {
                 "data_dir": {
@@ -215,7 +215,7 @@ class TestRemoteVersionAware:
             }
         )
 
-        dvc.push()
+        assert dvc.push()
 
         data_dir_dvc = (tmp_dir / "data_dir.dvc").read_text()
         assert "files" in data_dir_dvc
@@ -230,7 +230,7 @@ class TestRemoteVersionAware:
         remove(dvc.cache.local.path)
         remove(tmp_dir / "data_dir")
 
-        dvc.pull()
+        assert dvc.pull()
         assert (tmp_dir / "data_dir" / "data").read_text() == "data"
         assert (
             tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
@@ -240,7 +240,7 @@ class TestRemoteVersionAware:
         run_copy("data_dir", "data_dir_copy", name="copy")
         dvc_lock = (tmp_dir / "dvc.lock").read_text()
 
-        dvc.push()
+        assert dvc.push()
         assert (remote_version_aware / "data_dir").exists()
         assert (remote_version_aware / "data_dir" / "data").exists()
         assert (remote_version_aware / "data_dir_copy").exists()
@@ -249,7 +249,7 @@ class TestRemoteVersionAware:
         assert (tmp_dir / "dvc.lock").read_text() != dvc_lock
         dvc_lock = (tmp_dir / "dvc.lock").read_text()
 
-        dvc.push()
+        assert not dvc.push()
         assert (remote_version_aware / "data_dir").exists()
         assert (remote_version_aware / "data_dir" / "data").exists()
         assert (remote_version_aware / "data_dir_copy").exists()
@@ -259,13 +259,28 @@ class TestRemoteVersionAware:
 
         dvc.cache.local.clear()
         remove(tmp_dir / "data_dir")
-        dvc.push()
+        remove(tmp_dir / "data_dir_copy")
+        assert not dvc.push()
         assert (remote_version_aware / "data_dir").exists()
         assert (remote_version_aware / "data_dir" / "data").exists()
         assert (remote_version_aware / "data_dir_copy").exists()
         assert (remote_version_aware / "data_dir_copy" / "data").exists()
         assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
         assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+        (remote_version_aware / "data_dir").rmdir()
+        (remote_version_aware / "data_dir_copy").rmdir()
+        assert not (remote_version_aware / "data_dir").exists()
+        assert not (remote_version_aware / "data_dir_copy").exists()
+        assert dvc.pull()
+        assert (tmp_dir / "data_dir" / "data").read_text() == "data"
+        assert (
+            tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
+        ).read_text() == "data_sub"
+        assert (tmp_dir / "data_dir_copy" / "data").read_text() == "data"
+        assert (
+            tmp_dir / "data_dir_copy" / "data_sub_dir" / "data_sub"
+        ).read_text() == "data_sub"
 
 
 class TestRemoteWorktree:

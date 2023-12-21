@@ -129,10 +129,25 @@ def _load_data_from_outs(index, prefix, outs):
         for key_len in range(1, len(key)):
             parents.add((ws, key[:key_len]))
 
+        loaded = None
+        if out.files:
+            loaded = True
+            for okey, ometa, ohi in out.get_obj():
+                for key_len in range(1, len(okey)):
+                    parents.add((ws, (*key, *okey[:key_len])))
+
+                fkey = (*key, *okey)
+                index[(*prefix, ws, *fkey)] = DataIndexEntry(
+                    key=fkey,
+                    meta=ometa,
+                    hash_info=ohi,
+                )
+
         entry = DataIndexEntry(
             key=key,
             meta=out.meta,
             hash_info=out.hash_info,
+            loaded=loaded,
         )
 
         if (
