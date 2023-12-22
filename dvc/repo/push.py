@@ -14,7 +14,11 @@ def _update_meta(index, **kwargs):
     for remote_name, idx in worktree_view_by_remotes(index, push=True, **kwargs):
         remote = index.repo.cloud.get_remote(remote_name)
 
-        with ui.progress("Collecting", unit="entry") as pb:
+        with ui.progress(
+            f"Collecting {remote.path} on {remote.fs.protocol}",
+            unit="entry",
+            leave=True,
+        ) as pb:
             new = build_data_index(
                 idx,
                 remote.path,
@@ -100,6 +104,7 @@ def push(  # noqa: PLR0913
     with ui.progress(
         desc="Collecting",
         unit="entry",
+        leave=True,
     ) as pb:
         data = collect(
             [idx.data["repo"] for idx in indexes.values()],
@@ -115,6 +120,7 @@ def push(  # noqa: PLR0913
         with ui.progress(
             desc="Pushing",
             unit="file",
+            leave=True,
         ) as pb:
             push_transferred, push_failed = ipush(
                 data,
