@@ -6,8 +6,31 @@ from dvc.ui import ui
 from . import locked
 
 
+def _rebuild(idx, path, fs, cb):
+    from dvc_data.index import DataIndex, DataIndexEntry, Meta
+
+    new = DataIndex()
+    items = list(idx.items())
+
+    cb.set_total(len(items))
+    for key, entry in items:
+        if entry.meta and entry.meta.isdir:
+            meta = Meta(isdir=True)
+        else:
+            try:
+                meta = Meta.from_info(fs.info(fs.join(path, *key)), fs.protocol)
+            except FileNotFoundError:
+                meta = None
+
+        if meta:
+            new.add(DataIndexEntry(key=key, meta=meta))
+
+        cb.relative_update(1)
+
+    return new
+
+
 def _update_meta(index, **kwargs):
-    from dvc.repo.index import build_data_index
     from dvc.repo.worktree import _merge_push_meta, worktree_view_by_remotes
 
     stages = set()
@@ -19,12 +42,8 @@ def _update_meta(index, **kwargs):
             unit="entry",
             leave=True,
         ) as pb:
-            new = build_data_index(
-                idx,
-                remote.path,
-                remote.fs,
-                callback=pb.as_callback(),
-            )
+            cb = pb.as_callback()
+            new = _rebuild(idx.data["repo"], remote.path, remote.fs, cb)
 
         for out in idx.outs:
             if not remote.fs.version_aware:
