@@ -215,6 +215,7 @@ class TestRemoteVersionAware:
             }
         )
 
+        assert not dvc.fetch()
         assert dvc.push()
 
         data_dir_dvc = (tmp_dir / "data_dir.dvc").read_text()
