@@ -385,6 +385,7 @@ class Repo:
             except KeyError:
                 pass
         self.data_index.commit()
+        self.data_index.close()
         self._reset()
 
     def get_data_index_entry(
