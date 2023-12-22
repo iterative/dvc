@@ -38,7 +38,7 @@ def _update_meta(index, **kwargs):
         remote = index.repo.cloud.get_remote(remote_name)
 
         with ui.progress(
-            f"Collecting {remote.path} on {remote.fs.protocol}",
+            desc=f"Collecting {remote.path} on {remote.fs.protocol}",
             unit="entry",
             leave=True,
         ) as pb:
