@@ -12,7 +12,7 @@ def _rebuild(idx, path, fs, cb):
     new = DataIndex()
     items = list(idx.items())
 
-    cb.set_total(len(items))
+    cb.set_size(len(items))
     for key, entry in items:
         if entry.meta and entry.meta.isdir:
             meta = Meta(isdir=True)
