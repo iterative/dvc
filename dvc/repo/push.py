@@ -138,7 +138,7 @@ def push(  # noqa: PLR0913
     try:
         with ui.progress(
             desc="Pushing",
-            unit="file",
+            bar_format="{desc}",
             leave=True,
         ) as pb:
             push_transferred, push_failed = ipush(
