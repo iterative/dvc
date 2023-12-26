@@ -113,8 +113,8 @@ tests = [
     'tzdata; sys_platform == "win32"',  # for testing with celery
 ]
 webdav = ["dvc-webdav==2.19.1"]
-webhdfs = ["dvc-webhdfs==2.19"]
-webhdfs_kerberos = ["dvc-webhdfs[kerberos]==2.19"]
+webhdfs = ["dvc-webhdfs>=3.1,<4"]
+webhdfs_kerberos = ["dvc-webhdfs[kerberos]>=3.1,<4"]
 
 [project.urls]
 Documentation = "https://dvc.org/doc"
