@@ -117,8 +117,8 @@ tests = [
     "pandas>=1",
 ]
 webdav = ["dvc-webdav>=3,<4"]
-webhdfs = ["dvc-webhdfs>=3,<4"]
-webhdfs_kerberos = ["dvc-webhdfs[kerberos]>=3,<4"]
+webhdfs = ["dvc-webhdfs>=3.1,<4"]
+webhdfs_kerberos = ["dvc-webhdfs[kerberos]>=3.1,<4"]
 
 [project.urls]
 Documentation = "https://dvc.org/doc"
