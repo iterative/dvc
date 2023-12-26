@@ -161,9 +161,11 @@ def _normalize_linecol(lc: "LineCol | Tuple[Any, Any]") -> Tuple[int, int]:
     elif isinstance(lc, tuple):
         line = int(lc[0])
         col = int(lc[1])
+    else:
+        raise TypeError(f"Expected LineCol or tuple, got {lc!r}")
 
-    if not (isinstance(line, int) and isinstance(col, int)):
-        raise TypeError(f"Unable to determine neither line nor col ({line}:{col})")
+    assert isinstance(line, int)
+    assert isinstance(col, int)
 
     return line + 1, col + 1
 
