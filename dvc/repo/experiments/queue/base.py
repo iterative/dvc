@@ -1,4 +1,3 @@
-import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
@@ -23,6 +22,7 @@ from funcy import retry
 from dvc.dependency import ParamsDependency
 from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVC_ROOT
 from dvc.lock import LockError
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.serialize import ExpRange
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @dataclass(frozen=True)
@@ -297,7 +297,7 @@ class BaseStashQueue(ABC):
                 output.
         """
 
-    def _stash_exp(  # noqa: C901
+    def _stash_exp(
         self,
         *args,
         params: Optional[Dict[str, List[str]]] = None,
@@ -425,7 +425,7 @@ class BaseStashQueue(ABC):
         return msg
 
     def _pack_args(self, *args, **kwargs) -> None:
-        import pickle  # nosec B403
+        import pickle
 
         if os.path.exists(self.args_file) and self.scm.is_tracked(self.args_file):
             logger.warning(
@@ -440,8 +440,8 @@ class BaseStashQueue(ABC):
             )
             with open(self.args_file, "rb") as fobj:
                 try:
-                    data = pickle.load(fobj)  # noqa: S301  # nosec B301
-                except Exception:  # noqa: BLE001, pylint: disable=broad-except
+                    data = pickle.load(fobj)  # noqa: S301
+                except Exception:  # noqa: BLE001
                     data = {}
             extra = int(data.get("extra", 0)) + 1
         else:

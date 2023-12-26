@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from funcy import first, last
 
 from dvc.exceptions import DvcException
-from dvc.render import FILENAME_FIELD, INDEX_FIELD, VERSION_FIELD
+from dvc.render import FIELD, FILENAME, INDEX, REVISION
 
 from . import Converter
 
@@ -112,7 +112,6 @@ class VegaConverter(Converter):
     ):
         super().__init__(plot_id, data, properties)
         self.plot_id = plot_id
-        self.inferred_properties: Dict = {}
 
     def _infer_y_from_data(self):
         if self.plot_id in self.data:
@@ -120,34 +119,38 @@ class VegaConverter(Converter):
                 if all(isinstance(item, dict) for item in lst):
                     datapoint = first(lst)
                     field = last(datapoint.keys())
-                    self.inferred_properties["y"] = {self.plot_id: field}
-                    break
+                    return {self.plot_id: field}
+        return None
 
     def _infer_x_y(self):
         x = self.properties.get("x", None)
         y = self.properties.get("y", None)
 
+        inferred_properties: Dict = {}
+
         # Infer x.
         if isinstance(x, str):
-            self.inferred_properties["x"] = {}
+            inferred_properties["x"] = {}
             # If multiple y files, duplicate x for each file.
             if isinstance(y, dict):
                 for file, fields in y.items():
                     # Duplicate x for each y.
                     if isinstance(fields, list):
-                        self.inferred_properties["x"][file] = [x] * len(fields)
+                        inferred_properties["x"][file] = [x] * len(fields)
                     else:
-                        self.inferred_properties["x"][file] = x
+                        inferred_properties["x"][file] = x
             # Otherwise use plot ID as file.
             else:
-                self.inferred_properties["x"][self.plot_id] = x
+                inferred_properties["x"][self.plot_id] = x
 
         # Infer y.
         if y is None:
-            self._infer_y_from_data()
+            inferred_properties["y"] = self._infer_y_from_data()
         # If y files not provided, use plot ID as file.
         elif not isinstance(y, dict):
-            self.inferred_properties["y"] = {self.plot_id: y}
+            inferred_properties["y"] = {self.plot_id: y}
+
+        return inferred_properties
 
     def _find_datapoints(self):
         result = {}
@@ -182,7 +185,7 @@ class VegaConverter(Converter):
 
         x = properties.get("x", None)
         if not isinstance(x, dict):
-            return INDEX_FIELD
+            return INDEX
 
         fields = {field for _, field in _file_field(x)}
         if len(fields) == 1:
@@ -192,7 +195,7 @@ class VegaConverter(Converter):
     def flat_datapoints(self, revision):  # noqa: C901, PLR0912
         file2datapoints, properties = self.convert()
 
-        props_update = {}
+        props_update: Dict[str, Union[str, List[Dict[str, str]]]] = {}
 
         xs = list(_get_xs(properties, file2datapoints))
 
@@ -200,15 +203,17 @@ class VegaConverter(Converter):
         if not xs:
             x_file, x_field = (
                 None,
-                INDEX_FIELD,
+                INDEX,
             )
         else:
             x_file, x_field = xs[0]
-        props_update["x"] = x_field
+
+        num_xs = len(xs)
+        multiple_x_fields = num_xs > 1 and len({x[1] for x in xs}) > 1
+        props_update["x"] = "dvc_inferred_x_value" if multiple_x_fields else x_field
 
         ys = list(_get_ys(properties, file2datapoints))
 
-        num_xs = len(xs)
         num_ys = len(ys)
         if num_xs > 1 and num_xs != num_ys:
             raise DvcException(
@@ -218,9 +223,9 @@ class VegaConverter(Converter):
 
         all_datapoints = []
         if ys:
-            all_y_files, all_y_fields = list(zip(*ys))
-            all_y_fields = set(all_y_fields)
-            all_y_files = set(all_y_files)
+            _all_y_files, _all_y_fields = list(zip(*ys))
+            all_y_fields = set(_all_y_fields)
+            all_y_files = set(_all_y_files)
         else:
             all_y_files = set()
             all_y_fields = set()
@@ -233,9 +238,17 @@ class VegaConverter(Converter):
 
         # get common prefix to drop from file names
         if len(all_y_files) > 1:
-            common_prefix_len = len(os.path.commonpath(all_y_files))
+            common_prefix_len = len(os.path.commonpath(list(all_y_files)))
         else:
             common_prefix_len = 0
+
+        props_update["anchors_y_definitions"] = [
+            {
+                FILENAME: _get_short_y_file(y_file, common_prefix_len),
+                FIELD: y_field,
+            }
+            for y_file, y_field in ys
+        ]
 
         for i, (y_file, y_field) in enumerate(ys):
             if num_xs > 1:
@@ -249,15 +262,16 @@ class VegaConverter(Converter):
                     source_field=y_field,
                 )
 
-            if x_field == INDEX_FIELD and x_file is None:
-                _update_from_index(datapoints, INDEX_FIELD)
+            if x_field == INDEX and x_file is None:
+                _update_from_index(datapoints, INDEX)
             else:
                 x_datapoints = file2datapoints.get(x_file, [])
                 try:
                     _update_from_field(
                         datapoints,
-                        field=x_field,
+                        field="dvc_inferred_x_value" if multiple_x_fields else x_field,
                         source_datapoints=x_datapoints,
+                        source_field=x_field,
                     )
                 except IndexError:
                     raise DvcException(  # noqa: B904
@@ -266,15 +280,12 @@ class VegaConverter(Converter):
                         "They have to have same length."
                     )
 
-            y_file_short = y_file[common_prefix_len:].strip("/\\")
             _update_all(
                 datapoints,
                 update_dict={
-                    VERSION_FIELD: {
-                        "revision": revision,
-                        FILENAME_FIELD: y_file_short,
-                        "field": y_field,
-                    }
+                    REVISION: revision,
+                    FILENAME: _get_short_y_file(y_file, common_prefix_len),
+                    FIELD: y_field,
                 },
             )
 
@@ -295,15 +306,19 @@ class VegaConverter(Converter):
         generated datapoints and updated properties. `x`, `y` values and labels
         are inferred and always provided.
         """
-        self._infer_x_y()
+        inferred_properties = self._infer_x_y()
 
         datapoints = self._find_datapoints()
-        properties = {**self.properties, **self.inferred_properties}
+        properties = {**self.properties, **inferred_properties}
 
         properties["y_label"] = self.infer_y_label(properties)
         properties["x_label"] = self.infer_x_label(properties)
 
         return datapoints, properties
+
+
+def _get_short_y_file(y_file, common_prefix_len):
+    return y_file[common_prefix_len:].strip("/\\")
 
 
 def _update_from_field(

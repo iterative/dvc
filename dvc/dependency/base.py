@@ -33,7 +33,7 @@ class Dependency(Output):
         if self.fs.version_aware:
             old_fs_path = self.fs_path
             try:
-                self.fs_path = self.fs.path.version_path(self.fs_path, None)
+                self.fs_path = self.fs.version_path(self.fs_path, None)
                 if self.changed_meta():
                     return {str(self): "update available"}
             finally:
@@ -42,9 +42,9 @@ class Dependency(Output):
 
     def update(self, rev=None):
         if self.fs.version_aware:
-            self.fs_path = self.fs.path.version_path(self.fs_path, rev)
+            self.fs_path = self.fs.version_path(self.fs_path, rev)
             self.meta = self.get_meta()
-            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
+            self.fs_path = self.fs.version_path(self.fs_path, self.meta.version_id)
 
     def download(self, to, jobs=None):
         fs_download(self.fs, self.fs_path, to.fs_path, jobs=jobs)
@@ -52,7 +52,7 @@ class Dependency(Output):
     def save(self):
         super().save()
         if self.fs.version_aware:
-            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
+            self.fs_path = self.fs.version_path(self.fs_path, self.meta.version_id)
 
     def dumpd(self, **kwargs):
         if self.fs.version_aware:

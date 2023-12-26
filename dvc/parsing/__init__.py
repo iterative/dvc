@@ -18,6 +18,7 @@ from typing import (
 from funcy import collecting, first, isa, join, reraise
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.parsing.interpolate import ParseError
 from dvc.utils.objects import cached_property
 
@@ -45,7 +46,7 @@ if TYPE_CHECKING:
     from .context import SeqOrMap
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 STAGES_KWD = "stages"
 VARS_KWD = "vars"
@@ -142,11 +143,11 @@ class DataResolver:
         self.parsing_config = repo.config.get("parsing", {})
 
         if os.path.isabs(wdir):
-            wdir = fs.path.relpath(wdir)
+            wdir = fs.relpath(wdir)
             wdir = "" if wdir == os.curdir else wdir
 
         self.wdir = wdir
-        self.relpath = fs.path.normpath(fs.path.join(self.wdir, "dvc.yaml"))
+        self.relpath = fs.normpath(fs.join(self.wdir, "dvc.yaml"))
 
         vars_ = d.get(VARS_KWD, [])
         check_interpolations(vars_, VARS_KWD, self.relpath)
@@ -192,7 +193,7 @@ class DataResolver:
     def resolve(self):
         """Used for testing purposes, otherwise use resolve_one()."""
         data = join(map(self.resolve_one, self.get_keys()))
-        logger.trace("Resolved dvc.yaml:\n%s", data)  # type: ignore[attr-defined]
+        logger.trace("Resolved dvc.yaml:\n%s", data)
         return {STAGES_KWD: data}
 
     def has_key(self, key: str):
@@ -247,7 +248,7 @@ class EntryDefinition:
             wdir = to_str(context.resolve_str(wdir))
         except (ContextError, ParseError) as exc:
             format_and_raise(exc, f"'{self.where}.{name}.wdir'", self.relpath)
-        return self.resolver.fs.path.join(self.wdir, wdir)
+        return self.resolver.fs.join(self.wdir, wdir)
 
     def resolve(self, **kwargs):
         try:
@@ -283,9 +284,7 @@ class EntryDefinition:
         except VarsAlreadyLoaded as exc:
             format_and_raise(exc, f"'{self.where}.{name}.vars'", self.relpath)
 
-        logger.trace(  # type: ignore[attr-defined]
-            "Context during resolution of stage %s:\n%s", name, context
-        )
+        logger.trace("Context during resolution of stage %s:\n%s", name, context)
 
         with context.track() as tracked_data:
             # NOTE: we do not pop "wdir", and resolve it again

@@ -173,11 +173,10 @@ def test_match_ignore_from_file(
     )
     dvcignore_dirname = os.path.dirname(dvcignore_path)
 
-    fs = mocker.MagicMock()
-    fs.path = localfs.path
-    fs.sep = localfs.sep
-    mocker.patch.object(fs, "open", mocker.mock_open(read_data="\n".join(patterns)))
-    ignore_file = DvcIgnorePatterns.from_file(dvcignore_path, fs, "mocked")
+    mocker.patch.object(
+        localfs, "open", mocker.mock_open(read_data="\n".join(patterns))
+    )
+    ignore_file = DvcIgnorePatterns.from_file(dvcignore_path, localfs, "mocked")
 
     assert (
         ignore_file.matches(dvcignore_dirname, file_to_ignore_relpath) == expected_match

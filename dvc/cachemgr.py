@@ -27,7 +27,7 @@ def _get_odb(
     cls, config, fs_path = get_cloud_fs(repo.config, **settings)
     fs = fs or cls(**config)
     if prefix:
-        fs_path = fs.path.join(fs_path, *prefix)
+        fs_path = fs.join(fs_path, *prefix)
     if hash_name:
         config["hash_name"] = hash_name
     return get_odb(fs, fs_path, state=repo.state, **config)
@@ -86,7 +86,7 @@ class CacheManager:
         return FileStorage(
             key=(),
             fs=self.local.fs,
-            path=self.local.fs.path.join(self.default_local_cache_dir, self.FS_DIR),
+            path=self.local.fs.join(self.default_local_cache_dir, self.FS_DIR),
         )
 
     def _init_odb(self, schemes):
@@ -137,7 +137,7 @@ def migrate_2_to_3(repo: "Repo", dry: bool = False):
     src = repo.cache.legacy
     dest = repo.cache.local
     if dry:
-        oids = list(src._list_oids())  # pylint: disable=protected-access
+        oids = list(src._list_oids())
         ui.write(
             f"{len(oids)} files will be re-hashed and migrated to the DVC 3.0 cache "
             "location."

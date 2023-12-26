@@ -301,7 +301,7 @@ class URLMissingError(DvcException):
         super().__init__(f"The path '{url}' does not exist")
 
 
-class IsADirectoryError(DvcException):  # noqa: A001,pylint:disable=redefined-builtin
+class IsADirectoryError(DvcException):  # noqa: A001
     """Raised when a file operation is requested on a directory."""
 
 
@@ -357,3 +357,15 @@ class ArtifactNotFoundError(DvcException):
 
         desc = f" @ {stage or version}" if (stage or version) else ""
         super().__init__(f"Unable to find artifact '{name}{desc}'")
+
+
+class RevCollectionError(DvcException):
+    """Thrown if a revision failed to be collected.
+
+    Args:
+        rev (str): revision that failed (or "workspace").
+    """
+
+    def __init__(self, rev):
+        self.rev = rev
+        super().__init__(f"Failed to collect '{rev}'")

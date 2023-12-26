@@ -10,7 +10,7 @@ from dvc.cli import main
 from dvc.exceptions import CheckoutError
 from dvc.repo.open_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
-from dvc.testing.remote_tests import (  # noqa: F401, pylint: disable=unused-import
+from dvc.testing.remote_tests import (  # noqa: F401
     TestRemote,
 )
 from dvc.utils.fs import remove
@@ -486,7 +486,7 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     clean(["foo"], dvc)
 
     stats = dvc.pull(os.path.join("foo", "bar"))
-    assert stats["fetched"] == 2
+    assert stats["fetched"] == 3
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
 
 

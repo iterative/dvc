@@ -1,5 +1,4 @@
 """DVC config objects."""
-import logging
 import os
 import re
 from contextlib import contextmanager
@@ -9,14 +8,15 @@ from typing import TYPE_CHECKING, Dict, Optional
 from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.log import logger
 
 from .utils.objects import cached_property
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
-    from dvc.types import DictStrAny, StrPath
+    from dvc.types import DictStrAny
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ConfigError(DvcException):
@@ -89,14 +89,14 @@ class Config(dict):
 
     def __init__(
         self,
-        dvc_dir: Optional["StrPath"] = None,
-        local_dvc_dir: Optional["StrPath"] = None,
+        dvc_dir: Optional[str] = None,
+        local_dvc_dir: Optional[str] = None,
         validate: bool = True,
         fs: Optional["FileSystem"] = None,
         config: Optional["DictStrAny"] = None,
         remote: Optional[str] = None,
         remote_config: Optional["DictStrAny"] = None,
-    ):  # pylint: disable=super-init-not-called
+    ):
         from dvc.fs import LocalFileSystem
 
         dvc_dir = os.fspath(dvc_dir) if dvc_dir else None
@@ -105,7 +105,7 @@ class Config(dict):
         self.fs = fs or self.wfs
 
         if dvc_dir:
-            self.dvc_dir = self.fs.path.abspath(dvc_dir)
+            self.dvc_dir = self.fs.abspath(dvc_dir)
 
         self.local_dvc_dir = local_dvc_dir
         if not fs and not local_dvc_dir:
@@ -145,10 +145,10 @@ class Config(dict):
         }
 
         if self.dvc_dir is not None:
-            files["repo"] = self.fs.path.join(self.dvc_dir, self.CONFIG)
+            files["repo"] = self.fs.join(self.dvc_dir, self.CONFIG)
 
         if self.local_dvc_dir is not None:
-            files["local"] = self.wfs.path.join(self.local_dvc_dir, self.CONFIG_LOCAL)
+            files["local"] = self.wfs.join(self.local_dvc_dir, self.CONFIG_LOCAL)
 
         return files
 
@@ -302,11 +302,11 @@ class Config(dict):
             return path.def_path
 
         if os.path.expanduser(path) != path:
-            return localfs.path.as_posix(path)
+            return localfs.as_posix(path)
 
         if isinstance(path, RelPath) or not os.path.isabs(path):
             path = relpath(path, conf_dir)
-            return localfs.path.as_posix(path)
+            return localfs.as_posix(path)
 
         return path
 
@@ -390,10 +390,10 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result: Dict[str, Dict] = {"remote": {}, "machine": {}}
+    result: Dict[str, Dict] = {"remote": {}, "machine": {}, "db": {}}
 
     for section, val in conf.items():
-        match = re_find(r'^\s*(remote|machine)\s*"(.*)"\s*$', section)
+        match = re_find(r'^\s*(remote|machine|db)\s*"(.*)"\s*$', section)
         if match:
             key, name = match
             result[key][name] = val
@@ -408,7 +408,7 @@ def _pack_named(conf):
     result = compact(conf)
 
     # Transform remote.name -> 'remote "name"'
-    for key in ("remote", "machine"):
+    for key in ("remote", "machine", "db"):
         for name, val in conf[key].items():
             result[f'{key} "{name}"'] = val
         result.pop(key, None)

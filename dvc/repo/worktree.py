@@ -1,10 +1,9 @@
-import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
 
 from funcy import first
 
-from dvc.fs.callbacks import Callback
+from dvc.log import logger
 from dvc.stage.exceptions import StageUpdateError
 
 if TYPE_CHECKING:
@@ -19,7 +18,7 @@ if TYPE_CHECKING:
     from dvc_data.index import DataIndex, DataIndexView
     from dvc_objects.fs.base import FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 # for files, if our version's checksum (etag) matches the latest remote
@@ -37,8 +36,6 @@ def worktree_view_by_remotes(
     push: bool = False,
     **kwargs: Any,
 ) -> Iterable[Tuple[Optional[str], "IndexView"]]:
-    # pylint: disable=protected-access
-
     from dvc.repo.index import IndexView
 
     def outs_filter(view: "IndexView", remote: Optional[str]):
@@ -103,7 +100,7 @@ def _get_remote(
     return repo.cloud.get_remote(name, command)
 
 
-def _merge_push_meta(
+def _merge_push_meta(  # noqa: C901
     out: "Output",
     index: Union["DataIndex", "DataIndexView"],
     remote: Optional[str] = None,
@@ -118,7 +115,11 @@ def _merge_push_meta(
     from dvc_data.index.save import build_tree
 
     _, key = out.index_key
-    entry = index[key]
+
+    entry = index.get(key)
+    if entry is None:
+        return
+
     repo = out.stage.repo
     if out.isdir():
         old_tree = out.get_obj()
@@ -130,10 +131,11 @@ def _merge_push_meta(
             entries.append(entry)
             if entry.meta is not None and entry.meta.isdir:
                 continue
-            fs_path = repo.fs.path.join(repo.root_dir, *subkey)
-            meta, hash_info = old_tree.get(
-                repo.fs.path.relparts(fs_path, out.fs_path)
-            ) or (None, None)
+            fs_path = repo.fs.join(repo.root_dir, *subkey)
+            meta, hash_info = old_tree.get(repo.fs.relparts(fs_path, out.fs_path)) or (
+                None,
+                None,
+            )
             entry.hash_info = hash_info
             if entry.meta:
                 entry.meta.remote = remote
@@ -245,11 +247,12 @@ def _fetch_out_changes(
     remote_index: Union["DataIndex", "DataIndexView"],
     remote: "Remote",
 ):
+    from dvc.fs.callbacks import TqdmCallback
     from dvc_data.index.checkout import apply, compare
 
     old, new = _get_diff_indexes(out, local_index, remote_index)
 
-    with Callback.as_tqdm_callback(
+    with TqdmCallback(
         unit="entry",
         desc="Comparing indexes",
     ) as cb:
@@ -263,9 +266,7 @@ def _fetch_out_changes(
         )
 
     total = len(new)
-    with Callback.as_tqdm_callback(
-        unit="file", desc=f"Updating '{out}'", disable=total == 0
-    ) as cb:
+    with TqdmCallback(unit="file", desc=f"Updating '{out}'", disable=total == 0) as cb:
         cb.set_size(total)
         apply(
             diff,
@@ -354,11 +355,11 @@ def _get_update_diff_index(
             # downloading
             if out.isdir():
                 if not entry.meta.isdir:
-                    fs_path = repo.fs.path.join(repo.root_dir, *entry.key)
+                    fs_path = repo.fs.join(repo.root_dir, *entry.key)
                     tree = out.obj
                     assert isinstance(tree, Tree)
                     _, entry.hash_info = tree.get(  # type: ignore[misc]
-                        repo.fs.path.relparts(fs_path, out.fs_path)
+                        repo.fs.relparts(fs_path, out.fs_path)
                     )
             else:
                 entry.hash_info = out.hash_info

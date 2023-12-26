@@ -1,18 +1,18 @@
 import errno
 import functools
-import logging
 import ntpath
 import os
 import posixpath
 import threading
+from collections import deque
 from contextlib import ExitStack, suppress
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
 from funcy import wrap_with
 
+from dvc.log import logger
 from dvc_objects.fs.base import FileSystem
-from dvc_objects.fs.path import Path
 
 from .data import DataFileSystem
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.types import DictStrAny, StrPath
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 RepoFactory = Union[Callable[..., "Repo"], Type["Repo"]]
 Key = Tuple[str, ...]
@@ -60,6 +60,7 @@ def _merge_info(repo, key, fs_info, dvc_info):
     if fs_info:
         ret["type"] = fs_info["type"]
         ret["size"] = fs_info["size"]
+        ret["fs_info"] = fs_info
         isexec = False
         if fs_info["type"] == "file":
             isexec = utils.is_exec(fs_info["mode"])
@@ -69,10 +70,10 @@ def _merge_info(repo, key, fs_info, dvc_info):
 
 
 def _get_dvc_path(dvc_fs, subkey):
-    return dvc_fs.path.join(*subkey) if subkey else ""
+    return dvc_fs.join(*subkey) if subkey else ""
 
 
-class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
+class _DVCFileSystem(AbstractFileSystem):
     cachable = False
     root_marker = "/"
 
@@ -84,9 +85,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         subrepos: bool = False,
         repo_factory: Optional[RepoFactory] = None,
         fo: Optional[str] = None,
-        # pylint:disable-next=unused-argument
         target_options: Optional[Dict[str, Any]] = None,  # noqa: ARG002
-        # pylint:disable-next=unused-argument
         target_protocol: Optional[str] = None,  # noqa: ARG002
         config: Optional["DictStrAny"] = None,
         remote: Optional[str] = None,
@@ -131,55 +130,88 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             ...    rev="main",
             ... )
         """
-        from pygtrie import Trie
-
         super().__init__()
+        self._repo = repo
+        self._repo_factory = repo_factory
+        self._traverse_subrepos = subrepos
         self._repo_stack = ExitStack()
-        if repo is None:
-            url = url if url is not None else fo
-            repo = self._make_repo(
-                url=url,
-                rev=rev,
-                subrepos=subrepos,
-                config=config,
-                remote=remote,
-                remote_config=remote_config,
-            )
-            assert repo is not None
-            # pylint: disable=protected-access
-            repo_factory = repo._fs_conf["repo_factory"]
-            self._repo_stack.enter_context(repo)
+        self._repo_kwargs = {
+            "url": url if url is not None else fo,
+            "rev": rev,
+            "subrepos": subrepos,
+            "config": config,
+            "remote": remote,
+            "remote_config": remote_config,
+        }
 
-        if not repo_factory:
+    def getcwd(self):
+        relparts: Tuple[str, ...] = ()
+        assert self.repo is not None
+        if self.repo.fs.isin(self.repo.fs.getcwd(), self.repo.root_dir):
+            relparts = self.repo.fs.relparts(self.repo.fs.getcwd(), self.repo.root_dir)
+        return self.root_marker + self.sep.join(relparts)
+
+    @classmethod
+    def join(cls, *parts: str) -> str:
+        return posixpath.join(*parts)
+
+    @classmethod
+    def parts(cls, path: str) -> Tuple[str, ...]:
+        ret = []
+        while True:
+            path, part = posixpath.split(path)
+
+            if part:
+                ret.append(part)
+                continue
+
+            if path:
+                ret.append(path)
+
+            break
+
+        ret.reverse()
+
+        return tuple(ret)
+
+    def normpath(self, path: str) -> str:
+        return posixpath.normpath(path)
+
+    def abspath(self, path: str) -> str:
+        if not posixpath.isabs(path):
+            path = self.join(self.getcwd(), path)
+        return self.normpath(path)
+
+    def relpath(self, path: str, start: Optional[str] = None) -> str:
+        if start is None:
+            start = "."
+        return posixpath.relpath(self.abspath(path), start=self.abspath(start))
+
+    def relparts(self, path: str, start: Optional[str] = None) -> Tuple[str, ...]:
+        return self.parts(self.relpath(path, start=start))
+
+    @functools.cached_property
+    def repo(self):
+        if self._repo:
+            return self._repo
+
+        repo = self._make_repo(**self._repo_kwargs)
+
+        self._repo_stack.enter_context(repo)
+        self._repo = repo
+        return repo
+
+    @functools.cached_property
+    def repo_factory(self):
+        if self._repo_factory:
+            return self._repo_factory
+
+        if self._repo:
             from dvc.repo import Repo
 
-            self.repo_factory: RepoFactory = Repo
-        else:
-            self.repo_factory = repo_factory
+            return Repo
 
-        def _getcwd():
-            relparts: Tuple[str, ...] = ()
-            assert repo is not None
-            if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
-                relparts = repo.fs.path.relparts(repo.fs.path.getcwd(), repo.root_dir)
-            return self.root_marker + self.sep.join(relparts)
-
-        self.path = Path(self.sep, getcwd=_getcwd)
-        self.repo = repo
-        self.hash_jobs = repo.fs.hash_jobs
-        self._traverse_subrepos = subrepos
-
-        self._subrepos_trie = Trie()
-        """Keeps track of each and every path with the corresponding repo."""
-
-        key = self._get_key(self.repo.root_dir)
-        self._subrepos_trie[key] = repo
-
-        self._datafss = {}
-        """Keep a datafs instance of each repo."""
-
-        if hasattr(repo, "dvc_dir"):
-            self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
+        return self.repo._fs_conf["repo_factory"]
 
     @functools.cached_property
     def fsid(self) -> str:
@@ -194,20 +226,43 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     def _get_key(self, path: "StrPath") -> Key:
         path = os.fspath(path)
-        parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
+        parts = self.repo.fs.relparts(path, self.repo.root_dir)
         if parts == (os.curdir,):
             return ()
         return parts
 
+    @functools.cached_property
+    def _subrepos_trie(self):
+        """Keeps track of each and every path with the corresponding repo."""
+
+        from pygtrie import Trie
+
+        trie = Trie()
+        key = self._get_key(self.repo.root_dir)
+        trie[key] = self.repo
+        return trie
+
     def _get_key_from_relative(self, path) -> Key:
         path = self._strip_protocol(path)
-        parts = self.path.relparts(path, self.root_marker)
+        parts = self.relparts(path, self.root_marker)
         if parts and parts[0] == os.curdir:
             return parts[1:]
         return parts
 
     def _from_key(self, parts: Key) -> str:
-        return self.repo.fs.path.join(self.repo.root_dir, *parts)
+        return self.repo.fs.join(self.repo.root_dir, *parts)
+
+    @functools.cached_property
+    def _datafss(self):
+        """Keep a datafs instance of each repo."""
+
+        datafss = {}
+
+        if hasattr(self.repo, "dvc_dir"):
+            key = self._get_key(self.repo.root_dir)
+            datafss[key] = DataFileSystem(index=self.repo.index.data["repo"])
+
+        return datafss
 
     @property
     def repo_url(self):
@@ -261,7 +316,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         from dvc.repo import Repo
 
-        repo_path = self.repo.fs.path.join(dir_path, Repo.DVC_DIR)
+        repo_path = self.repo.fs.join(dir_path, Repo.DVC_DIR)
         return self.repo.fs.isdir(repo_path)
 
     def _get_subrepo_info(
@@ -282,9 +337,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_fs = self._datafss.get(repo_key)
         return repo, dvc_fs, subkey
 
-    def _open(
-        self, path, mode="rb", **kwargs
-    ):  # pylint: disable=arguments-renamed, arguments-differ
+    def _open(self, path, mode="rb", **kwargs):
         if mode != "rb":
             raise OSError(errno.EROFS, os.strerror(errno.EROFS))
 
@@ -307,9 +360,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-    def ls(  # pylint: disable=arguments-differ # noqa: C901
-        self, path, detail=True, dvc_only=False, **kwargs
-    ):
+    def ls(self, path, detail=True, dvc_only=False, **kwargs):
         key = self._get_key_from_relative(path)
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
@@ -319,7 +370,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             dvc_path = _get_dvc_path(dvc_fs, subkey)
             with suppress(FileNotFoundError, NotADirectoryError):
                 for info in dvc_fs.ls(dvc_path, detail=True):
-                    dvc_infos[dvc_fs.path.name(info["name"])] = info
+                    dvc_infos[dvc_fs.name(info["name"])] = info
                 dvc_exists = True
 
         fs_exists = False
@@ -332,7 +383,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 for info in repo.dvcignore.ls(
                     fs, fs_path, detail=True, ignore_subrepos=ignore_subrepos
                 ):
-                    fs_infos[fs.path.name(info["name"])] = info
+                    fs_infos[fs.name(info["name"])] = info
                 fs_exists = True
             except (FileNotFoundError, NotADirectoryError):
                 pass
@@ -351,7 +402,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             if not dvcfiles and _is_dvc_file(name):
                 continue
 
-            entry_path = self.path.join(path, name)
+            entry_path = self.join(path, name)
             info = _merge_info(
                 repo, (*subkey, name), fs_infos.get(name), dvc_infos.get(name)
             )
@@ -399,7 +450,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         # NOTE: if some parent in fs_path turns out to be a file, it means
         # that the whole repofs branch doesn't exist.
         if dvc_info and not fs_info:
-            for parent in fs.path.parents(fs_path):
+            for parent in fs.parents(fs_path):
                 try:
                     if fs.info(parent)["type"] != "directory":
                         dvc_info = None
@@ -414,7 +465,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         info["name"] = path
         return info
 
-    def get_file(self, rpath, lpath, **kwargs):  # pylint: disable=arguments-differ
+    def get_file(self, rpath, lpath, **kwargs):
         key = self._get_key_from_relative(rpath)
         fs_path = self._from_key(key)
         try:
@@ -426,6 +477,45 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs.get_file(dvc_path, lpath, **kwargs)
+
+    def du(self, path, total=True, maxdepth=None, withdirs=False, **kwargs):
+        if maxdepth is not None:
+            raise NotImplementedError
+
+        sizes = {}
+        dus = {}
+        todo = deque([self.info(path)])
+        while todo:
+            info = todo.popleft()
+            isdir = info["type"] == "directory"
+            size = info["size"] or 0
+            name = info["name"]
+
+            if not isdir:
+                sizes[name] = size
+                continue
+
+            dvc_info = info.get("dvc_info") or {}
+            fs_info = info.get("fs_info")
+            entry = dvc_info.get("entry")
+            if (
+                dvc_info
+                and not fs_info
+                and entry is not None
+                and entry.size is not None
+            ):
+                dus[name] = entry.size
+                continue
+
+            if withdirs:
+                sizes[name] = size
+
+            todo.extend(self.ls(info["name"], detail=True))
+
+        if total:
+            return sum(sizes.values()) + sum(dus.values())
+
+        return sizes
 
     def close(self):
         self._repo_stack.close()
@@ -439,9 +529,11 @@ class DVCFileSystem(FileSystem):
         return config
 
     @functools.cached_property
-    # pylint: disable-next=invalid-overridden-method
     def fs(self) -> "_DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
+
+    def getcwd(self):
+        return self.fs.getcwd()
 
     @property
     def fsid(self) -> str:
@@ -449,10 +541,6 @@ class DVCFileSystem(FileSystem):
 
     def isdvc(self, path, **kwargs) -> bool:
         return self.fs.isdvc(path, **kwargs)
-
-    @property
-    def path(self) -> Path:  # pylint: disable=invalid-overridden-method
-        return self.fs.path
 
     @property
     def repo(self) -> "Repo":

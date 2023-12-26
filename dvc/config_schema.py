@@ -1,4 +1,3 @@
-import logging
 import os
 from urllib.parse import urlparse
 
@@ -16,7 +15,9 @@ from voluptuous import (
     Schema,
 )
 
-logger = logging.getLogger(__name__)
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 Bool = All(
     Lower,
@@ -320,6 +321,8 @@ SCHEMA = {
     "feature": FeatureSchema(
         {
             Optional("machine", default=False): Bool,
+            "dbt_profile": str,
+            "dbt_target": str,
         },
     ),
     "plots": {
@@ -351,5 +354,12 @@ SCHEMA = {
         "url": str,
         "repo_url": str,
         Optional("offline", default=False): Bool,
+    },
+    "db": {
+        str: {
+            "url": str,
+            "username": str,
+            "password": str,
+        },
     },
 }

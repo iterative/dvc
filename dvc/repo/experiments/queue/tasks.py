@@ -44,7 +44,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> "BaseExecutor":
 
 @shared_task
 def collect_exp(
-    proc_dict: Dict[str, Any],  # noqa: ARG001, pylint: disable=unused-argument
+    proc_dict: Dict[str, Any],  # noqa: ARG001
     entry_dict: Dict[str, Any],
 ) -> str:
     """Collect results for an experiment.
@@ -72,7 +72,7 @@ def collect_exp(
             else:
                 logger.debug("Experiment failed (Exec result was None)")
                 celery_queue.stash_failed(entry)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             # Log exceptions but do not re-raise so that task chain execution
             # continues
             logger.exception("Failed to collect experiment")

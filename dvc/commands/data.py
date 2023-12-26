@@ -1,11 +1,11 @@
 import argparse
-import logging
 from typing import TYPE_CHECKING
 
 from funcy import chunks, compact, log_durations
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import colorize
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from dvc.repo.data import Status as DataStatus
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdDataStatus(CmdBase):
@@ -106,9 +106,7 @@ class CmdDataStatus(CmdBase):
         return 0
 
     def run(self) -> int:
-        with log_durations(
-            logger.trace, "in data_status"  # type: ignore[attr-defined]
-        ):
+        with log_durations(logger.trace, "in data_status"):
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,

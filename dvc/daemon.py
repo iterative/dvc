@@ -3,10 +3,12 @@
 import inspect
 import logging
 import os
-import subprocess  # nosec B404
+import subprocess
 import sys
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Union
+
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from typing import ContextManager
@@ -15,7 +17,7 @@ from dvc.env import DVC_DAEMON, DVC_DAEMON_LOGFILE
 from dvc.utils import fix_env, is_binary
 from dvc.utils.collections import ensure_list
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _suppress_resource_warning(popen: subprocess.Popen) -> None:
@@ -28,7 +30,7 @@ def _suppress_resource_warning(popen: subprocess.Popen) -> None:
 def _win_detached_subprocess(args: Sequence[str], **kwargs) -> int:
     assert os.name == "nt"
 
-    from subprocess import (  # type: ignore[attr-defined] # nosec B404
+    from subprocess import (  # type: ignore[attr-defined]
         CREATE_NEW_PROCESS_GROUP,
         CREATE_NO_WINDOW,
         STARTF_USESHOWWINDOW,
@@ -44,7 +46,7 @@ def _win_detached_subprocess(args: Sequence[str], **kwargs) -> int:
     popen = subprocess.Popen(
         args,
         close_fds=True,
-        shell=False,  # noqa: S603 # nosec B603
+        shell=False,  # noqa: S603
         startupinfo=startupinfo,
         creationflags=creationflags,
         **kwargs,
@@ -69,24 +71,22 @@ def _fork_process() -> int:
     # with PyInstaller has trouble with SystemExit exception and throws
     # errors such as "[26338] Failed to execute script __main__"
     try:
-        # pylint: disable-next=no-member
         pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
             return pid
     except OSError:
         logger.exception("failed at first fork")
-        os._exit(1)  # pylint: disable=protected-access
+        os._exit(1)
 
-    os.setsid()  # type: ignore[attr-defined]  # pylint: disable=no-member
+    os.setsid()  # type: ignore[attr-defined]
 
     try:
-        # pylint: disable-next=no-member
         pid = os.fork()  # type: ignore[attr-defined]
         if pid > 0:
-            os._exit(0)  # pylint: disable=protected-access
+            os._exit(0)
     except OSError:
         logger.exception("failed at second fork")
-        os._exit(1)  # pylint: disable=protected-access
+        os._exit(1)
 
     # disconnect from the terminal
     fd = os.open(os.devnull, os.O_RDWR)
@@ -108,7 +108,7 @@ def _posix_detached_subprocess(args: Sequence[str], **kwargs) -> int:
 
     proc = subprocess.Popen(
         args,
-        shell=False,  # noqa: S603 # nosec B603
+        shell=False,  # noqa: S603
         close_fds=True,
         **kwargs,
     )

@@ -1,15 +1,15 @@
-import logging
 import os
 import signal
-import subprocess  # nosec B404
+import subprocess
 import threading
 
+from dvc.log import logger
 from dvc.utils import fix_env
 
 from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _make_cmd(executable, cmd):
@@ -74,7 +74,6 @@ def get_executable():
 
 
 def _run(executable, cmd, **kwargs):
-    # pylint: disable=protected-access
     main_thread = isinstance(
         threading.current_thread(),
         threading._MainThread,  # type: ignore[attr-defined]
@@ -84,7 +83,7 @@ def _run(executable, cmd, **kwargs):
     exec_cmd = _make_cmd(executable, cmd)
 
     try:
-        p = subprocess.Popen(exec_cmd, **kwargs)  # nosec B603 # noqa: S603
+        p = subprocess.Popen(exec_cmd, **kwargs)  # noqa: S603
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 

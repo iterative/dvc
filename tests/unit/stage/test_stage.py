@@ -69,7 +69,7 @@ def test_stage_update(dvc, mocker):
     is_repo_import.return_value = True
     with dvc.lock:
         stage.update()
-    reproduce.assert_called_once_with(no_download=None, jobs=None)
+    reproduce.assert_called_once_with(no_download=None, jobs=None, force=False)
 
     is_repo_import.return_value = False
     with pytest.raises(StageUpdateError):

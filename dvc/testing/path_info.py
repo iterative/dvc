@@ -1,4 +1,3 @@
-# pylint: disable=protected-access
 import os
 import pathlib
 import posixpath
@@ -18,7 +17,6 @@ class _BasePath:
         return self.isin_or_eq(other) or other.isin(self)
 
     def isin_or_eq(self, other):
-        # pylint: disable-next=no-member
         return self == other or self.isin(other)  # type: ignore[attr-defined]
 
 
@@ -32,14 +30,11 @@ class PathInfo(pathlib.PurePath, _BasePath):
     def __new__(cls, *args):
         # Construct a proper subclass depending on current os
         if cls is PathInfo:
-            cls = (  # pylint: disable=self-cls-assignment
-                WindowsPathInfo if os.name == "nt" else PosixPathInfo
-            )
+            cls = WindowsPathInfo if os.name == "nt" else PosixPathInfo
 
         return cls._from_parts(args)  # type: ignore[attr-defined]
 
     def as_posix(self):
-        # pylint: disable-next=no-member
         f = self._flavour  # type: ignore[attr-defined]
         # Unlike original implementation [1] that uses `str()` we actually need
         # to use `fspath`, because we've overridden `__str__` method to return
@@ -82,7 +77,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
             and self._cparts[:n] == other._cparts  # type: ignore[attr-defined]
         )
 
-    def relative_to(self, other):  # pylint: disable=arguments-differ
+    def relative_to(self, other):
         # pathlib relative_to raises exception when one path is not a direct
         # descendant of the other when os.path.relpath would return abspath.
         # For DVC PathInfo we only need the relpath behavior.
@@ -209,7 +204,7 @@ class URLInfo(_BasePath):
         return self._spath
 
     @cached_property
-    def _path(  # pylint: disable=method-hidden
+    def _path(
         self,
     ) -> "_URLPathInfo":
         return _URLPathInfo(self._spath)
@@ -296,7 +291,7 @@ class HTTPURLInfo(URLInfo):
         params=None,
         query=None,
         fragment=None,
-    ):  # pylint: disable=arguments-differ
+    ):
         assert bool(host) ^ bool(netloc)
 
         if netloc is not None:

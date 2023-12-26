@@ -77,12 +77,14 @@ def fill_stage_outputs(stage, **kwargs):
         )
 
 
-def fill_stage_dependencies(stage, deps=None, erepo=None, params=None, fs_config=None):
+def fill_stage_dependencies(
+    stage, deps=None, erepo=None, params=None, fs_config=None, db=None
+):
     from dvc.dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
-    stage.deps += loads_from(stage, deps or [], erepo=erepo, fs_config=fs_config)
+    stage.deps += loads_from(stage, deps or [], erepo=erepo, fs_config=fs_config, db=db)
     stage.deps += loads_params(stage, params or [])
 
 
@@ -182,9 +184,9 @@ def resolve_wdir(wdir, path):
 
 
 def resolve_paths(fs, path, wdir=None):
-    path = fs.path.abspath(path)
+    path = fs.abspath(path)
     wdir = wdir or os.curdir
-    wdir = fs.path.abspath(fs.path.join(fs.path.dirname(path), wdir))
+    wdir = fs.abspath(fs.join(fs.dirname(path), wdir))
     return path, wdir
 
 
@@ -294,7 +296,7 @@ def _get_stage_files(stage: "Stage") -> List[str]:
     file = stage.dvcfile
     ret.append(file.relpath)
     if isinstance(file, ProjectFile):
-        ret.append(file._lockfile.relpath)  # pylint: disable=protected-access
+        ret.append(file._lockfile.relpath)
 
     for dep in stage.deps:
         if (

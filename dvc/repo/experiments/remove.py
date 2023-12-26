@@ -1,6 +1,6 @@
-import logging
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, iter_revs
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from .refs import ExpRefInfo
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked

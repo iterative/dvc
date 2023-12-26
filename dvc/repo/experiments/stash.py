@@ -1,4 +1,3 @@
-import logging
 import re
 from contextlib import contextmanager
 from typing import Dict, Iterable, Iterator, NamedTuple, Optional
@@ -6,12 +5,13 @@ from typing import Dict, Iterable, Iterator, NamedTuple, Optional
 from scmrepo.git import Stash
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc_objects.fs.local import localfs
 from dvc_objects.fs.utils import as_atomic
 
 from .refs import APPLY_HEAD, APPLY_STASH
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ExpStashEntry(NamedTuple):
@@ -150,7 +150,7 @@ class ApplyStash(Stash):
             yield stash_rev
             if stash_rev:
                 self._apply_difference(stash_rev, rev)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             self.revert_workspace()
             raise
 
@@ -171,7 +171,7 @@ class ApplyStash(Stash):
         right_fs = self.scm.get_fs(right_rev)
         paths = [path for path in left_fs.find("/") if not right_fs.exists(path)]
         dest_paths = [
-            localfs.path.join(self.scm.root_dir, left_fs.path.relpath(path, "/"))
+            localfs.join(self.scm.root_dir, left_fs.relpath(path, "/"))
             for path in paths
         ]
         for src, dest in zip(paths, dest_paths):

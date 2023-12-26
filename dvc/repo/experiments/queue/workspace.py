@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
@@ -8,6 +7,7 @@ import psutil
 from funcy import first
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExpQueueEmptyError
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
     from .base import QueueDoneResult
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class WorkspaceQueue(BaseStashQueue):
@@ -158,7 +158,7 @@ class WorkspaceQueue(BaseStashQueue):
         return None
 
     @staticmethod
-    def collect_executor(  # pylint: disable=unused-argument
+    def collect_executor(
         exp: "Experiments",
         executor: "BaseExecutor",  # noqa: ARG004
         exec_result: "ExecutorResult",

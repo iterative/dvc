@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 try:
     from ._dvc_version import version as __version__  # type: ignore[import]
     from ._dvc_version import version_tuple  # type: ignore[import]

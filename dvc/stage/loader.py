@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
@@ -7,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 from funcy import get_in, lcat, once, project
 
 from dvc import dependency, output
+from dvc.log import logger
 from dvc.parsing import FOREACH_KWD, JOIN, MATRIX_KWD, EntryNotFound
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.meta import Meta
@@ -19,7 +19,7 @@ from .utils import fill_stage_dependencies, resolve_paths
 if TYPE_CHECKING:
     from dvc.dvcfile import ProjectFile, SingleStageFile
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class StageLoader(Mapping):
@@ -73,14 +73,12 @@ class StageLoader(Mapping):
 
             hash_name = info.pop(Output.PARAM_HASH, None)
             item.meta = Meta.from_dict(merge_file_meta_from_cloud(info))
-            # pylint: disable-next=protected-access
             item.hash_name, item.hash_info = item._compute_hash_info_from_meta(
                 hash_name
             )
             files = get_in(checksums, [key, path, item.PARAM_FILES], None)
             if files:
                 item.files = [merge_file_meta_from_cloud(f) for f in files]
-            # pylint: disable-next=protected-access
             item._compute_meta_hash_info_from_files()
 
     @classmethod
@@ -123,7 +121,7 @@ class StageLoader(Mapping):
     def lockfile_needs_update(self):
         # if lockfile does not have all of the entries that dvc.yaml says it
         # should have, provide a debug message once
-        # pylint: disable=protected-access
+
         lockfile = self.dvcfile._lockfile.relpath
         logger.debug("Lockfile '%s' needs to be updated.", lockfile)
 
@@ -138,9 +136,7 @@ class StageLoader(Mapping):
 
         if self.lockfile_data and name not in self.lockfile_data:
             self.lockfile_needs_update()
-            logger.trace(  # type: ignore[attr-defined]
-                "No lock entry found for '%s:%s'", self.dvcfile.relpath, name
-            )
+            logger.trace("No lock entry found for '%s:%s'", self.dvcfile.relpath, name)
 
         resolved_stage = resolved_data[name]
         stage = self.load_stage(
@@ -165,7 +161,7 @@ class StageLoader(Mapping):
         return len(self.resolver.get_keys())
 
     def __contains__(self, name):
-        return self.resolver.has_key(name)  # noqa: W601
+        return self.resolver.has_key(name)
 
     def is_foreach_or_matrix_generated(self, name: str) -> bool:
         return (
@@ -207,7 +203,7 @@ class SingleStageLoader(Mapping):
             dvcfile.repo.fs, dvcfile.path, d.get(Stage.PARAM_WDIR)
         )
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
-        stage._stage_text = stage_text  # pylint: disable=protected-access
+        stage._stage_text = stage_text
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS) or [])
         stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS) or [])
         return stage

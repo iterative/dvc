@@ -14,9 +14,7 @@ from pathlib import Path
 
 with Path(sys.argv[1]).open("a+", encoding="utf-8") as f:
     f.write("foo")
-""".replace(
-            "\r\n", "\n"
-        ),
+""".replace("\r\n", "\n"),
     )
 
 
@@ -34,7 +32,5 @@ import sys
 for file in sys.argv[1:]:
     with open(file) as f, open(file +"-1","w+") as w:
         w.write(f.readline())
-""".replace(
-            "\r\n", "\n"
-        ),
+""".replace("\r\n", "\n"),
     )

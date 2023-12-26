@@ -1,13 +1,11 @@
 import os
 import pathlib
-import subprocess  # nosec B404
+import subprocess
 from typing import Dict, Tuple
 
 import pytest
 
 from .scripts import copy_script
-
-# pylint: disable=redefined-outer-name,unused-argument
 
 __all__ = [
     "make_tmp_dir",
@@ -40,7 +38,7 @@ CACHE: Dict[Tuple[bool, bool, bool], str] = {}
 
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request, worker_id):
-    def make(name, *, scm=False, dvc=False, subdir=False):  # pylint: disable=W0621
+    def make(name, *, scm=False, dvc=False, subdir=False):
         from shutil import copytree, ignore_patterns
 
         from dvc.repo import Repo
@@ -129,7 +127,7 @@ def local_cloud(make_cloud):
 @pytest.fixture
 def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
-        cloud = make_cloud(typ)  # pylint: disable=W0621
+        cloud = make_cloud(typ)
         tmp_dir.add_remote(name=name, config=cloud.config, **kwargs)
         return cloud
 
@@ -139,7 +137,7 @@ def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
 @pytest.fixture
 def make_remote_version_aware(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
-        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        cloud = make_cloud_version_aware(typ)
         config = dict(cloud.config)
         config["version_aware"] = True
         tmp_dir.add_remote(name=name, config=config, **kwargs)
@@ -151,7 +149,7 @@ def make_remote_version_aware(tmp_dir, dvc, make_cloud_version_aware):  # noqa: 
 @pytest.fixture
 def make_remote_worktree(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
-        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        cloud = make_cloud_version_aware(typ)
         config = dict(cloud.config)
         config["worktree"] = True
         tmp_dir.add_remote(name=name, config=config, **kwargs)
@@ -188,7 +186,7 @@ def make_workspace(tmp_dir, dvc, make_cloud):
     def _make_workspace(name, typ="local"):
         from dvc.cachemgr import CacheManager
 
-        cloud = make_cloud(typ)  # pylint: disable=W0621
+        cloud = make_cloud(typ)
 
         tmp_dir.add_remote(name=name, config=cloud.config, default=False)
         tmp_dir.add_remote(
@@ -238,8 +236,10 @@ def docker_services(
         pytest.skip("disabled for Windows on CI")
 
     try:
-        subprocess.check_output(  # nosec B607, B602,
-            "docker ps", stderr=subprocess.STDOUT, shell=True  # noqa: S602, S607
+        subprocess.check_output(
+            "docker ps",  # noqa: S607
+            stderr=subprocess.STDOUT,
+            shell=True,  # noqa: S602
         )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
@@ -248,7 +248,9 @@ def docker_services(
     try:
         cmd = "docker-compose version"
         subprocess.check_output(
-            cmd, stderr=subprocess.STDOUT, shell=True  # nosec B602 # noqa: S602
+            cmd,
+            stderr=subprocess.STDOUT,
+            shell=True,  # noqa: S602
         )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")

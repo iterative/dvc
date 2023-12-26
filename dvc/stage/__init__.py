@@ -1,4 +1,3 @@
-import logging
 import os
 import string
 from collections import defaultdict
@@ -22,6 +21,7 @@ from funcy import project
 
 from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, DvcException, MergeError
+from dvc.log import logger
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
 
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db import ObjectDB
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 # Disallow all punctuation characters except hyphen and underscore
 INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
 Env = Dict[str, str]
@@ -105,7 +105,7 @@ def create_stage(cls: Type[_T], repo, path, **kwargs) -> _T:
     fill_stage_outputs(stage, **kwargs)
     check_no_externals(stage)
     fill_stage_dependencies(
-        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config"])
+        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config", "db"])
     )
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)
@@ -125,7 +125,7 @@ def restore_fields(stage: "Stage") -> None:
         return
 
     # will be used to restore comments later
-    # pylint: disable=protected-access
+
     stage._stage_text = old._stage_text
     stage.meta = old.meta
     stage.desc = old.desc
@@ -138,9 +138,6 @@ def restore_fields(stage: "Stage") -> None:
 
 
 class Stage(params.StageParams):
-    # pylint:disable=no-value-for-parameter
-    # rwlocked() confuses pylint
-
     def __init__(  # noqa: PLR0913
         self,
         repo,
@@ -285,8 +282,23 @@ class Stage(params.StageParams):
         return isinstance(self.deps[0], RepoDependency)
 
     @property
+    def is_db_import(self) -> bool:
+        if not self.is_import:
+            return False
+
+        from dvc.dependency import DbDependency, DbtDependency
+
+        return isinstance(self.deps[0], (DbDependency, DbtDependency))
+
+    @property
     def is_versioned_import(self) -> bool:
-        return self.is_import and self.deps[0].fs.version_aware
+        from dvc.dependency import DbDependency, DbtDependency
+
+        return (
+            self.is_import
+            and not isinstance(self.deps[0], (DbDependency, DbtDependency))
+            and self.deps[0].fs.version_aware
+        )
 
     def short_description(self) -> Optional["str"]:
         desc: Optional["str"] = None
@@ -449,6 +461,9 @@ class Stage(params.StageParams):
     ) -> None:
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
+
+        # always force update DbDep/DbtDep since we don't know if it's changed
+        force = self.is_db_import
         update_import(
             self,
             rev=rev,
@@ -456,6 +471,7 @@ class Stage(params.StageParams):
             remote=remote,
             no_download=no_download,
             jobs=jobs,
+            force=force,
         )
 
     def reload(self) -> "Stage":
@@ -559,9 +575,7 @@ class Stage(params.StageParams):
             raise CacheLinkError(link_failures)
 
     @rwlocked(write=["outs"])
-    def add_outs(  # noqa: C901
-        self, filter_info=None, allow_missing: bool = False, **kwargs
-    ):
+    def add_outs(self, filter_info=None, allow_missing: bool = False, **kwargs):
         from dvc.output import OutputDoesNotExistError
 
         link_failures = []
@@ -582,7 +596,7 @@ class Stage(params.StageParams):
             raise CacheLinkError(link_failures)
 
     @rwlocked(read=["deps", "outs"])
-    def run(  # noqa: C901
+    def run(
         self,
         dry=False,
         no_commit=False,
@@ -642,7 +656,7 @@ class Stage(params.StageParams):
 
     def filter_outs(self, fs_path) -> Iterable["Output"]:
         def _func(o):
-            return o.fs.path.isin_or_eq(fs_path, o.fs_path)
+            return o.fs.isin_or_eq(fs_path, o.fs_path)
 
         return filter(_func, self.outs) if fs_path else self.outs
 
@@ -809,7 +823,7 @@ class PipelineStage(Stage):
 
         assert isinstance(self.dvcfile, ProjectFile)
 
-        self.dvcfile._reset()  # pylint: disable=protected-access
+        self.dvcfile._reset()
         return self.dvcfile.stages[self.name]
 
     def _status_stage(self, ret) -> None:

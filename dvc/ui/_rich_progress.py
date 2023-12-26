@@ -4,6 +4,7 @@ from rich.progress import (
     DownloadColumn,
     MofNCompleteColumn,
     Progress,
+    SpinnerColumn,
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
@@ -52,3 +53,24 @@ class RichTransferProgress(RichProgress):
         yield self.make_tasks_table(summary_tasks)
         self.columns = self.TRANSFER_COLS
         yield self.make_tasks_table(other_tasks)
+
+
+class DbDownloadProgress(RichProgress):
+    PROGRESS_COLS = (
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        TextColumn("[progress.download]{task.completed:,} rows"),
+        TextColumn("to [repr.filename]{task.fields[output]}"),
+    )
+    STATUS_COLS = (
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        TextColumn("to [repr.filename]{task.fields[output]}"),
+    )
+
+    def get_renderables(self):
+        if self.tasks:
+            (task, *_) = self.tasks
+            cols = self.PROGRESS_COLS if task.completed else self.STATUS_COLS
+            self.columns = cols[1:] if task.finished else cols
+        yield self.make_tasks_table(self.tasks)

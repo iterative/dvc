@@ -1,4 +1,3 @@
-import logging
 import os
 import typing
 from collections import defaultdict
@@ -7,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import dpath
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.utils.serialize import ParseError, load_path
 from dvc_data.hashfile.hash_info import HashInfo
 
@@ -15,7 +15,7 @@ from .base import Dependency
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class MissingParamsError(DvcException):
@@ -54,12 +54,15 @@ def read_param_file(
                 continue
         return ret
 
-    from dpath import merge
+    from copy import deepcopy
 
-    for key_path in key_paths:
+    from dpath import merge
+    from funcy import distinct
+
+    for key_path in distinct(key_paths):
         merge(
             ret,
-            dpath.search(config, key_path, separator="."),
+            deepcopy(dpath.search(config, key_path, separator=".")),
             separator=".",
         )
     return ret
@@ -132,8 +135,8 @@ class ParamsDependency(Dependency):
         from funcy import ldistinct
 
         status: Dict[str, Any] = defaultdict(dict)
-        assert isinstance(self.hash_info.value, dict)
         info = self.hash_info.value if self.hash_info else {}
+        assert isinstance(info, dict)
         actual = self.read_params()
 
         # NOTE: we want to preserve the order of params as specified in the

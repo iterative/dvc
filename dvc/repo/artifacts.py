@@ -1,4 +1,3 @@
-import logging
 import os
 import posixpath
 from pathlib import Path
@@ -12,6 +11,7 @@ from dvc.exceptions import (
     FileExistsLocallyError,
     InvalidArgumentError,
 )
+from dvc.log import logger
 from dvc.utils import relpath, resolve_output
 from dvc.utils.objects import cached_property
 from dvc.utils.serialize import modify_yaml
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def check_name_format(name: str) -> None:
@@ -101,7 +101,7 @@ class Artifacts:
         for (
             dvcfile,
             dvcfile_artifacts,
-        ) in self.repo.index._artifacts.items():  # pylint: disable=protected-access
+        ) in self.repo.index._artifacts.items():
             dvcyaml = relpath(dvcfile, self.repo.root_dir)
             artifacts[dvcyaml] = {}
             for name, value in dvcfile_artifacts.items():
@@ -205,30 +205,31 @@ class Artifacts:
         out: Optional[str] = None,
         force: bool = False,
         jobs: Optional[int] = None,
-        studio_config: Optional[Dict[str, Any]] = None,
+        dvc_studio_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> Tuple[int, str]:
         from dvc_studio_client.model_registry import get_download_uris
 
-        from dvc.fs import Callback, HTTPFileSystem, generic, localfs
+        from dvc.fs import HTTPFileSystem, generic, localfs
+        from dvc.fs.callbacks import TqdmCallback
 
         logger.debug("Trying to download artifact '%s' via studio", name)
         out = out or os.getcwd()
         to_infos: List[str] = []
         from_infos: List[str] = []
-        if studio_config is None:
-            studio_config = {}
-        studio_config["repo_url"] = repo_url
+        if dvc_studio_config is None:
+            dvc_studio_config = {}
+        dvc_studio_config["repo_url"] = repo_url
         try:
-            kwargs["dvc_studio_config"] = studio_config
             for path, url in get_download_uris(
                 repo_url,
                 name,
                 version=version,
                 stage=stage,
+                dvc_studio_config=dvc_studio_config,
                 **kwargs,
             ).items():
-                to_info = localfs.path.join(out, path)
+                to_info = localfs.join(out, path)
                 if localfs.exists(to_info) and not force:
                     hint = "\nTo override it, re-run with '--force'."
                     raise FileExistsLocallyError(  # noqa: TRY301
@@ -238,13 +239,13 @@ class Artifacts:
                 from_infos.append(url)
         except DvcException:
             raise
-        except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception as exc:  # noqa: BLE001
             raise DvcException(
                 f"Failed to download artifact '{name}' via Studio"
             ) from exc
         fs = HTTPFileSystem()
         jobs = jobs or fs.jobs
-        with Callback.as_tqdm_callback(
+        with TqdmCallback(
             desc=f"Downloading '{name}' from '{repo_url}'",
             unit="files",
         ) as cb:
@@ -253,10 +254,10 @@ class Artifacts:
                 fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs
             )
 
-        return len(to_infos), relpath(localfs.path.commonpath(to_infos))
+        return len(to_infos), relpath(localfs.commonpath(to_infos))
 
     @classmethod
-    def get(  # noqa: C901, PLR0913
+    def get(  # noqa: PLR0913
         cls,
         url: str,
         name: str,
@@ -286,7 +287,7 @@ class Artifacts:
         name = _reformat_name(name)
         saved_exc: Optional[Exception] = None
         try:
-            logger.trace("Trying studio-only config")  # type: ignore[attr-defined]
+            logger.trace("Trying studio-only config")
             return cls._download_studio(
                 url,
                 name,
@@ -298,7 +299,7 @@ class Artifacts:
             )
         except FileExistsLocallyError:
             raise
-        except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception as exc:  # noqa: BLE001
             saved_exc = exc
 
         if config and not isinstance(config, dict):
@@ -311,8 +312,8 @@ class Artifacts:
             remote=remote,
             remote_config=remote_config,
         ) as repo:
-            logger.trace("Trying repo [studio] config")  # type: ignore[attr-defined]
-            studio_config = dict(repo.config.get("studio"))
+            logger.trace("Trying repo [studio] config")
+            dvc_studio_config = dict(repo.config.get("studio"))
             try:
                 return cls._download_studio(
                     url,
@@ -322,11 +323,11 @@ class Artifacts:
                     out=out,
                     force=force,
                     jobs=jobs,
-                    dvc_studio_config=studio_config,
+                    dvc_studio_config=dvc_studio_config,
                 )
             except FileExistsLocallyError:
                 raise
-            except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+            except Exception as exc:  # noqa: BLE001
                 saved_exc = exc
 
             try:
@@ -340,7 +341,7 @@ class Artifacts:
                 )
             except FileExistsLocallyError:
                 raise
-            except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+            except Exception as exc:  # noqa: BLE001
                 if saved_exc:
                     logger.exception(str(saved_exc), exc_info=saved_exc.__cause__)
                 raise DvcException(

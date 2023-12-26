@@ -2,6 +2,7 @@ import logging
 import time
 from collections import defaultdict
 from functools import partial
+from itertools import chain
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -19,15 +20,17 @@ from typing import (
 
 from funcy.debug import format_time
 
+from dvc.dependency import ParamsDependency
 from dvc.fs import LocalFileSystem
 from dvc.fs.callbacks import DEFAULT_CALLBACK
+from dvc.log import logger
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
 
-    from dvc.dependency import Dependency, ParamsDependency
+    from dvc.dependency import Dependency
     from dvc.fs.callbacks import Callback
     from dvc.output import Output
     from dvc.repo import Repo
@@ -40,7 +43,7 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 ObjectContainer = Dict[Optional["HashFileDB"], Set["HashInfo"]]
 
 
@@ -49,9 +52,7 @@ def log_walk(seq):
         start = time.perf_counter()
         yield root, dirs, files
         duration = format_time(time.perf_counter() - start)
-        logger.trace(  # type: ignore[attr-defined]
-            "%s in collecting stages from %s", duration, root
-        )
+        logger.trace("%s in collecting stages from %s", duration, root)
 
 
 def collect_files(
@@ -96,7 +97,7 @@ def collect_files(
     for root, dirs, files in walk_iter:
         dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
         for file in filter(dvcfile_filter, files):
-            file_path = fs.path.join(root, file)
+            file_path = fs.join(root, file)
             try:
                 index = Index.from_file(repo, file_path)
             except DvcException as exc:
@@ -128,13 +129,32 @@ def _load_data_from_outs(index, prefix, outs):
         for key_len in range(1, len(key)):
             parents.add((ws, key[:key_len]))
 
+        loaded = None
+        if out.files:
+            loaded = True
+            for okey, ometa, ohi in out.get_obj():
+                for key_len in range(1, len(okey)):
+                    parents.add((ws, (*key, *okey[:key_len])))
+
+                fkey = (*key, *okey)
+                index[(*prefix, ws, *fkey)] = DataIndexEntry(
+                    key=fkey,
+                    meta=ometa,
+                    hash_info=ohi,
+                )
+
         entry = DataIndexEntry(
             key=key,
             meta=out.meta,
             hash_info=out.hash_info,
+            loaded=loaded,
         )
 
-        if out.stage.is_import and not out.stage.is_repo_import:
+        if (
+            out.stage.is_import
+            and not out.stage.is_repo_import
+            and not out.stage.is_db_import
+        ):
             dep = out.stage.deps[0]
             entry.meta = dep.meta
             if out.hash_info:
@@ -182,6 +202,9 @@ def _load_storage_from_out(storage_map, key, out):
     except NoRemoteError:
         pass
 
+    if out.stage.is_db_import:
+        return
+
     if out.stage.is_import:
         dep = out.stage.deps[0]
         if not out.hash_info:
@@ -193,7 +216,7 @@ def _load_storage_from_out(storage_map, key, out):
                 FileStorage(
                     key,
                     fs_cache.fs,
-                    fs_cache.fs.path.join(
+                    fs_cache.fs.join(
                         fs_cache.path, dep.fs.protocol, tokenize(dep.fs_path)
                     ),
                 )
@@ -243,7 +266,6 @@ class Index:
 
         onerror = onerror or repo.stage_collection_error_handler
         for _, idx in collect_files(repo, onerror=onerror):
-            # pylint: disable=protected-access
             stages.extend(idx.stages)
             metrics.update(idx._metrics)
             plots.update(idx._plots)
@@ -306,7 +328,7 @@ class Index:
 
     def check_graph(self) -> None:
         if not getattr(self.repo, "_skip_graph_checks", False):
-            self.graph  # noqa: B018, pylint: disable=pointless-statement
+            self.graph  # noqa: B018
 
     @property
     def params(self) -> Iterator["ParamsDependency"]:
@@ -407,7 +429,25 @@ class Index:
             by_workspace[workspace].add(key)
 
         for path in _collect_top_level_metrics(self.repo):
-            key = self.repo.fs.path.relparts(path, self.repo.root_dir)
+            key = self.repo.fs.relparts(path, self.repo.root_dir)
+            by_workspace["repo"].add(key)
+
+        return dict(by_workspace)
+
+    @cached_property
+    def param_keys(self) -> Dict[str, Set["DataIndexKey"]]:
+        from .params.show import _collect_top_level_params
+
+        by_workspace: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+        by_workspace["repo"] = set()
+
+        param_paths = _collect_top_level_params(self.repo)
+        default_file: str = ParamsDependency.DEFAULT_PARAMS_FILE
+        if self.repo.fs.exists(f"{self.repo.fs.root_marker}{default_file}"):
+            param_paths = chain(param_paths, [default_file])
+
+        for path in param_paths:
+            key = self.repo.fs.relparts(path, self.repo.root_dir)
             by_workspace["repo"].add(key)
 
         return dict(by_workspace)
@@ -426,7 +466,7 @@ class Index:
             by_workspace[workspace].add(key)
 
         for path in self._plot_sources:
-            key = self.repo.fs.path.parts(path)
+            key = self.repo.fs.parts(path)
             by_workspace["repo"].add(key)
 
         return dict(by_workspace)
@@ -505,7 +545,7 @@ class Index:
         if not onerror:
 
             def onerror(_target, _exc):
-                raise  # pylint: disable=misplaced-bare-raise
+                raise
 
         targets = ensure_list(targets)
         if not targets:
@@ -552,6 +592,8 @@ class Index:
                 keys = self.plot_keys
             elif typ == "metrics":
                 keys = self.metric_keys
+            elif typ == "params":
+                keys = self.param_keys
             else:
                 raise ValueError(f"unsupported type {typ}")
 
@@ -616,7 +658,7 @@ class _DataPrefixes(NamedTuple):
 class IndexView:
     """Read-only view of Index.data using filtered stages."""
 
-    def __init__(  # pylint: disable=redefined-outer-name
+    def __init__(
         self,
         index: Index,
         stage_infos: Iterable["StageInfo"],
@@ -674,8 +716,8 @@ class IndexView:
             if not out.use_cache:
                 continue
             workspace, key = out.index_key
-            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
-                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            if filter_info and out.fs.isin(filter_info, out.fs_path):
+                key = key + out.fs.relparts(filter_info, out.fs_path)
             entry = self._index.data[workspace].get(key)
             if entry and entry.meta and entry.meta.isdir:
                 prefixes[workspace].recursive.add(key)
@@ -691,8 +733,8 @@ class IndexView:
                 continue
 
             workspace, key = out.index_key
-            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
-                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            if filter_info and out.fs.isin(filter_info, out.fs_path):
+                key = key + out.fs.relparts(filter_info, out.fs_path)
             ret[workspace].add(key)
 
         return dict(ret)
@@ -755,7 +797,7 @@ def build_data_index(  # noqa: C901, PLR0912
     data = DataIndex()
     parents = set()
     for key in index.data_keys.get(workspace, set()):
-        out_path = fs.path.join(path, *key)
+        out_path = fs.join(path, *key)
 
         for key_len in range(1, len(key)):
             parents.add(key[:key_len])
@@ -800,7 +842,7 @@ def build_data_index(  # noqa: C901, PLR0912
             callback.relative_update(1)
 
     for key in parents:
-        parent_path = fs.path.join(path, *key)
+        parent_path = fs.join(path, *key)
         if not fs.exists(parent_path):
             continue
         direntry = DataIndexEntry(key=key, meta=Meta(isdir=True), loaded=True)

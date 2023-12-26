@@ -1,6 +1,5 @@
 import csv
 import io
-import logging
 import os
 from collections import defaultdict
 from copy import deepcopy
@@ -23,7 +22,8 @@ import dpath.options
 from funcy import first, ldistinct, project, reraise
 
 from dvc.exceptions import DvcException
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.log import logger
+from dvc.utils import error_handler, errored_revisions
 from dvc.utils.objects import cached_property
 from dvc.utils.serialize import PARSERS, EncodingError
 from dvc.utils.threadpool import ThreadPoolExecutor
@@ -37,7 +37,12 @@ if TYPE_CHECKING:
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
+
+
+def onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
+    logger.debug("", exc_info=True)
+    result["error"] = exception
 
 
 SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS
@@ -381,7 +386,7 @@ def _matches(targets, config_file, plot_id):
 
 
 def _normpath(path):
-    # TODO dvcfs.path.normopath normalizes to windows path on Windows
+    # TODO dvcfs.normopath normalizes to windows path on Windows
     # even though other methods work as expected
     import posixpath
 
@@ -394,7 +399,7 @@ def _relpath(fs, path):
     # and invoking from some subdir `dvcfile.relpath` returns strange long
     # relative paths
     # ("../../../../../../dvc.yaml") - investigate
-    return fs.path.relpath(fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd())
+    return fs.relpath(fs.join("/", fs.from_os_path(path)), fs.getcwd())
 
 
 def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = None):
@@ -408,7 +413,7 @@ def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = No
         if _matches(targets, config_path, str(plot)):
             unpacked = unpack_if_dir(
                 fs,
-                _normpath(fs.path.join(wdir_relpath, plot.def_path)),
+                _normpath(fs.join(wdir_relpath, plot.def_path)),
                 props={**plot_props, **props},
                 onerror=onerror,
             )
@@ -433,7 +438,7 @@ def _adjust_sources(fs, plot_props, config_dir):
     old_y = new_plot_props.pop("y", {})
     new_y = {}
     for filepath, val in old_y.items():
-        new_y[_normpath(fs.path.join(config_dir, filepath))] = val
+        new_y[_normpath(fs.join(config_dir, filepath))] = val
     new_plot_props["y"] = new_y
     return new_plot_props
 
@@ -447,13 +452,13 @@ def _resolve_definitions(
     onerror: Optional[Callable[[Any], Any]] = None,
 ):
     config_path = os.fspath(config_path)
-    config_dir = fs.path.dirname(config_path)
+    config_dir = fs.dirname(config_path)
     result: Dict[str, Dict] = {}
     for plot_id, plot_props in definitions.items():
         if plot_props is None:
             plot_props = {}
         if _id_is_path(plot_props):
-            data_path = _normpath(fs.path.join(config_dir, plot_id))
+            data_path = _normpath(fs.join(config_dir, plot_id))
             if _matches(targets, config_path, plot_id):
                 unpacked = unpack_if_dir(
                     fs,
@@ -474,7 +479,7 @@ def _resolve_definitions(
 
 def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
     result: Dict[str, Dict] = {}
-    top_plots = repo.index._plots  # pylint: disable=protected-access
+    top_plots = repo.index._plots
     for dvcfile, plots_def in top_plots.items():
         dvcfile_path = _relpath(repo.dvcfs, dvcfile)
         dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}

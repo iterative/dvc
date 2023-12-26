@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union
 
@@ -72,7 +71,7 @@ class RichCallback(Callback):
         value: int = 0,
         progress: Optional["RichTransferProgress"] = None,
         desc: Optional[str] = None,
-        bytes: bool = False,  # noqa: A002, pylint: disable=redefined-builtin
+        bytes: bool = False,  # noqa: A002
         unit: Optional[str] = None,
         disable: bool = False,
         transient: bool = True,

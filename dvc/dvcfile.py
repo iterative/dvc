@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import os
 from typing import (
     TYPE_CHECKING,
@@ -14,6 +13,7 @@ from typing import (
 )
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from .parsing import DataResolver
     from .stage import Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 _T = TypeVar("_T")
 
 DVC_FILE_SUFFIX = ".dvc"
@@ -166,7 +166,6 @@ class FileMixin:
             **kwargs,
         )
 
-    # pylint: disable-next=unused-argument
     def remove(self, force=False):  # noqa: ARG002
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self.path)
@@ -208,7 +207,6 @@ class SingleStageFile(FileMixin):
         dump_yaml(self.path, serialize.to_single_stage_file(stage, **kwargs))
         self.repo.scm_context.track_file(self.relpath)
 
-    # pylint: disable-next=unused-argument
     def remove_stage(self, stage):  # noqa: ARG002
         self.remove()
 
@@ -237,9 +235,7 @@ class ProjectFile(FileMixin):
         self.__dict__.pop("resolver", None)
         self.__dict__.pop("stages", None)
 
-    def dump(
-        self, stage, update_pipeline=True, update_lock=True, **kwargs
-    ):  # pylint: disable=arguments-differ
+    def dump(self, stage, update_pipeline=True, update_lock=True, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 
@@ -298,7 +294,7 @@ class ProjectFile(FileMixin):
     def resolver(self) -> "DataResolver":
         from .parsing import DataResolver
 
-        wdir = self.repo.fs.path.parent(self.path)
+        wdir = self.repo.fs.parent(self.path)
         return DataResolver(self.repo, wdir, self.contents)
 
     @cached_property

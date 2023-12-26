@@ -5,7 +5,7 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.testing.api_tests import TestAPI  # noqa: F401, pylint: disable=unused-import
+from dvc.testing.api_tests import TestAPI  # noqa: F401
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 
@@ -41,7 +41,7 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
             # NOTE: need file to be other size for Mac
             erepo_dir.dvc_gen("version", "branchver", commit="add version")
 
-    erepo_dir.dvc.push(all_branches=True)
+    assert erepo_dir.dvc.push(all_branches=True) == 2
 
     # Remove cache to force download
     remove(erepo_dir.dvc.cache.local.path)

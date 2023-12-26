@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import TYPE_CHECKING, Dict, List
 
@@ -8,6 +7,7 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import relpath
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from dvc_data.index import BaseDataIndex, DataIndexEntry
     from dvc_objects.fs.base import FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _fspath_dir(path):
@@ -81,7 +81,7 @@ def _check_can_delete(
         if cache_fs.exists(cache_path):
             continue
 
-        entry_paths.append(fs.path.join(path, *(entry.key or ())))
+        entry_paths.append(fs.join(path, *(entry.key or ())))
 
     if not entry_paths:
         return
@@ -129,7 +129,7 @@ def checkout(  # noqa: C901
             ),
         ):
             raise CheckoutErrorSuggestGit(target) from exc
-        raise  # pylint: disable=misplaced-bare-raise
+        raise
 
     view = self.index.targets_view(
         targets,
@@ -172,7 +172,7 @@ def checkout(  # noqa: C901
         )
 
         for out_path in out_paths:
-            if self.fs.path.isin_or_eq(dest_path, out_path):
+            if self.fs.isin_or_eq(dest_path, out_path):
                 failed.add(out_path)
 
     with ui.progress(
@@ -195,7 +195,7 @@ def checkout(  # noqa: C901
 
     typ_map = {ADD: "added", DELETE: "deleted", MODIFY: "modified"}
     for key, typ in out_changes.items():
-        out_path = self.fs.path.join(self.root_dir, *key)
+        out_path = self.fs.join(self.root_dir, *key)
 
         if out_path in failed:
             self.fs.remove(out_path, recursive=True)

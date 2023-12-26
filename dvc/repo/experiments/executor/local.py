@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import ExitStack
 from tempfile import mkdtemp
@@ -9,6 +8,7 @@ from funcy import retry
 from shortuuid import uuid
 
 from dvc.lock import LockError
+from dvc.log import logger
 from dvc.repo.experiments.refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.stash import ExpStashEntry
     from dvc.scm import NoSCM
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class BaseLocalExecutor(BaseExecutor):
@@ -148,7 +148,10 @@ class TempDirExecutor(BaseLocalExecutor):
                 conf_obj.write(fobj)
 
     def init_cache(
-        self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
+        self,
+        repo: "Repo",
+        rev: str,  # noqa: ARG002
+        run_cache: bool = True,  # noqa: ARG002
     ):
         """Initialize DVC cache."""
         self._update_config({"cache": {"dir": repo.cache.local_cache_dir}})

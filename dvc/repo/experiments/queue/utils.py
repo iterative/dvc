@@ -1,13 +1,13 @@
-import logging
 from typing import TYPE_CHECKING, Dict, List
 
 from scmrepo.exceptions import SCMError
 
+from dvc.log import logger
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.refs import EXEC_NAMESPACE, EXPS_NAMESPACE, EXPS_STASH
 from dvc.repo.experiments.utils import get_exp_rwlock, iter_remote_refs
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 if TYPE_CHECKING:

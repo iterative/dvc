@@ -1,7 +1,7 @@
-import logging
 import os
 from typing import TYPE_CHECKING, Optional
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git
@@ -16,12 +16,12 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.repo.experiments import Experiments
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked
 @scm_context
-def apply(repo: "Repo", rev: str, **kwargs):  # noqa: C901
+def apply(repo: "Repo", rev: str, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
     from dvc.scm import RevError, resolve_rev
 
@@ -36,9 +36,7 @@ def apply(repo: "Repo", rev: str, **kwargs):  # noqa: C901
         (
             exp_ref_info,
             queue_entry,
-        ) = exps.celery_queue.get_ref_and_entry_by_names(
-            rev
-        )[rev]
+        ) = exps.celery_queue.get_ref_and_entry_by_names(rev)[rev]
         if exp_ref_info:
             exp_rev = repo.scm.get_ref(str(exp_ref_info))
         elif queue_entry:

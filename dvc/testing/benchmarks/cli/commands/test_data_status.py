@@ -1,4 +1,3 @@
-# pylint: disable=unused-argument
 from shutil import rmtree
 
 import pytest

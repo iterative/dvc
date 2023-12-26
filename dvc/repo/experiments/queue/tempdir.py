@@ -1,4 +1,3 @@
-import logging
 import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
@@ -6,6 +5,7 @@ from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
 from funcy import first
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExpQueueEmptyError
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.executor.local import TempDirExecutor
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.serialize import ExpRange
     from dvc_task.proc.manager import ProcessManager
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 _STANDALONE_TMP_DIR = os.path.join(EXEC_TMP_DIR, "standalone")

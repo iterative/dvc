@@ -1,11 +1,10 @@
-import logging
-
 from dvc.commands.data_sync import CmdDataBase
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import format_link
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdDataStatus(CmdDataBase):

@@ -1,6 +1,6 @@
 import logging
 import os
-import pickle  # nosec B403
+import pickle
 import shutil
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -27,6 +27,7 @@ from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH, ExpRefInfo
 from dvc.repo.experiments.utils import to_studio_params
@@ -45,7 +46,7 @@ if TYPE_CHECKING:
     from dvc.scm import Git
     from dvc.stage import PipelineStage, Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ExecutorResult(NamedTuple):
@@ -259,7 +260,7 @@ class BaseExecutor(ABC):
             chain(
                 _collect_top_level_metrics(repo),
                 _collect_top_level_params(repo),
-                repo.index._plot_sources,  # pylint: disable=protected-access
+                repo.index._plot_sources,
             )
         )
 
@@ -364,7 +365,7 @@ class BaseExecutor(ABC):
     @staticmethod
     def unpack_repro_args(path):
         with open(path, "rb") as fobj:
-            data = pickle.load(fobj)  # noqa: S301 # nosec B301
+            data = pickle.load(fobj)  # noqa: S301
         return data["args"], data["kwargs"]
 
     def fetch_exps(
@@ -492,9 +493,7 @@ class BaseExecutor(ABC):
                 targets = kwargs.get("targets")
 
             repro_force = kwargs.get("force", False)
-            logger.trace(  # type: ignore[attr-defined]
-                "Executor repro with force = '%s'", str(repro_force)
-            )
+            logger.trace("Executor repro with force = '%s'", str(repro_force))
 
             repro_dry = kwargs.get("dry")
 
@@ -583,7 +582,7 @@ class BaseExecutor(ABC):
 
     @classmethod
     @contextmanager
-    def _repro_dvc(  # noqa: C901
+    def _repro_dvc(
         cls,
         info: "ExecutorInfo",
         infofile: Optional[str] = None,
@@ -688,7 +687,7 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:  # noqa: BLE001, pylint: disable=W0703
+        except BaseException as exc:  # noqa: BLE001
             logger.warning(
                 (
                     "Something went wrong while auto pushing experiment "

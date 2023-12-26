@@ -1,4 +1,3 @@
-import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -10,6 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 from funcy import identity, lfilter, nullcontext, select
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.parsing.interpolate import (
     get_expression,
     get_matches,
@@ -20,7 +20,7 @@ from dvc.parsing.interpolate import (
     validate_value,
 )
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 SeqOrMap = Union[Sequence, Mapping]
 DictStr = Dict[str, Any]
 
@@ -324,9 +324,7 @@ class Context(CtxDict):
             keys = [keys] if isinstance(keys, str) else keys
             params_file.update({key: node.value for key in keys})
 
-    def select(
-        self, key: str, unwrap: bool = False
-    ):  # pylint: disable=arguments-differ
+    def select(self, key: str, unwrap: bool = False):
         """Select the item using key, similar to `__getitem__`
            but can track the usage of the data on interpolation
            as well and can get from nested data structure by using
@@ -386,7 +384,7 @@ class Context(CtxDict):
 
     def merge_from(self, fs, item: str, wdir: str, overwrite=False):
         path, _, keys_str = item.partition(":")
-        path = fs.path.normpath(fs.path.join(wdir, path))
+        path = fs.normpath(fs.join(wdir, path))
 
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
         if path in self.imports:
@@ -431,12 +429,12 @@ class Context(CtxDict):
         default: Optional[str] = None,
     ):
         if default:
-            to_import = fs.path.join(wdir, default)
+            to_import = fs.join(wdir, default)
             if fs.exists(to_import):
                 self.merge_from(fs, default, wdir)
             else:
                 msg = "%s does not exist, it won't be used in parametrization"
-                logger.trace(msg, to_import)  # type: ignore[attr-defined]
+                logger.trace(msg, to_import)
 
         stage_name = stage_name or ""
         for index, item in enumerate(vars_):

@@ -126,7 +126,7 @@ def build_graph(stages, outs_trie=None):
     outs_trie = outs_trie or build_outs_trie(stages)
 
     for stage in stages:
-        out = outs_trie.shortest_prefix(localfs.path.parts(stage.path)).value
+        out = outs_trie.shortest_prefix(localfs.parts(stage.path)).value
         if out:
             raise StagePathAsOutputError(stage, str(out))
 
@@ -135,9 +135,11 @@ def build_graph(stages, outs_trie=None):
     for stage in stages:
         if stage.is_repo_import:
             continue
+        if stage.is_db_import:
+            continue
 
         for dep in stage.deps:
-            dep_key = dep.fs.path.parts(dep.fs_path)
+            dep_key = dep.fs.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
                 overlapping.extend(outs_trie.values(prefix=dep_key))
@@ -160,8 +162,10 @@ def build_outs_graph(graph, outs_trie):
     for stage in graph.nodes():
         if stage.is_repo_import:
             continue
+        if stage.is_db_import:
+            continue
         for dep in stage.deps:
-            dep_key = dep.fs.path.parts(dep.fs_path)
+            dep_key = dep.fs.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
                 overlapping.extend(outs_trie.values(prefix=dep_key))

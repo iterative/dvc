@@ -1,9 +1,9 @@
-import logging
 from typing import Iterable, List, Mapping, Optional, Set, Union
 
 from funcy import group_by
 from scmrepo.git.backend.base import SyncStatus
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit, iter_revs
@@ -13,7 +13,7 @@ from .exceptions import UnresolvedExpNamesError
 from .refs import ExpRefInfo
 from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked
@@ -112,4 +112,6 @@ def _pull_cache(
         refs = [refs]
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc fetch experiment '%s'", refs)
-    repo.fetch(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)
+    repo.fetch(
+        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, workspace=False
+    )

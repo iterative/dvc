@@ -1,10 +1,11 @@
 """Manages user prompts."""
 
-import logging
 from getpass import getpass
 from typing import Collection, Optional
 
-logger = logging.getLogger(__name__)
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 
 def ask(prompt: str, limited_to: Optional[Collection[str]] = None):

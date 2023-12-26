@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, List
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.log import logger
 from dvc.utils.cli_parse import parse_params
 from dvc.utils.humanize import truncate_text
 
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.stage import Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 MAX_TEXT_LENGTH = 80
 
@@ -67,9 +68,7 @@ class CmdStageList(CmdBase):
     def _get_stages(self) -> Iterable["Stage"]:
         if self.args.all:
             stages: List["Stage"] = self.repo.index.stages
-            logger.trace(  # type: ignore[attr-defined]
-                "%d no. of stages found", len(stages)
-            )
+            logger.trace("%d no. of stages found", len(stages))
             return stages
 
         # removing duplicates while maintaining order

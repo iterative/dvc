@@ -1,13 +1,13 @@
 import argparse
-import logging
 
 from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils.serialize import encode_exception
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 DEFAULT_PRECISION = 5

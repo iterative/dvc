@@ -1,13 +1,13 @@
-import logging
 from typing import Dict, Iterable, Optional
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.ui import ui
 from dvc.utils.cli_parse import to_path_overrides
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked

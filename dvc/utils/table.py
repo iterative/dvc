@@ -7,9 +7,7 @@ if TYPE_CHECKING:
 
 
 class Table(RichTable):
-    def add_column(  # pylint: disable=arguments-differ
-        self, *args: Any, collapse: bool = False, **kwargs: Any
-    ) -> None:
+    def add_column(self, *args: Any, collapse: bool = False, **kwargs: Any) -> None:
         super().add_column(*args, **kwargs)
         self.columns[-1].collapse = collapse  # type: ignore[attr-defined]
 
@@ -48,7 +46,6 @@ class Table(RichTable):
         return widths
 
     def _collapse_widths(  # type: ignore[override]
-        # pylint: disable=arguments-differ
         self,
         widths: List[int],
         wrapable: List[bool],
@@ -60,9 +57,7 @@ class Table(RichTable):
         If table is still too wide after collapsing, rich's automatic overflow
         handling will be used.
         """
-        collapsible = [
-            column.collapse for column in self.columns  # type: ignore[attr-defined]
-        ]
+        collapsible = [column.collapse for column in self.columns]  # type: ignore[attr-defined]
         total_width = sum(widths)
         excess_width = total_width - max_width
         if any(collapsible):

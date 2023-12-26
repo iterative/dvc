@@ -9,7 +9,7 @@ def get_plot_id(config_plot_id: str, config_file_path: str = ""):
 
 
 def group_definitions_by_id(
-    definitions: Dict[str, Dict]
+    definitions: Dict[str, Dict],
 ) -> Dict[str, Tuple[str, Dict]]:
     """
     Format ID and extracts plot_definition for each plot.

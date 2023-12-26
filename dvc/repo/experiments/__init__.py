@@ -1,10 +1,10 @@
-import logging
 import os
 import re
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
 
 from funcy import chain, first
 
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from .queue.workspace import WorkspaceQueue
     from .stash import ExpStashEntry
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class Experiments:
@@ -141,7 +141,7 @@ class Experiments:
             **kwargs,
         )
 
-    def reproduce_celery(  # noqa: C901
+    def reproduce_celery(
         self, entries: Optional[Iterable["QueueEntry"]] = None, **kwargs
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}

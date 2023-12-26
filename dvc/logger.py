@@ -8,7 +8,6 @@ import sys
 
 import colorama
 
-from dvc.env import DVC_SHOW_TRACEBACK
 from dvc.progress import Tqdm
 
 
@@ -33,7 +32,6 @@ def add_logging_level(level_name, level_num, method_name=None):
 
     def log_for_level(self, message, *args, **kwargs):
         if self.isEnabledFor(level_num):
-            # pylint: disable=protected-access
             self._log(level_num, message, args, **kwargs)
 
     def log_to_root(message, *args, **kwargs):
@@ -151,8 +149,7 @@ class LoggerHandler(logging.StreamHandler):
                         self.emit_pretty_exception(exc, verbose=_is_verbose())
                         if not _is_verbose():
                             return
-                    # pylint: disable-next=broad-except
-                    except Exception:  # noqa: BLE001, S110  # nosec B110
+                    except Exception:  # noqa: BLE001, S110
                         pass
 
             msg = self.format(record)
@@ -160,7 +157,7 @@ class LoggerHandler(logging.StreamHandler):
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
-        except Exception:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception:  # noqa: BLE001
             self.handleError(record)
 
 
@@ -182,11 +179,12 @@ def set_loggers_level(level: int = logging.INFO) -> None:
 
 
 def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
-    from dvc.utils import isatty
-
     colorama.init()
 
-    formatter = ColorFormatter(log_colors=log_colors and isatty(sys.stdout))
+    color_out = log_colors and bool(sys.stdout) and sys.stdout.isatty()
+    color_err = log_colors and bool(sys.stderr) and sys.stderr.isatty()
+
+    formatter = ColorFormatter(log_colors=color_out)
 
     console_info = LoggerHandler(sys.stdout)
     console_info.setLevel(logging.INFO)
@@ -205,10 +203,8 @@ def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     console_trace.setFormatter(formatter)
     console_trace.addFilter(exclude_filter(logging.DEBUG))
 
-    show_traceback = bool(os.environ.get(DVC_SHOW_TRACEBACK))
-    err_formatter = ColorFormatter(
-        log_colors=log_colors and isatty(sys.stderr), show_traceback=show_traceback
-    )
+    show_traceback = bool(os.environ.get("DVC_SHOW_TRACEBACK"))
+    err_formatter = ColorFormatter(log_colors=color_err, show_traceback=show_traceback)
     console_errors = LoggerHandler(sys.stderr)
     console_errors.setLevel(logging.WARNING)
     console_errors.setFormatter(err_formatter)

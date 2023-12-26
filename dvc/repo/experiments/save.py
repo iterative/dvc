@@ -1,14 +1,15 @@
-import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
 from funcy import first
 
+from dvc.log import logger
+
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def save(

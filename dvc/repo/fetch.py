@@ -1,13 +1,17 @@
-import logging
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 from dvc.exceptions import DownloadError
+from dvc.log import logger
 from dvc.ui import ui
 from dvc_data.index import DataIndex, FileStorage
 
 from . import locked
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from dvc.output import Output
+    from dvc.stage import Stage
+
+logger = logger.getChild(__name__)
 
 
 def _make_index_onerror(onerror, rev):
@@ -28,10 +32,12 @@ def _collect_indexes(  # noqa: PLR0913
     recursive=False,
     all_commits=False,
     revs=None,
+    workspace=True,
     max_size=None,
     types=None,
     config=None,
     onerror=None,
+    push=False,
 ):
     indexes = {}
     collection_exc = None
@@ -42,11 +48,22 @@ def _collect_indexes(  # noqa: PLR0913
         core["remote"] = remote
         config["core"] = core
 
+    def stage_filter(stage: "Stage") -> bool:
+        if push and stage.is_repo_import:
+            return False
+        return True
+
+    def outs_filter(out: "Output") -> bool:
+        if push and not out.can_push:
+            return False
+        return True
+
     for rev in repo.brancher(
         revs=revs,
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
+        workspace=workspace,
     ):
         try:
             repo.config.merge(config)
@@ -57,16 +74,18 @@ def _collect_indexes(  # noqa: PLR0913
                 recursive=recursive,
                 max_size=max_size,
                 types=types,
+                stage_filter=stage_filter,
+                outs_filter=outs_filter,
             )
 
             idx.data["repo"].onerror = _make_index_onerror(onerror, rev)
 
             indexes[rev or "workspace"] = idx
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:  # noqa: BLE001
             if onerror:
                 onerror(rev, None, exc)
             collection_exc = exc
-            logger.exception("failed to collect '%s'", rev or "workspace")
+            logger.warning("failed to collect '%s', skipping", rev or "workspace")
 
     if not indexes and collection_exc:
         raise collection_exc
@@ -75,7 +94,7 @@ def _collect_indexes(  # noqa: PLR0913
 
 
 @locked
-def fetch(  # noqa: C901, PLR0913
+def fetch(  # noqa: PLR0913
     self,
     targets=None,
     jobs=None,
@@ -87,6 +106,7 @@ def fetch(  # noqa: C901, PLR0913
     all_commits=False,
     run_cache=False,
     revs=None,
+    workspace=True,
     max_size=None,
     types=None,
     config=None,
@@ -131,6 +151,7 @@ def fetch(  # noqa: C901, PLR0913
         recursive=recursive,
         all_commits=all_commits,
         revs=revs,
+        workspace=workspace,
         max_size=max_size,
         types=types,
         config=config,
@@ -167,7 +188,7 @@ def fetch(  # noqa: C901, PLR0913
                 data,
                 jobs=jobs,
                 callback=pb.as_callback(),
-            )  # pylint: disable=assignment-from-no-return
+            )
         finally:
             for fs_index in data:
                 fs_index.close()
@@ -198,7 +219,7 @@ def _log_unversioned(data: List["DataIndex"]) -> Tuple[List["DataIndex"], int]:
         index.storage_map = fs_index.storage_map
         for key, entry in fs_index.iteritems():
             if entry.meta and not entry.meta.isdir and entry.meta.version_id is None:
-                unversioned.append(fs.unstrip_protocol(fs.path.join(remote.path, *key)))
+                unversioned.append(fs.unstrip_protocol(fs.join(remote.path, *key)))
             else:
                 index[key] = entry
         fs_index.close()

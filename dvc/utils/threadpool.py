@@ -43,8 +43,7 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
             tasks.update(create_taskset(len(done)))
 
     def shutdown(self, wait=True, *, cancel_futures=False):
-        if sys.version_info > (3, 9):  # pylint: disable=no-else-return
-            # pylint: disable=unexpected-keyword-arg
+        if sys.version_info > (3, 9):
             return super().shutdown(wait=wait, cancel_futures=cancel_futures)
         else:  # noqa: RET505
             with self._shutdown_lock:

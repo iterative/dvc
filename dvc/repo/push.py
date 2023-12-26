@@ -6,21 +6,44 @@ from dvc.ui import ui
 from . import locked
 
 
+def _rebuild(idx, path, fs, cb):
+    from dvc_data.index import DataIndex, DataIndexEntry, Meta
+
+    new = DataIndex()
+    items = list(idx.items())
+
+    cb.set_size(len(items))
+    for key, entry in items:
+        if entry.meta and entry.meta.isdir:
+            meta = Meta(isdir=True)
+        else:
+            try:
+                meta = Meta.from_info(fs.info(fs.join(path, *key)), fs.protocol)
+            except FileNotFoundError:
+                meta = None
+
+        if meta:
+            new.add(DataIndexEntry(key=key, meta=meta))
+
+        cb.relative_update(1)
+
+    return new
+
+
 def _update_meta(index, **kwargs):
-    from dvc.repo.index import build_data_index
     from dvc.repo.worktree import _merge_push_meta, worktree_view_by_remotes
 
     stages = set()
     for remote_name, idx in worktree_view_by_remotes(index, push=True, **kwargs):
         remote = index.repo.cloud.get_remote(remote_name)
 
-        with ui.progress("Collecting", unit="entry") as pb:
-            new = build_data_index(
-                idx,
-                remote.path,
-                remote.fs,
-                callback=pb.as_callback(),
-            )
+        with ui.progress(
+            desc=f"Collecting {remote.path} on {remote.fs.protocol}",
+            unit="entry",
+            leave=True,
+        ) as pb:
+            cb = pb.as_callback()
+            new = _rebuild(idx.data["repo"], remote.path, remote.fs, cb)
 
         for out in idx.outs:
             if not remote.fs.version_aware:
@@ -34,7 +57,7 @@ def _update_meta(index, **kwargs):
 
 
 @locked
-def push(  # noqa: C901, PLR0913
+def push(  # noqa: PLR0913
     self,
     targets=None,
     jobs=None,
@@ -46,6 +69,7 @@ def push(  # noqa: C901, PLR0913
     all_commits=False,
     run_cache=False,
     revs=None,
+    workspace=True,
     glob=False,
 ):
     from fsspec.utils import tokenize
@@ -87,6 +111,8 @@ def push(  # noqa: C901, PLR0913
         recursive=recursive,
         all_commits=all_commits,
         revs=revs,
+        workspace=workspace,
+        push=True,
     )
 
     cache_key = (
@@ -97,6 +123,7 @@ def push(  # noqa: C901, PLR0913
     with ui.progress(
         desc="Collecting",
         unit="entry",
+        leave=True,
     ) as pb:
         data = collect(
             [idx.data["repo"] for idx in indexes.values()],
@@ -107,16 +134,18 @@ def push(  # noqa: C901, PLR0913
             push=True,
         )
 
+    push_transferred, push_failed = 0, 0
     try:
         with ui.progress(
             desc="Pushing",
-            unit="file",
+            bar_format="{desc}",
+            leave=True,
         ) as pb:
             push_transferred, push_failed = ipush(
                 data,
                 jobs=jobs,
                 callback=pb.as_callback(),
-            )  # pylint: disable=assignment-from-no-return
+            )
     finally:
         ws_idx = indexes.get("workspace")
         if ws_idx is not None:
@@ -130,6 +159,11 @@ def push(  # noqa: C901, PLR0913
 
         for fs_index in data:
             fs_index.close()
+
+        if push_transferred:
+            # NOTE: dropping cached index to force reloading from newly saved
+            # metadata from version-aware remotes
+            self.drop_data_index()
 
     transferred_count += push_transferred
     failed_count += push_failed

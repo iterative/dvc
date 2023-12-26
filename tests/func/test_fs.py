@@ -13,15 +13,15 @@ def test_cleanfs_subrepo(tmp_dir, dvc, scm, monkeypatch):
 
     path = subrepo_dir.fs_path
 
-    assert dvc.fs.exists(dvc.fs.path.join(path, "foo"))
-    assert dvc.fs.isfile(dvc.fs.path.join(path, "foo"))
-    assert dvc.fs.exists(dvc.fs.path.join(path, "dir"))
-    assert dvc.fs.isdir(dvc.fs.path.join(path, "dir"))
+    assert dvc.fs.exists(dvc.fs.join(path, "foo"))
+    assert dvc.fs.isfile(dvc.fs.join(path, "foo"))
+    assert dvc.fs.exists(dvc.fs.join(path, "dir"))
+    assert dvc.fs.isdir(dvc.fs.join(path, "dir"))
 
-    assert subrepo.fs.exists(subrepo.fs.path.join(path, "foo"))
-    assert subrepo.fs.isfile(subrepo.fs.path.join(path, "foo"))
-    assert subrepo.fs.exists(subrepo.fs.path.join(path, "dir"))
-    assert subrepo.fs.isdir(subrepo.fs.path.join(path, "dir"))
+    assert subrepo.fs.exists(subrepo.fs.join(path, "foo"))
+    assert subrepo.fs.isfile(subrepo.fs.join(path, "foo"))
+    assert subrepo.fs.exists(subrepo.fs.join(path, "dir"))
+    assert subrepo.fs.isdir(subrepo.fs.join(path, "dir"))
 
 
 def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):

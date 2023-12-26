@@ -9,8 +9,6 @@ import sys
 
 import pytest
 
-# pylint: disable=unused-argument,unexpected-keyword-arg
-
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires 3.10 glob.glob")
 def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):
@@ -18,7 +16,7 @@ def test_partial_add(bench_dvc, tmp_dir, dvc, dataset, remote):
     # Move some files to create a partial dataset
     os.makedirs("partial-copy")
     for f in glob.glob("*", root_dir=dataset, recursive=True):  # type: ignore[call-arg]
-        if random.random() > 0.5:  # noqa: S311 # nosec
+        if random.random() > 0.5:  # noqa: S311
             shutil.move(dataset / f, tmp_dir / "partial-copy" / f)
 
     # Add/push partial dataset
@@ -44,7 +42,7 @@ def test_partial_remove(bench_dvc, tmp_dir, dvc, dataset, remote):
 
     # Remove some files
     for f in glob.glob("*", root_dir=dataset, recursive=True):  # type: ignore[call-arg]
-        if random.random() > 0.5:  # noqa: S311 # nosec
+        if random.random() > 0.5:  # noqa: S311
             if os.path.isfile(dataset / f):
                 os.remove(dataset / f)
             elif os.path.isdir(dataset / f):

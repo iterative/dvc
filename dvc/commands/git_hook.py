@@ -1,11 +1,11 @@
-import logging
 import os
 
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import fix_subparsers
 from dvc.exceptions import NotDvcRepoError
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdHookBase(CmdBaseNoRepo):

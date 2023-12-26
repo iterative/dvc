@@ -73,7 +73,7 @@ def embrace(s: str):
 
 def escape_str(value):
     if os.name == "nt":
-        from subprocess import list2cmdline  # nosec B404
+        from subprocess import list2cmdline
 
         return list2cmdline([value])
     from shlex import quote
@@ -82,12 +82,12 @@ def escape_str(value):
 
 
 @singledispatch
-def to_str(obj, config=None) -> str:  # noqa: ARG001, pylint: disable=unused-argument
+def to_str(obj, config=None) -> str:  # noqa: ARG001
     return str(obj)
 
 
 @to_str.register(bool)
-def _(obj: bool, config=None):  # noqa: ARG001, pylint: disable=unused-argument
+def _(obj: bool, config=None):  # noqa: ARG001
     return "true" if obj else "false"
 
 

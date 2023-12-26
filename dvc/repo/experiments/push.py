@@ -1,4 +1,3 @@
-import logging
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -16,6 +15,7 @@ from scmrepo.git.backend.base import SyncStatus
 
 from dvc.env import DVC_STUDIO_TOKEN, DVC_STUDIO_URL
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, TqdmGit, iter_revs
@@ -29,7 +29,7 @@ from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class UploadError(DvcException):
@@ -133,7 +133,7 @@ def push(
     if push_cache:
         try:
             result["uploaded"] = _push_cache(repo, pushed_refs_info, **kwargs)
-        except Exception as exc:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception as exc:  # noqa: BLE001
             e = exc
 
     pushed_refs = [str(r) for r in pushed_refs_info]
@@ -188,4 +188,6 @@ def _push_cache(
     assert isinstance(repo.scm, Git)
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc push experiment '%s'", refs)
-    return repo.push(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)
+    return repo.push(
+        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, workspace=False
+    )

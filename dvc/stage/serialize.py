@@ -209,7 +209,7 @@ def to_single_stage_file(stage: "Stage", **kwargs):
     # - reparse the same yaml text with a slow but smart ruamel yaml parser
     # - apply changes to a returned structure
     # - serialize it
-    text = stage._stage_text  # pylint: disable=protected-access
+    text = stage._stage_text
     if text is None:
         return state
 

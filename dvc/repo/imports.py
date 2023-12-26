@@ -1,8 +1,9 @@
-import logging
 import os
 from functools import partial
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, List, Set, Tuple, Union
+
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from dvc.dependency.base import Dependency
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def unfetched_view(
@@ -99,10 +100,10 @@ def save_imports(
     Returns:
         Objects which were downloaded from source location.
     """
+    from dvc.fs.callbacks import TqdmCallback
     from dvc.stage.exceptions import DataSourceChanged
     from dvc_data.index import md5, save
     from dvc_data.index.checkout import apply, compare
-    from dvc_objects.fs.callbacks import Callback
 
     downloaded: Set["HashInfo"] = set()
 
@@ -121,7 +122,7 @@ def save_imports(
             if not cache.fs.exists(cache.path):
                 os.makedirs(cache.path)
             with TemporaryDirectory(dir=cache.path) as tmpdir:
-                with Callback.as_tqdm_callback(
+                with TqdmCallback(
                     desc="Downloading imports from source",
                     unit="files",
                 ) as cb:

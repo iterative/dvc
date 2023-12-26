@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import logging
 import os
 import re
 import sys
@@ -15,7 +14,6 @@ if TYPE_CHECKING:
 
     from dvc.fs import FileSystem
 
-logger = logging.getLogger(__name__)
 
 LARGE_DIR_SIZE = 100
 TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
@@ -289,7 +287,7 @@ def resolve_paths(repo, out, always_local=False):
         # urlparse interprets windows drive letters as URL scheme
         scheme = ""
 
-    if scheme or not localfs.path.isin_or_eq(abspath, repo.root_dir):
+    if scheme or not localfs.isin_or_eq(abspath, repo.root_dir):
         wdir = os.getcwd()
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
         os.path.isdir(abspath) and localfs.is_symlink(abspath)
@@ -360,10 +358,6 @@ def parse_target(
         if not name:
             ret = (target, None)
             return ret if is_valid_filename(target) else ret[::-1]
-
-    if not path:
-        logger.trace("Assuming file to be '%s'", default)  # type: ignore[attr-defined]
-
     return path or default, name
 
 
@@ -397,17 +391,12 @@ def error_handler(func):
             vals = func(*args, **kwargs)
             if vals:
                 result["data"] = vals
-        except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             if onerror is not None:
                 onerror(result, e, **kwargs)
         return result
 
     return wrapper
-
-
-def onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
-    logger.debug("", exc_info=True)
-    result["error"] = exception
 
 
 def errored_revisions(rev_data: Dict) -> List:

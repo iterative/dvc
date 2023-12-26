@@ -1,4 +1,3 @@
-import logging
 import os
 import tempfile
 import threading
@@ -7,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 from funcy import retry, wrap_with
 
 from dvc.exceptions import NotDvcRepoError
+from dvc.log import logger
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
@@ -14,7 +14,7 @@ from dvc.utils import relpath
 if TYPE_CHECKING:
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @map_scm_exception()
@@ -71,7 +71,7 @@ def erepo_factory(url, root_dir, cache_config):
         _config = cache_config.copy()
         if os.path.isdir(url):
             fs = fs or localfs
-            repo_path = os.path.join(url, *fs.path.relparts(path, root_dir))
+            repo_path = os.path.join(url, *fs.relparts(path, root_dir))
             _config.update(_get_remote_config(repo_path))
         return Repo(path, fs=fs, config=_config, **_kwargs)
 
@@ -150,7 +150,7 @@ def _cached_clone(url, rev):
 
 
 @wrap_with(threading.Lock())
-def _clone_default_branch(url, rev):  # noqa: C901, PLR0912
+def _clone_default_branch(url, rev):  # noqa: PLR0912
     """Get or create a clean clone of the url.
 
     The cloned is reactualized with git pull unless rev is a known sha.

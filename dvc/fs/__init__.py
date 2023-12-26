@@ -25,11 +25,10 @@ from dvc_objects.fs.errors import (  # noqa: F401
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc_objects.fs.path import Path  # noqa: F401
 
-from .callbacks import Callback
+from .callbacks import Callback  # noqa: F401
 from .data import DataFileSystem  # noqa: F401
-from .dvc import DVCFileSystem  # noqa: F401
+from .dvc import DVCFileSystem
 from .git import GitFileSystem  # noqa: F401
 
 known_implementations.update(
@@ -46,35 +45,35 @@ known_implementations.update(
 )
 
 
-# pylint: enable=unused-import
-
-
 def download(
     fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
 ) -> int:
-    with Callback.as_tqdm_callback(
-        desc=f"Downloading {fs.path.name(fs_path)}",
+    from dvc.scm import lfs_prefetch
+
+    from .callbacks import TqdmCallback
+
+    with TqdmCallback(
+        desc=f"Downloading {fs.name(fs_path)}",
         unit="files",
     ) as cb:
         # NOTE: We use dvc-objects generic.copy over fs.get since it makes file
         # download atomic and avoids fsspec glob/regex path expansion.
         if fs.isdir(fs_path):
             from_infos = [
-                path
-                for path in fs.find(fs_path)
-                if not path.endswith(fs.path.flavour.sep)
+                path for path in fs.find(fs_path) if not path.endswith(fs.flavour.sep)
             ]
             if not from_infos:
                 localfs.makedirs(to, exist_ok=True)
                 return 0
             to_infos = [
-                localfs.path.join(to, *fs.path.relparts(info, fs_path))
-                for info in from_infos
+                localfs.join(to, *fs.relparts(info, fs_path)) for info in from_infos
             ]
         else:
             from_infos = [fs_path]
             to_infos = [to]
 
+        if isinstance(fs, DVCFileSystem):
+            lfs_prefetch(fs, from_infos)
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
         generic.copy(
@@ -166,8 +165,8 @@ def get_cloud_fs(repo_config, **kwargs):
         # should be treated as being a root path.
         fs_path = cls.root_marker
     else:
-        fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
+        fs_path = cls._strip_protocol(url)
 
-    extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
+    extras = cls._get_kwargs_from_urls(url)
     conf = {**extras, **remote_conf}  # remote config takes priority
     return cls, conf, fs_path

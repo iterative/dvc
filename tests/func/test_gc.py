@@ -7,7 +7,7 @@ import textwrap
 import pytest
 
 from dvc.cli import main
-from dvc.exceptions import CollectCacheError, InvalidArgumentError
+from dvc.exceptions import CollectCacheError, InvalidArgumentError, RevCollectionError
 from dvc.fs import LocalFileSystem
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db.local import LocalHashFileDB
@@ -111,8 +111,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
 
     remove(dir_stage.outs[0].cache_path)
 
-    with pytest.raises(CollectCacheError):
+    with pytest.raises(RevCollectionError) as exc:
         dvc.gc(workspace=True)
+    assert type(exc.value.__cause__) == CollectCacheError
 
     assert _count_files(dvc.cache.local.path) == 4
     dvc.gc(force=True, workspace=True)
@@ -439,3 +440,13 @@ def test_gc_logging(caplog, dvc, good_and_bad_cache):
     assert "Removed 3 objects from repo cache." in caplog.text
     assert "No unused 'local' cache to remove." in caplog.text
     assert "No unused 'legacy' cache to remove." in caplog.text
+
+
+def test_gc_skip_failed(tmp_dir, dvc):
+    with open("dvc.yaml", mode="w") as f:
+        f.write("\ninvalid")
+
+    with pytest.raises(RevCollectionError):
+        dvc.gc(force=True, workspace=True)
+
+    dvc.gc(force=True, workspace=True, skip_failed=True)
