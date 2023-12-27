@@ -481,12 +481,13 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
 
 def test_pull_partial(tmp_dir, dvc, local_remote):
-    tmp_dir.dvc_gen({"foo": {"bar": {"baz": "baz"}, "spam": "spam"}})
+    other_files = {f"spam{i}": f"spam{i}" for i in range(10)}
+    tmp_dir.dvc_gen({"foo": {"bar": {"baz": "baz"}, **other_files}})
     dvc.push()
     clean(["foo"], dvc)
 
     stats = dvc.pull(os.path.join("foo", "bar"))
-    assert stats["fetched"] == 3
+    assert stats["fetched"] == 2
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
 
 
