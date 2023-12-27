@@ -140,6 +140,9 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         for line in lines:
             ui.error_write(line, styled=True)
 
+    def __fallback_exc__(self, **kwargs: Any) -> None:
+        ui.error_write(f"{self}: {self.exc.__cause__}")
+
 
 def determine_linecol(
     data, paths, max_steps=5
@@ -252,6 +255,9 @@ class YAMLValidationError(PrettyDvcException):
         lines.insert(0, _prepare_message(f"{self}{cause}."))
         for line in lines:
             ui.error_write(line, styled=True)
+
+    def __fallback_exc__(self, **kwargs: Any) -> None:
+        ui.error_write(f"{self}: {self.exc}")
 
 
 def validate(

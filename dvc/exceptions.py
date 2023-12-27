@@ -1,6 +1,7 @@
 """Exceptions raised by the dvc."""
 import errno
-from typing import TYPE_CHECKING, Dict, List, Optional, Set
+from abc import abstractmethod
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 from dvc.utils import format_link
 
@@ -334,8 +335,27 @@ class CacheLinkError(DvcException):
 
 
 class PrettyDvcException(DvcException):
-    def __pretty_exc__(self, **kwargs):
-        """Print prettier exception message."""
+    """
+    A customized exception class for displaying human-readable errors in the dvc cli.
+
+    This exception is used to wrap other exceptions that occur within the dvc and
+    provide additional context to help users understand what went wrong.
+    """
+
+    @abstractmethod
+    def __pretty_exc__(self, **kwargs: Any):
+        """
+        Display a human-readable representation of the exception.
+        """
+
+    @abstractmethod
+    def __fallback_exc__(self, **kwargs: Any):
+        """
+        This method serves as a safety net for situations where the
+        :method:`__pretty_exc__` fails due to an unexpected error. In such cases, this
+        method will be called instead of the failed :method:`__pretty_exc__` method, to
+        provide a default error message that helps the user understand what went wrong.
+        """
 
 
 class ArtifactNotFoundError(DvcException):

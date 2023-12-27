@@ -8,6 +8,7 @@ import sys
 
 import colorama
 
+from dvc.exceptions import PrettyDvcException
 from dvc.progress import Tqdm
 
 
@@ -136,21 +137,26 @@ class LoggerHandler(logging.StreamHandler):
         super().handleError(record)
         raise LoggingException(record)
 
-    def emit_pretty_exception(self, exc, verbose: bool = False):
-        return exc.__pretty_exc__(verbose=verbose)
+    def emit_pretty_exception(self, exc: PrettyDvcException):
+        return exc.__pretty_exc__()
+
+    def emit_fallback_exception(self, exc: PrettyDvcException):
+        return exc.__fallback_exc__()
 
     def emit(self, record):
         """Write to Tqdm's stream so as to not break progress-bars"""
         try:
             if record.exc_info:
                 _, exc, *_ = record.exc_info
-                if hasattr(exc, "__pretty_exc__"):
+                if isinstance(exc, PrettyDvcException):
                     try:
-                        self.emit_pretty_exception(exc, verbose=_is_verbose())
-                        if not _is_verbose():
-                            return
-                    except Exception:  # noqa: BLE001, S110
-                        pass
+                        self.emit_pretty_exception(exc)
+                    except Exception:  # noqa: BLE001
+                        self.emit_fallback_exception(exc)
+                        record.exc_info = sys.exc_info()
+
+                    if not _is_verbose():
+                        return
 
             msg = self.format(record)
             Tqdm.write(msg, file=self.stream, end=getattr(self, "terminator", "\n"))
