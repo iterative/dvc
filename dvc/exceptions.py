@@ -352,8 +352,8 @@ class PrettyDvcException(DvcException):
     def __fallback_exc__(self):
         """
         This method serves as a safety net for situations where the
-        :method:`__pretty_exc__` fails due to an unexpected error. In such cases, this
-        method will be called instead of the failed :method:`__pretty_exc__` method, to
+        :meth:`__pretty_exc__` fails due to an unexpected error. In such cases, this
+        method will be called instead of the failed :meth:`__pretty_exc__` method, to
         provide a default error message that helps the user understand what went wrong.
         """
 
