@@ -85,7 +85,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         self.rev: Optional[str] = rev
         super().__init__(self.path)
 
-    def __pretty_exc__(self, **kwargs: Any) -> None:  # noqa: C901
+    def __pretty_exc__(self) -> None:  # noqa: C901
         from ruamel.yaml.error import MarkedYAMLError
 
         exc = self.exc.__cause__
@@ -140,7 +140,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         for line in lines:
             ui.error_write(line, styled=True)
 
-    def __fallback_exc__(self, **kwargs: Any) -> None:
+    def __fallback_exc__(self) -> None:
         ui.error_write(f"{self}: {self.exc.__cause__}")
 
 
@@ -233,7 +233,7 @@ class YAMLValidationError(PrettyDvcException):
                 lines.append(code)
         return lines
 
-    def __pretty_exc__(self, **kwargs: Any) -> None:
+    def __pretty_exc__(self) -> None:
         """Prettify exception message."""
         from collections.abc import Mapping
 
@@ -256,7 +256,7 @@ class YAMLValidationError(PrettyDvcException):
         for line in lines:
             ui.error_write(line, styled=True)
 
-    def __fallback_exc__(self, **kwargs: Any) -> None:
+    def __fallback_exc__(self) -> None:
         ui.error_write(f"{self}: {self.exc}")
 
 

@@ -1,7 +1,7 @@
 """Exceptions raised by the dvc."""
 import errno
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 from dvc.utils import format_link
 
@@ -343,13 +343,13 @@ class PrettyDvcException(DvcException):
     """
 
     @abstractmethod
-    def __pretty_exc__(self, **kwargs: Any):
+    def __pretty_exc__(self):
         """
         Display a human-readable representation of the exception.
         """
 
     @abstractmethod
-    def __fallback_exc__(self, **kwargs: Any):
+    def __fallback_exc__(self):
         """
         This method serves as a safety net for situations where the
         :method:`__pretty_exc__` fails due to an unexpected error. In such cases, this
