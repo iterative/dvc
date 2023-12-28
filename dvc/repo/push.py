@@ -37,6 +37,9 @@ def _update_meta(index, **kwargs):
     for remote_name, idx in worktree_view_by_remotes(index, push=True, **kwargs):
         remote = index.repo.cloud.get_remote(remote_name)
 
+        if not remote.fs.version_aware:
+            continue
+
         with ui.progress(
             desc=f"Collecting {remote.path} on {remote.fs.protocol}",
             unit="entry",
@@ -46,9 +49,6 @@ def _update_meta(index, **kwargs):
             new = _rebuild(idx.data["repo"], remote.path, remote.fs, cb)
 
         for out in idx.outs:
-            if not remote.fs.version_aware:
-                continue
-
             _merge_push_meta(out, new, remote.name)
             stages.add(out.stage)
 
