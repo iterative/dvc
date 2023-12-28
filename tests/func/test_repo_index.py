@@ -1,3 +1,4 @@
+import os
 from itertools import chain
 
 import pytest
@@ -338,3 +339,53 @@ params:
     tmp_dir.gen("dvc.yaml", top_level_params)
     index = Index.from_repo(dvc)
     assert index.param_keys == {"repo": {("classifier", "custom_params_file.yaml")}}
+
+
+def test_data_index(tmp_dir, dvc, local_cloud, erepo_dir):
+    tmp_dir.dvc_gen(
+        {
+            "foo": b"foo",
+            "dir": {"bar": b"bar", "subdir": {"baz": b"baz"}},
+        }
+    )
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("efoo", b"efoo", commit="create efoo")
+        erepo_dir.dvc_gen(
+            "edir",
+            {"ebar": b"ebar", "esubdir": {"ebaz": b"ebaz"}},
+            commit="create edir",
+        )
+
+    dvc.imp(os.fspath(erepo_dir), "efoo")
+    dvc.imp(os.fspath(erepo_dir), "edir")
+
+    local_cloud.gen("ifoo", b"ifoo")
+    local_cloud.gen("idir", {"ibar": b"ibar", "isubdir": {"ibaz": b"ibaz"}})
+
+    dvc.imp_url(str(local_cloud / "ifoo"))
+    dvc.imp_url(str(local_cloud / "idir"))
+
+    index = Index.from_repo(dvc)
+    assert index.data_keys == {
+        "local": set(),
+        "repo": {("dir",), ("edir",), ("efoo",), ("foo",), ("idir",), ("ifoo",)},
+    }
+
+    data = index.data["repo"]
+    assert set(data.keys()) == {
+        ("dir",),
+        ("edir",),
+        ("efoo",),
+        ("foo",),
+        ("idir",),
+        ("ifoo",),
+    }
+
+    assert not data.storage_map[("foo",)].remote
+    assert not data.storage_map[("dir",)].remote
+
+    assert data.storage_map[("efoo",)].remote.read_only
+    assert data.storage_map[("edir",)].remote.read_only
+    assert data.storage_map[("ifoo",)].remote.read_only
+    assert data.storage_map[("idir",)].remote.read_only
