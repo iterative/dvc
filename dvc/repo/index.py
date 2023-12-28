@@ -221,7 +221,7 @@ def _load_storage_from_out(storage_map, key, out):
                     ),
                 )
             )
-        storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path))
+        storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path, read_only=True))
 
 
 class Index:
