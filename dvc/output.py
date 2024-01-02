@@ -407,7 +407,6 @@ class Output:
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj: Optional["HashFile"] = None
 
-        self.odb: Optional["HashFileDB"] = None
         self.remote = remote
 
         if self.fs.version_aware:
@@ -444,8 +443,6 @@ class Output:
         if self.files:
             tree = Tree.from_list(self.files, hash_name=self.hash_name)
             tree.digest(with_meta=True)
-            self.odb = HashFileDB(tree.fs, tree.path + ".odb")
-            self.odb.add(tree.path, tree.fs, tree.hash_info.value)
 
             self.hash_info = tree.hash_info
             self.meta.isdir = True
