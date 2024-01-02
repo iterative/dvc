@@ -116,6 +116,28 @@ def collect_files(
         dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
 
 
+def _load_data_from_tree(index, prefix, ws, key, tree):
+    from dvc_data.index import DataIndexEntry, Meta
+
+    parents = set()
+
+    for okey, ometa, ohi in tree:
+        for key_len in range(1, len(okey)):
+            parents.add((*key, *okey[:key_len]))
+
+        fkey = (*key, *okey)
+        index[(*prefix, ws, *fkey)] = DataIndexEntry(
+            key=fkey,
+            meta=ometa,
+            hash_info=ohi,
+        )
+
+    for parent in parents:
+        index[(*prefix, ws, *parent)] = DataIndexEntry(
+            key=parent, meta=Meta(isdir=True), loaded=True
+        )
+
+
 def _load_data_from_outs(index, prefix, outs):
     from dvc_data.index import DataIndexEntry, Meta
 
@@ -129,25 +151,25 @@ def _load_data_from_outs(index, prefix, outs):
         for key_len in range(1, len(key)):
             parents.add((ws, key[:key_len]))
 
-        loaded = None
-        if out.files:
-            loaded = True
-            for okey, ometa, ohi in out.get_obj():
-                for key_len in range(1, len(okey)):
-                    parents.add((ws, (*key, *okey[:key_len])))
+        tree = None
+        if (
+            out.stage.is_import
+            and not out.stage.is_repo_import
+            and not out.stage.is_db_import
+            and out.stage.deps[0].files
+        ):
+            tree = out.stage.deps[0].get_obj()
+        elif out.files:
+            tree = out.get_obj()
 
-                fkey = (*key, *okey)
-                index[(*prefix, ws, *fkey)] = DataIndexEntry(
-                    key=fkey,
-                    meta=ometa,
-                    hash_info=ohi,
-                )
+        if tree is not None:
+            _load_data_from_tree(index, prefix, ws, key, tree)
 
         entry = DataIndexEntry(
             key=key,
             meta=out.meta,
             hash_info=out.hash_info,
-            loaded=loaded,
+            loaded=None if tree is None else True,
         )
 
         if (
@@ -194,7 +216,7 @@ def _load_storage_from_import(storage_map, key, out):
             )
         )
 
-    if out.stage.is_repo_import or not out.hash_info:
+    if out.stage.is_repo_import or not out.hash_info or dep.fs.version_aware:
         storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path, read_only=True))
 
 
