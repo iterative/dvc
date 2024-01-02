@@ -360,26 +360,47 @@ def test_data_index(tmp_dir, dvc, local_cloud, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "efoo")
     dvc.imp(os.fspath(erepo_dir), "edir")
 
+    dvc.imp(os.fspath(erepo_dir), "efoo", "efoo_partial", no_download=True)
+    dvc.imp(os.fspath(erepo_dir), "edir", "edir_partial", no_download=True)
+
     local_cloud.gen("ifoo", b"ifoo")
     local_cloud.gen("idir", {"ibar": b"ibar", "isubdir": {"ibaz": b"ibaz"}})
 
     dvc.imp_url(str(local_cloud / "ifoo"))
     dvc.imp_url(str(local_cloud / "idir"))
 
+    dvc.imp_url(str(local_cloud / "ifoo"), "ifoo_partial", no_download=True)
+    dvc.imp_url(str(local_cloud / "idir"), "idir_partial", no_download=True)
+
     index = Index.from_repo(dvc)
     assert index.data_keys == {
         "local": set(),
-        "repo": {("dir",), ("edir",), ("efoo",), ("foo",), ("idir",), ("ifoo",)},
+        "repo": {
+            ("foo",),
+            ("dir",),
+            ("efoo",),
+            ("edir",),
+            ("efoo_partial",),
+            ("edir_partial",),
+            ("ifoo",),
+            ("idir",),
+            ("ifoo_partial",),
+            ("idir_partial",),
+        },
     }
 
     data = index.data["repo"]
     assert set(data.keys()) == {
-        ("dir",),
-        ("edir",),
-        ("efoo",),
         ("foo",),
-        ("idir",),
+        ("dir",),
+        ("efoo",),
+        ("edir",),
+        ("efoo_partial",),
+        ("edir_partial",),
         ("ifoo",),
+        ("idir",),
+        ("ifoo_partial",),
+        ("idir_partial",),
     }
 
     assert not data.storage_map[("foo",)].remote
@@ -387,5 +408,12 @@ def test_data_index(tmp_dir, dvc, local_cloud, erepo_dir):
 
     assert data.storage_map[("efoo",)].remote.read_only
     assert data.storage_map[("edir",)].remote.read_only
-    assert data.storage_map[("ifoo",)].remote.read_only
-    assert data.storage_map[("idir",)].remote.read_only
+
+    assert data.storage_map[("efoo_partial",)].remote.read_only
+    assert data.storage_map[("edir_partial",)].remote.read_only
+
+    assert not data.storage_map[("ifoo",)].remote
+    assert not data.storage_map[("idir",)].remote
+
+    assert data.storage_map[("ifoo_partial",)].remote.read_only
+    assert data.storage_map[("idir_partial",)].remote.read_only

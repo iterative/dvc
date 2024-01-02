@@ -174,6 +174,30 @@ def _load_data_from_outs(index, prefix, outs):
         )
 
 
+def _load_storage_from_import(storage_map, key, out):
+    from fsspec.utils import tokenize
+
+    from dvc_data.index import FileStorage
+
+    if out.stage.is_db_import:
+        return
+
+    dep = out.stage.deps[0]
+    if not out.hash_info:
+        # partial import
+        fs_cache = out.repo.cache.fs_cache
+        storage_map.add_cache(
+            FileStorage(
+                key,
+                fs_cache.fs,
+                fs_cache.fs.join(fs_cache.path, dep.fs.protocol, tokenize(dep.fs_path)),
+            )
+        )
+
+    if out.stage.is_repo_import or not out.hash_info:
+        storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path, read_only=True))
+
+
 def _load_storage_from_out(storage_map, key, out):
     from dvc.cachemgr import LEGACY_HASH_NAMES
     from dvc.config import NoRemoteError
@@ -190,36 +214,23 @@ def _load_storage_from_out(storage_map, key, out):
                     path=remote.path,
                     index=remote.index,
                     prefix=(),
+                    read_only=(not out.can_push),
                 )
             )
         else:
             odb = (
                 remote.legacy_odb if out.hash_name in LEGACY_HASH_NAMES else remote.odb
             )
-            storage_map.add_remote(ObjectStorage(key, odb, index=remote.index))
+            storage_map.add_remote(
+                ObjectStorage(
+                    key, odb, index=remote.index, read_only=(not out.can_push)
+                )
+            )
     except NoRemoteError:
         pass
 
-    if out.stage.is_db_import:
-        return
-
     if out.stage.is_import:
-        dep = out.stage.deps[0]
-        if not out.hash_info:
-            from fsspec.utils import tokenize
-
-            # partial import
-            fs_cache = out.repo.cache.fs_cache
-            storage_map.add_cache(
-                FileStorage(
-                    key,
-                    fs_cache.fs,
-                    fs_cache.fs.join(
-                        fs_cache.path, dep.fs.protocol, tokenize(dep.fs_path)
-                    ),
-                )
-            )
-        storage_map.add_remote(FileStorage(key, dep.fs, dep.fs_path, read_only=True))
+        _load_storage_from_import(storage_map, key, out)
 
 
 class Index:
