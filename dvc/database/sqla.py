@@ -42,8 +42,8 @@ class SQLAlchemyClient:
             if callable(onerror):
                 onerror()
             logger.exception(
-                "dvc was unable to connect to the specified database. "
-                "Please check your database credentials and try again.",
+                "Could not connect to the database. "
+                "Check your database credentials and try again.",
                 exc_info=False,
             )
             raise DvcException("The database returned the following error") from exc
