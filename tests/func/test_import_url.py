@@ -10,6 +10,7 @@ from dvc.dvcfile import load_file
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
 from dvc.testing.workspace_tests import TestImport as _TestImport
+from tests.utils import get_gitignore_content
 
 
 def test_cmd_import(tmp_dir, dvc):
@@ -170,7 +171,7 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
     )
 
 
-def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
+def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, scm, local_remote):
     tmp_abs_dir = make_tmp_dir("abs")
     tmp_foo = tmp_abs_dir / "foo"
     tmp_foo.write_text("foo")
@@ -181,6 +182,7 @@ def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote)
     assert stage.deps[0].fspath == str(tmp_foo)
     assert stage.outs[0].fspath == os.fspath(foo)
     assert foo.with_suffix(".dvc").exists()
+    assert get_gitignore_content() == ["/foo"]
 
 
 def test_import_url_to_remote_invalid_combinations(dvc):
