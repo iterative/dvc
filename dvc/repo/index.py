@@ -205,7 +205,9 @@ def _load_storage_from_import(storage_map, key, out):
         return
 
     dep = out.stage.deps[0]
-    if not out.hash_info:
+    if not out.hash_info and (
+        not dep.hash_info or dep.hash_info.name != storage_map[key].cache.odb.hash_name
+    ):
         # partial import
         fs_cache = out.repo.cache.fs_cache
         storage_map.add_cache(
