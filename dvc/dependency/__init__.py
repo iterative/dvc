@@ -29,10 +29,10 @@ def _get(stage, p, info, **kwargs):
 
     if params:
         return ParamsDependency(stage, p, params)
-    if DbDependency.PARAM_QUERY in db:
-        return DbDependency(stage, info)
-    if db:
+    if DbtDependency.PARAM_MODEL in db:
         return DbtDependency(repo, stage, info)
+    if db:
+        return DbDependency(stage, info)
 
     assert p
     if repo:

@@ -79,9 +79,11 @@ class AbstractDependency(Dependency):
 
 
 class DbDependency(AbstractDependency):
-    PARAM_QUERY = "query"
     PARAM_CONNECTION = "connection"
-    QUERY_SCHEMA = {PARAM_QUERY: str, PARAM_CONNECTION: str}
+    PARAM_DBT_CONNECTION = "dbt_connection"
+    PARAM_QUERY = "query"
+    PARAM_TABLE = "table"
+    QUERY_SCHEMA = {PARAM_QUERY: str, PARAM_CONNECTION: str, PARAM_TABLE: str}
 
     def __init__(self, stage: "Stage", info, *args, **kwargs):
         super().__init__(stage, info, *args, **kwargs)
@@ -96,8 +98,9 @@ class DbDependency(AbstractDependency):
         from dvc.utils.humanize import truncate_text
 
         db_info = self.info.get(PARAM_DB, {})
-        query = db_info.get(self.PARAM_QUERY, "[query]")
-        return truncate_text(query, 50)
+        query = db_info.get(self.PARAM_QUERY)
+        table = db_info.get(self.PARAM_TABLE)
+        return truncate_text(table or query or "[no table or query]", 50)
 
     def workspace_status(self):
         return False  # no workspace to check
@@ -126,20 +129,29 @@ class DbDependency(AbstractDependency):
 
         db_info = self.info.get(PARAM_DB, {})
         query = db_info.get(self.PARAM_QUERY)
-        if not query:
-            raise DvcException("Cannot download: no query specified")
+        table = db_info.get(self.PARAM_TABLE)
+        if not (query or table):
+            raise DvcException("Cannot download: no query or table specified")
+        if query and table:
+            raise DvcException(
+                "Cannot download: query and table are mutually exclusive"
+            )
 
         dbt_config = _get_dbt_config(self.repo.config)
         profile = db_info.get(PARAM_PROFILE) or dbt_config.get(PARAM_PROFILE)
         target = self.target or dbt_config.get("target")
 
         connection = db_info.get(self.PARAM_CONNECTION)
+
         db_config = self.repo.config.get("db", {})
         config = db_config.get(connection)
         if connection and not config:
             raise DvcException(f"connection {connection} not found in config")
 
         project_dir = self.repo.root_dir
+        file = to.fs_path
+        file_format = file_format or db_info.get(PARAM_FILE_FORMAT) or "csv"
+        assert file_format
         with get_client(
             config, project_dir=project_dir, profile=profile, target=target
         ) as db:
@@ -147,15 +159,12 @@ class DbDependency(AbstractDependency):
             with log_status("Testing connection") as status:
                 db.test_connection(onerror=status.stop)
 
-            file_format = file_format or db_info.get(PARAM_FILE_FORMAT, "csv")
-            assert file_format
-            with log_status("Executing query") as status, db.query(query) as serializer:
-                status.stop()
+            query = db.query(query) if query else db.table(table)
+            with log_status("Executing query") as status, query as serializer:
                 logger.debug("using serializer: %s", serializer)
-                with download_progress(to) as progress:
-                    return export(
-                        serializer, to.fs_path, format=file_format, progress=progress
-                    )
+                status.stop()
+                with download_progress(to) as prog:
+                    return export(serializer, file, format=file_format, progress=prog)
 
 
 class DbtDependency(AbstractDependency):

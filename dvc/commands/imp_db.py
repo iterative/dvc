@@ -18,7 +18,7 @@ class CmdTestDb(CmdBase):
         from dvc.dependency.db import _get_dbt_config
         from dvc.exceptions import DvcException
 
-        connection = self.args.connection
+        connection = self.args.conn
 
         db_config = self.repo.config.get("db", {})
         config = db_config.get(connection, {})
@@ -34,11 +34,18 @@ class CmdTestDb(CmdBase):
         )
         conn_config = merge(config, cli_config)
 
-        cli_dbt_config = {"profile": self.args.profile, "target": self.args.target}
+        cli_dbt_config = compact(
+            {"profile": self.args.profile, "target": self.args.target}
+        )
         dbt_config = merge(_get_dbt_config(self.repo.config), cli_dbt_config)
 
         project_dir = self.repo.root_dir
         if not (conn_config or dbt_config):
+            if not self.args.dbt_conn:
+                raise DvcException(
+                    "no config set; provide arguments or set a configuration"
+                )
+
             if is_dbt_project(project_dir):
                 ui.write("Using", DBT_PROJECT_FILE, "for testing", styled=True)
             else:
@@ -65,21 +72,37 @@ class CmdTestDb(CmdBase):
 
 class CmdImportDb(CmdBase):
     def run(self):
-        if not (self.args.sql or self.args.model):
-            raise argparse.ArgumentTypeError("Either of --sql or --model is required.")
+        from dvc.exceptions import InvalidArgumentError
+
+        if self.args.table or self.args.sql:
+            arg = "--table" if self.args.table else "--sql"
+            options = {
+                "url": self.args.url,
+                "rev": self.args.rev,
+                "project_dir": self.args.project_dir,
+            }
+            opt = next((o for o, v in options.items() if v), None)
+            if opt:
+                raise InvalidArgumentError(f"argument {opt}: not allowed with {arg}")
+
+            if not self.args.conn and not self.args.dbt_conn:
+                raise InvalidArgumentError(f"{arg} requires --conn")
+        if self.args.model and self.args.conn:
+            raise InvalidArgumentError("argument --model: not allowed with --conn")
 
         self.repo.imp_db(
             url=self.args.url,
             rev=self.args.rev,
             project_dir=self.args.project_dir,
             sql=self.args.sql,
+            table=self.args.table,
             model=self.args.model,
             profile=self.args.profile,
             target=self.args.target,
             output_format=self.args.output_format,
             out=self.args.out,
             force=self.args.force,
-            connection=self.args.connection,
+            connection=self.args.conn,
         )
         return 0
 
@@ -97,29 +120,42 @@ def add_parser(subparsers, parent_parser):
         add_help=False,
     )
     import_parser.add_argument(
-        "--url", help="Location of DVC or Git repository to download from"
+        "--url",
+        help=argparse.SUPPRESS,
+        # help="Location of dbt repository",
     )
     import_parser.add_argument(
         "--rev",
         nargs="?",
-        help="Git revision (e.g. SHA, branch, tag)",
+        help=argparse.SUPPRESS,
+        # help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
     )
     import_parser.add_argument(
-        "--project-dir", nargs="?", help="Subdirectory to the dbt project location"
+        "--project-dir",
+        nargs="?",
+        help=argparse.SUPPRESS,
+        # help="Subdirectory to the dbt project location",
     )
 
-    group = import_parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--sql",
-        help="SQL query",
-    )
+    group = import_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--sql", help="SQL query to snapshot")
+    group.add_argument("--table", help="Table to snapshot")
     group.add_argument(
         "--model",
-        help="Model name to download",
+        help=argparse.SUPPRESS,
+        # help="Model name to download",
     )
-    import_parser.add_argument("--profile", help="Profile to use")
-    import_parser.add_argument("--target", help="Target to use")
+    import_parser.add_argument(
+        "--profile",
+        help=argparse.SUPPRESS,
+        # help="Profile to use",
+    )
+    import_parser.add_argument(
+        "--target",
+        help=argparse.SUPPRESS,
+        # help="Target to use",
+    )
     import_parser.add_argument(
         "--output-format",
         default="csv",
@@ -144,9 +180,15 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "--conn",
-        dest="connection",
         nargs="?",
         help="Database connection to use, needs to be set in config",
+    )
+    import_parser.add_argument(
+        "--dbt-conn",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
+        # help="Use dbt connection",
     )
 
     import_parser.set_defaults(func=CmdImportDb)
@@ -158,7 +200,8 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(TEST_DB_HELP, "test-db"),
         add_help=False,
     )
-    test_db_parser.add_argument("--conn", dest="connection")
+    test_db_parser.add_argument("--conn")
+    test_db_parser.add_argument("--dbt-conn", action="store_true", default=False)
     test_db_parser.add_argument("--url")
     test_db_parser.add_argument("--password")
     test_db_parser.add_argument("--username")

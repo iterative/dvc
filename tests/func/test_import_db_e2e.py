@@ -94,7 +94,7 @@ def dbt_model(dbt_project):
     return "model"
 
 
-@pytest.fixture(params=("sql", "model", "external_model", "sql_conn"))
+@pytest.fixture(params=("sql", "model", "external_model", "sql_conn", "table"))
 def import_db_parameters(request: pytest.FixtureRequest):
     if request.param == "sql":
         profile = request.getfixturevalue("dbt_profile")
@@ -102,6 +102,9 @@ def import_db_parameters(request: pytest.FixtureRequest):
     if request.param == "sql_conn":
         conn = request.getfixturevalue("db_config")
         return {"sql": "select * from model", "connection": conn}
+    if request.param == "table":
+        conn = request.getfixturevalue("db_config")
+        return {"table": "model", "connection": conn}
 
     dbt_project = request.getfixturevalue("dbt_project")
     return {
@@ -114,6 +117,8 @@ def import_db_parameters(request: pytest.FixtureRequest):
 def file_name(import_db_parameters):
     if model := import_db_parameters.get("model"):
         return model
+    if table := import_db_parameters.get("table"):
+        return table
     return "results"
 
 
