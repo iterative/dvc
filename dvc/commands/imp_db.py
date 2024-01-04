@@ -108,16 +108,13 @@ class CmdImportDb(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    IMPORT_HELP = (
-        "Download file or directory tracked by DVC or by Git "
-        "into the workspace, and track it."
-    )
-
+    IMPORT_HELP = "Snapshot a table or a SQL query result to a CSV/JSON format"
     import_parser = subparsers.add_parser(
         "import-db",
         parents=[parent_parser],
-        description=append_doc_link(IMPORT_HELP, "import"),
-        add_help=False,
+        description=append_doc_link(IMPORT_HELP, "import-db"),
+        help=IMPORT_HELP,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     import_parser.add_argument(
         "--url",
