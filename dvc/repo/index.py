@@ -255,6 +255,33 @@ def _load_storage_from_out(storage_map, key, out):
         _load_storage_from_import(storage_map, key, out)
 
 
+def _build_tree_from_outs(outs):
+    from dvc_data.hashfile.tree import Tree
+
+    tree = Tree()
+    for out in outs:
+        if not out.use_cache:
+            continue
+
+        ws, key = out.index_key
+
+        if not out.stage.is_partial_import:
+            tree.add((ws, *key), out.meta, out.hash_info)
+            continue
+
+        dep = out.stage.deps[0]
+        if not dep.files:
+            tree.add((ws, *key), dep.meta, dep.hash_info)
+            continue
+
+        for okey, ometa, ohi in dep.get_obj():
+            tree.add((ws, *key, *okey), ometa, ohi)
+
+    tree.digest()
+
+    return tree
+
+
 class Index:
     def __init__(
         self,
@@ -504,20 +531,7 @@ class Index:
 
     @cached_property
     def data_tree(self):
-        from dvc_data.hashfile.tree import Tree
-
-        tree = Tree()
-        for out in self.outs:
-            if not out.use_cache:
-                continue
-
-            ws, key = out.index_key
-
-            tree.add((ws, *key), out.meta, out.hash_info)
-
-        tree.digest()
-
-        return tree
+        return _build_tree_from_outs(self.outs)
 
     @cached_property
     def data(self) -> "Dict[str, DataIndex]":
@@ -772,20 +786,7 @@ class IndexView:
 
     @cached_property
     def data_tree(self):
-        from dvc_data.hashfile.tree import Tree
-
-        tree = Tree()
-        for out in self.outs:
-            if not out.use_cache:
-                continue
-
-            ws, key = out.index_key
-
-            tree.add((ws, *key), out.meta, out.hash_info)
-
-        tree.digest()
-
-        return tree
+        return _build_tree_from_outs(self.outs)
 
     @cached_property
     def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
