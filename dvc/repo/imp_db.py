@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
+
+from funcy import compact
 
 from dvc.exceptions import OutputDuplicationError
 from dvc.repo.scm_context import scm_context
@@ -13,18 +15,11 @@ from . import locked
 
 @locked
 @scm_context
-def imp_db(  # noqa: PLR0913
+def imp_db(
     self: "Repo",
-    url: Optional[str] = None,
-    rev: Optional[str] = None,
-    project_dir: Optional[str] = None,
     sql: Optional[str] = None,
     table: Optional[str] = None,
-    model: Optional[str] = None,
-    version: Optional[int] = None,
     frozen: bool = True,
-    profile: Optional[str] = None,
-    target: Optional[str] = None,
     output_format: str = "csv",
     out: Optional[str] = None,
     force: bool = False,
@@ -35,41 +30,33 @@ def imp_db(  # noqa: PLR0913
         "The functionality may change or break without notice, "
         "which could lead to unexpected behavior."
     )
-    assert model or sql or table
-    erepo = None
-    if model and url:
-        erepo = {"url": url}
-        if rev:
-            erepo["rev"] = rev
-
+    assert sql or table
     assert output_format in ("csv", "json")
 
-    db: Dict[str, Any] = {"file_format": output_format}
-    if profile:
-        db["profile"] = profile
+    db: Dict[str, str] = compact(
+        {
+            "connection": connection,
+            "file_format": output_format,
+            "query": sql,
+            "table": table,
+        }
+    )
 
-    if model:
-        db.update({"model": model, "version": version, "project_dir": project_dir})
-    else:
-        db.update({"connection": connection, "query": sql, "table": table})
-
-    file_name = model or table or "results"
+    file_name = table or "results"
     out = out or f"{file_name}.{output_format}"
-    out = resolve_output(url or ".", out, force=force)
+    out = resolve_output(".", out, force=force)
+
     path, wdir, out = resolve_paths(self, out, always_local=True)
     stage = self.stage.create(
         single_stage=True,
         validate=False,
         fname=path,
+        deps=[None],
         wdir=wdir,
-        deps=[url],
         outs=[out],
-        erepo=erepo,
-        fs_config=None,
         db=db,
     )
 
-    stage.deps[0].target = target
     try:
         self.check_graph(stages={stage})
     except OutputDuplicationError as exc:

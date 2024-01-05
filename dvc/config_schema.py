@@ -321,8 +321,6 @@ SCHEMA = {
     "feature": FeatureSchema(
         {
             Optional("machine", default=False): Bool,
-            "dbt_profile": str,
-            "dbt_target": str,
         },
     ),
     "plots": {

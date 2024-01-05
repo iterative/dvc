@@ -1,165 +1,116 @@
-"""import_db tests without involving any databases."""
+import os
+import sqlite3
+from contextlib import closing
+
+import pandas as pd
 import pytest
-from agate import Table
-
-from dvc.database.serializer import AgateSerializer
-
-data1 = Table([(i, i) for i in range(1, 10)], ["id", "value"])
-data2 = Table([(i, i) for i in range(10, 20)], ["id", "value"])
-
-serializers = AgateSerializer(data1), AgateSerializer(data2)
+from funcy import compact
 
 
 @pytest.fixture
-def client(mocker):
-    m = mocker.patch("dvc.database.get_client")
-    client = mocker.MagicMock()
-    client.query.return_value.__enter__.side_effect = serializers
-    client.table.return_value.__enter__.side_effect = serializers
-    m.return_value.__enter__.return_value = client
-    return m
+def db_path(tmp_dir):
+    return tmp_dir / "main.db"
 
 
-def test_sql_with_dbt(client, tmp_dir, dvc):
-    stage = dvc.imp_db(
-        sql="select * from model", profile="profile", output_format="json"
-    )
+@pytest.fixture
+def seed_db(db_path):
+    conn = sqlite3.connect(db_path)
+    conn.execute("CREATE TABLE model (id INTEGER PRIMARY KEY, value INTEGER)")
 
-    db = {"file_format": "json", "profile": "profile", "query": "select * from model"}
+    def inner(values):
+        conn.executemany("INSERT INTO model(value) VALUES(?)", [(i,) for i in values])
+        conn.commit()
 
-    assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "dae475048115315c8c26a10538e4b2ec",
-        "frozen": True,
-        "deps": [{"db": db}],
-        "outs": [
-            {
-                "hash": "md5",
-                "md5": "56226d443067b195c90b427db557e1f2",
-                "path": "results.json",
-                "size": 243,
-            }
-        ],
-    }
-
-    dvc.update(stage.addressing)
-    assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "79b42f9ddb2a3ed999eb494ccab470c6",
-        "frozen": True,
-        "deps": [{"db": db}],
-        "outs": [
-            {
-                "hash": "md5",
-                "md5": "08d806ee7e1f309c4561750805f02276",
-                "path": "results.json",
-                "size": 290,
-            }
-        ],
-    }
+    with closing(conn):
+        yield inner
 
 
-def test_sql_with_conn_string(client, tmp_dir, dvc):
+@pytest.fixture
+def db_connection(dvc, db_path):
     with dvc.config.edit(level="local") as conf:
-        conf["db"] = {"conn": {"url": "conn"}}
+        conf["db"] = {"conn": {"url": f"sqlite:///{db_path.fs_path}"}}
+    return "conn"
 
-    stage = dvc.imp_db(
-        sql="select * from model", connection="conn", output_format="json"
+
+def load_data(file, output_format):
+    if output_format == "json":
+        return pd.read_json(file, orient="records")
+    return pd.read_csv(file)
+
+
+@pytest.mark.parametrize("output_format", ("csv", "json"))
+@pytest.mark.parametrize(
+    "args,file_name",
+    [
+        ({"sql": "select * from model"}, "results"),
+        ({"table": "model"}, "model"),
+    ],
+)
+def test(
+    M,
+    tmp_dir,
+    scm,
+    dvc,
+    db_connection,
+    seed_db,
+    output_format,
+    args,
+    file_name,
+):
+    seed_db(values=range(5))
+    if output_format == "json":
+        file_size = 96, 192
+        md5 = "6039fe7565d212b339aaa446ca234e5d", "e1b8adf4d9eb9ab2b64d3ab0bb5f65ac"
+    elif os.name == "nt":
+        file_size = 35, 61
+        md5 = "14c34db5ddd184345c06f74718539f04", "3bb836e6d43c9afa43a9d73b36bbbab4"
+    else:
+        file_size = 29, 50
+        md5 = "6f7fc0d701d1ac13eec83d79fffaf427", "c04f712f8167496a2fb43f289f2b7e28"
+
+    db = compact(
+        {
+            "file_format": output_format,
+            "connection": db_connection,
+            "table": args.get("table"),
+            "query": args.get("sql"),
+        }
     )
-    db = {"file_format": "json", "connection": "conn", "query": "select * from model"}
+    stage = dvc.imp_db(**args, connection=db_connection, output_format=output_format)
+
+    output_file = f"{file_name}.{output_format}"
+    df = load_data(output_file, output_format)
+    assert df.values.tolist() == [[i + 1, i] for i in range(5)]
     assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "f0dcca8e8411907adb25aa547d7c432c",
+        "md5": M.instance_of(str),
         "frozen": True,
         "deps": [{"db": db}],
         "outs": [
             {
+                "md5": md5[0],
+                "size": file_size[0],
                 "hash": "md5",
-                "md5": "56226d443067b195c90b427db557e1f2",
-                "path": "results.json",
-                "size": 243,
+                "path": output_file,
             }
         ],
     }
+
+    seed_db(values=range(5, 10))
 
     dvc.update(stage.addressing)
+
+    df = load_data(output_file, output_format)
+    assert df.values.tolist() == [[i + 1, i] for i in range(10)]
     assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "8c0441b206d8ee7c7b9e3d54871c3cbb",
+        "md5": M.instance_of(str),
         "frozen": True,
         "deps": [{"db": db}],
         "outs": [
             {
+                "md5": md5[1],
+                "size": file_size[1],
                 "hash": "md5",
-                "md5": "08d806ee7e1f309c4561750805f02276",
-                "path": "results.json",
-                "size": 290,
-            }
-        ],
-    }
-
-
-def test_table_with_conn_string(client, tmp_dir, dvc):
-    with dvc.config.edit(level="local") as conf:
-        conf["db"] = {"conn": {"url": "conn"}}
-
-    stage = dvc.imp_db(table="model", connection="conn", output_format="json")
-    db = {"file_format": "json", "connection": "conn", "table": "model"}
-    assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "39dfcd61935e039a7bc3f158d7fcf62c",
-        "frozen": True,
-        "deps": [{"db": db}],
-        "outs": [
-            {
-                "hash": "md5",
-                "md5": "56226d443067b195c90b427db557e1f2",
-                "path": "model.json",
-                "size": 243,
-            }
-        ],
-    }
-
-    dvc.update(stage.addressing)
-    assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "20d77a700710bad7d094c460f5939b7c",
-        "frozen": True,
-        "deps": [{"db": db}],
-        "outs": [
-            {
-                "hash": "md5",
-                "md5": "08d806ee7e1f309c4561750805f02276",
-                "path": "model.json",
-                "size": 290,
-            }
-        ],
-    }
-
-
-def test_model(mocker, tmp_dir, dvc):
-    mocker.patch("dvc.database.get_model", side_effect=serializers)
-    stage = dvc.imp_db(model="model", output_format="json")
-
-    assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "a8157fb5b28457e1910506e9d4d4fca3",
-        "frozen": True,
-        "deps": [{"db": {"file_format": "json", "model": "model"}}],
-        "outs": [
-            {
-                "hash": "md5",
-                "md5": "56226d443067b195c90b427db557e1f2",
-                "path": "model.json",
-                "size": 243,
-            }
-        ],
-    }
-
-    dvc.update(stage.addressing)
-    assert (tmp_dir / stage.relpath).parse() == {
-        "md5": "2f84287f109fc2b8755a9e64ad910b5d",
-        "frozen": True,
-        "deps": [{"db": {"file_format": "json", "model": "model"}}],
-        "outs": [
-            {
-                "hash": "md5",
-                "md5": "08d806ee7e1f309c4561750805f02276",
-                "path": "model.json",
-                "size": 290,
+                "path": output_file,
             }
         ],
     }

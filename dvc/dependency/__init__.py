@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Mapping, Set
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
-from .db import DB_SCHEMA, PARAM_DB, DbDependency, DbtDependency
+from .db import DbDependency
 from .param import ParamsDependency
 from .repo import RepoDependency
 
@@ -15,7 +15,7 @@ from .repo import RepoDependency
 SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
-    **DB_SCHEMA,
+    **DbDependency.DB_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
     Output.PARAM_FS_CONFIG: dict,
 }
@@ -23,16 +23,13 @@ SCHEMA: Mapping[str, Any] = {
 
 def _get(stage, p, info, **kwargs):
     d = info or {}
-    db = d.get(PARAM_DB, {})
     params = d.pop(ParamsDependency.PARAM_PARAMS, None)
     repo = d.pop(RepoDependency.PARAM_REPO, None)
 
     if params:
         return ParamsDependency(stage, p, params)
-    if DbtDependency.PARAM_MODEL in db:
-        return DbtDependency(repo, stage, info)
-    if db:
-        return DbDependency(stage, info)
+    if DbDependency.PARAM_DB in d:
+        return DbDependency(stage, d)
 
     assert p
     if repo:
