@@ -15,11 +15,12 @@ def client(mocker):
     m = mocker.patch("dvc.database.get_client")
     client = mocker.MagicMock()
     client.query.return_value.__enter__.side_effect = serializers
+    client.table.return_value.__enter__.side_effect = serializers
     m.return_value.__enter__.return_value = client
     return m
 
 
-def test_sql(client, tmp_dir, dvc):
+def test_sql_with_dbt(client, tmp_dir, dvc):
     stage = dvc.imp_db(
         sql="select * from model", profile="profile", output_format="json"
     )
@@ -56,7 +57,7 @@ def test_sql(client, tmp_dir, dvc):
     }
 
 
-def test_sql_conn_string(client, tmp_dir, dvc):
+def test_sql_with_conn_string(client, tmp_dir, dvc):
     with dvc.config.edit(level="local") as conf:
         conf["db"] = {"conn": {"url": "conn"}}
 
@@ -88,6 +89,42 @@ def test_sql_conn_string(client, tmp_dir, dvc):
                 "hash": "md5",
                 "md5": "08d806ee7e1f309c4561750805f02276",
                 "path": "results.json",
+                "size": 290,
+            }
+        ],
+    }
+
+
+def test_table_with_conn_string(client, tmp_dir, dvc):
+    with dvc.config.edit(level="local") as conf:
+        conf["db"] = {"conn": {"url": "conn"}}
+
+    stage = dvc.imp_db(table="model", connection="conn", output_format="json")
+    db = {"file_format": "json", "connection": "conn", "table": "model"}
+    assert (tmp_dir / stage.relpath).parse() == {
+        "md5": "39dfcd61935e039a7bc3f158d7fcf62c",
+        "frozen": True,
+        "deps": [{"db": db}],
+        "outs": [
+            {
+                "hash": "md5",
+                "md5": "56226d443067b195c90b427db557e1f2",
+                "path": "model.json",
+                "size": 243,
+            }
+        ],
+    }
+
+    dvc.update(stage.addressing)
+    assert (tmp_dir / stage.relpath).parse() == {
+        "md5": "20d77a700710bad7d094c460f5939b7c",
+        "frozen": True,
+        "deps": [{"db": db}],
+        "outs": [
+            {
+                "hash": "md5",
+                "md5": "08d806ee7e1f309c4561750805f02276",
+                "path": "model.json",
                 "size": 290,
             }
         ],

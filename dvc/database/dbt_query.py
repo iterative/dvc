@@ -1,6 +1,15 @@
 import os
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    Dict,
+    Iterator,
+    Optional,
+    Union,
+)
 
 from attrs import define, field
 
@@ -41,6 +50,11 @@ class DbtClient:
             _, table = self.adapter.execute(sql, fetch=True)
             yield AgateSerializer(table)
 
+    def table(
+        self, name: str, limit: Optional[int] = None
+    ) -> ContextManager[Union[AgateSerializer, PandasSQLSerializer]]:
+        raise NotImplementedError
+
     def test_connection(self, onerror: Optional[Callable[[], Any]] = None) -> None:
         with self.adapter.connection_named("debug"):
             try:
@@ -50,8 +64,8 @@ class DbtClient:
                     onerror()
 
                 logger.exception(
-                    "dvc was unable to connect to the specified database. "
-                    "Please check your database credentials and try again.",
+                    "Could not connect to the database. "
+                    "Check your database credentials and try again.",
                     exc_info=False,
                 )
                 raise DvcException("The database returned the following error") from exc

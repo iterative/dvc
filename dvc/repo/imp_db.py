@@ -19,6 +19,7 @@ def imp_db(  # noqa: PLR0913
     rev: Optional[str] = None,
     project_dir: Optional[str] = None,
     sql: Optional[str] = None,
+    table: Optional[str] = None,
     model: Optional[str] = None,
     version: Optional[int] = None,
     frozen: bool = True,
@@ -34,6 +35,7 @@ def imp_db(  # noqa: PLR0913
         "The functionality may change or break without notice, "
         "which could lead to unexpected behavior."
     )
+    assert model or sql or table
     erepo = None
     if model and url:
         erepo = {"url": url}
@@ -47,12 +49,12 @@ def imp_db(  # noqa: PLR0913
         db["profile"] = profile
 
     if model:
-        out = out or f"{model}.{output_format}"
         db.update({"model": model, "version": version, "project_dir": project_dir})
     else:
-        out = out or f"results.{output_format}"
-        db.update({"query": sql, "connection": connection})
+        db.update({"connection": connection, "query": sql, "table": table})
 
+    file_name = model or table or "results"
+    out = out or f"{file_name}.{output_format}"
     out = resolve_output(url or ".", out, force=force)
     path, wdir, out = resolve_paths(self, out, always_local=True)
     stage = self.stage.create(

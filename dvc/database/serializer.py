@@ -12,8 +12,8 @@ def noop(_):
 
 @dataclass
 class PandasSQLSerializer:
-    sql: "Union[sa.TextClause, str]"
-    con: "sa.Connection"
+    sql: "Union[str, sa.sql.Selectable]"
+    con: "sa.engine.Connection"
     chunksize: int = 10_000
 
     def to_csv(self, file: str, progress=noop) -> None:

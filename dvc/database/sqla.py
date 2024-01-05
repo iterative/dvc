@@ -1,14 +1,18 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterator, Optional, Union
+from typing import Any, Callable, ContextManager, Dict, Iterator, Optional, Union
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.engine import make_url as _make_url
 from sqlalchemy.exc import NoSuchModuleError
+from sqlalchemy.sql import table
+from sqlalchemy.sql.expression import Selectable
 
+from dvc import env
 from dvc.exceptions import DvcException
 from dvc.log import logger
+from dvc.utils import env2bool
 
 from .serializer import PandasSQLSerializer
 
@@ -30,9 +34,15 @@ class SQLAlchemyClient:
     engine: Engine
 
     @contextmanager
-    def query(self, sql: str) -> Iterator[PandasSQLSerializer]:
+    def query(self, sql: Union[str, Selectable]) -> Iterator[PandasSQLSerializer]:
         with self.engine.connect().execution_options(stream_results=True) as conn:
-            yield PandasSQLSerializer(text(sql), conn)
+            yield PandasSQLSerializer(sql, conn)
+
+    def table(
+        self, name: str, limit: Optional[int] = None
+    ) -> ContextManager[PandasSQLSerializer]:
+        stmt = select("*").select_from(table(name)).limit(limit)
+        return self.query(stmt)
 
     def test_connection(self, onerror: Optional[Callable[[], Any]] = None) -> None:
         try:
@@ -66,6 +76,8 @@ def client(
 ) -> Iterator[SQLAlchemyClient]:
     url = url_from_config(url_or_config)
     with handle_error(url):
+        echo = env2bool(env.DVC_SQLALCHEMY_ECHO, False)
+        engine_kwargs.setdefault("echo", echo)
         engine = create_engine(url, **engine_kwargs)
     try:
         yield SQLAlchemyClient(engine)
