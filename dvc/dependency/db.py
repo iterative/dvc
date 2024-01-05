@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional
 
 from funcy import compact, log_durations
 
-from dvc.database import client
 from dvc.exceptions import DvcException
 from dvc.log import logger
 
@@ -98,6 +97,7 @@ class DbDependency(AbstractDependency):
         file_format: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
+        from dvc.database import client
         from dvc.ui import ui
 
         sql = self.sql
