@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional, Union
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url as _make_url
 from sqlalchemy.exc import NoSuchModuleError
-from sqlalchemy.sql import text
 
 from dvc import env
 from dvc.exceptions import DvcException
@@ -71,7 +70,7 @@ class Client:
     def test_connection(self, onerror: Optional[Callable[[], Any]] = None) -> None:
         try:
             with self.engine.connect() as conn:
-                conn.execute(text("select 1"))
+                conn.exec_driver_sql("select 1")
         except Exception as exc:
             if callable(onerror):
                 onerror()
