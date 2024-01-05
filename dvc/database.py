@@ -89,7 +89,11 @@ class Client:
         format: str = "csv",  # noqa: A002
         progress=noop,
     ) -> None:
-        with self.engine.connect().execution_options(stream_results=True) as con:
+        con = self.engine.connect()
+        if format == "csv":
+            con = con.execution_options(stream_results=True)  # use server-side cursors
+
+        with con:
             serializer = Serializer(sql, con)
             return serializer.export(file, format=format, progress=progress)
 
