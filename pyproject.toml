@@ -112,9 +112,8 @@ tests = [
     "pytest-xdist>=3.2",
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
     'tzdata; sys_platform == "win32"',  # for testing with celery
-    "dbt-sqlite", # optional dependency for testing `import-db`
     "sqlalchemy>=1,<3", # optional dependency for `import-db`
-    "pandas>=1",
+    "pandas>=1", # optional dependency for `import-db`
 ]
 webdav = ["dvc-webdav>=3,<4"]
 webhdfs = ["dvc-webhdfs>=3.1,<4"]
