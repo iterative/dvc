@@ -62,8 +62,8 @@ def test(
         file_size = 96, 192
         md5 = "6039fe7565d212b339aaa446ca234e5d", "e1b8adf4d9eb9ab2b64d3ab0bb5f65ac"
     elif os.name == "nt":
-        file_size = 29, 50
-        md5 = "", ""
+        file_size = 35, 50
+        md5 = "14c34db5ddd184345c06f74718539f04", ""
     else:
         file_size = 29, 50
         md5 = "6f7fc0d701d1ac13eec83d79fffaf427", "c04f712f8167496a2fb43f289f2b7e28"
