@@ -46,7 +46,7 @@ jobs:
         PYTHONUTF8: 1
       run: >
         pytest -n=logical --timeout=300 --durations=100
-        --cov --cov-report=xml --cov-report=term tests/func/test_import_db.py
+        --cov --cov-report=xml --cov-report=term
     - name: upload coverage report
       uses: codecov/codecov-action@v3
       with:
