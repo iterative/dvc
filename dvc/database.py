@@ -1,6 +1,7 @@
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
+from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional, Union
 
 from sqlalchemy import create_engine
@@ -35,6 +36,14 @@ def url_from_config(config: Union[str, "URL", Dict[str, str]]) -> "URL":
     return make_url(config)
 
 
+@contextmanager
+def atomic_file(file: StrOrBytesPath, mode: str = "w+b"):
+    head, tail = os.path.split(os.fsdecode(file))
+    with NamedTemporaryFile(mode, prefix=tail + "-", dir=head, delete=False) as f:
+        yield f
+    os.replace(f.name, file)
+
+
 @dataclass
 class Serializer:
     sql: "Union[str, Selectable]"
@@ -44,8 +53,8 @@ class Serializer:
     def to_csv(self, file: StrOrBytesPath, progress=noop):
         import pandas as pd
 
-        with open(file, mode="wb") as f:
-            idfs = pd.read_sql(self.sql, self.con, chunksize=self.chunksize)
+        idfs = pd.read_sql(self.sql, self.con, chunksize=self.chunksize)
+        with atomic_file(file) as f:
             for i, df in enumerate(idfs):
                 df.to_csv(f, header=i == 0, index=False)
                 progress(len(df))
@@ -53,9 +62,9 @@ class Serializer:
     def to_json(self, file: StrOrBytesPath, progress=noop):  # noqa: ARG002
         import pandas as pd
 
-        path = os.fsdecode(file)
         df = pd.read_sql(self.sql, self.con)
-        df.to_json(path, orient="records")
+        with atomic_file(file) as f:
+            df.to_json(f, orient="records")
 
     def export(self, file: StrOrBytesPath, format: str = "csv", progress=noop):  # noqa: A002
         if format == "json":
