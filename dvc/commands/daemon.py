@@ -1,6 +1,5 @@
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import fix_subparsers
 from dvc.log import logger
 
 logger = logger.getChild(__name__)
@@ -53,9 +52,8 @@ def add_parser(subparsers, parent_parser):
     daemon_subparsers = daemon_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc daemon CMD --help` for command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(daemon_subparsers)
 
     DAEMON_UPDATER_HELP = "Fetch latest available version."
     daemon_updater_parser = daemon_subparsers.add_parser(

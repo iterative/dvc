@@ -3,7 +3,7 @@ import os
 from funcy import get_in
 
 from dvc.cli import formatter
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link
 from dvc.commands.config import CmdConfig
 from dvc.log import logger
 
@@ -97,8 +97,8 @@ def add_parser(subparsers, parent_parser):
     studio_subparser = studio_parser.add_subparsers(
         dest="cmd",
         help="Use `DVC studio CMD --help` to display command-specific help.",
+        required=True,
     )
-    fix_subparsers(studio_subparser)
 
     STUDIO_LOGIN_HELP = "Authenticate DVC with Studio host"
     STUDIO_LOGIN_DESCRIPTION = (

@@ -1,6 +1,6 @@
 from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import DictAction, append_doc_link, fix_subparsers
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
 from dvc.log import logger
 
@@ -50,8 +50,8 @@ def add_parser(subparsers, parent_parser):
     artifacts_subparsers = artifacts_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc artifacts CMD --help` to display command-specific help.",
+        required=True,
     )
-    fix_subparsers(artifacts_subparsers)
 
     ARTIFACTS_GET_HELP = "Download an artifact from a DVC project."
     get_parser = artifacts_subparsers.add_parser(

@@ -6,7 +6,7 @@ from funcy import compact, first, get_in
 
 from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
 from dvc.log import logger
 from dvc.ui import ui
@@ -228,9 +228,8 @@ def add_parser(subparsers, parent_parser):
     plots_subparsers = plots_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc plots CMD --help` to display command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(plots_subparsers)
 
     SHOW_HELP = (
         "Generate plots from target files or from `plots` definitions in `dvc.yaml`."

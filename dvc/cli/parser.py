@@ -203,11 +203,8 @@ def get_main_parser():
         metavar="command",
         dest="cmd",
         help="Use `dvc command --help` for command-specific help.",
+        required=True,
     )
-
-    from .utils import fix_subparsers
-
-    fix_subparsers(subparsers)
 
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)

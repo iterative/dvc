@@ -1,5 +1,5 @@
 from dvc.cli import formatter
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link
 from dvc.commands.config import CmdConfig
 from dvc.ui import ui
 from dvc.utils import format_link
@@ -160,9 +160,8 @@ def add_parser(subparsers, parent_parser):
     remote_subparsers = remote_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc remote CMD --help` for command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(remote_subparsers)
 
     REMOTE_ADD_HELP = "Add a new data remote."
     remote_add_parser = remote_subparsers.add_parser(
