@@ -56,8 +56,8 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawTextHelpFormatter,
     )
     group = import_parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--sql", help="SQL query to snapshot")
-    group.add_argument("--table", help="Table to snapshot")
+    group.add_argument("--sql", help="SQL query to snapshot", metavar="sql")
+    group.add_argument("--table", help="Table to snapshot", metavar="table")
     import_parser.add_argument(
         "--output-format",
         default="csv",
@@ -69,7 +69,6 @@ def add_parser(subparsers, parent_parser):
     import_parser.add_argument(
         "-o",
         "--out",
-        nargs="?",
         help="Destination path to download files to",
         metavar="<path>",
     ).complete = completion.FILE
@@ -83,6 +82,7 @@ def add_parser(subparsers, parent_parser):
     import_parser.add_argument(
         "--conn",
         required=True,
+        metavar="conn",
         help="Database connection to use, needs to be set in config",
     )
 
