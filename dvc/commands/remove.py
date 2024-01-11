@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
@@ -30,7 +28,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(REMOVE_HELP, "remove"),
         help=REMOVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     remove_parser.add_argument(
         "--outs",

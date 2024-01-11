@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
@@ -36,7 +34,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(GET_HELP, "get-url"),
         help=GET_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     get_parser.add_argument(
         "url", help="See `dvc import-url -h` for full list of supported URLs."

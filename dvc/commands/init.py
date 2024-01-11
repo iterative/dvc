@@ -1,8 +1,7 @@
-import argparse
-
 import colorama
 
 from dvc import analytics
+from dvc.cli import formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -69,7 +68,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(INIT_DESCRIPTION, "init"),
         help=INIT_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     init_parser.add_argument(
         "--no-scm",

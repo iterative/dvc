@@ -1,5 +1,4 @@
-import argparse
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -20,6 +19,6 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_CLEAN_HELP, "exp/clean"),
         help=EXPERIMENTS_CLEAN_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     experiments_clean_parser.set_defaults(func=CmdExperimentsClean)

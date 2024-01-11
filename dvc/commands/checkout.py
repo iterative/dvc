@@ -1,7 +1,6 @@
-import argparse
 import operator
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import CheckoutError
@@ -67,7 +66,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(CHECKOUT_HELP, "checkout"),
         help=CHECKOUT_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     checkout_parser.add_argument(
         "--summary",

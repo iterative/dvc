@@ -1,6 +1,6 @@
 import argparse
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -145,7 +145,7 @@ def add_parser(subparsers, _parent_parser):
         parents=[shared_parent_parser()],
         description=append_doc_link(PULL_HELP, "pull"),
         help=PULL_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     pull_parser.add_argument(
         "-r", "--remote", help="Remote storage to pull from", metavar="<name>"
@@ -220,7 +220,7 @@ def add_parser(subparsers, _parent_parser):
         parents=[shared_parent_parser()],
         description=append_doc_link(PUSH_HELP, "push"),
         help=PUSH_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     push_parser.add_argument(
         "-r", "--remote", help="Remote storage to push to", metavar="<name>"
@@ -282,7 +282,7 @@ def add_parser(subparsers, _parent_parser):
         parents=[shared_parent_parser()],
         description=append_doc_link(FETCH_HELP, "fetch"),
         help=FETCH_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     fetch_parser.add_argument(
         "-r", "--remote", help="Remote storage to fetch from", metavar="<name>"
@@ -355,7 +355,7 @@ def add_parser(subparsers, _parent_parser):
         description=append_doc_link(STATUS_HELP, "status"),
         help=STATUS_HELP,
         conflict_handler="resolve",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     status_parser.add_argument(
         "-q",

@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
@@ -31,7 +29,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(UNPROTECT_HELP, "unprotect"),
         help=UNPROTECT_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     unprotect_parser.add_argument(
         "targets", nargs="+", help="Data files/directories to unprotect."

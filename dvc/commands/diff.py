@@ -1,7 +1,6 @@
-import argparse
 import os
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -163,7 +162,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(DIFF_DESCRIPTION, "diff"),
         help=DIFF_DESCRIPTION,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
         "--targets",

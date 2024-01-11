@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from itertools import chain, filterfalse
 from typing import TYPE_CHECKING, Dict, Iterable, List
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.log import logger
@@ -284,7 +284,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(STAGES_HELP, "stage"),
         help=STAGES_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
 
     stage_subparsers = stage_parser.add_subparsers(
@@ -300,7 +300,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(STAGE_ADD_HELP, "stage/add"),
         help=STAGE_ADD_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     stage_add_parser.add_argument(
         "-n", "--name", help="Name of the stage to add", required=True
@@ -314,7 +314,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(STAGE_LIST_HELP, "stage/list"),
         help=STAGE_LIST_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     stage_list_parser.add_argument(
         "targets",

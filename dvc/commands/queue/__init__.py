@@ -1,5 +1,4 @@
-import argparse
-
+from dvc.cli import formatter
 from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.commands.queue import kill, logs, remove, start, status, stop
 
@@ -20,7 +19,7 @@ def add_parser(subparsers, parent_parser):
         "queue",
         parents=[parent_parser],
         description=append_doc_link(QUEUE_HELP, "queue"),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
         help=QUEUE_HELP,
     )
 

@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.log import logger
@@ -61,7 +59,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(PARAMS_HELP, "params"),
         help=PARAMS_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
 
     params_subparsers = params_parser.add_subparsers(
@@ -80,7 +78,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(PARAMS_DIFF_HELP, "params/diff"),
         help=PARAMS_DIFF_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     params_diff_parser.add_argument(
         "a_rev",

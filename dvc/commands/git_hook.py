@@ -1,5 +1,6 @@
 import os
 
+from dvc.cli import formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import fix_subparsers
 from dvc.exceptions import NotDvcRepoError
@@ -140,6 +141,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=MERGE_DRIVER_HELP,
         help=MERGE_DRIVER_HELP,
+        formatter_class=formatter.HelpFormatter,
     )
     merge_driver_parser.add_argument(
         "--ancestor",
