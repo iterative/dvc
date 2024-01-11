@@ -26,18 +26,6 @@ class DictAction(argparse.Action):
         setattr(args, self.dest, d)
 
 
-def fix_subparsers(subparsers):
-    """Workaround for bug in Python 3. See more info at:
-    https://bugs.python.org/issue16308
-    https://github.com/iterative/dvc/issues/769
-
-    Args:
-        subparsers: subparsers to fix.
-    """
-    subparsers.required = True
-    subparsers.dest = "cmd"
-
-
 def append_doc_link(help_message, path):
     from dvc.utils import format_link
 

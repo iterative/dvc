@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, List
 
 from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link
 from dvc.log import logger
 from dvc.utils.cli_parse import parse_params
 from dvc.utils.humanize import truncate_text
@@ -290,9 +290,8 @@ def add_parser(subparsers, parent_parser):
     stage_subparsers = stage_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc stage CMD --help` to display command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(stage_subparsers)
 
     STAGE_ADD_HELP = "Create stage"
     stage_add_parser = stage_subparsers.add_parser(
