@@ -1,5 +1,6 @@
 import argparse
 
+from dvc.cli import formatter
 from dvc.cli.utils import append_doc_link
 from dvc.commands.repro import CmdRepro
 from dvc.commands.repro import add_arguments as add_repro_arguments
@@ -32,7 +33,7 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_RUN_HELP, "exp/run"),
         help=EXPERIMENTS_RUN_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     _add_run_common(experiments_run_parser)
     experiments_run_parser.set_defaults(func=CmdExperimentsRun)

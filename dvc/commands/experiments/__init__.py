@@ -1,5 +1,4 @@
-import argparse
-
+from dvc.cli import formatter
 from dvc.cli.utils import append_doc_link, fix_subparsers, hide_subparsers_from_help
 from dvc.commands.experiments import (
     apply,
@@ -44,7 +43,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         aliases=["exp"],
         description=append_doc_link(EXPERIMENTS_HELP, "exp"),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
         help=EXPERIMENTS_HELP,
     )
 

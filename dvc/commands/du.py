@@ -1,7 +1,6 @@
-import argparse
 import logging
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import DictAction, append_doc_link
 from dvc.ui import ui
@@ -34,7 +33,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(DU_HELP, "du"),
         help=DU_HELP,
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=formatter.RawTextHelpFormatter,
     )
     du_parser.add_argument("url", help="Location of DVC repository")
     du_parser.add_argument(

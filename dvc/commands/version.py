@@ -1,5 +1,4 @@
-import argparse
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -27,7 +26,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(VERSION_HELP, "version"),
         help=VERSION_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
         aliases=["doctor"],
     )
     version_parser.set_defaults(func=CmdVersion)

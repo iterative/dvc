@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
@@ -51,7 +49,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(IMPORT_HELP, "import"),
         help=IMPORT_HELP,
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=formatter.RawTextHelpFormatter,
     )
     import_parser.add_argument(
         "url", help="Location of DVC or Git repository to download from"

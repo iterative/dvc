@@ -1,5 +1,4 @@
-import argparse
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -21,7 +20,7 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_BRANCH_HELP, "exp/branch"),
         help=EXPERIMENTS_BRANCH_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     experiments_branch_parser.add_argument(
         "experiment", help="Experiment to be promoted."

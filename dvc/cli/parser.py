@@ -50,7 +50,7 @@ from dvc.commands import (
 )
 from dvc.log import logger
 
-from . import DvcParserError
+from . import DvcParserError, formatter
 
 logger = logger.getChild(__name__)
 
@@ -165,7 +165,7 @@ def get_main_parser():
         prog="dvc",
         description=desc,
         parents=[parent_parser],
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=formatter.RawTextHelpFormatter,
         add_help=False,
     )
 

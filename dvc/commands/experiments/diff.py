@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.commands.metrics import DEFAULT_PRECISION
@@ -59,7 +57,7 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_DIFF_HELP, "exp/diff"),
         help=EXPERIMENTS_DIFF_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     experiments_diff_parser.add_argument(
         "a_rev", nargs="?", help="Old experiment to compare (defaults to HEAD)"

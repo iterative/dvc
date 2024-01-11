@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.commands.config import CmdConfig
@@ -58,7 +58,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(CACHE_HELP, "cache"),
         help=CACHE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
 
     cache_subparsers = cache_parser.add_subparsers(
@@ -76,7 +76,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser, parent_cache_config_parser],
         description=append_doc_link(CACHE_HELP, "cache/dir"),
         help=CACHE_DIR_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     cache_dir_parser.add_argument(
         "-u",
@@ -103,7 +103,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(CACHE_HELP, "cache/migrate"),
         help=CACHE_MIGRATE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     cache_migrate_parser.add_argument(
         "--dvc-files",

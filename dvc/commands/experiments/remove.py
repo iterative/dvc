@@ -1,5 +1,4 @@
-import argparse
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import InvalidArgumentError
@@ -54,7 +53,7 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_REMOVE_HELP, "exp/remove"),
         help=EXPERIMENTS_REMOVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     remove_group = experiments_remove_parser.add_mutually_exclusive_group()
     add_rev_selection_flags(experiments_remove_parser, "Remove", False)

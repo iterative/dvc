@@ -3,6 +3,7 @@ import os
 
 from funcy import set_in
 
+from dvc.cli import formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -209,7 +210,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(CONFIG_HELP, "config"),
         help=CONFIG_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     config_parser.add_argument(
         "-u",

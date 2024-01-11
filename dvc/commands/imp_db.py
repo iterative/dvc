@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase, CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -53,7 +51,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(IMPORT_HELP, "import-db"),
         help=IMPORT_HELP,
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=formatter.RawTextHelpFormatter,
     )
     group = import_parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--sql", help="SQL query to snapshot", metavar="sql")
