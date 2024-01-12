@@ -486,7 +486,7 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
         for elem in plots_def:
             if isinstance(elem, str):
                 dvcfile_defs_dict[elem] = None
-            else:
+            elif elem:
                 k, v = next(iter(elem.items()))
                 dvcfile_defs_dict[k] = v
 
