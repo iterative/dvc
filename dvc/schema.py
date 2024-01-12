@@ -112,7 +112,7 @@ PLOT_DEFINITION = {
     Output.PARAM_PLOT_TITLE: str,
     Output.PARAM_PLOT_TEMPLATE: str,
 }
-SINGLE_PLOT_SCHEMA = {str: vol.Any(PLOT_DEFINITION, None)}
+SINGLE_PLOT_SCHEMA = {vol.Required(str): vol.Any(PLOT_DEFINITION, None)}
 ARTIFACTS = "artifacts"
 SINGLE_ARTIFACT_SCHEMA = vol.Schema({str: ARTIFACT_SCHEMA})
 FOREACH_IN = {
