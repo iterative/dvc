@@ -261,6 +261,7 @@ def _collect_baseline(
         ref_it = (ref for ref in iter(refs) if ref.startswith(str(ref_info)))
     else:
         ref_it = repo.scm.iter_refs(base=str(ref_info))
+    executors = repo.experiments.celery_queue.collect_success_executors([baseline_rev])
     for ref in ref_it:
         try:
             ref_info = ExpRefInfo.from_ref(ref)
@@ -272,7 +273,11 @@ def _collect_baseline(
         exps = list(collect_branch(repo, exp_rev, baseline_rev, **kwargs))
         if exps:
             exps[0].name = ref_info.name
-            yield ExpRange(exps, name=ref_info.name)
+            yield ExpRange(
+                exps,
+                name=ref_info.name,
+                executor=executors.get(str(ref_info)),
+            )
 
 
 def collect(
