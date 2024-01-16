@@ -486,11 +486,15 @@ class BaseStashQueue(ABC):
                 else:
                     config_dir = None
                 config_name = hydra_config.get("config_name", "config")
+                plugins_path = os.path.join(
+                    self.repo.root_dir, hydra_config.get("plugins_path", "")
+                )
                 compose_and_dump(
                     path,
                     config_dir,
                     config_module,
                     config_name,
+                    plugins_path,
                     overrides,
                 )
             else:

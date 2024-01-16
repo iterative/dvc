@@ -346,6 +346,7 @@ SCHEMA = {
         Exclusive("config_dir", "config_source"): str,
         Exclusive("config_module", "config_source"): str,
         "config_name": str,
+        "plugins_path": str,
     },
     "studio": {
         "token": str,

@@ -18,6 +18,7 @@ def compose_and_dump(
     config_dir: Optional[str],
     config_module: Optional[str],
     config_name: str,
+    plugins_path: str,
     overrides: List[str],
 ) -> None:
     """Compose Hydra config and dumpt it to `output_file`.
@@ -30,15 +31,23 @@ def compose_and_dump(
             Ignored if `config_dir` is not `None`.
         config_name: Name of the config file containing defaults,
             without the .yaml extension.
+        plugins_path: Path to auto discover Hydra plugins.
         overrides: List of `Hydra Override`_ patterns.
 
     .. _Hydra Override:
         https://hydra.cc/docs/advanced/override_grammar/basic/
     """
+    import sys
+
     from hydra import compose, initialize_config_dir, initialize_config_module
+    from hydra.core.plugins import Plugins
     from omegaconf import OmegaConf
 
     from .serialize import DUMPERS
+
+    sys.path.append(plugins_path)
+    Plugins.instance()
+    sys.path.pop()
 
     config_source = config_dir or config_module
     if not config_source:
