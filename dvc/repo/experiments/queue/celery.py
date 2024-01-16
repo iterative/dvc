@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
     from dvc.repo.experiments.executor.base import ExecutorResult
     from dvc.repo.experiments.refs import ExpRefInfo
-    from dvc.repo.experiments.serialize import ExpRange
+    from dvc.repo.experiments.serialize import ExpExecutor, ExpRange
     from dvc_task.app import FSApp
     from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
@@ -630,5 +630,34 @@ class LocalCeleryQueue(BaseStashQueue):
                     executor=ExpExecutor("failed", local=local_exec),
                     name=entry.name,
                 )
+            )
+        return result
+
+    def collect_success_executors(
+        self,
+        baseline_revs: Optional[Collection[str]],
+        **kwargs,
+    ) -> Dict[str, "ExpExecutor"]:
+        """Map exp refs to any available successful executors."""
+        from dvc.repo.experiments.serialize import ExpExecutor, LocalExpExecutor
+
+        result: Dict[str, "ExpExecutor"] = {}
+        for entry, exec_result in self.iter_success():
+            if baseline_revs and entry.baseline_rev not in baseline_revs:
+                continue
+            if not (exec_result and exec_result.ref_info):
+                continue
+            proc_info = self.proc.get(entry.stash_rev)
+            if proc_info:
+                local_exec: Optional[LocalExpExecutor] = LocalExpExecutor(
+                    log=proc_info.stdout,
+                    pid=proc_info.pid,
+                    returncode=proc_info.returncode,
+                    task_id=entry.stash_rev,
+                )
+            else:
+                local_exec = None
+            result[str(exec_result.ref_info)] = ExpExecutor(
+                "success", name="dvc-task", local=local_exec
             )
         return result
