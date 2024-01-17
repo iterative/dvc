@@ -46,8 +46,10 @@ def compose_and_dump(
     from .serialize import DUMPERS
 
     sys.path.append(plugins_path)
-    Plugins.instance()
-    sys.path.pop()
+    try:
+        Plugins.instance()
+    finally:
+        sys.path.pop()
 
     config_source = config_dir or config_module
     if not config_source:
