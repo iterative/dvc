@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional
 
 from funcy import first
 
@@ -14,6 +14,7 @@ logger = logger.getChild(__name__)
 
 def save(
     repo: "Repo",
+    targets: Optional[Iterable[str]] = None,
     name: Optional[str] = None,
     force: bool = False,
     include_untracked: Optional[List[str]] = None,
@@ -32,6 +33,7 @@ def save(
     try:
         save_result = executor.save(
             executor.info,
+            targets=targets,
             force=force,
             include_untracked=include_untracked,
             message=message,

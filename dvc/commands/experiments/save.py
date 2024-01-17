@@ -1,6 +1,6 @@
 import argparse
 
-from dvc.cli import formatter
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
@@ -14,6 +14,7 @@ class CmdExperimentsSave(CmdBase):
     def run(self):
         try:
             ref = self.repo.experiments.save(
+                targets=self.args.targets,
                 name=self.args.name,
                 force=self.args.force,
                 include_untracked=self.args.include_untracked,
@@ -41,6 +42,18 @@ def add_parser(experiments_subparsers, parent_parser):
         help=EXPERIMENTS_SAVE_HELP,
         formatter_class=formatter.RawDescriptionHelpFormatter,
     )
+    save_parser.add_argument(
+        "targets",
+        nargs="*",
+        help="""\
+Stages to save. 'dvc.yaml' by default.
+The targets can be path to a dvc.yaml file or `.dvc` file,
+or a stage name from dvc.yaml file from
+current working directory. To save a stage from dvc.yaml
+from other directories, the target must be a path followed by colon `:`
+and then the stage name name.
+""",
+    ).complete = completion.DVCFILES_AND_STAGE
     save_parser.add_argument(
         "-f",
         "--force",
