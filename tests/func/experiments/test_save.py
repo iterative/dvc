@@ -173,3 +173,19 @@ def test_exp_save_custom_message(tmp_dir, dvc, scm):
 
     exp = dvc.experiments.save(message="custom commit message")
     assert scm.gitpython.repo.commit(exp).message == "custom commit message"
+
+
+def test_exp_save_target(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
+    orig_dvclock = (tmp_dir / "dvc.lock").read_text()
+    (tmp_dir / "bar").write_text("modified")
+
+    tmp_dir.dvc_gen({"file": "orig"}, commit="add files")
+    orig_dvcfile = (tmp_dir / "file.dvc").read_text()
+    (tmp_dir / "file").write_text("modified")
+
+    dvc.experiments.save(["file"])
+    assert (tmp_dir / "bar").read_text() == "modified"
+    assert (tmp_dir / "dvc.lock").read_text() == orig_dvclock
+    assert (tmp_dir / "file").read_text() == "modified"
+    assert (tmp_dir / "file.dvc").read_text() != orig_dvcfile
