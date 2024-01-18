@@ -475,7 +475,9 @@ def test_experiments_rename_invalid(dvc, scm, mocker, capsys, caplog):
 
 
 def test_experiments_save(dvc, scm, mocker):
-    cli_args = parse_args(["exp", "save", "target", "--name", "exp-name", "--force"])
+    cli_args = parse_args(
+        ["exp", "save", "target", "--name", "exp-name", "--recursive", "--force"]
+    )
     assert cli_args.func == CmdExperimentsSave
 
     cmd = cli_args.func(cli_args)
@@ -487,6 +489,7 @@ def test_experiments_save(dvc, scm, mocker):
         cmd.repo,
         targets=["target"],
         name="exp-name",
+        recursive=True,
         force=True,
         include_untracked=[],
         message=None,
@@ -507,6 +510,7 @@ def test_experiments_save_message(dvc, scm, mocker, flag):
         cmd.repo,
         targets=[],
         name=None,
+        recursive=False,
         force=False,
         include_untracked=[],
         message="custom commit message",

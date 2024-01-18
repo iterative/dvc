@@ -269,6 +269,7 @@ class BaseExecutor(ABC):
         cls,
         info: "ExecutorInfo",
         targets: Optional[Iterable[str]] = None,
+        recursive: bool = False,
         force: bool = False,
         include_untracked: Optional[List[str]] = None,
         message: Optional[str] = None,
@@ -297,9 +298,13 @@ class BaseExecutor(ABC):
             stages = []
             if targets:
                 for target in targets:
-                    stages.append(dvc.commit(target, force=True, relink=False))
+                    stages.append(
+                        dvc.commit(
+                            target, recursive=recursive, force=True, relink=False
+                        )
+                    )
             else:
-                stages = dvc.commit([], force=True, relink=False)
+                stages = dvc.commit([], recursive=recursive, force=True, relink=False)
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
                 dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
