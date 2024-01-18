@@ -613,7 +613,7 @@ class Stage(params.StageParams):
         ) or self.is_partial_import:
             self._sync_import(dry, force, kwargs.get("jobs", None), no_download)
         elif not self.frozen and self.cmd:
-            self._run_stage(dry, force, allow_missing=allow_missing, **kwargs)
+            self._run_stage(dry, force, **kwargs)
         elif kwargs.get("pull"):
             logger.info("Pulling data for %s", self)
             self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
