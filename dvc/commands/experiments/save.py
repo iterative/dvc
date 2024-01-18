@@ -16,6 +16,7 @@ class CmdExperimentsSave(CmdBase):
             ref = self.repo.experiments.save(
                 targets=self.args.targets,
                 name=self.args.name,
+                recursive=self.args.recursive,
                 force=self.args.force,
                 include_untracked=self.args.include_untracked,
                 message=self.args.message,
@@ -45,15 +46,15 @@ def add_parser(experiments_subparsers, parent_parser):
     save_parser.add_argument(
         "targets",
         nargs="*",
-        help="""\
-Stages to save. 'dvc.yaml' by default.
-The targets can be path to a dvc.yaml file or `.dvc` file,
-or a stage name from dvc.yaml file from
-current working directory. To save a stage from dvc.yaml
-from other directories, the target must be a path followed by colon `:`
-and then the stage name name.
-""",
+        help=("Limit DVC caching to these .dvc files and stage names."),
     ).complete = completion.DVCFILES_AND_STAGE
+    save_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="Cache subdirectories of the specified directory.",
+    )
     save_parser.add_argument(
         "-f",
         "--force",
