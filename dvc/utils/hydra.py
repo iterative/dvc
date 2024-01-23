@@ -13,11 +13,24 @@ if TYPE_CHECKING:
 logger = logger.getChild(__name__)
 
 
+def load_hydra_plugins(plugins_path: str):
+    import sys
+
+    from hydra.core.plugins import Plugins
+
+    sys.path.append(plugins_path)
+    try:
+        Plugins.instance()
+    finally:
+        sys.path.remove(plugins_path)
+
+
 def compose_and_dump(
     output_file: "StrPath",
     config_dir: Optional[str],
     config_module: Optional[str],
     config_name: str,
+    plugins_path: str,
     overrides: List[str],
 ) -> None:
     """Compose Hydra config and dumpt it to `output_file`.
@@ -30,6 +43,7 @@ def compose_and_dump(
             Ignored if `config_dir` is not `None`.
         config_name: Name of the config file containing defaults,
             without the .yaml extension.
+        plugins_path: Path to auto discover Hydra plugins.
         overrides: List of `Hydra Override`_ patterns.
 
     .. _Hydra Override:
@@ -47,6 +61,7 @@ def compose_and_dump(
         initialize_config_dir if config_dir else initialize_config_module
     )
 
+    load_hydra_plugins(plugins_path)
     with initialize_config(  # type: ignore[attr-defined]
         config_source, version_base=None
     ):
