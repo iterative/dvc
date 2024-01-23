@@ -91,7 +91,7 @@ class ColorFormatter(logging.Formatter):
         self.log_colors = log_colors
         self.show_traceback = show_traceback
 
-    def format(self, record) -> str:  # noqa: A003, C901
+    def format(self, record) -> str:  # noqa: C901
         record.message = record.getMessage()
         msg = self.formatMessage(record)
 

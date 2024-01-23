@@ -176,7 +176,9 @@ def test_compose_and_dump_overrides(tmp_dir, suffix, overrides, expected):
     output_file = tmp_dir / f"params.{suffix}"
     config_dir = hydra_setup(tmp_dir, "conf", "config")
     config_module = None
-    compose_and_dump(output_file, config_dir, config_module, config_name, overrides)
+    compose_and_dump(
+        output_file, config_dir, config_module, config_name, str(tmp_dir), overrides
+    )
     assert output_file.parse() == expected
 
 
@@ -229,7 +231,9 @@ def test_compose_and_dump_dir_module(
     )
 
     with error_context:
-        compose_and_dump(output_file, config_dir, config_module, config_name, [])
+        compose_and_dump(
+            output_file, config_dir, config_module, config_name, str(tmp_dir), []
+        )
         assert output_file.parse() == config_content
 
 
@@ -241,7 +245,7 @@ def test_compose_and_dump_yaml_handles_string(tmp_dir):
     config.parent.mkdir()
     config.write_text("foo: 'no'\n")
     output_file = tmp_dir / "params.yaml"
-    compose_and_dump(output_file, str(config.parent), None, "config", [])
+    compose_and_dump(output_file, str(config.parent), None, "config", str(tmp_dir), [])
     assert output_file.read_text() == "foo: 'no'\n"
 
 
@@ -253,10 +257,36 @@ def test_compose_and_dump_resolves_interpolation(tmp_dir):
     config.parent.mkdir()
     config.dump({"data": {"root": "path/to/root", "raw": "${.root}/raw"}})
     output_file = tmp_dir / "params.yaml"
-    compose_and_dump(output_file, str(config.parent), None, "config", [])
+    compose_and_dump(output_file, str(config.parent), None, "config", str(tmp_dir), [])
     assert output_file.parse() == {
         "data": {"root": "path/to/root", "raw": "path/to/root/raw"}
     }
+
+
+def test_compose_and_dump_plugins(tmp_dir):
+    """Ensure Hydra plugins are loaded."""
+    from hydra.core.plugins import Plugins
+
+    from dvc.utils.hydra import compose_and_dump
+
+    # clear cached plugins
+    Plugins._instances.pop(Plugins, None)
+
+    config = tmp_dir / "conf" / "config.yaml"
+    config.parent.mkdir()
+    config.write_text("foo: '${plus_10:1}'\n")
+
+    plugins = tmp_dir / "hydra_plugins"
+    plugins.mkdir()
+    (plugins / "resolver.py").write_text(
+        """\
+from omegaconf import OmegaConf
+OmegaConf.register_new_resolver('plus_10', lambda x: x + 10)"""
+    )
+
+    output_file = tmp_dir / "params.yaml"
+    compose_and_dump(output_file, str(config.parent), None, "config", str(tmp_dir), [])
+    assert output_file.read_text() == "foo: 11\n"
 
 
 @pytest.mark.parametrize(
