@@ -260,9 +260,9 @@ SCHEMA = {
                     "exclude_shared_token_cache_credential": Bool,
                     "exclude_managed_identity_credential": Bool,
                     Optional("verify", default=False): Bool,
-                    "timeout": int,
-                    "read_timeout": int,
-                    "connection_timeout": int,
+                    "timeout": Coerce(int),
+                    "read_timeout": Coerce(int),
+                    "connection_timeout": Coerce(int),
                     **REMOTE_COMMON,
                 },
                 "oss": {

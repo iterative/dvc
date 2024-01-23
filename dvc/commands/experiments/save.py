@@ -1,6 +1,6 @@
 import argparse
 
-from dvc.cli import formatter
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
@@ -14,7 +14,9 @@ class CmdExperimentsSave(CmdBase):
     def run(self):
         try:
             ref = self.repo.experiments.save(
+                targets=self.args.targets,
                 name=self.args.name,
+                recursive=self.args.recursive,
                 force=self.args.force,
                 include_untracked=self.args.include_untracked,
                 message=self.args.message,
@@ -40,6 +42,18 @@ def add_parser(experiments_subparsers, parent_parser):
         description=append_doc_link(EXPERIMENTS_SAVE_HELP, "exp/save"),
         help=EXPERIMENTS_SAVE_HELP,
         formatter_class=formatter.RawDescriptionHelpFormatter,
+    )
+    save_parser.add_argument(
+        "targets",
+        nargs="*",
+        help=("Limit DVC caching to these .dvc files and stage names."),
+    ).complete = completion.DVCFILES_AND_STAGE
+    save_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="Cache subdirectories of the specified directory.",
     )
     save_parser.add_argument(
         "-f",

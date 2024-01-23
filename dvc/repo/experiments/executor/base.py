@@ -268,6 +268,8 @@ class BaseExecutor(ABC):
     def save(
         cls,
         info: "ExecutorInfo",
+        targets: Optional[Iterable[str]] = None,
+        recursive: bool = False,
         force: bool = False,
         include_untracked: Optional[List[str]] = None,
         message: Optional[str] = None,
@@ -293,7 +295,16 @@ class BaseExecutor(ABC):
             include_untracked.append(LOCK_FILE)
 
         try:
-            stages = dvc.commit([], force=True, relink=False)
+            stages = []
+            if targets:
+                for target in targets:
+                    stages.append(
+                        dvc.commit(
+                            target, recursive=recursive, force=True, relink=False
+                        )
+                    )
+            else:
+                stages = dvc.commit([], recursive=recursive, force=True, relink=False)
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
                 dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
