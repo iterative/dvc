@@ -106,6 +106,7 @@ class TestImportURLVersionAware:
         (remote_version_aware / "file").write_text("modified")
         assert dvc.status().get("file.dvc") == [
             {"changed deps": {"remote://upstream/file": "update available"}},
+            {"changed outs": {"file": "not in cache"}},
         ]
         dvc.update(str(tmp_dir / "file.dvc"))
         assert (tmp_dir / "file").read_text() == "modified"
@@ -137,6 +138,7 @@ class TestImportURLVersionAware:
         (remote_version_aware / "data_dir" / "new_file").write_text("new")
         assert dvc.status().get("data_dir.dvc") == [
             {"changed deps": {"remote://upstream/data_dir": "modified"}},
+            {"changed outs": {"data_dir": "not in cache"}},
         ]
         dvc.update(str(tmp_dir / "data_dir.dvc"))
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"

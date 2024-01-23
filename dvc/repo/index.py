@@ -104,7 +104,7 @@ def collect_files(
         dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
 
 
-def _load_data_from_tree(index, prefix, ws, key, tree):
+def _load_data_from_tree(index, prefix, ws, key, tree, hash_name):
     from dvc_data.index import DataIndexEntry, Meta
 
     parents = set()
@@ -117,7 +117,7 @@ def _load_data_from_tree(index, prefix, ws, key, tree):
         index[(*prefix, ws, *fkey)] = DataIndexEntry(
             key=fkey,
             meta=ometa,
-            hash_info=ohi,
+            hash_info=ohi if (ohi and ohi.name == hash_name) else None,
         )
 
     for parent in parents:
@@ -151,7 +151,7 @@ def _load_data_from_outs(index, prefix, outs):
             tree = out.get_obj()
 
         if tree is not None:
-            _load_data_from_tree(index, prefix, ws, key, tree)
+            _load_data_from_tree(index, prefix, ws, key, tree, out.hash_name)
 
         entry = DataIndexEntry(
             key=key,
@@ -193,16 +193,22 @@ def _load_storage_from_import(storage_map, key, out):
         return
 
     dep = out.stage.deps[0]
-    if not out.hash_info and (
-        not dep.hash_info or dep.hash_info.name != storage_map[key].cache.odb.hash_name
-    ):
-        # partial import
+    if not out.hash_info or dep.fs.version_aware:
+        if dep.meta and dep.meta.isdir:
+            meta_token = dep.hash_info.value
+        else:
+            meta_token = tokenize(dep.meta.to_dict())
+
         fs_cache = out.repo.cache.fs_cache
         storage_map.add_cache(
             FileStorage(
                 key,
                 fs_cache.fs,
-                fs_cache.fs.join(fs_cache.path, dep.fs.protocol, tokenize(dep.fs_path)),
+                fs_cache.fs.join(
+                    fs_cache.path,
+                    dep.fs.protocol,
+                    tokenize(dep.fs_path, meta_token),
+                ),
             )
         )
 
