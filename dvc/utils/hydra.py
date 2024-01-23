@@ -54,8 +54,6 @@ def compose_and_dump(
 
     from .serialize import DUMPERS
 
-    load_hydra_plugins(plugins_path)
-
     config_source = config_dir or config_module
     if not config_source:
         raise ValueError("Either `config_dir` or `config_module` should be provided.")
@@ -63,6 +61,7 @@ def compose_and_dump(
         initialize_config_dir if config_dir else initialize_config_module
     )
 
+    load_hydra_plugins(plugins_path)
     with initialize_config(  # type: ignore[attr-defined]
         config_source, version_base=None
     ):
