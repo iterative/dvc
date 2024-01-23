@@ -65,12 +65,12 @@ class CmdDataStatus(CmdDataBase):
                 logger.exception("")
                 return 1
 
-            if self.args.quiet:
-                return bool(st)
-
             if self.args.json:
                 ui.write_json(st)
                 return 0
+
+            if self.args.quiet:
+                return bool(st)
 
             if st:
                 self._show(st, indent)
