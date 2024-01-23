@@ -265,16 +265,25 @@ def test_compose_and_dump_resolves_interpolation(tmp_dir):
 
 def test_compose_and_dump_plugins(tmp_dir):
     """Ensure Hydra plugins are loaded."""
+    from hydra.core.plugins import Plugins
+
     from dvc.utils.hydra import compose_and_dump
+
+    # clear cached plugins
+    Plugins._instances.pop(Plugins, None)
 
     config = tmp_dir / "conf" / "config.yaml"
     config.parent.mkdir()
     config.write_text("foo: '${plus_10:1}'\n")
-    plugin_code = "from omegaconf import OmegaConf\n"
-    plugin_code += "OmegaConf.register_new_resolver('plus_10', lambda x: x + 10)"
-    plugin_file = tmp_dir / "hydra_plugins" / "resolver.py"
-    plugin_file.parent.mkdir()
-    plugin_file.write_text(plugin_code)
+
+    plugins = tmp_dir / "hydra_plugins"
+    plugins.mkdir()
+    (plugins / "resolver.py").write_text(
+        """\
+from omegaconf import OmegaConf
+OmegaConf.register_new_resolver('plus_10', lambda x: x + 10)"""
+    )
+
     output_file = tmp_dir / "params.yaml"
     compose_and_dump(output_file, str(config.parent), None, "config", str(tmp_dir), [])
     assert output_file.read_text() == "foo: 11\n"

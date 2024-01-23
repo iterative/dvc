@@ -13,6 +13,18 @@ if TYPE_CHECKING:
 logger = logger.getChild(__name__)
 
 
+def load_hydra_plugins(plugins_path: str):
+    import sys
+
+    from hydra.core.plugins import Plugins
+
+    sys.path.append(plugins_path)
+    try:
+        Plugins.instance()
+    finally:
+        sys.path.remove(plugins_path)
+
+
 def compose_and_dump(
     output_file: "StrPath",
     config_dir: Optional[str],
@@ -37,19 +49,12 @@ def compose_and_dump(
     .. _Hydra Override:
         https://hydra.cc/docs/advanced/override_grammar/basic/
     """
-    import sys
-
     from hydra import compose, initialize_config_dir, initialize_config_module
-    from hydra.core.plugins import Plugins
     from omegaconf import OmegaConf
 
     from .serialize import DUMPERS
 
-    sys.path.append(plugins_path)
-    try:
-        Plugins.instance()
-    finally:
-        sys.path.pop()
+    load_hydra_plugins(plugins_path)
 
     config_source = config_dir or config_module
     if not config_source:
