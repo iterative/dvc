@@ -13,7 +13,7 @@ class Annotation:
     PARAM_META: ClassVar[str] = "meta"
 
     desc: Optional[str] = None
-    type: Optional[str] = None  # noqa: A003
+    type: Optional[str] = None
     labels: List[str] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
 
@@ -31,7 +31,7 @@ class Artifact:
 
     path: str
     desc: Optional[str] = None
-    type: Optional[str] = None  # noqa: A003
+    type: Optional[str] = None
     labels: List[str] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
 
