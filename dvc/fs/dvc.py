@@ -532,6 +532,15 @@ class DVCFileSystem(FileSystem):
     def fs(self) -> "_DVCFileSystem":
         return _DVCFileSystem(**self.fs_args)
 
+    @property
+    def immutable(self):
+        from dvc.scm import NoSCM
+
+        if isinstance(self.fs.repo.scm, NoSCM):
+            return False
+
+        return self.fs._repo_kwargs.get("rev") == self.fs.repo.get_rev()
+
     def getcwd(self):
         return self.fs.getcwd()
 

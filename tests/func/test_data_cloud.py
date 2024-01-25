@@ -277,6 +277,28 @@ def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
 
 
+def test_pull_partial_import_missing(tmp_dir, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
+
+    (local_workspace / "file").unlink()
+    with pytest.raises(CheckoutError):
+        dvc.pull("file")
+    assert not dst.exists()
+
+
+def test_pull_partial_import_modified(tmp_dir, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
+
+    local_workspace.gen("file", "updated file content")
+    with pytest.raises(CheckoutError):
+        dvc.pull("file")
+    assert not dst.exists()
+
+
 def test_pull_external_dvc_imports_mixed(tmp_dir, dvc, scm, erepo_dir, local_remote):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="first")
