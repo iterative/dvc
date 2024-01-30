@@ -8,7 +8,7 @@ from contextlib import contextmanager, suppress
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from threading import Thread
-from typing import Dict, Iterator
+from typing import ClassVar, Dict, Iterator
 
 import psutil
 import pytest
@@ -42,7 +42,7 @@ UPDATER_INFO_STR = json.dumps(UPDATER_INFO).encode("utf8")
 def make_request_handler():
     class RequestHandler(SimpleHTTPRequestHandler):
         # save requests count for each method
-        hits: Dict[str, int] = defaultdict(int)
+        hits: ClassVar[Dict[str, int]] = defaultdict(int)
 
         def log_message(self, format, *args) -> None:  # noqa: A002
             super().log_message(format, *args)

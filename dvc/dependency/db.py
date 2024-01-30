@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Iterator, Optional
 
 from funcy import compact, log_durations
 
@@ -46,7 +46,7 @@ class DbDependency(AbstractDependency):
     PARAM_QUERY = "query"
     PARAM_TABLE = "table"
     PARAM_FILE_FORMAT = "file_format"
-    DB_SCHEMA = {
+    DB_SCHEMA: ClassVar[Dict] = {
         PARAM_DB: {
             PARAM_QUERY: str,
             PARAM_CONNECTION: str,
@@ -110,6 +110,7 @@ class DbDependency(AbstractDependency):
             raise DvcException(f"connection {self.connection} not found in config")
 
         file_format = file_format or self.db_info.get(self.PARAM_FILE_FORMAT, "csv")
+        assert file_format
         with client(config) as db:
             msg = "Testing connection"
             with log_durations(logger.debug, msg), ui.status(msg) as status:

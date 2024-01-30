@@ -322,7 +322,7 @@ class Context(CtxDict):
                 continue
             params_file = self._tracked_data[source]
             keys = [keys] if isinstance(keys, str) else keys
-            params_file.update({key: node.value for key in keys})
+            params_file.update(dict.fromkeys(keys, node.value))
 
     def select(self, key: str, unwrap: bool = False):
         """Select the item using key, similar to `__getitem__`

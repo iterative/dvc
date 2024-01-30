@@ -7,6 +7,7 @@ from .scm import all_branches, all_commits, all_tags
 from .show import metrics_show, params_show
 
 __all__ = [
+    "DVCFileSystem",
     "all_branches",
     "all_commits",
     "all_tags",
@@ -14,9 +15,8 @@ __all__ = [
     "exp_save",
     "exp_show",
     "get_url",
+    "metrics_show",
     "open",
     "params_show",
-    "metrics_show",
     "read",
-    "DVCFileSystem",
 ]

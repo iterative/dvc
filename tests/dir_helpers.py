@@ -49,11 +49,11 @@ import os
 import pytest
 
 __all__ = [
-    "run_head",
     "erepo_dir",
     "git_dir",
-    "git_upstream",
     "git_downstream",
+    "git_upstream",
+    "run_head",
 ]
 
 

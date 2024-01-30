@@ -42,7 +42,7 @@ def test_collect_stable_sorting(dvc, scm, mocker):
         # shuffle collection order
         random.shuffle(exp_ranges)
 
-        return {baseline_rev: exp_ranges for baseline_rev in baseline_revs}
+        return dict.fromkeys(baseline_revs, exp_ranges)
 
     mocker.patch("dvc.repo.experiments.collect.collect_queued", collect_queued_patched)
     mocker.patch("dvc.repo.experiments.collect.collect_active", return_value={})

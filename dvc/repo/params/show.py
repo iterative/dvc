@@ -76,7 +76,7 @@ def _collect_params(
         path = fs.from_os_path(param)
         # make paths absolute for DVCFileSystem
         repo_path = f"{fs.root_marker}{path}"
-        ret.update({file: _params for file in expand_paths(fs, [repo_path])})
+        ret.update(dict.fromkeys(expand_paths(fs, [repo_path]), _params))
     return ret
 
 

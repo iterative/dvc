@@ -2,7 +2,7 @@
 import logging
 import sys
 from threading import RLock
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar, Dict
 
 from tqdm import tqdm
 
@@ -33,7 +33,7 @@ class Tqdm(tqdm):
         " [{elapsed}<{remaining}, {rate_fmt:>11}]"
     )
     BAR_FMT_NOTOTAL = "{desc}{bar:b}|{postfix[info]}{n_fmt} [{elapsed}, {rate_fmt:>11}]"
-    BYTES_DEFAULTS = {
+    BYTES_DEFAULTS: ClassVar[Dict[str, Any]] = {
         "unit": "B",
         "unit_scale": True,
         "unit_divisor": 1024,
