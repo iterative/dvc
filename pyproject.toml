@@ -248,8 +248,8 @@ show-fixes = true
 
 [tool.ruff.lint]
 ignore = [
-    "N818", "S101", "ISC001", "PT004", "PT007", "RET501", "RET502", "RET503", "SIM105", "SIM108",
-    "SIM117", "TRY003", "TRY200", "TRY300", "PLR2004", "PLW2901",
+    "N818", "S101", "ISC001", "PT004", "PT007", "RET502", "RET503", "SIM105", "SIM108", "SIM117",
+    "TRY003", "TRY200", "TRY300", "PLR2004", "PLW2901",
 ]
 select = [
     "F", "E", "W", "C90", "I", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10",

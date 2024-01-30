@@ -170,7 +170,7 @@ def _spawn(
 
 def daemonize(args: List[str], executable: Union[None, str, List[str]] = None) -> None:
     if os.name not in ("posix", "nt"):
-        return None
+        return
 
     if os.environ.get(DVC_DAEMON):
         logger.debug("skipping launching a new daemon.")
