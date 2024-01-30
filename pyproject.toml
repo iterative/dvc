@@ -86,6 +86,7 @@ lint = [
     "types-tabulate",
     "types-toml",
     "types-tqdm",
+    "typing-extensions",
 ]
 oss = ["dvc-oss>=3,<4"]
 s3 = ["dvc-s3>=3,<4"]
