@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, ClassVar, Dict
+from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urlparse
 
 from funcy import compact, merge
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class DatasetDependency(AbstractDependency):
     PARAM_DATASET = "dataset"
-    DATASET_SCHEMA: ClassVar[Dict] = {PARAM_DATASET: dict}
+    DATASET_SCHEMA: ClassVar[dict] = {PARAM_DATASET: dict}
 
     def __init__(self, stage: "Stage", p, info, *args, **kwargs):
         super().__init__(stage, info, *args, **kwargs)
@@ -48,7 +48,7 @@ class DatasetDependency(AbstractDependency):
 
     def workspace_status(self):
         registered = self.repo.index.datasets.get(self.name, {})
-        info: Dict[str, Any] = self.hash_info.value if self.hash_info else {}  # type: ignore[assignment]
+        info: dict[str, Any] = self.hash_info.value if self.hash_info else {}  # type: ignore[assignment]
         if info != registered:
             return {str(self): "modified"}
         return {}
