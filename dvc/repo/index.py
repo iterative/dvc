@@ -288,6 +288,7 @@ class Index:
         plots: Optional[dict[str, list[str]]] = None,
         params: Optional[dict[str, Any]] = None,
         artifacts: Optional[dict[str, Any]] = None,
+        datasets: Optional[dict[str, list[dict[str, Any]]]] = None,
     ) -> None:
         self.repo = repo
         self.stages = stages or []
@@ -295,6 +296,7 @@ class Index:
         self._plots = plots or {}
         self._params = params or {}
         self._artifacts = artifacts or {}
+        self._datasets: dict[str, list[dict[str, Any]]] = datasets or {}
         self._collected_targets: dict[int, list["StageInfo"]] = {}
 
     @cached_property
@@ -318,6 +320,7 @@ class Index:
         plots = {}
         params = {}
         artifacts = {}
+        datasets = {}
 
         onerror = onerror or repo.stage_collection_error_handler
         for _, idx in collect_files(repo, onerror=onerror):
@@ -326,6 +329,7 @@ class Index:
             plots.update(idx._plots)
             params.update(idx._params)
             artifacts.update(idx._artifacts)
+            datasets.update(idx._datasets)
         return cls(
             repo,
             stages=stages,
@@ -333,6 +337,7 @@ class Index:
             plots=plots,
             params=params,
             artifacts=artifacts,
+            datasets=datasets,
         )
 
     @classmethod
@@ -347,6 +352,7 @@ class Index:
             plots={path: dvcfile.plots} if dvcfile.plots else {},
             params={path: dvcfile.params} if dvcfile.params else {},
             artifacts={path: dvcfile.artifacts} if dvcfile.artifacts else {},
+            datasets={path: dvcfile.datasets} if dvcfile.datasets else {},
         )
 
     def update(self, stages: Iterable["Stage"]) -> "Index":
@@ -361,6 +367,7 @@ class Index:
             plots=self._plots,
             params=self._params,
             artifacts=self._artifacts,
+            datasets=self._datasets,
         )
 
     @cached_property
@@ -397,6 +404,11 @@ class Index:
     def outs(self) -> Iterator["Output"]:
         for stage in self.stages:
             yield from stage.outs
+
+    @cached_property
+    def datasets(self) -> dict[str, dict[str, Any]]:
+        datasets = chain.from_iterable(self._datasets.values())
+        return {dataset["name"]: dataset for dataset in datasets}
 
     @cached_property
     def out_data_keys(self) -> dict[str, set["DataIndexKey"]]:

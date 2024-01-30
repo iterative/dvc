@@ -5,6 +5,7 @@ from typing import Any
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
+from .dataset import DatasetDependency
 from .db import DbDependency
 from .param import ParamsDependency
 from .repo import RepoDependency
@@ -33,6 +34,8 @@ def _get(stage, p, info, **kwargs):
         return DbDependency(stage, d)
 
     assert p
+    if DatasetDependency.is_dataset(p):
+        return DatasetDependency(stage, p, info)
     if repo:
         return RepoDependency(repo, stage, p, info)
     return Dependency(stage, p, info, **kwargs)

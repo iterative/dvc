@@ -73,6 +73,10 @@ class StageLoader(Mapping):
             info = info.copy()
             info.pop("path", None)
 
+            if isinstance(item, dependency.DatasetDependency):
+                item.fill_values(info.get(dependency.DatasetDependency.PARAM_DATASET))
+                continue
+
             hash_name = info.pop(Output.PARAM_HASH, None)
             item.meta = Meta.from_dict(merge_file_meta_from_cloud(info))
             item.hash_name, item.hash_info = item._compute_hash_info_from_meta(
