@@ -5,13 +5,14 @@ import logging
 import os
 import subprocess
 import sys
+from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from dvc.log import logger
 
 if TYPE_CHECKING:
-    from typing import ContextManager
+    from contextlib import AbstractContextManager
 
 from dvc.env import DVC_DAEMON, DVC_DAEMON_LOGFILE
 from dvc.utils import fix_env, is_binary
@@ -55,7 +56,7 @@ def _win_detached_subprocess(args: Sequence[str], **kwargs) -> int:
     return popen.pid
 
 
-def _get_dvc_args() -> List[str]:
+def _get_dvc_args() -> list[str]:
     args = [sys.executable]
     if not is_binary():
         root_dir = os.path.abspath(os.path.dirname(__file__))
@@ -136,7 +137,7 @@ def _map_log_level_to_flag() -> Optional[str]:
     return flags.get(logger.getEffectiveLevel())
 
 
-def daemon(args: List[str]) -> None:
+def daemon(args: list[str]) -> None:
     """Launch a `dvc daemon` command in a detached process.
 
     Args:
@@ -148,12 +149,12 @@ def daemon(args: List[str]) -> None:
 
 
 def _spawn(
-    args: List[str],
-    executable: Optional[Union[str, List[str]]] = None,
+    args: list[str],
+    executable: Optional[Union[str, list[str]]] = None,
     env: Optional[Mapping[str, str]] = None,
     output_file: Optional[str] = None,
 ) -> int:
-    file: "ContextManager[Any]" = nullcontext()
+    file: "AbstractContextManager[Any]" = nullcontext()
     kwargs = {}
     if output_file:
         file = open(output_file, "ab")  # noqa: SIM115
@@ -168,7 +169,7 @@ def _spawn(
         return _detached_subprocess(executable + args, env=env, **kwargs)
 
 
-def daemonize(args: List[str], executable: Union[None, str, List[str]] = None) -> None:
+def daemonize(args: list[str], executable: Union[None, str, list[str]] = None) -> None:
     if os.name not in ("posix", "nt"):
         return
 

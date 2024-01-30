@@ -6,12 +6,8 @@ from itertools import product
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    List,
     NamedTuple,
     Optional,
-    Tuple,
-    Type,
     Union,
 )
 
@@ -85,7 +81,7 @@ def format_and_raise(exc: Exception, msg: str, path: str) -> "NoReturn":
 
 
 def _reraise_err(
-    exc_cls: Type[Exception], *args, from_exc: Optional[Exception] = None
+    exc_cls: type[Exception], *args, from_exc: Optional[Exception] = None
 ) -> "NoReturn":
     err = exc_cls(*args)
     if from_exc and logger.isEnabledFor(logging.DEBUG):
@@ -108,7 +104,7 @@ def is_map_or_seq(data: Any) -> bool:
     return not isinstance(data, str) and _is_map_or_seq(data)
 
 
-def split_group_name(name: str) -> Tuple[str, Optional[str]]:
+def split_group_name(name: str) -> tuple[str, Optional[str]]:
     group, *keys = name.rsplit(JOIN, maxsplit=1)
     return group, first(keys)
 
@@ -161,14 +157,14 @@ class DataResolver:
 
         # we use `tracked_vars` to keep a dictionary of used variables
         # by the interpolated entries.
-        self.tracked_vars: Dict[str, Mapping] = {}
+        self.tracked_vars: dict[str, Mapping] = {}
 
         stages_data = d.get(STAGES_KWD, {})
         # we wrap the definitions into:
         # ForeachDefinition, MatrixDefinition, and EntryDefinition
         # that helps us to optimize, cache and selectively load each one of
         # them as we need, and simplify all of this DSL/parsing logic.
-        self.definitions: Dict[str, Definition] = {
+        self.definitions: dict[str, Definition] = {
             name: make_definition(self, name, definition)
             for name, definition in stages_data.items()
         }
@@ -376,7 +372,7 @@ class ForeachDefinition:
                 f" in '{self.relpath}': expected list/dictionary, got " + typ
             )
 
-    def _warn_if_overwriting(self, keys: List[str]):
+    def _warn_if_overwriting(self, keys: list[str]):
         warn_for = [k for k in keys if k in self.context]
         if warn_for:
             linking_verb = "is" if len(warn_for) == 1 else "are"
@@ -390,7 +386,7 @@ class ForeachDefinition:
                 self.name,
             )
 
-    def _inserted_keys(self, iterable) -> List[str]:
+    def _inserted_keys(self, iterable) -> list[str]:
         keys = [self.pair.value]
         if isinstance(iterable, Mapping):
             keys.append(self.pair.key)
@@ -490,10 +486,10 @@ class MatrixDefinition:
         return self._template
 
     @cached_property
-    def resolved_iterable(self) -> Dict[str, List]:
+    def resolved_iterable(self) -> dict[str, list]:
         return self._resolve_matrix_data()
 
-    def _resolve_matrix_data(self) -> Dict[str, List]:
+    def _resolve_matrix_data(self) -> dict[str, list]:
         try:
             iterable = self.context.resolve(self.matrix_data, unwrap=False)
         except (ContextError, ParseError) as exc:
@@ -504,7 +500,7 @@ class MatrixDefinition:
         self._warn_if_overwriting([self.pair.key, self.pair.value])
         return iterable
 
-    def _warn_if_overwriting(self, keys: List[str]):
+    def _warn_if_overwriting(self, keys: list[str]):
         warn_for = [k for k in keys if k in self.context]
         if warn_for:
             linking_verb = "is" if len(warn_for) == 1 else "are"
@@ -519,16 +515,16 @@ class MatrixDefinition:
             )
 
     @cached_property
-    def normalized_iterable(self) -> Dict[str, "DictStrAny"]:
+    def normalized_iterable(self) -> dict[str, "DictStrAny"]:
         """Convert sequence to Mapping with keys normalized."""
         iterable = self.resolved_iterable
         assert isinstance(iterable, Mapping)
 
-        ret: Dict[str, "DictStrAny"] = {}
+        ret: dict[str, "DictStrAny"] = {}
         matrix = {key: enumerate(v) for key, v in iterable.items()}
         for combination in product(*matrix.values()):
             d: "DictStrAny" = {}
-            fragments: List[str] = []
+            fragments: list[str] = []
             for k, (i, v) in zip(matrix.keys(), combination):
                 d[k] = v
                 fragments.append(f"{k}{i}" if is_map_or_seq(v) else to_str(v))
@@ -540,7 +536,7 @@ class MatrixDefinition:
     def has_member(self, key: str) -> bool:
         return key in self.normalized_iterable
 
-    def get_generated_names(self) -> List[str]:
+    def get_generated_names(self) -> list[str]:
         return list(map(self._generate_name, self.normalized_iterable))
 
     def _generate_name(self, key: str) -> str:

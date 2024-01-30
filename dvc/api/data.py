@@ -1,6 +1,6 @@
 from contextlib import _GeneratorContextManager as GCM
 from contextlib import contextmanager
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from funcy import reraise
 
@@ -39,7 +39,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     from dvc.config import NoRemoteError
     from dvc_data.index import StorageKeyError
 
-    repo_kwargs: Dict[str, Any] = {}
+    repo_kwargs: dict[str, Any] = {}
     if remote:
         repo_kwargs["config"] = {"core": {"remote": remote}}
     with Repo.open(
@@ -74,8 +74,8 @@ def open(  # noqa: A001
     remote: Optional[str] = None,
     mode: str = "r",
     encoding: Optional[str] = None,
-    config: Optional[Dict[str, Any]] = None,
-    remote_config: Optional[Dict[str, Any]] = None,
+    config: Optional[dict[str, Any]] = None,
+    remote_config: Optional[dict[str, Any]] = None,
 ):
     """
     Opens a file tracked in a DVC project.
@@ -233,7 +233,7 @@ def _open(
     config=None,
     remote_config=None,
 ):
-    repo_kwargs: Dict[str, Any] = {
+    repo_kwargs: dict[str, Any] = {
         "subrepos": True,
         "uninitialized": True,
         "remote": remote,

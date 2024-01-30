@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Mapping, Set
+from collections.abc import Mapping
+from typing import Any
 
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
@@ -66,12 +67,12 @@ def loads_from(stage, s_list, erepo=None, fs_config=None, db=None):
     ]
 
 
-def _merge_params(s_list) -> Dict[str, List[str]]:
+def _merge_params(s_list) -> dict[str, list[str]]:
     d = defaultdict(list)
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
 
     # figure out completely tracked params file, and ignore specific keys
-    wholly_tracked: Set[str] = set()
+    wholly_tracked: set[str] = set()
     for key in s_list:
         if not isinstance(key, dict):
             continue

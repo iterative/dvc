@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 
 def du(
@@ -6,7 +6,7 @@ def du(
     path: Optional[str] = None,
     rev: Optional[str] = None,
     summarize: bool = False,
-    config: Union[None, Dict[str, Any], str] = None,
+    config: Union[None, dict[str, Any], str] = None,
     remote: Optional[str] = None,
     remote_config: Optional[dict] = None,
 ):

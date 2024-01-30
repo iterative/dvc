@@ -1,6 +1,6 @@
 import os
 import pathlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from funcy import concat, first, lsplit, rpartial
 
@@ -210,7 +210,7 @@ def get_dump(stage: "Stage", **kwargs):
 
 def split_params_deps(
     stage: "Stage",
-) -> Tuple[List["ParamsDependency"], List["Dependency"]]:
+) -> tuple[list["ParamsDependency"], list["Dependency"]]:
     from dvc.dependency import ParamsDependency
 
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
@@ -265,7 +265,7 @@ def check_stage_exists(repo: "Repo", stage: Union["Stage", "PipelineStage"], pat
 
 def validate_kwargs(
     single_stage: bool = False, fname: Optional[str] = None, **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Prepare, validate and process kwargs passed from cli"""
     cmd = kwargs.get("cmd")
     if not cmd and not single_stage:
@@ -288,11 +288,11 @@ def validate_kwargs(
     return kwargs
 
 
-def _get_stage_files(stage: "Stage") -> List[str]:
+def _get_stage_files(stage: "Stage") -> list[str]:
     from dvc.dvcfile import ProjectFile
     from dvc.utils import relpath
 
-    ret: List[str] = []
+    ret: list[str] = []
     file = stage.dvcfile
     ret.append(file.relpath)
     if isinstance(file, ProjectFile):

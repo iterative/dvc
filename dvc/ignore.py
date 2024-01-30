@@ -2,7 +2,7 @@ import os
 import re
 from collections import namedtuple
 from itertools import chain, groupby, takewhile
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
@@ -62,7 +62,7 @@ class DvcIgnorePatterns(DvcIgnore):
 
         return cls(path_spec_lines, dirname, fs.sep)
 
-    def __call__(self, root: List[str], dirs: List[str], files: List[str]):
+    def __call__(self, root: list[str], dirs: list[str], files: list[str]):
         files = [f for f in files if not self.matches(root, f)]
         dirs = [d for d in dirs if not self.matches(root, d, True)]
 
@@ -226,7 +226,7 @@ class DvcIgnoreFilter:
         self,
         dirname: str,
         ignore_trie: Trie,
-        dnames: Optional["List"],
+        dnames: Optional["list"],
         ignore_subrepos: bool,
     ) -> None:
         self._update_trie(dirname, ignore_trie)
@@ -331,7 +331,7 @@ class DvcIgnoreFilter:
             yield from fs.find(path)
 
     def _get_trie_pattern(
-        self, dirname, dnames: Optional["List"] = None, ignore_subrepos=True
+        self, dirname, dnames: Optional["list"] = None, ignore_subrepos=True
     ) -> Optional["DvcIgnorePatterns"]:
         if ignore_subrepos:
             ignores_trie = self.ignores_trie_fs

@@ -1,6 +1,6 @@
 """Exceptions raised by the dvc."""
 import errno
-from typing import TYPE_CHECKING, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Optional
 
 from dvc.utils import format_link
 
@@ -34,7 +34,7 @@ class OutputDuplicationError(DvcException):
         stages (list): list of paths to stages.
     """
 
-    def __init__(self, output: str, stages: Set["Stage"]):
+    def __init__(self, output: str, stages: set["Stage"]):
         from funcy import first
 
         assert isinstance(output, str)
@@ -241,7 +241,7 @@ class UploadError(FileTransferError):
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos: List[str], stats: Dict[str, List[str]]):
+    def __init__(self, target_infos: list[str], stats: dict[str, list[str]]):
         from dvc.utils import error_link
 
         self.target_infos = target_infos

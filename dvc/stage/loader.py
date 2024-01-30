@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from funcy import get_in, lcat, once, project
 
@@ -17,6 +17,8 @@ from .params import StageParams
 from .utils import fill_stage_dependencies, resolve_paths
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from dvc.dvcfile import ProjectFile, SingleStageFile
 
 logger = logger.getChild(__name__)
@@ -39,7 +41,7 @@ class StageLoader(Mapping):
         self._lockfile_data = lockfile_data.get("stages", {})
 
     @cached_property
-    def lockfile_data(self) -> Dict[str, Any]:
+    def lockfile_data(self) -> dict[str, Any]:
         if not self._lockfile_data:
             logger.debug("Lockfile for '%s' not found", self.dvcfile.relpath)
         return self._lockfile_data
@@ -53,7 +55,7 @@ class StageLoader(Mapping):
         from dvc.output import Output, merge_file_meta_from_cloud
 
         assert isinstance(lock_data, dict)
-        items: Iterable[Tuple[str, "Output"]] = chain(
+        items: Iterable[tuple[str, "Output"]] = chain(
             ((StageParams.PARAM_DEPS, dep) for dep in stage.deps),
             ((StageParams.PARAM_OUTS, out) for out in stage.outs),
         )
@@ -174,7 +176,7 @@ class SingleStageLoader(Mapping):
     def __init__(
         self,
         dvcfile: "SingleStageFile",
-        stage_data: Dict[Any, str],
+        stage_data: dict[Any, str],
         stage_text: Optional[str] = None,
     ):
         self.dvcfile = dvcfile
@@ -196,7 +198,7 @@ class SingleStageLoader(Mapping):
     def load_stage(
         cls,
         dvcfile: "SingleStageFile",
-        d: Dict[str, Any],
+        d: dict[str, Any],
         stage_text: Optional[str],
     ) -> Stage:
         path, wdir = resolve_paths(

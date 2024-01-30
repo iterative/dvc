@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
+from collections.abc import Collection, Generator
+from typing import TYPE_CHECKING, Optional
 
 from funcy import first
 
@@ -96,11 +97,11 @@ class TempDirQueue(WorkspaceQueue):
         self,
         entry: QueueEntry,
         executor: "BaseExecutor",
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
-    ) -> Dict[str, Dict[str, str]]:
-        results: Dict[str, Dict[str, str]] = defaultdict(dict)
+    ) -> dict[str, dict[str, str]]:
+        results: dict[str, dict[str, str]] = defaultdict(dict)
         exec_name = self._EXEC_NAME or entry.stash_rev
         infofile = self.get_infofile_path(exec_name)
         try:
@@ -135,7 +136,7 @@ class TempDirQueue(WorkspaceQueue):
         exp: "Experiments",
         executor: "BaseExecutor",
         exec_result: "ExecutorResult",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         return BaseStashQueue.collect_executor(exp, executor, exec_result)
 
     def collect_active_data(
@@ -143,7 +144,7 @@ class TempDirQueue(WorkspaceQueue):
         baseline_revs: Optional[Collection[str]],
         fetch_refs: bool = False,
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         from dvc.repo import Repo
         from dvc.repo.experiments.collect import collect_exec_branch
         from dvc.repo.experiments.serialize import (
@@ -152,7 +153,7 @@ class TempDirQueue(WorkspaceQueue):
             LocalExpExecutor,
         )
 
-        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        result: dict[str, list[ExpRange]] = defaultdict(list)
         for entry in self.iter_active():
             if baseline_revs and entry.baseline_rev not in baseline_revs:
                 continue

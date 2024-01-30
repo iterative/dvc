@@ -2,7 +2,6 @@ import logging
 import re
 from argparse import SUPPRESS, ArgumentParser
 from itertools import takewhile
-from typing import Tuple
 
 import pytest
 import shtab
@@ -12,10 +11,10 @@ from dvc.cli.parser import get_main_parser
 
 
 def command_tuples():
-    root: Tuple[str, ...] = ()
+    root: tuple[str, ...] = ()
     commands = [root]
 
-    def recurse_parser(parser: ArgumentParser, parents: Tuple[str, ...] = root) -> None:
+    def recurse_parser(parser: ArgumentParser, parents: tuple[str, ...] = root) -> None:
         for positional in parser._get_positional_actions():
             if positional.help != SUPPRESS and isinstance(positional.choices, dict):
                 public_cmds = shtab.get_public_subcommands(positional)

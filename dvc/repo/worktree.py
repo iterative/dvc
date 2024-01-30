@@ -1,5 +1,6 @@
+from collections.abc import Iterable
 from functools import partial
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from funcy import first
 
@@ -35,7 +36,7 @@ def worktree_view_by_remotes(
     targets: Optional["TargetType"] = None,
     push: bool = False,
     **kwargs: Any,
-) -> Iterable[Tuple[Optional[str], "IndexView"]]:
+) -> Iterable[tuple[Optional[str], "IndexView"]]:
     from dvc.repo.index import IndexView
 
     def outs_filter(view: "IndexView", remote: Optional[str]):
@@ -176,7 +177,7 @@ def update_worktree_stages(
         outs_filter=outs_filter,
     )
     local_index = view.data["repo"]
-    remote_indexes: Dict[str, Tuple["Remote", "DataIndex"]] = {}
+    remote_indexes: dict[str, tuple["Remote", "DataIndex"]] = {}
     for stage in view.stages:
         for out in stage.outs:
             _update_worktree_out(repo, out, local_index, remote_indexes)
@@ -187,7 +188,7 @@ def _update_worktree_out(
     repo: "Repo",
     out: "Output",
     local_index: Union["DataIndex", "DataIndexView"],
-    remote_indexes: Dict[str, Tuple["Remote", "DataIndex"]],
+    remote_indexes: dict[str, tuple["Remote", "DataIndex"]],
 ):
     from dvc_data.index import build
 
@@ -283,7 +284,7 @@ def _get_diff_indexes(
     out: "Output",
     local_index: Union["DataIndex", "DataIndexView"],
     remote_index: Union["DataIndex", "DataIndexView"],
-) -> Tuple["DataIndex", "DataIndex"]:
+) -> tuple["DataIndex", "DataIndex"]:
     from dvc_data.index import DataIndex
 
     _, key = out.index_key

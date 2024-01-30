@@ -1,6 +1,7 @@
 """Manages dvc remotes that user can use with push/pull/status commands."""
 
-from typing import TYPE_CHECKING, Iterable, Optional, Set, Tuple
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 from dvc.config import NoRemoteError, RemoteConfigError
 from dvc.log import logger
@@ -50,7 +51,7 @@ class Remote:
 
 def _split_legacy_hash_infos(
     hash_infos: Iterable["HashInfo"],
-) -> Tuple[Set["HashInfo"], Set["HashInfo"]]:
+) -> tuple[set["HashInfo"], set["HashInfo"]]:
     from dvc.cachemgr import LEGACY_HASH_NAMES
 
     legacy = set()

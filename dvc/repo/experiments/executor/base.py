@@ -3,6 +3,7 @@ import os
 import pickle
 import shutil
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from enum import IntEnum
@@ -11,15 +12,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
     NamedTuple,
     Optional,
-    Tuple,
-    Type,
-    TypeVar,
     Union,
 )
 
@@ -40,6 +34,8 @@ from dvc.utils.studio import env_to_config
 
 if TYPE_CHECKING:
     from queue import Queue
+
+    from typing_extensions import Self
 
     from dvc.repo import Repo
     from dvc.repo.experiments.stash import ExpStashEntry
@@ -112,9 +108,6 @@ class ExecutorInfo:
         return cls.from_dict(load_json(filename))
 
 
-_T = TypeVar("_T", bound="BaseExecutor")
-
-
 class BaseExecutor(ABC):
     """Base class for executing experiments in parallel.
 
@@ -185,7 +178,7 @@ class BaseExecutor(ABC):
     @property
     def info(self) -> "ExecutorInfo":
         if self.result is not None:
-            result_dict: Dict[str, Any] = {
+            result_dict: dict[str, Any] = {
                 "result_hash": self.result.exp_hash,
                 "result_ref": (
                     str(self.result.ref_info) if self.result.ref_info else None
@@ -207,7 +200,7 @@ class BaseExecutor(ABC):
         )
 
     @classmethod
-    def from_info(cls: Type[_T], info: "ExecutorInfo") -> _T:
+    def from_info(cls, info: "ExecutorInfo") -> "Self":
         if info.result_hash:
             result: Optional["ExecutorResult"] = ExecutorResult(
                 info.result_hash,
@@ -229,21 +222,21 @@ class BaseExecutor(ABC):
     @classmethod
     @abstractmethod
     def from_stash_entry(
-        cls: Type[_T],
+        cls,
         repo: "Repo",
         entry: "ExpStashEntry",
         **kwargs,
-    ) -> _T:
+    ) -> "Self":
         pass
 
     @classmethod
     def _from_stash_entry(
-        cls: Type[_T],
+        cls,
         repo: "Repo",
         entry: "ExpStashEntry",
         root_dir: str,
         **kwargs,
-    ) -> _T:
+    ) -> "Self":
         return cls(
             root_dir=root_dir,
             dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
@@ -255,7 +248,7 @@ class BaseExecutor(ABC):
         )
 
     @classmethod
-    def _get_top_level_paths(cls, repo: "Repo") -> List["str"]:
+    def _get_top_level_paths(cls, repo: "Repo") -> list["str"]:
         return list(
             chain(
                 _collect_top_level_metrics(repo),
@@ -271,7 +264,7 @@ class BaseExecutor(ABC):
         targets: Optional[Iterable[str]] = None,
         recursive: bool = False,
         force: bool = False,
-        include_untracked: Optional[List[str]] = None,
+        include_untracked: Optional[list[str]] = None,
         message: Optional[str] = None,
     ) -> ExecutorResult:
         from dvc.dvcfile import LOCK_FILE
@@ -382,7 +375,7 @@ class BaseExecutor(ABC):
     def fetch_exps(
         self,
         dest_scm: "Git",
-        refs: List[str],
+        refs: list[str],
         force: bool = False,
         on_diverged: Optional[Callable[[str], None]] = None,
         **kwargs,
@@ -457,7 +450,7 @@ class BaseExecutor(ABC):
         infofile: Optional[str] = None,
         log_errors: bool = True,
         log_level: Optional[int] = None,
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
     ) -> "ExecutorResult":
@@ -565,7 +558,7 @@ class BaseExecutor(ABC):
         git_remote,
         repro_force,
         message: Optional[str] = None,
-    ) -> Tuple[Optional[str], Optional["ExpRefInfo"], bool]:
+    ) -> tuple[Optional[str], Optional["ExpRefInfo"], bool]:
         cls.commit(
             dvc.scm,
             exp_hash,
@@ -598,7 +591,7 @@ class BaseExecutor(ABC):
         info: "ExecutorInfo",
         infofile: Optional[str] = None,
         log_errors: bool = True,
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
@@ -790,7 +783,7 @@ class BaseExecutor(ABC):
             raise DvcException(f"Unable to copy '{src}' to '{dst}'.") from exc
 
     @contextmanager
-    def set_temp_refs(self, scm: "Git", temp_dict: Dict[str, str]):
+    def set_temp_refs(self, scm: "Git", temp_dict: dict[str, str]):
         try:
             for ref, rev in temp_dict.items():
                 scm.set_ref(ref, rev)

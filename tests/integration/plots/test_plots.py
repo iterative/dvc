@@ -1,7 +1,6 @@
 import json
 import os
 from copy import deepcopy
-from typing import Dict, List
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
@@ -57,7 +56,7 @@ def extract_vega_specs(html_path, plots_ids):
     return result
 
 
-def drop_fields(datapoints: List[Dict], fields: List[str]):
+def drop_fields(datapoints: list[dict], fields: list[str]):
     tmp = deepcopy(datapoints)
     for datapoint in tmp:
         keys = set(datapoint.keys())
@@ -192,7 +191,7 @@ def verify_vega_props(plot_id, json_result, title, x, y, **kwargs):
     assert plot_y == y
 
 
-def _update_datapoints(datapoints: List, update: Dict):
+def _update_datapoints(datapoints: list, update: dict):
     result = []
     for dp in datapoints:
         tmp = dp.copy()
@@ -501,7 +500,7 @@ def test_repo_with_dvclive_plots(tmp_dir, capsys, repo_with_dvclive_plots):
 
     for s in ("show", "diff"):
         _, json_result, split_json_result = call(capsys, subcommand=s)
-        expected_result: Dict[str, Dict[str, list[str]]] = {
+        expected_result: dict[str, dict[str, list[str]]] = {
             "data": {
                 "dvclive/plots/metrics/metric.tsv": [],
             },

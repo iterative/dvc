@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 if TYPE_CHECKING:
     from dvc.fs.dvc import DVCFileSystem
@@ -13,7 +13,7 @@ def ls(
     rev: Optional[str] = None,
     recursive: Optional[bool] = None,
     dvc_only: bool = False,
-    config: Union[None, Dict[str, Any], str] = None,
+    config: Union[None, dict[str, Any], str] = None,
     remote: Optional[str] = None,
     remote_config: Optional[dict] = None,
 ):

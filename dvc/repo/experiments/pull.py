@@ -1,4 +1,5 @@
-from typing import Iterable, List, Mapping, Optional, Set, Union
+from collections.abc import Iterable, Mapping
+from typing import Optional, Union
 
 from funcy import group_by
 from scmrepo.git.backend.base import SyncStatus
@@ -23,13 +24,13 @@ def pull(  # noqa: C901
     git_remote: str,
     exp_names: Optional[Union[Iterable[str], str]] = None,
     all_commits=False,
-    rev: Optional[Union[List[str], str]] = None,
+    rev: Optional[Union[list[str], str]] = None,
     num=1,
     force: bool = False,
     pull_cache: bool = False,
     **kwargs,
 ) -> Iterable[str]:
-    exp_ref_set: Set["ExpRefInfo"] = set()
+    exp_ref_set: set["ExpRefInfo"] = set()
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm, git_remote))
     elif exp_names:
@@ -81,7 +82,7 @@ def _pull(
     git_remote: str,
     refs: Iterable["ExpRefInfo"],
     force: bool,
-) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
+) -> Mapping[SyncStatus, list["ExpRefInfo"]]:
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
     logger.debug("git pull experiment '%s' -> '%s'", git_remote, refspec_list)
 
@@ -96,7 +97,7 @@ def _pull(
     def group_result(refspec):
         return results[str(refspec)]
 
-    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(group_result, refs)
+    pull_result: Mapping[SyncStatus, list["ExpRefInfo"]] = group_by(group_result, refs)
 
     return pull_result
 

@@ -1,6 +1,7 @@
 import os
 import posixpath
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, TypedDict, Union
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, TypedDict, Union
 
 from dvc.fs.callbacks import DEFAULT_CALLBACK
 from dvc.ui import ui
@@ -53,11 +54,11 @@ def _diff(
     not_in_remote: bool = False,
     remote_refresh: bool = False,
     callback: "Callback" = DEFAULT_CALLBACK,
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     from dvc_data.index import StorageError
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
 
-    ret: Dict[str, List[str]] = {}
+    ret: dict[str, list[str]] = {}
 
     def _add_change(typ, change):
         typ = _adapt_typ(typ)
@@ -115,9 +116,9 @@ def _diff(
 
 
 class GitInfo(TypedDict, total=False):
-    staged: Dict[str, List[str]]
-    unstaged: Dict[str, List[str]]
-    untracked: List[str]
+    staged: dict[str, list[str]]
+    unstaged: dict[str, list[str]]
+    untracked: list[str]
     is_empty: bool
     is_dirty: bool
 
@@ -150,7 +151,7 @@ def _git_info(scm: Union["Git", "NoSCM"], untracked_files: str = "all") -> GitIn
     )
 
 
-def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
+def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> dict[str, list[str]]:
     from .index import build_data_index
 
     with ui.progress(
@@ -180,7 +181,7 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
 
 def _diff_head_to_index(
     repo: "Repo", head: str = "HEAD", **kwargs: Any
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     index = repo.index.data["repo"]
 
     with repo.switch(head):
@@ -194,16 +195,16 @@ def _diff_head_to_index(
 
 
 class Status(TypedDict):
-    not_in_cache: List[str]
-    not_in_remote: List[str]
-    committed: Dict[str, List[str]]
-    uncommitted: Dict[str, List[str]]
-    untracked: List[str]
-    unchanged: List[str]
+    not_in_cache: list[str]
+    not_in_remote: list[str]
+    committed: dict[str, list[str]]
+    uncommitted: dict[str, list[str]]
+    untracked: list[str]
+    unchanged: list[str]
     git: GitInfo
 
 
-def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> List[str]:
+def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> list[str]:
     """Transform files rel. to Git root to DVC root, and drop outside files."""
     rel = repo.fs.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
 

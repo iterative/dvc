@@ -1,4 +1,5 @@
-from typing import Dict, Iterable, Optional
+from collections.abc import Iterable
+from typing import Optional
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import InvalidArgumentError
@@ -22,7 +23,7 @@ def run(  # noqa: C901, PLR0912
     copy_paths: Optional[Iterable[str]] = None,
     message: Optional[str] = None,
     **kwargs,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Reproduce the specified targets as an experiment.
 
     Accepts the same additional kwargs as Repo.reproduce.

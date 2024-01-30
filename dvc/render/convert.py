@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Union
 
 from dvc.render import REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.converter.image import ImageConverter
@@ -18,7 +18,7 @@ def _get_converter(
     raise ValueError(f"Invalid renderer class {renderer_class}")
 
 
-def to_json(renderer, split: bool = False) -> List[Dict]:
+def to_json(renderer, split: bool = False) -> list[dict]:
     if renderer.TYPE == "vega":
         if not renderer.datapoints:
             return []

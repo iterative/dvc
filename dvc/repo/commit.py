@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING
 
 from dvc import prompt
 
@@ -122,7 +122,7 @@ def commit_2_to_3(repo: "Repo", dry: bool = False):
             stage.dump(update_pipeline=False)
 
 
-def _migrateable_dvcfiles(view: "IndexView") -> Set[str]:
+def _migrateable_dvcfiles(view: "IndexView") -> set[str]:
     from dvc.dvcfile import ProjectFile
 
     migrated = set()

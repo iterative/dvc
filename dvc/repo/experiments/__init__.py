@@ -1,6 +1,7 @@
 import os
 import re
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 from funcy import chain, first
 
@@ -104,7 +105,7 @@ class Experiments:
         return ExpCache(self.repo)
 
     @property
-    def stash_revs(self) -> Dict[str, "ExpStashEntry"]:
+    def stash_revs(self) -> dict[str, "ExpStashEntry"]:
         revs = {}
         for queue in (self.workspace_queue, self.celery_queue):
             revs.update(queue.stash.stash_revs)
@@ -113,7 +114,7 @@ class Experiments:
     def reproduce_one(
         self,
         tmp_dir: bool = False,
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
     ):
@@ -143,8 +144,8 @@ class Experiments:
 
     def reproduce_celery(
         self, entries: Optional[Iterable["QueueEntry"]] = None, **kwargs
-    ) -> Dict[str, str]:
-        results: Dict[str, str] = {}
+    ) -> dict[str, str]:
+        results: dict[str, str] = {}
         if entries is None:
             entries = list(
                 chain(
@@ -250,10 +251,10 @@ class Experiments:
     def _reproduce_queue(
         self,
         queue: "BaseStashQueue",
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Reproduce queued experiments.
 
         Arguments:
@@ -265,7 +266,7 @@ class Experiments:
         """
         exec_results = queue.reproduce(copy_paths=copy_paths, message=message)
 
-        results: Dict[str, str] = {}
+        results: dict[str, str] = {}
         for _, exp_result in exec_results.items():
             results.update(exp_result)
         return results
@@ -319,12 +320,12 @@ class Experiments:
             raise MultipleBranchError(rev, ref_infos)
         return str(ref_infos[0])
 
-    def get_exact_name(self, revs: Iterable[str]) -> Dict[str, Optional[str]]:
+    def get_exact_name(self, revs: Iterable[str]) -> dict[str, Optional[str]]:
         """Returns preferred name for the specified revision.
 
         Prefers tags, branches (heads), experiments in that order.
         """
-        result: Dict[str, Optional[str]] = {}
+        result: dict[str, Optional[str]] = {}
         exclude = f"{EXEC_NAMESPACE}/*"
         ref_dict = self.scm.describe(revs, base=EXPS_NAMESPACE, exclude=exclude)
         for rev in revs:

@@ -9,7 +9,7 @@ Not to be confused with strictyaml, a python library with similar motivations.
 import re
 import typing
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar
 
 from dvc.exceptions import PrettyDvcException
 from dvc.ui import ui
@@ -111,7 +111,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
             code = "" if line > len(source) else source[line - 1]
             return _prepare_code_snippets(code, line)
 
-        lines: List[object] = []
+        lines: list[object] = []
         if hasattr(exc, "context"):
             if exc.context_mark is not None:
                 lines.append(prepare_message(str(exc.context), exc.context_mark))
@@ -143,7 +143,7 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
 
 def determine_linecol(
     data, paths, max_steps=5
-) -> Tuple[Optional[int], Optional[int], int]:
+) -> tuple[Optional[int], Optional[int], int]:
     """Determine linecol from the CommentedMap for the `paths` location.
 
     CommentedMap from `ruamel.yaml` has `.lc` property from which we can read
@@ -206,8 +206,8 @@ class YAMLValidationError(PrettyDvcException):
             message += f": {len(self.exc.errors)} errors"
         super().__init__(f"{message}")
 
-    def _prepare_context(self, data: typing.Mapping) -> List[object]:
-        lines: List[object] = []
+    def _prepare_context(self, data: typing.Mapping) -> list[object]:
+        lines: list[object] = []
         for index, error in enumerate(self.exc.errors):
             if index and lines[-1]:
                 lines.append("")
@@ -234,7 +234,7 @@ class YAMLValidationError(PrettyDvcException):
         """Prettify exception message."""
         from collections.abc import Mapping
 
-        lines: List[object] = []
+        lines: list[object] = []
         data = parse_yaml_for_update(self.text, self.path)
         if isinstance(data, Mapping):
             lines.extend(self._prepare_context(data))

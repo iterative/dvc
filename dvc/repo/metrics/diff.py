@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, TypedDict, Union
+from typing import TYPE_CHECKING, TypedDict, Union
 
 from funcy import compact
 
@@ -12,12 +12,12 @@ if TYPE_CHECKING:
 
 
 class DiffResult(TypedDict, total=False):
-    errors: Dict[str, Union[Exception, Dict[str, Exception]]]
-    diff: Dict[str, Dict[str, Dict]]
+    errors: dict[str, Union[Exception, dict[str, Exception]]]
+    diff: dict[str, dict[str, dict]]
 
 
 def _diff(
-    result: Dict[str, "Result"],
+    result: dict[str, "Result"],
     old_rev: str,
     new_rev: str,
     **kwargs,

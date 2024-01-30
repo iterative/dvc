@@ -1,6 +1,7 @@
 import re
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from typing import Dict, Iterable, Iterator, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 from scmrepo.git import Stash
 
@@ -42,7 +43,7 @@ class ExpStash(Stash):
     )
 
     @property
-    def stash_revs(self) -> Dict[str, ExpStashEntry]:
+    def stash_revs(self) -> dict[str, ExpStashEntry]:
         revs = {}
         for i, entry in enumerate(self):
             msg = entry.message.decode("utf-8").strip()
@@ -110,7 +111,7 @@ class ApplyStash(Stash):
     )
 
     @property
-    def stash_revs(self) -> Dict[str, ApplyStashEntry]:
+    def stash_revs(self) -> dict[str, ApplyStashEntry]:
         revs = {}
         for i, entry in enumerate(self):
             msg = entry.message.decode("utf-8").strip()

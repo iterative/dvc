@@ -1,5 +1,5 @@
-from collections.abc import Mapping
-from typing import Dict, Iterable, List, Union, no_type_check
+from collections.abc import Iterable, Mapping
+from typing import Union, no_type_check
 
 
 @no_type_check
@@ -80,7 +80,7 @@ def _merge_item(d, key, value):
         d[key] = value
 
 
-def merge_dicts(src: Dict, to_update: Dict) -> Dict:
+def merge_dicts(src: dict, to_update: dict) -> dict:
     """Recursively merges dictionaries.
 
     Args:
@@ -92,7 +92,7 @@ def merge_dicts(src: Dict, to_update: Dict) -> Dict:
     return src
 
 
-def ensure_list(item: Union[Iterable[str], str, None]) -> List[str]:
+def ensure_list(item: Union[Iterable[str], str, None]) -> list[str]:
     if item is None:
         return []
     if isinstance(item, str):
@@ -100,7 +100,7 @@ def ensure_list(item: Union[Iterable[str], str, None]) -> List[str]:
     return list(item)
 
 
-def nested_contains(dictionary: Dict, phrase: str) -> bool:
+def nested_contains(dictionary: dict, phrase: str) -> bool:
     for key, val in dictionary.items():
         if key == phrase and val:
             return True

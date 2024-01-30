@@ -1,7 +1,8 @@
 from collections import abc
+from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from itertools import zip_longest
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from dvc.types import DictStrAny
 
@@ -75,7 +76,7 @@ def rich_table(
     data: TableData,
     headers: Optional[Headers] = None,
     pager: bool = False,
-    header_styles: Optional[Union[Dict[str, Styles], Sequence[Styles]]] = None,
+    header_styles: Optional[Union[dict[str, Styles], Sequence[Styles]]] = None,
     row_styles: Optional[Sequence[Styles]] = None,
     borders: Union[bool, str] = False,
 ) -> None:
@@ -94,7 +95,7 @@ def rich_table(
     table = Table(box=border_style[borders])
 
     if isinstance(header_styles, abc.Sequence):
-        hs: Dict[str, Styles] = dict(zip(headers or [], header_styles))
+        hs: dict[str, Styles] = dict(zip(headers or [], header_styles))
     else:
         hs = header_styles or {}
 

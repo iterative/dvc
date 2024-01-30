@@ -1,8 +1,9 @@
 import fnmatch
 import typing
+from collections.abc import Iterable
 from contextlib import suppress
 from functools import wraps
-from typing import Iterable, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import NamedTuple, Optional, Union
 
 from dvc.exceptions import (
     NoOutputOrStageError,
@@ -31,9 +32,9 @@ class StageInfo(NamedTuple):
     filter_info: Optional[str] = None
 
 
-StageList = List["Stage"]
+StageList = list["Stage"]
 StageIter = Iterable["Stage"]
-StageSet = Set["Stage"]
+StageSet = set["Stage"]
 
 
 def _collect_with_deps(stages: StageList, graph: "DiGraph") -> StageSet:
@@ -72,7 +73,7 @@ def _collect_specific_target(
     target: str,
     with_deps: bool,
     recursive: bool,
-) -> Tuple[StageIter, Optional[str], Optional[str]]:
+) -> tuple[StageIter, Optional[str], Optional[str]]:
     from dvc.dvcfile import is_valid_filename
 
     # Optimization: do not collect the graph for a specific target
@@ -363,7 +364,7 @@ class StageLoad:
         with_deps: bool = False,
         recursive: bool = False,
         graph: Optional["DiGraph"] = None,
-    ) -> List[StageInfo]:
+    ) -> list[StageInfo]:
         """Collects a list of (stage, filter_info) from the given target.
 
         Priority is in the order of following in case of ambiguity:

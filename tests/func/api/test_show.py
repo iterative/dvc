@@ -1,13 +1,12 @@
 import json
 import os
 from textwrap import dedent
-from typing import Dict, List
 
 import pytest
 
 from dvc import api
 
-TRAIN_METRICS: List[Dict[str, Dict[str, float]]] = [
+TRAIN_METRICS: list[dict[str, dict[str, float]]] = [
     {
         "avg_prec": {"train": 0.85, "val": 0.75},
         "roc_auc": {"train": 0.80, "val": 0.70},
@@ -17,7 +16,7 @@ TRAIN_METRICS: List[Dict[str, Dict[str, float]]] = [
         "roc_auc": {"train": 0.98, "val": 0.94},
     },
 ]
-TEST_METRICS: List[Dict[str, Dict[str, float]]] = [
+TEST_METRICS: list[dict[str, dict[str, float]]] = [
     {"avg_prec": {"test": 0.72}, "roc_auc": {"test": 0.77}},
     {
         "avg_prec": {"test": 0.91},

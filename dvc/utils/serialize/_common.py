@@ -1,12 +1,10 @@
 """Common utilities for serialize."""
 import os
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
-    Dict,
     Optional,
     Protocol,
     TextIO,
@@ -37,7 +35,7 @@ class DumpersFn(Protocol):
 class ModifierFn(Protocol):
     def __call__(
         self, path: "StrPath", fs: Optional["FileSystem"] = None
-    ) -> ContextManager[Dict]:
+    ) -> AbstractContextManager[dict]:
         ...
 
 

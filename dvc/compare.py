@@ -1,20 +1,18 @@
 from collections import abc
+from collections.abc import (
+    ItemsView,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from itertools import chain, repeat, zip_longest
 from operator import itemgetter
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    ItemsView,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    MutableSequence,
     Optional,
-    Sequence,
-    Set,
-    Tuple,
     Union,
     overload,
 )
@@ -25,7 +23,7 @@ if TYPE_CHECKING:
     from dvc.ui.table import CellT
 
 
-class Column(List["CellT"]):
+class Column(list["CellT"]):
     pass
 
 
@@ -35,13 +33,13 @@ def with_value(value, default):
 
 class TabularData(MutableSequence[Sequence["CellT"]]):
     def __init__(self, columns: Sequence[str], fill_value: Optional[str] = ""):
-        self._columns: Dict[str, Column] = {name: Column() for name in columns}
-        self._keys: List[str] = list(columns)
+        self._columns: dict[str, Column] = {name: Column() for name in columns}
+        self._keys: list[str] = list(columns)
         self._fill_value = fill_value
-        self._protected: Set[str] = set()
+        self._protected: set[str] = set()
 
     @property
-    def columns(self) -> List[Column]:
+    def columns(self) -> list[Column]:
         return list(map(self.column, self.keys()))
 
     def is_protected(self, col_name) -> bool:
@@ -60,10 +58,10 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         projection = {k: self.column(k) for k in self.keys()}
         return projection.items()
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         return self._keys
 
-    def _iter_col_row(self, row: Sequence["CellT"]) -> Iterator[Tuple["CellT", Column]]:
+    def _iter_col_row(self, row: Sequence["CellT"]) -> Iterator[tuple["CellT", Column]]:
         for val, col in zip_longest(row, self.columns):
             if col is None:
                 break
@@ -81,7 +79,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         for val, col in self._iter_col_row(value):
             col.insert(index, val)
 
-    def __iter__(self) -> Iterator[List["CellT"]]:
+    def __iter__(self) -> Iterator[list["CellT"]]:
         return map(list, zip(*self.columns))
 
     def __getattr__(self, item: str) -> Column:
@@ -127,7 +125,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return len(self.columns[0])
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         return len(self.columns), len(self)
 
     def drop(self, *col_names: str) -> None:
@@ -170,7 +168,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             if key not in keys:
                 self.add_column(key)
 
-        row: List["CellT"] = [
+        row: list["CellT"] = [
             with_value(d.get(key), self._fill_value) for key in self.keys()
         ]
         self.append(row)
@@ -185,7 +183,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
     def as_dict(
         self, cols: Optional[Iterable[str]] = None
-    ) -> Iterable[Dict[str, "CellT"]]:
+    ) -> Iterable[dict[str, "CellT"]]:
         keys = self.keys() if cols is None else set(cols)
         return [{k: self._columns[k][i] for k in keys} for i in range(len(self))]
 
@@ -202,7 +200,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         if how not in ["any", "all"]:
             raise ValueError(f"Invalid 'how' value {how}. Choose one of ['any', 'all']")
 
-        match_line: Set = set()
+        match_line: set = set()
         match_any = True
         if how == "all":
             match_any = False
@@ -245,7 +243,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             )
 
         if axis == "cols":
-            cols_to_drop: List[str] = []
+            cols_to_drop: list[str] = []
             for n_col, col in enumerate(self.columns):
                 if subset and self.keys()[n_col] not in subset:
                     continue
@@ -259,7 +257,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
         elif axis == "rows":
             unique_rows = []
-            rows_to_drop: List[int] = []
+            rows_to_drop: list[int] = []
             for n_row, row in enumerate(self):
                 if subset:
                     row = [
@@ -319,7 +317,7 @@ def diff_table(
 ) -> TabularData:
     a_rev = a_rev or "HEAD"
     b_rev = b_rev or "workspace"
-    headers: List[str] = ["Path", title, a_rev, b_rev, "Change"]
+    headers: list[str] = ["Path", title, a_rev, b_rev, "Change"]
     fill_value = "-"
     td = TabularData(headers, fill_value=fill_value)
 
@@ -394,7 +392,7 @@ def metrics_table(
 
     for branch, val in metrics.items():
         for fname, metric in val.get("data", {}).items():
-            row_data: Dict[str, str] = {"Revision": branch, "Path": fname}
+            row_data: dict[str, str] = {"Revision": branch, "Path": fname}
             metric = metric.get("data", {})
             flattened = (
                 flatten(format_dict(metric))

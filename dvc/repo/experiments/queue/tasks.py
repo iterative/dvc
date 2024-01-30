@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
@@ -16,7 +16,7 @@ logger = get_task_logger(__name__)
 
 
 @shared_task
-def setup_exp(entry_dict: Dict[str, Any]) -> "BaseExecutor":
+def setup_exp(entry_dict: dict[str, Any]) -> "BaseExecutor":
     """Setup an experiment.
 
     Arguments:
@@ -44,8 +44,8 @@ def setup_exp(entry_dict: Dict[str, Any]) -> "BaseExecutor":
 
 @shared_task
 def collect_exp(
-    proc_dict: Dict[str, Any],  # noqa: ARG001
-    entry_dict: Dict[str, Any],
+    proc_dict: dict[str, Any],  # noqa: ARG001
+    entry_dict: dict[str, Any],
 ) -> str:
     """Collect results for an experiment.
 
@@ -92,8 +92,8 @@ def cleanup_exp(executor: TempDirExecutor, infofile: str) -> None:
 
 @shared_task
 def run_exp(
-    entry_dict: Dict[str, Any],
-    copy_paths: Optional[List[str]] = None,
+    entry_dict: dict[str, Any],
+    copy_paths: Optional[list[str]] = None,
     message: Optional[str] = None,
 ) -> None:
     """Run a full experiment.

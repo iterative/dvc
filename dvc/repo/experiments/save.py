@@ -1,5 +1,6 @@
 import os
-from typing import TYPE_CHECKING, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 from funcy import first
 
@@ -18,7 +19,7 @@ def save(
     name: Optional[str] = None,
     recursive: bool = False,
     force: bool = False,
-    include_untracked: Optional[List[str]] = None,
+    include_untracked: Optional[list[str]] = None,
     message: Optional[str] = None,
 ) -> Optional[str]:
     """Save the current workspace status as an experiment.

@@ -1,13 +1,10 @@
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
-    Dict,
-    Iterator,
-    List,
     NamedTuple,
     Optional,
-    Tuple,
     Union,
 )
 
@@ -37,7 +34,7 @@ class StageInfo(NamedTuple):
 
 def find_targets(
     targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]], glob: bool = False
-) -> List[str]:
+) -> list[str]:
     if isinstance(targets, (str, bytes, os.PathLike)):
         targets_list = [os.fsdecode(targets)]
     else:
@@ -99,7 +96,7 @@ OVERLAPPING_PARENT_FMT = (
 
 
 @contextmanager
-def translate_graph_error(stages: List["Stage"]) -> Iterator[None]:
+def translate_graph_error(stages: list["Stage"]) -> Iterator[None]:
     try:
         yield
     except OverlappingOutputPathsError as exc:
@@ -124,7 +121,7 @@ def translate_graph_error(stages: List["Stage"]) -> Iterator[None]:
         )
 
 
-def progress_iter(stages: Dict[str, StageInfo]) -> Iterator[Tuple[str, StageInfo]]:
+def progress_iter(stages: dict[str, StageInfo]) -> Iterator[tuple[str, StageInfo]]:
     total = len(stages)
     desc = "Adding..."
     with ui.progress(
@@ -151,8 +148,8 @@ LINK_FAILURE_MESSAGE = (
 
 
 @contextmanager
-def warn_link_failures() -> Iterator[List[str]]:
-    link_failures: List[str] = []
+def warn_link_failures() -> Iterator[list[str]]:
+    link_failures: list[str] = []
     try:
         yield link_failures
     finally:
@@ -202,7 +199,7 @@ def add(
     to_remote: bool = False,
     remote_jobs: Optional[int] = None,
     force: bool = False,
-) -> List["Stage"]:
+) -> list["Stage"]:
     add_targets = find_targets(targets, glob=glob)
     if not add_targets:
         return []

@@ -1,7 +1,6 @@
 import os
 import shutil
 from pathlib import Path
-from typing import List
 
 import pytest
 
@@ -14,7 +13,7 @@ from dvc_data.hashfile.build import IgnoreInCollectedDirError
 from dvc_data.hashfile.utils import get_mtime_and_size
 
 
-def _to_pattern_info_list(str_list: List):
+def _to_pattern_info_list(str_list: list):
     return [PatternInfo(a, "") for a in str_list]
 
 

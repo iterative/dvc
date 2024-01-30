@@ -5,7 +5,8 @@ import json
 import os
 import re
 import sys
-from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, Optional, Tuple
+from collections.abc import Iterable, Iterator
+from typing import TYPE_CHECKING, Optional
 
 import colorama
 
@@ -323,7 +324,7 @@ def error_link(name):
 
 def parse_target(
     target: str, default: Optional[str] = None, isa_glob: bool = False
-) -> Tuple[Optional[str], Optional[str]]:
+) -> tuple[Optional[str], Optional[str]]:
     from dvc.dvcfile import LOCK_FILE, PROJECT_FILE, is_valid_filename
     from dvc.exceptions import DvcException
     from dvc.parsing import JOIN
@@ -399,7 +400,7 @@ def error_handler(func):
     return wrapper
 
 
-def errored_revisions(rev_data: Dict) -> List:
+def errored_revisions(rev_data: dict) -> list:
     from dvc.utils.collections import nested_contains
 
     result = []

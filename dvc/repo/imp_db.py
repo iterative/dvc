@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import compact
 
@@ -33,7 +33,7 @@ def imp_db(
     assert sql or table
     assert output_format in ("csv", "json")
 
-    db: Dict[str, str] = compact(
+    db: dict[str, str] = compact(
         {
             "connection": connection,
             "file_format": output_format,

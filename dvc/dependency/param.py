@@ -1,7 +1,7 @@
 import os
 import typing
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import dpath
 
@@ -37,7 +37,7 @@ class BadParamFileError(DvcException):
 def read_param_file(
     fs: "FileSystem",
     path: str,
-    key_paths: Optional[List[str]] = None,
+    key_paths: Optional[list[str]] = None,
     flatten: bool = False,
     **load_kwargs,
 ) -> Any:
@@ -110,7 +110,7 @@ class ParamsDependency(Dependency):
 
     def read_params(
         self, flatten: bool = True, **kwargs: typing.Any
-    ) -> Dict[str, typing.Any]:
+    ) -> dict[str, typing.Any]:
         try:
             self.validate_filepath()
         except MissingParamsFile:
@@ -134,7 +134,7 @@ class ParamsDependency(Dependency):
 
         from funcy import ldistinct
 
-        status: Dict[str, Any] = defaultdict(dict)
+        status: dict[str, Any] = defaultdict(dict)
         info = self.hash_info.value if self.hash_info else {}
         assert isinstance(info, dict)
         actual = self.read_params()

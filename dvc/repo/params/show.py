@@ -1,7 +1,8 @@
 import os
 from collections import defaultdict
+from collections.abc import Iterator
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from dvc.dependency.param import ParamsDependency, read_param_file
 from dvc.log import logger
@@ -27,7 +28,7 @@ def _collect_top_level_params(repo: "Repo") -> Iterator[str]:
 
 
 def params_from_target(
-    repo: "Repo", targets: List[str]
+    repo: "Repo", targets: list[str]
 ) -> Iterator["ParamsDependency"]:
     stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
     for stage in stages:
@@ -36,17 +37,17 @@ def params_from_target(
 
 def _collect_params(
     repo: "Repo",
-    targets: Union[List[str], Dict[str, List[str]], None] = None,
-    stages: Optional[List[str]] = None,
+    targets: Union[list[str], dict[str, list[str]], None] = None,
+    stages: Optional[list[str]] = None,
     deps_only: bool = False,
     default_file: Optional[str] = None,
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     from dvc.dependency import _merge_params
 
     if isinstance(targets, list):
         targets = {target: [] for target in targets}
 
-    params: List[Dict[str, List[str]]] = []
+    params: list[dict[str, list[str]]] = []
 
     if targets:
         # target is a repo-relative path
@@ -80,8 +81,8 @@ def _collect_params(
     return ret
 
 
-def _collect_vars(repo, params, stages=None) -> Dict:
-    vars_params: Dict[str, Dict] = defaultdict(dict)
+def _collect_vars(repo, params, stages=None) -> dict:
+    vars_params: dict[str, dict] = defaultdict(dict)
 
     for stage in repo.index.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
@@ -102,8 +103,8 @@ def _collect_vars(repo, params, stages=None) -> Dict:
 
 
 def _read_params(
-    fs: "FileSystem", params: Dict[str, List[str]], **load_kwargs
-) -> Iterator[Tuple[str, Union[Exception, Any]]]:
+    fs: "FileSystem", params: dict[str, list[str]], **load_kwargs
+) -> Iterator[tuple[str, Union[Exception, Any]]]:
     for file_path, key_paths in params.items():
         try:
             yield file_path, read_param_file(fs, file_path, key_paths, **load_kwargs)
@@ -114,9 +115,9 @@ def _read_params(
 
 def _gather_params(
     repo: "Repo",
-    targets: Union[List[str], Dict[str, List[str]], None] = None,
+    targets: Union[list[str], dict[str, list[str]], None] = None,
     deps_only: bool = False,
-    stages: Optional[List[str]] = None,
+    stages: Optional[list[str]] = None,
     on_error: str = "return",
 ):
     assert on_error in ("raise", "return", "ignore")
@@ -132,7 +133,7 @@ def _gather_params(
         default_file=ParamsDependency.DEFAULT_PARAMS_FILE,
     )
 
-    data: Dict[str, FileResult] = {}
+    data: dict[str, FileResult] = {}
 
     fs = repo.dvcfs
     for fs_path, result in _read_params(fs, files_keypaths, cache=True):
@@ -159,16 +160,16 @@ def _gather_params(
 
 def show(
     repo: "Repo",
-    targets: Optional[List[str]] = None,
-    stages: Optional[List[str]] = None,
+    targets: Optional[list[str]] = None,
+    stages: Optional[list[str]] = None,
     deps_only: bool = False,
     all_branches: bool = False,
     all_tags: bool = False,
-    revs: Optional[List[str]] = None,
+    revs: Optional[list[str]] = None,
     all_commits: bool = False,
     hide_workspace: bool = True,
     on_error: str = "return",
-) -> Dict[str, Result]:
+) -> dict[str, Result]:
     assert on_error in ("raise", "return", "ignore")
     res = {}
 

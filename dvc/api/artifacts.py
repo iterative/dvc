@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from dvc.repo import Repo
 
@@ -8,7 +8,7 @@ def artifacts_show(
     version: Optional[str] = None,
     stage: Optional[str] = None,
     repo: Optional[str] = None,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Return path and Git revision for an artifact in a DVC project.
 
@@ -36,7 +36,7 @@ def artifacts_show(
     if version and stage:
         raise ValueError("Artifact version and stage are mutually exclusive.")
 
-    repo_kwargs: Dict[str, Any] = {
+    repo_kwargs: dict[str, Any] = {
         "subrepos": True,
         "uninitialized": True,
     }

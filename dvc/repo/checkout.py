@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import (
     CheckoutError,
@@ -66,7 +66,7 @@ def _build_out_changes(index, changes):
 
 
 def _check_can_delete(
-    entries: List["DataIndexEntry"],
+    entries: list["DataIndexEntry"],
     index: "BaseDataIndex",
     path: str,
     fs: "FileSystem",
@@ -107,7 +107,7 @@ def checkout(  # noqa: C901
     from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
     from dvc_data.index.checkout import ADD, DELETE, MODIFY, apply, compare
 
-    stats: Dict[str, List[str]] = {
+    stats: dict[str, list[str]] = {
         "added": [],
         "deleted": [],
         "modified": [],

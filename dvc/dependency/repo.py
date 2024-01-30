@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 import voluptuous as vol
 
@@ -20,7 +20,7 @@ class RepoDependency(Dependency):
     PARAM_CONFIG = "config"
     PARAM_REMOTE = "remote"
 
-    REPO_SCHEMA: ClassVar[Dict] = {
+    REPO_SCHEMA: ClassVar[dict] = {
         PARAM_REPO: {
             vol.Required(PARAM_URL): str,
             PARAM_REV: str,
@@ -30,7 +30,7 @@ class RepoDependency(Dependency):
         }
     }
 
-    def __init__(self, def_repo: Dict[str, Any], stage: "Stage", *args, **kwargs):
+    def __init__(self, def_repo: dict[str, Any], stage: "Stage", *args, **kwargs):
         self.def_repo = def_repo
         super().__init__(stage, *args, **kwargs)
 
@@ -65,7 +65,7 @@ class RepoDependency(Dependency):
             self.def_repo[self.PARAM_REV_LOCK] = rev
 
     @classmethod
-    def _dump_def_repo(cls, def_repo) -> Dict[str, str]:
+    def _dump_def_repo(cls, def_repo) -> dict[str, str]:
         repo = {cls.PARAM_URL: def_repo[cls.PARAM_URL]}
 
         rev = def_repo.get(cls.PARAM_REV)
@@ -85,7 +85,7 @@ class RepoDependency(Dependency):
             repo[cls.PARAM_REMOTE] = remote
         return repo
 
-    def dumpd(self, **kwargs) -> Dict[str, Union[str, Dict[str, str]]]:
+    def dumpd(self, **kwargs) -> dict[str, Union[str, dict[str, str]]]:
         return {
             self.PARAM_PATH: self.def_path,
             self.PARAM_REPO: self._dump_def_repo(self.def_repo),

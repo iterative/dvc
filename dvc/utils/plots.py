@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Dict, Tuple
 
 
 def get_plot_id(config_plot_id: str, config_file_path: str = ""):
@@ -9,8 +8,8 @@ def get_plot_id(config_plot_id: str, config_file_path: str = ""):
 
 
 def group_definitions_by_id(
-    definitions: Dict[str, Dict],
-) -> Dict[str, Tuple[str, Dict]]:
+    definitions: dict[str, dict],
+) -> dict[str, tuple[str, dict]]:
     """
     Format ID and extracts plot_definition for each plot.
 
@@ -20,8 +19,8 @@ def group_definitions_by_id(
     Returns:
         Dict of {plot_id: (original_plot_id, plot_definition)}.
     """
-    groups_by_config: Dict = defaultdict(dict)
-    groups_by_id: Dict = {}
+    groups_by_config: dict = defaultdict(dict)
+    groups_by_id: dict = {}
     for config_file, config_file_content in definitions.items():
         for plot_id, plot_definition in config_file_content.get("data", {}).items():
             groups_by_config[plot_id][config_file] = (plot_id, plot_definition)

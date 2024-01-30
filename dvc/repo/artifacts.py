@@ -1,7 +1,7 @@
 import os
 import posixpath
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from dvc.annotations import Artifact
 from dvc.dvcfile import PROJECT_FILE
@@ -95,9 +95,9 @@ class Artifacts:
             return self.repo.scm
         return None
 
-    def read(self) -> Dict[str, Dict[str, Artifact]]:
+    def read(self) -> dict[str, dict[str, Artifact]]:
         """Read artifacts from dvc.yaml."""
-        artifacts: Dict[str, Dict[str, Artifact]] = {}
+        artifacts: dict[str, dict[str, Artifact]] = {}
         for (
             dvcfile,
             dvcfile_artifacts,
@@ -140,14 +140,14 @@ class Artifacts:
 
         assert not (version and stage)
         name = _reformat_name(name)
-        tags: List["GitTag"] = find(
+        tags: list["GitTag"] = find(
             name=name, version=version, stage=stage, scm=self.scm
         )
         if not tags:
             raise ArtifactNotFoundError(name, version=version, stage=stage)
         if version or stage:
             return tags[-1].target
-        gto_tags: List["GTOTag"] = sort_versions(parse_tag(tag) for tag in tags)
+        gto_tags: list["GTOTag"] = sort_versions(parse_tag(tag) for tag in tags)
         return gto_tags[0].tag.target
 
     def get_path(self, name: str):
@@ -177,7 +177,7 @@ class Artifacts:
         out: Optional[str] = None,
         force: bool = False,
         jobs: Optional[int] = None,
-    ) -> Tuple[int, str]:
+    ) -> tuple[int, str]:
         """Download the specified artifact."""
         from dvc.fs import download as fs_download
 
@@ -205,9 +205,9 @@ class Artifacts:
         out: Optional[str] = None,
         force: bool = False,
         jobs: Optional[int] = None,
-        dvc_studio_config: Optional[Dict[str, Any]] = None,
+        dvc_studio_config: Optional[dict[str, Any]] = None,
         **kwargs,
-    ) -> Tuple[int, str]:
+    ) -> tuple[int, str]:
         from dvc_studio_client.model_registry import get_download_uris
 
         from dvc.fs import HTTPFileSystem, generic, localfs
@@ -215,8 +215,8 @@ class Artifacts:
 
         logger.debug("Trying to download artifact '%s' via studio", name)
         out = out or os.getcwd()
-        to_infos: List[str] = []
-        from_infos: List[str] = []
+        to_infos: list[str] = []
+        from_infos: list[str] = []
         if dvc_studio_config is None:
             dvc_studio_config = {}
         dvc_studio_config["repo_url"] = repo_url
@@ -263,9 +263,9 @@ class Artifacts:
         name: str,
         version: Optional[str] = None,
         stage: Optional[str] = None,
-        config: Optional[Union[str, Dict[str, Any]]] = None,
+        config: Optional[Union[str, dict[str, Any]]] = None,
         remote: Optional[str] = None,
-        remote_config: Optional[Union[str, Dict[str, Any]]] = None,
+        remote_config: Optional[Union[str, dict[str, Any]]] = None,
         out: Optional[str] = None,
         force: bool = False,
         jobs: Optional[int] = None,

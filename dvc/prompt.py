@@ -1,7 +1,8 @@
 """Manages user prompts."""
 
+from collections.abc import Collection
 from getpass import getpass
-from typing import Collection, Optional
+from typing import Optional
 
 from dvc.log import logger
 

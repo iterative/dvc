@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
@@ -11,7 +11,7 @@ logger = logger.getChild(__name__)
 
 class CmdExperimentsPush(CmdBase):
     @staticmethod
-    def log_result(result: Dict[str, Any], remote: str):
+    def log_result(result: dict[str, Any], remote: str):
         from dvc.utils import humanize
 
         def join_exps(exps):

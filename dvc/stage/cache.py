@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from funcy import first
 
@@ -247,7 +247,7 @@ class StageCache:
             message = f"run-cache is not supported for http filesystem: {path}"
             raise RunCacheNotSupported(message)
 
-        ret: List[Tuple[str, str]] = []
+        ret: list[tuple[str, str]] = []
         if not from_fs.exists(runs):
             return ret
 

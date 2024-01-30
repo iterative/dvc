@@ -1,7 +1,6 @@
 import os
 import pathlib
 import subprocess
-from typing import Dict, Tuple
 
 import pytest
 
@@ -33,7 +32,7 @@ __all__ = [
     "workspace",
 ]
 
-CACHE: Dict[Tuple[bool, bool, bool], str] = {}
+CACHE: dict[tuple[bool, bool, bool], str] = {}
 
 
 @pytest.fixture(scope="session")

@@ -1,18 +1,13 @@
 import os
 import string
 from collections import defaultdict
+from collections.abc import Iterable
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterable,
-    List,
     Optional,
-    Set,
-    Tuple,
-    Type,
     TypeVar,
     Union,
 )
@@ -55,14 +50,14 @@ if TYPE_CHECKING:
 logger = logger.getChild(__name__)
 # Disallow all punctuation characters except hyphen and underscore
 INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
-Env = Dict[str, str]
-ChangedEntries = Tuple[List[str], List[str], Optional[str]]
+Env = dict[str, str]
+ChangedEntries = tuple[list[str], list[str], Optional[str]]
 
 _T = TypeVar("_T")
 
 
 def loads_from(
-    cls: Type[_T], repo: "Repo", path: str, wdir: str, data: Dict[str, Any]
+    cls: type[_T], repo: "Repo", path: str, wdir: str, data: dict[str, Any]
 ) -> _T:
     kw = {
         "repo": repo,
@@ -91,7 +86,7 @@ class RawData:
     generated_from: Optional[str] = None
 
 
-def create_stage(cls: Type[_T], repo, path, **kwargs) -> _T:
+def create_stage(cls: type[_T], repo, path, **kwargs) -> _T:
     from dvc.dvcfile import check_dvcfile_path
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
@@ -205,13 +200,13 @@ class Stage(params.StageParams):
         self._dvcfile = dvcfile
 
     @property
-    def params(self) -> List["ParamsDependency"]:
+    def params(self) -> list["ParamsDependency"]:
         from dvc.dependency import ParamsDependency
 
         return [dep for dep in self.deps if isinstance(dep, ParamsDependency)]
 
     @property
-    def metrics(self) -> List["Output"]:
+    def metrics(self) -> list["Output"]:
         return [out for out in self.outs if out.metric]
 
     def __repr__(self):
@@ -310,7 +305,7 @@ class Stage(params.StageParams):
         return desc
 
     def changed_deps(
-        self, allow_missing: bool = False, upstream: Optional[List] = None
+        self, allow_missing: bool = False, upstream: Optional[list] = None
     ) -> bool:
         if self.frozen:
             return False
@@ -322,7 +317,7 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"])
     def _changed_deps(
-        self, allow_missing: bool = False, upstream: Optional[List] = None
+        self, allow_missing: bool = False, upstream: Optional[list] = None
     ) -> bool:
         for dep in self.deps:
             status = dep.status()
@@ -370,7 +365,7 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps", "outs"])
     def changed(
-        self, allow_missing: bool = False, upstream: Optional[List] = None
+        self, allow_missing: bool = False, upstream: Optional[list] = None
     ) -> bool:
         is_changed = (
             # Short-circuit order: stage md5 is fast,
@@ -477,7 +472,7 @@ class Stage(params.StageParams):
     def reload(self) -> "Stage":
         return self.dvcfile.stage
 
-    def dumpd(self, **kwargs) -> Dict[str, Any]:
+    def dumpd(self, **kwargs) -> dict[str, Any]:
         return get_dump(self, **kwargs)
 
     def compute_md5(self) -> Optional[str]:
@@ -509,7 +504,7 @@ class Stage(params.StageParams):
                 if not allow_missing:
                     raise
 
-    def get_versioned_outs(self) -> Dict[str, "Output"]:
+    def get_versioned_outs(self) -> dict[str, "Output"]:
         from .exceptions import StageFileDoesNotExistError, StageNotFound
 
         try:
@@ -543,7 +538,7 @@ class Stage(params.StageParams):
             out.ignore()
 
     @staticmethod
-    def _changed_entries(entries) -> List[str]:
+    def _changed_entries(entries) -> list[str]:
         return [str(entry) for entry in entries if entry.workspace_status()]
 
     def _changed_stage_entry(self) -> str:
@@ -663,8 +658,8 @@ class Stage(params.StageParams):
     @rwlocked(write=["outs"])
     def checkout(
         self, allow_missing: bool = False, **kwargs
-    ) -> Dict[str, List["StrPath"]]:
-        stats: Dict[str, List["StrPath"]] = defaultdict(list)
+    ) -> dict[str, list["StrPath"]]:
+        stats: dict[str, list["StrPath"]] = defaultdict(list)
         if self.is_partial_import:
             return stats
 
@@ -679,7 +674,7 @@ class Stage(params.StageParams):
         return stats
 
     @staticmethod
-    def _checkout(out, **kwargs) -> Tuple[Optional[str], List[str]]:
+    def _checkout(out, **kwargs) -> tuple[Optional[str], list[str]]:
         try:
             result = out.checkout(**kwargs)
             added, modified = result or (None, None)
@@ -692,8 +687,8 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps", "outs"])
     def status(
         self, check_updates: bool = False, filter_info: Optional[bool] = None
-    ) -> Dict[str, List[Union[str, Dict[str, str]]]]:
-        ret: List[Union[str, Dict[str, str]]] = []
+    ) -> dict[str, list[Union[str, dict[str, str]]]]:
+        ret: list[Union[str, dict[str, str]]] = []
         show_import = (
             self.is_repo_import or self.is_versioned_import
         ) and check_updates
@@ -706,7 +701,7 @@ class Stage(params.StageParams):
         return {self.addressing: ret} if ret else {}
 
     @staticmethod
-    def _status(entries: Iterable["Output"]) -> Dict[str, str]:
+    def _status(entries: Iterable["Output"]) -> dict[str, str]:
         ret = {}
 
         for entry in entries:
@@ -747,7 +742,7 @@ class Stage(params.StageParams):
 
     def get_used_objs(
         self, *args, **kwargs
-    ) -> Dict[Optional["HashFileDB"], Set["HashInfo"]]:
+    ) -> dict[Optional["HashFileDB"], set["HashInfo"]]:
         """Return set of object IDs used by this stage."""
         if self.is_partial_import and not self.is_repo_import:
             return {}
@@ -802,7 +797,7 @@ class PipelineStage(Stage):
         super().__init__(*args, **kwargs)
         self.name = name
         self.cmd_changed = False
-        self.tracked_vars: Dict[str, Dict[str, Dict[str, str]]] = {}
+        self.tracked_vars: dict[str, dict[str, dict[str, str]]] = {}
 
     def __eq__(self, other):
         return super().__eq__(other) and self.name == other.name
