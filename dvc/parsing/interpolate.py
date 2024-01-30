@@ -10,7 +10,8 @@ from dvc.exceptions import DvcException
 from dvc.utils.flatten import flatten
 
 if typing.TYPE_CHECKING:
-    from typing import List, Match, NoReturn
+    from re import Match
+    from typing import NoReturn
 
     from pyparsing import ParseException
 
@@ -205,7 +206,7 @@ def validate_value(value, key):
 
 def str_interpolate(
     template: str,
-    matches: "List[Match]",
+    matches: "list[Match]",
     context: "Context",
     skip_checks: bool = False,
     key=None,
@@ -225,5 +226,5 @@ def str_interpolate(
     return buf.replace(r"\${", BRACE_OPEN)
 
 
-def is_exact_string(src: str, matches: "List[Match]"):
+def is_exact_string(src: str, matches: "list[Match]"):
     return len(matches) == 1 and src == matches[0].group(0)

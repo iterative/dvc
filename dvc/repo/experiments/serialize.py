@@ -1,7 +1,8 @@
 import json
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from dvc.exceptions import DvcException
 from dvc.repo.metrics.show import _gather_metrics
@@ -30,11 +31,11 @@ class SerializableExp:
 
     rev: str
     timestamp: Optional[datetime] = None
-    params: Dict[str, "FileResult"] = field(default_factory=dict)
-    metrics: Dict[str, "FileResult"] = field(default_factory=dict)
-    deps: Dict[str, "ExpDep"] = field(default_factory=dict)
-    outs: Dict[str, "ExpOut"] = field(default_factory=dict)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, "FileResult"] = field(default_factory=dict)
+    metrics: dict[str, "FileResult"] = field(default_factory=dict)
+    deps: dict[str, "ExpDep"] = field(default_factory=dict)
+    outs: dict[str, "ExpOut"] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_repo(
@@ -83,7 +84,7 @@ class SerializableExp:
             **kwargs,
         )
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
     def as_bytes(self) -> bytes:
@@ -131,7 +132,7 @@ class SerializableError:
     msg: str
     type: str = ""
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
     def as_bytes(self) -> bytes:
@@ -154,15 +155,15 @@ class ExpState:
     name: Optional[str] = None
     data: Optional[SerializableExp] = None
     error: Optional[SerializableError] = None
-    experiments: Optional[List["ExpRange"]] = None
+    experiments: Optional[list["ExpRange"]] = None
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
 
 @dataclass
 class ExpRange:
-    revs: List["ExpState"]
+    revs: list["ExpState"]
     executor: Optional["ExpExecutor"] = None
     name: Optional[str] = None
 
@@ -175,7 +176,7 @@ class ExpRange:
     def __getitem__(self, index: int) -> "ExpState":
         return self.revs[index]
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
 

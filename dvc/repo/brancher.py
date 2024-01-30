@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from scmrepo.git import Git
 
@@ -59,11 +60,11 @@ def brancher(
 
     from dvc.fs import LocalFileSystem
 
-    repo_root_parts: Tuple[str, ...] = ()
+    repo_root_parts: tuple[str, ...] = ()
     if self.fs.isin(self.root_dir, self.scm.root_dir):
         repo_root_parts = self.fs.relparts(self.root_dir, self.scm.root_dir)
 
-    cwd_parts: Tuple[str, ...] = ()
+    cwd_parts: tuple[str, ...] = ()
     if self.fs.isin(self.fs.getcwd(), self.scm.root_dir):
         cwd_parts = self.fs.relparts(self.fs.getcwd(), self.scm.root_dir)
 
@@ -112,8 +113,8 @@ def brancher(
 def _switch_fs(
     repo: "Repo",
     rev: str,
-    repo_root_parts: Tuple[str, ...],
-    cwd_parts: Tuple[str, ...],
+    repo_root_parts: tuple[str, ...],
+    cwd_parts: tuple[str, ...],
 ):
     from dvc.fs import GitFileSystem, LocalFileSystem
 
@@ -147,11 +148,11 @@ def switch(repo: "Repo", rev: str) -> Iterator[str]:
     if rev != "workspace":
         rev = resolve_rev(repo.scm, rev)
 
-    repo_root_parts: Tuple[str, ...] = ()
+    repo_root_parts: tuple[str, ...] = ()
     if repo.fs.isin(repo.root_dir, repo.scm.root_dir):
         repo_root_parts = repo.fs.relparts(repo.root_dir, repo.scm.root_dir)
 
-    cwd_parts: Tuple[str, ...] = ()
+    cwd_parts: tuple[str, ...] = ()
     if repo.fs.isin(repo.fs.getcwd(), repo.scm.root_dir):
         cwd_parts = repo.fs.relparts(repo.fs.getcwd(), repo.scm.root_dir)
 

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar, Dict, Tuple
+from typing import TYPE_CHECKING, ClassVar
 
 from funcy import chunks, compact, log_durations
 
@@ -17,14 +17,14 @@ logger = logger.getChild(__name__)
 
 
 class CmdDataStatus(CmdBase):
-    COLORS: ClassVar[Dict[str, str]] = {
+    COLORS: ClassVar[dict[str, str]] = {
         "not_in_remote": "red",
         "not_in_cache": "red",
         "committed": "green",
         "uncommitted": "yellow",
         "untracked": "cyan",
     }
-    LABELS: ClassVar[Dict[str, str]] = {
+    LABELS: ClassVar[dict[str, str]] = {
         "not_in_remote": "Not in remote",
         "not_in_cache": "Not in cache",
         "committed": "DVC committed changes",
@@ -32,7 +32,7 @@ class CmdDataStatus(CmdBase):
         "untracked": "Untracked files",
         "unchanged": "DVC unchanged files",
     }
-    HINTS: ClassVar[Dict[str, Tuple[str, ...]]] = {
+    HINTS: ClassVar[dict[str, tuple[str, ...]]] = {
         "not_in_remote": ('use "dvc push <file>..." to upload files',),
         "not_in_cache": ('use "dvc fetch <file>..." to download files',),
         "committed": ("git commit the corresponding dvc files to update the repo",),

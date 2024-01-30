@@ -1,13 +1,11 @@
 """Manages source control systems (e.g. Git)."""
 import os
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from functools import partial
 from typing import (
     TYPE_CHECKING,
-    Iterator,
-    List,
     Literal,
-    Mapping,
     Optional,
     Union,
     overload,
@@ -189,7 +187,7 @@ def resolve_rev(scm: Union["Git", "NoSCM"], rev: str) -> str:
         raise RevError(str(exc))  # noqa: B904
 
 
-def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
+def _get_n_commits(scm: "Git", revs: list[str], num: int) -> list[str]:
     results = []
     for rev in revs:
         if num == 0:
@@ -210,14 +208,14 @@ def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
 
 def iter_revs(
     scm: "Git",
-    revs: Optional[List[str]] = None,
+    revs: Optional[list[str]] = None,
     num: int = 1,
     all_branches: bool = False,
     all_tags: bool = False,
     all_commits: bool = False,
     all_experiments: bool = False,
     commit_date: Optional[str] = None,
-) -> Mapping[str, List[str]]:
+) -> Mapping[str, list[str]]:
     from scmrepo.exceptions import SCMError as _SCMError
 
     from dvc.repo.experiments.utils import exp_commits
@@ -235,7 +233,7 @@ def iter_revs(
         return {}
 
     revs = revs or []
-    results: List[str] = _get_n_commits(scm, revs, num)
+    results: list[str] = _get_n_commits(scm, revs, num)
 
     if all_commits:
         results.extend(scm.list_all_commits())
@@ -266,7 +264,7 @@ def iter_revs(
     return group_by(rev_resolver, results)
 
 
-def lfs_prefetch(fs: "FileSystem", paths: List[str]):
+def lfs_prefetch(fs: "FileSystem", paths: list[str]):
     from scmrepo.git.lfs import fetch as _lfs_fetch
 
     from dvc.fs.dvc import DVCFileSystem

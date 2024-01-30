@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.log import logger
@@ -61,7 +61,7 @@ def gc(  # noqa: PLR0913, C901
     all_experiments: bool = False,
     force: bool = False,
     jobs: Optional[int] = None,
-    repos: Optional[List[str]] = None,
+    repos: Optional[list[str]] = None,
     workspace: bool = False,
     commit_date: Optional[str] = None,
     rev: Optional[str] = None,

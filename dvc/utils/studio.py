@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -24,7 +24,7 @@ STUDIO_URL = "https://studio.iterative.ai"
 def post(
     url: str,
     token: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     base_url: Optional[str] = STUDIO_URL,
     max_retries: int = 3,
     timeout: int = 5,
@@ -48,8 +48,8 @@ def notify_refs(
     token: str,
     *,
     base_url: Optional[str] = STUDIO_URL,
-    **refs: List[str],
-) -> Dict[str, Any]:
+    **refs: list[str],
+) -> dict[str, Any]:
     extra_keys = refs.keys() - {"pushed", "removed"}
     assert not extra_keys, f"got extra args: {extra_keys}"
 
@@ -87,7 +87,7 @@ def notify_refs(
     return d
 
 
-def config_to_env(config: Dict[str, Any]) -> Dict[str, Any]:
+def config_to_env(config: dict[str, Any]) -> dict[str, Any]:
     env = {}
     if "offline" in config:
         env[DVC_STUDIO_OFFLINE] = config["offline"]
@@ -100,7 +100,7 @@ def config_to_env(config: Dict[str, Any]) -> Dict[str, Any]:
     return env
 
 
-def env_to_config(env: Dict[str, Any]) -> Dict[str, Any]:
+def env_to_config(env: dict[str, Any]) -> dict[str, Any]:
     config = {}
     if DVC_STUDIO_OFFLINE in env:
         config["offline"] = env[DVC_STUDIO_OFFLINE]

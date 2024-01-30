@@ -1,8 +1,9 @@
 import argparse
 import logging
+from collections.abc import Iterable
 from contextlib import contextmanager
 from itertools import chain, filterfalse
-from typing import TYPE_CHECKING, Dict, Iterable, List
+from typing import TYPE_CHECKING
 
 from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
@@ -33,7 +34,7 @@ def generate_description(stage: "Stage") -> str:
     def is_plot_or_metric(out: "Output"):
         return bool(out.plot) or bool(out.metric)
 
-    desc: List[str] = []
+    desc: list[str] = []
 
     outs = list(filterfalse(is_plot_or_metric, stage.outs))
     if outs:
@@ -55,7 +56,7 @@ def prepare_stages_data(
     stages: Iterable["Stage"],
     description: bool = True,
     max_length: int = MAX_TEXT_LENGTH,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     return {
         stage.addressing: (
             prepare_description(stage, max_length=max_length) if description else ""
@@ -67,7 +68,7 @@ def prepare_stages_data(
 class CmdStageList(CmdBase):
     def _get_stages(self) -> Iterable["Stage"]:
         if self.args.all:
-            stages: List["Stage"] = self.repo.index.stages
+            stages: list["Stage"] = self.repo.index.stages
             logger.trace("%d no. of stages found", len(stages))
             return stages
 
@@ -96,7 +97,7 @@ class CmdStageList(CmdBase):
         return 0
 
 
-def parse_cmd(commands: List[str]) -> str:
+def parse_cmd(commands: list[str]) -> str:
     """
     We need to take into account two cases:
 

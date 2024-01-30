@@ -3,7 +3,7 @@ import os
 import re
 from contextlib import contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import compact, memoize, re_find
 
@@ -138,7 +138,7 @@ class Config(dict):
             return system_config_dir()
 
     @cached_property
-    def files(self) -> Dict[str, str]:
+    def files(self) -> dict[str, str]:
         files = {
             level: os.path.join(self.get_dir(level), self.CONFIG)
             for level in ("system", "global")
@@ -344,7 +344,7 @@ class Config(dict):
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
     def load_config_to_level(self, level=None):
-        merged_conf: Dict = {}
+        merged_conf: dict = {}
         for merge_level in self.LEVELS:
             if merge_level == level:
                 break
@@ -390,7 +390,7 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result: Dict[str, Dict] = {"remote": {}, "machine": {}, "db": {}}
+    result: dict[str, dict] = {"remote": {}, "machine": {}, "db": {}}
 
     for section, val in conf.items():
         match = re_find(r'^\s*(remote|machine|db)\s*"(.*)"\s*$', section)

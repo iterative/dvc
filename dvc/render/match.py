@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, DefaultDict, Dict, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 import dpath
 import dpath.options
@@ -21,16 +21,16 @@ dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 logger = logger.getChild(__name__)
 
 
-def _squash_plots_properties(data: List) -> Dict:
+def _squash_plots_properties(data: list) -> dict:
     configs = [last(group) for group in data]
-    resolved: Dict = {}
+    resolved: dict = {}
     for config in reversed(configs):
         resolved = {**resolved, **config}
     return resolved
 
 
 class PlotsData:
-    def __init__(self, data: Dict):
+    def __init__(self, data: dict):
         self.data = data
 
     def group_definitions(self):
@@ -62,15 +62,15 @@ class PlotsData:
 
 class RendererWithErrors(NamedTuple):
     renderer: "Renderer"
-    source_errors: Dict[str, Dict[str, Exception]]
-    definition_errors: Dict[str, Exception]
+    source_errors: dict[str, dict[str, Exception]]
+    definition_errors: dict[str, Exception]
 
 
 def match_defs_renderers(  # noqa: C901, PLR0912
     data,
     out=None,
     templates_dir: Optional["StrPath"] = None,
-) -> List[RendererWithErrors]:
+) -> list[RendererWithErrors]:
     from dvc_render import ImageRenderer, VegaRenderer
 
     plots_data = PlotsData(data)
@@ -78,12 +78,12 @@ def match_defs_renderers(  # noqa: C901, PLR0912
     renderer_cls = None
 
     for plot_id, group in plots_data.group_definitions().items():
-        plot_datapoints: List[Dict] = []
+        plot_datapoints: list[dict] = []
         props = _squash_plots_properties(group)
-        first_props: Dict = {}
+        first_props: dict = {}
 
-        def_errors: Dict[str, Exception] = {}
-        src_errors: DefaultDict[str, Dict[str, Exception]] = defaultdict(dict)
+        def_errors: dict[str, Exception] = {}
+        src_errors: defaultdict[str, dict[str, Exception]] = defaultdict(dict)
 
         if out is not None:
             props["out"] = out

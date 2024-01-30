@@ -4,7 +4,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from funcy import identity, lfilter, nullcontext, select
 
@@ -22,7 +22,7 @@ from dvc.parsing.interpolate import (
 
 logger = logger.getChild(__name__)
 SeqOrMap = Union[Sequence, Mapping]
-DictStr = Dict[str, Any]
+DictStr = dict[str, Any]
 
 
 class ContextError(DvcException):
@@ -100,7 +100,7 @@ def recurse_not_a_node(data: dict):
 @dataclass
 class Meta:
     source: Optional[str] = None
-    dpaths: List[str] = field(default_factory=list)
+    dpaths: list[str] = field(default_factory=list)
     local: bool = True
 
     @staticmethod
@@ -297,7 +297,7 @@ class Context(CtxDict):
         """
         super().__init__(*args, **kwargs)
         self._track = False
-        self._tracked_data: Dict[str, Dict] = defaultdict(dict)
+        self._tracked_data: dict[str, dict] = defaultdict(dict)
         self.imports = {}
         self._reserved_keys = {}
 
@@ -348,7 +348,7 @@ class Context(CtxDict):
 
     @classmethod
     def load_from(
-        cls, fs, path: str, select_keys: Optional[List[str]] = None
+        cls, fs, path: str, select_keys: Optional[list[str]] = None
     ) -> "Context":
         from dvc.utils.serialize import load_path
 
@@ -423,7 +423,7 @@ class Context(CtxDict):
     def load_from_vars(
         self,
         fs,
-        vars_: List,
+        vars_: list,
         wdir: str,
         stage_name: Optional[str] = None,
         default: Optional[str] = None,

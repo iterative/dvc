@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 from dvc.log import logger
 from dvc.repo import locked
@@ -15,11 +15,11 @@ logger = logger.getChild(__name__)
 @scm_context
 def ls(
     repo,
-    rev: Optional[Union[List[str], str]] = None,
+    rev: Optional[Union[list[str], str]] = None,
     all_commits: bool = False,
     num: int = 1,
     git_remote: Optional[str] = None,
-) -> Dict[str, List[Tuple[str, Optional[str]]]]:
+) -> dict[str, list[tuple[str, Optional[str]]]]:
     """List experiments.
 
     Returns a dict mapping baseline revs to a list of (exp_name, exp_sha) tuples.

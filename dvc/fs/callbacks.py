@@ -1,5 +1,5 @@
 from contextlib import ExitStack
-from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, BinaryIO, Optional, Union
 
 from dvc.progress import Tqdm
 from dvc.utils.objects import cached_property
@@ -55,7 +55,7 @@ class TqdmCallback(Callback):
         self,
         path_1: "Union[str, BinaryIO]",
         path_2: str,
-        kwargs: Dict[str, Any],
+        kwargs: dict[str, Any],
         child: Optional[Callback] = None,
     ):
         child = child or TqdmCallback(
@@ -130,7 +130,7 @@ class RichCallback(Callback):
         self,
         path_1: Union[str, BinaryIO],
         path_2: str,
-        kwargs: Dict[str, Any],
+        kwargs: dict[str, Any],
         child: Optional["Callback"] = None,
     ):
         child = child or RichCallback(

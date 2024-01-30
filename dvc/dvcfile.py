@@ -5,10 +5,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Dict,
-    List,
     Optional,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -134,7 +131,7 @@ class FileMixin:
         d, _ = self._load(**kwargs)
         return d
 
-    def _load(self, **kwargs: Any) -> Tuple[Any, str]:
+    def _load(self, **kwargs: Any) -> tuple[Any, str]:
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
         # 2. filename is not a DVC file
@@ -157,7 +154,7 @@ class FileMixin:
 
         return validate(d, cls.SCHEMA, path=fname)  # type: ignore[arg-type]
 
-    def _load_yaml(self, **kwargs: Any) -> Tuple[Any, str]:
+    def _load_yaml(self, **kwargs: Any) -> tuple[Any, str]:
         from dvc.utils import strictyaml
 
         return strictyaml.load(
@@ -182,10 +179,10 @@ class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
     from dvc.stage.loader import SingleStageLoader as LOADER  # noqa: N814
 
-    metrics: ClassVar[List[str]] = []
+    metrics: ClassVar[list[str]] = []
     plots: ClassVar[Any] = {}
-    params: ClassVar[List[str]] = []
-    artifacts: ClassVar[Dict[str, Optional[Dict[str, Any]]]] = {}
+    params: ClassVar[list[str]] = []
+    artifacts: ClassVar[dict[str, Optional[dict[str, Any]]]] = {}
 
     @property
     def stage(self) -> "Stage":
@@ -284,11 +281,11 @@ class ProjectFile(FileMixin):
         raise DvcException("ProjectFile has multiple stages. Please specify it's name.")
 
     @cached_property
-    def contents(self) -> Dict[str, Any]:
+    def contents(self) -> dict[str, Any]:
         return self._load()[0]
 
     @cached_property
-    def lockfile_contents(self) -> Dict[str, Any]:
+    def lockfile_contents(self) -> dict[str, Any]:
         return self._lockfile.load()
 
     @cached_property
@@ -303,7 +300,7 @@ class ProjectFile(FileMixin):
         return self.LOADER(self, self.contents, self.lockfile_contents)
 
     @property
-    def metrics(self) -> List[str]:
+    def metrics(self) -> list[str]:
         return self.contents.get("metrics", [])
 
     @property
@@ -311,11 +308,11 @@ class ProjectFile(FileMixin):
         return self.contents.get("plots", {})
 
     @property
-    def params(self) -> List[str]:
+    def params(self) -> list[str]:
         return self.contents.get("params", [])
 
     @property
-    def artifacts(self) -> Dict[str, Optional[Dict[str, Any]]]:
+    def artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
         return self.contents.get("artifacts", {})
 
     def remove(self, force=False):

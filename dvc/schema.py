@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Dict
+from typing import Any
 
 import voluptuous as vol
 
@@ -28,7 +28,7 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_DESC: str,
 }
 
-DATA_SCHEMA: Dict[Any, Any] = {
+DATA_SCHEMA: dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     vol.Required("path"): str,

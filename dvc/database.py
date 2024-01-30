@@ -1,8 +1,9 @@
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url as _make_url
@@ -30,7 +31,7 @@ def make_url(url: Union["URL", str], **kwargs: Any) -> "URL":
     return _make_url(url).set(**kwargs)
 
 
-def url_from_config(config: Union[str, "URL", Dict[str, str]]) -> "URL":
+def url_from_config(config: Union[str, "URL", dict[str, str]]) -> "URL":
     if isinstance(config, dict):
         return make_url(**config)
     return make_url(config)
@@ -118,7 +119,7 @@ def handle_error(url: "URL"):
 
 @contextmanager
 def client(
-    url_or_config: Union[str, "URL", Dict[str, str]], **engine_kwargs: Any
+    url_or_config: Union[str, "URL", dict[str, str]], **engine_kwargs: Any
 ) -> Iterator[Client]:
     url = url_from_config(url_or_config)
     echo = env2bool(env.DVC_SQLALCHEMY_ECHO, False)

@@ -1,7 +1,7 @@
 import os
 import pathlib
 import posixpath
-from typing import Callable, ClassVar, Dict
+from typing import Callable, ClassVar
 from urllib.parse import urlparse
 
 from dvc.utils import relpath
@@ -120,7 +120,7 @@ class _URLPathParents:
 
 
 class URLInfo(_BasePath):
-    DEFAULT_PORTS: ClassVar[Dict[str, int]] = {
+    DEFAULT_PORTS: ClassVar[dict[str, int]] = {
         "http": 80,
         "https": 443,
         "ssh": 22,

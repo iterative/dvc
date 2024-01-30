@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from rich.table import Table as RichTable
 
@@ -13,7 +13,7 @@ class Table(RichTable):
 
     def _calculate_column_widths(
         self, console: "Console", options: "ConsoleOptions"
-    ) -> List[int]:
+    ) -> list[int]:
         """Calculate the widths of each column, including padding, not
         including borders.
 
@@ -47,10 +47,10 @@ class Table(RichTable):
 
     def _collapse_widths(  # type: ignore[override]
         self,
-        widths: List[int],
-        wrapable: List[bool],
+        widths: list[int],
+        wrapable: list[bool],
         max_width: int,
-    ) -> List[int]:
+    ) -> list[int]:
         """Collapse columns right-to-left if possible to fit table into
         max_width.
 

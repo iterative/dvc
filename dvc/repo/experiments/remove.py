@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional, Union
 
 from dvc.log import logger
 from dvc.repo import locked
@@ -23,14 +24,14 @@ logger = logger.getChild(__name__)
 @scm_context
 def remove(  # noqa: C901, PLR0912
     repo: "Repo",
-    exp_names: Union[None, str, List[str]] = None,
-    rev: Optional[Union[List[str], str]] = None,
+    exp_names: Union[None, str, list[str]] = None,
+    rev: Optional[Union[list[str], str]] = None,
     all_commits: bool = False,
     num: int = 1,
     queue: bool = False,
     git_remote: Optional[str] = None,
-) -> List[str]:
-    removed: List[str] = []
+) -> list[str]:
+    removed: list[str] = []
     if not any([exp_names, queue, all_commits, rev]):
         return removed
     celery_queue: "LocalCeleryQueue" = repo.experiments.celery_queue
@@ -40,13 +41,13 @@ def remove(  # noqa: C901, PLR0912
 
     assert isinstance(repo.scm, Git)
 
-    exp_ref_list: List["ExpRefInfo"] = []
-    queue_entry_list: List["QueueEntry"] = []
+    exp_ref_list: list["ExpRefInfo"] = []
+    queue_entry_list: list["QueueEntry"] = []
     if exp_names:
-        results: Dict[
+        results: dict[
             str, "ExpRefAndQueueEntry"
         ] = celery_queue.get_ref_and_entry_by_names(exp_names, git_remote)
-        remained: List[str] = []
+        remained: list[str] = []
         for name, result in results.items():
             if not result.exp_ref_info and not result.queue_entry:
                 remained.append(name)
@@ -87,13 +88,13 @@ def remove(  # noqa: C901, PLR0912
 
 def _resolve_exp_by_baseline(
     repo: "Repo",
-    rev: List[str],
+    rev: list[str],
     num: int,
     git_remote: Optional[str] = None,
-) -> Dict[str, "ExpRefInfo"]:
+) -> dict[str, "ExpRefInfo"]:
     assert isinstance(repo.scm, Git)
 
-    commit_ref_dict: Dict[str, "ExpRefInfo"] = {}
+    commit_ref_dict: dict[str, "ExpRefInfo"] = {}
     rev_dict = iter_revs(repo.scm, rev, num)
     rev_set = set(rev_dict.keys())
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
@@ -105,7 +106,7 @@ def _resolve_exp_by_baseline(
 
 def _remove_commited_exps(
     scm: "Git", exp_refs_list: Iterable["ExpRefInfo"], remote: Optional[str]
-) -> List[str]:
+) -> list[str]:
     if remote:
         from dvc.scm import TqdmGit
 

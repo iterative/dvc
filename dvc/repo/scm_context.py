@@ -1,16 +1,12 @@
 import logging
 import shlex
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
     Optional,
-    Set,
     Union,
 )
 
@@ -27,15 +23,15 @@ logger = logger.getChild(__name__)
 
 
 class SCMContext:
-    def __init__(self, scm: "Base", config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, scm: "Base", config: Optional[dict[str, Any]] = None) -> None:
         from funcy import get_in
 
         self.scm: "Base" = scm
         self.autostage: bool = get_in(
             config or {}, ["core", "autostage"], default=False
         )
-        self.ignored_paths: List[str] = []
-        self.files_to_track: Set[str] = set()
+        self.ignored_paths: list[str] = []
+        self.files_to_track: set[str] = set()
         self.quiet: bool = False
 
     def track_file(self, paths: Union[str, Iterable[str], None] = None) -> None:

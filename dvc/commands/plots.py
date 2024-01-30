@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import compact, first, get_in
 
@@ -20,14 +20,14 @@ logger = logger.getChild(__name__)
 
 
 def _show_json(
-    renderers_with_errors: List["RendererWithErrors"],
+    renderers_with_errors: list["RendererWithErrors"],
     split=False,
-    errors: Optional[Dict[str, Exception]] = None,
+    errors: Optional[dict[str, Exception]] = None,
 ):
     from dvc.render.convert import to_json
     from dvc.utils.serialize import encode_exception
 
-    all_errors: List[Dict] = []
+    all_errors: list[dict] = []
     data = {}
 
     for renderer, src_errors, def_errors in renderers_with_errors:

@@ -1,6 +1,7 @@
 import typing
 from collections import Counter
-from typing import Dict, Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Optional, Union
 
 from funcy import first
 
@@ -8,7 +9,7 @@ from dvc.repo import Repo
 
 
 def _postprocess(results):
-    processed: Dict[str, Dict] = {}
+    processed: dict[str, dict] = {}
     for rev, rev_data in results.items():
         if not rev_data:
             continue
@@ -36,8 +37,8 @@ def metrics_show(
     *targets: str,
     repo: Optional[str] = None,
     rev: Optional[str] = None,
-    config: Optional[Dict] = None,
-) -> Dict:
+    config: Optional[dict] = None,
+) -> dict:
     """Get metrics tracked in `repo`.
 
     Without arguments, this function will retrieve all metrics from all tracked
@@ -159,8 +160,8 @@ def params_show(
     stages: Optional[Union[str, Iterable[str]]] = None,
     rev: Optional[str] = None,
     deps: bool = False,
-    config: Optional[Dict] = None,
-) -> Dict:
+    config: Optional[dict] = None,
+) -> dict:
     """Get parameters tracked in `repo`.
 
     Without arguments, this function will retrieve all params from all tracked

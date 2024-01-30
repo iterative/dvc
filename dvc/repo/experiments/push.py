@@ -1,12 +1,8 @@
+from collections.abc import Iterable, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
     Optional,
-    Set,
     Union,
 )
 
@@ -39,7 +35,7 @@ class UploadError(DvcException):
 
 
 def notify_refs_to_studio(
-    repo: "Repo", git_remote: str, **refs: List[str]
+    repo: "Repo", git_remote: str, **refs: list[str]
 ) -> Optional[str]:
     import os
 
@@ -67,7 +63,7 @@ def notify_refs_to_studio(
     return d.get("url")
 
 
-def exp_refs_from_names(scm: "Git", exp_names: List[str]) -> Set["ExpRefInfo"]:
+def exp_refs_from_names(scm: "Git", exp_names: list[str]) -> set["ExpRefInfo"]:
     exp_ref_set = set()
     exp_ref_dict = resolve_name(scm, exp_names)
     unresolved_exp_names = []
@@ -82,7 +78,7 @@ def exp_refs_from_names(scm: "Git", exp_names: List[str]) -> Set["ExpRefInfo"]:
     return exp_ref_set
 
 
-def exp_refs_from_rev(scm: "Git", rev: List[str], num: int = 1) -> Set["ExpRefInfo"]:
+def exp_refs_from_rev(scm: "Git", rev: list[str], num: int = 1) -> set["ExpRefInfo"]:
     exp_ref_set = set()
     rev_dict = iter_revs(scm, rev, num)
     rev_set = set(rev_dict.keys())
@@ -97,15 +93,15 @@ def exp_refs_from_rev(scm: "Git", rev: List[str], num: int = 1) -> Set["ExpRefIn
 def push(
     repo: "Repo",
     git_remote: str,
-    exp_names: Optional[Union[List[str], str]] = None,
+    exp_names: Optional[Union[list[str], str]] = None,
     all_commits: bool = False,
-    rev: Optional[Union[List[str], str]] = None,
+    rev: Optional[Union[list[str], str]] = None,
     num: int = 1,
     force: bool = False,
     push_cache: bool = False,
     **kwargs: Any,
-) -> Dict[str, Any]:
-    exp_ref_set: Set["ExpRefInfo"] = set()
+) -> dict[str, Any]:
+    exp_ref_set: set["ExpRefInfo"] = set()
     assert isinstance(repo.scm, Git)
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm))
@@ -123,7 +119,7 @@ def push(
         status.name.lower(): [ref.name for ref in ref_list]
         for status, ref_list in push_result.items()
     }
-    result: Dict[str, Any] = {**refs, "uploaded": 0}
+    result: dict[str, Any] = {**refs, "uploaded": 0}
 
     pushed_refs_info = (
         push_result[SyncStatus.UP_TO_DATE] + push_result[SyncStatus.SUCCESS]
@@ -149,7 +145,7 @@ def _push(
     git_remote: str,
     refs: Iterable["ExpRefInfo"],
     force: bool,
-) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
+) -> Mapping[SyncStatus, list["ExpRefInfo"]]:
     from scmrepo.exceptions import AuthError
 
     from dvc.scm import GitAuthError
@@ -171,7 +167,7 @@ def _push(
     def group_result(refspec):
         return results[str(refspec)]
 
-    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(group_result, refs)
+    pull_result: Mapping[SyncStatus, list["ExpRefInfo"]] = group_by(group_result, refs)
 
     return pull_result
 

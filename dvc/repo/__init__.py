@@ -1,14 +1,12 @@
 import os
 from collections import defaultdict
-from contextlib import contextmanager
+from collections.abc import Iterable
+from contextlib import AbstractContextManager, contextmanager
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Callable,
-    ContextManager,
-    Iterable,
     Optional,
-    Tuple,
     Union,
 )
 
@@ -111,7 +109,7 @@ class Repo:
         fs: Optional["FileSystem"] = None,
         uninitialized: bool = False,
         scm: Optional[Union["Git", "NoSCM"]] = None,
-    ) -> Tuple[str, Optional[str]]:
+    ) -> tuple[str, Optional[str]]:
         from dvc.fs import localfs
         from dvc.scm import SCM, SCMError
 
@@ -268,7 +266,7 @@ class Repo:
         if not isinstance(self.fs, GitFileSystem):
             return None
 
-        relparts: Tuple[str, ...] = ()
+        relparts: tuple[str, ...] = ()
         if self.root_dir != "/":
             # subrepo
             relparts = self.fs.relparts(self.root_dir, "/")
@@ -392,7 +390,7 @@ class Repo:
         self,
         path: str,
         workspace: str = "repo",
-    ) -> Tuple["DataIndex", "DataIndexEntry"]:
+    ) -> tuple["DataIndex", "DataIndexEntry"]:
         if self.subrepos:
             fs_path = self.dvcfs.from_os_path(path)
             fs = self.dvcfs.fs
@@ -476,7 +474,7 @@ class Repo:
 
         return brancher(self, *args, **kwargs)
 
-    def switch(self, rev: str) -> ContextManager[str]:
+    def switch(self, rev: str) -> AbstractContextManager[str]:
         from dvc.repo.brancher import switch
 
         return switch(self, rev)
@@ -626,7 +624,7 @@ class Repo:
         cache_dir = self.config["core"].get("site_cache_dir") or site_cache_dir()
 
         if isinstance(self.fs, GitFileSystem):
-            relparts: Tuple[str, ...] = ()
+            relparts: tuple[str, ...] = ()
             if self.root_dir != "/":
                 # subrepo
                 relparts = self.fs.relparts(self.root_dir, "/")

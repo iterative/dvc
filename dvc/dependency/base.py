@@ -1,5 +1,3 @@
-from typing import Dict, Type
-
 from dvc.exceptions import DvcException
 from dvc.fs import download as fs_download
 from dvc.output import Output
@@ -25,11 +23,11 @@ class DependencyIsStageFileError(DvcException):
 class Dependency(Output):
     IS_DEPENDENCY = True
 
-    DoesNotExistError: Type[DvcException] = DependencyDoesNotExistError
-    IsNotFileOrDirError: Type[DvcException] = DependencyIsNotFileOrDirError
-    IsStageFileError: Type[DvcException] = DependencyIsStageFileError
+    DoesNotExistError: type[DvcException] = DependencyDoesNotExistError
+    IsNotFileOrDirError: type[DvcException] = DependencyIsNotFileOrDirError
+    IsStageFileError: type[DvcException] = DependencyIsStageFileError
 
-    def workspace_status(self) -> Dict[str, str]:
+    def workspace_status(self) -> dict[str, str]:
         if self.fs.version_aware:
             old_fs_path = self.fs_path
             try:

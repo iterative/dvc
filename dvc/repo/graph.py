@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Set, TypeVar
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Optional, TypeVar
 
 from dvc.fs import localfs
 from dvc.utils.fs import path_isin
@@ -21,7 +22,7 @@ def check_acyclic(graph: "DiGraph") -> None:
     except nx.NetworkXNoCycle:
         return
 
-    stages: Set["Stage"] = set()
+    stages: set["Stage"] = set()
     for from_node, to_node, _ in edges:
         stages.add(from_node)
         stages.add(to_node)
@@ -45,7 +46,7 @@ def get_pipelines(graph: "DiGraph"):
 
 
 def get_subgraph_of_nodes(
-    graph: "DiGraph", sources: Optional[List[Any]] = None, downstream: bool = False
+    graph: "DiGraph", sources: Optional[list[Any]] = None, downstream: bool = False
 ) -> "DiGraph":
     from networkx import dfs_postorder_nodes, reverse_view
 
@@ -69,7 +70,7 @@ def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:
     return nx.dfs_postorder_nodes(pipeline, stage)
 
 
-def collect_inside_path(path: str, graph: "DiGraph") -> List["Stage"]:
+def collect_inside_path(path: str, graph: "DiGraph") -> list["Stage"]:
     import networkx as nx
 
     stages = nx.dfs_postorder_nodes(graph)

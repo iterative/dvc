@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from dvc.log import logger
 from dvc.repo.experiments.exceptions import (
@@ -22,16 +22,16 @@ def rename(
     exp_name: Union[str, None] = None,
     git_remote: Optional[str] = None,
     force: bool = False,
-) -> Union[List[str], None]:
-    renamed: List[str] = []
-    remained: List[str] = []
+) -> Union[list[str], None]:
+    renamed: list[str] = []
+    remained: list[str] = []
     assert isinstance(repo.scm, Git)
 
     if exp_name == new_name:
         return None
 
     if exp_name:
-        results: Dict[str, Union[ExpRefInfo, None]] = resolve_name(
+        results: dict[str, Union[ExpRefInfo, None]] = resolve_name(
             scm=repo.scm, exp_names=exp_name, git_remote=git_remote
         )
         for name, result in results.items():

@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from dvc.fs import GitFileSystem, Schemes
 from dvc_data.hashfile.db import get_odb
@@ -15,7 +15,7 @@ def _get_odb(
     repo,
     settings,
     fs=None,
-    prefix: Optional[Tuple[str, ...]] = None,
+    prefix: Optional[tuple[str, ...]] = None,
     hash_name: Optional[str] = None,
     **kwargs,
 ):

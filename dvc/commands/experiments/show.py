@@ -1,7 +1,8 @@
 import argparse
 import re
+from collections.abc import Iterable
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Dict, Iterable
+from typing import TYPE_CHECKING
 
 from funcy import lmap
 
@@ -57,7 +58,7 @@ def baseline_styler(typ):
 
 def show_experiments(
     td: "TabularData",
-    headers: Dict[str, Iterable[str]],
+    headers: dict[str, Iterable[str]],
     keep=None,
     drop=None,
     pager=True,

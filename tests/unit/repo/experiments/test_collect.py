@@ -1,6 +1,5 @@
 import datetime
 import random
-from typing import Dict, List
 
 import pytest
 
@@ -22,7 +21,7 @@ def test_collect_stable_sorting(dvc, scm, mocker):
         "7" * 40,
     ]
 
-    def collect_queued_patched(_, baseline_revs) -> Dict[str, List["ExpRange"]]:
+    def collect_queued_patched(_, baseline_revs) -> dict[str, list["ExpRange"]]:
         single_timestamp = datetime.datetime(2023, 6, 20, 0, 0, 0)
 
         exp_ranges = [
@@ -59,8 +58,8 @@ def test_collect_stable_sorting(dvc, scm, mocker):
 
 
 def _assert_experiment_rev_order(
-    actual: List["ExpRange"],
-    expected_revs: List[str],
+    actual: list["ExpRange"],
+    expected_revs: list[str],
 ):
     expected_revs = expected_revs.copy()
 

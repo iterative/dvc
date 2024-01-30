@@ -1,11 +1,9 @@
 from collections import OrderedDict
+from collections.abc import Iterable
 from operator import attrgetter
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterable,
-    List,
     Optional,
     Union,
     no_type_check,
@@ -67,7 +65,7 @@ def _serialize_out(out):
 
 
 @no_type_check
-def _serialize_outs(outputs: List[Output]):
+def _serialize_outs(outputs: list[Output]):
     outs, metrics, plots = [], [], []
     for out in sorted(outputs, key=attrgetter("def_path")):
         bucket = outs
@@ -88,10 +86,10 @@ def _serialize_params_keys(params: Iterable["ParamsDependency"]):
     at the first, and then followed by entry of other files in lexicographic
     order. The keys of those custom files are also sorted in the same order.
     """
-    keys: List[Union[str, Dict[str, Optional[List[str]]]]] = []
+    keys: list[Union[str, dict[str, Optional[list[str]]]]] = []
     for param_dep in sorted(params, key=attrgetter("def_path")):
         # when on no_exec, params are not filled and are saved as list
-        k: List[str] = sorted(param_dep.params)
+        k: list[str] = sorted(param_dep.params)
         if k and param_dep.def_path == DEFAULT_PARAMS_FILE:
             keys = k + keys  # type: ignore[operator,assignment]
         else:
@@ -100,7 +98,7 @@ def _serialize_params_keys(params: Iterable["ParamsDependency"]):
 
 
 @no_type_check
-def _serialize_params_values(params: List[ParamsDependency]):
+def _serialize_params_values(params: list[ParamsDependency]):
     """Returns output of following format, used for lockfile:
         {'params.yaml': {'lr': '1', 'train': 2}, {'params2.yaml': {'lr': '1'}}
 
@@ -160,7 +158,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     assert stage.cmd
 
     def _dumpd(item: "Output"):
-        ret: Dict[str, Any] = {item.PARAM_PATH: item.def_path}
+        ret: dict[str, Any] = {item.PARAM_PATH: item.def_path}
         if item.hash_name not in LEGACY_HASH_NAMES:
             ret[item.PARAM_HASH] = "md5"
         if item.hash_info.isdir and kwargs.get("with_files"):

@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Callable, Optional
 
 from dvc.log import logger
 
@@ -10,8 +11,8 @@ logger = logger.getChild(__name__)
 
 
 FilterFn = Callable[["Output"], bool]
-Outputs = List["Output"]
-StrPaths = List[str]
+Outputs = list["Output"]
+StrPaths = list[str]
 
 
 def _collect_outs(
@@ -43,7 +44,7 @@ def _collect_paths(
 
 def _filter_outs(
     outs: Outputs, fs_paths: StrPaths, duplicates=False
-) -> Tuple[Outputs, StrPaths]:
+) -> tuple[Outputs, StrPaths]:
     res_outs: Outputs = []
     fs_res_paths = fs_paths
 
@@ -65,7 +66,7 @@ def collect(
     output_filter: Optional[FilterFn] = None,
     recursive: bool = False,
     duplicates: bool = False,
-) -> Tuple[Outputs, StrPaths]:
+) -> tuple[Outputs, StrPaths]:
     assert targets or output_filter
 
     outs: Outputs = _collect_outs(repo, output_filter=output_filter, deps=deps)

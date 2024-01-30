@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional
 
 from funcy import compact, log_durations
 
@@ -31,7 +32,7 @@ def download_progress(to: "Output") -> Iterator[Callable[[int], Any]]:
 class AbstractDependency(Dependency):
     """Dependency without workspace/fs/fs_path"""
 
-    def __init__(self, stage: "Stage", info: Dict[str, Any], *args, **kwargs):
+    def __init__(self, stage: "Stage", info: dict[str, Any], *args, **kwargs):
         self.repo = stage.repo
         self.stage = stage
         self.fs = None
@@ -46,7 +47,7 @@ class DbDependency(AbstractDependency):
     PARAM_QUERY = "query"
     PARAM_TABLE = "table"
     PARAM_FILE_FORMAT = "file_format"
-    DB_SCHEMA: ClassVar[Dict] = {
+    DB_SCHEMA: ClassVar[dict] = {
         PARAM_DB: {
             PARAM_QUERY: str,
             PARAM_CONNECTION: str,
@@ -57,7 +58,7 @@ class DbDependency(AbstractDependency):
 
     def __init__(self, stage: "Stage", info, *args, **kwargs):
         super().__init__(stage, info, *args, **kwargs)
-        self.db_info: Dict[str, str] = self.info.get(self.PARAM_DB, {})
+        self.db_info: dict[str, str] = self.info.get(self.PARAM_DB, {})
         self.connection = self.db_info.get(self.PARAM_CONNECTION)
 
     @property

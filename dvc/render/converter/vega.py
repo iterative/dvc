@@ -1,5 +1,6 @@
 import os
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from collections.abc import Iterable
+from typing import Any, Optional, Union
 
 from funcy import first, last
 
@@ -18,7 +19,7 @@ class FieldNotFoundError(DvcException):
         )
 
 
-def _lists(blob: Union[Dict, List]) -> Iterable[List]:
+def _lists(blob: Union[dict, list]) -> Iterable[list]:
     if isinstance(blob, list):
         yield blob
     else:
@@ -43,7 +44,7 @@ def _file_field(*args):
 def _find(
     filename: str,
     field: str,
-    data_series: List[Tuple[str, str, Any]],
+    data_series: list[tuple[str, str, Any]],
 ):
     for data_file, data_field, data in data_series:
         if data_file == filename and data_field == field:
@@ -51,14 +52,14 @@ def _find(
     return None
 
 
-def _verify_field(file2datapoints: Dict[str, List], filename: str, field: str):
+def _verify_field(file2datapoints: dict[str, list], filename: str, field: str):
     if filename in file2datapoints:
         datapoint = first(file2datapoints[filename])
         if field not in datapoint:
             raise FieldNotFoundError(field, datapoint.keys())
 
 
-def _get_xs(properties: Dict, file2datapoints: Dict[str, List[Dict]]):
+def _get_xs(properties: dict, file2datapoints: dict[str, list[dict]]):
     x = properties.get("x")
     if x is not None and isinstance(x, dict):
         for filename, field in _file_field(x):
@@ -66,7 +67,7 @@ def _get_xs(properties: Dict, file2datapoints: Dict[str, List[Dict]]):
             yield filename, field
 
 
-def _get_ys(properties, file2datapoints: Dict[str, List[Dict]]):
+def _get_ys(properties, file2datapoints: dict[str, list[dict]]):
     y = properties.get("y", None)
     if y is not None:
         for filename, field in _file_field(y):
@@ -74,7 +75,7 @@ def _get_ys(properties, file2datapoints: Dict[str, List[Dict]]):
             yield filename, field
 
 
-def _is_datapoints(lst: List[Dict]):
+def _is_datapoints(lst: list[dict]):
     """
     check if dict keys match, datapoints with different keys mgiht lead
     to unexpected behavior
@@ -85,8 +86,8 @@ def _is_datapoints(lst: List[Dict]):
     }
 
 
-def get_datapoints(file_content: Dict):
-    result: List[Dict[str, Any]] = []
+def get_datapoints(file_content: dict):
+    result: list[dict[str, Any]] = []
     for lst in _lists(file_content):
         if _is_datapoints(lst):
             for index, datapoint in enumerate(lst):
@@ -107,8 +108,8 @@ class VegaConverter(Converter):
     def __init__(
         self,
         plot_id: str,
-        data: Optional[Dict] = None,
-        properties: Optional[Dict] = None,
+        data: Optional[dict] = None,
+        properties: Optional[dict] = None,
     ):
         super().__init__(plot_id, data, properties)
         self.plot_id = plot_id
@@ -126,7 +127,7 @@ class VegaConverter(Converter):
         x = self.properties.get("x", None)
         y = self.properties.get("y", None)
 
-        inferred_properties: Dict = {}
+        inferred_properties: dict = {}
 
         # Infer x.
         if isinstance(x, str):
@@ -195,7 +196,7 @@ class VegaConverter(Converter):
     def flat_datapoints(self, revision):  # noqa: C901, PLR0912
         file2datapoints, properties = self.convert()
 
-        props_update: Dict[str, Union[str, List[Dict[str, str]]]] = {}
+        props_update: dict[str, Union[str, list[dict[str, str]]]] = {}
 
         xs = list(_get_xs(properties, file2datapoints))
 
@@ -322,9 +323,9 @@ def _get_short_y_file(y_file, common_prefix_len):
 
 
 def _update_from_field(
-    target_datapoints: List[Dict],
+    target_datapoints: list[dict],
     field: str,
-    source_datapoints: Optional[List[Dict]] = None,
+    source_datapoints: Optional[list[dict]] = None,
     source_field: Optional[str] = None,
 ):
     if source_datapoints is None:
@@ -341,11 +342,11 @@ def _update_from_field(
             datapoint[field] = source_datapoint[source_field]
 
 
-def _update_from_index(datapoints: List[Dict], new_field: str):
+def _update_from_index(datapoints: list[dict], new_field: str):
     for index, datapoint in enumerate(datapoints):
         datapoint[new_field] = index
 
 
-def _update_all(datapoints: List[Dict], update_dict: Dict):
+def _update_all(datapoints: list[dict], update_dict: dict):
     for datapoint in datapoints:
         datapoint.update(update_dict)

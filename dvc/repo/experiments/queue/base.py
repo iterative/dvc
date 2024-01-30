@@ -1,18 +1,12 @@
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Collection, Generator, Iterable, Mapping
 from dataclasses import asdict, dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Collection,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Mapping,
     NamedTuple,
     Optional,
-    Type,
     Union,
 )
 
@@ -69,11 +63,11 @@ class QueueEntry:
             and self.stash_rev == other.stash_rev
         )
 
-    def asdict(self) -> Dict[str, Any]:
+    def asdict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "QueueEntry":
+    def from_dict(cls, d: dict[str, Any]) -> "QueueEntry":
         return cls(**d)
 
 
@@ -150,7 +144,7 @@ class BaseStashQueue(ABC):
         all_: bool = False,
         queued: bool = False,
         **kwargs,
-    ) -> List[str]:
+    ) -> list[str]:
         """Remove the specified entries from the queue.
 
         Arguments:
@@ -165,8 +159,8 @@ class BaseStashQueue(ABC):
         if all_ or queued:
             return self.clear()
 
-        name_to_remove: List[str] = []
-        entry_to_remove: List[ExpStashEntry] = []
+        name_to_remove: list[str] = []
+        entry_to_remove: list[ExpStashEntry] = []
         queue_entries = self.match_queue_entry_by_name(revs, self.iter_queued())
         for name, entry in queue_entries.items():
             if entry:
@@ -176,7 +170,7 @@ class BaseStashQueue(ABC):
         self.stash.remove_revs(entry_to_remove)
         return name_to_remove
 
-    def clear(self, **kwargs) -> List[str]:
+    def clear(self, **kwargs) -> list[str]:
         """Remove all entries from the queue."""
         stash_revs = self.stash.stash_revs
         name_to_remove = list(stash_revs)
@@ -184,11 +178,11 @@ class BaseStashQueue(ABC):
 
         return name_to_remove
 
-    def status(self) -> List[Dict[str, Any]]:
+    def status(self) -> list[dict[str, Any]]:
         """Show the status of exp tasks in queue"""
         from datetime import datetime
 
-        result: List[Dict[str, Optional[str]]] = []
+        result: list[dict[str, Optional[str]]] = []
 
         def _get_timestamp(rev: str) -> datetime:
             commit = self.scm.resolve_commit(rev)
@@ -198,7 +192,7 @@ class BaseStashQueue(ABC):
             entry: QueueEntry,
             exp_result: Optional["ExecutorResult"] = None,
             status: str = "Unknown",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             name = entry.name
             if not name and exp_result and exp_result.ref_info:
                 name = exp_result.ref_info.name
@@ -251,7 +245,7 @@ class BaseStashQueue(ABC):
 
     @abstractmethod
     def reproduce(
-        self, copy_paths: Optional[List[str]] = None, message: Optional[str] = None
+        self, copy_paths: Optional[list[str]] = None, message: Optional[str] = None
     ) -> Mapping[str, Mapping[str, str]]:
         """Reproduce queued experiments sequentially."""
 
@@ -300,7 +294,7 @@ class BaseStashQueue(ABC):
     def _stash_exp(
         self,
         *args,
-        params: Optional[Dict[str, List[str]]] = None,
+        params: Optional[dict[str, list[str]]] = None,
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
         name: Optional[str] = None,
@@ -460,7 +454,7 @@ class BaseStashQueue(ABC):
             f"from '{config_path}': {param_list}"
         )
 
-    def _update_params(self, params: Dict[str, List[str]]):
+    def _update_params(self, params: dict[str, list[str]]):
         """Update param files with the provided `Hydra Override`_ patterns.
 
         Args:
@@ -528,7 +522,7 @@ class BaseStashQueue(ABC):
         cls,
         exp: "Experiments",
         queue_entry: QueueEntry,
-        executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
+        executor_cls: type[BaseExecutor] = WorkspaceExecutor,
         **kwargs,
     ) -> BaseExecutor:
         stash_entry = cls.get_stash_entry(exp, queue_entry)
@@ -563,7 +557,7 @@ class BaseStashQueue(ABC):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: "ExecutorResult",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         results = {}
 
         def on_diverged(ref: str):
@@ -593,7 +587,7 @@ class BaseStashQueue(ABC):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: "ExecutorResult",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         results = cls.collect_git(exp, executor, exec_result)
 
         if exec_result.ref_info is not None:
@@ -605,11 +599,11 @@ class BaseStashQueue(ABC):
         self,
         exp_names: Collection[str],
         *entries: Iterable[Union[QueueEntry, QueueDoneResult]],
-    ) -> Dict[str, Optional[QueueEntry]]:
+    ) -> dict[str, Optional[QueueEntry]]:
         from funcy import concat
 
-        entry_name_dict: Dict[str, QueueEntry] = {}
-        entry_rev_dict: Dict[str, QueueEntry] = {}
+        entry_name_dict: dict[str, QueueEntry] = {}
+        entry_rev_dict: dict[str, QueueEntry] = {}
         for entry in concat(*entries):
             if isinstance(entry, QueueDoneResult):
                 queue_entry: QueueEntry = entry.entry
@@ -624,7 +618,7 @@ class BaseStashQueue(ABC):
                 entry_name_dict[name] = queue_entry
             entry_rev_dict[queue_entry.stash_rev] = queue_entry
 
-        result: Dict[str, Optional[QueueEntry]] = {}
+        result: dict[str, Optional[QueueEntry]] = {}
         for exp_name in exp_names:
             result[exp_name] = None
             if exp_name in entry_name_dict:
@@ -666,7 +660,7 @@ class BaseStashQueue(ABC):
         baseline_revs: Optional[Collection[str]],
         fetch_refs: bool = False,
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         """Collect data for active (running) experiments.
 
         Args:
@@ -685,7 +679,7 @@ class BaseStashQueue(ABC):
         self,
         baseline_revs: Optional[Collection[str]],
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         """Collect data for queued experiments.
 
         Args:
@@ -702,7 +696,7 @@ class BaseStashQueue(ABC):
         self,
         baseline_revs: Optional[Collection[str]],
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         """Collect data for failed experiments.
 
         Args:

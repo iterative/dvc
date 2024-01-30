@@ -1,8 +1,9 @@
 import queue
 import sys
+from collections.abc import Iterable, Iterator
 from concurrent import futures
 from itertools import islice
-from typing import Any, Callable, Iterable, Iterator, Optional, Set, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 _T = TypeVar("_T")
 
@@ -31,7 +32,7 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
         It does not create all the futures at once to reduce memory usage.
         """
 
-        def create_taskset(n: int) -> Set[futures.Future]:
+        def create_taskset(n: int) -> set[futures.Future]:
             return {self.submit(fn, *args) for args in islice(it, n)}
 
         it = zip(*iterables)

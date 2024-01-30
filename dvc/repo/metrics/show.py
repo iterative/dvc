@@ -1,14 +1,10 @@
 import os
+from collections.abc import Iterable, Iterator
 from itertools import chain
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
     Optional,
-    Tuple,
     TypedDict,
     Union,
 )
@@ -71,7 +67,7 @@ def _read_metric(fs: "FileSystem", path: str, **load_kwargs) -> Any:
 
 def _read_metrics(
     fs: "FileSystem", metrics: Iterable[str], **load_kwargs
-) -> Iterator[Tuple[str, Union[Exception, Any]]]:
+) -> Iterator[tuple[str, Union[Exception, Any]]]:
     for metric in metrics:
         try:
             yield metric, _read_metric(fs, metric, **load_kwargs)
@@ -80,7 +76,7 @@ def _read_metrics(
             yield metric, exc
 
 
-def metrics_from_target(repo: "Repo", targets: List[str]) -> Iterator["Output"]:
+def metrics_from_target(repo: "Repo", targets: list[str]) -> Iterator["Output"]:
     stages = chain.from_iterable(repo.stage.collect(target) for target in targets)
     for stage in stages:
         yield from stage.metrics
@@ -88,11 +84,11 @@ def metrics_from_target(repo: "Repo", targets: List[str]) -> Iterator["Output"]:
 
 def _collect_metrics(
     repo: "Repo",
-    targets: Optional[List[str]] = None,
-    stages: Optional[List[str]] = None,
+    targets: Optional[list[str]] = None,
+    stages: Optional[list[str]] = None,
     outs_only: bool = False,
-) -> List[str]:
-    metrics: List[str] = []
+) -> list[str]:
+    metrics: list[str] = []
 
     if targets:
         # target is a repo-relative path
@@ -122,7 +118,7 @@ class FileResult(TypedDict, total=False):
 
 
 class Result(TypedDict, total=False):
-    data: Dict[str, FileResult]
+    data: dict[str, FileResult]
     error: Exception
 
 
@@ -139,11 +135,11 @@ def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
 
 def _gather_metrics(
     repo: "Repo",
-    targets: Optional[List[str]] = None,
+    targets: Optional[list[str]] = None,
     outs_only: bool = False,
-    stages: Optional[List[str]] = None,
+    stages: Optional[list[str]] = None,
     on_error: str = "return",
-) -> Dict[str, FileResult]:
+) -> dict[str, FileResult]:
     assert on_error in ("raise", "return", "ignore")
 
     # `files` is a repo-relative posixpath that can be passed to DVCFileSystem
@@ -168,8 +164,8 @@ def _gather_metrics(
 
 
 def _hide_workspace(
-    scm: Union["Git", "NoSCM"], res: Dict[str, Result]
-) -> Dict[str, Result]:
+    scm: Union["Git", "NoSCM"], res: dict[str, Result]
+) -> dict[str, Result]:
     # Hide workspace params if they are the same as in the active branch
     try:
         active_branch = scm.active_branch()
@@ -186,16 +182,16 @@ def _hide_workspace(
 
 def show(
     repo: "Repo",
-    targets: Optional[List[str]] = None,
-    stages: Optional[List[str]] = None,
+    targets: Optional[list[str]] = None,
+    stages: Optional[list[str]] = None,
     outs_only: bool = False,
     all_branches: bool = False,
     all_tags: bool = False,
-    revs: Optional[List[str]] = None,
+    revs: Optional[list[str]] = None,
     all_commits: bool = False,
     hide_workspace: bool = True,
     on_error: str = "return",
-) -> Dict[str, Result]:
+) -> dict[str, Result]:
     assert on_error in ("raise", "return", "ignore")
 
     targets = [os.path.abspath(target) for target in ensure_list(targets)]

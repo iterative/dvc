@@ -1,7 +1,7 @@
 import os
 import tempfile
 import threading
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from funcy import retry, wrap_with
 
@@ -78,8 +78,8 @@ def erepo_factory(url, root_dir, cache_config):
     return make_repo
 
 
-CLONES: Dict[str, Tuple[str, bool]] = {}
-CACHE_DIRS: Dict[str, str] = {}
+CLONES: dict[str, tuple[str, bool]] = {}
+CACHE_DIRS: dict[str, str] = {}
 
 
 @wrap_with(threading.Lock())

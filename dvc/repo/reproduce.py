@@ -1,13 +1,9 @@
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     Callable,
-    Dict,
-    Iterable,
-    List,
     NoReturn,
     Optional,
-    Set,
-    Tuple,
     TypeVar,
     Union,
     cast,
@@ -40,8 +36,8 @@ def collect_stages(
     targets: Iterable[str],
     recursive: bool = False,
     glob: bool = False,
-) -> List["Stage"]:
-    stages: List["Stage"] = []
+) -> list["Stage"]:
+    stages: list["Stage"] = []
     for target in targets:
         stages.extend(repo.stage.collect(target, recursive=recursive, glob=glob))
     return ldistinct(stages)
@@ -49,7 +45,7 @@ def collect_stages(
 
 def get_subgraph(
     graph: "DiGraph",
-    nodes: Optional[List] = None,
+    nodes: Optional[list] = None,
     pipeline: bool = False,
     downstream: bool = False,
 ) -> "DiGraph":
@@ -76,10 +72,10 @@ def get_active_graph(graph: "DiGraph") -> "DiGraph":
 
 def plan_repro(
     graph: "DiGraph",
-    stages: Optional[List["T"]] = None,
+    stages: Optional[list["T"]] = None,
     pipeline: bool = False,
     downstream: bool = False,
-) -> List["T"]:
+) -> list["T"]:
     r"""Derive the evaluation of the given node for the given graph.
 
     When you _reproduce a stage_, you want to _evaluate the descendants_
@@ -134,7 +130,7 @@ def _reproduce_stage(stage: "Stage", **kwargs) -> Optional["Stage"]:
 
 def _get_upstream_downstream_nodes(
     graph: Optional["DiGraph"], node: T
-) -> Tuple[List[T], List[T]]:
+) -> tuple[list[T], list[T]]:
     succ = list(graph.successors(node)) if graph else []
     pre = list(graph.predecessors(node)) if graph else []
     return succ, pre
@@ -146,7 +142,7 @@ def _repr(stages: Iterable["Stage"]) -> str:
 
 def handle_error(
     graph: Optional["DiGraph"], on_error: str, exc: Exception, stage: "Stage"
-) -> Set["Stage"]:
+) -> set["Stage"]:
     import networkx as nx
 
     logger.warning("%s%s", exc, " (ignored)" if on_error == "ignore" else "")
@@ -168,19 +164,19 @@ def _raise_error(exc: Optional[Exception], *stages: "Stage") -> NoReturn:
 
 
 def _reproduce(
-    stages: List["Stage"],
+    stages: list["Stage"],
     graph: Optional["DiGraph"] = None,
     force_downstream: bool = False,
     on_error: str = "fail",
     force: bool = False,
     repro_fn: Callable = _reproduce_stage,
     **kwargs,
-) -> List["Stage"]:
+) -> list["Stage"]:
     assert on_error in ("fail", "keep-going", "ignore")
 
-    result: List["Stage"] = []
-    failed: List["Stage"] = []
-    to_skip: Dict["Stage", "Stage"] = {}
+    result: list["Stage"] = []
+    failed: list["Stage"] = []
+    to_skip: dict["Stage", "Stage"] = {}
     ret: Optional["Stage"] = None
 
     force_state = dict.fromkeys(stages, force)
@@ -240,7 +236,7 @@ def reproduce(
     if not kwargs.get("interactive", False):
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    stages: List["Stage"] = []
+    stages: list["Stage"] = []
     if not all_pipelines:
         targets_list = ensure_list(targets or PROJECT_FILE)
         stages = collect_stages(self, targets_list, recursive=recursive, glob=glob)

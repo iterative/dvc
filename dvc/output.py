@@ -4,7 +4,7 @@ import posixpath
 from collections import defaultdict
 from contextlib import suppress
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from urllib.parse import urlparse
 
 import voluptuous as vol
@@ -148,7 +148,7 @@ def _split_dict(d, keys):
 
 
 def _merge_data(s_list):
-    d: Dict[str, Dict] = defaultdict(dict)
+    d: dict[str, dict] = defaultdict(dict)
     for key in s_list:
         if isinstance(key, str):
             d[key].update({})
@@ -207,7 +207,7 @@ def load_from_pipeline(stage, data, typ="outs"):
         )
 
 
-def split_file_meta_from_cloud(entry: Dict) -> Dict:
+def split_file_meta_from_cloud(entry: dict) -> dict:
     if remote_name := entry.pop(Meta.PARAM_REMOTE, None):
         remote_meta = {}
         for key in (
@@ -223,7 +223,7 @@ def split_file_meta_from_cloud(entry: Dict) -> Dict:
     return entry
 
 
-def merge_file_meta_from_cloud(entry: Dict) -> Dict:
+def merge_file_meta_from_cloud(entry: dict) -> dict:
     cloud_meta = entry.pop(Output.PARAM_CLOUD, {})
     if remote_name := first(cloud_meta):
         entry.update(cloud_meta[remote_name])
@@ -231,7 +231,7 @@ def merge_file_meta_from_cloud(entry: Dict) -> Dict:
     return entry
 
 
-def _serialize_tree_obj_to_files(obj: Tree) -> List[Dict[str, Any]]:
+def _serialize_tree_obj_to_files(obj: Tree) -> list[dict[str, Any]]:
     key = obj.PARAM_RELPATH
     return sorted(
         (
@@ -246,7 +246,7 @@ def _serialize_tree_obj_to_files(obj: Tree) -> List[Dict[str, Any]]:
     )
 
 
-def _serialize_hi_to_dict(hash_info: Optional[HashInfo]) -> Dict[str, Any]:
+def _serialize_hi_to_dict(hash_info: Optional[HashInfo]) -> dict[str, Any]:
     if hash_info:
         if hash_info.name == "md5-dos2unix":
             return {"md5": hash_info.value}
@@ -316,10 +316,10 @@ class Output:
     PARAM_HASH = "hash"
     PARAM_FS_CONFIG = "fs_config"
 
-    DoesNotExistError: Type[DvcException] = OutputDoesNotExistError
-    IsNotFileOrDirError: Type[DvcException] = OutputIsNotFileOrDirError
-    IsStageFileError: Type[DvcException] = OutputIsStageFileError
-    IsIgnoredError: Type[DvcException] = OutputIsIgnoredError
+    DoesNotExistError: type[DvcException] = OutputDoesNotExistError
+    IsNotFileOrDirError: type[DvcException] = OutputIsNotFileOrDirError
+    IsStageFileError: type[DvcException] = OutputIsStageFileError
+    IsIgnoredError: type[DvcException] = OutputIsIgnoredError
 
     def __init__(  # noqa: PLR0913
         self,
@@ -337,7 +337,7 @@ class Output:
         remote=None,
         repo=None,
         fs_config=None,
-        files: Optional[List[Dict[str, Any]]] = None,
+        files: Optional[list[dict[str, Any]]] = None,
         push: bool = True,
         hash_name: Optional[str] = DEFAULT_ALGORITHM,
     ):
@@ -420,7 +420,7 @@ class Output:
 
     def _compute_hash_info_from_meta(
         self, hash_name: Optional[str]
-    ) -> Tuple[str, HashInfo]:
+    ) -> tuple[str, HashInfo]:
         if self.is_in_repo:
             if hash_name is None:
                 # Legacy 2.x output, use "md5-dos2unix" but read "md5" from
@@ -555,7 +555,7 @@ class Output:
 
     def _build(
         self, *args, no_progress_bar=False, **kwargs
-    ) -> Tuple["HashFileDB", "Meta", "HashFile"]:
+    ) -> tuple["HashFileDB", "Meta", "HashFile"]:
         from dvc.ui import ui
 
         with ui.progress(
@@ -601,7 +601,7 @@ class Output:
         return self.fs.exists(self.fs_path)
 
     @cached_property
-    def index_key(self) -> Tuple[str, "DataIndexKey"]:
+    def index_key(self) -> tuple[str, "DataIndexKey"]:
         if self.is_in_repo:
             workspace = "repo"
             key = self.repo.fs.relparts(self.fs_path, self.repo.root_dir)
@@ -633,7 +633,7 @@ class Output:
             return self.meta.version_id != self.get_meta().version_id
         return False
 
-    def workspace_status(self) -> Dict[str, str]:
+    def workspace_status(self) -> dict[str, str]:
         if not self.exists:
             return {str(self): "deleted"}
 
@@ -645,7 +645,7 @@ class Output:
 
         return {}
 
-    def status(self) -> Dict[str, str]:
+    def status(self) -> dict[str, str]:
         if self.hash_info and self.use_cache and self.changed_cache():
             return {str(self): "not in cache"}
 
@@ -840,7 +840,7 @@ class Output:
     def dumpd(self, **kwargs):  # noqa: C901, PLR0912
         from dvc.cachemgr import LEGACY_HASH_NAMES
 
-        ret: Dict[str, Any] = {}
+        ret: dict[str, Any] = {}
         with_files = (
             (not self.IS_DEPENDENCY or self.stage.is_import)
             and self.hash_info.isdir
@@ -962,7 +962,7 @@ class Output:
         filter_info: Optional[str] = None,
         allow_missing: bool = False,
         **kwargs,
-    ) -> Optional[Tuple[bool, Optional[bool]]]:
+    ) -> Optional[tuple[bool, Optional[bool]]]:
         # callback passed act as a aggregate callback.
         # do not let checkout to call set_size and change progressbar.
         class CallbackProxy(Callback):
@@ -1157,7 +1157,7 @@ class Output:
 
     def get_used_objs(  # noqa: PLR0911
         self, **kwargs
-    ) -> Dict[Optional["HashFileDB"], Set["HashInfo"]]:
+    ) -> dict[Optional["HashFileDB"], set["HashInfo"]]:
         """Return filtered set of used object IDs for this out."""
         from dvc.cachemgr import LEGACY_HASH_NAMES
 
@@ -1291,7 +1291,7 @@ class Output:
             nfiles=len(merged),
         )
 
-    def unstage(self, path: str) -> Tuple["Meta", "Tree"]:
+    def unstage(self, path: str) -> tuple["Meta", "Tree"]:
         from pygtrie import Trie
 
         rel_key = tuple(self.fs.parts(self.fs.relpath(path, self.fs_path)))
@@ -1324,7 +1324,7 @@ class Output:
         path: str,
         obj: Union["Tree", "HashFile"],
         meta: "Meta",
-    ) -> Tuple["Meta", "Tree"]:
+    ) -> tuple["Meta", "Tree"]:
         from pygtrie import Trie
 
         append_only = True
@@ -1514,7 +1514,7 @@ META_SCHEMA = {
 
 CLOUD_SCHEMA = vol.All({str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}}, vol.Length(max=1))
 
-ARTIFACT_SCHEMA: Dict[Any, Any] = {
+ARTIFACT_SCHEMA: dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     Output.PARAM_PATH: str,
@@ -1523,7 +1523,7 @@ ARTIFACT_SCHEMA: Dict[Any, Any] = {
     Output.PARAM_HASH: str,
 }
 
-DIR_FILES_SCHEMA: Dict[Any, Any] = {
+DIR_FILES_SCHEMA: dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
     vol.Required(Tree.PARAM_RELPATH): str,

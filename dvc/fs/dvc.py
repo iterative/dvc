@@ -6,7 +6,7 @@ import posixpath
 import threading
 from collections import deque
 from contextlib import ExitStack, suppress
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from fsspec.spec import AbstractFileSystem
 from funcy import wrap_with
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 logger = logger.getChild(__name__)
 
-RepoFactory = Union[Callable[..., "Repo"], Type["Repo"]]
-Key = Tuple[str, ...]
+RepoFactory = Union[Callable[..., "Repo"], type["Repo"]]
+Key = tuple[str, ...]
 
 
 def as_posix(path: str) -> str:
@@ -85,7 +85,7 @@ class _DVCFileSystem(AbstractFileSystem):
         subrepos: bool = False,
         repo_factory: Optional[RepoFactory] = None,
         fo: Optional[str] = None,
-        target_options: Optional[Dict[str, Any]] = None,  # noqa: ARG002
+        target_options: Optional[dict[str, Any]] = None,  # noqa: ARG002
         target_protocol: Optional[str] = None,  # noqa: ARG002
         config: Optional["DictStrAny"] = None,
         remote: Optional[str] = None,
@@ -145,7 +145,7 @@ class _DVCFileSystem(AbstractFileSystem):
         }
 
     def getcwd(self):
-        relparts: Tuple[str, ...] = ()
+        relparts: tuple[str, ...] = ()
         assert self.repo is not None
         if self.repo.fs.isin(self.repo.fs.getcwd(), self.repo.root_dir):
             relparts = self.repo.fs.relparts(self.repo.fs.getcwd(), self.repo.root_dir)
@@ -156,7 +156,7 @@ class _DVCFileSystem(AbstractFileSystem):
         return posixpath.join(*parts)
 
     @classmethod
-    def parts(cls, path: str) -> Tuple[str, ...]:
+    def parts(cls, path: str) -> tuple[str, ...]:
         ret = []
         while True:
             path, part = posixpath.split(path)
@@ -187,7 +187,7 @@ class _DVCFileSystem(AbstractFileSystem):
             start = "."
         return posixpath.relpath(self.abspath(path), start=self.abspath(start))
 
-    def relparts(self, path: str, start: Optional[str] = None) -> Tuple[str, ...]:
+    def relparts(self, path: str, start: Optional[str] = None) -> tuple[str, ...]:
         return self.parts(self.relpath(path, start=start))
 
     @functools.cached_property
@@ -321,7 +321,7 @@ class _DVCFileSystem(AbstractFileSystem):
 
     def _get_subrepo_info(
         self, key: Key
-    ) -> Tuple["Repo", Optional[DataFileSystem], Key]:
+    ) -> tuple["Repo", Optional[DataFileSystem], Key]:
         """
         Returns information about the subrepo the key is part of.
         """
@@ -525,7 +525,7 @@ class DVCFileSystem(FileSystem):
     protocol = "local"
     PARAM_CHECKSUM = "md5"
 
-    def _prepare_credentials(self, **config) -> Dict[str, Any]:
+    def _prepare_credentials(self, **config) -> dict[str, Any]:
         return config
 
     @functools.cached_property

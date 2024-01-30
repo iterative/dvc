@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 from rich.text import Text
 
@@ -9,7 +9,7 @@ from dvc.repo.experiments.show import tabulate
 def exp_save(
     name: Optional[str] = None,
     force: bool = False,
-    include_untracked: Optional[List[str]] = None,
+    include_untracked: Optional[list[str]] = None,
 ):
     """
     Create a new DVC experiment using `exp save`.
@@ -61,12 +61,12 @@ def _postprocess(exp_rows):
 
 def exp_show(
     repo: Optional[str] = None,
-    revs: Optional[Union[str, List[str]]] = None,
+    revs: Optional[Union[str, list[str]]] = None,
     num: int = 1,
     param_deps: bool = False,
     force: bool = False,
-    config: Optional[Dict] = None,
-) -> List[Dict]:
+    config: Optional[dict] = None,
+) -> list[dict]:
     """Get DVC experiments tracked in `repo`.
 
     Without arguments, this function will retrieve all experiments derived from

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.log import logger
@@ -31,7 +31,7 @@ def compose_and_dump(
     config_module: Optional[str],
     config_name: str,
     plugins_path: str,
-    overrides: List[str],
+    overrides: list[str],
 ) -> None:
     """Compose Hydra config and dumpt it to `output_file`.
 
@@ -80,7 +80,7 @@ def compose_and_dump(
     )
 
 
-def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
+def apply_overrides(path: "StrPath", overrides: list[str]) -> None:
     """Update `path` params with the provided `Hydra Override`_ patterns.
 
     Args:

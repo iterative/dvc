@@ -1,7 +1,7 @@
 import os
 from functools import partial
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, List, Set, Tuple, Union
+from typing import TYPE_CHECKING, Union
 
 from dvc.log import logger
 
@@ -19,7 +19,7 @@ logger = logger.getChild(__name__)
 
 def unfetched_view(
     index: "Index", targets: "TargetType", unpartial: bool = False, **kwargs
-) -> Tuple["IndexView", "IndexView", List["Dependency"]]:
+) -> tuple["IndexView", "IndexView", list["Dependency"]]:
     """Return index view of imports which have not been fetched.
 
     Returns:
@@ -28,7 +28,7 @@ def unfetched_view(
     """
     from dvc.cachemgr import LEGACY_HASH_NAMES
 
-    changed_deps: List["Dependency"] = []
+    changed_deps: list["Dependency"] = []
 
     def need_fetch(stage: "Stage", legacy: bool = False) -> bool:
         if not stage.is_import or (stage.is_partial_import and not unpartial):
@@ -92,7 +92,7 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
 
 def save_imports(
     repo: "Repo", targets: "TargetType", unpartial: bool = False, **kwargs
-) -> Set["HashInfo"]:
+) -> set["HashInfo"]:
     """Save (download) imports from their original source location.
 
     Imports which are already cached will not be downloaded.
@@ -105,7 +105,7 @@ def save_imports(
     from dvc_data.index import md5, save
     from dvc_data.index.checkout import apply, compare
 
-    downloaded: Set["HashInfo"] = set()
+    downloaded: set["HashInfo"] = set()
 
     legacy_unfetched, unfetched, changed = unfetched_view(
         repo.index, targets, unpartial=unpartial, **kwargs

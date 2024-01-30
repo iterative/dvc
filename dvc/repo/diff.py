@@ -1,7 +1,7 @@
 import errno
 import os
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Optional
 
 from dvc.log import logger
 from dvc.repo import locked
@@ -26,7 +26,7 @@ def _diff(old, new, data_keys, with_missing=False):
     from dvc_data.index.diff import ADD, DELETE, MODIFY, RENAME
     from dvc_data.index.diff import diff as idiff
 
-    ret: "Dict[str, List[Dict]]" = {
+    ret: "dict[str, list[dict]]" = {
         "added": [],
         "deleted": [],
         "modified": [],
@@ -107,7 +107,7 @@ def diff(
     self,
     a_rev: str = "HEAD",
     b_rev: Optional[str] = None,
-    targets: Optional[List[str]] = None,
+    targets: Optional[list[str]] = None,
     recursive: bool = False,
 ):
     """

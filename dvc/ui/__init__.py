@@ -1,15 +1,11 @@
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager, nullcontext
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterable,
-    Iterator,
     Optional,
-    Sequence,
     TextIO,
-    Type,
     Union,
 )
 
@@ -46,7 +42,7 @@ def disable_colorama():
 
 class Formatter:
     def __init__(
-        self, theme: Optional[Dict] = None, defaults: Optional[Dict] = None
+        self, theme: Optional[dict] = None, defaults: Optional[dict] = None
     ) -> None:
         from collections import defaultdict
 
@@ -230,7 +226,7 @@ class Console:
             return print(*values, sep=sep, end=end, file=file)
 
     @property
-    def rich_text(self) -> "Type[RichText]":
+    def rich_text(self) -> "type[RichText]":
         from rich.text import Text
 
         return Text
@@ -308,7 +304,7 @@ class Console:
         rich_table: bool = False,
         force: bool = True,
         pager: bool = False,
-        header_styles: Optional[Union[Dict[str, "Styles"], Sequence["Styles"]]] = None,
+        header_styles: Optional[Union[dict[str, "Styles"], Sequence["Styles"]]] = None,
         row_styles: Optional[Sequence["Styles"]] = None,
         borders: Union[bool, str] = False,
     ) -> None:

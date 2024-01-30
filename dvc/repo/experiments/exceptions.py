@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Collection, Iterable, Optional
+from collections.abc import Collection, Iterable
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 
