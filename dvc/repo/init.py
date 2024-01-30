@@ -84,10 +84,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):  # noqa: 
         proj = Repo(root_dir)
 
     with proj.scm_context(autostage=True) as context:
-        files = [
-            config.files["repo"],
-            dvcignore,
-        ]
+        files = [config.files["repo"], dvcignore]
         ignore_file = context.scm.ignore_file
         if ignore_file:
             files.extend([os.path.join(dvc_dir, ignore_file)])

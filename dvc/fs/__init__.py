@@ -52,10 +52,7 @@ def download(
 
     from .callbacks import TqdmCallback
 
-    with TqdmCallback(
-        desc=f"Downloading {fs.name(fs_path)}",
-        unit="files",
-    ) as cb:
+    with TqdmCallback(desc=f"Downloading {fs.name(fs_path)}", unit="files") as cb:
         # NOTE: We use dvc-objects generic.copy over fs.get since it makes file
         # download atomic and avoids fsspec glob/regex path expansion.
         if fs.isdir(fs_path):
@@ -76,14 +73,7 @@ def download(
             lfs_prefetch(fs, from_infos)
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
-        generic.copy(
-            fs,
-            from_infos,
-            localfs,
-            to_infos,
-            callback=cb,
-            batch_size=jobs,
-        )
+        generic.copy(fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs)
         return len(to_infos)
 
 

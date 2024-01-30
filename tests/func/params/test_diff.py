@@ -238,11 +238,7 @@ def test_diff_targeted(tmp_dir, scm, dvc, run_copy):
 def test_diff_without_targets_specified(tmp_dir, dvc, scm, file):
     params_file = tmp_dir / file
     params_file.dump({"foo": {"bar": "bar"}, "x": "0"})
-    dvc.stage.add(
-        name="test",
-        cmd=f"echo {file}",
-        params=[{file: None}],
-    )
+    dvc.stage.add(name="test", cmd=f"echo {file}", params=[{file: None}])
     scm.add_commit([params_file, "dvc.yaml"], message="foo")
 
     params_file.dump({"foo": {"bar": "baz"}, "y": "100"})

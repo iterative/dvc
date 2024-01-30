@@ -18,10 +18,7 @@ def test_remote_with_hash_jobs(dvc):
 
 
 def test_remote_with_jobs(dvc):
-    dvc.config["remote"]["with_jobs"] = {
-        "url": "s3://bucket/name",
-        "jobs": 100,
-    }
+    dvc.config["remote"]["with_jobs"] = {"url": "s3://bucket/name", "jobs": 100}
 
     cls, config, _ = get_cloud_fs(dvc.config, name="with_jobs")
     fs = cls(**config)

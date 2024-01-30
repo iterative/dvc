@@ -154,10 +154,7 @@ def _git_info(scm: Union["Git", "NoSCM"], untracked_files: str = "all") -> GitIn
 def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> dict[str, list[str]]:
     from .index import build_data_index
 
-    with ui.progress(
-        desc="Building workspace index",
-        unit="entry",
-    ) as pb:
+    with ui.progress(desc="Building workspace index", unit="entry") as pb:
         workspace = build_data_index(
             repo.index,
             repo.root_dir,
@@ -187,10 +184,7 @@ def _diff_head_to_index(
     with repo.switch(head):
         head_index = repo.index.data["repo"]
 
-    with ui.progress(
-        desc="Calculating diff between head/index",
-        unit="entry",
-    ) as pb:
+    with ui.progress(desc="Calculating diff between head/index", unit="entry") as pb:
         return _diff(head_index, index, callback=pb.as_callback(), **kwargs)
 
 
@@ -223,18 +217,11 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> list[str]
     return [repo.fs.relpath(file, start) for file in files]
 
 
-def status(
-    repo: "Repo",
-    untracked_files: str = "no",
-    **kwargs: Any,
-) -> Status:
+def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
     from dvc.scm import NoSCMError, SCMError
 
     head = kwargs.pop("head", "HEAD")
-    uncommitted_diff = _diff_index_to_wtree(
-        repo,
-        **kwargs,
-    )
+    uncommitted_diff = _diff_index_to_wtree(repo, **kwargs)
     unchanged = set(uncommitted_diff.pop("unchanged", []))
 
     try:

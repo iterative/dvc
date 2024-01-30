@@ -34,21 +34,12 @@ def _show_json(
         name = renderer.name
         data[name] = to_json(renderer, split)
         all_errors.extend(
-            {
-                "name": name,
-                "rev": rev,
-                "source": source,
-                **encode_exception(e),
-            }
+            {"name": name, "rev": rev, "source": source, **encode_exception(e)}
             for rev, per_rev_src_errors in src_errors.items()
             for source, e in per_rev_src_errors.items()
         )
         all_errors.extend(
-            {
-                "name": name,
-                "rev": rev,
-                **encode_exception(e),
-            }
+            {"name": name, "rev": rev, **encode_exception(e)}
             for rev, e in def_errors.items()
         )
 
@@ -101,10 +92,7 @@ class CmdPlots(CmdBase):
                 return 1
 
         try:
-            plots_data = self._func(
-                targets=self.args.targets,
-                props=self._props(),
-            )
+            plots_data = self._func(targets=self.args.targets, props=self._props())
 
             if not plots_data and not self.args.json:
                 ui.error_write(

@@ -121,11 +121,7 @@ def test_exp_save_include_untracked_warning(tmp_dir, dvc, scm, mocker):
 
 def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc):
     (tmp_dir / "dvc.yaml").dump(
-        {
-            "metrics": ["metrics.json"],
-            "params": ["params.yaml"],
-            "plots": ["plots.csv"],
-        }
+        {"metrics": ["metrics.json"], "params": ["params.yaml"], "plots": ["plots.csv"]}
     )
     stage = dvc.stage.add(
         cmd="touch metrics.json && touch params.yaml && touch plots.csv",
@@ -140,10 +136,7 @@ def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc):
 
 
 def test_untracked_dvclock_is_included_in_exp(tmp_dir, scm, dvc):
-    stage = dvc.stage.add(
-        cmd="echo foo",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="echo foo", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
     dvc.reproduce(stage.addressing)
 

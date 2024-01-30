@@ -3,13 +3,7 @@ import os
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import product
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
 
 from funcy import collecting, first, isa, join, reraise
 

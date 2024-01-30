@@ -1,14 +1,7 @@
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping
 from datetime import date, datetime
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional, Union
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.log import logger

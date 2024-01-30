@@ -9,13 +9,7 @@ from collections.abc import (
 )
 from itertools import chain, repeat, zip_longest
 from operator import itemgetter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    Union,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Optional, Union, overload
 
 from funcy import reraise
 

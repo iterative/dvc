@@ -18,11 +18,7 @@ logger = logger.getChild(__name__)
 
 
 @map_scm_exception()
-def _external_repo(
-    url,
-    rev: Optional[str] = None,
-    **kwargs,
-) -> "Repo":
+def _external_repo(url, rev: Optional[str] = None, **kwargs) -> "Repo":
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev)
     # Local HEAD points to the tip of whatever branch we first cloned from

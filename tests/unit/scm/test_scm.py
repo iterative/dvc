@@ -6,11 +6,7 @@ from dvc.repo.experiments import ExpRefInfo
 from dvc.scm import iter_revs
 
 
-def test_iter_revs(
-    tmp_dir,
-    scm,
-    mocker,
-):
+def test_iter_revs(tmp_dir, scm, mocker):
     """
     new         other
      │            │

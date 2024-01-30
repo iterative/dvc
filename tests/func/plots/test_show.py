@@ -155,10 +155,7 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     )
     with (tmp_dir / "dvc.yaml").modify() as d:
         # trying to make an output overlaps error
-        d["stages"]["corrupted-stage"] = {
-            "cmd": "mkdir data",
-            "outs": ["data"],
-        }
+        d["stages"]["corrupted-stage"] = {"cmd": "mkdir data", "outs": ["data"]}
 
     # running by clearing and not clearing stuffs
     # so as it works even for optimized cases
@@ -356,12 +353,7 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
         ),
     ],
 )
-def test_top_level_plots(
-    tmp_dir,
-    dvc,
-    plot_config,
-    expected_datafiles,
-):
+def test_top_level_plots(tmp_dir, dvc, plot_config, expected_datafiles):
     data = {
         "data1.json": [
             {"a": 1, "b": 0.1, "c": 0.01},

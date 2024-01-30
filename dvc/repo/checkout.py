@@ -122,42 +122,23 @@ def checkout(  # noqa: C901
     def onerror(target, exc):
         if target and isinstance(
             exc,
-            (
-                StageFileDoesNotExistError,
-                StageFileBadNameError,
-                NoOutputOrStageError,
-            ),
+            (StageFileDoesNotExistError, StageFileBadNameError, NoOutputOrStageError),
         ):
             raise CheckoutErrorSuggestGit(target) from exc
         raise
 
     view = self.index.targets_view(
-        targets,
-        recursive=recursive,
-        with_deps=with_deps,
-        onerror=onerror,
+        targets, recursive=recursive, with_deps=with_deps, onerror=onerror
     )
 
-    with ui.progress(
-        unit="entry",
-        desc="Building workspace index",
-        leave=True,
-    ) as pb:
+    with ui.progress(unit="entry", desc="Building workspace index", leave=True) as pb:
         old = build_data_index(
-            view,
-            self.root_dir,
-            self.fs,
-            compute_hash=True,
-            callback=pb.as_callback(),
+            view, self.root_dir, self.fs, compute_hash=True, callback=pb.as_callback()
         )
 
     new = view.data["repo"]
 
-    with ui.progress(
-        desc="Comparing indexes",
-        unit="entry",
-        leave=True,
-    ) as pb:
+    with ui.progress(desc="Comparing indexes", unit="entry", leave=True) as pb:
         diff = compare(old, new, relink=relink, delete=True, callback=pb.as_callback())
 
     if not force:
@@ -175,11 +156,7 @@ def checkout(  # noqa: C901
             if self.fs.isin_or_eq(dest_path, out_path):
                 failed.add(out_path)
 
-    with ui.progress(
-        unit="file",
-        desc="Applying changes",
-        leave=True,
-    ) as pb:
+    with ui.progress(unit="file", desc="Applying changes", leave=True) as pb:
         apply(
             diff,
             self.root_dir,

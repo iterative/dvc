@@ -52,36 +52,22 @@ def _diff(old, new, data_keys, with_missing=False):
             continue
 
         if change.typ == ADD:
-            ret["added"].append(
-                {
-                    "path": _path(change.new),
-                    "hash": _hash(change.new),
-                }
-            )
+            ret["added"].append({"path": _path(change.new), "hash": _hash(change.new)})
         elif change.typ == DELETE:
             ret["deleted"].append(
-                {
-                    "path": _path(change.old),
-                    "hash": _hash(change.old),
-                }
+                {"path": _path(change.old), "hash": _hash(change.old)}
             )
         elif change.typ == MODIFY:
             ret["modified"].append(
                 {
                     "path": _path(change.old),
-                    "hash": {
-                        "old": _hash(change.old),
-                        "new": _hash(change.new),
-                    },
+                    "hash": {"old": _hash(change.old), "new": _hash(change.new)},
                 }
             )
         elif change.typ == RENAME:
             ret["renamed"].append(
                 {
-                    "path": {
-                        "old": _path(change.old),
-                        "new": _path(change.new),
-                    },
+                    "path": {"old": _path(change.old), "new": _path(change.new)},
                     "hash": _hash(change.old),
                 }
             )
@@ -93,10 +79,7 @@ def _diff(old, new, data_keys, with_missing=False):
             and not old.storage_map.cache_exists(change.old)
         ):
             ret["not in cache"].append(
-                {
-                    "path": _path(change.old),
-                    "hash": _hash(change.old),
-                }
+                {"path": _path(change.old), "hash": _hash(change.old)}
             )
 
     return ret if any(ret.values()) else {}
@@ -137,11 +120,7 @@ def diff(
         def onerror(target, _exc):
             missing_targets[rev].add(target)  # noqa: B023
 
-        view = self.index.targets_view(
-            targets,
-            onerror=onerror,
-            recursive=recursive,
-        )
+        view = self.index.targets_view(targets, onerror=onerror, recursive=recursive)
 
         data_keys.update(view.data_keys.get("repo", set()))
 
@@ -149,12 +128,7 @@ def diff(
             from .index import build_data_index
 
             with ui.status("Building workspace index"):
-                data = build_data_index(
-                    view,
-                    self.root_dir,
-                    self.fs,
-                    compute_hash=True,
-                )
+                data = build_data_index(view, self.root_dir, self.fs, compute_hash=True)
         else:
             data = view.data["repo"]
 

@@ -31,38 +31,15 @@ def params_repo(tmp_dir, scm, dvc):
     tmp_dir.gen("params.json", '{"bar": 2, "foobar": 3}')
     tmp_dir.gen("other_params.json", '{"foo": {"bar": 4}}')
 
-    dvc.run(
-        name="stage-0",
-        cmd="echo stage-0",
-    )
+    dvc.run(name="stage-0", cmd="echo stage-0")
 
-    dvc.run(
-        name="stage-1",
-        cmd="echo stage-1",
-        params=["foo", "params.json:bar"],
-    )
+    dvc.run(name="stage-1", cmd="echo stage-1", params=["foo", "params.json:bar"])
 
-    dvc.run(
-        name="stage-2",
-        cmd="echo stage-2",
-        params=["other_params.json:foo"],
-    )
+    dvc.run(name="stage-2", cmd="echo stage-2", params=["other_params.json:foo"])
 
-    dvc.run(
-        name="stage-3",
-        cmd="echo stage-2",
-        params=["params.json:foobar"],
-    )
+    dvc.run(name="stage-3", cmd="echo stage-2", params=["params.json:foobar"])
 
-    scm.add(
-        [
-            "params.yaml",
-            "params.json",
-            "other_params.json",
-            "dvc.yaml",
-            "dvc.lock",
-        ]
-    )
+    scm.add(["params.yaml", "params.json", "other_params.json", "dvc.yaml", "dvc.lock"])
     scm.commit("commit dvc files")
 
     tmp_dir.gen("params.yaml", "foo: 5")
@@ -77,10 +54,7 @@ def metrics_repo(tmp_dir, scm, dvc, run_copy_metrics):
     scm.commit("prepare data")
     sub_dir = tmp_dir / "eval"
     sub_dir.mkdir()
-    tmp_dir.gen(
-        "tmp_train_val_metrics.json",
-        json.dumps(TRAIN_METRICS[0]),
-    )
+    tmp_dir.gen("tmp_train_val_metrics.json", json.dumps(TRAIN_METRICS[0]))
     train_metrics_file = os.path.join(sub_dir, "train_val_metrics.json")
     run_copy_metrics(
         "tmp_train_val_metrics.json",
@@ -107,10 +81,7 @@ def metrics_repo(tmp_dir, scm, dvc, run_copy_metrics):
     scm.commit("test model")
 
     with tmp_dir.branch("better-model", new=True):
-        tmp_dir.gen(
-            "tmp_train_val_metrics.json",
-            json.dumps(TRAIN_METRICS[1]),
-        )
+        tmp_dir.gen("tmp_train_val_metrics.json", json.dumps(TRAIN_METRICS[1]))
         run_copy_metrics(
             "tmp_train_val_metrics.json",
             train_metrics_file,
@@ -243,11 +214,7 @@ def test_params_show_while_running_stage(tmp_dir, dvc):
 def test_params_show_repo(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.scm_gen("params.yaml", "foo: 1", commit="Create params.yaml")
-        erepo_dir.dvc.run(
-            name="stage-1",
-            cmd="echo stage-1",
-            params=["foo"],
-        )
+        erepo_dir.dvc.run(name="stage-1", cmd="echo stage-1", params=["foo"])
     assert api.params_show(repo=erepo_dir) == {"foo": 1}
 
 
@@ -268,10 +235,7 @@ def test_params_show_no_params_found(tmp_dir, dvc):
 def test_params_show_stage_without_params(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: 1")
 
-    dvc.run(
-        name="stage-0",
-        cmd="echo stage-0",
-    )
+    dvc.run(name="stage-0", cmd="echo stage-0")
 
     assert api.params_show(stages="stage-0") == {}
 

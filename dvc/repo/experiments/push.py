@@ -1,10 +1,5 @@
 from collections.abc import Iterable, Mapping
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from funcy import compact, group_by
 from scmrepo.git.backend.base import SyncStatus

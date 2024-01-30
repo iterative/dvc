@@ -100,14 +100,7 @@ def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
     assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
-def test_failed_exp_workspace(
-    tmp_dir,
-    scm,
-    dvc,
-    failed_exp_stage,
-    mocker,
-    capsys,
-):
+def test_failed_exp_workspace(tmp_dir, scm, dvc, failed_exp_stage, mocker, capsys):
     tmp_dir.gen("params.yaml", "foo: 2")
     with pytest.raises(ReproductionError):
         dvc.experiments.run(failed_exp_stage.addressing)
@@ -445,13 +438,7 @@ def test_subrepo(tmp_dir, request, scm, workspace):
             name="copy-file",
             no_exec=True,
         )
-        scm.add(
-            [
-                subrepo / "dvc.yaml",
-                subrepo / "copy.py",
-                subrepo / "params.yaml",
-            ]
-        )
+        scm.add([subrepo / "dvc.yaml", subrepo / "copy.py", subrepo / "params.yaml"])
         scm.commit("init")
 
         results = subrepo.dvc.experiments.run(
@@ -593,11 +580,7 @@ def test_experiment_name_invalid(tmp_dir, scm, dvc, exp_stage, mocker):
 
     new_mock = mocker.spy(BaseStashQueue, "_stash_exp")
     with pytest.raises(InvalidArgumentError):
-        dvc.experiments.run(
-            exp_stage.addressing,
-            name="fo^o",
-            params=["foo=3"],
-        )
+        dvc.experiments.run(exp_stage.addressing, name="fo^o", params=["foo=3"])
     new_mock.assert_not_called()
 
 
@@ -651,10 +634,7 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     )
     (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
     baseline = scm.get_rev()
-    dvc.stage.add(
-        cmd="python dump_run_env.py",
-        name="run_env",
-    )
+    dvc.stage.add(cmd="python dump_run_env.py", name="run_env")
     dvc.experiments.run()
     assert (tmp_dir / DVC_EXP_BASELINE_REV).read_text().strip() == baseline
     assert (tmp_dir / DVC_EXP_NAME).read_text().strip()
@@ -728,11 +708,7 @@ def test_local_config_is_propagated_to_tmp(tmp_dir, scm, dvc):
 @pytest.mark.parametrize("tmp", [True, False])
 def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc, tmp):
     (tmp_dir / "dvc.yaml").dump(
-        {
-            "metrics": ["metrics.json"],
-            "params": ["params.yaml"],
-            "plots": ["plots.csv"],
-        }
+        {"metrics": ["metrics.json"], "params": ["params.yaml"], "plots": ["plots.csv"]}
     )
     stage = dvc.stage.add(
         cmd="touch metrics.json && touch params.yaml && touch plots.csv",
@@ -748,10 +724,7 @@ def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc, tmp):
 
 @pytest.mark.parametrize("tmp", [True, False])
 def test_copy_paths(tmp_dir, scm, dvc, tmp):
-    stage = dvc.stage.add(
-        cmd="cat file && ls dir",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="cat file && ls dir", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     (tmp_dir / "dir").mkdir()
@@ -770,10 +743,7 @@ def test_copy_paths(tmp_dir, scm, dvc, tmp):
 
 
 def test_copy_paths_errors(tmp_dir, scm, dvc, mocker):
-    stage = dvc.stage.add(
-        cmd="echo foo",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="echo foo", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     with pytest.raises(DvcException, match="Unable to copy"):
@@ -814,10 +784,7 @@ def test_mixed_git_dvc_out(tmp_dir, scm, dvc, exp_stage):
 
 @pytest.mark.parametrize("tmp", [True, False])
 def test_custom_commit_message(tmp_dir, scm, dvc, tmp):
-    stage = dvc.stage.add(
-        cmd="echo foo",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="echo foo", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     exp = first(

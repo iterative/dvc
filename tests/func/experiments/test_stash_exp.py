@@ -9,11 +9,7 @@ from dvc.exceptions import ReproductionError
 @pytest.mark.parametrize("staged", [True, False])
 def test_deleted(tmp_dir, scm, dvc, tmp, staged):
     tmp_dir.scm_gen("file", "file", commit="commit file")
-    stage = dvc.stage.add(
-        cmd="cat file",
-        deps=["file"],
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="cat file", deps=["file"], name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     file = tmp_dir / "file"
@@ -33,10 +29,7 @@ def test_deleted(tmp_dir, scm, dvc, tmp, staged):
 @pytest.mark.parametrize("staged", [True, False])
 def test_modified(tmp_dir, scm, dvc, caplog, tmp, staged):
     tmp_dir.scm_gen("file", "file", commit="commit file")
-    stage = dvc.stage.add(
-        cmd="cat file",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="cat file", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     (tmp_dir / "file").write_text("modified_file")
@@ -52,10 +45,7 @@ def test_modified(tmp_dir, scm, dvc, caplog, tmp, staged):
 
 @pytest.mark.parametrize("tmp", [True, False])
 def test_staged_new_file(tmp_dir, scm, dvc, tmp):
-    stage = dvc.stage.add(
-        cmd="cat file",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="cat file", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     (tmp_dir / "file").write_text("file")

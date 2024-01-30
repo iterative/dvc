@@ -1,13 +1,7 @@
 import os
 from collections.abc import Iterable, Iterator
 from itertools import chain
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    TypedDict,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union
 
 from funcy import ldistinct
 from scmrepo.exceptions import SCMError

@@ -22,9 +22,7 @@ class DataFileSystem(FileSystem):
         return config
 
     @functools.cached_property
-    def fs(
-        self,
-    ) -> "_DataFileSystem":
+    def fs(self) -> "_DataFileSystem":
         from dvc_data.fs import DataFileSystem as _DataFileSystem
 
         return _DataFileSystem(**self.fs_args)

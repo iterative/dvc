@@ -46,11 +46,7 @@ def test_apply_failed(tmp_dir, scm, dvc, failed_exp_stage, mocker):
             ),
         ],
     )
-    mocker.patch.object(
-        queue,
-        "iter_queued",
-        return_value=[],
-    )
+    mocker.patch.object(queue, "iter_queued", return_value=[])
 
     dvc.experiments.apply(exp_rev)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"

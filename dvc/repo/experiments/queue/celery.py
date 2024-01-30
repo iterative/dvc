@@ -4,12 +4,7 @@ import logging
 import os
 from collections import defaultdict
 from collections.abc import Collection, Generator, Mapping
-from typing import (
-    TYPE_CHECKING,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from celery.result import AsyncResult
 from funcy import first
@@ -83,10 +78,7 @@ class LocalCeleryQueue(BaseStashQueue):
             "dvc-exp-local",
             wdir=self.wdir,
             mkdir=True,
-            include=[
-                "dvc.repo.experiments.queue.tasks",
-                "dvc_task.proc.tasks",
-            ],
+            include=["dvc.repo.experiments.queue.tasks", "dvc_task.proc.tasks"],
         )
         app.conf.update({"task_acks_late": True, "result_expires": None})
         return app
@@ -379,10 +371,7 @@ class LocalCeleryQueue(BaseStashQueue):
             raise CannotKillTasksError(remained_revs)
 
     def _kill_entries(self, entries: dict[QueueEntry, str], force: bool) -> None:
-        logger.debug(
-            "Found active tasks: '%s' to kill",
-            list(entries.values()),
-        )
+        logger.debug("Found active tasks: '%s' to kill", list(entries.values()))
         inactive_entries: dict[QueueEntry, str] = self._try_to_kill_tasks(
             entries, force
         )
@@ -418,20 +407,11 @@ class LocalCeleryQueue(BaseStashQueue):
             if to_kill:
                 self._kill_entries(to_kill, True)
 
-    def follow(
-        self,
-        entry: QueueEntry,
-        encoding: Optional[str] = None,
-    ):
+    def follow(self, entry: QueueEntry, encoding: Optional[str] = None):
         for line in self.proc.follow(entry.stash_rev, encoding):
             ui.write(line, end="")
 
-    def logs(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-        follow: bool = False,
-    ):
+    def logs(self, rev: str, encoding: Optional[str] = None, follow: bool = False):
         queue_entry: Optional[QueueEntry] = self.match_queue_entry_by_name(
             {rev}, self.iter_active(), self.iter_done()
         ).get(rev)
@@ -458,8 +438,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 f"No output logs found for experiment '{rev}'"
             )
         with open(
-            proc_info.stdout,
-            encoding=encoding or locale.getpreferredencoding(),
+            proc_info.stdout, encoding=encoding or locale.getpreferredencoding()
         ) as fobj:
             ui.write(fobj.read())
 
@@ -560,9 +539,7 @@ class LocalCeleryQueue(BaseStashQueue):
         return result
 
     def collect_queued_data(
-        self,
-        baseline_revs: Optional[Collection[str]],
-        **kwargs,
+        self, baseline_revs: Optional[Collection[str]], **kwargs
     ) -> dict[str, list["ExpRange"]]:
         from dvc.repo.experiments.collect import collect_rev
         from dvc.repo.experiments.serialize import (

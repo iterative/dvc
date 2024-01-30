@@ -79,10 +79,7 @@ def session_app(tmp_path_factory) -> FSApp:
         "dvc-exp-local",
         wdir=wdir,
         mkdir=True,
-        include=[
-            "dvc.repo.experiments.queue.tasks",
-            "dvc_task.proc.tasks",
-        ],
+        include=["dvc.repo.experiments.queue.tasks", "dvc_task.proc.tasks"],
     )
     app.conf.update({"task_acks_late": True, "result_expires": None})
     return app
@@ -124,12 +121,7 @@ def test_queue(tmp_dir, dvc, scm, mocker):
     queue = dvc.experiments.celery_queue
     mocker.patch.object(queue, "_spawn_worker")
 
-    f = partial(
-        _thread_worker,
-        queue.celery,
-        concurrency=1,
-        ping_task_timeout=20,
-    )
+    f = partial(_thread_worker, queue.celery, concurrency=1, ping_task_timeout=20)
     exc = None
     for _ in range(3):
         try:

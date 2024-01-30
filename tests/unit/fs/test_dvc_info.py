@@ -104,14 +104,7 @@ def test_info_git_dvc_mixed_dirs(dvcfs, path):
     assert not info["isexec"]
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "data",
-        "data/raw",
-        "data/processed",
-    ],
-)
+@pytest.mark.parametrize("path", ["data", "data/raw", "data/processed"])
 def test_info_dvc_only_dirs(dvcfs, path):
     info = dvcfs.info(path)
 
@@ -128,11 +121,7 @@ def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, dvcfs):
         subrepo.scm_gen("foo", "foo", commit="add foo on subrepo")
         subrepo.dvc_gen("foobar", "foobar", commit="add foobar on subrepo")
 
-    for path in [
-        "subrepo",
-        "subrepo/foo",
-        "subrepo/foobar",
-    ]:
+    for path in ["subrepo", "subrepo/foo", "subrepo/foobar"]:
         info = dvcfs.info(path)
         assert info["repo"].root_dir == str(
             subrepo

@@ -1,12 +1,7 @@
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import (
-    TYPE_CHECKING,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from dvc.exceptions import (
     CacheLinkError,

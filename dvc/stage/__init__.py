@@ -4,13 +4,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union
 
 from funcy import project
 
@@ -664,11 +658,7 @@ class Stage(params.StageParams):
             return stats
 
         for out in self.filter_outs(kwargs.get("filter_info")):
-            key, outs = self._checkout(
-                out,
-                allow_missing=allow_missing,
-                **kwargs,
-            )
+            key, outs = self._checkout(out, allow_missing=allow_missing, **kwargs)
             if key:
                 stats[key].extend(outs)
         return stats

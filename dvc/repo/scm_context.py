@@ -3,12 +3,7 @@ import shlex
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from dvc.log import logger
 from dvc.utils import relpath

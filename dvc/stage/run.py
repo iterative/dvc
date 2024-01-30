@@ -119,13 +119,7 @@ def _pull_missing_deps(stage):
             stage.repo.pull(dep.def_path)
 
 
-def run_stage(
-    stage,
-    dry=False,
-    force=False,
-    run_env=None,
-    **kwargs,
-):
+def run_stage(stage, dry=False, force=False, run_env=None, **kwargs):
     if not force:
         if kwargs.get("pull") and not dry:
             _pull_missing_deps(stage)

@@ -3,12 +3,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from contextlib import AbstractContextManager, contextmanager
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from dvc.exceptions import (
     DvcException,
@@ -179,14 +174,8 @@ class Repo:
 
         self.root_dir: str
         self.dvc_dir: Optional[str]
-        (
-            self.root_dir,
-            self.dvc_dir,
-        ) = self._get_repo_dirs(
-            root_dir=root_dir,
-            fs=self.fs,
-            uninitialized=uninitialized,
-            scm=scm,
+        (self.root_dir, self.dvc_dir) = self._get_repo_dirs(
+            root_dir=root_dir, fs=self.fs, uninitialized=uninitialized, scm=scm
         )
 
         self._uninitialized = uninitialized
@@ -271,11 +260,7 @@ class Repo:
             # subrepo
             relparts = self.fs.relparts(self.root_dir, "/")
 
-        dvc_dir = os.path.join(
-            self.scm.root_dir,
-            *relparts,
-            self.DVC_DIR,
-        )
+        dvc_dir = os.path.join(self.scm.root_dir, *relparts, self.DVC_DIR)
         if os.path.exists(dvc_dir):
             return dvc_dir
 
@@ -651,15 +636,7 @@ class Repo:
         btime = self._btime or getattr(os.stat(root_dir), "st_birthtime", None)
 
         md5 = hashlib.md5(  # noqa: S324
-            str(
-                (
-                    root_dir,
-                    btime,
-                    getpass.getuser(),
-                    version_tuple[0],
-                    salt,
-                )
-            ).encode()
+            str((root_dir, btime, getpass.getuser(), version_tuple[0], salt)).encode()
         )
         repo_token = md5.hexdigest()
         return os.path.join(repos_dir, repo_token)

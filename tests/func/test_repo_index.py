@@ -190,23 +190,13 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
     # view should exclude any siblings of the target
     view = index.targets_view("dir/subdir")
 
-    assert view.data_keys == {
-        "repo": {
-            ("dir", "subdir"),
-        }
-    }
+    assert view.data_keys == {"repo": {("dir", "subdir")}}
 
     data_index = view.data["repo"]
     assert ("dir",) in data_index
-    assert (
-        "dir",
-        "subdir",
-    ) in data_index
+    assert ("dir", "subdir") in data_index
     assert ("dir", "subdir", "in-subdir") in data_index
-    assert (
-        "dir",
-        "in-dir",
-    ) not in data_index
+    assert ("dir", "in-dir") not in data_index
 
 
 def test_view_onerror(tmp_dir, scm, dvc):
@@ -342,12 +332,7 @@ params:
 
 
 def test_data_index(tmp_dir, dvc, local_cloud, erepo_dir):
-    tmp_dir.dvc_gen(
-        {
-            "foo": b"foo",
-            "dir": {"bar": b"bar", "subdir": {"baz": b"baz"}},
-        }
-    )
+    tmp_dir.dvc_gen({"foo": b"foo", "dir": {"bar": b"bar", "subdir": {"baz": b"baz"}}})
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("efoo", b"efoo", commit="create efoo")

@@ -167,11 +167,7 @@ def _merge_data(s_list):
 
 @collecting
 def load_from_pipeline(stage, data, typ="outs"):
-    if typ not in (
-        stage.PARAM_OUTS,
-        stage.PARAM_METRICS,
-        stage.PARAM_PLOTS,
-    ):
+    if typ not in (stage.PARAM_OUTS, stage.PARAM_METRICS, stage.PARAM_PLOTS):
         raise ValueError(f"'{typ}' key is not allowed for pipeline files.")
 
     metric = typ == stage.PARAM_METRICS
@@ -197,24 +193,13 @@ def load_from_pipeline(stage, data, typ="outs"):
             ],
         )
 
-        yield _get(
-            stage,
-            path,
-            info={},
-            plot=plt_d or plot,
-            metric=metric,
-            **extra,
-        )
+        yield _get(stage, path, info={}, plot=plt_d or plot, metric=metric, **extra)
 
 
 def split_file_meta_from_cloud(entry: dict) -> dict:
     if remote_name := entry.pop(Meta.PARAM_REMOTE, None):
         remote_meta = {}
-        for key in (
-            S3_PARAM_CHECKSUM,
-            HDFS_PARAM_CHECKSUM,
-            Meta.PARAM_VERSION_ID,
-        ):
+        for key in (S3_PARAM_CHECKSUM, HDFS_PARAM_CHECKSUM, Meta.PARAM_VERSION_ID):
             if value := entry.pop(key, None):
                 remote_meta[key] = value
 
@@ -433,10 +418,7 @@ class Output:
             hash_name = meta_name = self.fs.PARAM_CHECKSUM
         assert hash_name
 
-        hash_info = HashInfo(
-            name=hash_name,
-            value=getattr(self.meta, meta_name, None),
-        )
+        hash_info = HashInfo(name=hash_name, value=getattr(self.meta, meta_name, None))
         return hash_name, hash_info
 
     def _compute_meta_hash_info_from_files(self) -> None:
@@ -515,10 +497,7 @@ class Output:
         if self.fs.isabs(self.def_path):
             return False
 
-        return self.repo and self.fs.isin(
-            self.fs_path,
-            self.repo.root_dir,
-        )
+        return self.repo and self.fs.isin(self.fs_path, self.repo.root_dir)
 
     @property
     def use_scm_ignore(self):
@@ -813,20 +792,13 @@ class Output:
     def _commit_granular_dir(self, filter_info, hardlink) -> Optional["HashFile"]:
         prefix = self.fs.parts(self.fs.relpath(filter_info, self.fs_path))
         staging, _, obj = self._build(
-            self.cache,
-            self.fs_path,
-            self.fs,
-            self.hash_name,
-            ignore=self.dvcignore,
+            self.cache, self.fs_path, self.fs, self.hash_name, ignore=self.dvcignore
         )
         assert isinstance(obj, Tree)
         save_obj = obj.filter(prefix)
         assert isinstance(save_obj, Tree)
         checkout_obj = save_obj.get_obj(self.cache, prefix)
-        with TqdmCallback(
-            desc=f"Committing {self} to cache",
-            unit="file",
-        ) as cb:
+        with TqdmCallback(desc=f"Committing {self} to cache", unit="file") as cb:
             otransfer(
                 staging,
                 self.cache,
@@ -1286,10 +1258,7 @@ class Output:
 
         self.hash_info = merged.hash_info
         self.files = None
-        self.meta = Meta(
-            size=du(self.cache, merged),
-            nfiles=len(merged),
-        )
+        self.meta = Meta(size=du(self.cache, merged), nfiles=len(merged))
 
     def unstage(self, path: str) -> tuple["Meta", "Tree"]:
         from pygtrie import Trie
@@ -1429,10 +1398,7 @@ class Output:
 
         assert staging
         assert obj.hash_info
-        with TqdmCallback(
-            desc=f"Adding {self} to cache",
-            unit="file",
-        ) as cb:
+        with TqdmCallback(desc=f"Adding {self} to cache", unit="file") as cb:
             otransfer(
                 staging,
                 self.cache,

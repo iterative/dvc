@@ -2,14 +2,7 @@ from dvc.cli import formatter
 from dvc.cli.utils import append_doc_link
 from dvc.commands.queue import kill, logs, remove, start, status, stop
 
-SUB_COMMANDS = [
-    start,
-    stop,
-    status,
-    logs,
-    remove,
-    kill,
-]
+SUB_COMMANDS = [start, stop, status, logs, remove, kill]
 
 
 def add_parser(subparsers, parent_parser):

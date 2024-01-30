@@ -59,15 +59,7 @@ def loads_from(stage, s_list, erepo=None, fs_config=None, db=None):
     info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
     if db:
         info.update({"db": db})
-    return [
-        _get(
-            stage,
-            s,
-            info.copy(),
-            fs_config=fs_config,
-        )
-        for s in s_list
-    ]
+    return [_get(stage, s, info.copy(), fs_config=fs_config) for s in s_list]
 
 
 def _merge_params(s_list) -> dict[str, list[str]]:

@@ -3,16 +3,7 @@ from funcy import first
 
 def test_generate_random_exp_name(tmp_dir, dvc, scm, exp_stage, mocker):
     mocked_generator = mocker.MagicMock()
-    mocked_generator.choice.side_effect = [
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        0,
-        0,
-    ]
+    mocked_generator.choice.side_effect = [0, 0, 0, 0, 1, 1, 0, 0]
     mocker.patch(
         "dvc.repo.experiments.utils.random.Random", return_value=mocked_generator
     )

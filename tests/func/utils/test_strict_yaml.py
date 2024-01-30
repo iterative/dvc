@@ -303,16 +303,10 @@ examples = {
     "deps_as_dict": (DEPS_AS_DICT, DEPS_AS_DICT_OUTPUT),
     "outs_as_str": (OUTS_AS_STR, OUTS_AS_STR_OUTPUT),
     "null_value_on_outs": (NULL_VALUE_ON_OUTS, NULL_VALUE_ON_OUTS_OUTPUT),
-    "additional_key_on_outs": (
-        ADDITIONAL_KEY_ON_OUTS,
-        ADDITIONAL_KEY_ON_OUTS_OUTPUT,
-    ),
+    "additional_key_on_outs": (ADDITIONAL_KEY_ON_OUTS, ADDITIONAL_KEY_ON_OUTS_OUTPUT),
     "foreach_scalar": (FOREACH_SCALAR_VALUE, FOREACH_SCALAR_VALUE_OUTPUT),
     "foreach_do_do_null": (FOREACH_DO_NULL, FOREACH_DO_NULL_OUTPUT),
-    "foreach_do_missing_cmd": (
-        FOREACH_DO_MISSING_CMD,
-        FOREACH_DO_MISSING_CMD_OUTPUT,
-    ),
+    "foreach_do_missing_cmd": (FOREACH_DO_MISSING_CMD, FOREACH_DO_MISSING_CMD_OUTPUT),
     "foreach_unknown_cmd_missing_do": (
         FOREACH_WITH_CMD_DO_MISSING,
         FOREACH_WITH_CMD_DO_MISSING_OUTPUT,
@@ -325,10 +319,7 @@ examples = {
 @pytest.fixture
 def force_posixpath(mocker):
     # make it always return posix path, easier for validating error messages
-    mocker.patch(
-        "dvc.utils.strictyaml.make_relpath",
-        return_value="./dvc.yaml",
-    )
+    mocker.patch("dvc.utils.strictyaml.make_relpath", return_value="./dvc.yaml")
 
 
 @pytest.fixture
@@ -343,13 +334,7 @@ def fixed_width_term(mocker):
 
 @pytest.mark.parametrize("text, expected", examples.values(), ids=examples.keys())
 def test_exceptions(
-    tmp_dir,
-    dvc,
-    capsys,
-    force_posixpath,
-    fixed_width_term,
-    text,
-    expected,
+    tmp_dir, dvc, capsys, force_posixpath, fixed_width_term, text, expected
 ):
     tmp_dir.gen("dvc.yaml", text)
 
@@ -369,21 +354,11 @@ def test_exceptions(
     "text, expected",
     [
         (DUPLICATE_KEYS, "'./dvc.yaml' is invalid in revision '{short_rev}'."),
-        (
-            MISSING_CMD,
-            "'./dvc.yaml' validation failed in revision '{short_rev}'.",
-        ),
+        (MISSING_CMD, "'./dvc.yaml' validation failed in revision '{short_rev}'."),
     ],
 )
 def test_on_revision(
-    tmp_dir,
-    scm,
-    dvc,
-    force_posixpath,
-    fixed_width_term,
-    capsys,
-    text,
-    expected,
+    tmp_dir, scm, dvc, force_posixpath, fixed_width_term, capsys, text, expected
 ):
     tmp_dir.scm_gen("dvc.yaml", text, commit="add dvc.yaml")
     capsys.readouterr()  # clear outputs
@@ -413,8 +388,7 @@ def test_fallback_exception_message(tmp_dir, dvc, mocker, caplog):
     # When trying to pretty print exception messages, we fallback to old way
     # of printing things.
     mocker.patch(
-        "dvc.utils.strictyaml.YAMLSyntaxError.__pretty_exc__",
-        side_effect=ValueError,
+        "dvc.utils.strictyaml.YAMLSyntaxError.__pretty_exc__", side_effect=ValueError
     )
     mocker.patch(
         "dvc.utils.strictyaml.YAMLValidationError.__pretty_exc__",

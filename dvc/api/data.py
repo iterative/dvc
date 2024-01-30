@@ -57,11 +57,7 @@ def get_url(path, repo=None, rev=None, remote=None):
 class _OpenContextManager(GCM):
     def __init__(self, func, args, kwds):
         self.gen = func(*args, **kwds)
-        self.func, self.args, self.kwds = (  # type: ignore[assignment]
-            func,
-            args,
-            kwds,
-        )
+        self.func, self.args, self.kwds = (func, args, kwds)  # type: ignore[assignment]
 
     def __getattr__(self, name):
         raise AttributeError("dvc.api.open() should be used in a with statement.")
@@ -262,11 +258,7 @@ def _open(
                 fs_path = fs.from_os_path(path)
 
             try:
-                with fs.open(
-                    fs_path,
-                    mode=mode,
-                    encoding=encoding,
-                ) as fobj:
+                with fs.open(fs_path, mode=mode, encoding=encoding) as fobj:
                     yield fobj
             except FileNotFoundError as exc:
                 raise FileMissingError(path) from exc

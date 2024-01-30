@@ -266,10 +266,7 @@ class StageCache:
 
             src_name = from_fs.name(src)
             parent_name = from_fs.name(from_fs.parent(src))
-            with TqdmCallback(
-                desc=src_name,
-                bytes=True,
-            ) as cb:
+            with TqdmCallback(desc=src_name, bytes=True) as cb:
                 func(from_fs, src, to_fs, dst, callback=cb)
             ret.append((parent_name, src_name))
         return ret

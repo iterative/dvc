@@ -10,9 +10,7 @@ from dvc.cli import main
 from dvc.exceptions import CheckoutError
 from dvc.repo.open_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
-from dvc.testing.remote_tests import (  # noqa: F401
-    TestRemote,
-)
+from dvc.testing.remote_tests import TestRemote  # noqa: F401
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
@@ -177,10 +175,7 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     assert bar in caplog.text
 
     caplog.clear()
-    assert dvc.status(cloud=True) == {
-        "bar": "missing",
-        "foo": "missing",
-    }
+    assert dvc.status(cloud=True) == {"bar": "missing", "foo": "missing"}
     assert header not in caplog.text
     assert foo not in caplog.text
     assert bar not in caplog.text

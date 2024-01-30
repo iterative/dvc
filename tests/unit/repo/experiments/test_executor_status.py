@@ -48,19 +48,13 @@ def test_celery_queue_failure_status(dvc, scm, test_queue, failed_exp_stage):
 def test_workspace_executor_success_status(dvc, scm, exp_stage, queue_type):
     workspace_queue = getattr(dvc.experiments, queue_type)
     queue_entry = workspace_queue.put(
-        params={"params.yaml": ["foo=1"]},
-        targets=exp_stage.addressing,
-        name="success",
+        params={"params.yaml": ["foo=1"]}, targets=exp_stage.addressing, name="success"
     )
     name = workspace_queue._EXEC_NAME or queue_entry.stash_rev
     infofile = workspace_queue.get_infofile_path(name)
     entry, executor = workspace_queue.get()
     rev = entry.stash_rev
-    exec_result = executor.reproduce(
-        info=executor.info,
-        rev=rev,
-        infofile=infofile,
-    )
+    exec_result = executor.reproduce(info=executor.info, rev=rev, infofile=infofile)
     executor_info = ExecutorInfo.load_json(infofile)
     assert executor_info.status == TaskStatus.SUCCESS
     if exec_result.ref_info:
@@ -74,10 +68,7 @@ def test_workspace_executor_success_status(dvc, scm, exp_stage, queue_type):
         assert not os.path.exists(infofile)
 
 
-@pytest.mark.parametrize(
-    "queue_type",
-    ["workspace_queue", "tempdir_queue"],
-)
+@pytest.mark.parametrize("queue_type", ["workspace_queue", "tempdir_queue"])
 def test_workspace_executor_failed_status(dvc, scm, failed_exp_stage, queue_type):
     queue = getattr(dvc.experiments, queue_type)
     queue.put(
@@ -91,11 +82,7 @@ def test_workspace_executor_failed_status(dvc, scm, failed_exp_stage, queue_type
     rev = entry.stash_rev
 
     with pytest.raises(ReproductionError):
-        executor.reproduce(
-            info=executor.info,
-            rev=rev,
-            infofile=infofile,
-        )
+        executor.reproduce(info=executor.info, rev=rev, infofile=infofile)
     executor_info = ExecutorInfo.load_json(infofile)
     assert executor_info.status == TaskStatus.FAILED
 

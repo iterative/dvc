@@ -132,11 +132,7 @@ class TempDirExecutor(BaseLocalExecutor):
         self._update_config(repo.config.read("local"))
 
     def _update_config(self, update):
-        local_config = os.path.join(
-            self.root_dir,
-            self.dvc_dir,
-            "config.local",
-        )
+        local_config = os.path.join(self.root_dir, self.dvc_dir, "config.local")
         logger.debug("Writing experiments local config '%s'", local_config)
         if os.path.exists(local_config):
             conf_obj = ConfigObj(local_config)
@@ -188,12 +184,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
         self._detach_stack = ExitStack()
 
     @classmethod
-    def from_stash_entry(
-        cls,
-        repo: "Repo",
-        entry: "ExpStashEntry",
-        **kwargs,
-    ):
+    def from_stash_entry(cls, repo: "Repo", entry: "ExpStashEntry", **kwargs):
         root_dir = repo.scm.root_dir
         executor: "WorkspaceExecutor" = cls._from_stash_entry(
             repo, entry, root_dir, **kwargs

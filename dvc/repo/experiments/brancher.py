@@ -10,10 +10,7 @@ if TYPE_CHECKING:
 
 
 @contextmanager
-def switch_repo(
-    repo: "Repo",
-    rev: str,
-) -> Iterator[tuple["Repo", str]]:
+def switch_repo(repo: "Repo", rev: str) -> Iterator[tuple["Repo", str]]:
     """Return a repo instance (brancher) switched to rev.
 
     If rev is the name of a running experiment, the returned instance will be

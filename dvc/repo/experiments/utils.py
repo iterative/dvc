@@ -4,12 +4,7 @@ import sys
 from collections import defaultdict
 from collections.abc import Generator, Iterable, Mapping
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
@@ -282,12 +277,7 @@ def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None, **
         for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
         if not _ignore_ref(ref)
     ]
-    scm.fetch_refspecs(
-        url,
-        refspecs,
-        progress=progress,
-        **kwargs,
-    )
+    scm.fetch_refspecs(url, refspecs, progress=progress, **kwargs)
 
 
 def gen_random_name():

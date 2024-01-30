@@ -31,12 +31,7 @@ def test_get_stage_files(tmp_dir, dvc):
         outs=["dvc-out"],
         outs_no_cache=["other-out"],
     )
-    assert _get_stage_files(stage) == [
-        "dvc.yaml",
-        "dvc.lock",
-        "other-dep",
-        "other-out",
-    ]
+    assert _get_stage_files(stage) == ["dvc.yaml", "dvc.lock", "other-dep", "other-out"]
 
 
 def test_get_stage_files_wdir(tmp_dir, dvc):

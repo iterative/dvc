@@ -49,11 +49,7 @@ def make_executor(local=None, **kwargs):
         local_executor.update(local)
     else:
         local_executor = ANY
-    data = {
-        "state": ANY,
-        "local": local_executor,
-        "name": ANY,
-    }
+    data = {"state": ANY, "local": local_executor, "name": ANY}
     data.update(kwargs)
     return data
 
@@ -62,13 +58,7 @@ def make_data(params=None, **kwargs):
     params = {"data": params or {"foo": 1}}
     data = {
         "rev": ANY,
-        "deps": {
-            "copy.py": {
-                "hash": ANY,
-                "size": ANY,
-                "nfiles": None,
-            }
-        },
+        "deps": {"copy.py": {"hash": ANY, "size": ANY, "nfiles": None}},
         "metrics": {"metrics.yaml": params},
         "outs": {},
         "params": {"params.yaml": params},
@@ -233,23 +223,14 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage, test_queue)
                         "experiments": None,
                     }
                 ],
-                "executor": make_executor(
-                    state="failed",
-                    local={"returncode": 255},
-                ),
+                "executor": make_executor(state="failed", local={"returncode": 255}),
                 "name": ANY,
             }
         ],
     }
 
 
-def test_show_filter(
-    tmp_dir,
-    scm,
-    dvc,
-    capsys,
-    copy_script,
-):
+def test_show_filter(tmp_dir, scm, dvc, capsys, copy_script):
     capsys.readouterr()
 
     params_file = tmp_dir / "params.yaml"
@@ -487,10 +468,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
 
 def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
-    params_data = {
-        "foo": 1,
-        "goobar": 1,
-    }
+    params_data = {"foo": 1, "goobar": 1}
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
@@ -534,10 +512,7 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
 @pytest.mark.vscode
 def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
     params_file = tmp_dir / "params.yaml"
-    params_data = {
-        "foo": 1,
-        "bar": 1,
-    }
+    params_data = {"foo": 1, "bar": 1}
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
@@ -641,9 +616,7 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
 
 def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
-    params_data = {
-        "foo": 1,
-    }
+    params_data = {"foo": 1}
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
@@ -674,14 +647,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
         name="copy-file",
         deps=["copy.py"],
     )
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            "params.yaml",
-            "scores.yaml",
-        ]
-    )
+    scm.add(["dvc.yaml", "dvc.lock", "params.yaml", "scores.yaml"])
     scm.commit("scores.yaml")
     scores_rev = scm.get_rev()
 
@@ -709,11 +675,7 @@ def test_show_sorted_deps(tmp_dir, dvc, scm, capsys):
     tmp_dir.gen("c", "c")
     tmp_dir.gen("z", "z")
 
-    dvc.run(
-        cmd="echo foo",
-        name="deps",
-        deps=["a", "b", "z", "c"],
-    )
+    dvc.run(cmd="echo foo", name="deps", deps=["a", "b", "z", "c"])
 
     capsys.readouterr()
     assert main(["exp", "show", "--csv"]) == 0

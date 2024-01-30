@@ -306,13 +306,7 @@ def test_experiments_push(dvc, scm, mocker):
         run_cache=True,
     )
 
-    cli_args = parse_args(
-        [
-            "experiments",
-            "push",
-            "origin",
-        ]
-    )
+    cli_args = parse_args(["experiments", "push", "origin"])
     cmd = cli_args.func(cli_args)
 
     assert cmd.run() == 0
@@ -358,13 +352,7 @@ def test_experiments_pull(dvc, scm, mocker):
         run_cache=True,
     )
 
-    cli_args = parse_args(
-        [
-            "experiments",
-            "pull",
-            "origin",
-        ]
-    )
+    cli_args = parse_args(["experiments", "pull", "origin"])
     cmd = cli_args.func(cli_args)
 
     assert cmd.run() == 0

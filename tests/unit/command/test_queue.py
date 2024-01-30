@@ -11,42 +11,19 @@ from dvc.exceptions import InvalidArgumentError
 
 
 def test_experiments_remove_flags(dvc, scm, mocker):
-    cli_args = parse_args(
-        [
-            "queue",
-            "remove",
-            "--queued",
-            "--success",
-            "--failed",
-        ]
-    )
+    cli_args = parse_args(["queue", "remove", "--queued", "--success", "--failed"])
     assert cli_args.func == CmdQueueRemove
     cmd = cli_args.func(cli_args)
     remove_mocker = mocker.patch(
-        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.clear",
-        return_value={},
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.clear", return_value={}
     )
     assert cmd.run() == 0
-    remove_mocker.assert_called_once_with(
-        success=True,
-        failed=True,
-        queued=True,
-    )
-    cli_args = parse_args(
-        [
-            "queue",
-            "remove",
-            "--all",
-        ]
-    )
+    remove_mocker.assert_called_once_with(success=True, failed=True, queued=True)
+    cli_args = parse_args(["queue", "remove", "--all"])
     cmd = cli_args.func(cli_args)
     remove_mocker.reset_mock()
     assert cmd.run() == 0
-    remove_mocker.assert_called_once_with(
-        success=True,
-        failed=True,
-        queued=True,
-    )
+    remove_mocker.assert_called_once_with(success=True, failed=True, queued=True)
 
 
 def test_experiments_remove_invalid(dvc, scm, mocker):
@@ -114,28 +91,18 @@ def test_experiments_start(dvc, scm, mocker):
     assert cli_args.func == CmdQueueStart
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch(
-        "dvc.repo.experiments.queue.celery.LocalCeleryQueue._spawn_worker",
-    )
+    m = mocker.patch("dvc.repo.experiments.queue.celery.LocalCeleryQueue._spawn_worker")
 
     assert cmd.run() == 0
     assert m.call_count == 3
 
 
 def test_experiments_stop(dvc, scm, mocker):
-    cli_args = parse_args(
-        [
-            "queue",
-            "stop",
-            "--kill",
-        ]
-    )
+    cli_args = parse_args(["queue", "stop", "--kill"])
     assert cli_args.func == CmdQueueStop
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch(
-        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.shutdown",
-    )
+    m = mocker.patch("dvc.repo.experiments.queue.celery.LocalCeleryQueue.shutdown")
 
     assert cmd.run() == 0
     m.assert_called_once_with(kill=True)
@@ -191,12 +158,7 @@ def test_worker_status(dvc, scm, worker_status, output, mocker, capsys):
 def test_experiments_status(dvc, scm, mocker, capsys):
     from datetime import datetime
 
-    cli_args = parse_args(
-        [
-            "queue",
-            "status",
-        ]
-    )
+    cli_args = parse_args(["queue", "status"])
     assert cli_args.func == CmdQueueStatus
 
     cmd = cli_args.func(cli_args)

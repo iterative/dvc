@@ -14,16 +14,8 @@ from dvc_objects.errors import ObjectFormatError
 def test_cache(tmp_dir, dvc):
     cache1_md5 = "123"
     cache2_md5 = "234"
-    cache1 = os.path.join(
-        dvc.cache.local.path,
-        cache1_md5[0:2],
-        cache1_md5[2:],
-    )
-    cache2 = os.path.join(
-        dvc.cache.local.path,
-        cache2_md5[0:2],
-        cache2_md5[2:],
-    )
+    cache1 = os.path.join(dvc.cache.local.path, cache1_md5[:2], cache1_md5[2:])
+    cache2 = os.path.join(dvc.cache.local.path, cache2_md5[:2], cache2_md5[2:])
     tmp_dir.gen({cache1: "1", cache2: "2"})
 
     assert os.path.exists(cache1)

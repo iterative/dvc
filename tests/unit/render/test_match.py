@@ -3,11 +3,7 @@ from funcy import set_in
 
 from dvc.render import FIELD, FILENAME, REVISION
 from dvc.render.converter.vega import VegaConverter
-from dvc.render.match import (
-    PlotsData,
-    _squash_plots_properties,
-    match_defs_renderers,
-)
+from dvc.render.match import PlotsData, _squash_plots_properties, match_defs_renderers
 
 
 @pytest.mark.parametrize(

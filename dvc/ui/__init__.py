@@ -1,13 +1,6 @@
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager, nullcontext
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Optional,
-    TextIO,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, TextIO, Union
 
 import colorama
 

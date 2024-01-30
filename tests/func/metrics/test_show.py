@@ -160,13 +160,7 @@ def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
     result = dvc.metrics.show()
     metrics2 = result[""]["data"].pop("metrics2.yaml")
     assert isinstance(metrics2["error"], FileNotFoundError)
-    assert result == {
-        "": {
-            "data": {
-                "metrics.yaml": {"data": 1.1},
-            }
-        }
-    }
+    assert result == {"": {"data": {"metrics.yaml": {"data": 1.1}}}}
 
 
 @pytest.mark.parametrize("use_dvc", [True, False])
@@ -276,10 +270,7 @@ def test_metrics_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     )
     with (tmp_dir / "dvc.yaml").modify() as d:
         # trying to make an output overlaps error
-        d["stages"]["corrupted-stage"] = {
-            "cmd": "mkdir data",
-            "outs": ["data"],
-        }
+        d["stages"]["corrupted-stage"] = {"cmd": "mkdir data", "outs": ["data"]}
 
     # running by clearing and not clearing stuffs
     # so as it works even for optimized cases

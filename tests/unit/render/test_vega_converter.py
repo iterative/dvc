@@ -513,12 +513,7 @@ def test_finding_lists(dictionary, expected_result):
         ),
     ],
 )
-def test_convert(
-    input_data,
-    properties,
-    expected_datapoints,
-    expected_properties,
-):
+def test_convert(input_data, properties, expected_datapoints, expected_properties):
     converter = VegaConverter("f", input_data, properties)
     datapoints, resolved_properties = converter.flat_datapoints("r")
 

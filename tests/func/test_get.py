@@ -243,15 +243,7 @@ def test_get_url_positive(tmp_dir, erepo_dir, caplog, local_cloud):
 def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert (
-            main(
-                [
-                    "get",
-                    os.fspath(erepo_dir),
-                    "not-existing-file",
-                    "--show-url",
-                ]
-            )
-            != 0
+            main(["get", os.fspath(erepo_dir), "not-existing-file", "--show-url"]) != 0
         )
 
 
@@ -332,7 +324,4 @@ def test_get_complete_repo(tmp_dir, dvc, erepo_dir):
     }
 
     Repo.get(os.fspath(erepo_dir), ".", out="out")
-    assert (tmp_dir / "out").read_text() == {
-        ".gitignore": "/foo\n",
-        "foo": "foo",
-    }
+    assert (tmp_dir / "out").read_text() == {".gitignore": "/foo\n", "foo": "foo"}

@@ -1,13 +1,7 @@
 from collections import OrderedDict
 from collections.abc import Iterable
 from operator import attrgetter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    Union,
-    no_type_check,
-)
+from typing import TYPE_CHECKING, Any, Optional, Union, no_type_check
 
 from funcy import post_processing
 

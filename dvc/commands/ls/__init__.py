@@ -119,11 +119,7 @@ def add_parser(subparsers, parent_parser):
             "specified by '--remote') in the target repository."
         ),
     )
-    list_parser.add_argument(
-        "--size",
-        action="store_true",
-        help="Show sizes.",
-    )
+    list_parser.add_argument("--size", action="store_true", help="Show sizes.")
     list_parser.add_argument(
         "path",
         nargs="?",

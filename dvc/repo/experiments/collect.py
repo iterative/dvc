@@ -3,11 +3,7 @@ import os
 from collections.abc import Collection, Iterable, Iterator
 from dataclasses import fields
 from datetime import datetime
-from typing import (
-    TYPE_CHECKING,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Optional, Union
 
 from funcy import first
 from scmrepo.exceptions import SCMError as InnerSCMError
@@ -58,13 +54,7 @@ def collect_rev(
     else:
         orig_cwd = None
     try:
-        data = _collect_rev(
-            repo,
-            rev,
-            param_deps=param_deps,
-            force=force,
-            **kwargs,
-        )
+        data = _collect_rev(repo, rev, param_deps=param_deps, force=force, **kwargs)
         if not (rev == "workspace" or param_deps or data.contains_error):
             cache.put(data, force=True)
         return ExpState(rev=rev, data=data)

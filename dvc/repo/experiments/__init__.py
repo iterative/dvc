@@ -131,16 +131,9 @@ class Experiments:
             self._log_reproduced(results, tmp_dir=tmp_dir)
         return results
 
-    def queue_one(
-        self,
-        queue: "BaseStashQueue",
-        **kwargs,
-    ) -> "QueueEntry":
+    def queue_one(self, queue: "BaseStashQueue", **kwargs) -> "QueueEntry":
         """Queue a single experiment."""
-        return self.new(
-            queue,
-            **kwargs,
-        )
+        return self.new(queue, **kwargs)
 
     def reproduce_celery(
         self, entries: Optional[Iterable["QueueEntry"]] = None, **kwargs
@@ -148,16 +141,10 @@ class Experiments:
         results: dict[str, str] = {}
         if entries is None:
             entries = list(
-                chain(
-                    self.celery_queue.iter_active(),
-                    self.celery_queue.iter_queued(),
-                )
+                chain(self.celery_queue.iter_active(), self.celery_queue.iter_queued())
             )
 
-        logger.debug(
-            "reproduce all these entries '%s'",
-            entries,
-        )
+        logger.debug("reproduce all these entries '%s'", entries)
 
         if not entries:
             return results
@@ -212,12 +199,7 @@ class Experiments:
         else:
             ui.write("Experiment results have been applied to your workspace.")
 
-    def new(
-        self,
-        queue: "BaseStashQueue",
-        *args,
-        **kwargs,
-    ) -> "QueueEntry":
+    def new(self, queue: "BaseStashQueue", *args, **kwargs) -> "QueueEntry":
         """Create and enqueue a new experiment.
 
         Experiment will be derived from the current workspace.

@@ -118,20 +118,12 @@ class ApplyStash(Stash):
             m = self.MESSAGE_RE.match(msg)
             if m:
                 revs[entry.new_sha.decode("utf-8")] = ApplyStashEntry(
-                    i,
-                    m.group("head_rev"),
-                    m.group("rev"),
-                    m.group("name"),
+                    i, m.group("head_rev"), m.group("rev"), m.group("name")
                 )
         return revs
 
     @classmethod
-    def format_message(
-        cls,
-        head_rev: str,
-        rev: str,
-        name: Optional[str] = None,
-    ) -> str:
+    def format_message(cls, head_rev: str, rev: str, name: Optional[str] = None) -> str:
         return cls.MESSAGE_FORMAT.format(
             head_rev=head_rev, rev=rev, name=name if name else ""
         )

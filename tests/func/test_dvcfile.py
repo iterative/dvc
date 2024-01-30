@@ -106,10 +106,7 @@ def test_load_all_multistage(tmp_dir, dvc):
         metrics=["bar2"],
         always_changed=True,
     )
-    assert set(load_file(dvc, PROJECT_FILE).stages.values()) == {
-        stage2,
-        stage1,
-    }
+    assert set(load_file(dvc, PROJECT_FILE).stages.values()) == {stage2, stage1}
 
 
 def test_load_all_singlestage(tmp_dir, dvc):

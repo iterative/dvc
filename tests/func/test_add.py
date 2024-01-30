@@ -754,10 +754,7 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc):
 def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
-    mocker.patch(
-        "dvc_data.hashfile.checkout.test_links",
-        return_value=[],
-    )
+    mocker.patch("dvc_data.hashfile.checkout.test_links", return_value=[])
     dvc.add("foo")
     err = capsys.readouterr()[1]
     assert "reconfigure cache types" in err
@@ -981,10 +978,7 @@ def test_add_does_not_remove_stage_file_on_failure(tmp_dir, dvc, mocker, target)
     dvcfile_contents = (tmp_dir / stage.path).read_text()
 
     exc_msg = f"raising error from mocked '{target}'"
-    mocker.patch(
-        target,
-        side_effect=DvcException(exc_msg),
-    )
+    mocker.patch(target, side_effect=DvcException(exc_msg))
 
     with pytest.raises(DvcException, match=exc_msg):
         dvc.add("foo")
