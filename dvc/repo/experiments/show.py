@@ -130,7 +130,7 @@ def _build_rows(
     **kwargs,
 ) -> Iterator[Tuple["CellT", ...]]:
     for baseline in baseline_states:
-        row: Dict[str, "CellT"] = {k: fill_value for k in all_headers}
+        row: Dict[str, "CellT"] = dict.fromkeys(all_headers, fill_value)
         row["Experiment"] = ""
         if baseline.name:
             row["rev"] = baseline.name
@@ -245,7 +245,7 @@ def _exp_range_rows(
         logger.debug("Returning tip commit for legacy checkpoint exp")
     exp = first(exp_range.revs)
     if exp:
-        row: Dict[str, "CellT"] = {k: fill_value for k in all_headers}
+        row: Dict[str, "CellT"] = dict.fromkeys(all_headers, fill_value)
         row["Experiment"] = exp.name or ""
         row["rev"] = exp.rev[:7] if Git.is_sha(exp.rev) else exp.rev
         row["typ"] = "branch_base" if is_base else "branch_commit"

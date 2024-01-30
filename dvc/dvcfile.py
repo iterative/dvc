@@ -4,6 +4,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ClassVar,
     Dict,
     List,
     Optional,
@@ -181,10 +182,10 @@ class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
     from dvc.stage.loader import SingleStageLoader as LOADER  # noqa: N814
 
-    metrics: List[str] = []
-    plots: Any = {}
-    params: List[str] = []
-    artifacts: Dict[str, Optional[Dict[str, Any]]] = {}
+    metrics: ClassVar[List[str]] = []
+    plots: ClassVar[Any] = {}
+    params: ClassVar[List[str]] = []
+    artifacts: ClassVar[Dict[str, Optional[Dict[str, Any]]]] = {}
 
     @property
     def stage(self) -> "Stage":

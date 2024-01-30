@@ -183,7 +183,7 @@ def _reproduce(
     to_skip: Dict["Stage", "Stage"] = {}
     ret: Optional["Stage"] = None
 
-    force_state = {node: force for node in stages}
+    force_state = dict.fromkeys(stages, force)
 
     for stage in stages:
         if stage in to_skip:
@@ -203,11 +203,11 @@ def _reproduce(
                 _raise_error(exc, stage)
 
             dependents = handle_error(graph, on_error, exc, stage)
-            to_skip.update({node: stage for node in dependents})
+            to_skip.update(dict.fromkeys(dependents, stage))
             continue
 
         if force_downstream and (ret or force_stage):
-            force_state.update({node: True for node in downstream})
+            force_state.update(dict.fromkeys(downstream, True))
 
         if ret:
             result.append(ret)

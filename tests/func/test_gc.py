@@ -35,14 +35,14 @@ def good_and_bad_cache(tmp_dir, dvc):
 def test_gc_api(dvc, good_and_bad_cache):
     dvc.gc(workspace=True)
     odb = dvc.cache.local
-    good_cache, bad_cache = good_and_bad_cache
+    good_cache, _ = good_and_bad_cache
     assert set(odb.all()) == good_cache
 
 
 def test_gc_cli(dvc, good_and_bad_cache):
     assert main(["gc", "-wf"]) == 0
     odb = dvc.cache.local
-    good_cache, bad_cache = good_and_bad_cache
+    good_cache, _ = good_and_bad_cache
     assert set(odb.all()) == good_cache
 
 
@@ -113,7 +113,7 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
 
     with pytest.raises(RevCollectionError) as exc:
         dvc.gc(workspace=True)
-    assert type(exc.value.__cause__) == CollectCacheError
+    assert type(exc.value.__cause__) is CollectCacheError
 
     assert _count_files(dvc.cache.local.path) == 4
     dvc.gc(force=True, workspace=True)
@@ -319,7 +319,7 @@ def test_date(tmp_dir, scm, dvc):
 
 
 def test_gc_not_in_remote(tmp_dir, scm, dvc, mocker, local_remote):
-    (standalone, dir1, dir2) = tmp_dir.dvc_gen(
+    (standalone, dir1, _) = tmp_dir.dvc_gen(
         {
             "file1": "standalone",
             "dir1": {"file2": "file2"},
@@ -429,7 +429,7 @@ def test_gc_cloud_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
 def test_gc_dry(dvc, good_and_bad_cache):
     dvc.gc(workspace=True, dry=True)
     odb = dvc.cache.local
-    good_cache, bad_cache = good_and_bad_cache
+    good_cache, _ = good_and_bad_cache
     assert set(odb.all()) != good_cache
 
 

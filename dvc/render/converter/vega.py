@@ -59,7 +59,7 @@ def _verify_field(file2datapoints: Dict[str, List], filename: str, field: str):
 
 
 def _get_xs(properties: Dict, file2datapoints: Dict[str, List[Dict]]):
-    x = properties.get("x", None)
+    x = properties.get("x")
     if x is not None and isinstance(x, dict):
         for filename, field in _file_field(x):
             _verify_field(file2datapoints, filename, field)
@@ -255,7 +255,7 @@ class VegaConverter(Converter):
                 x_file, x_field = xs[i]
             datapoints = [{**d} for d in file2datapoints.get(y_file, [])]
 
-            if props_update.get("y", None) == "dvc_inferred_y_value":
+            if props_update.get("y") == "dvc_inferred_y_value":
                 _update_from_field(
                     datapoints,
                     field="dvc_inferred_y_value",

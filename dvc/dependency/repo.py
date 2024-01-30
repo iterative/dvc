@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Union
 
 import voluptuous as vol
 
@@ -20,7 +20,7 @@ class RepoDependency(Dependency):
     PARAM_CONFIG = "config"
     PARAM_REMOTE = "remote"
 
-    REPO_SCHEMA = {
+    REPO_SCHEMA: ClassVar[Dict] = {
         PARAM_REPO: {
             vol.Required(PARAM_URL): str,
             PARAM_REV: str,

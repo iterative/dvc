@@ -5,6 +5,7 @@ import logging.config
 import logging.handlers
 import os
 import sys
+from typing import ClassVar, Dict
 
 import colorama
 
@@ -78,7 +79,7 @@ class ColorFormatter(logging.Formatter):
     """
 
     reset = colorama.Fore.RESET
-    color_codes = {
+    color_codes: ClassVar[Dict[str, str]] = {
         "TRACE": colorama.Fore.GREEN,
         "DEBUG": colorama.Fore.BLUE,
         "WARNING": colorama.Fore.YELLOW,
