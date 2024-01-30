@@ -38,16 +38,9 @@ def add_parser(subparsers, parent_parser):
         "url", help="See `dvc import-url -h` for full list of supported URLs."
     )
     lsurl_parser.add_argument(
-        "-R",
-        "--recursive",
-        action="store_true",
-        help="Recursively list files.",
+        "-R", "--recursive", action="store_true", help="Recursively list files."
     )
-    lsurl_parser.add_argument(
-        "--size",
-        action="store_true",
-        help="Show sizes.",
-    )
+    lsurl_parser.add_argument("--size", action="store_true", help="Show sizes.")
     lsurl_parser.add_argument(
         "--fs-config",
         type=str,

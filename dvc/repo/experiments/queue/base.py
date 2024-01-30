@@ -2,13 +2,7 @@ import os
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Generator, Iterable, Mapping
 from dataclasses import asdict, dataclass
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
 
 from dvc_studio_client.post_live_metrics import get_studio_config
 from funcy import retry
@@ -275,12 +269,7 @@ class BaseStashQueue(ABC):
         """
 
     @abstractmethod
-    def logs(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-        follow: bool = False,
-    ):
+    def logs(self, rev: str, encoding: Optional[str] = None, follow: bool = False):
         """Print redirected output logs for an exp process.
 
         Args:
@@ -336,9 +325,7 @@ class BaseStashQueue(ABC):
                     self._stash_commit_deps(*args, **kwargs)
 
                     # save additional repro command line arguments
-                    run_env = {
-                        DVC_EXP_BASELINE_REV: baseline_rev,
-                    }
+                    run_env = {DVC_EXP_BASELINE_REV: baseline_rev}
                     if not name:
                         name = get_random_exp_name(self.scm, baseline_rev)
                     run_env[DVC_EXP_NAME] = name
@@ -502,10 +489,7 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @retry(180, errors=LockError, timeout=1)
-    def get_stash_entry(
-        exp: "Experiments",
-        queue_entry: QueueEntry,
-    ) -> "ExpStashEntry":
+    def get_stash_entry(exp: "Experiments", queue_entry: QueueEntry) -> "ExpStashEntry":
         stash = ExpStash(exp.scm, queue_entry.stash_ref)
         stash_rev = queue_entry.stash_rev
         with get_exp_rwlock(exp.repo, writes=[queue_entry.stash_ref]):

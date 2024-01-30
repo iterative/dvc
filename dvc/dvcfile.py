@@ -1,14 +1,6 @@
 import contextlib
 import os
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, TypeVar, Union
 
 from dvc.exceptions import DvcException
 from dvc.log import logger

@@ -17,9 +17,7 @@ def parse_params(path_params: Iterable[str]) -> list[dict[str, list[str]]]:
     return [{path: params} for path, params in ret.items()]
 
 
-def to_path_overrides(
-    path_params: Iterable[str],
-) -> dict[str, list[str]]:
+def to_path_overrides(path_params: Iterable[str]) -> dict[str, list[str]]:
     """Group overrides by path"""
     from dvc.dependency.param import ParamsDependency
 

@@ -39,9 +39,7 @@ class GitFileSystem(FileSystem):
         )
 
     @functools.cached_property
-    def fs(
-        self,
-    ) -> "FsspecGitFileSystem":
+    def fs(self) -> "FsspecGitFileSystem":
         from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
 
         return FsspecGitFileSystem(**self.fs_args)

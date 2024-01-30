@@ -6,13 +6,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from functools import partial
 from multiprocessing import cpu_count
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import dpath
 import dpath.options
@@ -415,10 +409,7 @@ def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = No
                 onerror=onerror,
             )
 
-            dpath.merge(
-                result,
-                {"": unpacked},
-            )
+            dpath.merge(result, {"": unpacked})
     return result
 
 
@@ -458,15 +449,9 @@ def _resolve_definitions(
             data_path = _normpath(fs.join(config_dir, plot_id))
             if _matches(targets, config_path, plot_id):
                 unpacked = unpack_if_dir(
-                    fs,
-                    data_path,
-                    props={**plot_props, **props},
-                    onerror=onerror,
+                    fs, data_path, props={**plot_props, **props}, onerror=onerror
                 )
-                dpath.merge(
-                    result,
-                    unpacked,
-                )
+                dpath.merge(result, unpacked)
         elif _matches(targets, config_path, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
             dpath.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
@@ -489,17 +474,9 @@ def _collect_pipeline_files(repo, targets: list[str], props, onerror=None):
                 dvcfile_defs_dict[k] = v
 
         resolved = _resolve_definitions(
-            repo.dvcfs,
-            targets,
-            props,
-            dvcfile_path,
-            dvcfile_defs_dict,
-            onerror=onerror,
+            repo.dvcfs, targets, props, dvcfile_path, dvcfile_defs_dict, onerror=onerror
         )
-        dpath.merge(
-            result,
-            {dvcfile_path: resolved},
-        )
+        dpath.merge(result, {dvcfile_path: resolved})
     return result
 
 
@@ -515,15 +492,9 @@ def _collect_definitions(
     props = props or {}
 
     fs = repo.dvcfs
-    dpath.merge(
-        result,
-        _collect_pipeline_files(repo, targets, props, onerror=onerror),
-    )
+    dpath.merge(result, _collect_pipeline_files(repo, targets, props, onerror=onerror))
 
-    dpath.merge(
-        result,
-        _collect_output_plots(repo, targets, props, onerror=onerror),
-    )
+    dpath.merge(result, _collect_output_plots(repo, targets, props, onerror=onerror))
 
     for target in targets:
         if not result or fs.exists(target):

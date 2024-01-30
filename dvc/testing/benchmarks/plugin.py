@@ -86,11 +86,7 @@ def pytest_addoption(parser):
         help="Path or url to dvc-bench git repo (for loading benchmark datasets)",
     )
 
-    parser.addoption(
-        "--project-rev",
-        type=str,
-        help="Project revision to test",
-    )
+    parser.addoption("--project-rev", type=str, help="Project revision to test")
 
     parser.addoption(
         "--project-git-repo",

@@ -110,15 +110,8 @@ def test_celery_queue_kill(test_queue, mocker, force):
             (mocker.Mock(headers={"id": "foobar"}), mock_entry_foobar),
         ],
     )
-    mocker.patch.object(
-        AsyncResult,
-        "ready",
-        return_value=False,
-    )
-    mark_mocker = mocker.patch.object(
-        test_queue.celery.backend,
-        "mark_as_failure",
-    )
+    mocker.patch.object(AsyncResult, "ready", return_value=False)
+    mark_mocker = mocker.patch.object(test_queue.celery.backend, "mark_as_failure")
 
     def kill_function(rev):
         if rev == "foo":
@@ -148,11 +141,7 @@ def test_celery_queue_kill_invalid(test_queue, mocker, force):
     mocker.patch.object(
         test_queue,
         "match_queue_entry_by_name",
-        return_value={
-            "bar": mock_entry_bar,
-            "foo": mock_entry_foo,
-            "foobar": None,
-        },
+        return_value={"bar": mock_entry_bar, "foo": mock_entry_foo, "foobar": None},
     )
 
     kill_mock = mocker.patch.object(test_queue, "_kill_entries")

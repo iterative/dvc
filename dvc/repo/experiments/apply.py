@@ -33,10 +33,9 @@ def apply(repo: "Repo", rev: str, **kwargs):
     try:
         exp_rev = resolve_rev(repo.scm, rev)
     except RevError as exc:
-        (
-            exp_ref_info,
-            queue_entry,
-        ) = exps.celery_queue.get_ref_and_entry_by_names(rev)[rev]
+        (exp_ref_info, queue_entry) = exps.celery_queue.get_ref_and_entry_by_names(rev)[
+            rev
+        ]
         if exp_ref_info:
             exp_rev = repo.scm.get_ref(str(exp_ref_info))
         elif queue_entry:

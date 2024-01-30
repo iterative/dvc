@@ -15,12 +15,7 @@ class TestAPI:
         assert api.get_url("foo") == expected_url
 
     def test_open(self, tmp_dir, dvc, remote):
-        tmp_dir.dvc_gen(
-            {
-                "foo": "foo-text",
-                "dir": {"bar": "bar-text"},
-            }
-        )
+        tmp_dir.dvc_gen({"foo": "foo-text", "dir": {"bar": "bar-text"}})
         dvc.push()
 
         # Remove cache to force download

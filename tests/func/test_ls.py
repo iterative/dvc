@@ -119,10 +119,7 @@ def test_ls_repo_with_new_path_dir(tmp_dir, dvc, scm):
     tmp_dir.gen({"mysub/sub": {"foo": "content"}})
 
     files = Repo.ls(os.fspath(tmp_dir), path="mysub/sub")
-    match_files(
-        files,
-        ((("foo",), False),),
-    )
+    match_files(files, ((("foo",), False),))
 
 
 def test_ls_repo_with_path_dir(tmp_dir, dvc, scm):
@@ -225,12 +222,7 @@ def test_ls_repo_with_missed_path_dvc_only(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     with pytest.raises(FileNotFoundError):
-        Repo.ls(
-            os.fspath(tmp_dir),
-            path="missed_path",
-            recursive=True,
-            dvc_only=True,
-        )
+        Repo.ls(os.fspath(tmp_dir), path="missed_path", recursive=True, dvc_only=True)
 
 
 def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):

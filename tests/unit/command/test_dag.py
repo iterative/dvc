@@ -43,13 +43,7 @@ def repo(tmp_dir, dvc):
 
     dvc.run(no_exec=True, deps=["a", "c"], outs=["d", "e"], cmd="cmd1", name="1")
     dvc.run(no_exec=True, deps=["b", "c"], outs=["f", "g"], cmd="cmd2", name="2")
-    dvc.run(
-        no_exec=True,
-        deps=["a", "b", "c"],
-        outs=["h", "i"],
-        cmd="cmd3",
-        name="3",
-    )
+    dvc.run(no_exec=True, deps=["a", "b", "c"], outs=["h", "i"], cmd="cmd3", name="3")
     dvc.run(no_exec=True, deps=["a", "h"], outs=["j"], cmd="cmd4", name="4")
 
     return dvc

@@ -70,9 +70,7 @@ def test_artifacts_add_subdir(tmp_dir, dvc):
         name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
     }
     artifacts["new"] = new_art
-    assert tmp_dir.dvc.artifacts.read() == {
-        f"subdir{os.path.sep}dvc.yaml": artifacts,
-    }
+    assert tmp_dir.dvc.artifacts.read() == {f"subdir{os.path.sep}dvc.yaml": artifacts}
 
 
 def test_artifacts_add_abspath(tmp_dir, dvc):
@@ -114,11 +112,7 @@ bad_dvcyaml_extra_field = {
 }
 
 
-bad_dvcyaml_missing_path = {
-    "artifacts": {
-        "lol": {},
-    }
-}
+bad_dvcyaml_missing_path = {"artifacts": {"lol": {}}}
 
 
 @pytest.mark.parametrize(
@@ -148,16 +142,7 @@ def test_artifacts_read_fails_on_id_duplication(tmp_dir, dvc):
 
 
 @pytest.mark.parametrize(
-    "name",
-    [
-        "1",
-        "m",
-        "nn",
-        "m1",
-        "1nn",
-        "model-prod",
-        "model-prod-v1",
-    ],
+    "name", ["1", "m", "nn", "m1", "1nn", "model-prod", "model-prod-v1"]
 )
 def test_name_is_compatible(name):
     check_name_format(name)

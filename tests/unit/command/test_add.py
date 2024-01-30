@@ -5,14 +5,7 @@ from dvc.commands.add import CmdAdd
 
 
 def test_add(mocker, dvc):
-    cli_args = parse_args(
-        [
-            "add",
-            "--no-commit",
-            "--glob",
-            "data",
-        ]
-    )
+    cli_args = parse_args(["add", "--no-commit", "--glob", "data"])
     assert cli_args.func == CmdAdd
 
     cmd = cli_args.func(cli_args)
@@ -34,15 +27,7 @@ def test_add(mocker, dvc):
 
 def test_add_to_remote(mocker, dvc):
     cli_args = parse_args(
-        [
-            "add",
-            "s3://bucket/foo",
-            "--to-remote",
-            "--out",
-            "bar",
-            "--remote",
-            "remote",
-        ]
+        ["add", "s3://bucket/foo", "--to-remote", "--out", "bar", "--remote", "remote"]
     )
     assert cli_args.func == CmdAdd
 

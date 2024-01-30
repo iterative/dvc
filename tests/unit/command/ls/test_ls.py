@@ -143,12 +143,7 @@ def test_show_colors(mocker, capsys, monkeypatch):
         {"isdir": False, "isexec": 0, "isout": False, "path": "README.md"},
         {"isdir": True, "isexec": 0, "isout": True, "path": "data"},
         {"isdir": False, "isexec": 0, "isout": True, "path": "structure.xml"},
-        {
-            "isdir": False,
-            "isexec": 0,
-            "isout": False,
-            "path": "structure.xml.dvc",
-        },
+        {"isdir": False, "isexec": 0, "isout": False, "path": "structure.xml.dvc"},
         {"isdir": True, "isexec": 0, "isout": False, "path": "src"},
         {"isdir": False, "isexec": 1, "isout": False, "path": "run.sh"},
     ]

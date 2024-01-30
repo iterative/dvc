@@ -4,14 +4,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from functools import partial
 from itertools import chain
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Union
 
 from funcy.debug import format_time
 
@@ -577,10 +570,7 @@ class Index:
         return by_workspace
 
     @staticmethod
-    def _hash_targets(
-        targets: Iterable[Optional[str]],
-        **kwargs: Any,
-    ) -> int:
+    def _hash_targets(targets: Iterable[Optional[str]], **kwargs: Any) -> int:
         return hash(
             (
                 frozenset(targets),

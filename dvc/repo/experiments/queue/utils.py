@@ -23,11 +23,7 @@ def get_remote_executor_refs(scm: "Git", remote_url: str) -> list[str]:
         remote_url : remote executor's url
     """
     refs = []
-    for ref in iter_remote_refs(
-        scm,
-        remote_url,
-        base=EXPS_NAMESPACE,
-    ):
+    for ref in iter_remote_refs(scm, remote_url, base=EXPS_NAMESPACE):
         if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
             refs.append(ref)
     return refs

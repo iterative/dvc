@@ -8,14 +8,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from enum import IntEnum
 from itertools import chain
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Union
 
 from scmrepo.exceptions import SCMError
 

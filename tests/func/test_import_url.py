@@ -220,9 +220,7 @@ def test_import_url_no_download(tmp_dir, scm, dvc, local_workspace):
     assert out.meta.size is None
 
     status = dvc.status()
-    assert status["file.dvc"] == [
-        {"changed outs": {"file": "deleted"}},
-    ]
+    assert status["file.dvc"] == [{"changed outs": {"file": "deleted"}}]
 
 
 def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):

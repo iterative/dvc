@@ -5,11 +5,7 @@ def check_missing(repo, rev=None, max_size=None, types=None):
     from dvc_data.index import StorageKeyError
 
     with repo.switch(rev or "workspace"):
-        idx = repo.index.targets_view(
-            None,
-            max_size=max_size,
-            types=types,
-        )
+        idx = repo.index.targets_view(None, max_size=max_size, types=types)
 
         index = idx.data["repo"]
 

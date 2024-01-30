@@ -57,10 +57,7 @@ def test_collect_stable_sorting(dvc, scm, mocker):
         _assert_experiment_rev_order(collected[1].experiments, expected_revs)
 
 
-def _assert_experiment_rev_order(
-    actual: list["ExpRange"],
-    expected_revs: list[str],
-):
+def _assert_experiment_rev_order(actual: list["ExpRange"], expected_revs: list[str]):
     expected_revs = expected_revs.copy()
 
     for actual_exp_range in actual:

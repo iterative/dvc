@@ -99,8 +99,7 @@ def test_s3_ssl_verify(tmp_dir, dvc):
 def test_load_unicode_error(tmp_dir, dvc, mocker):
     config = Config.from_cwd(validate=False)
     mocker.patch(
-        "configobj.ConfigObj",
-        side_effect=UnicodeDecodeError("", b"", 0, 0, ""),
+        "configobj.ConfigObj", side_effect=UnicodeDecodeError("", b"", 0, 0, "")
     )
     with pytest.raises(ConfigError):
         with config.edit():
@@ -111,10 +110,7 @@ def test_load_configob_error(tmp_dir, dvc, mocker):
     from configobj import ConfigObjError
 
     config = Config.from_cwd(validate=False)
-    mocker.patch(
-        "configobj.ConfigObj",
-        side_effect=ConfigObjError(),
-    )
+    mocker.patch("configobj.ConfigObj", side_effect=ConfigObjError())
     with pytest.raises(ConfigError):
         with config.edit():
             pass

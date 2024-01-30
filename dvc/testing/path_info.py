@@ -209,9 +209,7 @@ class URLInfo(_BasePath):
         return self._spath
 
     @cached_property
-    def _path(
-        self,
-    ) -> "_URLPathInfo":
+    def _path(self) -> "_URLPathInfo":
         return _URLPathInfo(self._spath)
 
     @property

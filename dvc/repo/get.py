@@ -61,9 +61,4 @@ def get(
         else:
             fs = repo.dvcfs
             fs_path = fs.from_os_path(path)
-        download(
-            fs,
-            fs_path,
-            os.path.abspath(out),
-            jobs=jobs,
-        )
+        download(fs, fs_path, os.path.abspath(out), jobs=jobs)

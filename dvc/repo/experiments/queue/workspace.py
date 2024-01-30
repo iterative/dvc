@@ -182,12 +182,7 @@ class WorkspaceQueue(BaseStashQueue):
     def shutdown(self, kill: bool = False):
         raise NotImplementedError
 
-    def logs(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-        follow: bool = False,
-    ):
+    def logs(self, rev: str, encoding: Optional[str] = None, follow: bool = False):
         raise NotImplementedError
 
     def get_running_exp(self) -> Optional[str]:

@@ -173,9 +173,7 @@ class TestImportURLVersionAware:
         dvc.cache.local.clear()
         remove(tmp_dir / "data_dir")
         assert dvc.pull()["fetched"] == 1
-        assert (tmp_dir / "data_dir").read_text() == {
-            "subdir": {"file": "file"},
-        }
+        assert (tmp_dir / "data_dir").read_text() == {"subdir": {"file": "file"}}
 
         dvc.commit(force=True)
         assert dvc.status() == {}
@@ -193,11 +191,7 @@ class TestLsUrl:
         cloud.gen({fname: "foo contents"})
         fs, fs_path = parse_external_url(cloud.url, cloud.config)
         result = ls_url(str(cloud / fname), fs_config=cloud.config)
-        match_files(
-            fs,
-            result,
-            [{"path": fs.join(fs_path, fname), "isdir": False}],
-        )
+        match_files(fs, result, [{"path": fs.join(fs_path, fname), "isdir": False}])
 
     def test_dir(self, cloud):
         cloud.gen({"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"})

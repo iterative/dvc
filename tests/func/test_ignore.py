@@ -240,10 +240,7 @@ def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
     files = ["foo"]
     dirs = ["bar"]
     root = os.fspath(subrepo_dir)
-    assert dvc.dvcignore(root, dirs, files, ignore_subrepos=False) == (
-        dirs,
-        files,
-    )
+    assert dvc.dvcignore(root, dirs, files, ignore_subrepos=False) == (dirs, files)
     assert dvc.dvcignore(root, dirs, files) == ([], [])
 
     assert dvc.dvcignore.is_ignored_dir(os.fspath(subrepo_dir / "bar"))

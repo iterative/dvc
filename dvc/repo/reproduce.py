@@ -1,13 +1,5 @@
 from collections.abc import Iterable
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    NoReturn,
-    Optional,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Callable, NoReturn, Optional, TypeVar, Union, cast
 
 from funcy import ldistinct
 

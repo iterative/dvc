@@ -120,11 +120,7 @@ def push(  # noqa: PLR0913
         tokenize(sorted(idx.data_tree.hash_info.value for idx in indexes.values())),
     )
 
-    with ui.progress(
-        desc="Collecting",
-        unit="entry",
-        leave=True,
-    ) as pb:
+    with ui.progress(desc="Collecting", unit="entry", leave=True) as pb:
         data = collect(
             [idx.data["repo"] for idx in indexes.values()],
             "remote",

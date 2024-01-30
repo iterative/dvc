@@ -44,13 +44,7 @@ def update_import(
         stage.frozen = frozen
 
 
-def sync_import(
-    stage,
-    dry=False,
-    force=False,
-    jobs=None,
-    no_download=False,
-):
+def sync_import(stage, dry=False, force=False, jobs=None, no_download=False):
     """Synchronize import's outs to the workspace."""
     logger.info("Importing '%s' -> '%s'", stage.deps[0], stage.outs[0])
     if dry:
@@ -64,7 +58,4 @@ def sync_import(
             if stage.is_repo_import or stage.is_db_import:
                 stage.deps[0].update()
         else:
-            stage.deps[0].download(
-                stage.outs[0],
-                jobs=jobs,
-            )
+            stage.deps[0].download(stage.outs[0], jobs=jobs)

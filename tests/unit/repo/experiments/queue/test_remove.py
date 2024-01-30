@@ -81,10 +81,7 @@ def test_remove_done(test_queue, mocker):
     remove_revs_mocker = mocker.patch.object(test_queue.failed_stash, "remove_revs")
     purge_mocker = mocker.patch.object(test_queue.celery, "purge")
 
-    assert test_queue.remove(["failed3", "success2"]) == [
-        "failed3",
-        "success2",
-    ]
+    assert test_queue.remove(["failed3", "success2"]) == ["failed3", "success2"]
     remove_revs_mocker.assert_called_once_with([stash_dict["failed3"]])
     purge_mocker.assert_has_calls(
         [mocker.call("msg_failed3"), mocker.call("msg_success2")]

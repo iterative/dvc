@@ -18,10 +18,7 @@ def plots_data():
         "revision": {
             "sources": {
                 "data": {
-                    "plot.csv": {
-                        "data": [{"val": 1}, {"val": 2}],
-                        "props": {},
-                    },
+                    "plot.csv": {"data": [{"val": 1}, {"val": 2}], "props": {}},
                     "other.jpg": {"data": b"content"},
                 }
             },

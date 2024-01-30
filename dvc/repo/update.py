@@ -61,10 +61,7 @@ def update(  # noqa: C901
             )
         if to_remote:
             raise InvalidArgumentError("--to-remote can't be used with worktree update")
-        update_worktree_stages(
-            self,
-            other_stage_infos,
-        )
+        update_worktree_stages(self, other_stage_infos)
 
     stages = import_stages | {stage_info.stage for stage_info in other_stage_infos}
     return list(stages)

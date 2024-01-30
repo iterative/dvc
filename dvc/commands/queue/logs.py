@@ -45,9 +45,5 @@ def add_parser(queue_subparsers, parent_parser):
         ),
         action="store_true",
     )
-    queue_logs_parser.add_argument(
-        "task",
-        help="Task to show.",
-        metavar="<task>",
-    )
+    queue_logs_parser.add_argument("task", help="Task to show.", metavar="<task>")
     queue_logs_parser.set_defaults(func=CmdQueueLogs)

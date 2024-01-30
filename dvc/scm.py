@@ -3,13 +3,7 @@ import os
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from functools import partial
-from typing import (
-    TYPE_CHECKING,
-    Literal,
-    Optional,
-    Union,
-    overload,
-)
+from typing import TYPE_CHECKING, Literal, Optional, Union, overload
 
 from funcy import group_by
 from scmrepo.base import Base  # noqa: F401

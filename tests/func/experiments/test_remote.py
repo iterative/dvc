@@ -356,11 +356,7 @@ def test_get(tmp_dir, scm, dvc, exp_stage, erepo_dir, use_ref):
     exp_ref = first(exp_refs_by_rev(scm, exp_rev))
 
     with erepo_dir.chdir():
-        Repo.get(
-            str(tmp_dir),
-            "params.yaml",
-            rev=exp_ref.name if use_ref else exp_rev,
-        )
+        Repo.get(str(tmp_dir), "params.yaml", rev=exp_ref.name if use_ref else exp_rev)
         assert (erepo_dir / "params.yaml").read_text().strip() == "foo: 2"
 
 

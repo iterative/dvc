@@ -5,13 +5,7 @@ import pytest
 pytestmark = pytest.mark.requires(minversion=(2, 15, 0), reason="new command")
 
 
-def test_data_status(
-    bench_dvc,
-    tmp_dir,
-    scm,
-    dvc,
-    make_dataset,
-):
+def test_data_status(bench_dvc, tmp_dir, scm, dvc, make_dataset):
     args = ("data", "status")
     dataset = make_dataset(cache=True, files=True, dvcfile=True, commit=False)
     rmtree(dvc.tmp_dir)

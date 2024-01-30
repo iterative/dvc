@@ -41,11 +41,7 @@ def _file_field(*args):
                         yield file, field
 
 
-def _find(
-    filename: str,
-    field: str,
-    data_series: list[tuple[str, str, Any]],
-):
+def _find(filename: str, field: str, data_series: list[tuple[str, str, Any]]):
     for data_file, data_field, data in data_series:
         if data_file == filename and data_field == field:
             return data_file, data_field, data
@@ -202,10 +198,7 @@ class VegaConverter(Converter):
 
         # assign "step" if no x provided
         if not xs:
-            x_file, x_field = (
-                None,
-                INDEX,
-            )
+            x_file, x_field = None, INDEX
         else:
             x_file, x_field = xs[0]
 
@@ -244,10 +237,7 @@ class VegaConverter(Converter):
             common_prefix_len = 0
 
         props_update["anchors_y_definitions"] = [
-            {
-                FILENAME: _get_short_y_file(y_file, common_prefix_len),
-                FIELD: y_field,
-            }
+            {FILENAME: _get_short_y_file(y_file, common_prefix_len), FIELD: y_field}
             for y_file, y_field in ys
         ]
 
@@ -299,9 +289,7 @@ class VegaConverter(Converter):
 
         return all_datapoints, properties
 
-    def convert(
-        self,
-    ):
+    def convert(self):
         """
         Convert the data. Fill necessary fields ('x', 'y') and return both
         generated datapoints and updated properties. `x`, `y` values and labels

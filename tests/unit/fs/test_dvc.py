@@ -302,11 +302,7 @@ def test_walk_mixed_dir(tmp_dir, scm, dvc):
 
     fs = DVCFileSystem(repo=dvc)
 
-    expected = [
-        "dir/foo",
-        "dir/bar",
-        "dir/.gitignore",
-    ]
+    expected = ["dir/foo", "dir/bar", "dir/.gitignore"]
     actual = []
     for root, dirs, files in fs.walk("dir"):
         for entry in dirs + files:
@@ -457,11 +453,7 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     ]
 
     actual = []
-    for root, dirs, files in fs.walk(
-        "dir",
-        dvcfiles=dvcfiles,
-        ignore_subrepos=False,
-    ):
+    for root, dirs, files in fs.walk("dir", dvcfiles=dvcfiles, ignore_subrepos=False):
         for entry in dirs + files:
             actual.append(posixpath.join(root, entry))
 

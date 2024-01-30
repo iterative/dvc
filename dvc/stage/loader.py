@@ -25,12 +25,7 @@ logger = logger.getChild(__name__)
 
 
 class StageLoader(Mapping):
-    def __init__(
-        self,
-        dvcfile: "ProjectFile",
-        data,
-        lockfile_data=None,
-    ):
+    def __init__(self, dvcfile: "ProjectFile", data, lockfile_data=None):
         self.dvcfile = dvcfile
         self.resolver = self.dvcfile.resolver
         self.data = data or {}
@@ -190,9 +185,7 @@ class SingleStageLoader(Mapping):
     def __getitem__(self, item):
         if item:
             logger.warning(
-                "Ignoring name '%s' for single stage in '%s'.",
-                item,
-                self.dvcfile,
+                "Ignoring name '%s' for single stage in '%s'.", item, self.dvcfile
             )
         # during `load`, we remove attributes from stage data, so as to
         # not duplicate, therefore, for MappingView, we need to deepcopy.

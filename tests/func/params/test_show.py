@@ -123,11 +123,7 @@ def test_show_without_targets_specified(tmp_dir, dvc, scm, file):
     params_file = tmp_dir / file
     data = {"foo": {"bar": "bar"}, "x": "0"}
     params_file.dump(data)
-    dvc.stage.add(
-        name="test",
-        cmd=f"echo {file}",
-        params=[{file: None}],
-    )
+    dvc.stage.add(name="test", cmd=f"echo {file}", params=[{file: None}])
 
     assert dvc.params.show() == {"": {"data": {file: {"data": data}}}}
 

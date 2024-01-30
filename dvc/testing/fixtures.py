@@ -246,11 +246,7 @@ def docker_services(
 
     try:
         cmd = "docker-compose version"
-        subprocess.check_output(
-            cmd,
-            stderr=subprocess.STDOUT,
-            shell=True,  # noqa: S602
-        )
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)  # noqa: S602
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
         pytest.skip(f"docker-compose is not installed: {out}")

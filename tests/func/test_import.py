@@ -273,11 +273,7 @@ def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
     assert stage.outs[0].meta.isdir
 
 
-def test_pull_import_no_download_rev_lock(
-    tmp_dir,
-    dvc,
-    erepo_dir,
-):
+def test_pull_import_no_download_rev_lock(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="add")
 
@@ -558,10 +554,7 @@ def test_import_complete_repo(tmp_dir, dvc, erepo_dir):
     }
 
     dvc.imp(os.fspath(erepo_dir), os.curdir, out="out")
-    assert (tmp_dir / "out").read_text() == {
-        ".gitignore": "/foo\n",
-        "foo": "foo",
-    }
+    assert (tmp_dir / "out").read_text() == {".gitignore": "/foo\n", "foo": "foo"}
 
 
 def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
@@ -707,10 +700,7 @@ def test_import_configs(tmp_dir, scm, dvc, erepo_dir, options, def_repo):
     stage = dvc.imp(
         os.fspath(erepo_dir), "foo", "foo_imported", no_exec=True, **options
     )
-    assert stage.deps[0].def_repo == {
-        "url": os.fspath(erepo_dir),
-        **def_repo,
-    }
+    assert stage.deps[0].def_repo == {"url": os.fspath(erepo_dir), **def_repo}
 
 
 def test_import_invalid_configs(tmp_dir, scm, dvc, erepo_dir):

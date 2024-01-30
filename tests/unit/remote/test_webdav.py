@@ -124,10 +124,7 @@ def test_ask_password_custom_auth_header(mocker):
 
 
 def test_ssl_verify_custom_cert():
-    config = {
-        "url": url,
-        "ssl_verify": "/path/to/custom/cabundle.pem",
-    }
+    config = {"url": url, "ssl_verify": "/path/to/custom/cabundle.pem"}
 
     fs = WebDAVFileSystem(**config)
     assert fs.fs_args["verify"] == "/path/to/custom/cabundle.pem"

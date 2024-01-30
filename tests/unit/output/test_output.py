@@ -199,7 +199,4 @@ def test_version_aware_is_set_based_on_files(mocker):
     # version_aware is passed as `True` if `files` is present`.
     # This will be intentionally ignored in filesystems that don't handle it
     # in `_prepare_credentials`.
-    assert get_fs_config.call_args_list[0][1] == {
-        "url": "path",
-        "version_aware": True,
-    }
+    assert get_fs_config.call_args_list[0][1] == {"url": "path", "version_aware": True}

@@ -28,9 +28,7 @@ class ImageConverter(Converter):
         return img_path
 
     @staticmethod
-    def _encode_image(
-        image_data: bytes,
-    ) -> str:
+    def _encode_image(image_data: bytes) -> str:
         base64_str = base64.b64encode(image_data).decode()
         return f"data:image;base64,{base64_str}"
 
@@ -57,10 +55,6 @@ class ImageConverter(Converter):
                 )
             else:
                 src = self._encode_image(image_data)
-            datapoint = {
-                REVISION: revision,
-                FILENAME: filename,
-                SRC: src,
-            }
+            datapoint = {REVISION: revision, FILENAME: filename, SRC: src}
             datapoints.append(datapoint)
         return datapoints, properties

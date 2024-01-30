@@ -98,10 +98,7 @@ class Artifacts:
     def read(self) -> dict[str, dict[str, Artifact]]:
         """Read artifacts from dvc.yaml."""
         artifacts: dict[str, dict[str, Artifact]] = {}
-        for (
-            dvcfile,
-            dvcfile_artifacts,
-        ) in self.repo.index._artifacts.items():
+        for dvcfile, dvcfile_artifacts in self.repo.index._artifacts.items():
             dvcyaml = relpath(dvcfile, self.repo.root_dir)
             artifacts[dvcyaml] = {}
             for name, value in dvcfile_artifacts.items():
@@ -188,12 +185,7 @@ class Artifacts:
             out = resolve_output(path, out, force=force)
             fs = self.repo.dvcfs
             fs_path = fs.from_os_path(path)
-            count = fs_download(
-                fs,
-                fs_path,
-                os.path.abspath(out),
-                jobs=jobs,
-            )
+            count = fs_download(fs, fs_path, os.path.abspath(out), jobs=jobs)
         return count, out
 
     @staticmethod

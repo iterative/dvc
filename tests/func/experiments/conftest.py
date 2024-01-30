@@ -34,10 +34,6 @@ def params_repo(tmp_dir, scm, dvc):
     (tmp_dir / "params.yaml").dump(
         {"foo": [{"bar": 1}, {"baz": 2}], "goo": {"bag": 3.0}, "lorem": False}
     )
-    dvc.run(
-        cmd="echo foo",
-        params=["params.yaml:"],
-        name="foo",
-    )
+    dvc.run(cmd="echo foo", params=["params.yaml:"], name="foo")
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml"])
     scm.commit("init")

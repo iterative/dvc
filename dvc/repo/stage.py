@@ -402,12 +402,7 @@ class StageLoad:
             from dvc.stage.exceptions import StageFileDoesNotExistError, StageNotFound
 
             try:
-                stages = self.collect(
-                    target,
-                    with_deps,
-                    recursive,
-                    graph,
-                )
+                stages = self.collect(target, with_deps, recursive, graph)
             except StageFileDoesNotExistError as exc:
                 # collect() might try to use `target` as a stage name
                 # and throw error that dvc.yaml does not exist, whereas it

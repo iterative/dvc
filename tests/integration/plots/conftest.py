@@ -206,13 +206,7 @@ def repo_with_dvclive_plots(tmp_dir, scm, dvc, run_copy_metrics):
         metrics_path.parent.mkdir(parents=True)
         metrics_path.dump_json(metrics)
 
-        plots_config_v1 = [
-            {
-                "plots/metrics": {
-                    "x": "step",
-                }
-            }
-        ]
+        plots_config_v1 = [{"plots/metrics": {"x": "step"}}]
 
         from dvc.utils.serialize import modify_yaml
 
@@ -227,13 +221,7 @@ def repo_with_dvclive_plots(tmp_dir, scm, dvc, run_copy_metrics):
             "configs": {dvcyaml_path_v1: plots_config_v1},
         }
 
-        plots_config_v2 = [
-            {
-                "dvclive/plots/metrics": {
-                    "x": "step",
-                }
-            }
-        ]
+        plots_config_v2 = [{"dvclive/plots/metrics": {"x": "step"}}]
 
         dvcyaml_path_v1.unlink()
         dvcyaml_path_v2 = tmp_dir / "dvc.yaml"

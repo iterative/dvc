@@ -20,7 +20,5 @@ def _add_script(tmp_dir, path, contents=""):
 
 
 @pytest.fixture
-def copy_script(
-    tmp_dir,
-):
+def copy_script(tmp_dir):
     return _add_script(tmp_dir, "copy.py", COPY_SCRIPT)

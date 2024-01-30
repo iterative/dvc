@@ -37,20 +37,14 @@ def remove_tasks(  # noqa: C901, PLR0912
                 failed_stash_revs.append(failed_rev_all[entry.stash_rev])
 
     try:
-        for (
-            msg,
-            queue_entry,
-        ) in celery_queue._iter_queued():
+        for msg, queue_entry in celery_queue._iter_queued():
             if queue_entry.stash_rev in stash_revs and msg.delivery_tag:
                 celery_queue.celery.reject(msg.delivery_tag)
     finally:
         celery_queue.stash.remove_revs(list(stash_revs.values()))
 
     try:
-        for (
-            msg,
-            queue_entry,
-        ) in celery_queue._iter_processed():
+        for msg, queue_entry in celery_queue._iter_processed():
             if queue_entry not in done_entry_set:
                 continue
             task_id = msg.headers["id"]
@@ -115,10 +109,7 @@ def celery_clear(
     return removed
 
 
-def celery_remove(
-    self: "LocalCeleryQueue",
-    revs: Collection[str],
-) -> list[str]:
+def celery_remove(self: "LocalCeleryQueue", revs: Collection[str]) -> list[str]:
     """Remove the specified entries from the queue.
 
     Arguments:

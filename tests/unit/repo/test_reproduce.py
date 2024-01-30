@@ -41,11 +41,7 @@ def test_repro_plan(M):
     assert plan_repro(g, [4], downstream=True) == [4, 2, 1]
     assert plan_repro(g, [8], True) == plan_repro(g, [9], True) == [9, 8]
     assert plan_repro(g, [2, 8], True) == [4, 5, 2, 6, 7, 3, 1, 9, 8]
-    assert plan_repro(g, [2, 3], downstream=True) == [
-        M.any_of(2, 3),
-        M.any_of(2, 3),
-        1,
-    ]
+    assert plan_repro(g, [2, 3], downstream=True) == [M.any_of(2, 3), M.any_of(2, 3), 1]
 
 
 def test_number_reproduces(tmp_dir, dvc, mocker):

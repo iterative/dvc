@@ -1,15 +1,7 @@
 """Common utilities for serialize."""
 import os
 from contextlib import AbstractContextManager, contextmanager
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Optional,
-    Protocol,
-    TextIO,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, TextIO, Union
 
 from funcy import reraise
 

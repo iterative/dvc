@@ -97,13 +97,7 @@ def _remove_blanks(text: str):
 
 
 def verify_vega(
-    versions,
-    html_result,
-    json_result,
-    split_json_result,
-    title,
-    x_label,
-    y_label,
+    versions, html_result, json_result, split_json_result, title, x_label, y_label
 ):
     if isinstance(versions, str):
         versions = [versions]
@@ -144,13 +138,7 @@ def verify_vega(
             .replace("<DVC_METRIC_Y_LABEL>", y_label)
             .replace(
                 '"<DVC_METRIC_ZOOM_AND_PAN>"',
-                json.dumps(
-                    {
-                        "name": "grid",
-                        "select": "interval",
-                        "bind": "scales",
-                    }
-                ),
+                json.dumps({"name": "grid", "select": "interval", "bind": "scales"}),
             )
         )
         for path in paths:
@@ -373,22 +361,8 @@ def test_repo_with_plots(tmp_dir, scm, dvc, capsys, run_copy_metrics, repo_with_
                 x_label,
                 y_label,
             )
-        verify_image(
-            path,
-            "workspace",
-            "../image.png",
-            image_v2,
-            html_path,
-            json_data,
-        )
-        verify_image(
-            path,
-            "HEAD",
-            "../image.png",
-            image_v1,
-            html_path,
-            json_data,
-        )
+        verify_image(path, "workspace", "../image.png", image_v2, html_path, json_data)
+        verify_image(path, "HEAD", "../image.png", image_v1, html_path, json_data)
 
 
 @pytest.mark.vscode

@@ -76,10 +76,7 @@ class ParamsDependency(Dependency):
         self.params = list(params) if params else []
         hash_info = HashInfo()
         if isinstance(params, dict):
-            hash_info = HashInfo(
-                self.PARAM_PARAMS,
-                params,  # type: ignore[arg-type]
-            )
+            hash_info = HashInfo(self.PARAM_PARAMS, params)  # type: ignore[arg-type]
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
         super().__init__(stage, path, repo=repo)
@@ -103,10 +100,7 @@ class ParamsDependency(Dependency):
         for param in self.params:
             if param in values:
                 info[param] = values[param]
-        self.hash_info = HashInfo(
-            self.PARAM_PARAMS,
-            info,  # type: ignore[arg-type]
-        )
+        self.hash_info = HashInfo(self.PARAM_PARAMS, info)  # type: ignore[arg-type]
 
     def read_params(
         self, flatten: bool = True, **kwargs: typing.Any

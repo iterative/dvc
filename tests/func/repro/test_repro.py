@@ -364,10 +364,7 @@ def test_repro_multiple_params(tmp_dir, dvc):
         name="read_params",
         deps=["foo"],
         outs=["bar"],
-        params=[
-            "params2.yaml:lists,floats,name",
-            "answer,floats,nested.nested1",
-        ],
+        params=["params2.yaml:lists,floats,name", "answer,floats,nested.nested1"],
         cmd="cat params2.yaml params.yaml > bar",
     )
 
@@ -528,11 +525,7 @@ def test_repro_skip_pull_if_no_run_cache_is_passed(tmp_dir, dvc, mocker, local_r
     assert not spy_pull.called
 
 
-def test_repro_no_commit(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_no_commit(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -548,16 +541,9 @@ def test_repro_no_commit(
     assert not os.path.isdir(dvc.cache.local.path)
 
 
-def test_repro_all_pipelines(
-    mocker,
-    dvc,
-):
+def test_repro_all_pipelines(mocker, dvc):
     stages = [
-        dvc.run(
-            outs=["start.txt"],
-            cmd="echo start > start.txt",
-            name="start",
-        ),
+        dvc.run(outs=["start.txt"], cmd="echo start > start.txt", name="start"),
         dvc.run(
             deps=["start.txt"],
             outs=["middle.txt"],
@@ -588,10 +574,7 @@ def test_repro_all_pipelines(
 
 
 class TestReproAlreadyCached:
-    def test(
-        self,
-        dvc,
-    ):
+    def test(self, dvc):
         stage = dvc.run(
             always_changed=True,
             deps=[],
@@ -604,11 +587,7 @@ class TestReproAlreadyCached:
 
         assert run_out.hash_info != repro_out.hash_info
 
-    def test_force_with_dependencies(
-        self,
-        tmp_dir,
-        dvc,
-    ):
+    def test_force_with_dependencies(self, tmp_dir, dvc):
         tmp_dir.dvc_gen("foo", "foo")
         stage = dvc.run(
             name="datetime",
@@ -654,11 +633,7 @@ def test_repro_shell(tmp_dir, monkeypatch, dvc):
     assert (tmp_dir / "shell.txt").read_text().rstrip() == shell
 
 
-def test_cmd_repro(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_cmd_repro(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -679,11 +654,7 @@ def test_cmd_repro(
     assert ret != 0
 
 
-def test_repro_dep_under_dir(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_dep_under_dir(tmp_dir, dvc, copy_script):
     tmp_dir.gen("foo", "foo")
     tmp_dir.dvc_gen("data", {"file": "file", "sub": {"foo": "foo"}})
 
@@ -741,11 +712,7 @@ def test_repro_force(tmp_dir, dvc, copy_script):
     assert len(stages) == 2
 
 
-def test_repro_changed_code(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_changed_code(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -762,11 +729,7 @@ def test_repro_changed_code(
     assert len(stages) == 1
 
 
-def test_repro_changed_data(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_changed_data(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -783,11 +746,7 @@ def test_repro_changed_data(
     assert len(stages) == 2
 
 
-def test_repro_dry(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_dry(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -808,11 +767,7 @@ def test_repro_dry(
     assert not filecmp.cmp("file1", "bar", shallow=False)
 
 
-def test_repro_up_to_date(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_up_to_date(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -871,11 +826,7 @@ def test_repro_dry_no_exec(tmp_dir, dvc):
     assert ret == 0
 
 
-def test_repro_changed_deep_data(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_changed_deep_data(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     dvc.run(
@@ -955,11 +906,7 @@ def test_repro_force_downstream_do_not_force_independent_stages(tmp_dir, dvc, ru
     assert dvc.reproduce(force_downstream=True) == [foo1, foo2, cat]
 
 
-def test_repro_pipeline(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_pipeline(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     dvc.run(
@@ -978,11 +925,7 @@ def test_repro_pipeline(
     assert len(stages) == 3
 
 
-def test_repro_pipeline_cli(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_pipeline_cli(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -995,11 +938,7 @@ def test_repro_pipeline_cli(
     assert ret == 0
 
 
-def test_repro_pipelines(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_pipelines(tmp_dir, dvc, copy_script):
     foo_stage, bar_stage = tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     file1_stage = dvc.run(
         outs=["file1"],
@@ -1021,11 +960,7 @@ def test_repro_pipelines(
     }
 
 
-def test_repro_pipelines_cli(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_pipelines_cli(tmp_dir, dvc, copy_script):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.run(
         outs=["file1"],
@@ -1062,18 +997,11 @@ def test_freeze_non_existing(dvc, target):
     assert ret != 0
 
 
-def test_repro_frozen_callback(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_frozen_callback(tmp_dir, dvc, copy_script):
     tmp_dir.gen("foo", "foo")
     # NOTE: purposefully not specifying deps or outs
     # to create a callback stage.
-    stage = dvc.run(
-        cmd="python copy.py foo file1",
-        name="copy-FOO-file1",
-    )
+    stage = dvc.run(cmd="python copy.py foo file1", name="copy-FOO-file1")
 
     stages = dvc.reproduce(stage.addressing)
     assert len(stages) == 1
@@ -1087,11 +1015,7 @@ def test_repro_frozen_callback(
     assert len(stages) == 1
 
 
-def test_repro_frozen_unchanged(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_frozen_unchanged(tmp_dir, dvc, copy_script):
     """
     Check that freezing/unfreezing doesn't affect stage state
     """
@@ -1155,11 +1079,7 @@ def test_repro_metrics_add_unchanged(tmp_dir, dvc, copy_script):
     assert len(stages) == 0
 
 
-def test_repro_phony(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_phony(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     dvc.run(
@@ -1176,11 +1096,7 @@ def test_repro_phony(
     assert filecmp.cmp("file1", "bar", shallow=False)
 
 
-def test_non_existing_output(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_non_existing_output(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -1195,11 +1111,7 @@ def test_non_existing_output(
         dvc.reproduce(stage.addressing)
 
 
-def test_repro_data_source(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_data_source(tmp_dir, dvc, copy_script):
     tmp_dir.gen("bar", "bar")
     tmp_dir.dvc_gen("foo", "foo")
     stage = dvc.run(
@@ -1216,11 +1128,7 @@ def test_repro_data_source(
     assert stages[0].outs[0].hash_info.value == file_md5("bar")
 
 
-def test_repro_changed_dir(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_changed_dir(tmp_dir, dvc, copy_script):
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
     shutil.copyfile("foo", "file")
 
@@ -1241,11 +1149,7 @@ def test_repro_changed_dir(
     assert len(stages) == 1
 
 
-def test_repro_changed_dir_data(
-    tmp_dir,
-    dvc,
-    copy_script,
-):
+def test_repro_changed_dir_data(tmp_dir, dvc, copy_script):
     tmp_dir.gen({"data": {"foo": "foo"}, "bar": "bar"})
     stage = dvc.run(
         outs=["dir"],

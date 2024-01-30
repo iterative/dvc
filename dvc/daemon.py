@@ -107,12 +107,7 @@ def _posix_detached_subprocess(args: Sequence[str], **kwargs) -> int:
         os.close(read_end)
         return int(pid_str)
 
-    proc = subprocess.Popen(
-        args,
-        shell=False,  # noqa: S603
-        close_fds=True,
-        **kwargs,
-    )
+    proc = subprocess.Popen(args, shell=False, close_fds=True, **kwargs)  # noqa: S603
     os.close(read_end)
     os.write(write_end, str(proc.pid).encode("utf8"))
     os.close(write_end)
