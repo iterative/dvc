@@ -610,7 +610,6 @@ class Repo:
 
         subdir = None
         if isinstance(self.fs, GitFileSystem):
-            relparts: tuple[str, ...] = ()
             if self.root_dir != "/":
                 # subrepo
                 subdir = self.root_dir
