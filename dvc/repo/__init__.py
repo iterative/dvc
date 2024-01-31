@@ -637,7 +637,9 @@ class Repo:
         btime = self._btime or getattr(os.stat(root_dir), "st_birthtime", None)
 
         md5 = hashlib.md5(  # noqa: S324
-            str((root_dir, subdir, btime, getpass.getuser(), version_tuple[0], salt)).encode()
+            str(
+                (root_dir, subdir, btime, getpass.getuser(), version_tuple[0], salt)
+            ).encode()
         )
         repo_token = md5.hexdigest()
         return os.path.join(repos_dir, repo_token)
