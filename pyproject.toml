@@ -103,7 +103,7 @@ tests = [
     "dvc-ssh",
     "filelock",
     "flaky",
-    "pytest<8,>=7",
+    "pytest>=7,<9",
     "pytest-cov>=4.1.0",
     "pytest-docker>=1,<4",
     "pytest-lazy-fixture",
