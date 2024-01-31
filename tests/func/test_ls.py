@@ -548,7 +548,7 @@ def test_subrepo(dvc_top_level, erepo):
 
     top_level_outputs = common_outputs if dvc_top_level else git_tracked_outputs
     assert _list_files(erepo) == top_level_outputs
-    assert _list_files(f"file://{erepo_dir.as_posix()}") == top_level_outs
+    assert _list_files(f"file://{erepo.as_posix()}") == top_level_outputs
     assert _list_files(erepo, "scm_dir") == {"ipsum"}
     if dvc_top_level:
         assert _list_files(erepo, "dvc_dir") == {"lorem"}
