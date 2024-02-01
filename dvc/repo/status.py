@@ -8,7 +8,7 @@ from . import locked
 logger = logger.getChild(__name__)
 
 
-def _joint_status(pairs):
+def _joint_status(pairs, check_updates=True):
     status_info = {}
 
     for stage, filter_info in pairs:
@@ -20,19 +20,23 @@ def _joint_status(pairs):
                 ),
                 stage,
             )
-        status_info.update(stage.status(check_updates=True, filter_info=filter_info))
+        status_info.update(
+            stage.status(check_updates=check_updates, filter_info=filter_info)
+        )
 
     return status_info
 
 
-def _local_status(self, targets=None, with_deps=False, recursive=False):
+def _local_status(
+    self, targets=None, with_deps=False, recursive=False, check_updates=True
+):
     targets = targets or [None]
     pairs = chain.from_iterable(
         self.stage.collect_granular(t, with_deps=with_deps, recursive=recursive)
         for t in targets
     )
 
-    return _joint_status(pairs)
+    return _joint_status(pairs, check_updates=check_updates)
 
 
 def _cloud_status(
@@ -100,7 +104,7 @@ def _cloud_status(
 
 
 @locked
-def status(
+def status(  # noqa: PLR0913
     self,
     targets=None,
     jobs=None,
@@ -111,6 +115,7 @@ def status(
     all_tags=False,
     all_commits=False,
     recursive=False,
+    check_updates=True,
 ):
     if isinstance(targets, str):
         targets = [targets]
@@ -138,4 +143,10 @@ def status(
         msg = "The following options are meaningless for local status: {}"
         raise InvalidArgumentError(msg.format(", ".join(ignored)))
 
-    return _local_status(self, targets, with_deps=with_deps, recursive=recursive)
+    return _local_status(
+        self,
+        targets,
+        with_deps=with_deps,
+        recursive=recursive,
+        check_updates=check_updates,
+    )

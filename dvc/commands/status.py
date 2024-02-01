@@ -60,6 +60,7 @@ class CmdDataStatus(CmdDataBase):
                     all_commits=self.args.all_commits,
                     with_deps=self.args.with_deps,
                     recursive=self.args.recursive,
+                    check_updates=self.args.check_updates,
                 )
             except DvcException:
                 logger.exception("")
