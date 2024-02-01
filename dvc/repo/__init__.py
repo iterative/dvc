@@ -608,12 +608,12 @@ class Repo:
 
         cache_dir = self.config["core"].get("site_cache_dir") or site_cache_dir()
 
+        subdir = None
         if isinstance(self.fs, GitFileSystem):
-            relparts: tuple[str, ...] = ()
             if self.root_dir != "/":
                 # subrepo
-                relparts = self.fs.relparts(self.root_dir, "/")
-            root_dir = os.path.join(self.scm.root_dir, *relparts)
+                subdir = self.root_dir
+            root_dir = self.scm.root_dir
         else:
             root_dir = self.root_dir
 
@@ -629,14 +629,16 @@ class Repo:
         # components were changed (useful to prevent newer dvc versions from
         # using older broken cache). Please reset this back to 0 if other parts
         # of the token components are changed.
-        salt = 2
+        salt = 0
 
         # NOTE: This helps us avoid accidentally reusing cache for repositories
         # that just happened to be at the same path as old deleted ones.
         btime = self._btime or getattr(os.stat(root_dir), "st_birthtime", None)
 
         md5 = hashlib.md5(  # noqa: S324
-            str((root_dir, btime, getpass.getuser(), version_tuple[0], salt)).encode()
+            str(
+                (root_dir, subdir, btime, getpass.getuser(), version_tuple[0], salt)
+            ).encode()
         )
         repo_token = md5.hexdigest()
         return os.path.join(repos_dir, repo_token)
