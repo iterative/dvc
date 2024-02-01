@@ -215,7 +215,9 @@ def _load_storage_from_out(storage_map, key, out):
     from dvc.config import NoRemoteError
     from dvc_data.index import FileStorage, ObjectStorage
 
-    storage_map.add_cache(ObjectStorage(key, out.cache))
+    if out.cache:
+        storage_map.add_cache(ObjectStorage(key, out.cache))
+
     try:
         remote = out.repo.cloud.get_remote(out.remote)
         if remote.fs.version_aware:
