@@ -41,6 +41,7 @@ def test_cloud_status(tmp_dir, dvc, mocker):
         all_commits=True,
         with_deps=True,
         recursive=True,
+        check_updates=True,
     )
 
 
@@ -117,3 +118,26 @@ def test_status_up_to_date(dvc, mocker, capsys, cloud_opts, expected_message):
     assert cmd.run() == 0
     captured = capsys.readouterr()
     assert expected_message in captured.out
+
+
+def test_status_check_updates(dvc, mocker, capsys):
+    cli_args = parse_args(["status", "--no-updates"])
+    assert cli_args.func == CmdDataStatus
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(cmd.repo, "status", autospec=True, return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cloud=False,
+        targets=[],
+        jobs=None,
+        remote=None,
+        all_branches=False,
+        all_tags=False,
+        all_commits=False,
+        with_deps=False,
+        recursive=False,
+        check_updates=False,
+    )

@@ -429,5 +429,11 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help="Show status in JSON format.",
     )
+    status_parser.add_argument(
+        "--no-updates",
+        dest="check_updates",
+        action="store_false",
+        help="Ignore updates to imported data.",
+    )
 
     status_parser.set_defaults(func=CmdDataStatus)
