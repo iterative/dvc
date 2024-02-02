@@ -244,19 +244,19 @@ module = [
 ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
 
 [tool.ruff]
-show-source = true
+output-format = "full"
 show-fixes = true
 
 [tool.ruff.lint]
 ignore = [
     "N818", "S101", "ISC001", "PT004", "PT007", "RET502", "RET503", "SIM105", "SIM108", "SIM117",
-    "TRY003", "TRY200", "TRY300", "PLR2004", "PLW2901",
+    "TRY003", "TRY300", "PLR2004", "PLW2901", "LOG007",
 ]
 select = [
     "F", "E", "W", "C90", "I", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10",
     "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
     "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
-    "FLY", "PERF101", "RUF", "RUF018", "RUF019", "RUF022", "RUF023", "RUF025",
+    "FLY", "PERF101", "LOG", "RUF", "RUF022", "RUF023", "RUF024", "RUF025", "RUF026",
 ]
 preview = true
 explicit-preview-rules = true
@@ -286,7 +286,7 @@ extend-ignore-names = ["M", "SCM"]
 [tool.ruff.lint.pylint]
 max-args = 10
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "dvc/commands/**" = ["N806"]
 "dvc/testing/**" = ["ARG002"]
 "dvc/testing/benchmarks/**" = ["ARG001"]
