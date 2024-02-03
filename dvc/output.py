@@ -1478,7 +1478,7 @@ META_SCHEMA = {
     Meta.PARAM_VERSION_ID: str,
 }
 
-CLOUD_SCHEMA = vol.All({str: {**META_SCHEMA, **CHECKSUMS_SCHEMA}}, vol.Length(max=1))
+CLOUD_SCHEMA = vol.All({str: META_SCHEMA | CHECKSUMS_SCHEMA}, vol.Length(max=1))
 
 ARTIFACT_SCHEMA: dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,

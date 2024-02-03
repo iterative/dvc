@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 
 def issubset(subset: dict, superset: dict) -> bool:
-    assert superset == {**superset, **subset}
+    assert superset == superset | subset
     return True
 
 

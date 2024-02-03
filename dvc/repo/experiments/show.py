@@ -77,7 +77,7 @@ def tabulate(
         "State",
         "Executor",
     ]
-    names = {**metrics_names, **params_names}
+    names = metrics_names | params_names
     counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
     counter.update(headers)
     metrics_headers = _normalize_headers(metrics_names, counter)

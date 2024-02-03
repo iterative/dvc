@@ -171,7 +171,7 @@ class Plots:
         plots = _collect_plots(repo, targets, recursive)
         res: dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
-            joined_props = {**rev_props, **props}
+            joined_props = rev_props | props
             res[fs_path] = {"props": joined_props}
             res[fs_path].update(
                 {
@@ -405,7 +405,7 @@ def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = No
             unpacked = unpack_if_dir(
                 fs,
                 _normpath(fs.join(wdir_relpath, plot.def_path)),
-                props={**plot_props, **props},
+                props=plot_props | props,
                 onerror=onerror,
             )
 
@@ -449,12 +449,12 @@ def _resolve_definitions(
             data_path = _normpath(fs.join(config_dir, plot_id))
             if _matches(targets, config_path, plot_id):
                 unpacked = unpack_if_dir(
-                    fs, data_path, props={**plot_props, **props}, onerror=onerror
+                    fs, data_path, props=plot_props | props, onerror=onerror
                 )
                 dpath.merge(result, unpacked)
         elif _matches(targets, config_path, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
-            dpath.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
+            dpath.merge(result, {"data": {plot_id: adjusted_props | props}})
 
     return result
 
