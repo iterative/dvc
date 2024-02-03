@@ -337,7 +337,7 @@ class BaseStashQueue(ABC):
                     studio_config = get_studio_config(
                         dvc_studio_config=self.repo.config.get("studio")
                     )
-                    run_env = {**config_to_env(studio_config), **run_env}
+                    run_env = config_to_env(studio_config) | run_env
                     self._pack_args(*args, run_env=run_env, **kwargs)
                     # save experiment as a stash commit
                     msg = self._stash_msg(

@@ -285,7 +285,7 @@ class VegaConverter(Converter):
         if not all_datapoints:
             return [], {}
 
-        properties = {**properties, **props_update}
+        properties = properties | props_update
 
         return all_datapoints, properties
 
@@ -298,7 +298,7 @@ class VegaConverter(Converter):
         inferred_properties = self._infer_x_y()
 
         datapoints = self._find_datapoints()
-        properties = {**self.properties, **inferred_properties}
+        properties = self.properties | inferred_properties
 
         properties["y_label"] = self.infer_y_label(properties)
         properties["x_label"] = self.infer_x_label(properties)

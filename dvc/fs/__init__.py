@@ -158,5 +158,5 @@ def get_cloud_fs(repo_config, **kwargs):
         fs_path = cls._strip_protocol(url)
 
     extras = cls._get_kwargs_from_urls(url)
-    conf = {**extras, **remote_conf}  # remote config takes priority
+    conf = extras | remote_conf  # remote config takes priority
     return cls, conf, fs_path

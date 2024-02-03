@@ -181,7 +181,7 @@ SCHEMA = {
     "remote": {
         str: ByUrl(
             {
-                "": {**LOCAL_COMMON, **REMOTE_COMMON},
+                "": LOCAL_COMMON | REMOTE_COMMON,
                 "s3": {
                     "region": str,
                     "profile": str,
@@ -285,10 +285,10 @@ SCHEMA = {
                     Optional("verify", default=True): Bool,
                     **REMOTE_COMMON,
                 },
-                "http": {**HTTP_COMMON, **REMOTE_COMMON},
-                "https": {**HTTP_COMMON, **REMOTE_COMMON},
-                "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},
-                "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
+                "http": HTTP_COMMON | REMOTE_COMMON,
+                "https": HTTP_COMMON | REMOTE_COMMON,
+                "webdav": WEBDAV_COMMON | REMOTE_COMMON,
+                "webdavs": WEBDAV_COMMON | REMOTE_COMMON,
                 "remote": {str: object},  # Any of the above options are valid
             }
         )

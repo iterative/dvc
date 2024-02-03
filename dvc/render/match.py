@@ -25,7 +25,7 @@ def _squash_plots_properties(data: list) -> dict:
     configs = [last(group) for group in data]
     resolved: dict = {}
     for config in reversed(configs):
-        resolved = {**resolved, **config}
+        resolved = resolved | config
     return resolved
 
 

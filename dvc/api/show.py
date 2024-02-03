@@ -25,7 +25,7 @@ def _postprocess(results):
                 (k if counts[k] == 1 else f"{file_name}:{k}"): v
                 for k, v in file_data["data"].items()
             }
-            processed[rev] = {**processed[rev], **to_merge}
+            processed[rev] = processed[rev] | to_merge
 
     if "workspace" in processed:
         del processed["workspace"]

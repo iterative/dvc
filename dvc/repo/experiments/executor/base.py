@@ -614,7 +614,7 @@ class BaseExecutor(ABC):
             # set missing config options using saved config
             # inferring repo url will fail if not set here
             run_env_config = env_to_config(kwargs.get("run_env", {}))
-            dvc_studio_config = {**run_env_config, **dvc_studio_config}
+            dvc_studio_config = run_env_config | dvc_studio_config
             try:
                 post_live_metrics(
                     "start",

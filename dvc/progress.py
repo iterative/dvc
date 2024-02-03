@@ -68,7 +68,7 @@ class Tqdm(tqdm):
         """
         kwargs = kwargs.copy()
         if bytes:
-            kwargs = {**self.BYTES_DEFAULTS, **kwargs}
+            kwargs = self.BYTES_DEFAULTS | kwargs
         else:
             kwargs.setdefault("unit_scale", total > 999 if total else True)
         if file is None:
