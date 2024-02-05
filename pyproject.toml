@@ -71,7 +71,7 @@ dependencies = [
 
 [project.optional-dependencies]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
-azure = ["dvc-azure>=3,<4"]
+azure = ["dvc-azure>=3.1.0,<4"]
 dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,tests,webdav,webhdfs]"]
 gdrive = ["dvc-gdrive>=3,<4"]
 gs = ["dvc-gs>=3,<4"]
