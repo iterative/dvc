@@ -83,24 +83,24 @@ def _ls(
     fs_path = fs.info(fs_path)["name"]
 
     infos = {}
-    for root, dirs, files in fs.walk(
-        fs_path, dvcfiles=True, dvc_only=dvc_only, detail=True
-    ):
-        if not recursive:
-            files.update(dirs)
-
-        parts = fs.relparts(root, fs_path)
-        if parts == (".",):
-            parts = ()
-
-        for name, entry in files.items():
-            infos[os.path.join(*parts, name)] = entry
-
-        if not recursive:
-            break
-
-    if not infos and fs.isfile(fs_path):
+    if fs.isfile(fs_path):
         infos[os.path.basename(path)] = fs.info(fs_path)
+    else:
+        for root, dirs, files in fs.walk(
+            fs_path, dvcfiles=True, dvc_only=dvc_only, detail=True
+        ):
+            if not recursive:
+                files.update(dirs)
+
+            parts = fs.relparts(root, fs_path)
+            if parts == (".",):
+                parts = ()
+
+            for name, entry in files.items():
+                infos[os.path.join(*parts, name)] = entry
+
+            if not recursive:
+                break
 
     ret = {}
     for name, info in infos.items():
