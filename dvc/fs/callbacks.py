@@ -27,7 +27,7 @@ class TqdmCallback(fsspec.callbacks.TqdmCallback):
         super().__init__(
             tqdm_kwargs=tqdm_kwargs, tqdm_cls=tqdm_cls or Tqdm, size=size, value=value
         )
-        if progress_bar is None:
+        if progress_bar is not None:
             self.tqdm = progress_bar
 
     def branched(self, path_1: "Union[str, BinaryIO]", path_2: str, **kwargs):
