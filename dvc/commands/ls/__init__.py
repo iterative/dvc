@@ -57,6 +57,9 @@ class CmdList(CmdBaseNoRepo):
             elif entries:
                 show_entries(entries, with_color=True, with_size=self.args.size)
             return 0
+        except FileNotFoundError:
+            logger.exception("")
+            return 1
         except DvcException:
             logger.exception("failed to list '%s'", self.args.url)
             return 1

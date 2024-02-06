@@ -1,67 +1,38 @@
 from contextlib import ExitStack
-from typing import TYPE_CHECKING, Any, BinaryIO, Optional, Union
+from typing import TYPE_CHECKING, BinaryIO, Optional, Union
+
+import fsspec
+from fsspec.callbacks import DEFAULT_CALLBACK, Callback  # noqa: F401
 
 from dvc.progress import Tqdm
 from dvc.utils.objects import cached_property
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback  # noqa: F401
 
 if TYPE_CHECKING:
     from rich.progress import TaskID
+    from tqdm import tqdm
 
     from dvc.ui._rich_progress import RichTransferProgress
 
 
-# NOTE: this is very similar to dvc-objects.fs.callbacks.TqdmCallback,
-# but it works with our own Tqdm instance.
-class TqdmCallback(Callback):
+class TqdmCallback(fsspec.callbacks.TqdmCallback):
     def __init__(
         self,
         size: Optional[int] = None,
         value: int = 0,
-        progress_bar: Optional["Tqdm"] = None,
+        progress_bar: Optional["tqdm"] = None,
+        tqdm_cls: Optional[type["tqdm"]] = None,
         **tqdm_kwargs,
     ):
-        tqdm_kwargs["total"] = size or -1
-        self._tqdm_kwargs = tqdm_kwargs
-        self._progress_bar = progress_bar
-        self._stack = ExitStack()
-        super().__init__(size=size, value=value)
-
-    @cached_property
-    def progress_bar(self):
-        progress_bar = (
-            self._progress_bar
-            if self._progress_bar is not None
-            else Tqdm(**self._tqdm_kwargs)
+        tqdm_kwargs.pop("total", None)
+        super().__init__(
+            tqdm_kwargs=tqdm_kwargs, tqdm_cls=tqdm_cls or Tqdm, size=size, value=value
         )
-        return self._stack.enter_context(progress_bar)
+        if progress_bar is not None:
+            self.tqdm = progress_bar
 
-    def __enter__(self):
-        return self
-
-    def close(self):
-        self._stack.close()
-
-    def set_size(self, size):
-        # Tqdm tries to be smart when to refresh,
-        # so we try to force it to re-render.
-        super().set_size(size)
-        self.progress_bar.refresh()
-
-    def call(self, hook_name=None, **kwargs):  # noqa: ARG002
-        self.progress_bar.update_to(self.value, total=self.size)
-
-    def branch(
-        self,
-        path_1: "Union[str, BinaryIO]",
-        path_2: str,
-        kwargs: dict[str, Any],
-        child: Optional[Callback] = None,
-    ):
-        child = child or TqdmCallback(
-            bytes=True, desc=path_1 if isinstance(path_1, str) else path_2
-        )
-        return super().branch(path_1, path_2, kwargs, child=child)
+    def branched(self, path_1: "Union[str, BinaryIO]", path_2: str, **kwargs):
+        desc = path_1 if isinstance(path_1, str) else path_2
+        return TqdmCallback(bytes=True, desc=desc)
 
 
 class RichCallback(Callback):
@@ -110,9 +81,6 @@ class RichCallback(Callback):
     def task(self) -> "TaskID":
         return self.progress.add_task(**self._task_kwargs)  # type: ignore[arg-type]
 
-    def __enter__(self):
-        return self
-
     def close(self):
         if self._transient:
             self.progress.clear_task(self.task)
@@ -126,17 +94,10 @@ class RichCallback(Callback):
             visible=not self.disable,
         )
 
-    def branch(
-        self,
-        path_1: Union[str, BinaryIO],
-        path_2: str,
-        kwargs: dict[str, Any],
-        child: Optional["Callback"] = None,
-    ):
-        child = child or RichCallback(
+    def branched(self, path_1: Union[str, BinaryIO], path_2: str, **kwargs):
+        return RichCallback(
             progress=self.progress,
             desc=path_1 if isinstance(path_1, str) else path_2,
             bytes=True,
             transient=self._transient,
         )
-        return super().branch(path_1, path_2, kwargs, child=child)

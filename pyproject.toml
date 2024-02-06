@@ -35,7 +35,7 @@ dependencies = [
     "configobj>=5.0.6",
     "distro>=1.3",
     "dpath<3,>=2.1.0",
-    "dvc-data>=3.9,<3.10",
+    "dvc-data>=3.10,<3.11",
     "dvc-http>=2.29.0",
     "dvc-render>=1.0.1,<2",
     "dvc-studio-client>=0.17.1,<1",
@@ -59,7 +59,7 @@ dependencies = [
     "requests>=2.22",
     "rich>=12",
     "ruamel.yaml>=0.17.11",
-    "scmrepo>=2.0.2,<3",
+    "scmrepo>=3,<4",
     "shortuuid>=0.5",
     "shtab<2,>=1.3.4",
     "tabulate>=0.8.7",
@@ -71,7 +71,7 @@ dependencies = [
 
 [project.optional-dependencies]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
-azure = ["dvc-azure>=3,<4"]
+azure = ["dvc-azure>=3.1.0,<4"]
 dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,tests,webdav,webhdfs]"]
 gdrive = ["dvc-gdrive>=3,<4"]
 gs = ["dvc-gs>=3,<4"]
