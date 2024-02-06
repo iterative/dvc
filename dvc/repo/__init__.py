@@ -13,6 +13,7 @@ from dvc.exceptions import (
 )
 from dvc.ignore import DvcIgnoreFilter
 from dvc.log import logger
+from dvc.utils import as_posix
 from dvc.utils.objects import cached_property
 
 if TYPE_CHECKING:
@@ -349,6 +350,16 @@ class Repo:
         # Our graph cache is no longer valid, as it was based on the previous
         # fs.
         self._reset()
+
+    @property
+    def subrepo_relpath(self) -> str:
+        from dvc.fs import GitFileSystem
+
+        scm_root_dir = "/" if isinstance(self.fs, GitFileSystem) else self.scm.root_dir
+
+        relpath = as_posix(self.fs.relpath(self.root_dir, scm_root_dir))
+
+        return "" if relpath == "." else relpath
 
     @property
     def data_index(self) -> "DataIndex":
