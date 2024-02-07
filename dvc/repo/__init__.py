@@ -3,7 +3,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from contextlib import AbstractContextManager, contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from dvc.exceptions import (
     DvcException,
@@ -360,6 +360,35 @@ class Repo:
         relpath = as_posix(self.fs.relpath(self.root_dir, scm_root_dir))
 
         return "" if relpath == "." else relpath
+
+    @property
+    def head_commit_info(self) -> Union[dict[str, Any], None]:
+        from dvc.scm import NoSCM
+
+        scm = self.scm
+
+        if (
+            isinstance(scm, NoSCM)
+            or not (rev := scm.get_rev())
+            or not (git_commit := self.scm.resolve_commit(rev))
+        ):
+            return None
+
+        commit_info = {
+            "sha": git_commit.hexsha,
+            "message": git_commit.message,
+            "title": git_commit.message.partition("\n")[0].strip(),
+            "author": {
+                "name": git_commit.author_name,
+                "email": git_commit.author_email,
+            },
+            "date": git_commit.commit_datetime.isoformat(),
+        }
+
+        if branch := self.scm.active_branch():
+            commit_info["branch"] = branch
+
+        return commit_info
 
     @property
     def data_index(self) -> "DataIndex":

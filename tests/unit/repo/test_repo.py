@@ -137,6 +137,7 @@ def test_dynamic_cache_initialization(tmp_dir, scm):
     Repo(str(tmp_dir)).close()
 
 
+@pytest.mark.studio
 def test_monorepo_relpath(tmp_dir, scm):
     from dvc.repo.destroy import destroy
 
@@ -156,6 +157,7 @@ def test_monorepo_relpath(tmp_dir, scm):
     assert monorepo_project_b.subrepo_relpath == "subdir/project_b"
 
 
+@pytest.mark.studio
 def test_virtual_monorepo_relpath(tmp_dir, scm):
     from dvc.fs.git import GitFileSystem
     from dvc.repo.destroy import destroy
@@ -183,3 +185,42 @@ def test_virtual_monorepo_relpath(tmp_dir, scm):
     monorepo_project_b.root_dir = "/subdir/project_b"
 
     assert monorepo_project_b.subrepo_relpath == "subdir/project_b"
+
+
+@pytest.mark.studio
+def test_head_commit_info(M, scm, dvc):
+    title = "a commit with a fairly long message"
+    message = f"{title}\nthat is split over two lines"
+
+    scm.commit(message)
+
+    head_sha = scm.get_rev()
+
+    head_commit_info = dvc.head_commit_info
+    assert isinstance(head_sha, str)
+    assert isinstance(head_commit_info["date"], str)
+
+    assert head_commit_info == {
+        "author": {
+            "email": "dvctester@example.com",
+            "name": "DVC Tester",
+        },
+        "branch": "master",
+        "date": M.any,
+        "message": message,
+        "title": title,
+        "sha": head_sha,
+    }
+
+
+@pytest.mark.studio
+def test_head_commit_info_noscm(dvc):
+    assert dvc.head_commit_info is None
+
+
+@pytest.mark.parametrize("func", ["get_rev", "resolve_commit"])
+@pytest.mark.studio
+def test_no_head_commit_info(mocker, scm, dvc, func):
+    mocker.patch.object(scm, func, return_value=None)
+
+    assert dvc.head_commit_info is None
