@@ -624,6 +624,8 @@ class BaseExecutor(ABC):
                     params=to_studio_params(dvc.params.show()),
                     dvc_studio_config=dvc_studio_config,
                     message=message,
+                    subdir=dvc.subrepo_relpath,
+                    dvc_experiment_parent_data=dvc.head_commit_info,
                 )
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
