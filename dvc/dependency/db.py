@@ -11,6 +11,7 @@ from .base import Dependency
 
 if TYPE_CHECKING:
     from dvc.output import Output
+    from dvc.repo import Repo
     from dvc.stage import Stage
 
 logger = logger.getChild(__name__)
@@ -33,7 +34,7 @@ class AbstractDependency(Dependency):
     """Dependency without workspace/fs/fs_path"""
 
     def __init__(self, stage: "Stage", info: dict[str, Any], *args, **kwargs):
-        self.repo = stage.repo
+        self.repo: "Repo" = stage.repo
         self.stage = stage
         self.fs = None
         self.fs_path = None
