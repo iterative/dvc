@@ -90,8 +90,8 @@ lint = [
 ]
 oss = ["dvc-oss>=3,<4"]
 s3 = ["dvc-s3>=3,<4"]
-ssh = ["dvc-ssh>=3,<4"]
-ssh_gssapi = ["dvc-ssh[gssapi]>=3,<4"]
+ssh = ["dvc-ssh>=4,<5"]
+ssh_gssapi = ["dvc-ssh[gssapi]>=4,<5"]
 testing = [
   "pytest-benchmark[histogram]",
   "pytest-test-utils",
