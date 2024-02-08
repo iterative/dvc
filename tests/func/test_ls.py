@@ -518,17 +518,19 @@ def test_ls_target(erepo_dir, use_scm):
 
 
 @pytest.mark.parametrize(
-    "dvc_top_level, erepo",
+    "dvc_top_level, erepo_type",
     [
-        (True, pytest.lazy_fixture("erepo_dir")),
-        (False, pytest.lazy_fixture("git_dir")),
+        (True, "erepo_dir"),
+        (False, "git_dir"),
     ],
 )
-def test_subrepo(dvc_top_level, erepo):
+def test_subrepo(request, dvc_top_level, erepo_type):
     from tests.func.test_get import make_subrepo
 
     dvc_files = {"foo.txt": "foo.txt", "dvc_dir": {"lorem": "lorem"}}
     scm_files = {"bar.txt": "bar.txt", "scm_dir": {"ipsum": "ipsum"}}
+
+    erepo = request.getfixturevalue(erepo_type)
     subrepo = erepo / "subrepo"
     make_subrepo(subrepo, erepo.scm)
 

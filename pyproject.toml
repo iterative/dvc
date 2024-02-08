@@ -106,7 +106,6 @@ tests = [
     "pytest<8,>=7",
     "pytest-cov>=4.1.0",
     "pytest-docker>=1,<4",
-    "pytest-lazy-fixture",
     "pytest-mock",
     "pytest-test-utils",
     "pytest-timeout>=2",
