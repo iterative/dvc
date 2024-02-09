@@ -5,6 +5,7 @@ from funcy import get_in
 from dvc.cli import formatter
 from dvc.cli.utils import append_doc_link
 from dvc.commands.config import CmdConfig
+from dvc.exceptions import DvcException
 from dvc.log import logger
 
 logger = logger.getChild(__name__)
@@ -22,8 +23,16 @@ class CmdStudioLogin(CmdConfig):
         hostname = self.args.hostname or os.environ.get(DVC_STUDIO_URL) or STUDIO_URL
         scopes = self.args.scopes
 
+        studio = self.config.get("studio", {})
+        if studio.get("url", hostname) == hostname and "token" in studio:
+            raise DvcException(
+                "Token already exists. "
+                "To login with a different token, "
+                "logout using 'dvc studio logout'."
+            )
+
         try:
-            token_name, access_token = get_access_token(
+            _, access_token = get_access_token(
                 token_name=name,
                 hostname=hostname,
                 scopes=scopes,
@@ -35,11 +44,9 @@ class CmdStudioLogin(CmdConfig):
             return 1
 
         self.save_config(hostname, access_token)
-        ui.write(
-            "Authentication has been successfully completed."
-            "The generated token will now be accessible as"
-            f" {token_name} in the user's Studio profile."
-        )
+
+        config_path = self.config.files["global"]
+        ui.write(f"Authentication complete. Saved token to {config_path}.")
         return 0
 
     def save_config(self, hostname, token):
@@ -54,12 +61,14 @@ class CmdStudioLogout(CmdConfig):
 
         with self.config.edit("global") as conf:
             if not get_in(conf, ["studio", "token"]):
-                ui.error_write("Not logged in to Studio.")
+                ui.error_write(
+                    "Not logged in to Studio. Log in with 'dvc studio login'."
+                )
                 return 1
 
             del conf["studio"]["token"]
 
-        ui.write("Logged out from Studio")
+        ui.write("Logged out from Studio (you can log back in with 'dvc studio login')")
         return 0
 
 
