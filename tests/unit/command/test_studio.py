@@ -1,4 +1,4 @@
-from dvc_studio_client.auth import AuthenticationExpired
+from dvc_studio_client.auth import AuthorizationExpiredError
 
 from dvc.cli import main
 from dvc.utils.studio import STUDIO_URL
@@ -6,9 +6,9 @@ from dvc.utils.studio import STUDIO_URL
 
 def test_studio_login_token_check_failed(mocker):
     mocker.patch(
-        "dvc_studio_client.auth.get_access_token", side_effect=AuthenticationExpired
+        "dvc_studio_client.auth.get_access_token",
+        side_effect=AuthorizationExpiredError,
     )
-
     assert main(["studio", "login"]) == 1
 
 
@@ -52,8 +52,8 @@ def test_studio_login_arguments(mocker):
         token_name="token_name",
         hostname="https://example.com",
         scopes="experiments",
-        use_device_code=True,
         client_name="DVC",
+        open_browser=False,
     )
 
 

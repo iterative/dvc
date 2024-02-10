@@ -38,7 +38,7 @@ dependencies = [
     "dvc-data>=3.10,<3.12",
     "dvc-http>=2.29.0",
     "dvc-render>=1.0.1,<2",
-    "dvc-studio-client>=0.17.1,<1",
+    "dvc-studio-client>=0.19,<1",
     "dvc-task>=0.3.0,<1",
     "flatten_dict<1,>=0.4.1",
     # https://github.com/iterative/dvc/issues/9654
