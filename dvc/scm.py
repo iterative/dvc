@@ -1,4 +1,5 @@
 """Manages source control systems (e.g. Git)."""
+
 import os
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
@@ -181,7 +182,7 @@ def resolve_rev(scm: Union["Git", "NoSCM"], rev: str) -> str:
         raise RevError(str(exc))  # noqa: B904
 
 
-def _get_n_commits(scm: "Git", revs: list[str], num: int) -> list[str]:
+def get_n_commits(scm: "Git", revs: list[str], num: int) -> list[str]:
     results = []
     for rev in revs:
         if num == 0:
@@ -227,7 +228,7 @@ def iter_revs(
         return {}
 
     revs = revs or []
-    results: list[str] = _get_n_commits(scm, revs, num)
+    results: list[str] = get_n_commits(scm, revs, num)
 
     if all_commits:
         results.extend(scm.list_all_commits())

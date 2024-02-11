@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from dvc_studio_client import env, post_live_metrics
 from funcy import first
@@ -8,12 +10,15 @@ from dvc.env import (
     DVC_STUDIO_TOKEN,
     DVC_STUDIO_URL,
 )
+from dvc.repo import Repo
+from dvc.utils.studio import get_dvc_experiment_parent_data, get_subrepo_relpath
 
 
+@pytest.mark.studio
 @pytest.mark.parametrize("tmp", [True, False])
 @pytest.mark.parametrize("offline", [True, False])
 def test_post_to_studio(
-    tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp, offline
+    M, tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp, offline
 ):
     valid_response = mocker.MagicMock()
     valid_response.status_code = 200
@@ -53,6 +58,17 @@ def test_post_to_studio(
             "name": name,
             "params": {"params.yaml": {"foo": 1}},
             "client": "dvc",
+            "dvc_experiment_parent_data": {
+                "author": {
+                    "email": "dvctester@example.com",
+                    "name": "DVC Tester",
+                },
+                "date": M.any,
+                "message": "init",
+                "parent_shas": M.any,
+                "title": "init",
+                "sha": baseline_sha,
+            },
         }
 
         assert done_call.kwargs["json"] == {
@@ -66,9 +82,10 @@ def test_post_to_studio(
         }
 
 
+@pytest.mark.studio
 @pytest.mark.parametrize("tmp", [True, False])
 def test_post_to_studio_custom_message(
-    tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp
+    M, tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp
 ):
     valid_response = mocker.MagicMock()
     valid_response.status_code = 200
@@ -97,4 +114,105 @@ def test_post_to_studio_custom_message(
         "params": {"params.yaml": {"foo": 1}},
         "client": "dvc",
         "message": "foo",
+        "dvc_experiment_parent_data": {
+            "author": {
+                "email": "dvctester@example.com",
+                "name": "DVC Tester",
+            },
+            "date": M.any,
+            "message": "init",
+            "parent_shas": M.any,
+            "title": "init",
+            "sha": baseline_sha,
+        },
     }
+
+
+@pytest.mark.studio
+def test_monorepo_relpath(tmp_dir, scm):
+    from dvc.repo.destroy import destroy
+
+    tmp_dir.gen({"project_a": {}, "subdir/project_b": {}})
+
+    non_monorepo = Repo.init(tmp_dir)
+    assert get_subrepo_relpath(non_monorepo) == ""
+
+    destroy(non_monorepo)
+
+    monorepo_project_a = Repo.init(tmp_dir / "project_a", subdir=True)
+
+    assert get_subrepo_relpath(monorepo_project_a) == "project_a"
+
+    monorepo_project_b = Repo.init(tmp_dir / "subdir" / "project_b", subdir=True)
+
+    assert get_subrepo_relpath(monorepo_project_b) == "subdir/project_b"
+
+
+@pytest.mark.studio
+def test_virtual_monorepo_relpath(tmp_dir, scm):
+    from dvc.fs.git import GitFileSystem
+    from dvc.repo.destroy import destroy
+
+    tmp_dir.gen({"project_a": {}, "subdir/project_b": {}})
+    scm.commit("initial commit")
+    gfs = GitFileSystem(scm=scm, rev="master")
+
+    non_monorepo = Repo.init(tmp_dir)
+    non_monorepo.fs = gfs
+    non_monorepo.root_dir = "/"
+
+    assert get_subrepo_relpath(non_monorepo) == ""
+
+    destroy(non_monorepo)
+
+    monorepo_project_a = Repo.init(tmp_dir / "project_a", subdir=True)
+    monorepo_project_a.fs = gfs
+    monorepo_project_a.root_dir = "/project_a"
+
+    assert get_subrepo_relpath(monorepo_project_a) == "project_a"
+
+    monorepo_project_b = Repo.init(tmp_dir / "subdir" / "project_b", subdir=True)
+    monorepo_project_b.fs = gfs
+    monorepo_project_b.root_dir = "/subdir/project_b"
+
+    assert get_subrepo_relpath(monorepo_project_b) == "subdir/project_b"
+
+
+@pytest.mark.studio
+def test_get_dvc_experiment_parent_data(M, tmp_dir, scm, dvc):
+    parent_shas = [scm.get_rev()]
+
+    for i in range(5):
+        tmp_dir.scm_gen({"metrics.json": json.dumps({"metric": i})}, commit=f"step {i}")
+        parent_shas.insert(0, scm.get_rev())
+
+    title = "a final commit with a fairly long message"
+    message = f"{title}\nthat is split over two lines"
+
+    tmp_dir.scm_gen({"metrics.json": json.dumps({"metric": 100})}, commit=message)
+
+    head_sha = scm.get_rev()
+
+    assert isinstance(head_sha, str)
+    assert head_sha not in parent_shas
+
+    dvc_experiment_parent_data = get_dvc_experiment_parent_data(dvc, head_sha)
+
+    assert dvc_experiment_parent_data is not None
+    assert isinstance(dvc_experiment_parent_data["date"], str)
+
+    assert dvc_experiment_parent_data == {
+        "author": {
+            "email": "dvctester@example.com",
+            "name": "DVC Tester",
+        },
+        "date": M.any,
+        "message": message,
+        "parent_shas": parent_shas,
+        "title": title,
+        "sha": head_sha,
+    }, (
+        "up to 100 parent_shas are sent "
+        "to Studio these are used to identify where to insert the parent "
+        "information if the baseline_rev does not exist in the Studio DB"
+    )

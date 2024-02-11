@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Union
 from urllib.parse import urljoin
 
 import requests
@@ -12,9 +12,13 @@ from dvc.env import (
     DVC_STUDIO_URL,
 )
 from dvc.log import logger
+from dvc.utils import as_posix
 
 if TYPE_CHECKING:
     from requests import Response
+
+    from dvc.repo import Repo
+
 
 logger = logger.getChild(__name__)
 
@@ -111,3 +115,50 @@ def env_to_config(env: dict[str, Any]) -> dict[str, Any]:
     if DVC_STUDIO_URL in env:
         config["url"] = env[DVC_STUDIO_URL]
     return config
+
+
+def get_subrepo_relpath(repo: "Repo") -> str:
+    from dvc.fs import GitFileSystem
+
+    scm_root_dir = "/" if isinstance(repo.fs, GitFileSystem) else repo.scm.root_dir
+
+    relpath = as_posix(repo.fs.relpath(repo.root_dir, scm_root_dir))
+
+    return "" if relpath == "." else relpath
+
+
+def get_dvc_experiment_parent_data(
+    repo: "Repo", baseline_rev: Union[str, None]
+) -> Union[dict[str, Any], None]:
+    from scmrepo.exceptions import SCMError
+
+    from dvc.scm import NoSCM, get_n_commits
+
+    scm = repo.scm
+
+    try:
+        if (
+            not baseline_rev
+            or not scm
+            or isinstance(scm, NoSCM)
+            or not (commit := scm.resolve_commit(baseline_rev))
+            or not (
+                first_100_parent_shas := get_n_commits(scm, [baseline_rev], 101)[1:]
+            )
+        ):
+            return None
+
+        return {
+            "author": {
+                "name": commit.author_name,
+                "email": commit.author_email,
+            },
+            "date": commit.author_datetime.isoformat(),
+            "message": commit.message,
+            "parent_shas": first_100_parent_shas,
+            "sha": commit.hexsha,
+            "title": commit.message.partition("\n")[0].strip(),
+        }
+
+    except SCMError:
+        return None

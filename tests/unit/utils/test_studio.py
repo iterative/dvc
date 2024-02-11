@@ -9,7 +9,13 @@ from dvc.env import (
     DVC_STUDIO_TOKEN,
     DVC_STUDIO_URL,
 )
-from dvc.utils.studio import STUDIO_URL, config_to_env, env_to_config, notify_refs
+from dvc.utils.studio import (
+    STUDIO_URL,
+    config_to_env,
+    env_to_config,
+    get_dvc_experiment_parent_data,
+    notify_refs,
+)
 
 CONFIG = {"offline": True, "repo_url": "repo_url", "token": "token", "url": "url"}
 
@@ -22,6 +28,7 @@ ENV = {
 }
 
 
+@pytest.mark.studio
 @pytest.mark.parametrize(
     "status_code, side_effect",
     [
@@ -61,9 +68,28 @@ def test_notify_refs(mocker, status_code, side_effect):
     )
 
 
+@pytest.mark.studio
 def test_config_to_env():
     assert config_to_env(CONFIG) == ENV
 
 
+@pytest.mark.studio
 def test_env_to_config():
     assert env_to_config(ENV) == CONFIG
+
+
+@pytest.mark.studio
+def test_error_in_get_dvc_experiment_parent_data(mocker, scm, dvc):
+    from dvc.scm import SCMError
+
+    mocker.patch.object(scm, "resolve_commit", sideEffect=SCMError)
+
+    assert get_dvc_experiment_parent_data(dvc, scm.get_rev()) is None
+
+
+@pytest.mark.parametrize("func", ["get_rev", "resolve_commit"])
+@pytest.mark.studio
+def test_no_dvc_experiment_parent_data(mocker, scm, dvc, func):
+    mocker.patch.object(scm, func, return_value=None)
+
+    assert get_dvc_experiment_parent_data(dvc, scm.get_rev()) is None
