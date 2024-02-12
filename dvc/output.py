@@ -406,16 +406,13 @@ class Output:
     def _compute_hash_info_from_meta(
         self, hash_name: Optional[str]
     ) -> tuple[str, HashInfo]:
-        if self.is_in_repo:
-            if hash_name is None:
-                # Legacy 2.x output, use "md5-dos2unix" but read "md5" from
-                # file meta
-                hash_name = "md5-dos2unix"
-                meta_name = "md5"
-            else:
-                meta_name = hash_name
+        if hash_name is None:
+            # Legacy 2.x output, use "md5-dos2unix" but read "md5" from
+            # file meta
+            hash_name = "md5-dos2unix"
+            meta_name = "md5"
         else:
-            hash_name = meta_name = self.fs.PARAM_CHECKSUM
+            meta_name = hash_name
         assert hash_name
 
         hash_info = HashInfo(name=hash_name, value=getattr(self.meta, meta_name, None))
