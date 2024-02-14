@@ -130,6 +130,14 @@ dvc = "dvc.cli:main"
 [project.entry-points."fsspec.specs"]
 dvc = "dvc.api:DVCFileSystem"
 
+[project.entry-points."universal_pathlib.implementations"]
+dvc = "dvc.fs.dvc_path:DVCPath"
+# universal_pathlib does not support fsspec url chaining yet.
+# see https://github.com/fsspec/universal_pathlib/issues/28.
+"dvc+http" = "dvc.fs.dvc_path:DVCPath"
+"dvc+https" = "dvc.fs.dvc_path:DVCPath"
+"dvc+ssh" = "dvc.fs.dvc_path:DVCPath"
+
 [project.entry-points."pyinstaller40"]
 hook-dirs = "dvc.__pyinstaller:get_hook_dirs"
 tests = "dvc.__pyinstaller:get_PyInstaller_tests"
@@ -232,6 +240,7 @@ module = [
     "ruamel.yaml.*",
     "shortuuid",
     "shtab",
+    "upath",
     "virtualenv",
     "viztracer",
     "voluptuous",
