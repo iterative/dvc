@@ -1,6 +1,6 @@
 from typing import Union
 
-from dvc.render import REVISION, REVISIONS, SRC, TYPE_KEY
+from dvc.render import REVISION, REVISIONS, SRC, TYPE_KEY, ANNOTATIONS
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 
@@ -42,6 +42,7 @@ def to_json(renderer, split: bool = False) -> list[dict]:
             {
                 TYPE_KEY: renderer.TYPE,
                 REVISIONS: [datapoint.get(REVISION)],
+                **datapoint.get(ANNOTATIONS),
                 "url": datapoint.get(SRC),
             }
             for datapoint in renderer.datapoints

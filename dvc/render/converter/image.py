@@ -1,8 +1,9 @@
 import base64
 import os
+import json
 from typing import TYPE_CHECKING, Any
 
-from dvc.render import FILENAME, REVISION, SRC
+from dvc.render import FILENAME, REVISION, SRC, ANNOTATIONS
 
 from . import Converter
 
@@ -46,15 +47,25 @@ class ImageConverter(Converter):
         path = self.properties.get("out")
         datapoints = []
         datas, properties = self.convert()
-        for filename, _, image_data in datas:
+
+        if "annotations" in properties:
+            with open(properties["annotations"], encoding="utf-8") as annotations_path:
+                annotations = json.load(annotations_path)
+
+        for filename, _, image_content in datas:
             if path:
                 if not os.path.isdir(path):
                     os.makedirs(path, exist_ok=True)
                 src = self._write_image(
-                    os.path.abspath(path), revision, filename, image_data
+                    os.path.abspath(path), revision, filename, image_content
                 )
             else:
-                src = self._encode_image(image_data)
-            datapoint = {REVISION: revision, FILENAME: filename, SRC: src}
+                src = self._encode_image(image_content)
+            datapoint = {
+                REVISION: revision,
+                FILENAME: filename,
+                SRC: src,
+                ANNOTATIONS: annotations,
+            }
             datapoints.append(datapoint)
         return datapoints, properties

@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from functools import partial
 from multiprocessing import cpu_count
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import dpath
@@ -357,6 +358,10 @@ def infer_data_sources(plot_id, config=None):
     if isinstance(x, dict):
         sources.append(first(x.keys()))
 
+    # annotation = config.get("annotations", None)
+    # if isinstance(annotation, str):
+    #     sources.append(annotation)
+
     return ldistinct(source for source in sources)
 
 
@@ -467,6 +472,7 @@ def _resolve_definitions(
                     for k, v in unpacked["data"].items()
                     if _closest_parent(fs, k, plot_ids_parents) == data_path
                 }
+                unpacked = _add_annotations_to_image_definition(unpacked)
                 dpath.merge(result, unpacked)
         elif _matches(targets, config_path, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
@@ -482,6 +488,27 @@ def _closest_parent(fs, path, parents):
         if len(common_path) > len(best_result):
             best_result = common_path
     return best_result
+
+def _add_annotations_to_image_definition(target):
+    if "data" not in target:
+        return target
+
+    path_to_remove = []
+    for path in target["data"]:
+        annotation_file = Path(path).with_suffix(".json").as_posix()
+        if ImageRenderer.matches(path) and annotation_file in target["data"]:
+            annotations = {"annotations": annotation_file}
+            # empty dict all share the same reference, so override them
+            if target["data"][path]:
+                target["data"][path].update({"annotations": annotation_file})
+            else:
+                target["data"][path] = annotations
+            path_to_remove.append(annotation_file)
+    # remove the annotation files from the data once they are added to the config
+    target["data"] = {
+        k: v for k, v in target["data"].items() if k not in path_to_remove
+    }
+    return target
 
 
 def _collect_pipeline_files(repo, targets: list[str], props, onerror=None):
