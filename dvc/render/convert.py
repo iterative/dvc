@@ -1,6 +1,6 @@
 from typing import Union
 
-from dvc.render import REVISION, REVISIONS, SRC, TYPE_KEY, ANNOTATIONS
+from dvc.render import ANNOTATIONS, REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 

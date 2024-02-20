@@ -1,9 +1,9 @@
 import base64
-import os
 import json
+import os
 from typing import TYPE_CHECKING, Any
 
-from dvc.render import FILENAME, REVISION, SRC, ANNOTATIONS
+from dvc.render import ANNOTATIONS, FILENAME, REVISION, SRC
 
 from . import Converter
 
