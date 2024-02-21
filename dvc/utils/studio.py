@@ -12,9 +12,13 @@ from dvc.env import (
     DVC_STUDIO_URL,
 )
 from dvc.log import logger
+from dvc.utils import as_posix
 
 if TYPE_CHECKING:
     from requests import Response
+
+    from dvc.repo import Repo
+
 
 logger = logger.getChild(__name__)
 
@@ -111,3 +115,13 @@ def env_to_config(env: dict[str, Any]) -> dict[str, Any]:
     if DVC_STUDIO_URL in env:
         config["url"] = env[DVC_STUDIO_URL]
     return config
+
+
+def get_subrepo_relpath(repo: "Repo") -> str:
+    from dvc.fs import GitFileSystem
+
+    scm_root_dir = "/" if isinstance(repo.fs, GitFileSystem) else repo.scm.root_dir
+
+    relpath = as_posix(repo.fs.relpath(repo.root_dir, scm_root_dir))
+
+    return "" if relpath == "." else relpath
