@@ -1,12 +1,13 @@
 import json
-
 import pytest
-
 from dvc.render import ANCHOR_DEFINITIONS, FILENAME, REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.convert import to_json
 
 
 def test_to_json_vega(mocker):
+    """
+    Test to convert vega renderer to JSON.
+    """
     vega_renderer = mocker.MagicMock()
     vega_renderer.TYPE = "vega"
     vega_renderer.get_revs.return_value = ["bar", "foo"]
@@ -22,6 +23,9 @@ def test_to_json_vega(mocker):
 
 @pytest.mark.vscode
 def test_to_json_vega_split(mocker):
+    """
+    Test to convert vega renderer to JSON with splitting.
+    """
     revs = ["bar", "foo"]
     content = json.dumps(
         {
@@ -73,6 +77,9 @@ def test_to_json_vega_split(mocker):
 
 
 def test_to_json_image(mocker):
+    """
+    Test to convert image renderer to JSON.
+    """
     image_renderer = mocker.MagicMock()
     image_renderer.TYPE = "image"
     image_renderer.datapoints = [
