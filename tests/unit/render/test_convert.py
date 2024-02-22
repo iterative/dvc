@@ -1,5 +1,7 @@
 import json
+
 import pytest
+
 from dvc.render import ANCHOR_DEFINITIONS, FILENAME, REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.convert import to_json
 
