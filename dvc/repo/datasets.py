@@ -2,7 +2,7 @@ from collections.abc import Iterator, Mapping
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Union, cast
 from urllib.parse import urlparse
 
 from attrs import Attribute, AttrsInstance, asdict, evolve, field, fields, frozen
@@ -58,103 +58,16 @@ class SerDe:
 
 
 @frozen(kw_only=True)
-class DVCDataset(SerDe):
+class DatasetSpec(SerDe):
     name: str
     url: str
     type: str
+
+
+@frozen(kw_only=True)
+class DVCDatasetSpec(DatasetSpec):
     path: str = field(default="", converter=default_str)
     rev: Optional[str] = None
-
-    def lock(self, repo, **kwargs):
-        from dvc.dependency import RepoDependency
-
-        def_repo = {
-            RepoDependency.PARAM_REV: self.rev,
-            RepoDependency.PARAM_URL: self.url,
-        }
-        dep = RepoDependency(def_repo, None, self.path, repo=repo)  # type: ignore[arg-type]
-        dep.save()
-        d = dep.dumpd()
-
-        repo_info = d[RepoDependency.PARAM_REPO]
-        assert isinstance(repo_info, dict)
-        rev_lock = repo_info[RepoDependency.PARAM_REV_LOCK]
-        return DVCDatasetLock(
-            name=self.name,
-            type=self.type,
-            url=self.url,
-            path=self.path,
-            rev=self.rev,
-            rev_lock=rev_lock,
-        )
-
-
-@frozen(kw_only=True)
-class DVCDatasetLock(DVCDataset):
-    rev_lock: str
-
-    def to_spec(self) -> "DVCDataset":
-        return DVCDataset.from_dict(self.to_dict())
-
-
-@frozen(kw_only=True)
-class DVCXDataset(SerDe):
-    name: str
-    url: str
-    type: str
-
-    @property
-    def name_version(self) -> tuple[str, Optional[int]]:
-        url = urlparse(self.url)
-        parts = url.netloc.split("@v")
-        assert parts
-
-        name = parts[0]
-        version = int(parts[1]) if len(parts) > 1 else None
-        return name, version
-
-    def lock(
-        self,
-        repo,  # noqa: ARG002
-        record: Optional["DatasetRecord"] = None,
-        version: Optional[int] = None,
-        **kwargs,
-    ):
-        if not record:
-            try:
-                from dvcx.catalog import get_catalog  # type: ignore[import]
-
-            except ImportError as exc:
-                raise DvcException("dvcx is not installed") from exc
-
-            name, version = self.name_version
-            catalog = get_catalog()
-            record = catalog.get_remote_dataset(name)
-        assert record is not None
-        return self._lock_from_dataset_record(record, version=version)
-
-    def _lock_from_dataset_record(
-        self, record: "DatasetRecord", version: Optional[int] = None
-    ) -> "DVCXDatasetLock":
-        ver = version or record.latest_version
-        assert ver
-        version_info = record.get_version(ver)
-        return DVCXDatasetLock(
-            name=self.name,
-            url=self.url,
-            type=self.type,
-            version=version_info.version,
-            created_at=version_info.created_at,
-        )
-
-
-@frozen(kw_only=True)
-class DVCXDatasetLock(DVCXDataset):
-    version: int
-    created_at: datetime = field(converter=to_datetime)
-
-    def to_spec(self) -> "DVCXDataset":
-        return DVCXDataset.from_dict(self.to_dict())
 
 
 @frozen(kw_only=True, order=True)
@@ -164,28 +77,18 @@ class FileInfo(SerDe):
 
 
 @frozen(kw_only=True)
-class URLDataset(SerDe):
-    name: str
-    url: str
-    type: str
-
-    def lock(self, repo, **kwargs):
-        from dvc.dependency import Dependency
-
-        dep = Dependency(None, self.url, repo=repo, fs_config={"version_aware": True})
-        dep.save()
-        d = dep.dumpd(datasets=True)
-        files = [
-            FileInfo(relpath=info["relpath"], meta=Meta.from_dict(info))
-            for info in d.get("files", [])
-        ]
-        return URLDatasetLock(
-            name=self.name, type=self.type, url=self.url, meta=dep.meta, files=files
-        )
+class DVCDatasetLock(DVCDatasetSpec):
+    rev_lock: str
 
 
 @frozen(kw_only=True)
-class URLDatasetLock(URLDataset):
+class DVCXDatasetLock(DatasetSpec):
+    version: int
+    created_at: datetime = field(converter=to_datetime)
+
+
+@frozen(kw_only=True)
+class URLDatasetLock(DatasetSpec):
     meta: Meta = field(converter=ensure(Meta))  # type: ignore[misc]
     files: list[FileInfo] = field(
         factory=list,
@@ -193,38 +96,110 @@ class URLDatasetLock(URLDataset):
         metadata={"exclude_falsy": True},
     )
 
-    def to_spec(self) -> "URLDataset":
-        return URLDataset.from_dict(self.to_dict())
 
+@frozen(kw_only=True)
+class DVCDataset:
+    manifest_path: str
+    spec: "DVCDatasetSpec"
+    lock: "Optional[DVCDatasetLock]" = None
+    type: ClassVar[Literal["dvc"]] = "dvc"
 
-Spec = Union[DVCXDataset, DVCDataset, URLDataset]
-Lock = Union[DVCXDatasetLock, DVCDatasetLock, URLDatasetLock]
+    def update(self, repo, rev: Optional[str] = None, **kwargs) -> "Self":
+        from dvc.dependency import RepoDependency
+
+        spec = self.spec
+        if rev:
+            spec = evolve(self.spec, rev=rev)
+
+        def_repo = {
+            RepoDependency.PARAM_REV: spec.rev,
+            RepoDependency.PARAM_URL: spec.url,
+        }
+        dep = RepoDependency(def_repo, None, spec.path, repo=repo)  # type: ignore[arg-type]
+        dep.save()
+        d = dep.dumpd()
+
+        repo_info = d[RepoDependency.PARAM_REPO]
+        assert isinstance(repo_info, dict)
+        rev_lock = repo_info[RepoDependency.PARAM_REV_LOCK]
+        lock = DVCDatasetLock(**spec.to_dict(), rev_lock=rev_lock)
+        return evolve(self, spec=spec, lock=lock)
 
 
 @frozen(kw_only=True)
-class Dataset:
+class DVCXDataset:
     manifest_path: str
-    spec: Spec
-    lock: Optional[Lock] = None
+    spec: "DatasetSpec"
+    lock: "Optional[DVCXDatasetLock]" = field(default=None)
+    type: ClassVar[Literal["dvcx"]] = "dvcx"
 
     @property
-    def name(self):
-        return self.spec.name
+    def name_version(self) -> tuple[str, Optional[int]]:
+        url = urlparse(self.spec.url)
+        parts = url.netloc.split("@v")
+        assert parts
 
-    @property
-    def url(self):
-        return self.spec.url
+        name = parts[0]
+        version = int(parts[1]) if len(parts) > 1 else None
+        return name, version
 
-    @property
-    def type(self):
-        return self.spec.type
+    def update(
+        self,
+        repo,  # noqa: ARG002
+        record: Optional["DatasetRecord"] = None,
+        version: Optional[int] = None,
+        **kwargs,
+    ) -> "Self":
+        if not record:
+            try:
+                from dvcx.catalog import get_catalog  # type: ignore[import]
 
-    def update(self, repo: "Repo", **kwargs: Any) -> "Self":
-        spec_kwargs = self.spec.to_dict()
-        spec = type(self.spec).from_dict(spec_kwargs | kwargs)
-        lock_kwargs = {k: kwargs[k] for k in kwargs.keys() - spec_kwargs.keys()}
-        lock = spec.lock(repo, **lock_kwargs)
-        return evolve(self, spec=spec, lock=lock)
+            except ImportError as exc:
+                raise DvcException("dvcx is not installed") from exc
+
+            name, _version = self.name_version
+            version = _version or version
+            catalog = get_catalog()
+            record = catalog.get_remote_dataset(name)
+
+        assert record is not None
+        ver = version or record.latest_version
+        assert ver
+        version_info = record.get_version(ver)
+        lock = DVCXDatasetLock(
+            **self.spec.to_dict(),
+            version=version_info.version,
+            created_at=version_info.created_at,
+        )
+        return evolve(self, lock=lock)
+
+
+@frozen(kw_only=True)
+class URLDataset:
+    manifest_path: str
+    spec: "DatasetSpec"
+    lock: "Optional[URLDatasetLock]" = None
+    type: ClassVar[Literal["url"]] = "url"
+
+    def update(self, repo, **kwargs):
+        from dvc.dependency import Dependency
+
+        dep = Dependency(
+            None, self.spec.url, repo=repo, fs_config={"version_aware": True}
+        )
+        dep.save()
+        d = dep.dumpd(datasets=True)
+        files = [
+            FileInfo(relpath=info["relpath"], meta=Meta.from_dict(info))
+            for info in d.get("files", [])
+        ]
+        lock = URLDatasetLock(**self.spec.to_dict(), meta=dep.meta, files=files)
+        return evolve(self, lock=lock)
+
+
+Lock = Union[DVCDatasetLock, DVCXDatasetLock, URLDatasetLock]
+Spec = Union[DatasetSpec, DVCDatasetSpec]
+Dataset = Union[DVCDataset, DVCXDataset, URLDataset]
 
 
 class DatasetNotFoundError(DvcException, KeyError):
@@ -248,29 +223,21 @@ class Datasets(Mapping[str, Dataset]):
 
     def __getitem__(self, name: str) -> Dataset:
         try:
-            path, spec = self._spec[name]
-        except KeyError as e:
-            raise DatasetNotFoundError(name) from e
+            return self._datasets[name]
+        except KeyError as exc:
+            raise DatasetNotFoundError(name) from exc
 
-        lock = self._lock[name]
-        spec_obj = self._spec_from_info(spec)
-        lock_obj = self._lock_from_info(lock)
-        return Dataset(manifest_path=path, spec=spec_obj, lock=lock_obj)
-
-    def by_url(self, url: str) -> Optional[Dataset]:
-        for name, (_, ds) in self._spec.items():
-            if ds["url"] == url:
-                return self.get(name)
-        return None
+    def __setitem__(self, name: str, dataset: Dataset) -> None:
+        self._datasets[name] = dataset
 
     def __contains__(self, name: object) -> bool:
-        return name in self._spec
+        return name in self._datasets
 
     def __iter__(self) -> Iterator[str]:
-        return iter(self._spec)
+        return iter(self._datasets)
 
     def __len__(self) -> int:
-        return len(self._spec)
+        return len(self._datasets)
 
     @cached_property
     def _spec(self) -> dict[str, tuple[str, dict[str, Any]]]:
@@ -290,40 +257,58 @@ class Datasets(Mapping[str, Dataset]):
 
         return {ds["name"]: find(path, name) for name, (path, ds) in self._spec.items()}
 
-    def _reset(self):
+    @cached_property
+    def _datasets(self) -> dict[str, Dataset]:
+        return {
+            name: self._build_dataset(path, spec, self._lock[name])
+            for name, (path, spec) in self._spec.items()
+        }
+
+    def _reset(self) -> None:
         self.__dict__.pop("_spec", None)
         self.__dict__.pop("_lock", None)
+        self.__dict__.pop("_datasets", None)
 
-    def _spec_from_info(self, info: dict[str, Any]) -> Spec:
-        klasses: dict[str, type[Spec]] = {
-            "dvc": DVCDataset,
-            "dvcx": DVCXDataset,
-            "url": URLDataset,
-        }
-        cls = klasses[info["type"]]
-        return cls.from_dict(info)
+    def _build_dataset(
+        self,
+        manifest_path: str,
+        spec: dict[str, Any],
+        lock: Optional[dict[str, Any]] = None,
+    ) -> Dataset:
+        if lock is not None:
+            assert lock
+            assert spec["name"] == lock["name"]
+            assert spec["type"] == lock["type"]
 
-    def _lock_from_info(self, info: Optional[dict[str, Any]] = None) -> Optional[Lock]:
-        klasses: dict[str, type[Lock]] = {
-            "dvc": DVCDatasetLock,
-            "dvcx": DVCXDatasetLock,
-            "url": URLDatasetLock,
-        }
-
-        info = info or {}
-        if cls := klasses.get(info.get("type", None)):
-            return cls.from_dict(info)
-        return None
+        if spec["type"] == "dvc":
+            return DVCDataset(
+                manifest_path=manifest_path,
+                spec=DVCDatasetSpec.from_dict(spec),
+                lock=None if lock is None else DVCDatasetLock.from_dict(lock),
+            )
+        if spec["type"] == "dvcx":
+            return DVCXDataset(
+                manifest_path=manifest_path,
+                spec=DatasetSpec.from_dict(spec),
+                lock=None if lock is None else DVCXDatasetLock.from_dict(lock),
+            )
+        if spec["type"] == "url":
+            return URLDataset(
+                manifest_path=manifest_path,
+                spec=DatasetSpec.from_dict(spec),
+                lock=None if lock is None else URLDatasetLock.from_dict(lock),
+            )
+        raise ValueError(f"unknown dataset type: {spec['type']}")
 
     def add(
-        self, url: str, name: str, manifest_path: str = "dvc.yaml", **kwargs
+        self, url: str, name: str, manifest_path: str = "dvc.yaml", **kwargs: Any
     ) -> Dataset:
         kwargs.update({"url": url, "name": name})
-        spec = self._spec_from_info(kwargs)
-        dataset = Dataset(manifest_path=manifest_path, spec=spec)
-        dataset = dataset.update(self.repo)
 
+        dataset = self._build_dataset(manifest_path, spec=kwargs)
+        dataset = dataset.update(self.repo)
         self.dump(dataset)
+        self[name] = dataset
         return dataset
 
     def update(self, name, **kwargs) -> tuple[Dataset, Dataset]:
@@ -331,15 +316,18 @@ class Datasets(Mapping[str, Dataset]):
         new = dataset.update(self.repo, **kwargs)
 
         self.dump(new, old=dataset)
+        self[name] = new
         return dataset, new
 
     def _dump_spec(self, manifest_path: str, spec: Spec) -> None:
         spec_data = spec.to_dict()
+        assert spec_data.keys() & {"type", "name", "url"}
         project_file = ProjectFile(self.repo, manifest_path)
         project_file.dump_dataset(spec_data)
 
     def _dump_lock(self, manifest_path: str, lock: Lock) -> None:
         lock_data = lock.to_dict()
+        assert lock_data.keys() & {"type", "name", "url"}
         lockfile = Lockfile(self.repo, Path(manifest_path).with_suffix(".lock"))
         lockfile.dump_dataset(lock_data)
 

@@ -27,19 +27,18 @@ def diff_files(old: list["FileInfo"], new: list["FileInfo"]) -> dict[str, list[s
 
 class CmdDatasetAdd(CmdBase):
     @classmethod
-    def display(cls, dataset: "Dataset", action: str = "Adding"):
-        from dvc.repo.datasets import DVCDatasetLock, DVCXDatasetLock
+    def display(cls, name: str, dataset: "Dataset", action: str = "Adding"):
         from dvc.ui import ui
 
         assert dataset.lock
 
-        url = dataset.url
+        url = dataset.spec.url
         ver: str = ""
-        if isinstance(dataset.lock, DVCXDatasetLock):
+        if dataset.type == "dvcx":
             ver = f"v{dataset.lock.version}"
-        if isinstance(dataset.lock, DVCDatasetLock):
+        if dataset.type == "dvc":
             if dataset.lock.path:
-                url = f"{dataset.url}:/{dataset.lock.path.lstrip('/')}"
+                url = f"{url}:/{dataset.lock.path.lstrip('/')}"
             if rev := dataset.lock.rev:
                 ver = rev
 
@@ -47,7 +46,7 @@ class CmdDatasetAdd(CmdBase):
         if ver:
             ver_part = ui.rich_text.assemble(" @ ", (ver, "repr.number"))
         text = ui.rich_text.assemble("(", (url, "repr.url"), ver_part or "", ")")
-        ui.write(action, ui.rich_text(dataset.name, "cyan"), text, styled=True)
+        ui.write(action, ui.rich_text(name, "cyan"), text, styled=True)
 
     def run(self):
         from urllib.parse import urlsplit
@@ -75,28 +74,30 @@ class CmdDatasetAdd(CmdBase):
                     "use the --force to overwrite"
                 )
             dataset = self.repo.datasets.add(**d)
-            self.display(dataset)
+            self.display(self.args.name, dataset)
 
 
 class CmdDatasetUpdate(CmdBase):
-    def display(self, dataset: "Dataset", new: "Dataset"):
+    def display(self, name: str, dataset: "Dataset", new: "Dataset"):
         from dvc.commands.checkout import log_changes
-        from dvc.repo.datasets import DVCDatasetLock, DVCXDatasetLock, URLDatasetLock
         from dvc.ui import ui
 
         if not dataset.lock:
-            return CmdDatasetAdd.display(new, "Updating")
+            return CmdDatasetAdd.display(name, new, "Updating")
         if dataset == new:
             ui.write("[yellow]Nothing to update[/]", styled=True)
             return
 
+        assert new.lock
+
         v: Optional[tuple[str, str]] = None
-        if isinstance(dataset.lock, DVCXDatasetLock):
-            assert isinstance(new.lock, DVCXDatasetLock)
+        if dataset.type == "dvcx":
+            assert new.type == "dvcx"
             v = (f"v{dataset.lock.version}", f"v{new.lock.version}")
-        if isinstance(dataset.lock, DVCDatasetLock):
-            assert isinstance(new.lock, DVCDatasetLock)
+        if dataset.type == "dvc":
+            assert new.type == "dvc"
             v = (f"{dataset.lock.rev_lock[:9]}", f"{new.lock.rev_lock[:9]}")
+
         if v:
             part = ui.rich_text.assemble(
                 (v[0], "repr.number"),
@@ -104,11 +105,11 @@ class CmdDatasetUpdate(CmdBase):
                 (v[1], "repr.number"),
             )
         else:
-            part = ui.rich_text(dataset.url, "repr.url")
+            part = ui.rich_text(dataset.spec.url, "repr.url")
         changes = ui.rich_text.assemble("(", part, ")")
-        ui.write("Updating", ui.rich_text(dataset.name, "cyan"), changes, styled=True)
-        if isinstance(dataset.lock, URLDatasetLock):
-            assert isinstance(new.lock, URLDatasetLock)
+        ui.write("Updating", ui.rich_text(name, "cyan"), changes, styled=True)
+        if dataset.type == "url":
+            assert new.type == "url"
             stats = diff_files(dataset.lock.files, new.lock.files)
             log_changes(stats)
 
@@ -131,7 +132,7 @@ class CmdDatasetUpdate(CmdBase):
                         styled=True,
                     )
                 return 1
-            self.display(dataset, new)
+            self.display(self.args.name, dataset, new)
 
 
 def add_parser(subparsers, parent_parser):
