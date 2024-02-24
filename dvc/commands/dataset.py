@@ -162,11 +162,9 @@ def add_parser(subparsers, parent_parser):
         help="""\
 Location of the data to download. Supported URLs:
 
-https://example.com/path/to/file
 s3://bucket/key/path
 gs://bucket/path/to/file/or/dir
-hdfs://example.com/path/to/file
-ssh://example.com/absolute/path/to/file/or/dir
+azure://mycontainer/path
 remote://remote_name/path/to/file/or/dir (see `dvc remote`)
 dvcx://dataset_name
 
