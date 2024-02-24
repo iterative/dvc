@@ -35,6 +35,8 @@ def get(name: str) -> Union[DVCXDataset, DVCDataset, URLDataset]:
             add_note(f"Did you mean: {matches[0]!r}?")
         raise
 
+    if dataset._invalidated:
+        raise ValueError(f"dataset not in sync. Sync with 'dvc ds update {name}'.")
     if not dataset.lock:
         raise ValueError("missing lock information")
     if dataset.type == "dvc":
