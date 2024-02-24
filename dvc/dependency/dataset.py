@@ -49,10 +49,14 @@ class DatasetDependency(AbstractDependency):
 
     def workspace_status(self):
         ds = self.repo.datasets[self.name]
-        info: dict[str, Any] = self.hash_info.value if self.hash_info else {}  # type: ignore[assignment]
+        if not ds.lock:
+            return {str(self): "not in sync"}
 
-        # TODO: what to do if dvc.lock and dvc.yaml are different
-        if not ds.lock or info != ds.lock.to_dict():
+        info: dict[str, Any] = self.hash_info.value if self.hash_info else {}  # type: ignore[assignment]
+        lock = self.repo.datasets._lock_from_info(info)
+        if not lock:
+            return {str(self): "new"}
+        if lock != ds.lock:
             return {str(self): "modified"}
         return {}
 
@@ -62,9 +66,12 @@ class DatasetDependency(AbstractDependency):
     def get_hash(self):
         ds = self.repo.datasets[self.name]
         if not ds.lock:
-            raise DvcException(
-                f"Information missing for {self.name!r} dataset in dvc.lock"
-            )
+            if ds._invalidated:
+                raise DvcException(
+                    "Dataset information is not in sync. "
+                    f"Run 'dvc ds update {self.name}' to sync."
+                )
+            raise DvcException("Dataset information missing from dvc.lock file")
         return HashInfo(self.PARAM_DATASET, ds.lock.to_dict())  # type: ignore[arg-type]
 
     def save(self):
