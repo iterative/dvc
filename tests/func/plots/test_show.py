@@ -172,6 +172,87 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     )
 
 
+def test_plots_show_nested_x_dict(tmp_dir, dvc, scm):
+    rel_pipeline_dir = "pipelines/data-increment"
+
+    pipeline_rel_dvclive_metrics_dir = "dvclive/plots/metrics"
+    dvc_rel_dvclive_metrics_dir = (
+        f"{rel_pipeline_dir}/{pipeline_rel_dvclive_metrics_dir}"
+    )
+
+    pipeline_dir = tmp_dir / rel_pipeline_dir
+    dvclive_metrics_dir = pipeline_dir / pipeline_rel_dvclive_metrics_dir
+    dvclive_metrics_dir.mkdir(parents=True)
+
+    def _get_plot_defn(rel_dir: str) -> dict:
+        return {
+            "template": "simple",
+            "x": {f"{rel_dir}/Max_Leaf_Nodes.tsv": "Max_Leaf_Nodes"},
+            "y": {f"{rel_dir}/Error.tsv": "Error"},
+        }
+
+    (pipeline_dir / "dvc.yaml").dump(
+        {
+            "plots": [
+                {
+                    "Error vs max_leaf_nodes": _get_plot_defn(
+                        pipeline_rel_dvclive_metrics_dir
+                    )
+                },
+            ]
+        },
+    )
+
+    dvclive_metrics_dir.gen(
+        {
+            "Error.tsv": "step\tError\n" "0\t0.11\n" "1\t0.22\n" "2\t0.44\n",
+            "Max_Leaf_Nodes.tsv": "step\tMax_Leaf_Nodes\n"
+            "0\t5\n"
+            "1\t50\n"
+            "2\t500\n",
+        }
+    )
+
+    scm.commit("add dvc.yaml and dvclive metrics")
+
+    result = dvc.plots.show()
+    assert result == {
+        "workspace": {
+            "definitions": {
+                "data": {
+                    f"{rel_pipeline_dir}/dvc.yaml": {
+                        "data": {
+                            "Error vs max_leaf_nodes": _get_plot_defn(
+                                dvc_rel_dvclive_metrics_dir
+                            )
+                        },
+                    }
+                }
+            },
+            "sources": {
+                "data": {
+                    f"{dvc_rel_dvclive_metrics_dir}/Error.tsv": {
+                        "data": [
+                            {"Error": "0.11", "step": "0"},
+                            {"Error": "0.22", "step": "1"},
+                            {"Error": "0.44", "step": "2"},
+                        ],
+                        "props": {},
+                    },
+                    f"{dvc_rel_dvclive_metrics_dir}/Max_Leaf_Nodes.tsv": {
+                        "data": [
+                            {"Max_Leaf_Nodes": "5", "step": "0"},
+                            {"Max_Leaf_Nodes": "50", "step": "1"},
+                            {"Max_Leaf_Nodes": "500", "step": "2"},
+                        ],
+                        "props": {},
+                    },
+                }
+            },
+        }
+    }
+
+
 def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     subdir = tmp_dir / "subdir"
     subdir.mkdir()

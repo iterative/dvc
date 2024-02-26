@@ -481,3 +481,138 @@ def test_repo_with_dvclive_plots(tmp_dir, capsys, repo_with_dvclive_plots):
         }
         assert json_result == expected_result
         assert split_json_result == expected_result
+
+
+@pytest.mark.vscode
+def test_nested_x_defn_collection(tmp_dir, dvc, scm, capsys):
+    rel_pipeline_dir = "pipelines/data-increment"
+    pipeline_rel_dvclive_metrics_dir = "dvclive/plots/metrics"
+    pipeline_rel_other_logger_dir = "other/logger"
+
+    dvc_rel_dvclive_metrics_dir = (
+        f"{rel_pipeline_dir}/{pipeline_rel_dvclive_metrics_dir}"
+    )
+    dvc_rel_other_logger_dir = f"{rel_pipeline_dir}/{pipeline_rel_other_logger_dir}"
+
+    pipeline_dir = tmp_dir / rel_pipeline_dir
+    dvclive_metrics_dir = pipeline_dir / pipeline_rel_dvclive_metrics_dir
+    dvclive_metrics_dir.mkdir(parents=True)
+    other_logger_dir = pipeline_dir / pipeline_rel_other_logger_dir
+    other_logger_dir.mkdir(parents=True)
+
+    (pipeline_dir / "dvc.yaml").dump(
+        {
+            "plots": [
+                {
+                    "Error vs max_leaf_nodes": {
+                        "template": "simple",
+                        "x": {
+                            f"{pipeline_rel_dvclive_metrics_dir}"
+                            "/Max_Leaf_Nodes.tsv": "Max_Leaf_Nodes"
+                        },
+                        "y": {f"{pipeline_rel_dvclive_metrics_dir}/Error.tsv": "Error"},
+                    }
+                },
+                {
+                    f"{pipeline_rel_other_logger_dir}/multiple_metrics.json": {
+                        "x": "x",
+                        "y": ["y1", "y2"],
+                    },
+                },
+                {
+                    f"{pipeline_rel_dvclive_metrics_dir}/Error.tsv": {"y": ["Error"]},
+                },
+                {
+                    "max leaf nodes": {
+                        "y": {
+                            f"{pipeline_rel_dvclive_metrics_dir}"
+                            "/Max_Leaf_Nodes.tsv": "Max_Leaf_Nodes"
+                        }
+                    },
+                },
+            ]
+        },
+    )
+    dvclive_metrics_dir.gen(
+        {
+            "Error.tsv": "step\tError\n" "0\t0.11\n" "1\t0.22\n" "2\t0.44\n",
+            "Max_Leaf_Nodes.tsv": "step\tMax_Leaf_Nodes\n"
+            "0\t5\n"
+            "1\t50\n"
+            "2\t500\n",
+        }
+    )
+    (other_logger_dir / "multiple_metrics.json").dump(
+        [
+            {"x": 0, "y1": 0.1, "y2": 10},
+            {"x": 1, "y1": 0.2, "y2": 22},
+        ]
+    )
+
+    scm.commit("add dvc.yaml and metrics")
+
+    _, _, split_json_result = call(capsys, subcommand="diff")
+    assert len(split_json_result.keys()) == 1
+    assert len(split_json_result["data"].keys()) == 4
+
+    separate_x_file = split_json_result["data"]["Error vs max_leaf_nodes"][0]
+
+    assert separate_x_file["anchor_definitions"]["<DVC_METRIC_DATA>"] == [
+        {"Error": "0.11", "Max_Leaf_Nodes": "5", "step": "0", "rev": "workspace"},
+        {"Error": "0.22", "Max_Leaf_Nodes": "50", "step": "1", "rev": "workspace"},
+        {"Error": "0.44", "Max_Leaf_Nodes": "500", "step": "2", "rev": "workspace"},
+    ]
+
+    same_x_file = split_json_result["data"][
+        f"{dvc_rel_other_logger_dir}/multiple_metrics.json"
+    ][0]
+    assert same_x_file["anchor_definitions"]["<DVC_METRIC_DATA>"] == [
+        {
+            "x": 0,
+            "y1": 0.1,
+            "y2": 10,
+            "dvc_inferred_y_value": 0.1,
+            "field": "y1",
+            "rev": "workspace",
+        },
+        {
+            "x": 1,
+            "y1": 0.2,
+            "y2": 22,
+            "dvc_inferred_y_value": 0.2,
+            "field": "y1",
+            "rev": "workspace",
+        },
+        {
+            "x": 0,
+            "y1": 0.1,
+            "y2": 10,
+            "dvc_inferred_y_value": 10,
+            "field": "y2",
+            "rev": "workspace",
+        },
+        {
+            "x": 1,
+            "y1": 0.2,
+            "y2": 22,
+            "dvc_inferred_y_value": 22,
+            "field": "y2",
+            "rev": "workspace",
+        },
+    ]
+
+    inferred_x_from_str = split_json_result["data"][
+        f"{dvc_rel_dvclive_metrics_dir}/Error.tsv"
+    ][0]
+    assert inferred_x_from_str["anchor_definitions"]["<DVC_METRIC_DATA>"] == [
+        {"step": 0, "Error": "0.11", "rev": "workspace"},
+        {"step": 1, "Error": "0.22", "rev": "workspace"},
+        {"step": 2, "Error": "0.44", "rev": "workspace"},
+    ]
+
+    inferred_x_from_dict = split_json_result["data"]["max leaf nodes"][0]
+    assert inferred_x_from_dict["anchor_definitions"]["<DVC_METRIC_DATA>"] == [
+        {"step": 0, "Max_Leaf_Nodes": "5", "rev": "workspace"},
+        {"step": 1, "Max_Leaf_Nodes": "50", "rev": "workspace"},
+        {"step": 2, "Max_Leaf_Nodes": "500", "rev": "workspace"},
+    ]
