@@ -156,7 +156,7 @@ dvcx://dataset_name
 
 To import data from dvc/git repositories, \
 add dvc:// schema to the repo url, e.g:
-dvc://git@github.com/iterative/example-get-started.git
+dvc://git@github.com:iterative/example-get-started.git
 dvc+https://github.com/iterative/example-get-started.git""",
     )
     ds_add_parser.add_argument(
