@@ -448,7 +448,12 @@ def _resolve_definitions(
     config_path = os.fspath(config_path)
     config_dir = fs.dirname(config_path)
     result: dict[str, dict] = {}
-    for plot_id, plot_props in definitions.items():
+
+    # sort by key length to process the most general paths first
+    # then override them with more specific ones.
+    for plot_id, plot_props in sorted(
+        definitions.items(), key=lambda item: len(item[0])
+    ):
         if plot_props is None:
             plot_props = {}
         if _id_is_path(plot_props):
@@ -519,7 +524,7 @@ def unpack_if_dir(fs, path, props: dict[str, str], onerror: Optional[Callable] =
 
     if "data" in unpacked:
         for subpath in unpacked["data"]:
-            result["data"].update({subpath: props})
+            result["data"].update({subpath: {} | props})  # avoid shared reference
     else:
         result.update(unpacked)
 
