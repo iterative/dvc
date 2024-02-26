@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
-from sqlalchemy import create_engine
-from sqlalchemy.engine import make_url as _make_url
-from sqlalchemy.exc import NoSuchModuleError
+from sqlalchemy import create_engine  # type: ignore[import]
+from sqlalchemy.engine import make_url as _make_url  # type: ignore[import]
+from sqlalchemy.exc import NoSuchModuleError  # type: ignore[import]
 
 from dvc import env
 from dvc.exceptions import DvcException
@@ -17,7 +17,7 @@ from dvc.utils import env2bool
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import URL, Connectable, Engine
-    from sqlalchemy.sql.expression import Selectable
+    from sqlalchemy.sql.expression import Selectable  # type: ignore[import]
 
 
 logger = logger.getChild(__name__)

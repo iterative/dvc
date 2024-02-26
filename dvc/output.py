@@ -814,7 +814,7 @@ class Output:
 
         ret: dict[str, Any] = {}
         with_files = (
-            (not self.IS_DEPENDENCY or self.stage.is_import)
+            (not self.IS_DEPENDENCY or kwargs.get("datasets") or self.stage.is_import)
             and self.hash_info.isdir
             and (kwargs.get("with_files") or self.files is not None)
         )
