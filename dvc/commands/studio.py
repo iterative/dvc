@@ -48,12 +48,18 @@ class CmdStudioLogin(CmdConfig):
 
         config_path = self.config.files["global"]
         ui.write(f"Authentication complete. Saved token to {config_path}.")
+        ui.write("Experiments are now being pushed automatically as git commits.")
+        ui.write(
+            "To avoid this behavior and keep the results of your experiments locally, "
+            "you should run `dvc config --global exp.auto_push false`."
+        )
         return 0
 
     def save_config(self, hostname, token):
         with self.config.edit("global") as conf:
             conf["studio"]["token"] = token
             conf["studio"]["url"] = hostname
+            conf["exp"]["auto_push"] = True
 
 
 class CmdStudioLogout(CmdConfig):

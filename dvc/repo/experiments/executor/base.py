@@ -688,8 +688,15 @@ class BaseExecutor(ABC):
         push_cache=True,
         run_cache=True,
     ):
+        from dvc.ui import ui
+
         branch = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
         try:
+            ui.write(
+                f"Auto pushing experiment to '{git_remote}'. You can cancel the push "
+                "with CTRL+C. If you need to push your experiment again, you can "
+                f"retry later using `dvc exp push`",
+            )
             dvc.experiments.push(
                 git_remote,
                 branch,
