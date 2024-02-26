@@ -336,6 +336,8 @@ SCHEMA = {
         "params": str,
         "plots": str,
         "live": str,
+        "auto_push": Bool,
+        "git_remote": str,
     },
     "parsing": {
         "bool": All(Lower, Choices("store_true", "boolean_optional")),

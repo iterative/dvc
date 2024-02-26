@@ -20,6 +20,7 @@ from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH, ExpRefInfo
 from dvc.repo.experiments.utils import to_studio_params
 from dvc.repo.metrics.show import _collect_top_level_metrics
 from dvc.repo.params.show import _collect_top_level_params
+from dvc.scm import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
@@ -35,7 +36,6 @@ if TYPE_CHECKING:
 
     from dvc.repo import Repo
     from dvc.repo.experiments.stash import ExpStashEntry
-    from dvc.scm import Git
     from dvc.stage import PipelineStage, Stage
 
 logger = logger.getChild(__name__)
@@ -298,7 +298,7 @@ class BaseExecutor(ABC):
             if include_untracked:
                 dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
             cls.commit(
-                dvc.scm,  # type: ignore[arg-type]
+                dvc,  # type: ignore[arg-type]
                 exp_hash,
                 exp_name=info.name,
                 force=force,
@@ -460,9 +460,6 @@ class BaseExecutor(ABC):
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.ui import ui
 
-        auto_push = env2bool(DVC_EXP_AUTO_PUSH)
-        git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
-
         if queue is not None:
             queue.put((rev, os.getpid()))
         if log_errors and log_level is not None:
@@ -483,9 +480,6 @@ class BaseExecutor(ABC):
             message=message,
             **kwargs,
         ) as dvc:
-            if auto_push:
-                cls._validate_remotes(dvc, git_remote)
-
             args, kwargs = cls._repro_args(dvc)
             if args:
                 targets: Optional[Union[list, str]] = args[0]
@@ -519,8 +513,6 @@ class BaseExecutor(ABC):
                     dvc,
                     info,
                     exp_hash,
-                    auto_push,
-                    git_remote,
                     repro_force,
                     message=message,
                 )
@@ -550,20 +542,17 @@ class BaseExecutor(ABC):
         dvc,
         info,
         exp_hash,
-        auto_push,
-        git_remote,
         repro_force,
         message: Optional[str] = None,
     ) -> tuple[Optional[str], Optional["ExpRefInfo"], bool]:
         cls.commit(
-            dvc.scm,
+            dvc,
             exp_hash,
             exp_name=info.name,
             force=repro_force,
             message=message,
         )
-        if auto_push:
-            cls._auto_push(dvc, dvc.scm, git_remote)
+
         ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
         exp_ref: Optional["ExpRefInfo"] = ExpRefInfo.from_ref(ref) if ref else None
         if cls.WARN_UNTRACKED:
@@ -675,12 +664,11 @@ class BaseExecutor(ABC):
     @staticmethod
     def _auto_push(
         dvc: "Repo",
-        scm: "Git",
         git_remote: Optional[str],
         push_cache=True,
         run_cache=True,
     ):
-        branch = scm.get_ref(EXEC_BRANCH, follow=False)
+        branch = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
         try:
             dvc.experiments.push(
                 git_remote,
@@ -701,13 +689,30 @@ class BaseExecutor(ABC):
     @classmethod
     def commit(
         cls,
-        scm: "Git",
+        dvc: "Repo",
         exp_hash: str,
         exp_name: Optional[str] = None,
         force: bool = False,
         message: Optional[str] = None,
     ):
-        """Commit stages as an experiment and return the commit SHA."""
+        """
+        Commit stages as an experiment and return the commit SHA.
+        Push the experiment if env `DVC_EXP_AUTO_PUSH` is True.
+        """
+
+        if not isinstance(dvc.scm, Git):
+            raise DvcException("Only Git supported for experiment commits")
+
+        scm: Git = dvc.scm
+
+        exp_config = dvc.config.get("exp", {})
+        auto_push = env2bool(DVC_EXP_AUTO_PUSH, exp_config.get("auto_push", False))
+        git_remote = os.getenv(
+            DVC_EXP_GIT_REMOTE, exp_config.get("git_remote", "origin")
+        )
+        if auto_push:
+            cls._validate_remotes(dvc, git_remote)
+
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=False):
             logger.debug("No changes to commit")
@@ -743,6 +748,9 @@ class BaseExecutor(ABC):
         else:
             scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+
+        if auto_push:
+            cls._auto_push(dvc, git_remote)
 
         return new_rev
 
