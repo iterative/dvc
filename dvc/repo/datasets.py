@@ -1,3 +1,4 @@
+import os
 from collections.abc import Iterator, Mapping
 from datetime import datetime
 from functools import cached_property
@@ -11,16 +12,62 @@ from attrs.converters import default_if_none
 from dvc.dvcfile import Lockfile, ProjectFile
 from dvc.exceptions import DvcException
 from dvc.log import logger
+from dvc.types import StrPath
 from dvc_data.hashfile.meta import Meta
 
 if TYPE_CHECKING:
     from dql.dataset import DatasetRecord  # type: ignore[import]
+    from dvcx.dataset import DatasetVersion  # type: ignore[import]
     from typing_extensions import Self
 
     from dvc.repo import Repo
 
 
 logger = logger.getChild(__name__)
+
+
+def parse_url_and_type(url: str):
+    from urllib.parse import urlsplit
+
+    if os.path.exists(url):
+        return {"type": "dvc", "url": url}
+
+    url_obj = urlsplit(url)
+    if url_obj.scheme == "dvcx":
+        return {"type": "dvcx", "url": url}
+    if url_obj.scheme and not url_obj.scheme.startswith("dvc"):
+        return {"type": "url", "url": url}
+
+    protos = tuple(url_obj.scheme.split("+"))
+    if not protos or protos == ("dvc",):
+        url = url_obj.netloc + url_obj.path
+    else:
+        url = url_obj._replace(scheme=protos[1]).geturl()
+    return {"type": "dvc", "url": url}
+
+
+def _get_dataset_record(name: str) -> "DatasetRecord":
+    from dvc.exceptions import DvcException
+
+    try:
+        from dvcx.catalog import get_catalog  # type: ignore[import]
+
+    except ImportError as exc:
+        raise DvcException("dvcx is not installed") from exc
+
+    catalog = get_catalog()
+    return catalog.get_remote_dataset(name)
+
+
+def _get_dataset_info(
+    name: str, record: Optional["DatasetRecord"] = None, version: Optional[int] = None
+) -> "DatasetVersion":
+    record = record or _get_dataset_record(name)
+    assert record
+    v = version or record.latest_version
+    assert v
+    assert v >= 1
+    return record.get_version(v)
 
 
 def default_str(v) -> str:
@@ -160,22 +207,9 @@ class DVCXDataset:
         version: Optional[int] = None,
         **kwargs,
     ) -> "Self":
-        if not record:
-            try:
-                from dvcx.catalog import get_catalog  # type: ignore[import]
-
-            except ImportError as exc:
-                raise DvcException("dvcx is not installed") from exc
-
-            name, _version = self.name_version
-            version = _version or version
-            catalog = get_catalog()
-            record = catalog.get_remote_dataset(name)
-
-        assert record is not None
-        ver = version or record.latest_version
-        assert ver
-        version_info = record.get_version(ver)
+        name, _version = self.name_version
+        version = version or _version
+        version_info = _get_dataset_info(name, record=record, version=version)
         lock = DVCXDatasetLock(
             **self.spec.to_dict(),
             version=version_info.version,
@@ -264,6 +298,8 @@ class Datasets(Mapping[str, Dataset]):
         datasets_lock = self.repo.index._datasets_lock
 
         def find(path, name) -> Optional[dict[str, Any]]:
+            # only look for `name` in the lock file next to the
+            # corresponding `dvc.yaml` file
             lock = datasets_lock.get(path, [])
             return next((dataset for dataset in lock if dataset["name"] == name), None)
 
@@ -348,10 +384,14 @@ class Datasets(Mapping[str, Dataset]):
         raise ValueError(f"unknown dataset type: {spec.type!r}")
 
     def add(
-        self, url: str, name: str, manifest_path: str = "dvc.yaml", **kwargs: Any
+        self,
+        url: str,
+        name: str,
+        manifest_path: StrPath = "dvc.yaml",
+        **kwargs: Any,
     ) -> Dataset:
-        kwargs.update({"url": url, "name": name})
-        dataset = self._build_dataset(manifest_path, kwargs)
+        spec = kwargs | parse_url_and_type(url) | {"name": name}
+        dataset = self._build_dataset(os.path.abspath(manifest_path), spec)
         dataset = dataset.update(self.repo)
 
         self.dump(dataset)
@@ -366,13 +406,13 @@ class Datasets(Mapping[str, Dataset]):
         self[name] = new
         return dataset, new
 
-    def _dump_spec(self, manifest_path: str, spec: Spec) -> None:
+    def _dump_spec(self, manifest_path: StrPath, spec: Spec) -> None:
         spec_data = spec.to_dict()
         assert spec_data.keys() & {"type", "name", "url"}
         project_file = ProjectFile(self.repo, manifest_path)
         project_file.dump_dataset(spec_data)
 
-    def _dump_lock(self, manifest_path: str, lock: Lock) -> None:
+    def _dump_lock(self, manifest_path: StrPath, lock: Lock) -> None:
         lock_data = lock.to_dict()
         assert lock_data.keys() & {"type", "name", "url"}
         lockfile = Lockfile(self.repo, Path(manifest_path).with_suffix(".lock"))

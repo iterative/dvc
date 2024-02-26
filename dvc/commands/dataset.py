@@ -49,22 +49,6 @@ class CmdDatasetAdd(CmdBase):
         ui.write(action, ui.rich_text(name, "cyan"), text, styled=True)
 
     def run(self):
-        from urllib.parse import urlsplit
-
-        d = vars(self.args)
-        url_obj = urlsplit(self.args.url)
-        if url_obj.scheme == "dvcx":
-            d["type"] = "dvcx"
-        elif url_obj.scheme.startswith("dvc"):
-            d["type"] = "dvc"
-            protos = tuple(url_obj.scheme.split("+"))
-            if not protos or protos == ("dvc",) or protos == ("dvc", "ssh"):
-                d["url"] = url_obj.netloc + url_obj.path
-            else:
-                d["url"] = url_obj._replace(scheme=protos[1]).geturl()
-        else:
-            d["type"] = "url"
-
         existing = self.repo.datasets.get(self.args.name)
         with self.repo.scm_context:
             if not self.args.force and existing:
@@ -73,8 +57,9 @@ class CmdDatasetAdd(CmdBase):
                     f"{self.args.name} already exists in {path}, "
                     "use the --force to overwrite"
                 )
-            dataset = self.repo.datasets.add(**d)
+            dataset = self.repo.datasets.add(**vars(self.args))
             self.display(self.args.name, dataset)
+            return 0
 
 
 class CmdDatasetUpdate(CmdBase):
@@ -133,6 +118,7 @@ class CmdDatasetUpdate(CmdBase):
                     )
                 return 1
             self.display(self.args.name, dataset, new)
+            return 0
 
 
 def add_parser(subparsers, parent_parser):
