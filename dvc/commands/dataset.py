@@ -67,8 +67,9 @@ class CmdDatasetUpdate(CmdBase):
         from dvc.commands.checkout import log_changes
         from dvc.ui import ui
 
+        action = "Updating"
         if not dataset.lock:
-            return CmdDatasetAdd.display(name, new, "Updating")
+            return CmdDatasetAdd.display(name, new, action)
         if dataset == new:
             ui.write("[yellow]Nothing to update[/]", styled=True)
             return
@@ -78,6 +79,9 @@ class CmdDatasetUpdate(CmdBase):
         v: Optional[tuple[str, str]] = None
         if dataset.type == "dvcx":
             assert new.type == "dvcx"
+            if new.lock.version < dataset.lock.version:
+                action = "Downgrading"
+
             v = (f"v{dataset.lock.version}", f"v{new.lock.version}")
         if dataset.type == "dvc":
             assert new.type == "dvc"
@@ -92,7 +96,7 @@ class CmdDatasetUpdate(CmdBase):
         else:
             part = ui.rich_text(dataset.spec.url, "repr.url")
         changes = ui.rich_text.assemble("(", part, ")")
-        ui.write("Updating", ui.rich_text(name, "cyan"), changes, styled=True)
+        ui.write(action, ui.rich_text(name, "cyan"), changes, styled=True)
         if dataset.type == "url":
             assert new.type == "url"
             stats = diff_files(dataset.lock.files, new.lock.files)
