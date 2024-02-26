@@ -415,11 +415,6 @@ class Index:
             yield from stage.outs
 
     @cached_property
-    def datasets(self) -> dict[str, dict[str, Any]]:
-        datasets = chain.from_iterable(self._datasets.values())
-        return {dataset["name"]: dataset for dataset in datasets}
-
-    @cached_property
     def out_data_keys(self) -> dict[str, set["DataIndexKey"]]:
         by_workspace: dict[str, set["DataIndexKey"]] = defaultdict(set)
 

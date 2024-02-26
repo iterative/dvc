@@ -655,6 +655,7 @@ class Repo:
 
     def _reset(self):
         self.scm._reset()
+        self.datasets._reset()
         self.state.close()
         if "dvcfs" in self.__dict__:
             self.dvcfs.close()
