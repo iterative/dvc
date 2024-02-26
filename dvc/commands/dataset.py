@@ -104,9 +104,17 @@ class CmdDatasetUpdate(CmdBase):
         from dvc.repo.datasets import DatasetNotFoundError
         from dvc.ui import ui
 
+        version = None
+        if self.args.rev:
+            try:
+                version = int(self.args.rev.lstrip("v"))
+            except ValueError:
+                version = self.args.rev
+
+        d = vars(self.args) | {"version": version}
         with self.repo.scm_context:
             try:
-                dataset, new = self.repo.datasets.update(**vars(self.args))
+                dataset, new = self.repo.datasets.update(**d)
             except DatasetNotFoundError:
                 logger.exception("")
                 if matches := get_close_matches(self.args.name, self.repo.datasets):
@@ -183,9 +191,15 @@ dvc+https://github.com/iterative/example-get-started.git""",
     ds_update_parser = ds_subparsers.add_parser(
         "update",
         parents=[parent_parser],
-        description=append_doc_link(dataset_update_help, "dataset/add"),
+        description=append_doc_link(dataset_update_help, "dataset/update"),
         formatter_class=formatter.RawDescriptionHelpFormatter,
         help=dataset_update_help,
     )
     ds_update_parser.add_argument("name", help="Name of the dataset to update")
+    ds_update_parser.add_argument(
+        "--rev",
+        nargs="?",
+        help="DVCX dataset version or Git revision (e.g. SHA, branch, tag)",
+        metavar="<version>",
+    )
     ds_update_parser.set_defaults(func=CmdDatasetUpdate)
