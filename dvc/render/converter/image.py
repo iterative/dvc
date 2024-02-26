@@ -1,7 +1,10 @@
 import base64
 import json
+import logging
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
+
+from pydantic import BaseModel, Field, ValidationError
 
 from dvc.render import ANNOTATIONS, FILENAME, REVISION, SRC
 
@@ -9,6 +12,8 @@ from . import Converter
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
+
+logger = logging.getLogger(__name__)
 
 
 class ImageConverter(Converter):
@@ -34,9 +39,11 @@ class ImageConverter(Converter):
         return f"data:image;base64,{base64_str}"
 
     def convert(self) -> tuple[list[tuple[str, str, Any]], dict]:
-        datas = []
-        for filename, image_data in self.data.items():
-            datas.append((filename, "", image_data))
+        datas = [
+            (filename, "", image_data)
+            for filename, image_data in self.data.items()
+            if not filename.endswith(".json")
+        ]
         return datas, self.properties
 
     def flat_datapoints(self, revision: str) -> tuple[list[dict], dict]:
@@ -49,8 +56,7 @@ class ImageConverter(Converter):
         datas, properties = self.convert()
 
         if "annotations" in properties:
-            with open(properties["annotations"], encoding="utf-8") as annotations_path:
-                annotations = json.load(annotations_path)
+            annotations = self._load_annotations(properties["annotations"])
 
         for filename, _, image_content in datas:
             if path:
@@ -69,3 +75,34 @@ class ImageConverter(Converter):
             }
             datapoints.append(datapoint)
         return datapoints, properties
+
+    def _load_annotations(self, path: "StrPath") -> dict:
+        with open(path, encoding="utf-8") as annotations_path:
+            try:
+                return _Annotations(**json.load(annotations_path)).model_dump()
+            except json.JSONDecodeError as json_error:
+                logger.warning(json_error)
+                logger.warning("Annotations file %s is not a valid JSON file.", path)
+                return {"annotations": {}}
+            except ValidationError as pydantic_error:
+                logger.warning(pydantic_error)
+                logger.warning(
+                    "Annotations file %s is not a valid annotations file.", path
+                )
+                return {"annotations": {}}
+
+
+class _Coordinates(BaseModel):
+    left: int
+    top: int
+    bottom: int
+    right: int
+
+
+class _BBoxe(BaseModel):
+    box: _Coordinates
+    score: Annotated[float, Field(ge=0, le=1)]
+
+
+class _Annotations(BaseModel):
+    annotations: dict[str, list[_BBoxe]]

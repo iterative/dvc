@@ -358,9 +358,9 @@ def infer_data_sources(plot_id, config=None):
     if isinstance(x, dict):
         sources.append(first(x.keys()))
 
-    # annotation = config.get("annotations", None)
-    # if isinstance(annotation, str):
-    #     sources.append(annotation)
+    annotation = config.get("annotations", None)
+    if isinstance(annotation, str):
+        sources.append(annotation)
 
     return ldistinct(source for source in sources)
 
@@ -496,9 +496,12 @@ def _add_annotations_to_image_definition(target):
     path_to_remove = []
     for path in target["data"]:
         annotation_file = Path(path).with_suffix(".json").as_posix()
+        # if an image and a json match names, we consider the JSON to be annotations
+        # in that case, we add the annotations to the image "definition" as a property
+        # so they are link together.
         if ImageRenderer.matches(path) and annotation_file in target["data"]:
+            # target["data"] empty dict all share the same reference, so override them
             annotations = {"annotations": annotation_file}
-            # empty dict all share the same reference, so override them
             if target["data"][path]:
                 target["data"][path].update({"annotations": annotation_file})
             else:
