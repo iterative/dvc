@@ -4,7 +4,6 @@ import pytest
 from funcy import first
 
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.repo.experiments.exceptions import ExperimentExistsError
 
 
 @pytest.mark.parametrize("use_url", [True, False])
@@ -391,6 +390,7 @@ def test_auto_push_on_run(
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
 
     assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == expected_key
+
 
 @pytest.mark.parametrize(
     "auto_push, expected_key", [(True, "up_to_date"), (False, "success")]
