@@ -217,6 +217,7 @@ remote://remote_name/path/to/file/or/dir (see `dvc remote`)
     ds_update_parser.add_argument("name", help="Name of the dataset to update")
     ds_update_parser.add_argument(
         "--rev",
+        "--version",
         nargs="?",
         help="DVCX dataset version or Git revision (e.g. SHA, branch, tag)",
         metavar="<version>",
