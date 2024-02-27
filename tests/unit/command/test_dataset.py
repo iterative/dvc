@@ -74,6 +74,16 @@ def test_add_already_exists(dvc, caplog, mocker):
             },
         ),
         (
+            {"name": "mydataset", "url": "dvcx://dataset", "type": "dvcx"},
+            {"rev_lock": "0" * 40, "version": 2, "created_at": datetime.now()},
+            {"version": 1},
+            {
+                "missing": "Updating mydataset (dvcx://dataset @ v1)\n",
+                "unchanged": "Nothing to update\n",
+                "updated": "Downgrading mydataset (v2 -> v1)\n",
+            },
+        ),
+        (
             {"name": "mydataset", "url": "s3://bucket/path", "type": "url"},
             {
                 "files": [

@@ -64,9 +64,8 @@ def _get_dataset_info(
 ) -> "DatasetVersion":
     record = record or _get_dataset_record(name)
     assert record
-    v = version or record.latest_version
-    assert v
-    assert v >= 1
+    v = record.latest_version if version is None else version
+    assert v is not None
     return record.get_version(v)
 
 
@@ -208,7 +207,7 @@ class DVCXDataset:
         **kwargs,
     ) -> "Self":
         name, _version = self.name_version
-        version = version or _version
+        version = version if version is not None else _version
         version_info = _get_dataset_info(name, record=record, version=version)
         lock = DVCXDatasetLock(
             **self.spec.to_dict(),
@@ -400,6 +399,18 @@ class Datasets(Mapping[str, Dataset]):
 
     def update(self, name, **kwargs) -> tuple[Dataset, Dataset]:
         dataset = self[name]
+        version = kwargs.get("version")
+
+        if dataset.type == "url" and (version or kwargs.get("rev")):
+            raise ValueError("cannot update version/revision for a url")
+        if dataset.type == "dvcx" and version is not None:
+            if not isinstance(version, int):
+                raise TypeError(
+                    f"dvcx version has to be an integer, got {type(version).__name__!r}"
+                )
+            if version < 1:
+                raise ValueError(f"dvcx version should be >=1, got {version}")
+
         new = dataset.update(self.repo, **kwargs)
 
         self.dump(new, old=dataset)

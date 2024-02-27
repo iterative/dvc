@@ -67,8 +67,9 @@ class CmdDatasetUpdate(CmdBase):
         from dvc.commands.checkout import log_changes
         from dvc.ui import ui
 
+        action = "Updating"
         if not dataset.lock:
-            return CmdDatasetAdd.display(name, new, "Updating")
+            return CmdDatasetAdd.display(name, new, action)
         if dataset == new:
             ui.write("[yellow]Nothing to update[/]", styled=True)
             return
@@ -78,6 +79,9 @@ class CmdDatasetUpdate(CmdBase):
         v: Optional[tuple[str, str]] = None
         if dataset.type == "dvcx":
             assert new.type == "dvcx"
+            if new.lock.version < dataset.lock.version:
+                action = "Downgrading"
+
             v = (f"v{dataset.lock.version}", f"v{new.lock.version}")
         if dataset.type == "dvc":
             assert new.type == "dvc"
@@ -92,7 +96,7 @@ class CmdDatasetUpdate(CmdBase):
         else:
             part = ui.rich_text(dataset.spec.url, "repr.url")
         changes = ui.rich_text.assemble("(", part, ")")
-        ui.write("Updating", ui.rich_text(name, "cyan"), changes, styled=True)
+        ui.write(action, ui.rich_text(name, "cyan"), changes, styled=True)
         if dataset.type == "url":
             assert new.type == "url"
             stats = diff_files(dataset.lock.files, new.lock.files)
@@ -104,9 +108,17 @@ class CmdDatasetUpdate(CmdBase):
         from dvc.repo.datasets import DatasetNotFoundError
         from dvc.ui import ui
 
+        version = None
+        if self.args.rev:
+            try:
+                version = int(self.args.rev.lstrip("v"))
+            except ValueError:
+                version = self.args.rev
+
+        d = vars(self.args) | {"version": version}
         with self.repo.scm_context:
             try:
-                dataset, new = self.repo.datasets.update(**vars(self.args))
+                dataset, new = self.repo.datasets.update(**d)
             except DatasetNotFoundError:
                 logger.exception("")
                 if matches := get_close_matches(self.args.name, self.repo.datasets):
@@ -183,9 +195,15 @@ dvc+https://github.com/iterative/example-get-started.git""",
     ds_update_parser = ds_subparsers.add_parser(
         "update",
         parents=[parent_parser],
-        description=append_doc_link(dataset_update_help, "dataset/add"),
+        description=append_doc_link(dataset_update_help, "dataset/update"),
         formatter_class=formatter.RawDescriptionHelpFormatter,
         help=dataset_update_help,
     )
     ds_update_parser.add_argument("name", help="Name of the dataset to update")
+    ds_update_parser.add_argument(
+        "--rev",
+        nargs="?",
+        help="DVCX dataset version or Git revision (e.g. SHA, branch, tag)",
+        metavar="<version>",
+    )
     ds_update_parser.set_defaults(func=CmdDatasetUpdate)
