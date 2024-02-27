@@ -172,6 +172,7 @@ class SingleStageFile(FileMixin):
     from dvc.stage.loader import SingleStageLoader as LOADER  # noqa: N814
 
     datasets: ClassVar[list[dict[str, Any]]] = []
+    datasets_lock: ClassVar[list[dict[str, Any]]] = []
     metrics: ClassVar[list[str]] = []
     plots: ClassVar[Any] = {}
     params: ClassVar[list[str]] = []
@@ -239,6 +240,20 @@ class ProjectFile(FileMixin):
 
         if update_lock:
             self._dump_lockfile(stage, **kwargs)
+
+    def dump_dataset(self, dataset):
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
+            datasets: list[dict] = data.setdefault("datasets", [])
+            loc = next(
+                (i for i, ds in enumerate(datasets) if ds["name"] == dataset["name"]),
+                None,
+            )
+            if loc is not None:
+                apply_diff(dataset, datasets[loc])
+                datasets[loc] = dataset
+            else:
+                datasets.append(dataset)
+        self.repo.scm_context.track_file(self.relpath)
 
     def _dump_lockfile(self, stage, **kwargs):
         self._lockfile.dump(stage, **kwargs)
@@ -309,6 +324,10 @@ class ProjectFile(FileMixin):
         return self.contents.get("datasets", [])
 
     @property
+    def datasets_lock(self) -> list[dict[str, Any]]:
+        return self.lockfile_contents.get("datasets", [])
+
+    @property
     def artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
         return self.contents.get("artifacts", {})
 
@@ -356,6 +375,24 @@ class Lockfile(FileMixin):
             # even though it may not exist or have been .dvcignored
             self._check_gitignored()
             return {}, ""
+
+    def dump_dataset(self, dataset: dict):
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
+            data.update({"schema": "2.0"})
+            if not data:
+                logger.info("Generating lock file '%s'", self.relpath)
+
+            datasets: list[dict] = data.setdefault("datasets", [])
+            loc = next(
+                (i for i, ds in enumerate(datasets) if ds["name"] == dataset["name"]),
+                None,
+            )
+            if loc is not None:
+                datasets[loc] = dataset
+            else:
+                datasets.append(dataset)
+            data.setdefault("stages", {})
+        self.repo.scm_context.track_file(self.relpath)
 
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage, **kwargs)

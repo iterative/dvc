@@ -29,7 +29,7 @@ def command_tuples():
 
     # the no. of commands will usually go up,
     # but if we ever remove commands and drop below, adjust the magic number accordingly
-    assert len(commands) >= 112
+    assert len(commands) >= 116
     return sorted(commands)
 
 

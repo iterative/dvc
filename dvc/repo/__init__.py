@@ -150,6 +150,7 @@ class Repo:
         from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
         from dvc.repo.artifacts import Artifacts
+        from dvc.repo.datasets import Datasets
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -220,6 +221,7 @@ class Repo:
         self.plots: Plots = Plots(self)
         self.params: Params = Params(self)
         self.artifacts: Artifacts = Artifacts(self)
+        self.datasets: Datasets = Datasets(self)
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]
@@ -653,6 +655,7 @@ class Repo:
 
     def _reset(self):
         self.scm._reset()
+        self.datasets._reset()
         self.state.close()
         if "dvcfs" in self.__dict__:
             self.dvcfs.close()

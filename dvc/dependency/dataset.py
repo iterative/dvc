@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 
 from funcy import compact, merge
 
+from dvc.exceptions import DvcException
 from dvc_data.hashfile.hash_info import HashInfo
 
 from .db import AbstractDependency
@@ -47,9 +48,15 @@ class DatasetDependency(AbstractDependency):
         )
 
     def workspace_status(self):
-        registered = self.repo.index.datasets.get(self.name, {})
+        ds = self.repo.datasets[self.name]
+        if not ds.lock:
+            return {str(self): "not in sync"}
+
         info: dict[str, Any] = self.hash_info.value if self.hash_info else {}  # type: ignore[assignment]
-        if info != registered:
+        lock = self.repo.datasets._lock_from_info(info)
+        if not lock:
+            return {str(self): "new"}
+        if lock != ds.lock:
             return {str(self): "modified"}
         return {}
 
@@ -57,7 +64,15 @@ class DatasetDependency(AbstractDependency):
         return self.workspace_status()
 
     def get_hash(self):
-        return HashInfo(self.PARAM_DATASET, self.repo.index.datasets.get(self.name, {}))
+        ds = self.repo.datasets[self.name]
+        if not ds.lock:
+            if ds._invalidated:
+                raise DvcException(
+                    "Dataset information is not in sync. "
+                    f"Run 'dvc ds update {self.name}' to sync."
+                )
+            raise DvcException("Dataset information missing from dvc.lock file")
+        return HashInfo(self.PARAM_DATASET, ds.lock.to_dict())  # type: ignore[arg-type]
 
     def save(self):
         self.hash_info = self.get_hash()

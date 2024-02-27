@@ -47,6 +47,7 @@ LOCK_FILE_STAGE_SCHEMA = {
 LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 LOCKFILE_SCHEMA = {
     vol.Required("schema"): vol.Equal("2.0", "invalid schema version"),
+    "datasets": object,
     STAGES: LOCKFILE_STAGES_SCHEMA,
 }
 
@@ -128,7 +129,7 @@ DATASET_SCHEMA = vol.Schema(
     {vol.Required("type"): str, vol.Required("name"): str}, extra=vol.ALLOW_EXTRA
 )
 MULTI_STAGE_SCHEMA = {
-    "datasets": [DATASET_SCHEMA],
+    "datasets": object,
     PLOTS: [vol.Any(str, SINGLE_PLOT_SCHEMA)],
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
     VARS_KWD: VARS_SCHEMA,
