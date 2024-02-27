@@ -1,6 +1,5 @@
-import pytest
-
 import dpath
+
 from dvc.repo.plots import Plots
 
 
