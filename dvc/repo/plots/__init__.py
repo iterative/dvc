@@ -503,7 +503,7 @@ def _add_annotations_to_image_definition(target):
             # target["data"] empty dict all share the same reference, so override them
             annotations = {"annotations": annotation_file}
             if target["data"][path]:
-                target["data"][path].update({"annotations": annotation_file})
+                target["data"][path].update(annotations)
             else:
                 target["data"][path] = annotations
             path_to_remove.append(annotation_file)
