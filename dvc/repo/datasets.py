@@ -400,6 +400,9 @@ class Datasets(Mapping[str, Dataset]):
     def update(self, name, **kwargs) -> tuple[Dataset, Dataset]:
         dataset = self[name]
         version = kwargs.get("version")
+
+        if dataset.type == "url" and (version or kwargs.get("rev")):
+            raise ValueError("cannot update version/revision for a url")
         if dataset.type == "dvcx" and version is not None:
             if not isinstance(version, int):
                 raise TypeError(
