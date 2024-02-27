@@ -26,26 +26,6 @@ if TYPE_CHECKING:
 logger = logger.getChild(__name__)
 
 
-def parse_url_and_type(url: str):
-    from urllib.parse import urlsplit
-
-    if os.path.exists(url):
-        return {"type": "dvc", "url": url}
-
-    url_obj = urlsplit(url)
-    if url_obj.scheme == "dvcx":
-        return {"type": "dvcx", "url": url}
-    if url_obj.scheme and not url_obj.scheme.startswith("dvc"):
-        return {"type": "url", "url": url}
-
-    protos = tuple(url_obj.scheme.split("+"))
-    if not protos or protos == ("dvc",):
-        url = url_obj.netloc + url_obj.path
-    else:
-        url = url_obj._replace(scheme=protos[1]).geturl()
-    return {"type": "dvc", "url": url}
-
-
 def _get_dataset_record(name: str) -> "DatasetRecord":
     from dvc.exceptions import DvcException
 
@@ -190,9 +170,14 @@ class DVCXDataset:
     type: ClassVar[Literal["dvcx"]] = "dvcx"
 
     @property
+    def pinned(self) -> bool:
+        return self.name_version[1] is not None
+
+    @property
     def name_version(self) -> tuple[str, Optional[int]]:
         url = urlparse(self.spec.url)
-        parts = url.netloc.split("@v")
+        path = url.netloc + url.path
+        parts = path.split("@v")
         assert parts
 
         name = parts[0]
@@ -384,13 +369,15 @@ class Datasets(Mapping[str, Dataset]):
 
     def add(
         self,
-        url: str,
         name: str,
+        url: str,
+        type: str,  # noqa: A002
         manifest_path: StrPath = "dvc.yaml",
         **kwargs: Any,
     ) -> Dataset:
-        spec = kwargs | parse_url_and_type(url) | {"name": name}
-        dataset = self._build_dataset(os.path.abspath(manifest_path), spec)
+        assert type in {"dvc", "dvcx", "url"}
+        kwargs.update({"name": name, "url": url, "type": type})
+        dataset = self._build_dataset(os.path.abspath(manifest_path), kwargs)
         dataset = dataset.update(self.repo)
 
         self.dump(dataset)

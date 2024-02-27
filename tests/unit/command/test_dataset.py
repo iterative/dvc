@@ -33,7 +33,7 @@ def test_add(dvc, capsys, mocker, spec, lock, expected_output):
 
     m = mocker.patch("dvc.repo.datasets.Datasets.add", return_value=dataset)
 
-    assert main(["dataset", "add", "--url", spec["url"], "--name", spec["name"]]) == 0
+    assert main(["dataset", "add", spec["name"], f"--{spec['type']}", spec["url"]]) == 0
     out, err = capsys.readouterr()
     assert out == expected_output
     assert not err
@@ -45,7 +45,7 @@ def test_add_already_exists(dvc, caplog, mocker):
     dataset = dvc.datasets._build_dataset("dvc.yaml", spec, None)
     mocker.patch("dvc.repo.datasets.Datasets.get", return_value=dataset)
 
-    assert main(["dataset", "add", "--url", "url", "--name", "ds"]) == 255
+    assert main(["dataset", "add", "ds", "--dvcx", "dataset"]) == 255
     assert "ds already exists in dvc.yaml, use the --force to overwrite" in caplog.text
 
 
