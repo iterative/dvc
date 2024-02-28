@@ -49,6 +49,17 @@ class CmdDatasetAdd(CmdBase):
         ui.write(action, ui.rich_text(name, "cyan"), text, styled=True)
 
     def run(self):
+        if not self.args.dvc and self.args.rev:
+            raise DvcException("--rev can't be used without --dvc")
+        if not self.args.dvc and self.args.path:
+            raise DvcException("--path can't be used without --dvc")
+
+        d = vars(self.args)
+        for key in ["dvc", "dvcx", "url"]:
+            if url := d.pop(key, None):
+                d.update({"type": key, "url": url})
+                break
+
         existing = self.repo.datasets.get(self.args.name)
         with self.repo.scm_context:
             if not self.args.force and existing:
@@ -57,7 +68,7 @@ class CmdDatasetAdd(CmdBase):
                     f"{self.args.name} already exists in {path}, "
                     "use the --force to overwrite"
                 )
-            dataset = self.repo.datasets.add(**vars(self.args))
+            dataset = self.repo.datasets.add(**d)
             self.display(self.args.name, dataset)
             return 0
 
@@ -154,33 +165,37 @@ def add_parser(subparsers, parent_parser):
         formatter_class=formatter.RawTextHelpFormatter,
         help=dataset_add_help,
     )
-    ds_add_parser.add_argument(
+
+    url_exclusive_group = ds_add_parser.add_mutually_exclusive_group(required=True)
+    url_exclusive_group.add_argument(
+        "--dvcx", metavar="name", help="Name of the dvcx dataset to track"
+    )
+    url_exclusive_group.add_argument(
+        "--dvc",
+        help="Path or URL to a Git/DVC repository to track",
+        metavar="url",
+    )
+    url_exclusive_group.add_argument(
         "--url",
-        required=True,
         help="""\
-Location of the data to download. Supported URLs:
+URL of a cloud-versioned remote to track. Supported URLs:
 
 s3://bucket/key/path
 gs://bucket/path/to/file/or/dir
 azure://mycontainer/path
 remote://remote_name/path/to/file/or/dir (see `dvc remote`)
-dvcx://dataset_name
-
-To import data from dvc/git repositories, \
-add dvc:// schema to the repo url, e.g:
-dvc://git@github.com:iterative/example-get-started.git
-dvc+https://github.com/iterative/example-get-started.git""",
+""",
     )
-    ds_add_parser.add_argument(
-        "--name", help="Name of the dataset to add", required=True
-    )
+    ds_add_parser.add_argument("name", help="Name of the dataset to add")
     ds_add_parser.add_argument(
         "--rev",
-        help="Git revision, e.g. SHA, branch, tag "
-        "(only applicable for dvc/git repository)",
+        help="Git revision, e.g. SHA, branch, tag (only applicable with --dvc)",
+        metavar="<commit>",
     )
     ds_add_parser.add_argument(
-        "--path", help="Path to a file or directory within the git repository"
+        "--path",
+        help="Path to a file or a directory within a git repository "
+        "(only applicable with --dvc)",
     )
     ds_add_parser.add_argument(
         "-f",
@@ -202,6 +217,7 @@ dvc+https://github.com/iterative/example-get-started.git""",
     ds_update_parser.add_argument("name", help="Name of the dataset to update")
     ds_update_parser.add_argument(
         "--rev",
+        "--version",
         nargs="?",
         help="DVCX dataset version or Git revision (e.g. SHA, branch, tag)",
         metavar="<version>",
