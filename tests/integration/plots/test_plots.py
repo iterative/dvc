@@ -440,6 +440,8 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     html_result = extract_vega_specs(
         html_path,
         [
+            "subdirA/linear_subdir.json",
+            "subdirB/linear_subdir.json",
             "linear_train_vs_test",
             "confusion_train_vs_test",
         ],
@@ -465,6 +467,22 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
             "<DVC_METRIC_DATA>"
         ]
         == ble
+    )
+    assert (
+        html_result["subdirA/linear_subdir.json"]["layer"][1]["encoding"]["x"]["field"]
+        == "x"
+    )
+    assert (
+        html_result["subdirA/linear_subdir.json"]["layer"][1]["encoding"]["y"]["field"]
+        == "y"
+    )
+    assert (
+        html_result["subdirB/linear_subdir.json"]["layer"][1]["encoding"]["x"]["field"]
+        == "step"
+    )
+    assert (
+        html_result["subdirB/linear_subdir.json"]["layer"][1]["encoding"]["y"]["field"]
+        == "y"
     )
 
 
