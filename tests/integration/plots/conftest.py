@@ -87,13 +87,13 @@ def repo_with_plots(tmp_dir, scm, dvc, run_copy_metrics):
 def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
     def make():
         # test subdir functionality
-        linear_subdirA_v1 = [
+        linear_subdir_a_v1 = [
             {"x": 1, "y": 0.2},
             {"x": 2, "y": 0.3},
             {"x": 3, "y": 0.4},
         ]
         # test subdir default values for x = step
-        linear_subdirB_v1 = [
+        linear_subdir_b_v1 = [
             {"step": 1, "y": 0.2},
             {"step": 2, "y": 0.3},
             {"step": 3, "y": 0.4},
@@ -124,8 +124,8 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
 
         (tmp_dir / "subdirA").mkdir()
         (tmp_dir / "subdirB").mkdir()
-        (tmp_dir / "subdirA" / "linear_subdir_src.json").dump_json(linear_subdirA_v1)
-        (tmp_dir / "subdirB" / "linear_subdir_src.json").dump_json(linear_subdirB_v1)
+        (tmp_dir / "subdirA" / "linear_subdir_src.json").dump_json(linear_subdir_a_v1)
+        (tmp_dir / "subdirB" / "linear_subdir_src.json").dump_json(linear_subdir_b_v1)
         (tmp_dir / "linear_train_src.json").dump_json(linear_train_v1)
         (tmp_dir / "linear_test_src.json").dump_json(linear_test_v1)
         (tmp_dir / "confusion_train_src.json").dump_json(confusion_train_v1)
@@ -222,8 +222,8 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
         scm.commit("commit dvc files")
         yield {
             "data": {
-                "subdirA/linear_subdir.json": linear_subdirA_v1,
-                "subdirB/linear_subdir.json": linear_subdirB_v1,
+                "subdirA/linear_subdir.json": linear_subdir_a_v1,
+                "subdirB/linear_subdir.json": linear_subdir_b_v1,
                 "linear_train.json": linear_train_v1,
                 "linear_test.json": linear_test_v1,
                 "confusion_train.json": confusion_train_v1,
