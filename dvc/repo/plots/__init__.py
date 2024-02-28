@@ -449,11 +449,10 @@ def _resolve_definitions(
     config_dir = fs.dirname(config_path)
     result: dict[str, dict] = {}
 
-    # sort by key length to process the most general paths first
-    # then override them with more specific ones.
-    for plot_id, plot_props in sorted(
-        definitions.items(), key=lambda item: len(item[0])
-    ):
+    plot_ids_parents = [
+        _normpath(fs.join(config_dir, plot_id)) for plot_id in definitions
+    ]
+    for plot_id, plot_props in definitions.items():
         if plot_props is None:
             plot_props = {}
         if _id_is_path(plot_props):
@@ -462,12 +461,27 @@ def _resolve_definitions(
                 unpacked = unpack_if_dir(
                     fs, data_path, props=plot_props | props, onerror=onerror
                 )
+                # use config for parent directory with most specific definition
+                unpacked["data"] = {
+                    k: v
+                    for k, v in unpacked["data"].items()
+                    if _closest_parent(fs, k, plot_ids_parents) == data_path
+                }
                 dpath.merge(result, unpacked)
         elif _matches(targets, config_path, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
             dpath.merge(result, {"data": {plot_id: adjusted_props | props}})
 
     return result
+
+
+def _closest_parent(fs, path, parents):
+    best_result = ""
+    for parent in parents:
+        common_path = fs.commonpath([path, parent])
+        if len(common_path) > len(best_result):
+            best_result = common_path
+    return best_result
 
 
 def _collect_pipeline_files(repo, targets: list[str], props, onerror=None):
