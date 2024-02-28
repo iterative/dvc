@@ -3,36 +3,36 @@ import dpath
 from dvc.repo.plots import Plots
 
 
-def test_plots_definitions_works_with_nested_plots(tmp_dir, scm, dvc):
-    data_v1 = [
+def test_subdir_config_not_overwritten_by_parents(tmp_dir, scm, dvc):
+    plot_data = [
         {"x": 1, "y": 0.1},
         {"x": 2, "y": 0.2},
         {"x": 3, "y": 0.3},
     ]
-    data_subdir_v1 = [
+    subdir_plot_data = [
         {"x": 1, "y": 0.2, "z": 0.1},
         {"x": 2, "y": 0.3, "z": 0.2},
         {"x": 3, "y": 0.4, "z": 0.3},
     ]
 
-    plots_dir = tmp_dir / "plots"
-    subdir = plots_dir / "subdir"
+    (tmp_dir / "plots").mkdir()
+    (tmp_dir / "plots" / "subdir").mkdir()
 
-    plots_dir.mkdir()
-    subdir.mkdir()
-
-    (plots_dir / "data_v1.json").dump_json(data_v1)
-    (subdir / "data_subdir_v1.json").dump_json(data_subdir_v1)
+    (tmp_dir / "plots" / "plot.json").dump_json(plot_data)
+    (tmp_dir / "plots" / "subdir" / "plot.json").dump_json(subdir_plot_data)
 
     plots_config = [
         {
             "plots/subdir/": {
                 "x": "z",
+                "y": "x",
             }
         },
+        {"plots": {"x": "x", "y": "y"}},
         {
-            "plots": {
-                "x": "x",
+            "subdir axis defined by filename": {
+                "x": {"plots/subdir/plot.json": "x"},
+                "y": {"plots/subdir/plot.json": "y"},
             }
         },
     ]
@@ -44,8 +44,8 @@ def test_plots_definitions_works_with_nested_plots(tmp_dir, scm, dvc):
 
     scm.add(
         [
-            "plots/data_v1.json",
-            "plots/subdir/data_subdir_v1.json",
+            "plots/plot.json",
+            "plots/subdir/plot.json",
             "dvc.yaml",
         ]
     )
@@ -54,6 +54,10 @@ def test_plots_definitions_works_with_nested_plots(tmp_dir, scm, dvc):
     plots = next(Plots(dvc).collect())
 
     assert dpath.get(plots, "workspace/definitions/data/dvc.yaml/data") == {
-        "plots/data_v1.json": {"x": "x"},
-        "plots/subdir/data_subdir_v1.json": {"x": "z"},
+        "plots/plot.json": {"x": "x", "y": "y"},
+        "plots/subdir/plot.json": {"x": "z", "y": "x"},
+        "subdir axis defined by filename": {
+            "x": {"plots/subdir/plot.json": "x"},
+            "y": {"plots/subdir/plot.json": "y"},
+        },
     }
