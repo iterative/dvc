@@ -67,13 +67,12 @@ class TmpDir(pathlib.Path):
     def config(self):
         return {"url": self.url}
 
-    def __new__(cls, *args, **kwargs):
-        if cls is TmpDir:
-            cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
+    if sys.version_info < (3, 12):
 
-        if sys.version_info >= (3, 12):
-            return object.__new__(cls)
-        else:  # noqa: RET505
+        def __new__(cls, *args, **kwargs):
+            if cls is TmpDir:
+                cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
+
             # init parameter and `_init` method has been removed in Python 3.10.
             kw = {"init": False} if sys.version_info < (3, 10) else {}
             self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
