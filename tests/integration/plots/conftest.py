@@ -122,10 +122,8 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
             {"actual": 1, "predicted": 0},
         ]
 
-        (tmp_dir / "subdirA").mkdir()
-        (tmp_dir / "subdirB").mkdir()
-        (tmp_dir / "subdirA" / "linear_subdir_src.json").dump_json(linear_subdir_a_v1)
-        (tmp_dir / "subdirB" / "linear_subdir_src.json").dump_json(linear_subdir_b_v1)
+        (tmp_dir / "linear_subdir_a_src.json").dump_json(linear_subdir_a_v1)
+        (tmp_dir / "linear_subdir_b_src.json").dump_json(linear_subdir_b_v1)
         (tmp_dir / "linear_train_src.json").dump_json(linear_train_v1)
         (tmp_dir / "linear_test_src.json").dump_json(linear_test_v1)
         (tmp_dir / "confusion_train_src.json").dump_json(confusion_train_v1)
@@ -133,8 +131,8 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
 
         scm.add(
             [
-                "subdirA/linear_subdir_src.json",
-                "subdirB/linear_subdir_src.json",
+                "linear_subdir_a_src.json",
+                "linear_subdir_b_src.json",
                 "linear_train_src.json",
                 "linear_test_src.json",
                 "confusion_train_src.json",
@@ -143,15 +141,18 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
         )
         scm.commit("add data sources")
 
+        (tmp_dir / "subdirA").mkdir()
+        (tmp_dir / "subdirB").mkdir()
+
         run_copy_metrics(
-            "subdirA/linear_subdir_src.json",
+            "linear_subdir_a_src.json",
             "subdirA/linear_subdir.json",
             name="linear_subdir",
             outs=["subdirA/linear_subdir.json"],
             commit="linear_subdir",
         )
         run_copy_metrics(
-            "subdirB/linear_subdir_src.json",
+            "linear_subdir_b_src.json",
             "subdirB/linear_subdir.json",
             name="linear_subdir",
             outs=["subdirB/linear_subdir.json"],
@@ -185,15 +186,16 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
             outs=["confusion_test.json"],
             commit="confusion_test",
         )
-        plots_config = [
-            {
-                "subdirA": {
-                    "x": "x",
-                    "y": "y",
-                    "title": "subdir plots with x and y defined",
-                }
-            },
-            {"subdirB": {"title": "subdir plots with default x and y"}},
+
+        subdir_a_config = {
+            "x": "x",
+            "y": "y",
+            "title": "subdir plots with x and y defined",
+        }
+
+        subdir_b_config = {"title": "subdir plots with default x and y"}
+
+        other_plots_config = [
             {
                 "linear_train_vs_test": {
                     "x": "x",
@@ -216,10 +218,19 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
         from dvc.utils.serialize import modify_yaml
 
         with modify_yaml("dvc.yaml") as dvcfile_content:
-            dvcfile_content["plots"] = plots_config
+            dvcfile_content["plots"] = [
+                {"subdirA": subdir_a_config},
+                {"subdirB": subdir_b_config},
+                *other_plots_config,
+            ]
 
         scm.add(["dvc.yaml", "dvc.lock"])
         scm.commit("commit dvc files")
+
+        # remove generate .gitignore that are considered as plot otherwise
+        (tmp_dir / "subdirA" / ".gitignore").unlink()
+        (tmp_dir / "subdirB" / ".gitignore").unlink()
+
         yield {
             "data": {
                 "subdirA/linear_subdir.json": linear_subdir_a_v1,
@@ -229,7 +240,13 @@ def repo_with_config_plots(tmp_dir, scm, dvc, run_copy_metrics):
                 "confusion_train.json": confusion_train_v1,
                 "confusion_test.json": confusion_test_v1,
             },
-            "configs": {"dvc.yaml": plots_config},
+            "configs": {
+                "dvc.yaml": [
+                    {"subdirA/linear_subdir.json": subdir_a_config},
+                    {"subdirB/linear_subdir.json": subdir_b_config},
+                    *other_plots_config,
+                ]
+            },
         }
 
     return make
