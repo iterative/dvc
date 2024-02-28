@@ -538,7 +538,7 @@ def unpack_if_dir(fs, path, props: dict[str, str], onerror: Optional[Callable] =
 
     if "data" in unpacked:
         for subpath in unpacked["data"]:
-            result["data"].update({subpath: {} | props})  # avoid shared reference
+            result["data"].update({subpath: props.copy()})
     else:
         result.update(unpacked)
 
