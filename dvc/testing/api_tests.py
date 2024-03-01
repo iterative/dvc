@@ -33,9 +33,9 @@ class TestAPI:
         [
             {},
             {"url": "{path}"},
-            {"url": "{path}", "rev": "master"},
+            {"url": "{path}", "rev": "{default_branch}"},
             {"url": "file://{posixpath}"},
-            {"url": "file://{posixpath}", "rev": "master"},
+            {"url": "file://{posixpath}", "rev": "{default_branch}"},
         ],
         ids=["current", "local", "local_rev", "git", "git_rev"],
     )
@@ -61,6 +61,8 @@ class TestAPI:
 
         if url := fs_kwargs.get("url"):
             fs_kwargs["url"] = url.format(path=tmp_dir, posixpath=tmp_dir.as_posix())
+        if rev := fs_kwargs.get("rev"):
+            fs_kwargs["rev"] = rev.format(default_branch=scm.active_branch())
 
         fs = DVCFileSystem(**fs_kwargs)
 
