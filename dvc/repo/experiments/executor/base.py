@@ -20,7 +20,6 @@ from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH, ExpRefInfo
 from dvc.repo.experiments.utils import to_studio_params
 from dvc.repo.metrics.show import _collect_top_level_metrics
 from dvc.repo.params.show import _collect_top_level_params
-from dvc.scm import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
@@ -36,6 +35,7 @@ if TYPE_CHECKING:
 
     from dvc.repo import Repo
     from dvc.repo.experiments.stash import ExpStashEntry
+    from dvc.scm import Git
     from dvc.stage import PipelineStage, Stage
 
 logger = logger.getChild(__name__)
@@ -297,13 +297,16 @@ class BaseExecutor(ABC):
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
                 dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
-            cls.commit(
-                dvc,  # type: ignore[arg-type]
-                exp_hash,
-                exp_name=info.name,
-                force=force,
-                message=message,
-            )
+
+            with cls.auto_push(dvc):
+                cls.commit(
+                    dvc.scm,  # type: ignore[arg-type]
+                    exp_hash,
+                    exp_name=info.name,
+                    force=force,
+                    message=message,
+                )
+
             ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
             exp_ref = ExpRefInfo.from_ref(ref) if ref else None
             untracked = dvc.scm.untracked_files()
@@ -545,13 +548,14 @@ class BaseExecutor(ABC):
         repro_force,
         message: Optional[str] = None,
     ) -> tuple[Optional[str], Optional["ExpRefInfo"], bool]:
-        cls.commit(
-            dvc,
-            exp_hash,
-            exp_name=info.name,
-            force=repro_force,
-            message=message,
-        )
+        with cls.auto_push(dvc):
+            cls.commit(
+                dvc.scm,
+                exp_hash,
+                exp_name=info.name,
+                force=repro_force,
+                message=message,
+            )
 
         ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
         exp_ref: Optional["ExpRefInfo"] = ExpRefInfo.from_ref(ref) if ref else None
@@ -661,6 +665,22 @@ class BaseExecutor(ABC):
             kwargs = {}
         return args, kwargs
 
+    @classmethod
+    @contextmanager
+    def auto_push(cls, dvc: "Repo") -> Iterator[None]:
+        exp_config = dvc.config.get("exp", {})
+        auto_push = env2bool(DVC_EXP_AUTO_PUSH, exp_config.get("auto_push", False))
+        if not auto_push:
+            yield
+            return
+
+        git_remote = os.getenv(
+            DVC_EXP_GIT_REMOTE, exp_config.get("git_remote", "origin")
+        )
+        cls._validate_remotes(dvc, git_remote)
+        yield
+        cls._auto_push(dvc, git_remote)
+
     @staticmethod
     def _auto_push(
         dvc: "Repo",
@@ -689,29 +709,13 @@ class BaseExecutor(ABC):
     @classmethod
     def commit(
         cls,
-        dvc: "Repo",
+        scm: "Git",
         exp_hash: str,
         exp_name: Optional[str] = None,
         force: bool = False,
         message: Optional[str] = None,
     ):
-        """
-        Commit stages as an experiment and return the commit SHA.
-        Push the experiment if env `DVC_EXP_AUTO_PUSH` is True.
-        """
-
-        if not isinstance(dvc.scm, Git):
-            raise DvcException("Only Git supported for experiment commits")
-
-        scm: Git = dvc.scm
-
-        exp_config = dvc.config.get("exp", {})
-        auto_push = env2bool(DVC_EXP_AUTO_PUSH, exp_config.get("auto_push", False))
-        git_remote = os.getenv(
-            DVC_EXP_GIT_REMOTE, exp_config.get("git_remote", "origin")
-        )
-        if auto_push:
-            cls._validate_remotes(dvc, git_remote)
+        """Commit stages as an experiment and return the commit SHA."""
 
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=False):
@@ -748,9 +752,6 @@ class BaseExecutor(ABC):
         else:
             scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
-
-        if auto_push:
-            cls._auto_push(dvc, git_remote)
 
         return new_rev
 
