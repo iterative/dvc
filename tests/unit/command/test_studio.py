@@ -1,7 +1,16 @@
+import pytest
 from dvc_studio_client.auth import AuthorizationExpiredError
 
+from dvc import env
 from dvc.cli import main
 from dvc.utils.studio import STUDIO_URL
+
+
+@pytest.fixture(autouse=True)
+def global_config_dir(monkeypatch, tmp_dir_factory):
+    monkeypatch.setenv(
+        env.DVC_GLOBAL_CONFIG_DIR, str(tmp_dir_factory.mktemp("studio-login"))
+    )
 
 
 def test_studio_login_token_check_failed(mocker):
