@@ -3,7 +3,6 @@ import os
 import shutil
 
 import pytest
-from flaky.flaky_decorator import flaky
 
 import dvc_data
 from dvc.cli import main
@@ -207,7 +206,7 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     assert hash_spy.call_count == 10
 
 
-@flaky(max_runs=3, min_passes=1)
+@pytest.mark.flaky(reruns=3)
 @pytest.mark.parametrize("erepo_type", ["git_dir", "erepo_dir"])
 def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo_type):
     erepo = request.getfixturevalue(erepo_type)
