@@ -372,3 +372,40 @@ def test_push_pull_invalid_workspace(
         dvc.experiments.push(git_upstream.remote, push_cache=True)
         dvc.experiments.pull(git_upstream.remote, pull_cache=True)
         assert "failed to collect" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "auto_push, expected_key", [(True, "up_to_date"), (False, "success")]
+)
+def test_auto_push_on_run(
+    tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage, auto_push, expected_key
+):
+    remote = git_upstream.remote
+
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = auto_push
+        conf["exp"]["git_remote"] = remote
+
+    exp_name = "foo"
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
+
+    assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == expected_key
+
+
+@pytest.mark.parametrize(
+    "auto_push, expected_key", [(True, "up_to_date"), (False, "success")]
+)
+def test_auto_push_on_save(
+    tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage, auto_push, expected_key
+):
+    remote = git_upstream.remote
+    exp_name = "foo"
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
+
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = auto_push
+        conf["exp"]["git_remote"] = remote
+
+    dvc.experiments.save(name=exp_name, force=True)
+
+    assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == expected_key

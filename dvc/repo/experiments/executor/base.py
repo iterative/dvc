@@ -297,13 +297,16 @@ class BaseExecutor(ABC):
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
                 dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
-            cls.commit(
-                dvc.scm,  # type: ignore[arg-type]
-                exp_hash,
-                exp_name=info.name,
-                force=force,
-                message=message,
-            )
+
+            with cls.auto_push(dvc):
+                cls.commit(
+                    dvc.scm,  # type: ignore[arg-type]
+                    exp_hash,
+                    exp_name=info.name,
+                    force=force,
+                    message=message,
+                )
+
             ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
             exp_ref = ExpRefInfo.from_ref(ref) if ref else None
             untracked = dvc.scm.untracked_files()
@@ -460,9 +463,6 @@ class BaseExecutor(ABC):
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.ui import ui
 
-        auto_push = env2bool(DVC_EXP_AUTO_PUSH)
-        git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
-
         if queue is not None:
             queue.put((rev, os.getpid()))
         if log_errors and log_level is not None:
@@ -483,9 +483,6 @@ class BaseExecutor(ABC):
             message=message,
             **kwargs,
         ) as dvc:
-            if auto_push:
-                cls._validate_remotes(dvc, git_remote)
-
             args, kwargs = cls._repro_args(dvc)
             if args:
                 targets: Optional[Union[list, str]] = args[0]
@@ -519,8 +516,6 @@ class BaseExecutor(ABC):
                     dvc,
                     info,
                     exp_hash,
-                    auto_push,
-                    git_remote,
                     repro_force,
                     message=message,
                 )
@@ -550,20 +545,18 @@ class BaseExecutor(ABC):
         dvc,
         info,
         exp_hash,
-        auto_push,
-        git_remote,
         repro_force,
         message: Optional[str] = None,
     ) -> tuple[Optional[str], Optional["ExpRefInfo"], bool]:
-        cls.commit(
-            dvc.scm,
-            exp_hash,
-            exp_name=info.name,
-            force=repro_force,
-            message=message,
-        )
-        if auto_push:
-            cls._auto_push(dvc, dvc.scm, git_remote)
+        with cls.auto_push(dvc):
+            cls.commit(
+                dvc.scm,
+                exp_hash,
+                exp_name=info.name,
+                force=repro_force,
+                message=message,
+            )
+
         ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
         exp_ref: Optional["ExpRefInfo"] = ExpRefInfo.from_ref(ref) if ref else None
         if cls.WARN_UNTRACKED:
@@ -672,15 +665,30 @@ class BaseExecutor(ABC):
             kwargs = {}
         return args, kwargs
 
+    @classmethod
+    @contextmanager
+    def auto_push(cls, dvc: "Repo") -> Iterator[None]:
+        exp_config = dvc.config.get("exp", {})
+        auto_push = env2bool(DVC_EXP_AUTO_PUSH, exp_config.get("auto_push", False))
+        if not auto_push:
+            yield
+            return
+
+        git_remote = os.getenv(
+            DVC_EXP_GIT_REMOTE, exp_config.get("git_remote", "origin")
+        )
+        cls._validate_remotes(dvc, git_remote)
+        yield
+        cls._auto_push(dvc, git_remote)
+
     @staticmethod
     def _auto_push(
         dvc: "Repo",
-        scm: "Git",
         git_remote: Optional[str],
         push_cache=True,
         run_cache=True,
     ):
-        branch = scm.get_ref(EXEC_BRANCH, follow=False)
+        branch = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
         try:
             dvc.experiments.push(
                 git_remote,
@@ -708,6 +716,7 @@ class BaseExecutor(ABC):
         message: Optional[str] = None,
     ):
         """Commit stages as an experiment and return the commit SHA."""
+
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=False):
             logger.debug("No changes to commit")
