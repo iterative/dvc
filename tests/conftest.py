@@ -123,7 +123,7 @@ def pytest_runtest_setup(item):
     if "CI" in os.environ and item.get_closest_marker("needs_internet") is not None:
         # remotes that need internet connection might be flaky,
         # so we rerun them in case it fails.
-        item.add_marker(pytest.mark.flaky(max_runs=5, min_passes=1))
+        item.add_marker(pytest.mark.flaky(reruns=5))
 
 
 @pytest.fixture(scope="session")
