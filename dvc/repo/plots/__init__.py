@@ -489,6 +489,7 @@ def _closest_parent(fs, path, parents):
             best_result = common_path
     return best_result
 
+
 def _add_annotations_to_image_definition(target):
     if "data" not in target:
         return target

@@ -55,6 +55,7 @@ class ImageConverter(Converter):
         datapoints = []
         datas, properties = self.convert()
 
+        annotations = {}
         if "annotations" in properties:
             annotations = self._load_annotations(properties["annotations"])
 
@@ -67,12 +68,13 @@ class ImageConverter(Converter):
                 )
             else:
                 src = self._encode_image(image_content)
-            datapoint = {
+            datapoint: dict[str, Any] = {
                 REVISION: revision,
                 FILENAME: filename,
                 SRC: src,
-                ANNOTATIONS: annotations,
             }
+            if annotations:
+                datapoint[ANNOTATIONS] = annotations
             datapoints.append(datapoint)
         return datapoints, properties
 

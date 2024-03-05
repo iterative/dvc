@@ -42,7 +42,7 @@ def to_json(renderer, split: bool = False) -> list[dict]:
             {
                 TYPE_KEY: renderer.TYPE,
                 REVISIONS: [datapoint.get(REVISION)],
-                **datapoint.get(ANNOTATIONS),
+                **datapoint.get(ANNOTATIONS, {}),
                 "url": datapoint.get(SRC),
             }
             for datapoint in renderer.datapoints
