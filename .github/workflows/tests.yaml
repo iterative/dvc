@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [main, 2.x]
+    branches: [main]
   pull_request:
   schedule:
     - cron: '5 1 * * *'  # every day at 01:05
