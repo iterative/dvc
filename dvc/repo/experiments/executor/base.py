@@ -677,7 +677,13 @@ class BaseExecutor(ABC):
         git_remote = os.getenv(
             DVC_EXP_GIT_REMOTE, exp_config.get("git_remote", "origin")
         )
-        cls._validate_remotes(dvc, git_remote)
+        try:
+            cls._validate_remotes(dvc, git_remote)
+        except DvcException as exc:
+            logger.warning("Failed to validate remotes. Disabling auto push: %s", exc)
+
+            yield
+            return
         yield
         cls._auto_push(dvc, git_remote)
 
@@ -689,21 +695,24 @@ class BaseExecutor(ABC):
         run_cache=True,
     ):
         from dvc.ui import ui
+        from dvc.utils import format_link
 
         branch = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+        link = format_link(
+            "https://dvc.org/doc/user-guide/experiment-management/sharing-experiments"
+        )
+        ui.write(
+            f"Pushing experiment to '{git_remote}'. Cancel with CTRL+C. "
+            f"See {link} for more info."
+        )
         try:
-            ui.write(
-                f"Auto pushing experiment to '{git_remote}'. You can cancel the push "
-                "with CTRL+C. If you need to push your experiment again, you can "
-                f"retry later using `dvc exp push`",
-            )
             dvc.experiments.push(
                 git_remote,
                 branch,
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:  # noqa: BLE001
+        except DvcException as exc:
             logger.warning(
                 (
                     "Something went wrong while auto pushing experiment "
