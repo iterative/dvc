@@ -46,6 +46,15 @@ class CmdStudioLogin(CmdConfig):
 
         self.save_config(hostname, access_token)
 
+        if not self.config["exp"].get("auto_push", True):
+            from dvc.ui import ui
+
+            ui.warn(
+                "exp.auto_push is disabled. \n"
+                "Enable with 'dvc config exp.auto_push true' "
+                "to automatically push experiments to Studio."
+            )
+
         config_path = self.config.files["global"]
         ui.write(f"Authentication complete. Saved token to {config_path}.")
         return 0
@@ -54,6 +63,8 @@ class CmdStudioLogin(CmdConfig):
         with self.config.edit("global") as conf:
             conf["studio"]["token"] = token
             conf["studio"]["url"] = hostname
+            if "auto_push" not in conf["exp"]:
+                conf["exp"]["auto_push"] = True
 
 
 class CmdStudioLogout(CmdConfig):
