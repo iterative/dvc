@@ -409,3 +409,16 @@ def test_auto_push_on_save(
     dvc.experiments.save(name=exp_name, force=True)
 
     assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == expected_key
+
+
+def test_auto_push_misconfigured(
+    tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage, caplog
+):
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = True
+        conf["exp"]["git_remote"] = "notfound"
+
+    exp_name = "foo"
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
+        assert "Failed to validate remotes" in caplog.text
