@@ -422,3 +422,18 @@ def test_auto_push_misconfigured(
     with caplog.at_level(logging.WARNING, logger="dvc"):
         dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
         assert "Failed to validate remotes" in caplog.text
+
+
+def test_auto_push_tmp_dir(tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage):
+    remote = git_upstream.remote
+
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = True
+        conf["exp"]["git_remote"] = remote
+
+    exp_name = "foo"
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], name=exp_name, tmp_dir=True
+    )
+
+    assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == "up_to_date"
