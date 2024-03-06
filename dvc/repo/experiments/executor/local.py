@@ -169,7 +169,7 @@ class TempDirExecutor(BaseLocalExecutor):
     def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)
         logger.debug("Removing tmpdir '%s'", self.root_dir)
-        # remove(self.root_dir)
+        remove(self.root_dir)
 
     @classmethod
     def from_stash_entry(
