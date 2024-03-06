@@ -130,6 +130,8 @@ class TempDirExecutor(BaseLocalExecutor):
 
         self.scm.stash.apply(merge_rev)
         self._update_config(repo.config.read("local"))
+        local_git_config = os.path.join(repo.scm.root_dir, ".git", "config")
+        self._update_git_config(ConfigObj(local_git_config, list_values=False))
 
     def _update_config(self, update):
         local_config = os.path.join(self.root_dir, self.dvc_dir, "config.local")
@@ -139,6 +141,18 @@ class TempDirExecutor(BaseLocalExecutor):
             conf_obj.merge(update)
         else:
             conf_obj = ConfigObj(update)
+        if conf_obj:
+            with open(local_config, "wb") as fobj:
+                conf_obj.write(fobj)
+
+    def _update_git_config(self, update):
+        local_config = os.path.join(self.scm.root_dir, ".git", "config")
+        logger.debug("Writing experiments local Git config '%s'", local_config)
+        if os.path.exists(local_config):
+            conf_obj = ConfigObj(local_config, list_values=False)
+            conf_obj.merge(update)
+        else:
+            conf_obj = ConfigObj(update, list_values=False)
         if conf_obj:
             with open(local_config, "wb") as fobj:
                 conf_obj.write(fobj)
@@ -155,7 +169,7 @@ class TempDirExecutor(BaseLocalExecutor):
     def cleanup(self, infofile: Optional[str] = None):
         super().cleanup(infofile)
         logger.debug("Removing tmpdir '%s'", self.root_dir)
-        remove(self.root_dir)
+        # remove(self.root_dir)
 
     @classmethod
     def from_stash_entry(
