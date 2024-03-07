@@ -25,6 +25,7 @@ from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 from dvc.utils.studio import (
     env_to_config,
+    get_repo_url,
     get_subrepo_relpath,
 )
 
@@ -611,6 +612,8 @@ class BaseExecutor(ABC):
             # inferring repo url will fail if not set here
             run_env_config = env_to_config(kwargs.get("run_env", {}))
             dvc_studio_config = run_env_config | dvc_studio_config
+            # override studio repo url if exp git remote set
+            repo_url = get_repo_url(dvc)
             try:
                 post_live_metrics(
                     "start",
@@ -621,6 +624,7 @@ class BaseExecutor(ABC):
                     dvc_studio_config=dvc_studio_config,
                     message=message,
                     subdir=get_subrepo_relpath(dvc),
+                    studio_repo_url=repo_url,
                 )
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
@@ -646,6 +650,7 @@ class BaseExecutor(ABC):
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
                     metrics=_gather_metrics(dvc, on_error="return"),
                     dvc_studio_config=dvc_studio_config,
+                    studio_repo_url=repo_url,
                 )
 
                 if infofile is not None:
