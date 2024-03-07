@@ -643,9 +643,7 @@ def test_plots_empty_directory(tmp_dir, dvc, scm, capsys):
     from dvc.utils.serialize import modify_yaml
 
     with modify_yaml("dvc.yaml") as dvcfile_content:
-        dvcfile_content["plots"] = [
-            {"empty": {}},
-        ]
+    (tmp_dir / "dvc.yaml").dump({"plots": [{"empty": {}}]})
 
     scm.add(["dvc.yaml"])
     scm.commit("commit dvc files")
