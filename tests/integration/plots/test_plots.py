@@ -634,3 +634,15 @@ def test_nested_x_defn_collection(tmp_dir, dvc, scm, capsys):
         {"step": 1, "Max_Leaf_Nodes": "50", "rev": "workspace"},
         {"step": 2, "Max_Leaf_Nodes": "500", "rev": "workspace"},
     ]
+
+
+def test_plots_empty_directory(tmp_dir, dvc, scm, capsys):
+    (tmp_dir / "empty").mkdir()
+    (tmp_dir / "dvc.yaml").dump({"plots": [{"empty": {}}]})
+
+    scm.add(["dvc.yaml"])
+    scm.commit("commit dvc files")
+
+    html_path, _, split_json_result = call(capsys)
+    assert split_json_result == {}
+    assert html_path == ""
