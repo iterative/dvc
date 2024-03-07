@@ -503,6 +503,7 @@ def test_repo_with_dvclive_plots(tmp_dir, capsys, repo_with_dvclive_plots):
 
 @pytest.mark.vscode
 def test_nested_x_defn_collection(tmp_dir, dvc, scm, capsys):
+    # https://github.com/iterative/dvc/pull/10318
     rel_pipeline_dir = "pipelines/data-increment"
     pipeline_rel_dvclive_metrics_dir = "dvclive/plots/metrics"
     pipeline_rel_other_logger_dir = "other/logger"
@@ -634,3 +635,21 @@ def test_nested_x_defn_collection(tmp_dir, dvc, scm, capsys):
         {"step": 1, "Max_Leaf_Nodes": "50", "rev": "workspace"},
         {"step": 2, "Max_Leaf_Nodes": "500", "rev": "workspace"},
     ]
+
+
+def test_plots_empty_directory(tmp_dir, dvc, scm, capsys):
+    (tmp_dir / "empty").mkdir()
+
+    from dvc.utils.serialize import modify_yaml
+
+    with modify_yaml("dvc.yaml") as dvcfile_content:
+        dvcfile_content["plots"] = [
+            {"empty": {}},
+        ]
+
+    scm.add(["dvc.yaml"])
+    scm.commit("commit dvc files")
+
+    html_path, _, split_json_result = call(capsys)
+    assert split_json_result == {}
+    assert html_path == ""
