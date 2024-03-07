@@ -3,6 +3,7 @@ from dvc_studio_client import env, post_live_metrics
 from funcy import first
 
 from dvc.env import (
+    DVC_EXP_GIT_REMOTE,
     DVC_STUDIO_OFFLINE,
     DVC_STUDIO_REPO_URL,
     DVC_STUDIO_TOKEN,
@@ -16,8 +17,9 @@ from dvc.utils.studio import get_subrepo_relpath
 @pytest.mark.studio
 @pytest.mark.parametrize("tmp", [True, False])
 @pytest.mark.parametrize("offline", [True, False])
+@pytest.mark.parametrize("dvc_exp_git_remote", [None, "DVC_EXP_GIT_REMOTE"])
 def test_post_to_studio(
-    tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp, offline
+    tmp_dir, dvc, scm, exp_stage, mocker, monkeypatch, tmp, offline, dvc_exp_git_remote
 ):
     valid_response = mocker.MagicMock()
     valid_response.status_code = 200
@@ -28,6 +30,8 @@ def test_post_to_studio(
     monkeypatch.setenv(DVC_STUDIO_TOKEN, "STUDIO_TOKEN")
     monkeypatch.setenv(DVC_STUDIO_URL, "https://0.0.0.0")
     monkeypatch.setenv(DVC_STUDIO_OFFLINE, offline)
+    if dvc_exp_git_remote:
+        monkeypatch.setenv(DVC_EXP_GIT_REMOTE, dvc_exp_git_remote)
 
     baseline_sha = scm.get_rev()
     exp_rev = first(
@@ -52,7 +56,7 @@ def test_post_to_studio(
 
         assert start_call.kwargs["json"] == {
             "type": "start",
-            "repo_url": "STUDIO_REPO_URL",
+            "repo_url": dvc_exp_git_remote or "STUDIO_REPO_URL",
             "baseline_sha": baseline_sha,
             "name": name,
             "params": {"params.yaml": {"foo": 1}},
@@ -61,7 +65,7 @@ def test_post_to_studio(
 
         assert done_call.kwargs["json"] == {
             "type": "done",
-            "repo_url": "STUDIO_REPO_URL",
+            "repo_url": dvc_exp_git_remote or "STUDIO_REPO_URL",
             "baseline_sha": baseline_sha,
             "name": name,
             "client": "dvc",

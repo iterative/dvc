@@ -1,3 +1,4 @@
+import os
 from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urljoin
 
@@ -125,3 +126,19 @@ def get_subrepo_relpath(repo: "Repo") -> str:
     relpath = as_posix(repo.fs.relpath(repo.root_dir, scm_root_dir))
 
     return "" if relpath == "." else relpath
+
+
+def get_repo_url(repo: "Repo") -> str:
+    from dulwich.porcelain import get_remote_repo
+
+    from dvc.env import DVC_EXP_GIT_REMOTE
+
+    repo_url = os.getenv(
+        DVC_EXP_GIT_REMOTE, repo.config.get("exp", {}).get("git_remote")
+    )
+    if repo_url:
+        try:
+            _, repo_url = get_remote_repo(repo.scm.dulwich.repo, repo_url)
+        except IndexError:
+            pass
+    return repo_url
