@@ -128,7 +128,7 @@ def get_subrepo_relpath(repo: "Repo") -> str:
     return "" if relpath == "." else relpath
 
 
-def get_repo_url(repo: "Repo", git_remote: Optional[str] = None) -> str | None:
+def get_repo_url(repo: "Repo", git_remote: Optional[str] = None) -> Optional[str]:
     from dulwich.porcelain import get_remote_repo
 
     from dvc.env import DVC_EXP_GIT_REMOTE
