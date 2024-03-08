@@ -4,7 +4,7 @@ from collections.abc import Collection, Generator, Iterable, Mapping
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
 
-from dvc_studio_client.post_live_metrics import get_studio_config
+from dvc_studio_client.config import get_studio_config
 from funcy import retry
 
 from dvc.dependency import ParamsDependency
