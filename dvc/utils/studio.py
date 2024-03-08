@@ -128,17 +128,19 @@ def get_subrepo_relpath(repo: "Repo") -> str:
     return "" if relpath == "." else relpath
 
 
-def get_repo_url(repo: "Repo") -> str:
+def get_repo_url(repo: "Repo", git_remote: Optional[str] = None) -> str | None:
     from dulwich.porcelain import get_remote_repo
 
     from dvc.env import DVC_EXP_GIT_REMOTE
 
-    repo_url = os.getenv(
-        DVC_EXP_GIT_REMOTE, repo.config.get("exp", {}).get("git_remote")
-    )
-    if repo_url:
+    if not git_remote:
+        git_remote = os.getenv(
+            DVC_EXP_GIT_REMOTE, repo.config.get("exp", {}).get("git_remote")
+        )
+    if git_remote:
         try:
-            _, repo_url = get_remote_repo(repo.scm.dulwich.repo, repo_url)
+            _, repo_url = get_remote_repo(repo.scm.dulwich.repo, git_remote)
+            return repo_url
         except IndexError:
             pass
-    return repo_url
+    return git_remote
