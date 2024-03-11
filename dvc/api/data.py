@@ -25,7 +25,14 @@ def _wrap_exceptions(repo, url):
         raise PathMissingError(exc.path, url) from exc
 
 
-def get_url(path, repo=None, rev=None, remote=None):
+def get_url(
+    path: str,
+    repo: Optional[str] = None,
+    rev: Optional[str] = None,
+    remote: Optional[str] = None,
+    config: Optional[dict[str, Any]] = None,
+    remote_config: Optional[dict[str, Any]] = None,
+):
     """
     Returns the URL to the storage location of a data file or directory tracked
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
@@ -35,15 +42,44 @@ def get_url(path, repo=None, rev=None, remote=None):
 
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
+
+    Args:
+        path (str): location and file name of the target, relative to the root
+            of `repo`.
+        repo (str, optional): location of the DVC project or Git Repo.
+            Defaults to the current DVC project (found by walking up from the
+            current working directory tree).
+            It can be a URL or a file system path.
+            Both HTTP and SSH protocols are supported for online Git repos
+            (e.g. [user@]server:project.git).
+        rev (str, optional): Any `Git revision`_ such as a branch or tag name,
+            a commit hash or a dvc experiment name.
+            Defaults to HEAD.
+            If `repo` is not a Git repo, this option is ignored.
+        remote (str, optional): Name of the `DVC remote`_ used to form the
+            returned URL string.
+            Defaults to the `default remote`_ of `repo`.
+            For local projects, the cache is tried before the default remote.
+        config(dict, optional): config to be passed to the DVC repository.
+            Defaults to None.
+        remote_config(dict, optional): remote config to be passed to the DVC
+            repository.
+            Defaults to None.
+
+    Returns:
+        str: URL to the file or directory.
     """
     from dvc.config import NoRemoteError
     from dvc_data.index import StorageKeyError
 
-    repo_kwargs: dict[str, Any] = {}
-    if remote:
-        repo_kwargs["config"] = {"core": {"remote": remote}}
     with Repo.open(
-        repo, rev=rev, subrepos=True, uninitialized=True, **repo_kwargs
+        repo,
+        rev=rev,
+        subrepos=True,
+        uninitialized=True,
+        remote=remote,
+        config=config,
+        remote_config=remote_config,
     ) as _repo:
         index, entry = _repo.get_data_index_entry(path)
         with reraise(
