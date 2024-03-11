@@ -25,7 +25,7 @@ def _wrap_exceptions(repo, url):
         raise PathMissingError(exc.path, url) from exc
 
 
-def get_url(path, repo=None, rev=None, remote=None):
+def get_url(path, repo=None, rev=None, **kwargs):
     """
     Returns the URL to the storage location of a data file or directory tracked
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
@@ -39,12 +39,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     from dvc.config import NoRemoteError
     from dvc_data.index import StorageKeyError
 
-    repo_kwargs: dict[str, Any] = {}
-    if remote:
-        repo_kwargs["config"] = {"core": {"remote": remote}}
-    with Repo.open(
-        repo, rev=rev, subrepos=True, uninitialized=True, **repo_kwargs
-    ) as _repo:
+    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True, **kwargs) as _repo:
         index, entry = _repo.get_data_index_entry(path)
         with reraise(
             (StorageKeyError, ValueError),
