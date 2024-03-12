@@ -22,9 +22,12 @@ def download_progress(to: "Output") -> Iterator[Callable[[int], Any]]:
     from dvc.ui import ui
     from dvc.ui._rich_progress import DbDownloadProgress
 
-    with log_durations(logger.debug, f"Saving to {to}"), DbDownloadProgress(
-        console=ui.error_console,
-    ) as progress:
+    with (
+        log_durations(logger.debug, f"Saving to {to}"),
+        DbDownloadProgress(
+            console=ui.error_console,
+        ) as progress,
+    ):
         task = progress.add_task("Saving", total=None, output=to)
         yield lambda n: progress.advance(task, advance=n)
         progress.update(task, description="Saved", total=0)

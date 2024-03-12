@@ -1,4 +1,5 @@
 """Manages progress bars for DVC repo."""
+
 import logging
 import sys
 from threading import RLock

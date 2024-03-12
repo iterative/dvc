@@ -6,6 +6,7 @@ Used for parsing dvc.yaml, dvc.lock and .dvc files.
 
 Not to be confused with strictyaml, a python library with similar motivations.
 """
+
 import re
 import typing
 from contextlib import suppress

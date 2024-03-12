@@ -88,12 +88,10 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return list(it)
 
     @overload
-    def __setitem__(self, item: int, value: Sequence["CellT"]) -> None:
-        ...
+    def __setitem__(self, item: int, value: Sequence["CellT"]) -> None: ...
 
     @overload
-    def __setitem__(self, item: slice, value: Iterable[Sequence["CellT"]]) -> None:
-        ...
+    def __setitem__(self, item: slice, value: Iterable[Sequence["CellT"]]) -> None: ...
 
     def __setitem__(self, item, value) -> None:
         it = value

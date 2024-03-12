@@ -453,15 +453,11 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
         in cap.out
     )
     assert (
-        "{},{},branch_base,{},,2,2,{}".format(
-            ref_info1.name, rev1[:7], _get_rev_isotimestamp(rev1), data_hash
-        )
+        f"{ref_info1.name},{rev1[:7]},branch_base,{_get_rev_isotimestamp(rev1)},,2,2,{data_hash}"
         in cap.out
     )
     assert (
-        "{},{},branch_commit,{},,3,3,{}".format(
-            ref_info2.name, rev2[:7], _get_rev_isotimestamp(rev2), data_hash
-        )
+        f"{ref_info2.name},{rev2[:7]},branch_commit,{_get_rev_isotimestamp(rev2)},,3,3,{data_hash}"
         in cap.out
     )
 
