@@ -43,7 +43,6 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
-
 import os
 
 import pytest

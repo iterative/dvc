@@ -68,10 +68,9 @@ def is_git_ignored(repo, path):
 def check_dvcfile_path(repo, path):
     if not is_valid_filename(path):
         raise StageFileBadNameError(
-            "bad DVC file name '{}'. DVC files should be named "
-            "'{}' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                relpath(path), PROJECT_FILE, os.path.basename(path)
-            )
+            f"bad DVC file name '{relpath(path)}'. DVC files should be named "
+            f"'{PROJECT_FILE}' or have a '.dvc' suffix "
+            f"(e.g. '{os.path.basename(path)}.dvc')."
         )
 
     if is_git_ignored(repo, path):

@@ -1,4 +1,5 @@
 """Common utilities for serialize."""
+
 import os
 from contextlib import AbstractContextManager, contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, TextIO, Union
@@ -15,25 +16,21 @@ if TYPE_CHECKING:
 class DumperFn(Protocol):
     def __call__(
         self, path: "StrPath", data: Any, fs: Optional["FileSystem"] = None
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class DumpersFn(Protocol):
-    def __call__(self, data: Any, stream: TextIO) -> Any:
-        ...
+    def __call__(self, data: Any, stream: TextIO) -> Any: ...
 
 
 class ModifierFn(Protocol):
     def __call__(
         self, path: "StrPath", fs: Optional["FileSystem"] = None
-    ) -> AbstractContextManager[dict]:
-        ...
+    ) -> AbstractContextManager[dict]: ...
 
 
 class LoaderFn(Protocol):
-    def __call__(self, path: "StrPath", fs: Optional["FileSystem"] = None) -> Any:
-        ...
+    def __call__(self, path: "StrPath", fs: Optional["FileSystem"] = None) -> Any: ...
 
 
 ReadType = Union[bytes, None, str]

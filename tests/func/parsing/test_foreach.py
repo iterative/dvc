@@ -1,4 +1,5 @@
 """Testing happy paths for the foreach."""
+
 import os
 
 import pytest

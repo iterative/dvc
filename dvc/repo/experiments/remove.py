@@ -44,9 +44,9 @@ def remove(  # noqa: C901, PLR0912
     exp_ref_list: list["ExpRefInfo"] = []
     queue_entry_list: list["QueueEntry"] = []
     if exp_names:
-        results: dict[
-            str, "ExpRefAndQueueEntry"
-        ] = celery_queue.get_ref_and_entry_by_names(exp_names, git_remote)
+        results: dict[str, "ExpRefAndQueueEntry"] = (
+            celery_queue.get_ref_and_entry_by_names(exp_names, git_remote)
+        )
         remained: list[str] = []
         for name, result in results.items():
             if not result.exp_ref_info and not result.queue_entry:

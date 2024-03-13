@@ -96,9 +96,10 @@ class TempDirExecutor(BaseLocalExecutor):
             temp_merge: stash_rev,
             temp_baseline: entry.baseline_rev,
         }
-        with get_exp_rwlock(
-            repo, writes=[temp_head, temp_merge, temp_baseline]
-        ), self.set_temp_refs(scm, temp_ref_dict):
+        with (
+            get_exp_rwlock(repo, writes=[temp_head, temp_merge, temp_baseline]),
+            self.set_temp_refs(scm, temp_ref_dict),
+        ):
             # Executor will be initialized with an empty git repo that
             # we populate by pushing:
             #   EXEC_HEAD - the base commit for this experiment

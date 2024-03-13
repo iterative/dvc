@@ -1,4 +1,5 @@
 """DVC config objects."""
+
 import os
 import re
 from contextlib import contextmanager

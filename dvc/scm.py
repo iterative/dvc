@@ -1,4 +1,5 @@
 """Manages source control systems (e.g. Git)."""
+
 import os
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
@@ -70,8 +71,7 @@ def SCM(
     *,
     search_parent_directories: bool = ...,
     no_scm: Literal[False] = ...,
-) -> "Git":
-    ...
+) -> "Git": ...
 
 
 @overload
@@ -80,8 +80,7 @@ def SCM(
     *,
     search_parent_directories: bool = ...,
     no_scm: Literal[True],
-) -> "NoSCM":
-    ...
+) -> "NoSCM": ...
 
 
 @overload
@@ -90,8 +89,7 @@ def SCM(
     *,
     search_parent_directories: bool = ...,
     no_scm: bool = ...,
-) -> Union["Git", "NoSCM"]:
-    ...
+) -> Union["Git", "NoSCM"]: ...
 
 
 def SCM(root_dir, *, search_parent_directories=True, no_scm=False):

@@ -1,4 +1,5 @@
 """Exceptions raised by the dvc."""
+
 import errno
 from typing import TYPE_CHECKING, Optional
 
@@ -270,9 +271,8 @@ class NoOutputInExternalRepoError(DvcException):
         from dvc.utils import relpath
 
         super().__init__(
-            "Output '{}' not found in target repository '{}'".format(
-                relpath(path, external_repo_path), external_repo_url
-            )
+            f"Output {relpath(path, external_repo_path)!r} "
+            f"not found in target repository '{external_repo_url}'"
         )
 
 

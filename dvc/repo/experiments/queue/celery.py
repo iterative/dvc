@@ -474,10 +474,10 @@ class LocalCeleryQueue(BaseStashQueue):
             self.scm, exp_names, git_remote
         )
         if not git_remote:
-            queue_entry_match: dict[
-                str, Optional["QueueEntry"]
-            ] = self.match_queue_entry_by_name(
-                exp_names, self.iter_queued(), self.iter_done()
+            queue_entry_match: dict[str, Optional["QueueEntry"]] = (
+                self.match_queue_entry_by_name(
+                    exp_names, self.iter_queued(), self.iter_done()
+                )
             )
 
         for exp_name in exp_names:
