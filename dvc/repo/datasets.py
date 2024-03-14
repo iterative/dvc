@@ -16,8 +16,7 @@ from dvc.types import StrPath
 from dvc_data.hashfile.meta import Meta
 
 if TYPE_CHECKING:
-    from dql.dataset import DatasetRecord  # type: ignore[import]
-    from dvcx.dataset import DatasetVersion  # type: ignore[import]
+    from dvcx.dataset import DatasetRecord, DatasetVersion  # type: ignore[import]
     from typing_extensions import Self
 
     from dvc.repo import Repo
