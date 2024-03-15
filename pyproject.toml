@@ -31,6 +31,7 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
+    "attrs>=22.2.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "distro>=1.3",
