@@ -242,7 +242,7 @@ class ProjectFile(FileMixin):
 
     def dump_dataset(self, dataset):
         with modify_yaml(self.path, fs=self.repo.fs) as data:
-            parsed = self.datasets
+            parsed = self.datasets if data else []
             raw = data.setdefault("datasets", [])
             loc = next(
                 (i for i, ds in enumerate(parsed) if ds["name"] == dataset["name"]),
