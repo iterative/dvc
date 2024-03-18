@@ -248,6 +248,11 @@ class ProjectFile(FileMixin):
                 None,
             )
             if loc is not None:
+                if datasets[loc] != self.datasets[loc]:
+                    raise ParametrizedDumpError(
+                        "cannot update a parametrized dataset entry"
+                    )
+
                 apply_diff(dataset, datasets[loc])
                 datasets[loc] = dataset
             else:

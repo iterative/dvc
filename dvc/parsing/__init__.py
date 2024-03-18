@@ -169,26 +169,26 @@ class DataResolver:
             for name, definition in stages_data.items()
         }
 
-        self.artifacts = {
+        self.artifacts = [
             ArtifactDefinition(self, self.context, name, definition, ARTIFACTS_KWD)
             for name, definition in d.get(ARTIFACTS_KWD, {}).items()
-        }
-        self.datasets = {
+        ]
+        self.datasets = [
             TopDefinition(self, self.context, str(i), definition, DATASETS_KWD)
             for i, definition in enumerate(d.get(DATASETS_KWD, []))
-        }
-        self.metrics = {
+        ]
+        self.metrics = [
             TopDefinition(self, self.context, str(i), definition, METRICS_KWD)
             for i, definition in enumerate(d.get(METRICS_KWD, []))
-        }
-        self.params = {
+        ]
+        self.params = [
             TopDefinition(self, self.context, str(i), definition, PARAMS_KWD)
             for i, definition in enumerate(d.get(PARAMS_KWD, []))
-        }
-        self.plots = {
+        ]
+        self.plots = [
             TopDefinition(self, self.context, str(i), definition, PLOTS_KWD)
             for i, definition in enumerate(d.get(PLOTS_KWD, []))
-        }
+        ]
 
     def resolve_one(self, name: str):
         group, key = split_group_name(name)
