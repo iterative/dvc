@@ -242,21 +242,22 @@ class ProjectFile(FileMixin):
 
     def dump_dataset(self, dataset):
         with modify_yaml(self.path, fs=self.repo.fs) as data:
-            datasets: list[dict] = data.setdefault("datasets", [])
+            parsed = self.datasets
+            raw = data.setdefault("datasets", [])
             loc = next(
-                (i for i, ds in enumerate(datasets) if ds["name"] == dataset["name"]),
+                (i for i, ds in enumerate(parsed) if ds["name"] == dataset["name"]),
                 None,
             )
             if loc is not None:
-                if datasets[loc] != self.datasets[loc]:
+                if raw[loc] != parsed[loc]:
                     raise ParametrizedDumpError(
                         "cannot update a parametrized dataset entry"
                     )
 
-                apply_diff(dataset, datasets[loc])
-                datasets[loc] = dataset
+                apply_diff(dataset, raw[loc])
+                raw[loc] = dataset
             else:
-                datasets.append(dataset)
+                raw.append(dataset)
         self.repo.scm_context.track_file(self.relpath)
 
     def _dump_lockfile(self, stage, **kwargs):
