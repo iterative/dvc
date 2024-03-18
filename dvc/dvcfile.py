@@ -307,28 +307,28 @@ class ProjectFile(FileMixin):
         return self.LOADER(self, self.contents, self.lockfile_contents)
 
     @property
-    def metrics(self) -> list[str]:
-        return self.contents.get("metrics", [])
+    def artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
+        return self.resolver.resolve_artifacts()
 
     @property
-    def plots(self) -> Any:
-        return self.contents.get("plots", {})
+    def metrics(self) -> list[str]:
+        return self.resolver.resolve_metrics()
 
     @property
     def params(self) -> list[str]:
-        return self.contents.get("params", [])
+        return self.resolver.resolve_params()
+
+    @property
+    def plots(self) -> list[Any]:
+        return self.resolver.resolve_plots()
 
     @property
     def datasets(self) -> list[dict[str, Any]]:
-        return self.contents.get("datasets", [])
+        return self.resolver.resolve_datasets()
 
     @property
     def datasets_lock(self) -> list[dict[str, Any]]:
         return self.lockfile_contents.get("datasets", [])
-
-    @property
-    def artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
-        return self.contents.get("artifacts", {})
 
     def remove(self, force=False):
         if not force:
