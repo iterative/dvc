@@ -48,6 +48,9 @@ def prepare_kwargs(stage, run_env=None):
     if DVC_ROOT not in kwargs["env"]:
         kwargs["env"][DVC_ROOT] = stage.repo.root_dir
 
+    #update DVC stage at each command
+    kwargs["env"][DVC_STAGE] = stage.addressing
+
     # NOTE: when you specify `shell=True`, `Popen` [1] will default to
     # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
     # But we actually want to run the same shell that we are running
