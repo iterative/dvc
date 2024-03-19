@@ -287,7 +287,7 @@ def gen_random_name():
     # fmt: on
     # Use custom random generator to make sure that names are random even if
     # global random seed is set (common for ML pipelines).
-    random_generator = random.Random()
+    random_generator = random.Random()  # noqa: S311
     adjective = random_generator.choice(ADJECTIVES)
     noun = random_generator.choice(NOUNS)
     return f"{adjective}-{noun}"
