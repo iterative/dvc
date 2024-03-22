@@ -640,18 +640,5 @@ class TopDefinition:
 
 
 class ArtifactDefinition(TopDefinition):
-    def __init__(
-        self,
-        resolver: DataResolver,
-        context: Context,
-        name: str,
-        definition: Optional["DictStrAny"],
-        where: str = "artifacts",
-    ) -> None:
-        super().__init__(resolver, context, name, definition, where=where)
-
     def resolve(self) -> dict[str, Optional[dict[str, Any]]]:
-        # artifact definition can be `None`
-        if self.definition is None:
-            return {self.name: None}
         return {self.name: super().resolve()}
