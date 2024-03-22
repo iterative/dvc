@@ -22,7 +22,7 @@ def _make_index_onerror(onerror, rev):
     return _onerror
 
 
-def _collect_indexes(  # noqa: PLR0913
+def _collect_indexes(  # noqa: PLR0913, C901
     repo,
     targets=None,
     remote=None,
@@ -55,6 +55,8 @@ def _collect_indexes(  # noqa: PLR0913
 
     def outs_filter(out: "Output") -> bool:
         if push and not out.can_push:
+            return False
+        if remote and out.remote and remote != out.remote:
             return False
         return True
 
