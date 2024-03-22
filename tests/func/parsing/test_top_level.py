@@ -84,7 +84,7 @@ def test_plots(tmp_dir, dvc):
 def test_artifacts(tmp_dir, dvc):
     template = {
         "artifacts": {
-            "cv-classification": {
+            "${artifacts.name}": {
                 "path": "${artifacts.path}",
                 "type": "model",
                 "desc": "CV classification model, ResNet50",
@@ -97,6 +97,7 @@ def test_artifacts(tmp_dir, dvc):
     (tmp_dir / "params.yaml").dump(
         {
             "artifacts": {
+                "name": "cv-classification",
                 "path": "models/resnet.pt",
                 "label1": "resnet50",
                 "label2": "classification",

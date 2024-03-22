@@ -21,6 +21,7 @@ from .context import (
     VarsAlreadyLoaded,
 )
 from .interpolate import (
+    check_expression,
     check_recursive_parse_errors,
     is_interpolated_string,
     recurse,
@@ -641,4 +642,15 @@ class TopDefinition:
 
 class ArtifactDefinition(TopDefinition):
     def resolve(self) -> dict[str, Optional[dict[str, Any]]]:
-        return {self.name: super().resolve()}
+        try:
+            check_expression(self.name)
+            name = self.context.resolve(self.name)
+            if not isinstance(name, str):
+                typ = type(name).__name__
+                raise ResolveError(
+                    f"failed to resolve '{self.where}.{self.name}'"
+                    f" in '{self.relpath}': expected str, got " + typ
+                )
+        except (ParseError, ContextError) as exc:
+            format_and_raise(exc, f"'{self.where}.{self.name}'", self.relpath)
+        return {name: super().resolve()}
