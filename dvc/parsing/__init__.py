@@ -213,7 +213,7 @@ class DataResolver:
         logger.trace("Resolved dvc.yaml:\n%s", data)
         return {STAGES_KWD: data}
 
-    # Top-level section is eagerly evaluated, whereas stages are lazily evaluated,
+    # Top-level sections are eagerly evaluated, whereas stages are lazily evaluated,
     # one-by-one.
 
     def resolve_artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
