@@ -582,6 +582,58 @@ def test_target_remote(tmp_dir, dvc, make_remote):
     }
 
 
+def test_output_target_remote(tmp_dir, dvc, make_remote):
+    make_remote("default", default=True)
+    make_remote("for_foo", default=False)
+    make_remote("for_bar", default=False)
+
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("bar", "bar")
+    tmp_dir.dvc_gen("data", {"one": "one", "two": "two"})
+
+    with (tmp_dir / "foo.dvc").modify() as d:
+        d["outs"][0]["remote"] = "for_foo"
+
+    with (tmp_dir / "bar.dvc").modify() as d:
+        d["outs"][0]["remote"] = "for_bar"
+
+    # push foo and data to for_foo remote
+    dvc.push(remote="for_foo")
+
+    default = dvc.cloud.get_remote_odb("default")
+    for_foo = dvc.cloud.get_remote_odb("for_foo")
+    for_bar = dvc.cloud.get_remote_odb("for_bar")
+
+    # hashes for foo and data, but not bar
+    expected = {
+        "acbd18db4cc2f85cedef654fccc4a4d8",
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }
+
+    assert set(default.all()) == set()
+    assert set(for_foo.all()) == expected
+    assert set(for_bar.all()) == set()
+
+    # push everything without specifying remote
+    dvc.push()
+    assert set(default.all()) == {
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }
+    assert set(for_foo.all()) == expected
+    assert set(for_bar.all()) == {"37b51d194a7513e45b56f6524f2d51f2"}
+
+    clean(["foo", "bar", "data"], dvc)
+
+    # pull foo and data from for_foo remote
+    dvc.pull(remote="for_foo", allow_missing=True)
+
+    assert set(dvc.cache.local.all()) == expected
+
+
 def test_pull_allow_missing(tmp_dir, dvc, local_remote):
     dvc.stage.add(name="bar", outs=["bar"], cmd="echo bar > bar")
 
