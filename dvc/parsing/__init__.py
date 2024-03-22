@@ -21,6 +21,7 @@ from .context import (
     VarsAlreadyLoaded,
 )
 from .interpolate import (
+    check_expression,
     check_recursive_parse_errors,
     is_interpolated_string,
     recurse,
@@ -38,10 +39,16 @@ if TYPE_CHECKING:
 
 logger = logger.getChild(__name__)
 
-STAGES_KWD = "stages"
 VARS_KWD = "vars"
 WDIR_KWD = "wdir"
+
+ARTIFACTS_KWD = "artifacts"
+DATASETS_KWD = "datasets"
+METRICS_KWD = "metrics"
 PARAMS_KWD = "params"
+PLOTS_KWD = "plots"
+STAGES_KWD = "stages"
+
 FOREACH_KWD = "foreach"
 MATRIX_KWD = "matrix"
 DO_KWD = "do"
@@ -163,6 +170,27 @@ class DataResolver:
             for name, definition in stages_data.items()
         }
 
+        self.artifacts = [
+            ArtifactDefinition(self, self.context, name, definition, ARTIFACTS_KWD)
+            for name, definition in d.get(ARTIFACTS_KWD, {}).items()
+        ]
+        self.datasets = [
+            TopDefinition(self, self.context, str(i), definition, DATASETS_KWD)
+            for i, definition in enumerate(d.get(DATASETS_KWD, []))
+        ]
+        self.metrics = [
+            TopDefinition(self, self.context, str(i), definition, METRICS_KWD)
+            for i, definition in enumerate(d.get(METRICS_KWD, []))
+        ]
+        self.params = [
+            TopDefinition(self, self.context, str(i), definition, PARAMS_KWD)
+            for i, definition in enumerate(d.get(PARAMS_KWD, []))
+        ]
+        self.plots = [
+            TopDefinition(self, self.context, str(i), definition, PLOTS_KWD)
+            for i, definition in enumerate(d.get(PLOTS_KWD, []))
+        ]
+
     def resolve_one(self, name: str):
         group, key = split_group_name(name)
 
@@ -185,6 +213,27 @@ class DataResolver:
         data = join(map(self.resolve_one, self.get_keys()))
         logger.trace("Resolved dvc.yaml:\n%s", data)
         return {STAGES_KWD: data}
+
+    # Top-level sections are eagerly evaluated, whereas stages are lazily evaluated,
+    # one-by-one.
+
+    def resolve_artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
+        d: dict[str, Optional[dict[str, Any]]] = {}
+        for item in self.artifacts:
+            d.update(item.resolve())
+        return d
+
+    def resolve_datasets(self) -> list[dict[str, Any]]:
+        return [item.resolve() for item in self.datasets]
+
+    def resolve_metrics(self) -> list[str]:
+        return [item.resolve() for item in self.metrics]
+
+    def resolve_params(self) -> list[str]:
+        return [item.resolve() for item in self.params]
+
+    def resolve_plots(self) -> list[Any]:
+        return [item.resolve() for item in self.plots]
 
     def has_key(self, key: str):
         return self._has_group_and_key(*split_group_name(key))
@@ -565,3 +614,43 @@ class MatrixDefinition:
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
                 format_and_raise(exc, f"stage '{generated}'", self.relpath)
+
+
+class TopDefinition:
+    def __init__(
+        self,
+        resolver: DataResolver,
+        context: Context,
+        name: str,
+        definition: "Any",
+        where: str,
+    ):
+        self.resolver = resolver
+        self.context = context
+        self.name = name
+        self.definition = definition
+        self.where = where
+        self.relpath = self.resolver.relpath
+
+    def resolve(self):
+        try:
+            check_recursive_parse_errors(self.definition)
+            return self.context.resolve(self.definition)
+        except (ParseError, ContextError) as exc:
+            format_and_raise(exc, f"'{self.where}.{self.name}'", self.relpath)
+
+
+class ArtifactDefinition(TopDefinition):
+    def resolve(self) -> dict[str, Optional[dict[str, Any]]]:
+        try:
+            check_expression(self.name)
+            name = self.context.resolve(self.name)
+            if not isinstance(name, str):
+                typ = type(name).__name__
+                raise ResolveError(
+                    f"failed to resolve '{self.where}.{self.name}'"
+                    f" in '{self.relpath}': expected str, got " + typ
+                )
+        except (ParseError, ContextError) as exc:
+            format_and_raise(exc, f"'{self.where}.{self.name}'", self.relpath)
+        return {name: super().resolve()}
