@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+from os.path import join
 
 import pytest
 
@@ -8,6 +9,7 @@ import dvc_data
 from dvc.cli import main
 from dvc.exceptions import CheckoutError
 from dvc.repo.open_repo import clean_repos
+from dvc.scm import CloneError
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.remote_tests import TestRemote  # noqa: F401
 from dvc.utils.fs import remove
@@ -592,3 +594,35 @@ def test_pull_allow_missing(tmp_dir, dvc, local_remote):
 
     stats = dvc.pull(allow_missing=True)
     assert stats["fetched"] == 1
+
+
+def test_pull_granular_excluding_import_that_cannot_be_pulled(
+    tmp_dir, dvc, local_remote, mocker
+):
+    """Regression test for https://github.com/iterative/dvc/issues/10309."""
+
+    mocker.patch("dvc.fs.dvc._DVCFileSystem", side_effect=CloneError("SCM error"))
+    (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    imp_stage = dvc.imp(
+        "https://user:token@github.com/iterative/dvc.git",
+        "dir",
+        out="new_dir",
+        rev="HEAD",
+        no_exec=True,
+    )
+    dvc.push()
+
+    shutil.rmtree("dir")
+    dvc.cache.local.clear()
+
+    assert dvc.pull(stage.addressing) == {
+        "added": [join("dir", "")],
+        "deleted": [],
+        "modified": [],
+        "fetched": 3,
+    }
+
+    with pytest.raises(CloneError, match="SCM error"):
+        dvc.pull()
+    with pytest.raises(CloneError, match="SCM error"):
+        dvc.pull(imp_stage.addressing)
