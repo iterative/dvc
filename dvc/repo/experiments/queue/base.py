@@ -4,7 +4,6 @@ from collections.abc import Collection, Generator, Iterable, Mapping
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
 
-from dvc_studio_client.post_live_metrics import get_studio_config
 from funcy import retry
 
 from dvc.dependency import ParamsDependency
@@ -24,6 +23,7 @@ from dvc.repo.experiments.utils import (
 )
 from dvc.utils.objects import cached_property
 from dvc.utils.studio import config_to_env
+from dvc_studio_client.post_live_metrics import get_studio_config
 
 from .utils import get_remote_executor_refs
 

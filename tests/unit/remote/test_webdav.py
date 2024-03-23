@@ -1,7 +1,7 @@
 import pytest
-from dvc_webdav import WebDAVFileSystem, WebDAVSFileSystem
 
 from dvc.fs import get_cloud_fs
+from dvc_webdav import WebDAVFileSystem, WebDAVSFileSystem
 from tests.utils.asserts import issubset
 
 url_fmt = "{scheme}://{user}@example.com/public.php/webdav"

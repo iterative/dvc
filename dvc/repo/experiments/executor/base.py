@@ -585,9 +585,8 @@ class BaseExecutor(ABC):
         message: Optional[str] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
-        from dvc_studio_client.post_live_metrics import post_live_metrics
-
         from dvc.repo import Repo
+        from dvc_studio_client.post_live_metrics import post_live_metrics
 
         with Repo(os.path.join(info.root_dir, info.dvc_dir)) as dvc:
             info.status = TaskStatus.RUNNING
