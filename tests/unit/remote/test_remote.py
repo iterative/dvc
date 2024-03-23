@@ -1,8 +1,8 @@
 import pytest
-from dvc_gs import GSFileSystem
-from dvc_s3 import S3FileSystem
 
 from dvc.fs import get_cloud_fs
+from dvc_gs import GSFileSystem
+from dvc_s3 import S3FileSystem
 
 
 def test_remote_with_hash_jobs(dvc):

@@ -200,10 +200,9 @@ class Artifacts:
         dvc_studio_config: Optional[dict[str, Any]] = None,
         **kwargs,
     ) -> tuple[int, str]:
-        from dvc_studio_client.model_registry import get_download_uris
-
         from dvc.fs import HTTPFileSystem, generic, localfs
         from dvc.fs.callbacks import TqdmCallback
+        from dvc_studio_client.model_registry import get_download_uris
 
         logger.debug("Trying to download artifact '%s' via studio", name)
         out = out or os.getcwd()

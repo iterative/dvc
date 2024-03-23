@@ -13,11 +13,10 @@ logger = logger.getChild(__name__)
 
 class CmdStudioLogin(CmdConfig):
     def run(self):
-        from dvc_studio_client.auth import StudioAuthError, get_access_token
-
         from dvc.env import DVC_STUDIO_URL
         from dvc.ui import ui
         from dvc.utils.studio import STUDIO_URL
+        from dvc_studio_client.auth import StudioAuthError, get_access_token
 
         name = self.args.name
         hostname = self.args.hostname or os.environ.get(DVC_STUDIO_URL) or STUDIO_URL

@@ -1,10 +1,10 @@
 import pytest
-from dvc_s3 import S3FileSystem
 
 from dvc import output
 from dvc.fs import LocalFileSystem
 from dvc.output import Output
 from dvc.stage import Stage
+from dvc_s3 import S3FileSystem
 
 
 @pytest.mark.parametrize(

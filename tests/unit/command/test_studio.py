@@ -1,9 +1,9 @@
 import pytest
-from dvc_studio_client.auth import AuthorizationExpiredError
 
 from dvc import env
 from dvc.cli import main
 from dvc.utils.studio import STUDIO_URL
+from dvc_studio_client.auth import AuthorizationExpiredError
 
 
 @pytest.fixture(autouse=True)

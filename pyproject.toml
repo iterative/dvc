@@ -292,7 +292,7 @@ strict = true
 ignore-variadic-names = true
 
 [tool.ruff.lint.isort]
-known-first-party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
+known-first-party = ["dvc", "dvc_*", "tests"]
 
 [tool.ruff.lint.pep8-naming]
 extend-ignore-names = ["M", "SCM"]
