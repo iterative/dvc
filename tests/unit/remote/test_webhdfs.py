@@ -1,5 +1,6 @@
 import pytest
 import requests
+
 from dvc_webhdfs import WebHDFSFileSystem
 
 host = "host"

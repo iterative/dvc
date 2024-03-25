@@ -242,16 +242,22 @@ class ProjectFile(FileMixin):
 
     def dump_dataset(self, dataset):
         with modify_yaml(self.path, fs=self.repo.fs) as data:
-            datasets: list[dict] = data.setdefault("datasets", [])
+            parsed = self.datasets if data else []
+            raw = data.setdefault("datasets", [])
             loc = next(
-                (i for i, ds in enumerate(datasets) if ds["name"] == dataset["name"]),
+                (i for i, ds in enumerate(parsed) if ds["name"] == dataset["name"]),
                 None,
             )
             if loc is not None:
-                apply_diff(dataset, datasets[loc])
-                datasets[loc] = dataset
+                if raw[loc] != parsed[loc]:
+                    raise ParametrizedDumpError(
+                        "cannot update a parametrized dataset entry"
+                    )
+
+                apply_diff(dataset, raw[loc])
+                raw[loc] = dataset
             else:
-                datasets.append(dataset)
+                raw.append(dataset)
         self.repo.scm_context.track_file(self.relpath)
 
     def _dump_lockfile(self, stage, **kwargs):
@@ -307,28 +313,28 @@ class ProjectFile(FileMixin):
         return self.LOADER(self, self.contents, self.lockfile_contents)
 
     @property
-    def metrics(self) -> list[str]:
-        return self.contents.get("metrics", [])
+    def artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
+        return self.resolver.resolve_artifacts()
 
     @property
-    def plots(self) -> Any:
-        return self.contents.get("plots", {})
+    def metrics(self) -> list[str]:
+        return self.resolver.resolve_metrics()
 
     @property
     def params(self) -> list[str]:
-        return self.contents.get("params", [])
+        return self.resolver.resolve_params()
+
+    @property
+    def plots(self) -> list[Any]:
+        return self.resolver.resolve_plots()
 
     @property
     def datasets(self) -> list[dict[str, Any]]:
-        return self.contents.get("datasets", [])
+        return self.resolver.resolve_datasets()
 
     @property
     def datasets_lock(self) -> list[dict[str, Any]]:
         return self.lockfile_contents.get("datasets", [])
-
-    @property
-    def artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
-        return self.contents.get("artifacts", {})
 
     def remove(self, force=False):
         if not force:

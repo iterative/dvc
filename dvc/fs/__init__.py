@@ -1,10 +1,9 @@
 from typing import Optional
 from urllib.parse import urlparse
 
-from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
-
 from dvc.config import ConfigError as RepoConfigError
 from dvc.config_schema import SCHEMA, Invalid
+from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
 
 # pylint: disable=unused-import
 from dvc_objects.fs import (  # noqa: F401

@@ -1,5 +1,4 @@
 import pytest
-from dvc_studio_client import env, post_live_metrics
 from funcy import first
 
 from dvc.env import (
@@ -12,6 +11,7 @@ from dvc.env import (
 from dvc.repo import Repo
 from dvc.testing.scripts import COPY_SCRIPT
 from dvc.utils.studio import get_subrepo_relpath
+from dvc_studio_client import env, post_live_metrics
 
 
 @pytest.mark.studio
