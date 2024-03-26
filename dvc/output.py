@@ -1365,7 +1365,7 @@ class Output:
                 dry_run=not self.use_cache,
             )
         except FileNotFoundError as exc:
-            if self.fs_path == path:
+            if not self.exists:
                 raise self.DoesNotExistError(self) from exc
             if not self.is_dir_checksum:
                 raise
