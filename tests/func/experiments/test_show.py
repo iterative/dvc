@@ -101,7 +101,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
 @pytest.mark.parametrize("workspace", [True, False])
 def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
     baseline_rev = scm.get_rev()
-    timestamp = datetime.fromtimestamp(
+    timestamp = datetime.fromtimestamp(  # noqa: DTZ006
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
     )
 
@@ -423,7 +423,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     baseline_rev = scm.get_rev()
 
     def _get_rev_isotimestamp(rev):
-        return datetime.fromtimestamp(
+        return datetime.fromtimestamp(  # noqa: DTZ006
             scm.gitpython.repo.rev_parse(rev).committed_date
         ).isoformat()
 
@@ -652,7 +652,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
     cap = capsys.readouterr()
 
     def _get_rev_isotimestamp(rev):
-        return datetime.fromtimestamp(
+        return datetime.fromtimestamp(  # noqa: DTZ006
             scm.gitpython.repo.rev_parse(rev).committed_date
         ).isoformat()
 

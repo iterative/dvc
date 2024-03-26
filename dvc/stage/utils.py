@@ -92,9 +92,7 @@ def check_no_externals(stage):
     from dvc.utils import format_link
 
     def _is_cached_external(out):
-        if out.is_in_repo or not out.use_cache:
-            return False
-        return True
+        return not out.is_in_repo and out.use_cache
 
     outs = [str(out) for out in stage.outs if _is_cached_external(out)]
     if not outs:

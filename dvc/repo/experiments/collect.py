@@ -78,7 +78,7 @@ def _collect_rev(
             timestamp: Optional[datetime] = None
         else:
             commit = repo.scm.resolve_commit(rev)
-            timestamp = datetime.fromtimestamp(commit.commit_time)
+            timestamp = datetime.fromtimestamp(commit.commit_time)  # noqa: DTZ006
 
         return SerializableExp.from_repo(
             repo,
@@ -338,6 +338,6 @@ def _sorted_ranges(exp_ranges: Iterable["ExpRange"]) -> list["ExpRange"]:
         if head_exp and head_exp.data and head_exp.data.timestamp:
             return head_exp.data.timestamp, head_exp.rev
 
-        return datetime.fromtimestamp(0), ""
+        return datetime.fromtimestamp(0), ""  # noqa: DTZ006
 
     return sorted(exp_ranges, key=_head_timestamp, reverse=True)

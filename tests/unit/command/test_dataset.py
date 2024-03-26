@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -15,7 +15,7 @@ from dvc.cli import main
         ),
         (
             {"name": "mydataset", "url": "dvcx://dataset", "type": "dvcx"},
-            {"rev_lock": "0" * 40, "version": 1, "created_at": datetime.now()},
+            {"version": 1, "created_at": datetime.now(tz=timezone.utc)},
             "Adding mydataset (dvcx://dataset @ v1)\n",
         ),
         (
@@ -65,7 +65,7 @@ def test_add_already_exists(dvc, caplog, mocker):
         ),
         (
             {"name": "mydataset", "url": "dvcx://dataset", "type": "dvcx"},
-            {"rev_lock": "0" * 40, "version": 1, "created_at": datetime.now()},
+            {"version": 1, "created_at": datetime.now(tz=timezone.utc)},
             {"version": 2},
             {
                 "missing": "Updating mydataset (dvcx://dataset @ v2)\n",
@@ -75,7 +75,7 @@ def test_add_already_exists(dvc, caplog, mocker):
         ),
         (
             {"name": "mydataset", "url": "dvcx://dataset", "type": "dvcx"},
-            {"rev_lock": "0" * 40, "version": 2, "created_at": datetime.now()},
+            {"version": 2, "created_at": datetime.now(tz=timezone.utc)},
             {"version": 1},
             {
                 "missing": "Updating mydataset (dvcx://dataset @ v1)\n",

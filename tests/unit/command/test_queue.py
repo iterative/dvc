@@ -166,13 +166,13 @@ def test_experiments_status(dvc, scm, mocker, capsys):
         {
             "rev": "c61a525a4ff39007301b4516fb6e54b323a0587b",
             "name": "I40",
-            "timestamp": datetime(2022, 6, 9, 20, 49, 48),
+            "timestamp": datetime(2022, 6, 9, 20, 49, 48),  # noqa: DTZ001
             "status": "Queued",
         },
         {
             "rev": "8da9c339da30636261a3491a90aafdb760a4168f",
             "name": "I60",
-            "timestamp": datetime(2022, 6, 9, 20, 49, 43),
+            "timestamp": datetime(2022, 6, 9, 20, 49, 43),  # noqa: DTZ001
             "status": "Running",
         },
     ]

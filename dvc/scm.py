@@ -239,7 +239,9 @@ def iter_revs(
         if commit_date:
             from datetime import datetime
 
-            commit_datestamp = datetime.strptime(commit_date, "%Y-%m-%d").timestamp()
+            commit_datestamp = (
+                datetime.strptime(commit_date, "%Y-%m-%d").timestamp()  # noqa: DTZ007
+            )
 
             def _time_filter(rev):
                 try:

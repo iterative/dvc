@@ -369,11 +369,9 @@ def _matches(targets, config_file, plot_id):
         return True
 
     full_id = get_plot_id(plot_id, config_file)
-    if any(
+    return any(
         (re.match(target, plot_id) or re.match(target, full_id)) for target in targets
-    ):
-        return True
-    return False
+    )
 
 
 def _normpath(path):

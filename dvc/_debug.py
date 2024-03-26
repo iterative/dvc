@@ -162,7 +162,7 @@ def _get_path_func(tool: str, ext: str):
     fmt = f"{tool}.dvc-{{now:%Y%m%d}}_{{now:%H%M%S}}.{ext}"
 
     def func(now: Optional["datetime"] = None) -> str:
-        return fmt.format(now=now or datetime.now())
+        return fmt.format(now=now or datetime.now())  # noqa: DTZ005
 
     return func
 
