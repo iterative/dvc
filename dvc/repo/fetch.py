@@ -22,7 +22,7 @@ def _make_index_onerror(onerror, rev):
     return _onerror
 
 
-def _collect_indexes(  # noqa: PLR0913, C901
+def _collect_indexes(  # noqa: PLR0913
     repo,
     targets=None,
     remote=None,
@@ -49,16 +49,12 @@ def _collect_indexes(  # noqa: PLR0913, C901
         config["core"] = core
 
     def stage_filter(stage: "Stage") -> bool:
-        if push and stage.is_repo_import:
-            return False
-        return True
+        return not (push and stage.is_repo_import)
 
     def outs_filter(out: "Output") -> bool:
         if push and not out.can_push:
             return False
-        if remote and out.remote and remote != out.remote:
-            return False
-        return True
+        return not (remote and out.remote and remote != out.remote)
 
     for rev in repo.brancher(
         revs=revs,

@@ -180,7 +180,7 @@ class BaseStashQueue(ABC):
 
         def _get_timestamp(rev: str) -> datetime:
             commit = self.scm.resolve_commit(rev)
-            return datetime.fromtimestamp(commit.commit_time)
+            return datetime.fromtimestamp(commit.commit_time)  # noqa: DTZ006
 
         def _format_entry(
             entry: QueueEntry,

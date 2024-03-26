@@ -297,7 +297,7 @@ def test_gc_rev_num(tmp_dir, scm, dvc):
 def test_date(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "content", commit="add testfile")
 
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
     datestamp = (now.date() + datetime.timedelta(days=1)).isoformat()
 
     tmp_dir.dvc_gen("testfile", "modified", commit="modified")

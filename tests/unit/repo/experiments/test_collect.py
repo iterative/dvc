@@ -22,7 +22,7 @@ def test_collect_stable_sorting(dvc, scm, mocker):
     ]
 
     def collect_queued_patched(_, baseline_revs) -> dict[str, list["ExpRange"]]:
-        single_timestamp = datetime.datetime(2023, 6, 20, 0, 0, 0)
+        single_timestamp = datetime.datetime(2023, 6, 20, 0, 0, 0)  # noqa: DTZ001
 
         exp_ranges = [
             ExpRange(

@@ -76,14 +76,10 @@ def worktree_view(
     """
 
     def stage_filter(stage: "Stage") -> bool:
-        if push and stage.is_repo_import:
-            return False
-        return True
+        return not (push and stage.is_repo_import)
 
     def outs_filter(out: "Output") -> bool:
-        if not out.is_in_repo or not out.use_cache or (push and not out.can_push):
-            return False
-        return True
+        return out.is_in_repo and out.use_cache and (not push or out.can_push)
 
     return index.targets_view(
         targets,

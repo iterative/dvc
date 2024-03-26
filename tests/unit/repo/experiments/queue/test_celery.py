@@ -189,13 +189,13 @@ def test_queue_status(test_queue, scm, mocker):
 
     def resolve_commit(rev):
         if rev == "active":
-            commit_time = datetime(2022, 8, 7).timestamp()
+            commit_time = datetime(2022, 8, 7).timestamp()  # noqa: DTZ001
         elif rev == "queued":
-            commit_time = datetime(2022, 8, 6).timestamp()
+            commit_time = datetime(2022, 8, 6).timestamp()  # noqa: DTZ001
         elif rev == "failed":
-            commit_time = datetime(2022, 8, 5).timestamp()
+            commit_time = datetime(2022, 8, 5).timestamp()  # noqa: DTZ001
         elif rev == "success":
-            commit_time = datetime(2022, 8, 4).timestamp()
+            commit_time = datetime(2022, 8, 4).timestamp()  # noqa: DTZ001
         return mocker.Mock(commit_time=commit_time)
 
     mocker.patch.object(
@@ -230,24 +230,24 @@ def test_queue_status(test_queue, scm, mocker):
             "name": "foo",
             "rev": "active",
             "status": "Running",
-            "timestamp": datetime(2022, 8, 7, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 7, 0, 0, 0),  # noqa: DTZ001
         },
         {
             "name": None,
             "rev": "queued",
             "status": "Queued",
-            "timestamp": datetime(2022, 8, 6, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 6, 0, 0, 0),  # noqa: DTZ001
         },
         {
             "name": "bar",
             "rev": "failed",
             "status": "Failed",
-            "timestamp": datetime(2022, 8, 5, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 5, 0, 0, 0),  # noqa: DTZ001
         },
         {
             "name": "foobar",
             "rev": "success",
             "status": "Success",
-            "timestamp": datetime(2022, 8, 4, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 4, 0, 0, 0),  # noqa: DTZ001
         },
     ]

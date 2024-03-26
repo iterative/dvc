@@ -306,7 +306,7 @@ def format_time(
         return fill_value
     if iso:
         return timestamp.isoformat()
-    if timestamp.date() == date.today():
+    if timestamp.date() == date.today():  # noqa: DTZ011
         fmt = "%I:%M %p"
     else:
         fmt = "%b %d, %Y"
