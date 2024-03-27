@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from dvc.dependency.param import ParamsDependency, read_param_file
 from dvc.log import logger
-from dvc.repo.metrics.show import FileResult, Result
+from dvc.repo.metrics.show import FileResult, Result, try_expand_paths
 from dvc.stage import PipelineStage
-from dvc.utils import as_posix, expand_paths
+from dvc.utils import as_posix
 from dvc.utils.collections import ensure_list
 
 if TYPE_CHECKING:
@@ -77,7 +77,7 @@ def _collect_params(
         path = fs.from_os_path(param)
         # make paths absolute for DVCFileSystem
         repo_path = f"{fs.root_marker}{path}"
-        ret.update(dict.fromkeys(expand_paths(fs, [repo_path]), _params))
+        ret.update(dict.fromkeys(try_expand_paths(fs, [repo_path]), _params))
     return ret
 
 
