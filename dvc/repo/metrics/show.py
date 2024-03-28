@@ -1,3 +1,4 @@
+import logging
 import os
 from collections.abc import Iterable, Iterator
 from itertools import chain
@@ -8,7 +9,7 @@ from scmrepo.exceptions import SCMError
 
 from dvc.log import logger
 from dvc.scm import NoSCMError
-from dvc.utils import as_posix, expand_paths
+from dvc.utils import as_posix
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
@@ -103,7 +104,7 @@ def _collect_metrics(
     paths = (fs.from_os_path(metric) for metric in metrics)
     # make paths absolute for DVCFileSystem
     repo_paths = (f"{fs.root_marker}{path}" for path in paths)
-    return ldistinct(expand_paths(fs, repo_paths))
+    return ldistinct(try_expand_paths(fs, repo_paths))
 
 
 class FileResult(TypedDict, total=False):
@@ -114,6 +115,22 @@ class FileResult(TypedDict, total=False):
 class Result(TypedDict, total=False):
     data: dict[str, FileResult]
     error: Exception
+
+
+def try_expand_paths(fs: "FileSystem", paths: Iterable[str]) -> Iterator[str]:
+    for path in paths:
+        try:
+            if fs.isdir(path):
+                yield from fs.find(path)
+                continue
+        except Exception as e:  # noqa: BLE001
+            logger.debug(
+                "failed to expand %r: %s",
+                path,
+                e,
+                exc_info=logger.isEnabledFor(logging.TRACE),  # type: ignore[attr-defined]
+            )
+        yield path
 
 
 def to_relpath(fs: "FileSystem", root_dir: str, d: Result) -> Result:
