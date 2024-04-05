@@ -78,7 +78,9 @@ def collect_files(
         # trailing slash needed to check if a directory is gitignored
         return dir_path in outs or is_ignored(f"{dir_path}{sep}")
 
-    walk_iter = repo.dvcignore.walk(fs, repo.root_dir, followlinks=False)
+    walk_iter = repo.dvcignore.walk(
+        fs, repo.root_dir, followlinks=False, ignore_subrepos=(not repo.subrepos)
+    )
     if logger.isEnabledFor(logging.TRACE):  # type: ignore[attr-defined]
         walk_iter = log_walk(walk_iter)
 
