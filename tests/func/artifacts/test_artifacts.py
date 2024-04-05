@@ -6,6 +6,7 @@ import pytest
 
 from dvc.annotations import Artifact
 from dvc.exceptions import ArtifactNotFoundError, InvalidArgumentError
+from dvc.repo import Repo
 from dvc.repo.artifacts import check_name_format
 from dvc.utils.strictyaml import YAMLSyntaxError, YAMLValidationError
 
@@ -205,4 +206,17 @@ def test_parametrized(tmp_dir, dvc):
     )
     assert tmp_dir.dvc.artifacts.read() == {
         "dvc.yaml": {"myart": Artifact(path="myart.pkl", type="model")}
+    }
+
+
+def test_artifacts_read_on_dvc_subrepo(tmp_dir, dvc):
+    subdir = tmp_dir / "subdir"
+    (subdir / ".dvc").mkdir(parents=True)
+    (subdir / "dvc.yaml").dump(dvcyaml)
+
+    artifacts = {
+        name: Artifact(**values) for name, values in dvcyaml["artifacts"].items()
+    }
+    assert Repo(subrepos=True).artifacts.read() == {
+        f"subdir{os.path.sep}dvc.yaml": artifacts,
     }
