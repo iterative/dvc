@@ -335,7 +335,7 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
             cmd: echo foo > foo
             # This copies 'foo' text to 'foo' file.
             outs:
-            - foo"""
+              - foo"""
     )
     tmp_dir.gen("dvc.yaml", text)
     stage = dvc.stage.load_one(name="generate-foo")
@@ -343,7 +343,7 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
     dvcfile = stage.dvcfile
 
     dvcfile.dump(stage)
-    assert dvcfile._load()[1] == (text + ":\n\tcache: false\n".expandtabs())
+    assert dvcfile._load()[1] == (text + ":\n\tcache: false\n".expandtabs(10))
 
 
 @pytest.mark.parametrize(

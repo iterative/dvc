@@ -126,16 +126,16 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
         # top comment
         desc: top desc
         deps:
-        - path: foo # dep comment
+          - path: foo # dep comment
         outs:
-        - path: bar # out comment
-          desc: out desc
-          type: mytype
-          labels:
-          - label1
-          - label2
-          meta:
-            key: value
+          - path: bar # out comment
+            desc: out desc
+            type: mytype
+            labels:
+              - label1
+              - label2
+            meta:
+              key: value
         meta: some metadata
     """
     )
@@ -148,22 +148,22 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
         # top comment
         desc: top desc
         deps:
-        - path: foo # dep comment
-          md5: acbd18db4cc2f85cedef654fccc4a4d8
-          size: 3
-          hash: md5
+          - path: foo # dep comment
+            md5: acbd18db4cc2f85cedef654fccc4a4d8
+            size: 3
+            hash: md5
         outs:
-        - path: bar # out comment
-          desc: out desc
-          type: mytype
-          labels:
-          - label1
-          - label2
-          meta:
-            key: value
-          md5: acbd18db4cc2f85cedef654fccc4a4d8
-          size: 3
-          hash: md5
+          - path: bar # out comment
+            desc: out desc
+            type: mytype
+            labels:
+              - label1
+              - label2
+            meta:
+              key: value
+            md5: acbd18db4cc2f85cedef654fccc4a4d8
+            size: 3
+            hash: md5
         meta: some metadata
         md5: 8fc199641730e3f512deac0bd9a0e0b6
         frozen: true

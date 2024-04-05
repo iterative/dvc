@@ -484,11 +484,11 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
           copy-foo-bar:
             cmd: python copy.py {src} {dest}
             deps:
-            - copy.py
-            - {src}
+              - copy.py
+              - {src}
             outs:
-            # comments are preserved
-            - {dest}
+              # comments are preserved
+              - {dest}
             meta:
               name: meta is preserved too
     """
@@ -520,10 +520,10 @@ def test_run_external_outputs(tmp_dir, dvc, local_workspace):
         "  mystage:\n"
         "    cmd: mycmd\n"
         "    deps:\n"
-        "    - remote://workspace/foo\n"
+        "      - remote://workspace/foo\n"
         "    outs:\n"
-        "    - remote://workspace/bar:\n"
-        "        cache: false\n"
+        "      - remote://workspace/bar:\n"
+        "          cache: false\n"
     )
 
     assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
@@ -539,15 +539,15 @@ def test_run_external_outputs(tmp_dir, dvc, local_workspace):
         "  mystage:\n"
         "    cmd: mycmd\n"
         "    deps:\n"
-        "    - path: remote://workspace/foo\n"
-        "      hash: md5\n"
-        f"      {hash_name}: {foo_hash}\n"
-        "      size: 3\n"
+        "      - path: remote://workspace/foo\n"
+        "        hash: md5\n"
+        f"        {hash_name}: {foo_hash}\n"
+        "        size: 3\n"
         "    outs:\n"
-        "    - path: remote://workspace/bar\n"
-        "      hash: md5\n"
-        f"      {hash_name}: {bar_hash}\n"
-        "      size: 3\n"
+        "      - path: remote://workspace/bar\n"
+        "        hash: md5\n"
+        f"        {hash_name}: {bar_hash}\n"
+        "        size: 3\n"
     )
 
     assert (local_workspace / "foo").read_text() == "foo"

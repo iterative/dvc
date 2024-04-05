@@ -47,6 +47,7 @@ def _get_yaml():
 
     yaml = YAML()
     yaml.default_flow_style = False
+    yaml.indent(mapping=2, sequence=4, offset=2)
 
     # tell Dumper to represent OrderedDict as normal dict
     yaml_repr_cls = yaml.Representer
