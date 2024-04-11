@@ -163,7 +163,7 @@ def verify_vega_props(plot_id, json_result, title, x, y, **kwargs):
     assert len(data) == 1
     data = first(data)
 
-    assert dpath.get(data, ["content", "title"]) == title
+    assert dpath.get(data, ["content", "title", "text"]) == title
 
     try:
         # TODO confusion_matrix_plot - need to find better way of asserting
