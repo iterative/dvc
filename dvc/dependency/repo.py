@@ -1,15 +1,24 @@
-from copy import deepcopy
+import errno
+import os
+from collections import defaultdict
+from copy import copy, deepcopy
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 import voluptuous as vol
 
+from dvc.exceptions import DvcException
+from dvc.prompt import confirm
 from dvc.utils import as_posix
 
 from .base import Dependency
 
 if TYPE_CHECKING:
     from dvc.fs import DVCFileSystem
+    from dvc.output import Output
     from dvc.stage import Stage
+    from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.obj import HashFile
+    from dvc_objects.db import ObjectDB
 
 
 class RepoDependency(Dependency):
@@ -91,6 +100,26 @@ class RepoDependency(Dependency):
             self.PARAM_REPO: self._dump_def_repo(self.def_repo),
         }
 
+    def download(self, to: "Output", jobs: Optional[int] = None):
+        from dvc_data.hashfile.checkout import checkout
+
+        try:
+            used, obj = self._get_used_and_obj()
+            for odb, objs in used.items():
+                self.repo.cloud.pull(objs, jobs=jobs, odb=odb)
+
+            checkout(
+                to.fs_path,
+                to.fs,
+                obj,
+                self.repo.cache.local,
+                ignore=None,
+                state=self.repo.state,
+                prompt=confirm,
+            )
+        except DvcException:
+            super().download(to=to, jobs=jobs)
+
     def update(self, rev: Optional[str] = None):
         if rev:
             self.def_repo[self.PARAM_REV] = rev
@@ -102,6 +131,58 @@ class RepoDependency(Dependency):
         # origin project url and rev_lock, and it makes RepoDependency
         # immutable, hence its impossible for checksum to change.
         return False
+
+    def _get_used_and_obj(
+        self, **kwargs
+    ) -> tuple[dict[Optional["ObjectDB"], set["HashInfo"]], "HashFile"]:
+        from dvc.config import NoRemoteError
+        from dvc.exceptions import NoOutputOrStageError
+        from dvc.utils import as_posix
+        from dvc_data.hashfile.build import build
+        from dvc_data.hashfile.tree import Tree, TreeError
+
+        local_odb = self.repo.cache.local
+        locked = kwargs.pop("locked", True)
+        repo = self._make_fs(locked=locked).repo
+        used_obj_ids = defaultdict(set)
+        rev = repo.get_rev()
+        if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
+            self.def_repo[self.PARAM_REV_LOCK] = rev
+
+        try:
+            for odb, obj_ids in repo.used_objs(
+                [os.path.join(repo.root_dir, self.def_path)],
+                force=True,
+                jobs=kwargs.get("jobs"),
+                recursive=True,
+            ).items():
+                if odb is None:
+                    odb = repo.cloud.get_remote_odb()
+                    odb.read_only = True
+                used_obj_ids[odb].update(obj_ids)
+        except (NoRemoteError, NoOutputOrStageError):
+            pass
+
+        try:
+            object_store, _, obj = build(
+                local_odb,
+                as_posix(self.def_path),
+                repo.dvcfs,
+                local_odb.fs.PARAM_CHECKSUM,
+            )
+        except (FileNotFoundError, TreeError) as exc:
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT) + f" in {self.def_repo[self.PARAM_URL]}",
+                self.def_path,
+            ) from exc
+        object_store = copy(object_store)
+        object_store.read_only = True
+
+        used_obj_ids[object_store].add(obj.hash_info)
+        if isinstance(obj, Tree):
+            used_obj_ids[object_store].update(oid for _, _, oid in obj)
+        return used_obj_ids, obj
 
     def _make_fs(
         self, rev: Optional[str] = None, locked: bool = True
