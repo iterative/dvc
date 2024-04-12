@@ -51,6 +51,7 @@ class CmdAdd(CmdBase):
                 to_remote=self.args.to_remote,
                 remote_jobs=self.args.remote_jobs,
                 force=self.args.force,
+                relink=self.args.relink,
             )
         except FileNotFoundError:
             logger.exception("")
@@ -119,6 +120,13 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Override local file or folder if exists.",
     )
+    parser.add_argument(
+        "--no-relink",
+        dest="relink",
+        action="store_false",
+        help="Don't recreate links from cache to workspace.",
+    )
+    parser.set_defaults(relink=True)
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add."
     ).complete = completion.FILE

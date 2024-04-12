@@ -171,11 +171,16 @@ def _add_transfer(
     stage.dump()
 
 
-def _add(stage: "Stage", source: Optional[str] = None, no_commit: bool = False) -> None:
+def _add(
+    stage: "Stage",
+    source: Optional[str] = None,
+    no_commit: bool = False,
+    relink: bool = True,
+) -> None:
     out = stage.outs[0]
     path = out.fs.abspath(source) if source else None
     try:
-        stage.add_outs(path, no_commit=no_commit)
+        stage.add_outs(path, no_commit=no_commit, relink=relink)
     except CacheLinkError:
         stage.dump()
         raise
@@ -194,6 +199,7 @@ def add(
     to_remote: bool = False,
     remote_jobs: Optional[int] = None,
     force: bool = False,
+    relink: bool = True,
 ) -> list["Stage"]:
     add_targets = find_targets(targets, glob=glob)
     if not add_targets:
@@ -224,7 +230,12 @@ def add(
     with warn_link_failures() as link_failures:
         for source, (stage, output_exists) in progress_iter(stages_with_targets):
             try:
-                _add(stage, source if output_exists else None, no_commit=no_commit)
+                _add(
+                    stage,
+                    source if output_exists else None,
+                    no_commit=no_commit,
+                    relink=relink,
+                )
             except CacheLinkError:
                 link_failures.append(stage.relpath)
     return stages
