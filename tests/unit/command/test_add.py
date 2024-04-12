@@ -22,6 +22,7 @@ def test_add(mocker, dvc):
         to_remote=False,
         remote_jobs=None,
         force=False,
+        relink=True,
     )
 
 
@@ -45,6 +46,7 @@ def test_add_to_remote(mocker, dvc):
         to_remote=True,
         remote_jobs=None,
         force=False,
+        relink=True,
     )
 
 
