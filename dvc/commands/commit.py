@@ -20,6 +20,7 @@ class CmdCommit(CmdBase):
                     with_deps=self.args.with_deps,
                     recursive=self.args.recursive,
                     force=self.args.force,
+                    relink=self.args.relink,
                 )
             except DvcException:
                 logger.exception("failed to commit%s", (" " + target) if target else "")
@@ -64,6 +65,13 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Commit cache for subdirectories of the specified directory.",
     )
+    commit_parser.add_argument(
+        "--no-relink",
+        dest="relink",
+        action="store_false",
+        help="Don't recreate links from cache to workspace.",
+    )
+    commit_parser.set_defaults(relink=True)
     commit_parser.add_argument(
         "targets",
         nargs="*",
