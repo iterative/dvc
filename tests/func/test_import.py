@@ -6,6 +6,7 @@ from funcy import first
 
 from dvc.cachemgr import CacheManager
 from dvc.config import NoRemoteError
+from dvc.dependency import base
 from dvc.dvcfile import load_file
 from dvc.fs import system
 from dvc.scm import Git
@@ -722,3 +723,16 @@ def test_import_invalid_configs(tmp_dir, scm, dvc, erepo_dir):
             remote="myremote",
             remote_config={"key": "value"},
         )
+
+
+def test_reimport(tmp_dir, scm, dvc, erepo_dir, mocker):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    spy = mocker.spy(base, "fs_download")
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
+    assert spy.called
+
+    spy.reset_mock()
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", force=True)
+    assert not spy.called
