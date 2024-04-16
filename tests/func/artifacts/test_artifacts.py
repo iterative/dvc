@@ -6,7 +6,9 @@ import pytest
 
 from dvc.annotations import Artifact
 from dvc.exceptions import ArtifactNotFoundError, InvalidArgumentError
-from dvc.repo.artifacts import check_name_format
+from dvc.repo.artifacts import Artifacts, check_name_format
+from dvc.testing.tmp_dir import make_subrepo
+from dvc.utils import as_posix
 from dvc.utils.strictyaml import YAMLSyntaxError, YAMLValidationError
 
 dvcyaml = {
@@ -185,7 +187,7 @@ def test_get_rev(tmp_dir, dvc, scm):
         dvc.artifacts.get_rev("myart", stage="prod")
 
 
-def test_get_path(tmp_dir, dvc):
+def test_get_path(tmp_dir, dvc, scm):
     (tmp_dir / "dvc.yaml").dump(dvcyaml)
     subdir = tmp_dir / "subdir"
     subdir.mkdir()
@@ -206,3 +208,76 @@ def test_parametrized(tmp_dir, dvc):
     assert tmp_dir.dvc.artifacts.read() == {
         "dvc.yaml": {"myart": Artifact(path="myart.pkl", type="model")}
     }
+
+
+def test_get_path_subrepo(tmp_dir, scm, dvc):
+    subrepo = tmp_dir / "subrepo"
+    make_subrepo(subrepo, scm)
+    (subrepo / "dvc.yaml").dump(dvcyaml)
+
+    assert dvc.artifacts.get_path("subrepo:myart") == os.path.join(
+        "subrepo", "myart.pkl"
+    )
+    assert dvc.artifacts.get_path("subrepo/dvc.yaml:myart") == os.path.join(
+        "subrepo", "myart.pkl"
+    )
+
+    assert subrepo.dvc.artifacts.get_path("subrepo:myart") == os.path.join(
+        "subrepo", "myart.pkl"
+    )
+    assert subrepo.dvc.artifacts.get_path("subrepo/dvc.yaml:myart") == os.path.join(
+        "subrepo", "myart.pkl"
+    )
+
+
+def get_tag_and_name(dirname, name, version):
+    tagname = f"{name}@{version}"
+    if dirname in (os.curdir, ""):
+        return tagname, name
+    return f"{dirname}={tagname}", f"{dirname}:{name}"
+
+
+def make_artifact(tmp_dir, name, tag, path) -> Artifact:
+    artifact = Artifact(path=path.name, type="model")
+    dvcfile = path.with_name("dvc.yaml")
+
+    tmp_dir.scm_gen(path, "hello_world", commit="add myart.pkl")
+    tmp_dir.dvc.artifacts.add(name, artifact, dvcfile=os.fspath(dvcfile))
+    tmp_dir.scm.add_commit([dvcfile], message="add dvc.yaml")
+    tmp_dir.scm.tag(tag, annotated=True, message="foo")
+    return artifact
+
+
+@pytest.mark.parametrize("sub", ["sub", ""])
+def test_artifacts_download(tmp_dir, dvc, scm, sub):
+    subdir = tmp_dir / sub
+    dirname = str(subdir.relative_to(tmp_dir))
+    tag, name = get_tag_and_name(as_posix(dirname), "myart", "v2.0.0")
+    make_artifact(tmp_dir, "myart", tag, subdir / "myart.pkl")
+
+    result = (1, "myart.pkl")
+    assert Artifacts.get(".", name, force=True) == result
+    assert Artifacts.get(tmp_dir.fs_path, name, force=True) == result
+    assert Artifacts.get(f"file://{tmp_dir.as_posix()}", name, force=True) == result
+    assert Artifacts.get(subdir.fs_path, name, force=True) == result
+    with subdir.chdir():
+        assert Artifacts.get(".", name, force=True) == result
+
+
+@pytest.mark.parametrize("sub", ["sub", ""])
+def test_artifacts_download_subrepo(tmp_dir, scm, sub):
+    subrepo = tmp_dir / "subrepo"
+    make_subrepo(subrepo, scm)
+    subdir = subrepo / sub
+
+    dirname = str(subdir.relative_to(tmp_dir))
+    tag, name = get_tag_and_name(as_posix(dirname), "myart", "v2.0.0")
+    make_artifact(subrepo, "myart", tag, subdir / "myart.pkl")
+
+    result = (1, "myart.pkl")
+    assert Artifacts.get(".", name) == result
+    assert Artifacts.get(tmp_dir.fs_path, name, force=True) == result
+    assert Artifacts.get(f"file://{tmp_dir.as_posix()}", name, force=True) == result
+    assert Artifacts.get(subdir.fs_path, name, force=True) == result
+    with subdir.chdir():
+        assert Artifacts.get(".", name, force=True) == result
