@@ -12,7 +12,7 @@ from dvc.exceptions import (
     InvalidArgumentError,
 )
 from dvc.log import logger
-from dvc.utils import relpath, resolve_output
+from dvc.utils import as_posix, relpath, resolve_output
 from dvc.utils.objects import cached_property
 from dvc.utils.serialize import modify_yaml
 
@@ -99,7 +99,7 @@ class Artifacts:
         """Read artifacts from dvc.yaml."""
         artifacts: dict[str, dict[str, Artifact]] = {}
         for dvcfile, dvcfile_artifacts in self.repo.index._artifacts.items():
-            dvcyaml = relpath(dvcfile, self.repo.root_dir)
+            dvcyaml = self.repo.fs.relpath(dvcfile, self.repo.root_dir)
             artifacts[dvcyaml] = {}
             for name, value in dvcfile_artifacts.items():
                 try:
@@ -147,8 +147,8 @@ class Artifacts:
         gto_tags: list["GTOTag"] = sort_versions(parse_tag(tag) for tag in tags)
         return gto_tags[0].tag.target
 
-    def get_path(self, name: str):
-        """Return repo fspath for the given artifact."""
+    @classmethod
+    def parse_path(cls, name: str) -> tuple[Optional[str], str]:
         from gto.constants import SEPARATOR_IN_NAME, fullname_re
 
         name = _reformat_name(name)
@@ -158,13 +158,37 @@ class Artifacts:
         dirname = m.group("dirname")
         if dirname:
             dirname = dirname.rstrip(SEPARATOR_IN_NAME)
-        dvcyaml = os.path.join(dirname, PROJECT_FILE) if dirname else PROJECT_FILE
-        artifact_name = m.group("name")
+
+        return dirname, m.group("name")
+
+    def get_path(self, name: str):
+        """Return fspath for the given artifact relative to the git root."""
+        from dvc.fs import GitFileSystem
+
+        dirname, artifact_name = self.parse_path(name)
+        # `name`/`dirname` are expected to be a git root relative.
+        # We convert it to dvc-root relative path so that we can read artifacts
+        # from dvc.yaml file.
+        # But we return dirname intact, as we want to return a git-root relative path.
+        # This is useful when reading from `dvcfs` from remote.
+        fs = self.repo.fs
+        assert self.scm
+        if isinstance(fs, GitFileSystem):
+            scm_root = fs.root_marker
+        else:
+            scm_root = self.scm.root_dir
+
+        dirparts = posixpath.normpath(dirname).split(posixpath.sep) if dirname else ()
+        abspath = fs.join(scm_root, *dirparts, PROJECT_FILE)
+        rela = fs.relpath(abspath, self.repo.root_dir)
         try:
-            artifact = self.read()[dvcyaml][artifact_name]
+            artifact = self.read()[rela][artifact_name]
         except KeyError as exc:
             raise ArtifactNotFoundError(name) from exc
-        return os.path.join(dirname, artifact.path) if dirname else artifact.path
+
+        path = posixpath.join(dirname or "", artifact.path)
+        parts = posixpath.normpath(path).split(posixpath.sep)
+        return os.path.join(*parts)
 
     def download(
         self,
@@ -177,15 +201,28 @@ class Artifacts:
     ) -> tuple[int, str]:
         """Download the specified artifact."""
         from dvc.fs import download as fs_download
+        from dvc.repo import Repo
 
         logger.debug("Trying to download artifact '%s' via DVC", name)
         rev = self.get_rev(name, version=version, stage=stage)
+
+        dirname, _ = self.parse_path(name)
         with self.repo.switch(rev):
-            path = self.get_path(name)
+            root = self.repo.fs.root_marker
+            _dirname = self.repo.fs.join(root, dirname) if dirname else root
+            with Repo(_dirname, fs=self.repo.fs, scm=self.repo.scm) as r:
+                path = r.artifacts.get_path(name)
+                path = self.repo.fs.join(root, as_posix(path))
+                path = self.repo.fs.relpath(path, self.repo.root_dir)
+                # when the `repo` is a subrepo, the path `/subrepo/myart.pkl` for dvcfs
+                # should be translated as `/myart.pkl`,
+                # i.e. relative to the root of the subrepo
+                path = self.repo.fs.join(root, path)
+                path = self.repo.fs.normpath(path)
+
             out = resolve_output(path, out, force=force)
             fs = self.repo.dvcfs
-            fs_path = fs.from_os_path(path)
-            count = fs_download(fs, fs_path, os.path.abspath(out), jobs=jobs)
+            count = fs_download(fs, path, os.path.abspath(out), jobs=jobs)
         return count, out
 
     @staticmethod
