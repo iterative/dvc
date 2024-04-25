@@ -193,6 +193,7 @@ SCHEMA = {
                     "session_token": str,
                     Optional("listobjects", default=False): Bool,  # obsoleted
                     Optional("use_ssl", default=True): Bool,
+                    Optional("anon", default=False): Bool,
                     "ssl_verify": Any(Bool, str),
                     "sse": str,
                     "sse_kms_key_id": str,
