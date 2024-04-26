@@ -233,7 +233,12 @@ SCHEMA = {
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
-                "hdfs": {"user": str, "kerb_ticket": str, **REMOTE_COMMON},
+                "hdfs": {
+                    "user": str,
+                    "kerb_ticket": str,
+                    "replication": int,
+                    **REMOTE_COMMON,
+                },
                 "webhdfs": {
                     "kerberos": Bool,
                     "kerberos_principal": str,
