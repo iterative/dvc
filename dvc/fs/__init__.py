@@ -69,7 +69,9 @@ def download(
             to_infos = [to]
 
         if isinstance(fs, DVCFileSystem):
-            lfs_prefetch(fs, from_infos)
+            lfs_prefetch(
+                fs, [f"{fs.normpath(fs_path)}/**" if fs.isdir(fs_path) else fs_path]
+            )
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
         generic.copy(fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs)
