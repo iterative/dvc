@@ -191,7 +191,7 @@ def show(
                 on_error=on_error,
             )
             res[rev] = Result(data=params)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if on_error == "raise":
                 raise
             logger.warning("failed to load params in revision %r, %s", rev, str(exc))
