@@ -60,7 +60,7 @@ class CmdGC(CmdBase):
             msg += " of the current and the following repos:"
 
             for repo_path in self.args.repos:
-                msg += "\n  - %s" % os.path.abspath(repo_path)
+                msg += f"\n  - {os.path.abspath(repo_path)}"
         else:
             msg += " of the current repo."
 

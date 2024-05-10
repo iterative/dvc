@@ -224,7 +224,7 @@ def show(
                 on_error=on_error,
             )
             res[rev] = Result(data=result)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if on_error == "raise":
                 raise
 

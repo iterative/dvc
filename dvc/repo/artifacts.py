@@ -267,7 +267,7 @@ class Artifacts:
                 from_infos.append(url)
         except DvcException:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise DvcException(
                 f"Failed to download artifact '{name}' via Studio"
             ) from exc
@@ -369,7 +369,7 @@ class Artifacts:
                 )
             except FileExistsLocallyError:
                 raise
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 if saved_exc:
                     logger.exception(str(saved_exc), exc_info=saved_exc.__cause__)
                 raise DvcException(
