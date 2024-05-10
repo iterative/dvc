@@ -281,3 +281,12 @@ def test_artifacts_download_subrepo(tmp_dir, scm, sub):
     assert Artifacts.get(subdir.fs_path, name, force=True) == result
     with subdir.chdir():
         assert Artifacts.get(".", name, force=True) == result
+
+
+def test_artifacts_download_studio(tmp_dir, dvc, mocker):
+    with dvc.config.edit("global") as conf:
+        conf["studio"]["token"] = "mytoken"
+
+    download_studio = mocker.patch("dvc.repo.artifacts.Artifacts._download_studio")
+    Artifacts.get("myart.pkl", "myart.pkl")
+    assert download_studio.call_args.kwargs["dvc_studio_config"]["token"] == "mytoken"

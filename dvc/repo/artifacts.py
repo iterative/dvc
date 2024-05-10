@@ -17,7 +17,7 @@ from dvc.utils.objects import cached_property
 from dvc.utils.serialize import modify_yaml
 
 if TYPE_CHECKING:
-    from gto.tag import Tag as GTOTag
+    from gto.tag import Tag as GTOTag  # type: ignore[import-not-found]
     from scmrepo.git import GitTag
 
     from dvc.repo import Repo
@@ -27,8 +27,8 @@ logger = logger.getChild(__name__)
 
 
 def check_name_format(name: str) -> None:
-    from gto.constants import assert_name_is_valid
-    from gto.exceptions import ValidationError
+    from gto.constants import assert_name_is_valid  # type: ignore[import-not-found]
+    from gto.exceptions import ValidationError  # type: ignore[import-not-found]
 
     try:
         assert_name_is_valid(name)
@@ -132,7 +132,7 @@ class Artifacts:
         self, name: str, version: Optional[str] = None, stage: Optional[str] = None
     ):
         """Return revision containing the given artifact."""
-        from gto.base import sort_versions
+        from gto.base import sort_versions  # type: ignore[import-not-found]
         from gto.tag import find, parse_tag
 
         assert not (version and stage)
@@ -314,6 +314,13 @@ class Artifacts:
 
         name = _reformat_name(name)
         saved_exc: Optional[Exception] = None
+
+        local_dvc_studio_config = Config().get("studio", {})
+        args_dvc_studio_config = {}
+        if config and not isinstance(config, dict):
+            config = Config.load_file(config)
+            args_dvc_studio_config = config.get("studio", {})
+
         try:
             logger.trace("Trying studio-only config")
             return cls._download_studio(
@@ -324,14 +331,13 @@ class Artifacts:
                 out=out,
                 force=force,
                 jobs=jobs,
+                dvc_studio_config=local_dvc_studio_config | args_dvc_studio_config,
             )
         except FileExistsLocallyError:
             raise
         except Exception as exc:  # noqa: BLE001
             saved_exc = exc
 
-        if config and not isinstance(config, dict):
-            config = Config.load_file(config)
         with Repo.open(
             url=url,
             subrepos=True,
@@ -341,7 +347,7 @@ class Artifacts:
             remote_config=remote_config,
         ) as repo:
             logger.trace("Trying repo [studio] config")
-            dvc_studio_config = dict(repo.config.get("studio"))
+            repo_dvc_studio_config = repo.config.get("studio", {})
             try:
                 return cls._download_studio(
                     url,
@@ -351,7 +357,9 @@ class Artifacts:
                     out=out,
                     force=force,
                     jobs=jobs,
-                    dvc_studio_config=dvc_studio_config,
+                    dvc_studio_config=local_dvc_studio_config
+                    | repo_dvc_studio_config
+                    | args_dvc_studio_config,
                 )
             except FileExistsLocallyError:
                 raise
