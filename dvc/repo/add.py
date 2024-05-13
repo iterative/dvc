@@ -55,6 +55,10 @@ def get_or_create_stage(
     path, wdir, out = resolve_paths(repo, target, always_local=to_remote and not out)
 
     try:
+        # How best to disable this line? With Skip Graph Checks Flag?
+        repo._skip_graph_checks = True
+        if getattr(repo, "_skip_graph_checks", False):
+            print('todo: skip graph checks')
         (out_obj,) = repo.find_outs_by_path(target, strict=False)
         stage = out_obj.stage
         if not stage.is_data_source:
