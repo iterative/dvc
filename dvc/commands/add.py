@@ -52,6 +52,7 @@ class CmdAdd(CmdBase):
                 remote_jobs=self.args.remote_jobs,
                 force=self.args.force,
                 relink=self.args.relink,
+                skip_graph_checks=self.args.skip_graph_checks,
             )
         except FileNotFoundError:
             logger.exception("")
@@ -127,6 +128,16 @@ def add_parser(subparsers, parent_parser):
         help="Don't recreate links from cache to workspace.",
     )
     parser.set_defaults(relink=True)
+    parser.add_argument(
+        # Do we want a short code here?
+        "--skip-graph-checks",
+        action="store_true",
+        help=(
+            "Can speed up simple add operations by avoiding graph checks. "
+            "Warning: partial or virtual will not work when enabled."
+        ),
+    )
+
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add."
     ).complete = completion.FILE

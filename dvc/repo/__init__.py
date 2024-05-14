@@ -284,12 +284,13 @@ class Repo:
     def check_graph(
         self, stages: Iterable["Stage"], callback: Optional[Callable] = None
     ) -> None:
-        self._skip_graph_checks = True
         if not getattr(self, "_skip_graph_checks", False):
             new = self.index.update(stages)
             if callable(callback):
                 callback()
             new.check_graph()
+        else:
+            logger.warning("partial or virtual add does not work when --skip-graph-checks are enabled")
 
     @staticmethod
     def open(url: Optional[str], *args, **kwargs) -> "Repo":
