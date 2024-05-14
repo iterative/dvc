@@ -267,6 +267,15 @@ def resolve_output(inp: str, out: Optional[str], force=False) -> str:
 
 
 def resolve_paths(repo, out, always_local=False):
+    """
+    Get the path to a DVC file that corresponds to a specific "out" in the repo.
+
+    Returns:
+        Tuple[str, std, str]:
+            path - the path to the .dvc file
+            wdir - the directory containing the .dvc file
+            out - the name of the tracked file relative to wdir.
+    """
     from urllib.parse import urlparse
 
     from dvc.dvcfile import DVC_FILE_SUFFIX

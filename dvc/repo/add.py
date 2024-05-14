@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.stage import Stage
     from dvc.types import StrOrBytesPath
+    from dvc.output import Output
 
 
 class StageInfo(NamedTuple):
@@ -50,6 +51,21 @@ def get_or_create_stage(
     to_remote: bool = False,
     force: bool = False,
 ) -> StageInfo:
+    """
+    Adds a new tracked file or update an existing one.
+
+    Used in the context of dvc-add.
+
+    Args:
+        target : an expression that resolves to a ...
+        out : if specified, what does this to?
+        to_remote : if True, what does this to?
+        force : what does this to?
+    """
+
+    import xdev
+    xdev.embed()
+
     if out:
         target = resolve_output(target, out, force=force)
     path, wdir, out = resolve_paths(repo, target, always_local=to_remote and not out)
@@ -64,6 +80,7 @@ def get_or_create_stage(
             # graph. The output might already exist and need to be updated.
             raise OutputNotFoundError(path)
 
+        out_obj: Output
         (out_obj,) = repo.find_outs_by_path(target, strict=False)
         stage = out_obj.stage
         if not stage.is_data_source:
@@ -239,23 +256,32 @@ def add(
     if not add_targets:
         return []
 
-    stages_with_targets = {
-        target: get_or_create_stage(
-            repo,
-            target,
-            out=out,
-            to_remote=to_remote,
-            force=force,
-        )
-        for target in add_targets
-    }
+    print('ABOUT TO GET OR CREATE STAGE')
+    attr_context = _contextual_setattr(
+        repo, "_skip_graph_checks", skip_graph_checks)
+    with attr_context:
+        stages_with_targets = {
+            target: get_or_create_stage(
+                repo,
+                target,
+                out=out,
+                to_remote=to_remote,
+                force=force,
+            )
+            for target in add_targets
+        }
+    print(f'stages_with_targets={stages_with_targets}')
+    print('FINISHED GET OR CREATE STAGE')
 
     attr_context = _contextual_setattr(
         repo, "_skip_graph_checks", skip_graph_checks)
     stages = [stage for stage, _ in stages_with_targets.values()]
     msg = "Collecting stages from the workspace"
+    print('ABOUT TO ENTER CHECK THE GRAPH CONTEXT')
     with attr_context, translate_graph_error(stages), ui.status(msg) as st:
+        print('ABOUT TO CHECK THE GRAPH')
         repo.check_graph(stages=stages, callback=lambda: st.update("Checking graph"))
+    print('FINISHED CHECK THE GRAPH CONTEXT')
 
     if to_remote or out:
         assert len(stages_with_targets) == 1, "multiple targets are unsupported"
