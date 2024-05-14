@@ -17,10 +17,10 @@ from dvc.utils import glob_targets, resolve_output, resolve_paths
 from . import locked
 
 if TYPE_CHECKING:
+    from dvc.output import Output
     from dvc.repo import Repo
     from dvc.stage import Stage
     from dvc.types import StrOrBytesPath
-    from dvc.output import Output
 
 
 class StageInfo(NamedTuple):
@@ -64,6 +64,7 @@ def get_or_create_stage(
     """
 
     import xdev
+
     xdev.embed()
 
     if out:
@@ -74,7 +75,9 @@ def get_or_create_stage(
         # How best to disable this line? With Skip Graph Checks Flag?
         # repo._skip_graph_checks = True
         if getattr(repo, "_skip_graph_checks", False):
-            print("WARNING: partial or virtual add does not work when --skip-graph-checks are enabled")
+            print(
+                "WARNING: partial or virtual add does not work when --skip-graph-checks are enabled"
+            )
             # FIXME: this probably is not the correct implementation.  when
             # skip_graph_checks is enabled, we just want to avoid touching the
             # graph. The output might already exist and need to be updated.
@@ -217,6 +220,7 @@ class _contextual_setattr:
     """
     Sets an attribute on an object within the context and then restores it.
     """
+
     def __init__(self, obj, attr_name, attr_value):
         self.obj = obj
         self.attr_name = attr_name
@@ -256,9 +260,8 @@ def add(
     if not add_targets:
         return []
 
-    print('ABOUT TO GET OR CREATE STAGE')
-    attr_context = _contextual_setattr(
-        repo, "_skip_graph_checks", skip_graph_checks)
+    print("ABOUT TO GET OR CREATE STAGE")
+    attr_context = _contextual_setattr(repo, "_skip_graph_checks", skip_graph_checks)
     with attr_context:
         stages_with_targets = {
             target: get_or_create_stage(
@@ -270,18 +273,17 @@ def add(
             )
             for target in add_targets
         }
-    print(f'stages_with_targets={stages_with_targets}')
-    print('FINISHED GET OR CREATE STAGE')
+    print(f"stages_with_targets={stages_with_targets}")
+    print("FINISHED GET OR CREATE STAGE")
 
-    attr_context = _contextual_setattr(
-        repo, "_skip_graph_checks", skip_graph_checks)
+    attr_context = _contextual_setattr(repo, "_skip_graph_checks", skip_graph_checks)
     stages = [stage for stage, _ in stages_with_targets.values()]
     msg = "Collecting stages from the workspace"
-    print('ABOUT TO ENTER CHECK THE GRAPH CONTEXT')
+    print("ABOUT TO ENTER CHECK THE GRAPH CONTEXT")
     with attr_context, translate_graph_error(stages), ui.status(msg) as st:
-        print('ABOUT TO CHECK THE GRAPH')
+        print("ABOUT TO CHECK THE GRAPH")
         repo.check_graph(stages=stages, callback=lambda: st.update("Checking graph"))
-    print('FINISHED CHECK THE GRAPH CONTEXT')
+    print("FINISHED CHECK THE GRAPH CONTEXT")
 
     if to_remote or out:
         assert len(stages_with_targets) == 1, "multiple targets are unsupported"
