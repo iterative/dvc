@@ -360,7 +360,7 @@ class _DVCFileSystem(AbstractFileSystem):
         except FileNotFoundError:
             return False
 
-    def ls(self, path, detail=True, dvc_only=False, **kwargs):  # noqa: C901
+    def ls(self, path, detail=True, dvc_only=False, **kwargs):  # noqa: C901, PLR0912
         key = self._get_key_from_relative(path)
         repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
