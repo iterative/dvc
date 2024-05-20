@@ -27,8 +27,8 @@ logger = logger.getChild(__name__)
 
 
 def check_name_format(name: str) -> None:
-    from gto.constants import assert_name_is_valid  # type: ignore[import-not-found]
-    from gto.exceptions import ValidationError  # type: ignore[import-not-found]
+    from gto.constants import assert_name_is_valid
+    from gto.exceptions import ValidationError
 
     try:
         assert_name_is_valid(name)
@@ -132,7 +132,7 @@ class Artifacts:
         self, name: str, version: Optional[str] = None, stage: Optional[str] = None
     ):
         """Return revision containing the given artifact."""
-        from gto.base import sort_versions  # type: ignore[import-not-found]
+        from gto.base import sort_versions
         from gto.tag import find, parse_tag
 
         assert not (version and stage)
