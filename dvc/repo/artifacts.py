@@ -17,7 +17,7 @@ from dvc.utils.objects import cached_property
 from dvc.utils.serialize import modify_yaml
 
 if TYPE_CHECKING:
-    from gto.tag import Tag as GTOTag  # type: ignore[import-not-found]
+    from gto.tag import Tag as GTOTag
     from scmrepo.git import GitTag
 
     from dvc.repo import Repo
