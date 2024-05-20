@@ -118,8 +118,8 @@ and then the stage name name.
         action="store_true",
         default=False,
         help=(
-            "Try automatically pulling missing cache for outputs restored "
-            "from the run-cache."
+            "Try automatically pulling missing dependencies and outputs. "
+            "Implies --allow-missing."
         ),
     )
     repro_parser.add_argument(

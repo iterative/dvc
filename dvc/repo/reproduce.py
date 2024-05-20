@@ -233,12 +233,14 @@ def reproduce(
         targets_list = ensure_list(targets or PROJECT_FILE)
         stages = collect_stages(self, targets_list, recursive=recursive, glob=glob)
 
-    if kwargs.get("pull", False) and kwargs.get("run_cache", True):
-        logger.debug("Pulling run cache")
-        try:
-            self.stage_cache.pull(None)
-        except RunCacheNotSupported as e:
-            logger.warning("Failed to pull run cache: %s", e)
+    if kwargs.get("pull", False):
+        kwargs["allow_missing"] = True
+        if kwargs.get("run_cache", True):
+            logger.debug("Pulling run cache")
+            try:
+                self.stage_cache.pull(None)
+            except RunCacheNotSupported as e:
+                logger.warning("Failed to pull run cache: %s", e)
 
     graph = None
     steps = stages
