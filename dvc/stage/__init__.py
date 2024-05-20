@@ -339,7 +339,7 @@ class Stage(params.StageParams):
         for out in self.outs:
             status = out.status()
             if status:
-                if allow_missing and status[str(out)] == "not in cache":
+                if allow_missing and status[str(out)] in ["not in cache", "deleted"]:
                     continue
                 logger.debug(
                     "Output '%s' of %s changed because it is '%s'.",
@@ -418,17 +418,24 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs) -> Optional["Stage"]:
-        if not (
-            kwargs.get("force", False)
-            or self.changed(
-                kwargs.get("allow_missing", False), kwargs.pop("upstream", None)
-            )
-        ):
-            if not isinstance(self, PipelineStage) and self.is_data_source:
-                logger.info("'%s' didn't change, skipping", self.addressing)
+        pull = kwargs.get("pull", False)
+        allow_missing = kwargs.get("allow_missing", False) | pull
+        upstream = kwargs.pop("upstream", None)
+        if not (kwargs.get("force", False) or self.changed(allow_missing, upstream)):
+            try:
+                # Pull missing data
+                if pull and self.changed(False, upstream):
+                    logger.info("Pulling data for %s", self)
+                    self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
+                    self.checkout()
+            except CheckoutError:
+                logger.info("Unable to pull data for %s", self)
             else:
-                logger.info("Stage '%s' didn't change, skipping", self.addressing)
-            return None
+                if not isinstance(self, PipelineStage) and self.is_data_source:
+                    logger.info("'%s' didn't change, skipping", self.addressing)
+                else:
+                    logger.info("Stage '%s' didn't change, skipping", self.addressing)
+                return None
 
         msg = f"Going to reproduce {self}. Are you sure you want to continue?"
         if interactive and not prompt.confirm(msg):
@@ -597,16 +604,10 @@ class Stage(params.StageParams):
         if (self.cmd or self.is_import) and not self.frozen and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
-        if (
-            self.is_import and (not self.frozen or kwargs.get("pull"))
-        ) or self.is_partial_import:
+        if (self.is_import and not self.frozen) or self.is_partial_import:
             self._sync_import(dry, force, kwargs.get("jobs", None), no_download)
         elif not self.frozen and self.cmd:
             self._run_stage(dry, force, **kwargs)
-        elif kwargs.get("pull"):
-            logger.info("Pulling data for %s", self)
-            self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
-            self.checkout()
         elif not dry:
             args = ("outputs", "frozen ") if self.frozen else ("data sources", "")
             logger.info("Verifying %s in %s%s", *args, self)
