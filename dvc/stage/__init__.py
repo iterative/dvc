@@ -418,24 +418,28 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs) -> Optional["Stage"]:
+        force = kwargs.get("force", False)
+        allow_missing = kwargs.get("allow_missing", False)
         pull = kwargs.get("pull", False)
-        allow_missing = kwargs.get("allow_missing", False) | pull
         upstream = kwargs.pop("upstream", None)
-        if not (kwargs.get("force", False) or self.changed(allow_missing, upstream)):
+        if force:
+            pass
+        # Skip stages with missing data if otherwise unchanged
+        elif not self.changed(allow_missing, upstream):
+            if not isinstance(self, PipelineStage) and self.is_data_source:
+                logger.info("'%s' didn't change, skipping", self.addressing)
+            else:
+                logger.info("Stage '%s' didn't change, skipping", self.addressing)
+            return None
+        # Pull stages with missing data if otherwise unchanged
+        elif not self.changed(True, upstream) and pull:
             try:
-                # Pull missing data
-                if pull and self.changed(False, upstream):
-                    logger.info("Pulling data for %s", self)
-                    self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
-                    self.checkout()
+                logger.info("Pulling data for %s", self)
+                self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
+                self.checkout()
+                return None
             except CheckoutError:
                 logger.info("Unable to pull data for %s", self)
-            else:
-                if not isinstance(self, PipelineStage) and self.is_data_source:
-                    logger.info("'%s' didn't change, skipping", self.addressing)
-                else:
-                    logger.info("Stage '%s' didn't change, skipping", self.addressing)
-                return None
 
         msg = f"Going to reproduce {self}. Are you sure you want to continue?"
         if interactive and not prompt.confirm(msg):

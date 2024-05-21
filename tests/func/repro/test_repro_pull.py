@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from dvc.stage.cache import RunCacheNotSupported
 from dvc.utils.fs import remove
 
@@ -81,3 +83,19 @@ def test_repro_pulls_persisted_output(tmp_dir, dvc, mocker, local_remote):
 
     # stage is skipped
     assert not dvc.reproduce(pull=True)
+
+
+@pytest.mark.parametrize("allow_missing", [True, False])
+def test_repro_pulls_allow_missing(tmp_dir, dvc, mocker, local_remote, allow_missing):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    dvc.push()
+
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    dvc.reproduce()
+    remove("foo")
+
+    # stage is skipped
+    assert not dvc.reproduce(pull=True, allow_missing=allow_missing)
+    # data only pulled if allow_missing is false
+    assert (tmp_dir / "foo").exists() != allow_missing
