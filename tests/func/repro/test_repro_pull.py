@@ -68,3 +68,16 @@ def test_repro_skip_pull_if_single_item_is_passed(tmp_dir, dvc, mocker, local_re
     remove(foo.outs[0].cache_path)
 
     assert dvc.reproduce(pull=True, single_item=True)
+
+
+def test_repro_pulls_persisted_output(tmp_dir, dvc, mocker, local_remote):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    dvc.push()
+
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs_persist=["bar"])
+    dvc.reproduce()
+    remove("bar")
+
+    # stage is skipped
+    assert not dvc.reproduce(pull=True)
