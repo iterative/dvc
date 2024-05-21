@@ -99,3 +99,17 @@ def test_repro_pulls_allow_missing(tmp_dir, dvc, mocker, local_remote, allow_mis
     assert not dvc.reproduce(pull=True, allow_missing=allow_missing)
     # data only pulled if allow_missing is false
     assert (tmp_dir / "foo").exists() != allow_missing
+
+
+def test_repro_pull_fails(tmp_dir, dvc, mocker, local_remote):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    dvc.stage.add(
+        name="concat-foo", cmd="cat foo foo > bar", deps=["foo"], outs=["bar"]
+    )
+    stages = dvc.reproduce()
+    remove("bar")
+    remove(stages[0].outs[0].cache_path)
+
+    # stage is run
+    assert dvc.reproduce(pull=True)
