@@ -51,11 +51,14 @@ def test_repro_skip_pull_if_no_run_cache_is_passed(tmp_dir, dvc, mocker, local_r
     (foo,) = tmp_dir.dvc_gen("foo", "foo")
 
     dvc.push()
-    spy_pull = mocker.spy(dvc.stage_cache, "pull")
     dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+
+    assert dvc.reproduce(pull=True)
+
     remove("foo")
     remove(foo.outs[0].cache_path)
-
+    remove("dvc.lock")
+    spy_pull = mocker.spy(dvc.stage_cache, "pull")
     assert dvc.reproduce(pull=True, run_cache=False)
     assert not spy_pull.called
 
