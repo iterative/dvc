@@ -13,6 +13,9 @@ class CmdArtifactsGet(CmdBaseNoRepo):
         from dvc.scm import CloneError
         from dvc.ui import ui
 
+        if self.args.show_url:
+            return self._show_url()
+
         try:
             count, out = Artifacts.get(
                 self.args.url,
@@ -35,6 +38,28 @@ class CmdArtifactsGet(CmdBaseNoRepo):
                 "failed to get '%s' from '%s'", self.args.name, self.args.url
             )
             return 1
+
+    def _show_url(self):
+        from dvc.api import artifacts_show, get_url
+        from dvc.ui import ui
+
+        artifact = artifacts_show(
+            self.args.name,
+            version=self.args.rev,
+            stage=self.args.stage,
+            repo=self.args.url,
+        )
+
+        url = get_url(
+            artifact["path"],
+            repo=self.args.url,
+            rev=artifact["rev"],
+            remote=self.args.remote,
+            remote_config=self.args.remote_config,
+        )
+        ui.write(url, force=True)
+
+        return 0
 
 
 def add_parser(subparsers, parent_parser):
@@ -84,6 +109,14 @@ def add_parser(subparsers, parent_parser):
         help="Destination path to download artifact to",
         metavar="<path>",
     ).complete = completion.DIR
+    get_parser.add_argument(
+        "--show-url",
+        action="store_true",
+        help=(
+            "Print the storage location (URL) the target data would be "
+            "downloaded from, and exit."
+        ),
+    )
     get_parser.add_argument(
         "-j",
         "--jobs",
