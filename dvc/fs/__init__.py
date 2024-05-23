@@ -1,3 +1,4 @@
+import glob
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -70,7 +71,12 @@ def download(
 
         if isinstance(fs, DVCFileSystem):
             lfs_prefetch(
-                fs, [f"{fs.normpath(fs_path)}/**" if fs.isdir(fs_path) else fs_path]
+                fs,
+                [
+                    f"{fs.normpath(glob.escape(fs_path))}/**"
+                    if fs.isdir(fs_path)
+                    else glob.escape(fs_path)
+                ],
             )
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
