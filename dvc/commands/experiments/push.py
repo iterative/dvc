@@ -1,3 +1,4 @@
+import argparse
 from typing import Any
 
 from dvc.cli import completion, formatter
@@ -120,8 +121,8 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_push_parser.add_argument(
         "--run-cache",
-        action="store_true",
-        default=False,
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Push run history for all stages.",
     )
     experiments_push_parser.add_argument(

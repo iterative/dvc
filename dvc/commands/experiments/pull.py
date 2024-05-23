@@ -1,3 +1,5 @@
+import argparse
+
 from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
@@ -81,8 +83,8 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_pull_parser.add_argument(
         "--run-cache",
-        action="store_true",
-        default=False,
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Pull run history for all stages.",
     )
     experiments_pull_parser.add_argument(
