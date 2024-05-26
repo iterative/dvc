@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pytest
@@ -231,13 +232,15 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
     assert (tmp_dir / LOCK_FILE).exists()
 
 
-def test_push_pull_unsupported(tmp_dir, dvc, mocker, run_copy):
+def test_push_pull_unsupported(tmp_dir, dvc, mocker, run_copy, local_remote, caplog):
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     mocker.patch.object(
         dvc.cloud, "get_remote_odb", side_effect=RunCacheNotSupported("foo")
     )
-    with pytest.raises(RunCacheNotSupported):
+    with caplog.at_level(logging.DEBUG):
         dvc.push(run_cache=True)
-    with pytest.raises(RunCacheNotSupported):
+        assert "failed to push run cache" in caplog.text
+    with caplog.at_level(logging.DEBUG):
         dvc.pull(run_cache=True)
+        assert "failed to pull run cache" in caplog.text
