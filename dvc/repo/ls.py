@@ -77,7 +77,7 @@ def _ls(
     recursive: Optional[bool] = None,
     dvc_only: bool = False,
 ):
-    fs: "DVCFileSystem" = repo.dvcfs
+    fs: DVCFileSystem = repo.dvcfs
     fs_path = fs.from_os_path(path)
 
     fs_path = fs.info(fs_path)["name"]

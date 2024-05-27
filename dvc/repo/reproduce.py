@@ -29,7 +29,7 @@ def collect_stages(
     recursive: bool = False,
     glob: bool = False,
 ) -> list["Stage"]:
-    stages: list["Stage"] = []
+    stages: list[Stage] = []
     for target in targets:
         stages.extend(repo.stage.collect(target, recursive=recursive, glob=glob))
     return ldistinct(stages)
@@ -166,10 +166,10 @@ def _reproduce(
 ) -> list["Stage"]:
     assert on_error in ("fail", "keep-going", "ignore")
 
-    result: list["Stage"] = []
-    failed: list["Stage"] = []
-    to_skip: dict["Stage", "Stage"] = {}
-    ret: Optional["Stage"] = None
+    result: list[Stage] = []
+    failed: list[Stage] = []
+    to_skip: dict[Stage, Stage] = {}
+    ret: Optional[Stage] = None
 
     force_state = dict.fromkeys(stages, force)
 
@@ -228,7 +228,7 @@ def reproduce(
     if not kwargs.get("interactive", False):
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    stages: list["Stage"] = []
+    stages: list[Stage] = []
     if not all_pipelines:
         targets_list = ensure_list(targets or PROJECT_FILE)
         stages = collect_stages(self, targets_list, recursive=recursive, glob=glob)

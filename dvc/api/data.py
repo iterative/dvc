@@ -285,7 +285,7 @@ def _open(
             if TYPE_CHECKING:
                 from dvc.fs import FileSystem
 
-            fs: Union["FileSystem", DataFileSystem, DVCFileSystem]
+            fs: Union[FileSystem, DataFileSystem, DVCFileSystem]
             if os.path.isabs(path):
                 fs = DataFileSystem(index=_repo.index.data["local"])
                 fs_path = path

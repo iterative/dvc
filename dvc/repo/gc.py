@@ -96,7 +96,7 @@ def gc(  # noqa: C901, PLR0912, PLR0913
         repos = []
     all_repos = [Repo(path) for path in repos]
 
-    odb_to_obj_ids: "ObjectContainer" = {}
+    odb_to_obj_ids: ObjectContainer = {}
     with ExitStack() as stack:
         for repo in all_repos:
             stack.enter_context(repo.lock)

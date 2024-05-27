@@ -290,7 +290,7 @@ class Stage(params.StageParams):
         )
 
     def short_description(self) -> Optional["str"]:
-        desc: Optional["str"] = None
+        desc: Optional[str] = None
         if self.desc:
             with suppress(ValueError):
                 # try to use first non-empty line as a description
@@ -658,7 +658,7 @@ class Stage(params.StageParams):
     def checkout(
         self, allow_missing: bool = False, **kwargs
     ) -> dict[str, list["StrPath"]]:
-        stats: dict[str, list["StrPath"]] = defaultdict(list)
+        stats: dict[str, list[StrPath]] = defaultdict(list)
         if self.is_partial_import:
             return stats
 

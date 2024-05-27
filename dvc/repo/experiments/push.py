@@ -96,7 +96,7 @@ def push(
     push_cache: bool = False,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    exp_ref_set: set["ExpRefInfo"] = set()
+    exp_ref_set: set[ExpRefInfo] = set()
     assert isinstance(repo.scm, Git)
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm))
@@ -162,7 +162,7 @@ def _push(
     def group_result(refspec):
         return results[str(refspec)]
 
-    pull_result: Mapping[SyncStatus, list["ExpRefInfo"]] = group_by(group_result, refs)
+    pull_result: Mapping[SyncStatus, list[ExpRefInfo]] = group_by(group_result, refs)
 
     return pull_result
 

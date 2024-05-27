@@ -72,7 +72,7 @@ class CmdPlots(CmdBase):
                 html_template_path = os.path.join(self.repo.dvc_dir, html_template_path)
         return html_template_path
 
-    def run(self) -> int:  # noqa: C901, PLR0911, PLR0912
+    def run(self) -> int:  # noqa: C901, PLR0911
         from pathlib import Path
 
         from dvc.render.match import match_defs_renderers

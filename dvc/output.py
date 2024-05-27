@@ -390,7 +390,7 @@ class Output:
         self.can_push = push
 
         self.fs_path = self._parse_path(self.fs, fs_path)
-        self.obj: Optional["HashFile"] = None
+        self.obj: Optional[HashFile] = None
 
         self.remote = remote
 
@@ -902,7 +902,7 @@ class Output:
     def get_obj(
         self, filter_info: Optional[str] = None, **kwargs
     ) -> Optional["HashFile"]:
-        obj: Optional["HashFile"] = None
+        obj: Optional[HashFile] = None
         if self.obj:
             obj = self.obj
         elif self.files:
@@ -1158,7 +1158,7 @@ class Output:
             logger.warning(msg)
             return {}
 
-        obj: Optional["HashFile"]
+        obj: Optional[HashFile]
         if self.is_dir_checksum:
             obj = self._collect_used_dir_cache(**kwargs)
         else:
@@ -1353,7 +1353,7 @@ class Output:
         cache = self.cache if self.use_cache else self.local_cache
         assert isinstance(cache, HashFileDB)
 
-        new: "HashFile"
+        new: HashFile
         try:
             assert self.hash_name
             staging, meta, obj = self._build(

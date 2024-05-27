@@ -242,7 +242,7 @@ class DatasetNotFoundError(DvcException, KeyError):
 
 class Datasets(Mapping[str, Dataset]):
     def __init__(self, repo: "Repo") -> None:
-        self.repo: "Repo" = repo
+        self.repo: Repo = repo
 
     def __repr__(self):
         return repr(dict(self))

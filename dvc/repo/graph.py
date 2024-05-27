@@ -22,7 +22,7 @@ def check_acyclic(graph: "DiGraph") -> None:
     except nx.NetworkXNoCycle:
         return
 
-    stages: set["Stage"] = set()
+    stages: set[Stage] = set()
     for from_node, to_node, _ in edges:
         stages.add(from_node)
         stages.add(to_node)

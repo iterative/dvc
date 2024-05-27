@@ -203,7 +203,7 @@ def fetch(  # noqa: PLR0913
 
 
 def _log_unversioned(data: list["DataIndex"]) -> tuple[list["DataIndex"], int]:
-    ret: list["DataIndex"] = []
+    ret: list[DataIndex] = []
     unversioned: list[str] = []
     for fs_index in data:
         remote = fs_index.storage_map[()].remote

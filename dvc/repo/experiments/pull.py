@@ -30,7 +30,7 @@ def pull(  # noqa: C901
     pull_cache: bool = False,
     **kwargs,
 ) -> Iterable[str]:
-    exp_ref_set: set["ExpRefInfo"] = set()
+    exp_ref_set: set[ExpRefInfo] = set()
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm, git_remote))
     elif exp_names:
@@ -97,7 +97,7 @@ def _pull(
     def group_result(refspec):
         return results[str(refspec)]
 
-    pull_result: Mapping[SyncStatus, list["ExpRefInfo"]] = group_by(group_result, refs)
+    pull_result: Mapping[SyncStatus, list[ExpRefInfo]] = group_by(group_result, refs)
 
     return pull_result
 

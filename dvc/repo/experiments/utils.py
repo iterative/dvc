@@ -199,7 +199,7 @@ def exp_commits(
     scm: "Git", ref_infos: Optional[Iterable[ExpRefInfo]] = None
 ) -> Iterable[str]:
     """Iterate over all experiment commits."""
-    shas: set["str"] = set()
+    shas: set[str] = set()
     refs = ref_infos if ref_infos else exp_refs(scm)
     for ref_info in refs:
         shas.update(scm.branch_revs(str(ref_info), ref_info.baseline_sha))

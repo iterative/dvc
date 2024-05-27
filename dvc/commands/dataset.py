@@ -42,7 +42,7 @@ class CmdDatasetAdd(CmdBase):
             if rev := dataset.lock.rev:
                 ver = rev
 
-        ver_part: Optional["Text"] = None
+        ver_part: Optional[Text] = None
         if ver:
             ver_part = ui.rich_text.assemble(" @ ", (ver, "repr.number"))
         text = ui.rich_text.assemble("(", (url, "repr.url"), ver_part or "", ")")

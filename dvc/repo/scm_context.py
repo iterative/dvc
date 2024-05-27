@@ -21,7 +21,7 @@ class SCMContext:
     def __init__(self, scm: "Base", config: Optional[dict[str, Any]] = None) -> None:
         from funcy import get_in
 
-        self.scm: "Base" = scm
+        self.scm: Base = scm
         self.autostage: bool = get_in(
             config or {}, ["core", "autostage"], default=False
         )

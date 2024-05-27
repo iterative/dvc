@@ -137,14 +137,12 @@ class Artifacts:
 
         assert not (version and stage)
         name = _reformat_name(name)
-        tags: list["GitTag"] = find(
-            name=name, version=version, stage=stage, scm=self.scm
-        )
+        tags: list[GitTag] = find(name=name, version=version, stage=stage, scm=self.scm)
         if not tags:
             raise ArtifactNotFoundError(name, version=version, stage=stage)
         if version or stage:
             return tags[-1].target
-        gto_tags: list["GTOTag"] = sort_versions(parse_tag(tag) for tag in tags)
+        gto_tags: list[GTOTag] = sort_versions(parse_tag(tag) for tag in tags)
         return gto_tags[0].tag.target
 
     @classmethod

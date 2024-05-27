@@ -470,11 +470,11 @@ class LocalCeleryQueue(BaseStashQueue):
             exp_names = [exp_names]
         results: dict[str, ExpRefAndQueueEntry] = {}
 
-        exp_ref_match: dict[str, Optional["ExpRefInfo"]] = resolve_name(
+        exp_ref_match: dict[str, Optional[ExpRefInfo]] = resolve_name(
             self.scm, exp_names, git_remote
         )
         if not git_remote:
-            queue_entry_match: dict[str, Optional["QueueEntry"]] = (
+            queue_entry_match: dict[str, Optional[QueueEntry]] = (
                 self.match_queue_entry_by_name(
                     exp_names, self.iter_queued(), self.iter_done()
                 )
@@ -613,7 +613,7 @@ class LocalCeleryQueue(BaseStashQueue):
         """Map exp refs to any available successful executors."""
         from dvc.repo.experiments.serialize import ExpExecutor, LocalExpExecutor
 
-        result: dict[str, "ExpExecutor"] = {}
+        result: dict[str, ExpExecutor] = {}
         for entry, exec_result in self.iter_success():
             if baseline_revs and entry.baseline_rev not in baseline_revs:
                 continue
