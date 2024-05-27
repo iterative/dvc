@@ -1,9 +1,13 @@
 from contextlib import suppress
 
 from dvc.exceptions import InvalidArgumentError, UploadError
+from dvc.log import logger
+from dvc.stage.cache import RunCacheNotSupported
 from dvc.ui import ui
 
 from . import locked
+
+logger = logger.getChild(__name__)
 
 
 def _rebuild(idx, path, fs, cb):
@@ -95,8 +99,11 @@ def push(  # noqa: PLR0913
                 "Multiple rev push is unsupported for cloud versioned remotes"
             )
 
-    used_run_cache = self.stage_cache.push(remote) if run_cache else []
-    transferred_count += len(used_run_cache)
+    try:
+        used_run_cache = self.stage_cache.push(remote) if run_cache else []
+        transferred_count += len(used_run_cache)
+    except RunCacheNotSupported as e:
+        logger.debug("failed to push run cache: %s", e)
 
     if isinstance(targets, str):
         targets = [targets]

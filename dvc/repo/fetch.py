@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 from dvc.exceptions import DownloadError
 from dvc.log import logger
+from dvc.stage.cache import RunCacheNotSupported
 from dvc.ui import ui
 from dvc_data.index import DataIndex, FileStorage
 
@@ -136,6 +137,8 @@ def fetch(  # noqa: PLR0913
     try:
         if run_cache:
             self.stage_cache.pull(remote)
+    except RunCacheNotSupported as e:
+        logger.debug("failed to pull run cache: %s", e)
     except DownloadError as exc:
         failed_count += exc.amount
 
