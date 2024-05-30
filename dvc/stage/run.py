@@ -3,6 +3,8 @@ import signal
 import subprocess
 import threading
 
+from packaging.version import Version
+
 from dvc.log import logger
 from dvc.utils import fix_env
 
@@ -12,25 +14,60 @@ from .exceptions import StageCmdFailedError
 logger = logger.getChild(__name__)
 
 
+def _fish_supports_no_config(executable) -> bool:
+    """
+    Check if the fish shell supports the --no-config option.
+
+    Parameters:
+    executable (str): The path to the fish shell executable.
+
+    Returns:
+    bool: True if the fish version is greater than 3.3.0, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            [executable, "-c", "echo $FISH_VERSION"],
+            capture_output=True,
+            check=True,
+            text=True,
+            timeout=3,
+        )
+        result.check_returncode()
+    except subprocess.CalledProcessError:
+        logger.warning("could not check fish version, defaulting to False")
+        return False
+    version = Version(result.stdout.strip())
+    version_to_check = Version("3.3.0")
+    return version > version_to_check
+
+
+def _warn_if_fish():
+    logger.warning(
+        "DVC detected that you are using a version of fish shell below 3.3.0 "
+        "Be aware that it might cause problems by overwriting "
+        "your current environment variables with values defined "
+        "in 'config.fish', which might affect your command. See "
+        "https://github.com/iterative/dvc/issues/1307. "
+    )
+
+
 def _make_cmd(executable, cmd):
     if executable is None:
         return cmd
-    opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
+    opts = {
+        "zsh": ["--no-rcs"],
+        "bash": ["--noprofile", "--norc"],
+        "fish": [],
+    }
     name = os.path.basename(executable).lower()
-    return [executable, *opts.get(name, []), "-c", cmd]
+    opt = opts.get(name, [])
 
-
-def warn_if_fish(executable):
-    if executable is None or os.path.basename(os.path.realpath(executable)) != "fish":
-        return
-
-    logger.warning(
-        "DVC detected that you are using fish as your default "
-        "shell. Be aware that it might cause problems by overwriting "
-        "your current environment variables with values defined "
-        "in '.fishrc', which might affect your command. See "
-        "https://github.com/iterative/dvc/issues/1307. "
-    )
+    if os.path.basename(os.path.realpath(executable)) == "fish":
+        if _fish_supports_no_config(executable):
+            opt.append("--no-config")
+        else:
+            _warn_if_fish()
+    return [executable, *opt, "-c", cmd]
 
 
 def _enforce_cmd_list(cmd):
@@ -104,9 +141,6 @@ def cmd_run(stage, dry=False, run_env=None):
     commands = _enforce_cmd_list(stage.cmd)
     kwargs = prepare_kwargs(stage, run_env=run_env)
     executable = get_executable()
-
-    if not dry:
-        warn_if_fish(executable)
 
     for cmd in commands:
         display_command(cmd)
