@@ -305,18 +305,28 @@ def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     assert scm.is_ignored("foo_imported")
 
 
-def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
+@pytest.mark.parametrize("dirpath", ["dir", "dir/", "dir/./other"])
+def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir, dirpath):
     with erepo_dir.chdir():
-        erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
+        erepo_dir.dvc_gen(
+            {
+                # keep "other" equal to "foo" to simplify the asserts
+                "dir": {"foo": "foo content", "other": {"foo": "foo content"}}
+            },
+            commit="create dir",
+        )
 
-    dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
+    stage = dvc.imp(os.fspath(erepo_dir), dirpath, "dir_imported")
 
     remove("dir_imported")
     dvc.cache.local.clear()
 
     dvc.pull(["dir_imported.dvc"])
 
-    assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
+    imported = (tmp_dir / "dir_imported").read_text()
+    assert "foo" in imported
+    assert imported["foo"] == "foo content"
+    assert stage.deps[0].fs_path == dvc.fs.as_posix(dvc.fs.normpath(dirpath))
 
 
 def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):

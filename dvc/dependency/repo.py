@@ -35,7 +35,7 @@ class RepoDependency(Dependency):
         super().__init__(stage, *args, **kwargs)
 
         self.fs = self._make_fs()
-        self.fs_path = as_posix(self.def_path)
+        self.fs_path = as_posix(self.fs.normpath(self.def_path))
 
     def _parse_path(self, fs, fs_path):  # noqa: ARG002
         return None
