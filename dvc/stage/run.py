@@ -3,7 +3,7 @@ import signal
 import subprocess
 import threading
 
-from packaging.version import Version
+from packaging.version import InvalidVersion, Version
 
 from dvc.log import logger
 from dvc.utils import fix_env
@@ -26,15 +26,15 @@ def _fish_supports_no_config(executable) -> bool:
     """
     try:
         output = subprocess.check_output(
-            [executable, "-c", "echo $FISH_VERSION"],  # noqa: S603
+            [executable, "--version"],  # noqa: S603
             text=True,
         )
-    except subprocess.CalledProcessError:
+        version = Version(output.split(" ")[-1].strip())
+        version_to_check = Version("3.3.0")
+        return version >= version_to_check
+    except (subprocess.CalledProcessError, IndexError, InvalidVersion):
         logger.warning("could not check fish version, defaulting to False")
         return False
-    version = Version(output.strip())
-    version_to_check = Version("3.3.0")
-    return version >= version_to_check
 
 
 def _warn_if_fish(executable):
