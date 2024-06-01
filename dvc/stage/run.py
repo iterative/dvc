@@ -34,10 +34,16 @@ def _fish_supports_no_config(executable) -> bool:
         return False
     version = Version(output.strip())
     version_to_check = Version("3.3.0")
-    return version > version_to_check
+    return version >= version_to_check
 
 
-def _warn_if_fish():
+def _warn_if_fish(executable):
+    if (
+        executable is None
+        or os.path.basename(executable) != "fish"
+        or _fish_supports_no_config(executable)
+    ):
+        return
     logger.warning(
         "DVC detected that you are using a version of fish shell below 3.3.0 "
         "Be aware that it might cause problems by overwriting "
@@ -57,12 +63,8 @@ def _make_cmd(executable, cmd):
     }
     name = os.path.basename(executable).lower()
     opt = opts.get(name, [])
-
-    if os.path.basename(os.path.realpath(executable)) == "fish":
-        if _fish_supports_no_config(executable):
-            opt.append("--no-config")
-        else:
-            _warn_if_fish()
+    if name == "fish" and _fish_supports_no_config(executable):
+        opt.append("--no-config")
     return [executable, *opt, "-c", cmd]
 
 
@@ -137,6 +139,9 @@ def cmd_run(stage, dry=False, run_env=None):
     commands = _enforce_cmd_list(stage.cmd)
     kwargs = prepare_kwargs(stage, run_env=run_env)
     executable = get_executable()
+
+    if not dry:
+        _warn_if_fish(executable)
 
     for cmd in commands:
         display_command(cmd)
