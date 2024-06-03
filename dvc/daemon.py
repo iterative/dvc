@@ -149,7 +149,7 @@ def _spawn(
     env: Optional[Mapping[str, str]] = None,
     output_file: Optional[str] = None,
 ) -> int:
-    file: "AbstractContextManager[Any]" = nullcontext()
+    file: AbstractContextManager[Any] = nullcontext()
     kwargs = {}
     if output_file:
         file = open(output_file, "ab")  # noqa: SIM115

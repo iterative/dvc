@@ -37,7 +37,7 @@ class AbstractDependency(Dependency):
     """Dependency without workspace/fs/fs_path"""
 
     def __init__(self, stage: "Stage", info: dict[str, Any], *args, **kwargs):
-        self.repo: "Repo" = stage.repo
+        self.repo: Repo = stage.repo
         self.stage = stage
         self.fs = None
         self.fs_path = None

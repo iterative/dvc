@@ -50,7 +50,7 @@ class StageLoader(Mapping):
         from dvc.output import Output, merge_file_meta_from_cloud
 
         assert isinstance(lock_data, dict)
-        items: Iterable[tuple[str, "Output"]] = chain(
+        items: Iterable[tuple[str, Output]] = chain(
             ((StageParams.PARAM_DEPS, dep) for dep in stage.deps),
             ((StageParams.PARAM_OUTS, out) for out in stage.outs),
         )

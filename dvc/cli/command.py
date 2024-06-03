@@ -18,8 +18,8 @@ class CmdBase(ABC):
 
         os.chdir(args.cd)
 
-        self.repo: "Repo" = Repo(uninitialized=self.UNINITIALIZED)
-        self.config: "Config" = self.repo.config
+        self.repo: Repo = Repo(uninitialized=self.UNINITIALIZED)
+        self.config: Config = self.repo.config
         self.args = args
 
     def do_run(self):

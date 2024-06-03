@@ -256,6 +256,7 @@ module = [
 
 [tool.codespell]
 ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
+skip = "CODE_OF_CONDUCT.md"
 
 [tool.ruff]
 output-format = "full"

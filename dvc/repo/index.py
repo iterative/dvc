@@ -300,7 +300,7 @@ class Index:
         self._artifacts = artifacts or {}
         self._datasets: dict[str, list[dict[str, Any]]] = datasets or {}
         self._datasets_lock: dict[str, list[dict[str, Any]]] = datasets_lock or {}
-        self._collected_targets: dict[int, list["StageInfo"]] = {}
+        self._collected_targets: dict[int, list[StageInfo]] = {}
 
     @cached_property
     def rev(self) -> Optional[str]:
@@ -416,7 +416,7 @@ class Index:
 
     @cached_property
     def out_data_keys(self) -> dict[str, set["DataIndexKey"]]:
-        by_workspace: dict[str, set["DataIndexKey"]] = defaultdict(set)
+        by_workspace: dict[str, set[DataIndexKey]] = defaultdict(set)
 
         by_workspace["repo"] = set()
         by_workspace["local"] = set()
@@ -470,7 +470,7 @@ class Index:
 
     @cached_property
     def data_keys(self) -> dict[str, set["DataIndexKey"]]:
-        by_workspace: dict[str, set["DataIndexKey"]] = defaultdict(set)
+        by_workspace: dict[str, set[DataIndexKey]] = defaultdict(set)
 
         by_workspace["repo"] = set()
         by_workspace["local"] = set()
@@ -488,7 +488,7 @@ class Index:
     def metric_keys(self) -> dict[str, set["DataIndexKey"]]:
         from .metrics.show import _collect_top_level_metrics
 
-        by_workspace: dict[str, set["DataIndexKey"]] = defaultdict(set)
+        by_workspace: dict[str, set[DataIndexKey]] = defaultdict(set)
 
         by_workspace["repo"] = set()
 
@@ -509,7 +509,7 @@ class Index:
     def param_keys(self) -> dict[str, set["DataIndexKey"]]:
         from .params.show import _collect_top_level_params
 
-        by_workspace: dict[str, set["DataIndexKey"]] = defaultdict(set)
+        by_workspace: dict[str, set[DataIndexKey]] = defaultdict(set)
         by_workspace["repo"] = set()
 
         param_paths = _collect_top_level_params(self.repo)
@@ -525,7 +525,7 @@ class Index:
 
     @cached_property
     def plot_keys(self) -> dict[str, set["DataIndexKey"]]:
-        by_workspace: dict[str, set["DataIndexKey"]] = defaultdict(set)
+        by_workspace: dict[str, set[DataIndexKey]] = defaultdict(set)
 
         by_workspace["repo"] = set()
 
@@ -548,7 +548,7 @@ class Index:
 
     @cached_property
     def data(self) -> "dict[str, DataIndex]":
-        prefix: "DataIndexKey"
+        prefix: DataIndexKey
         loaded = False
 
         index = self.repo.data_index
@@ -627,7 +627,7 @@ class Index:
         jobs: Optional[int] = None,
         push: bool = False,
     ) -> "ObjectContainer":
-        used: "ObjectContainer" = defaultdict(set)
+        used: ObjectContainer = defaultdict(set)
         pairs = self.collect_targets(targets, recursive=recursive, with_deps=with_deps)
         for stage, filter_info in pairs:
             for odb, objs in stage.get_used_objs(
@@ -748,7 +748,7 @@ class IndexView:
 
     @cached_property
     def out_data_keys(self) -> dict[str, set["DataIndexKey"]]:
-        by_workspace: dict[str, set["DataIndexKey"]] = defaultdict(set)
+        by_workspace: dict[str, set[DataIndexKey]] = defaultdict(set)
 
         by_workspace["repo"] = set()
         by_workspace["local"] = set()
@@ -764,7 +764,7 @@ class IndexView:
 
     @cached_property
     def _data_prefixes(self) -> dict[str, "_DataPrefixes"]:
-        prefixes: dict[str, "_DataPrefixes"] = defaultdict(
+        prefixes: dict[str, _DataPrefixes] = defaultdict(
             lambda: _DataPrefixes(set(), set())
         )
         for out, filter_info in self._filtered_outs:
@@ -781,7 +781,7 @@ class IndexView:
 
     @cached_property
     def data_keys(self) -> dict[str, set["DataIndexKey"]]:
-        ret: dict[str, set["DataIndexKey"]] = defaultdict(set)
+        ret: dict[str, set[DataIndexKey]] = defaultdict(set)
 
         for out, filter_info in self._filtered_outs:
             if not out.use_cache:
@@ -811,7 +811,7 @@ class IndexView:
             except KeyError:
                 return False
 
-        data: dict[str, Union["DataIndex", "DataIndexView"]] = {}
+        data: dict[str, Union[DataIndex, DataIndexView]] = {}
         for workspace, data_index in self._index.data.items():
             if self.stages:
                 data[workspace] = view(data_index, partial(key_filter, workspace))

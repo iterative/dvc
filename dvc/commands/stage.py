@@ -68,7 +68,7 @@ def prepare_stages_data(
 class CmdStageList(CmdBase):
     def _get_stages(self) -> Iterable["Stage"]:
         if self.args.all:
-            stages: list["Stage"] = self.repo.index.stages
+            stages: list[Stage] = self.repo.index.stages
             logger.trace("%d no. of stages found", len(stages))
             return stages
 

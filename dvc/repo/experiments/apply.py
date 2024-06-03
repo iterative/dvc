@@ -25,7 +25,7 @@ def apply(repo: "Repo", rev: str, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
     from dvc.scm import RevError, resolve_rev
 
-    exps: "Experiments" = repo.experiments
+    exps: Experiments = repo.experiments
 
     is_stash: bool = False
 
@@ -57,7 +57,7 @@ def apply(repo: "Repo", rev: str, **kwargs):
 
 
 def _apply(repo: "Repo", rev: str, name: Optional[str] = None, is_stash: bool = False):
-    exps: "Experiments" = repo.experiments
+    exps: Experiments = repo.experiments
 
     with exps.apply_stash.preserve_workspace(rev, name=name):
         with repo.scm.detach_head(rev, force=True):

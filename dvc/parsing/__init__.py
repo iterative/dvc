@@ -563,10 +563,10 @@ class MatrixDefinition:
         iterable = self.resolved_iterable
         assert isinstance(iterable, Mapping)
 
-        ret: dict[str, "DictStrAny"] = {}
+        ret: dict[str, DictStrAny] = {}
         matrix = {key: enumerate(v) for key, v in iterable.items()}
         for combination in product(*matrix.values()):
-            d: "DictStrAny" = {}
+            d: DictStrAny = {}
             fragments: list[str] = []
             for k, (i, v) in zip(matrix.keys(), combination):
                 d[k] = v

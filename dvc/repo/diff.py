@@ -26,7 +26,7 @@ def _diff(old, new, data_keys, with_missing=False):
     from dvc_data.index.diff import ADD, DELETE, MODIFY, RENAME
     from dvc_data.index.diff import diff as idiff
 
-    ret: "dict[str, list[dict]]" = {
+    ret: dict[str, list[dict]] = {
         "added": [],
         "deleted": [],
         "modified": [],

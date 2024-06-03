@@ -166,7 +166,7 @@ def update_worktree_stages(repo: "Repo", stage_infos: Iterable["StageInfo"]):
 
     view = IndexView(repo.index, stage_infos, outs_filter=outs_filter)
     local_index = view.data["repo"]
-    remote_indexes: dict[str, tuple["Remote", "DataIndex"]] = {}
+    remote_indexes: dict[str, tuple[Remote, DataIndex]] = {}
     for stage in view.stages:
         for out in stage.outs:
             _update_worktree_out(repo, out, local_index, remote_indexes)
