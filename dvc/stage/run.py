@@ -2,6 +2,7 @@ import os
 import signal
 import subprocess
 import threading
+from functools import cache
 
 from packaging.version import InvalidVersion, Version
 
@@ -14,6 +15,7 @@ from .exceptions import StageCmdFailedError
 logger = logger.getChild(__name__)
 
 
+@cache
 def _fish_supports_no_config(executable) -> bool:
     """
     Check if the fish shell supports the --no-config option.
@@ -33,7 +35,7 @@ def _fish_supports_no_config(executable) -> bool:
         version_to_check = Version("3.3.0")
         return version >= version_to_check
     except (subprocess.CalledProcessError, IndexError, InvalidVersion):
-        logger.warning("could not check fish version, defaulting to False")
+        logger.trace("could not check fish version, defaulting to False")
         return False
 
 
