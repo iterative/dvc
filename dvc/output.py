@@ -88,6 +88,7 @@ def loadd_from(stage, d_list):
     for d in d_list:
         p = d.pop(Output.PARAM_PATH)
         cache = d.pop(Output.PARAM_CACHE, True)
+        explicit = d.pop(Output.PARAM_EXPLICIT, False)
         metric = d.pop(Output.PARAM_METRIC, False)
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
@@ -103,6 +104,7 @@ def loadd_from(stage, d_list):
                 p,
                 info=d,
                 cache=cache,
+                explicit=explicit,
                 metric=metric,
                 plot=plot,
                 persist=persist,
@@ -282,6 +284,7 @@ class Output:
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
+    PARAM_EXPLICIT = "explicit"
     PARAM_FILES = "files"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
@@ -312,6 +315,7 @@ class Output:
         path,
         info=None,
         cache=True,
+        explicit=False,
         metric=False,
         plot=False,
         persist=False,
@@ -384,6 +388,7 @@ class Output:
             files = [merge_file_meta_from_cloud(f) for f in files]
         self.files = files
         self.use_cache = False if self.IS_DEPENDENCY else cache
+        self.explicit = explicit
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
@@ -1500,6 +1505,7 @@ SCHEMA = {
     **ARTIFACT_SCHEMA,
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
+    Output.PARAM_EXPLICIT: bool,
     Output.PARAM_REMOTE: str,
     Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],

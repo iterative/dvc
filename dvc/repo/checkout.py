@@ -14,6 +14,7 @@ from dvc.utils import relpath
 from . import locked
 
 if TYPE_CHECKING:
+    from dvc.output import Output
     from dvc_data.index import BaseDataIndex, DataIndexEntry
     from dvc_objects.fs.base import FileSystem
 
@@ -127,8 +128,15 @@ def checkout(  # noqa: C901
             raise CheckoutErrorSuggestGit(target) from exc
         raise
 
+    def outs_filter(out: "Output") -> bool:
+        return not out.explicit or any(t for t in targets)
+
     view = self.index.targets_view(
-        targets, recursive=recursive, with_deps=with_deps, onerror=onerror
+        targets,
+        recursive=recursive,
+        with_deps=with_deps,
+        onerror=onerror,
+        outs_filter=outs_filter,
     )
 
     with ui.progress(unit="entry", desc="Building workspace index", leave=True) as pb:

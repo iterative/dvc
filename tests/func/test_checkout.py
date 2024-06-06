@@ -11,7 +11,7 @@ from dvc.dvcfile import PROJECT_FILE, load_file
 from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
 from dvc.fs import system
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.utils import relpath
+from dvc.utils import relpath, serialize
 from dvc.utils.fs import remove
 from tests.utils import get_gitignore_content
 
@@ -744,3 +744,21 @@ def test_checkout_dir_compat(tmp_dir, dvc):
     remove("data")
     dvc.checkout()
     assert (tmp_dir / "data").read_text() == {"foo": "foo"}
+
+
+def test_checkout_explicit(tmp_dir, dvc, copy_script):
+    tmp_dir.dvc_gen({"explicit": "x", "not_explicit": "y"})
+    explicit = serialize.load_yaml(tmp_dir / "explicit.dvc")
+    assert explicit["outs"][0]["path"] == "explicit"
+    explicit["outs"][0]["explicit"] = True
+    serialize.dump_yaml(tmp_dir / "explicit.dvc", explicit)
+
+    remove(tmp_dir / "explicit")
+    remove(tmp_dir / "not_explicit")
+
+    dvc.checkout(force=True)
+    assert not (tmp_dir / "explicit").exists()
+    assert (tmp_dir / "not_explicit").read_text() == "y"
+
+    dvc.checkout(targets="explicit.dvc", force=True)
+    assert (tmp_dir / "explicit").read_text() == "x"
