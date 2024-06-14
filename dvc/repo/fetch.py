@@ -55,7 +55,7 @@ def _collect_indexes(  # noqa: PLR0913
     def outs_filter(out: "Output") -> bool:
         if push and not out.can_push:
             return False
-        if out.explicit and not any(t for t in targets):
+        if out.explicit and not any(targets):
             return False
         return not (remote and out.remote and remote != out.remote)
 
