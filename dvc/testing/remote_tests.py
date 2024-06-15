@@ -3,7 +3,6 @@ import shutil
 
 import pytest
 
-from dvc.stage.cache import RunCacheNotSupported
 from dvc.utils.fs import remove
 from dvc_data.hashfile.tree import Tree
 
@@ -97,8 +96,10 @@ class TestRemote:
         status_dir = dvc.cloud.status(dir_hashes)
         _check_status(status_dir, ok=dir_hashes)
 
-    @pytest.mark.xfail(raises=RunCacheNotSupported, strict=False)
     def test_stage_cache_push_pull(self, tmp_dir, dvc, remote):
+        if remote.scheme in ("http", "https"):
+            pytest.skip("HTTP remote does not support stage cache")
+
         tmp_dir.gen("foo", "foo")
         stage = dvc.stage.add(
             deps=["foo"], outs=["bar"], name="copy-foo-bar", cmd="cp foo bar"
