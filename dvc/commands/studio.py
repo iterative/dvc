@@ -18,11 +18,16 @@ class CmdStudioLogin(CmdConfig):
         from dvc.utils.studio import STUDIO_URL
         from dvc_studio_client.auth import StudioAuthError, get_access_token
 
+        studio = self.config.get("studio", {})
         name = self.args.name
-        hostname = self.args.hostname or os.environ.get(DVC_STUDIO_URL) or STUDIO_URL
+        hostname = (
+            self.args.hostname
+            or os.environ.get(DVC_STUDIO_URL)
+            or studio.get("url")
+            or STUDIO_URL
+        )
         scopes = self.args.scopes
 
-        studio = self.config.get("studio", {})
         if studio.get("url", hostname) == hostname and "token" in studio:
             raise DvcException(
                 "Token already exists. "
