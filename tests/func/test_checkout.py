@@ -747,18 +747,23 @@ def test_checkout_dir_compat(tmp_dir, dvc):
 
 
 def test_checkout_explicit(tmp_dir, dvc, copy_script):
-    tmp_dir.dvc_gen({"explicit": "x", "not_explicit": "y"})
-    explicit = serialize.load_yaml(tmp_dir / "explicit.dvc")
-    assert explicit["outs"][0]["path"] == "explicit"
-    explicit["outs"][0]["explicit"] = True
-    serialize.dump_yaml(tmp_dir / "explicit.dvc", explicit)
+    tmp_dir.dvc_gen({"explicit1": "x", "explicit2": "y", "not_explicit": "z"})
+    for name in ["explicit1", "explicit2"]:
+        path = tmp_dir / f"{name}.dvc"
+        explicit = serialize.load_yaml(path)
+        assert explicit["outs"][0]["path"] == name
+        explicit["outs"][0]["explicit"] = True
+        serialize.dump_yaml(path, explicit)
 
-    remove(tmp_dir / "explicit")
+    remove(tmp_dir / "explicit1")
+    remove(tmp_dir / "explicit2")
     remove(tmp_dir / "not_explicit")
 
     dvc.checkout(force=True)
-    assert not (tmp_dir / "explicit").exists()
-    assert (tmp_dir / "not_explicit").read_text() == "y"
+    assert not (tmp_dir / "explicit1").exists()
+    assert not (tmp_dir / "explicit2").exists()
+    assert (tmp_dir / "not_explicit").read_text() == "z"
 
-    dvc.checkout(targets="explicit.dvc", force=True)
-    assert (tmp_dir / "explicit").read_text() == "x"
+    dvc.checkout(targets="explicit1.dvc", force=True)
+    assert (tmp_dir / "explicit1").read_text() == "x"
+    assert not (tmp_dir / "explicit2").exists()
