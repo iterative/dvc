@@ -83,7 +83,7 @@ gdrive = ["dvc-gdrive>=3,<4"]
 gs = ["dvc-gs>=3,<4"]
 hdfs = ["dvc-hdfs>=3,<4"]
 lint = [
-    "mypy==1.10.0",
+    "mypy==1.10.1",
     "pandas-stubs",
     "types-colorama",
     "types-psutil",
