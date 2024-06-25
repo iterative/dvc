@@ -129,7 +129,9 @@ def checkout(  # noqa: C901
         raise
 
     def outs_filter(out: "Output") -> bool:
-        return not out.explicit or any(targets)
+        if out.pull == "never":
+            return False
+        return out.pull != "explicit" or any(targets)
 
     view = self.index.targets_view(
         targets,

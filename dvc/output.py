@@ -11,6 +11,7 @@ import voluptuous as vol
 from funcy import collecting, first, project
 
 from dvc import prompt
+from dvc.config_schema import Choices
 from dvc.exceptions import (
     CacheLinkError,
     CheckoutError,
@@ -88,13 +89,13 @@ def loadd_from(stage, d_list):
     for d in d_list:
         p = d.pop(Output.PARAM_PATH)
         cache = d.pop(Output.PARAM_CACHE, True)
-        explicit = d.pop(Output.PARAM_EXPLICIT, False)
         metric = d.pop(Output.PARAM_METRIC, False)
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
+        pull = d.pop(Output.PARAM_PULL, "always")
         push = d.pop(Output.PARAM_PUSH, True)
         hash_name = d.pop(Output.PARAM_HASH, None)
         fs_config = d.pop(Output.PARAM_FS_CONFIG, None)
@@ -104,13 +105,13 @@ def loadd_from(stage, d_list):
                 p,
                 info=d,
                 cache=cache,
-                explicit=explicit,
                 metric=metric,
                 plot=plot,
                 persist=persist,
                 remote=remote,
                 **annot,
                 files=files,
+                pull=pull,
                 push=push,
                 hash_name=hash_name,
                 fs_config=fs_config,
@@ -284,7 +285,6 @@ class Output:
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
-    PARAM_EXPLICIT = "explicit"
     PARAM_FILES = "files"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
@@ -299,6 +299,7 @@ class Output:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_REMOTE = "remote"
+    PARAM_PULL = "pull"
     PARAM_PUSH = "push"
     PARAM_CLOUD = "cloud"
     PARAM_HASH = "hash"
@@ -315,7 +316,6 @@ class Output:
         path,
         info=None,
         cache=True,
-        explicit=False,
         metric=False,
         plot=False,
         persist=False,
@@ -327,6 +327,7 @@ class Output:
         repo=None,
         fs_config=None,
         files: Optional[list[dict[str, Any]]] = None,
+        pull: str = "always",
         push: bool = True,
         hash_name: Optional[str] = DEFAULT_ALGORITHM,
     ):
@@ -388,10 +389,10 @@ class Output:
             files = [merge_file_meta_from_cloud(f) for f in files]
         self.files = files
         self.use_cache = False if self.IS_DEPENDENCY else cache
-        self.explicit = explicit
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
+        self.pull = pull
         self.can_push = push
 
         self.fs_path = self._parse_path(self.fs, fs_path)
@@ -1505,8 +1506,8 @@ SCHEMA = {
     **ARTIFACT_SCHEMA,
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
-    Output.PARAM_EXPLICIT: bool,
     Output.PARAM_REMOTE: str,
+    Output.PARAM_PULL: vol.All(vol.Lower, Choices("always", "never", "explicit")),
     Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
     Output.PARAM_FS_CONFIG: dict,

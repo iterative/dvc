@@ -746,24 +746,30 @@ def test_checkout_dir_compat(tmp_dir, dvc):
     assert (tmp_dir / "data").read_text() == {"foo": "foo"}
 
 
-def test_checkout_explicit(tmp_dir, dvc, copy_script):
-    tmp_dir.dvc_gen({"explicit1": "x", "explicit2": "y", "not_explicit": "z"})
-    for name in ["explicit1", "explicit2"]:
+def test_checkout_pull_option(tmp_dir, dvc, copy_script):
+    tmp_dir.dvc_gen({"never": "w", "explicit_1": "x", "explicit_2": "y", "always": "z"})
+    for name in ["never", "explicit_1", "explicit_2"]:
         path = tmp_dir / f"{name}.dvc"
-        explicit = serialize.load_yaml(path)
-        assert explicit["outs"][0]["path"] == name
-        explicit["outs"][0]["explicit"] = True
-        serialize.dump_yaml(path, explicit)
+        conf = serialize.load_yaml(path)
+        assert conf["outs"][0]["path"] == name
+        pull_type = name.split("_")[0]
+        conf["outs"][0]["pull"] = pull_type
+        serialize.dump_yaml(path, conf)
 
-    remove(tmp_dir / "explicit1")
-    remove(tmp_dir / "explicit2")
-    remove(tmp_dir / "not_explicit")
+    remove(tmp_dir / "never")
+    remove(tmp_dir / "explicit_1")
+    remove(tmp_dir / "explicit_2")
+    remove(tmp_dir / "always")
 
     dvc.checkout(force=True)
-    assert not (tmp_dir / "explicit1").exists()
-    assert not (tmp_dir / "explicit2").exists()
-    assert (tmp_dir / "not_explicit").read_text() == "z"
+    assert not (tmp_dir / "never").exists()
+    assert not (tmp_dir / "explicit_1").exists()
+    assert not (tmp_dir / "explicit_2").exists()
+    assert (tmp_dir / "always").read_text() == "z"
 
-    dvc.checkout(targets="explicit1.dvc", force=True)
-    assert (tmp_dir / "explicit1").read_text() == "x"
-    assert not (tmp_dir / "explicit2").exists()
+    dvc.checkout(targets="explicit_1.dvc", force=True)
+    assert (tmp_dir / "explicit_1").read_text() == "x"
+    assert not (tmp_dir / "explicit_2").exists()
+
+    dvc.checkout(targets="never.dvc", force=True)
+    assert not (tmp_dir / "never").exists()
