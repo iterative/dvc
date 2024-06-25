@@ -11,7 +11,6 @@ import voluptuous as vol
 from funcy import collecting, first, project
 
 from dvc import prompt
-from dvc.config_schema import Choices
 from dvc.exceptions import (
     CacheLinkError,
     CheckoutError,
@@ -95,7 +94,7 @@ def loadd_from(stage, d_list):
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
-        pull = d.pop(Output.PARAM_PULL, "always")
+        pull = d.pop(Output.PARAM_PULL, True)
         push = d.pop(Output.PARAM_PUSH, True)
         hash_name = d.pop(Output.PARAM_HASH, None)
         fs_config = d.pop(Output.PARAM_FS_CONFIG, None)
@@ -327,7 +326,7 @@ class Output:
         repo=None,
         fs_config=None,
         files: Optional[list[dict[str, Any]]] = None,
-        pull: str = "always",
+        pull: bool = True,
         push: bool = True,
         hash_name: Optional[str] = DEFAULT_ALGORITHM,
     ):
@@ -1507,7 +1506,7 @@ SCHEMA = {
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
     Output.PARAM_REMOTE: str,
-    Output.PARAM_PULL: vol.All(vol.Lower, Choices("always", "never", "explicit")),
+    Output.PARAM_PULL: bool,
     Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
     Output.PARAM_FS_CONFIG: dict,

@@ -747,22 +747,19 @@ def test_checkout_dir_compat(tmp_dir, dvc):
 
 
 def test_checkout_pull_option(tmp_dir, dvc, copy_script):
-    tmp_dir.dvc_gen({"never": "w", "explicit_1": "x", "explicit_2": "y", "always": "z"})
-    for name in ["never", "explicit_1", "explicit_2"]:
+    tmp_dir.dvc_gen({"explicit_1": "x", "explicit_2": "y", "always": "z"})
+    for name in ["explicit_1", "explicit_2"]:
         path = tmp_dir / f"{name}.dvc"
         conf = serialize.load_yaml(path)
         assert conf["outs"][0]["path"] == name
-        pull_type = name.split("_")[0]
-        conf["outs"][0]["pull"] = pull_type
+        conf["outs"][0]["pull"] = False
         serialize.dump_yaml(path, conf)
 
-    remove(tmp_dir / "never")
     remove(tmp_dir / "explicit_1")
     remove(tmp_dir / "explicit_2")
     remove(tmp_dir / "always")
 
     dvc.checkout(force=True)
-    assert not (tmp_dir / "never").exists()
     assert not (tmp_dir / "explicit_1").exists()
     assert not (tmp_dir / "explicit_2").exists()
     assert (tmp_dir / "always").read_text() == "z"
@@ -770,6 +767,3 @@ def test_checkout_pull_option(tmp_dir, dvc, copy_script):
     dvc.checkout(targets="explicit_1.dvc", force=True)
     assert (tmp_dir / "explicit_1").read_text() == "x"
     assert not (tmp_dir / "explicit_2").exists()
-
-    dvc.checkout(targets="never.dvc", force=True)
-    assert not (tmp_dir / "never").exists()
