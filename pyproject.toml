@@ -45,7 +45,7 @@ dependencies = [
     "dvc-studio-client>=0.21,<1",
     "dvc-task>=0.3.0,<1",
     "flatten_dict<1,>=0.4.1",
-    "flufl.lock>=5,<8", # https://github.com/iterative/dvc/issues/9654
+    "flufl.lock>=8.1.0,<9", # https://github.com/iterative/dvc/issues/9654
     "fsspec",
     "funcy>=1.14",
     "grandalf<1,>=0.7",
