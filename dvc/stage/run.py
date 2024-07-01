@@ -28,7 +28,7 @@ def _fish_supports_no_config(executable) -> bool:
     """
     try:
         output = subprocess.check_output(
-            [executable, "--version"],  # noqa: S603
+            [executable, "--version"],
             text=True,
         )
         version = Version(output.split(" ")[-1].strip())
