@@ -3,12 +3,14 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 import voluptuous as vol
 
+from dvc.prompt import confirm
 from dvc.utils import as_posix
 
 from .base import Dependency
 
 if TYPE_CHECKING:
     from dvc.fs import DVCFileSystem
+    from dvc.output import Output
     from dvc.stage import Stage
 
 
@@ -90,6 +92,31 @@ class RepoDependency(Dependency):
             self.PARAM_PATH: self.def_path,
             self.PARAM_REPO: self._dump_def_repo(self.def_repo),
         }
+
+    def download(self, to: "Output", jobs: Optional[int] = None):
+        from dvc_data.hashfile.build import build
+        from dvc_data.hashfile.checkout import CheckoutError, checkout
+
+        try:
+            repo = self._make_fs(locked=True).repo
+
+            _, _, obj = build(
+                repo.cache.local,
+                self.fs_path,
+                repo.dvcfs,
+                repo.cache.local.fs.PARAM_CHECKSUM,
+            )
+            checkout(
+                to.fs_path,
+                to.fs,
+                obj,
+                self.repo.cache.local,
+                ignore=None,
+                state=self.repo.state,
+                prompt=confirm,
+            )
+        except CheckoutError:
+            super().download(to=to, jobs=jobs)
 
     def update(self, rev: Optional[str] = None):
         if rev:
