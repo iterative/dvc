@@ -47,7 +47,7 @@ def _win_detached_subprocess(args: Sequence[str], **kwargs) -> int:
     popen = subprocess.Popen(
         args,
         close_fds=True,
-        shell=False,  # noqa: S603
+        shell=False,
         startupinfo=startupinfo,
         creationflags=creationflags,
         **kwargs,

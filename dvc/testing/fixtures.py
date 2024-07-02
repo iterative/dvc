@@ -231,7 +231,7 @@ def docker_services(tmp_path_factory, request):
         subprocess.check_output(
             "docker ps",  # noqa: S607
             stderr=subprocess.STDOUT,
-            shell=True,  # noqa: S602
+            shell=True,
         )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
