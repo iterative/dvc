@@ -229,7 +229,7 @@ class StageCache:
         if not dry:
             cached_stage.checkout()
 
-    def transfer(self, from_odb, to_odb):
+    def transfer(self, from_odb, to_odb, force=True):
         from dvc.fs import HTTPFileSystem, LocalFileSystem
         from dvc.fs.callbacks import TqdmCallback
 
@@ -258,10 +258,11 @@ class StageCache:
 
             dst = to_fs.join(to_odb.path, rel)
             key = to_fs.parent(dst)
+
             # check if any build cache already exists for this key
             # TODO: check if MaxKeys=1 or something like that applies
             # or otherwise this will take a lot of time!
-            if to_fs.exists(key) and first(to_fs.find(key)):
+            if not force and to_fs.exists(key) and first(to_fs.find(key)):
                 continue
 
             src_name = from_fs.name(src)
