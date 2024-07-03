@@ -678,3 +678,30 @@ def test_pull_granular_excluding_import_that_cannot_be_pulled(
         dvc.pull()
     with pytest.raises(CloneError, match="SCM error"):
         dvc.pull(imp_stage.addressing)
+
+
+def test_fetch_pull_option(tmp_dir, dvc, local_remote):
+    file_config = {"explicit_1": "x", "explicit_2": "y", "always": "z"}
+    tmp_dir.dvc_gen(file_config)
+    for name in ["explicit_1", "explicit_2"]:
+        with (tmp_dir / f"{name}.dvc").modify() as d:
+            d["outs"][0]["pull"] = False
+    dvc.push()
+    oids = {
+        name: (tmp_dir / f"{name}.dvc").parse()["outs"][0]["md5"]
+        for name in file_config
+    }
+    expected = list(oids.values())
+    assert dvc.cache.local.oids_exist(expected) == expected
+
+    # purge cache
+    dvc.cache.local.clear()
+    assert dvc.cache.local.oids_exist(oids.values()) == []
+
+    dvc.fetch()
+    expected = [oids[name] for name in ["always"]]
+    assert dvc.cache.local.oids_exist(expected) == expected
+
+    dvc.fetch("explicit_1")
+    expected = [oids[name] for name in ["always", "explicit_1"]]
+    assert dvc.cache.local.oids_exist(expected) == expected
