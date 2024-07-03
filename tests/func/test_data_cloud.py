@@ -687,21 +687,21 @@ def test_fetch_pull_option(tmp_dir, dvc, local_remote):
         with (tmp_dir / f"{name}.dvc").modify() as d:
             d["outs"][0]["pull"] = False
     dvc.push()
-    oids = {
+    oids_by_name = {
         name: (tmp_dir / f"{name}.dvc").parse()["outs"][0]["md5"]
         for name in file_config
     }
-    expected = list(oids.values())
-    assert dvc.cache.local.oids_exist(expected) == expected
+    all_oids = set(oids_by_name.values())
+    assert set(dvc.cache.local.oids_exist(all_oids)) == all_oids
 
     # purge cache
     dvc.cache.local.clear()
-    assert dvc.cache.local.oids_exist(oids.values()) == []
+    assert set(dvc.cache.local.oids_exist(all_oids)) == set()
 
     dvc.fetch()
-    expected = [oids[name] for name in ["always"]]
-    assert dvc.cache.local.oids_exist(expected) == expected
+    expected = {oids_by_name[name] for name in ["always"]}
+    assert set(dvc.cache.local.oids_exist(all_oids)) == expected
 
     dvc.fetch("explicit_1")
-    expected = [oids[name] for name in ["always", "explicit_1"]]
-    assert dvc.cache.local.oids_exist(expected) == expected
+    expected = {oids_by_name[name] for name in ["always", "explicit_1"]}
+    assert set(dvc.cache.local.oids_exist(all_oids)) == expected
