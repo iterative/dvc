@@ -746,11 +746,11 @@ def test_checkout_dir_compat(tmp_dir, dvc):
     assert (tmp_dir / "data").read_text() == {"foo": "foo"}
 
 
-def test_checkout_pull_option(tmp_dir, dvc, copy_script):
-    tmp_dir.dvc_gen({"explicit_1": "x", "explicit_2": "y", "always": "z"})
-    for name in ["explicit_1", "explicit_2"]:
-        with (tmp_dir / f"{name}.dvc").modify() as d:
-            d["outs"][0]["pull"] = False
+def test_checkout_for_files_with_explicit_pull_option_set(tmp_dir, dvc, copy_script):
+    stages = tmp_dir.dvc_gen({"explicit_1": "x", "explicit_2": "y", "always": "z"})
+    for stage in stages[:-1]:
+        stage.outs[0].pull = False
+        stage.dump()
 
     remove(tmp_dir / "explicit_1")
     remove(tmp_dir / "explicit_2")

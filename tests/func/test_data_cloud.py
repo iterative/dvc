@@ -680,28 +680,76 @@ def test_pull_granular_excluding_import_that_cannot_be_pulled(
         dvc.pull(imp_stage.addressing)
 
 
-def test_fetch_pull_option(tmp_dir, dvc, local_remote):
-    file_config = {"explicit_1": "x", "explicit_2": "y", "always": "z"}
-    tmp_dir.dvc_gen(file_config)
-    for name in ["explicit_1", "explicit_2"]:
-        with (tmp_dir / f"{name}.dvc").modify() as d:
-            d["outs"][0]["pull"] = False
+def test_fetch_for_files_with_explicit_pull_set(tmp_dir, dvc, local_remote):
+    stages = tmp_dir.dvc_gen({"explicit_1": "x", "explicit_2": "y", "always": "z"})
+    for stage in stages[:-1]:
+        stage.outs[0].pull = False
+        stage.dump()
+
     dvc.push()
-    oids_by_name = {
-        name: (tmp_dir / f"{name}.dvc").parse()["outs"][0]["md5"]
-        for name in file_config
+    dvc.cache.local.clear()  # purge cache
+
+    oids = {stage.outs[0].def_path: stage.outs[0].hash_info.value for stage in stages}
+
+    assert dvc.fetch() == 1
+    assert set(dvc.cache.local.all()) == {oids["always"]}
+
+    assert dvc.fetch("explicit_1") == 1
+    assert set(dvc.cache.local.all()) == {oids["always"], oids["explicit_1"]}
+
+
+def test_pull_for_files_with_explicit_pull_set(tmp_dir, dvc, local_remote):
+    stages = tmp_dir.dvc_gen({"explicit_1": "x", "explicit_2": "y", "always": "z"})
+    for stage in stages[:-1]:
+        stage.outs[0].pull = False
+        stage.dump()
+
+    dvc.push()
+    dvc.cache.local.clear()  # purge cache
+    remove("explicit_1")
+    remove("explicit_2")
+    remove("always")
+
+    assert dvc.pull() == {
+        "added": ["always"],
+        "deleted": [],
+        "fetched": 1,
+        "modified": [],
     }
-    all_oids = set(oids_by_name.values())
-    assert set(dvc.cache.local.oids_exist(all_oids)) == all_oids
 
-    # purge cache
-    dvc.cache.local.clear()
-    assert set(dvc.cache.local.oids_exist(all_oids)) == set()
+    assert dvc.pull("explicit_1") == {
+        "added": ["explicit_1"],
+        "deleted": [],
+        "fetched": 1,
+        "modified": [],
+    }
 
-    dvc.fetch()
-    expected = {oids_by_name[name] for name in ["always"]}
-    assert set(dvc.cache.local.oids_exist(all_oids)) == expected
 
-    dvc.fetch("explicit_1")
-    expected = {oids_by_name[name] for name in ["always", "explicit_1"]}
-    assert set(dvc.cache.local.oids_exist(all_oids)) == expected
+def test_pull_for_stage_outputs_with_explicit_pull_set(tmp_dir, dvc, local_remote):
+    stage1 = dvc.stage.add(name="always", outs=["always"], cmd="echo always > always")
+    stage2 = dvc.stage.add(
+        name="explicit", outs=["explicit"], cmd="echo explicit > explicit"
+    )
+    stage2.outs[0].pull = False
+    stage2.dump()
+
+    assert set(dvc.reproduce()) == {stage1, stage2}
+    dvc.push()
+
+    dvc.cache.local.clear()  # purge cache
+    remove("explicit")
+    remove("always")
+
+    assert dvc.pull() == {
+        "added": ["always"],
+        "deleted": [],
+        "fetched": 1,
+        "modified": [],
+    }
+
+    assert dvc.pull("explicit") == {
+        "added": ["explicit"],
+        "deleted": [],
+        "fetched": 1,
+        "modified": [],
+    }

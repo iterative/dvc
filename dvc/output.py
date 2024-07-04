@@ -191,6 +191,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_REMOTE,
                 Output.PARAM_PUSH,
+                Output.PARAM_PULL,
                 *ANNOTATION_FIELDS,
             ],
         )
@@ -874,6 +875,9 @@ class Output:
 
             if not self.can_push:
                 ret[self.PARAM_PUSH] = self.can_push
+
+            if not self.pull:
+                ret[self.PARAM_PULL] = self.pull
 
         if with_files:
             obj = self.obj or self.get_obj()
