@@ -44,10 +44,10 @@ def _win_detached_subprocess(args: Sequence[str], **kwargs) -> int:
 
     startupinfo = STARTUPINFO()
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
-    popen = subprocess.Popen(
+    popen = subprocess.Popen(  # noqa: S603
         args,
         close_fds=True,
-        shell=False,  # noqa: S603
+        shell=False,
         startupinfo=startupinfo,
         creationflags=creationflags,
         **kwargs,
