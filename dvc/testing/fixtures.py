@@ -228,7 +228,7 @@ def docker_services(tmp_path_factory, request):
         pytest.skip("disabled for Windows on CI")
 
     try:
-        subprocess.check_output(
+        subprocess.check_output(  # noqa: S602
             "docker ps",  # noqa: S607
             stderr=subprocess.STDOUT,
             shell=True,
