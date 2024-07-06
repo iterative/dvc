@@ -69,11 +69,11 @@ def collect_rev(
 
 def _collect_rev(
     repo: "Repo",
-    rev: str,
+    revision: str,
     param_deps: bool = False,
     **kwargs,
 ) -> SerializableExp:
-    with repo.switch(rev) as rev:
+    with repo.switch(revision) as rev:
         if rev == "workspace":
             timestamp: Optional[datetime] = None
         else:
