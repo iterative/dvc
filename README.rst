@@ -232,6 +232,8 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
 
 Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and Source Code - Empirical Study of DVC Projects <https://mcis.cs.queensu.ca/publications/2021/saner.pdf>`_ , in Proceedings of the 28th IEEE International Conference on Software Analysis, Evolution, and Reengineering, SANER 2021. Hawaii, USA.
 
+Barreto Simedo Pacheco, L., Rahman, M., Rabbi, F., Fathollahzadeh, P., Abdellatif, A., Shihab, E., Chen, T.P., Yang, J., and Zou, Y. `DVC in Open Source ML-development: The Action and the Reaction <https://das.encs.concordia.ca/pdf/abedu2024llm.pdf>`_ , In Proceedings of the IEEE/ACM 3rd International Conference on AI Engineering - Software Engineering for AI (CAIN '24). Association for Computing Machinery, New York, NY, USA, 75–80. https://doi.org/10.1145/3644815.3644965
+
 
 .. |Banner| image:: https://dvc.org/img/logo-github-readme.png
    :target: https://dvc.org
