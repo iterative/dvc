@@ -756,11 +756,17 @@ def test_checkout_for_files_with_explicit_pull_option_set(tmp_dir, dvc, copy_scr
     remove(tmp_dir / "explicit_2")
     remove(tmp_dir / "always")
 
+    # ensure missing pull=False file does not cause an error
+    explicit2_oid = (tmp_dir / "explicit_2.dvc").parse()["outs"][0]["md5"]
+    dvc.cache.local.delete(explicit2_oid)
+
     dvc.checkout(force=True)
-    assert not (tmp_dir / "explicit_1").exists()
+    # pull=False, but present in cache
+    assert (tmp_dir / "explicit_1").read_text() == "x"
+    # pull=False, not in cache
     assert not (tmp_dir / "explicit_2").exists()
+    # pull=True
     assert (tmp_dir / "always").read_text() == "z"
 
-    dvc.checkout(targets="explicit_1.dvc", force=True)
-    assert (tmp_dir / "explicit_1").read_text() == "x"
-    assert not (tmp_dir / "explicit_2").exists()
+    with pytest.raises(CheckoutError):
+        dvc.checkout(targets="explicit_2.dvc", force=True)
