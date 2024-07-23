@@ -27,8 +27,8 @@ def _fish_supports_no_config(executable) -> bool:
     bool: True if the fish version is greater than 3.3.0, False otherwise.
     """
     try:
-        output = subprocess.check_output(
-            [executable, "--version"],  # noqa: S603
+        output = subprocess.check_output(  # noqa: S603
+            [executable, "--version"],
             text=True,
         )
         version = Version(output.split(" ")[-1].strip())

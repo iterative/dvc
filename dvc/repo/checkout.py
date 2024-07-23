@@ -125,7 +125,7 @@ def checkout(  # noqa: C901
             (StageFileDoesNotExistError, StageFileBadNameError, NoOutputOrStageError),
         ):
             raise CheckoutErrorSuggestGit(target) from exc
-        raise
+        raise  # noqa: PLE0704
 
     view = self.index.targets_view(
         targets, recursive=recursive, with_deps=with_deps, onerror=onerror

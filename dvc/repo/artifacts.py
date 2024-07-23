@@ -283,7 +283,7 @@ class Artifacts:
         return len(to_infos), relpath(localfs.commonpath(to_infos))
 
     @classmethod
-    def get(  # noqa: PLR0913
+    def get(
         cls,
         url: str,
         name: str,

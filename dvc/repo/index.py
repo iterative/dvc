@@ -600,7 +600,7 @@ class Index:
         if not onerror:
 
             def onerror(_target, _exc):
-                raise
+                raise  # noqa: PLE0704
 
         targets = ensure_list(targets)
         if not targets:
