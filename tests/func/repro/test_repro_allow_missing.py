@@ -55,3 +55,16 @@ def test_repro_allow_missing_upstream_stage_modified(
     ret = dvc.reproduce(pull=True, allow_missing=True)
     # create-foo is skipped ; copy-foo pulls modified dep
     assert len(ret) == 1
+
+
+def test_repro_allow_missing_cached(tmp_dir, dvc):
+    tmp_dir.gen("fixed", "fixed")
+    dvc.stage.add(name="create-foo", cmd="echo foo > foo", deps=["fixed"], outs=["foo"])
+    dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
+    dvc.reproduce()
+
+    remove("foo")
+
+    ret = dvc.reproduce(allow_missing=True)
+    # both stages are skipped
+    assert not ret

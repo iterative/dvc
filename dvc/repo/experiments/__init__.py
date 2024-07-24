@@ -119,7 +119,7 @@ class Experiments:
         **kwargs,
     ):
         """Reproduce and checkout a single (standalone) experiment."""
-        exp_queue: "BaseStashQueue" = (
+        exp_queue: BaseStashQueue = (
             self.tempdir_queue if tmp_dir else self.workspace_queue
         )
         self.queue_one(exp_queue, **kwargs)

@@ -54,7 +54,7 @@ def get(
         from dvc.fs import download
         from dvc.fs.data import DataFileSystem
 
-        fs: Union[DataFileSystem, "DVCFileSystem"]
+        fs: Union[DataFileSystem, DVCFileSystem]
         if os.path.isabs(path):
             fs = DataFileSystem(index=repo.index.data["local"])
             fs_path = fs.from_os_path(path)

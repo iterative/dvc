@@ -184,12 +184,12 @@ class Repo:
         # used by DVCFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
-        self.cloud: "DataCloud" = DataCloud(self)
-        self.stage: "StageLoad" = StageLoad(self)
+        self.cloud: DataCloud = DataCloud(self)
+        self.stage: StageLoad = StageLoad(self)
 
-        self.lock: "LockBase"
+        self.lock: LockBase
         self.cache: CacheManager
-        self.state: "StateBase"
+        self.state: StateBase
         if isinstance(self.fs, GitFileSystem) or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()

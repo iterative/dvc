@@ -160,7 +160,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             if key not in keys:
                 self.add_column(key)
 
-        row: list["CellT"] = [
+        row: list[CellT] = [
             with_value(d.get(key), self._fill_value) for key in self.keys()
         ]
         self.append(row)

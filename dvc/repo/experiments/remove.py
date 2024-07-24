@@ -34,17 +34,17 @@ def remove(  # noqa: C901, PLR0912
     removed: list[str] = []
     if not any([exp_names, queue, all_commits, rev]):
         return removed
-    celery_queue: "LocalCeleryQueue" = repo.experiments.celery_queue
+    celery_queue: LocalCeleryQueue = repo.experiments.celery_queue
 
     if queue:
         removed.extend(celery_queue.clear(queued=True))
 
     assert isinstance(repo.scm, Git)
 
-    exp_ref_list: list["ExpRefInfo"] = []
-    queue_entry_list: list["QueueEntry"] = []
+    exp_ref_list: list[ExpRefInfo] = []
+    queue_entry_list: list[QueueEntry] = []
     if exp_names:
-        results: dict[str, "ExpRefAndQueueEntry"] = (
+        results: dict[str, ExpRefAndQueueEntry] = (
             celery_queue.get_ref_and_entry_by_names(exp_names, git_remote)
         )
         remained: list[str] = []
@@ -94,7 +94,7 @@ def _resolve_exp_by_baseline(
 ) -> dict[str, "ExpRefInfo"]:
     assert isinstance(repo.scm, Git)
 
-    commit_ref_dict: dict[str, "ExpRefInfo"] = {}
+    commit_ref_dict: dict[str, ExpRefInfo] = {}
     rev_dict = iter_revs(repo.scm, rev, num)
     rev_set = set(rev_dict.keys())
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)

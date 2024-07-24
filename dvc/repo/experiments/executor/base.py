@@ -199,7 +199,7 @@ class BaseExecutor(ABC):
     @classmethod
     def from_info(cls, info: "ExecutorInfo") -> "Self":
         if info.result_hash:
-            result: Optional["ExecutorResult"] = ExecutorResult(
+            result: Optional[ExecutorResult] = ExecutorResult(
                 info.result_hash,
                 (ExpRefInfo.from_ref(info.result_ref) if info.result_ref else None),
                 info.result_force,
@@ -470,7 +470,7 @@ class BaseExecutor(ABC):
             cls._set_log_level(log_level)
 
         exp_hash: Optional[str] = None
-        exp_ref: Optional["ExpRefInfo"] = None
+        exp_ref: Optional[ExpRefInfo] = None
         repro_force: bool = False
 
         if info.name:
@@ -559,7 +559,7 @@ class BaseExecutor(ABC):
             )
 
         ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-        exp_ref: Optional["ExpRefInfo"] = ExpRefInfo.from_ref(ref) if ref else None
+        exp_ref: Optional[ExpRefInfo] = ExpRefInfo.from_ref(ref) if ref else None
         if cls.WARN_UNTRACKED:
             untracked = dvc.scm.untracked_files()
             if untracked:

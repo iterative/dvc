@@ -108,7 +108,7 @@ def locked(f):
 
 class StageLoad:
     def __init__(self, repo: "Repo") -> None:
-        self.repo: "Repo" = repo
+        self.repo: Repo = repo
 
     @property
     def fs(self):

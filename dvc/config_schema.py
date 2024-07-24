@@ -193,6 +193,7 @@ SCHEMA = {
                     "session_token": str,
                     Optional("listobjects", default=False): Bool,  # obsoleted
                     Optional("use_ssl", default=True): Bool,
+                    Optional("allow_anonymous_login", default=False): Bool,
                     "ssl_verify": Any(Bool, str),
                     "sse": str,
                     "sse_kms_key_id": str,
@@ -232,7 +233,12 @@ SCHEMA = {
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
-                "hdfs": {"user": str, "kerb_ticket": str, **REMOTE_COMMON},
+                "hdfs": {
+                    "user": str,
+                    "kerb_ticket": str,
+                    "replication": int,
+                    **REMOTE_COMMON,
+                },
                 "webhdfs": {
                     "kerberos": Bool,
                     "kerberos_principal": str,

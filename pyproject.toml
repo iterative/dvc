@@ -42,11 +42,11 @@ dependencies = [
     "dvc-http>=2.29.0",
     "dvc-objects",
     "dvc-render>=1.0.1,<2",
-    "dvc-studio-client>=0.20,<1",
+    "dvc-studio-client>=0.21,<1",
     "dvc-task>=0.3.0,<1",
     "flatten_dict<1,>=0.4.1",
-    "flufl.lock>=5,<8", # https://github.com/iterative/dvc/issues/9654
-    "fsspec",
+    "flufl.lock>=8.1.0,<9", # https://github.com/iterative/dvc/issues/9654
+    "fsspec>=2024.2.0",
     "funcy>=1.14",
     "grandalf<1,>=0.7",
     "gto>=1.6.0,<2",
@@ -65,7 +65,7 @@ dependencies = [
     "requests>=2.22",
     "rich>=12",
     "ruamel.yaml>=0.17.11",
-    "scmrepo>=3,<4",
+    "scmrepo>=3.3.4,<4",
     "shortuuid>=0.5",
     "shtab<2,>=1.3.4",
     "tabulate>=0.8.7",
@@ -83,7 +83,7 @@ gdrive = ["dvc-gdrive>=3,<4"]
 gs = ["dvc-gs>=3,<4"]
 hdfs = ["dvc-hdfs>=3,<4"]
 lint = [
-    "mypy==1.9.0",
+    "mypy==1.10.1",
     "pandas-stubs",
     "types-colorama",
     "types-psutil",
@@ -95,7 +95,7 @@ lint = [
     "typing-extensions",
 ]
 oss = ["dvc-oss>=3,<4"]
-s3 = ["dvc-s3>=3,<4"]
+s3 = ["dvc-s3>=3.2.0,<4"]
 ssh = ["dvc-ssh>=4,<5"]
 ssh_gssapi = ["dvc-ssh[gssapi]>=4,<5"]
 testing = [
@@ -256,6 +256,7 @@ module = [
 
 [tool.codespell]
 ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
+skip = "CODE_OF_CONDUCT.md"
 
 [tool.ruff]
 output-format = "full"

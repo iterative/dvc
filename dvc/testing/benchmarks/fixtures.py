@@ -104,6 +104,11 @@ def make_dvc_bin(
             venv.run("pip", "install", f"git+file://{dvc_git_repo}@{dvc_rev}#egg={egg}")
             if dvc_rev in ["2.18.1", "2.11.0", "2.6.3"]:
                 venv.run("pip", "install", "fsspec==2022.11.0")
+            try:
+                if version.Version(dvc_rev) < version.Version("3.50.3"):
+                    venv.run("pip", "install", "pygit2==1.14.1")
+            except version.InvalidVersion:
+                pass
             dvc_venvs[dvc_rev] = venv
         dvc_bin = venv.which("dvc")
     else:

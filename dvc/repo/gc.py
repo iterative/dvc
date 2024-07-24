@@ -50,7 +50,7 @@ def _used_obj_ids_not_in_remote(
 
 
 @locked
-def gc(  # noqa: PLR0913, C901
+def gc(  # noqa: C901, PLR0912, PLR0913
     self: "Repo",
     all_branches: bool = False,
     cloud: bool = False,
@@ -96,7 +96,7 @@ def gc(  # noqa: PLR0913, C901
         repos = []
     all_repos = [Repo(path) for path in repos]
 
-    odb_to_obj_ids: "ObjectContainer" = {}
+    odb_to_obj_ids: ObjectContainer = {}
     with ExitStack() as stack:
         for repo in all_repos:
             stack.enter_context(repo.lock)

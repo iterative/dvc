@@ -34,7 +34,7 @@ def update(  # noqa: C901
         raise InvalidArgumentError("--remote can't be used without --to-remote")
 
     import_stages = set()
-    other_stage_infos: list["StageInfo"] = []
+    other_stage_infos: list[StageInfo] = []
 
     for stage_info in self.index.collect_targets(targets, recursive=recursive):
         if stage_info.stage.is_import:

@@ -69,11 +69,11 @@ def collect_rev(
 
 def _collect_rev(
     repo: "Repo",
-    rev: str,
+    revision: str,
     param_deps: bool = False,
     **kwargs,
 ) -> SerializableExp:
-    with repo.switch(rev) as rev:
+    with repo.switch(revision) as rev:
         if rev == "workspace":
             timestamp: Optional[datetime] = None
         else:
@@ -174,7 +174,7 @@ def collect_active(
     """
     if not baseline_revs:
         return {}
-    result: dict[str, list["ExpRange"]] = {}
+    result: dict[str, list[ExpRange]] = {}
     exps = repo.experiments
     for queue in (exps.workspace_queue, exps.tempdir_queue, exps.celery_queue):
         for baseline, active_exps in queue.collect_active_data(
@@ -220,7 +220,7 @@ def collect_successful(
     Returns:
         Dict mapping baseline revision to successful experiments.
     """
-    result: dict[str, list["ExpRange"]] = {}
+    result: dict[str, list[ExpRange]] = {}
     for baseline_rev in baseline_revs:
         result[baseline_rev] = list(_collect_baseline(repo, baseline_rev, **kwargs))
     return result
@@ -304,7 +304,7 @@ def collect(
         )
 
     workspace_data = collect_rev(repo, "workspace", **kwargs)
-    result: list["ExpState"] = [workspace_data]
+    result: list[ExpState] = [workspace_data]
     queued = collect_queued(repo, baseline_revs, **kwargs) if not hide_queued else {}
     active = collect_active(repo, baseline_revs, **kwargs)
     failed = collect_failed(repo, baseline_revs, **kwargs) if not hide_failed else {}
