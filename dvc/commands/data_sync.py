@@ -195,7 +195,7 @@ def add_parser(subparsers, _parent_parser):
     pull_parser.add_argument(
         "--run-cache",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Fetch run history for all stages.",
     )
     pull_parser.add_argument(
@@ -263,7 +263,7 @@ def add_parser(subparsers, _parent_parser):
     push_parser.add_argument(
         "--run-cache",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Push run history for all stages.",
     )
     push_parser.add_argument(
@@ -325,7 +325,7 @@ def add_parser(subparsers, _parent_parser):
     fetch_parser.add_argument(
         "--run-cache",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Fetch run history for all stages.",
     )
     fetch_parser.add_argument(

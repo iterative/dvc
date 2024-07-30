@@ -122,7 +122,7 @@ def add_parser(experiments_subparsers, parent_parser):
     experiments_push_parser.add_argument(
         "--run-cache",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Push run history for all stages.",
     )
     experiments_push_parser.add_argument(
