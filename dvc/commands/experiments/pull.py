@@ -84,7 +84,7 @@ def add_parser(experiments_subparsers, parent_parser):
     experiments_pull_parser.add_argument(
         "--run-cache",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Pull run history for all stages.",
     )
     experiments_pull_parser.add_argument(
