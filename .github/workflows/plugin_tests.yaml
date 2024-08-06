@@ -18,8 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
-        pyv: ["3.10"]
+        os: [ubuntu-latest]
+        pyv: ["3.12"]
         plugin: ["dvc-s3"]
 
     steps:
@@ -37,16 +37,17 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyv }}
-        cache: pip
+
+    - uses: hynek/setup-cached-uv@v2
+      with:
         cache-dependency-path: |
           dvc/pyproject.toml
-          ${{ matrix.plugin }}/setup.cfg
+          ${{ matrix.plugin }}/pyproject.toml
 
     - name: Install plugin + DVC@PR
       run: |
-        pip install --upgrade pip wheel
-        pip install "./dvc[testing]"
-        pip install -e "./${{ matrix.plugin }}[tests]"
+        uv pip install "./dvc[testing]" --system
+        uv pip install -e "./${{ matrix.plugin }}[tests]" --system
 
     - name: Run plugin tests
       timeout-minutes: 15
