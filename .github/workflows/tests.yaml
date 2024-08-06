@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         pyv: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
@@ -33,13 +33,18 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyv }}
-        cache: pip
+    - uses: hynek/setup-cached-uv@v2
+      with:
         cache-dependency-path: pyproject.toml
-    - name: install
-      run: |
-        pip install --upgrade pip wheel
-        pip install -e ".[dev]"
+    - run: uv pip install -e ".[dev]" --system
+
+    - name: Cache mypy
+      uses: actions/cache@v4
+      with:
+        path: .mypy_cache
+        key: mypy-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}
     - uses: pre-commit/action@v3.0.1
+
     - name: run tests
       timeout-minutes: 40
       env:
