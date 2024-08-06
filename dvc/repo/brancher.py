@@ -130,10 +130,12 @@ def _switch_fs(
     if not fs.exists(root_dir):
         raise NotDvcRepoError(f"Commit '{rev[:7]}' does not contain a DVC repo")
 
+    remote = repo.config.get("remote", {})
     repo.fs = fs
     repo.root_dir = root_dir
     repo.dvc_dir = fs.join(root_dir, repo.DVC_DIR)
     repo._reset()
+    repo.config["remote"] = remote
 
     if cwd_parts:
         cwd = repo.fs.join("/", *cwd_parts)
