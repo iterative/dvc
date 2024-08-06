@@ -50,7 +50,12 @@ class SerializableExp:
         Params, metrics, deps, outs are filled via repo fs/index, all other fields
         should be passed via kwargs.
         """
-        from dvc.dependency import ParamsDependency, RepoDependency
+        from dvc.dependency import (
+            DatasetDependency,
+            DbDependency,
+            ParamsDependency,
+            RepoDependency,
+        )
 
         rev = rev or repo.get_rev()
         assert rev
@@ -68,7 +73,10 @@ class SerializableExp:
                     nfiles=dep.meta.nfiles if dep.meta else None,
                 )
                 for dep in repo.index.deps
-                if not isinstance(dep, (ParamsDependency, RepoDependency))
+                if not isinstance(
+                    dep,
+                    (ParamsDependency, RepoDependency, DatasetDependency, DbDependency),
+                )
             },
             outs={
                 relpath(out.fs_path, repo.root_dir): ExpOut(

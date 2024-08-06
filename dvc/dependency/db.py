@@ -44,6 +44,10 @@ class AbstractDependency(Dependency):
         self.def_path = None  # type: ignore[assignment]
         self.info = info or {}
 
+    @property
+    def is_in_repo(self):
+        return False
+
 
 class DbDependency(AbstractDependency):
     PARAM_CONNECTION = "connection"
@@ -70,8 +74,8 @@ class DbDependency(AbstractDependency):
         return self.db_info.get(self.PARAM_QUERY) or self.db_info.get(self.PARAM_TABLE)
 
     def __repr__(self):
-        return "{}:{}".format(
-            self.__class__.__name__, "".join(f"{k}=={v}" for k, v in self.info.items())
+        return "{}: {}".format(
+            self.__class__.__name__, "".join(f"{k}={v}" for k, v in self.info.items())
         )
 
     def __str__(self):

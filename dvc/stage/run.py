@@ -154,7 +154,11 @@ def cmd_run(stage, dry=False, run_env=None):
 
 
 def _pull_missing_deps(stage):
+    from dvc.dependency import DatasetDependency, DbDependency
+
     for dep in stage.deps:
+        if isinstance(dep, (DatasetDependency, DbDependency)):
+            continue
         if not dep.exists:
             stage.repo.pull(dep.def_path)
 
