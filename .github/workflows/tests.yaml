@@ -22,8 +22,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
         pyv: ["3.9", "3.10", "3.11", "3.12"]
+        include:
+        - os: windows-latest
+          pyv: "3.9"
+          pytestargs: "--splits 4 --group 1"
+        - os: windows-latest
+          pyv: "3.9"
+          pytestargs: "--splits 4 --group 2"
+        - os: windows-latest
+          pyv: "3.9"
+          pytestargs: "--splits 4 --group 3"
+        - os: windows-latest
+          pyv: "3.9"
+          pytestargs: "--splits 4 --group 4"
+        - os: windows-latest
+          pyv: "3.12"
+          pytestargs: "--splits 4 --group 1"
+        - os: windows-latest
+          pyv: "3.12"
+          pytestargs: "--splits 4 --group 2"
+        - os: windows-latest
+          pyv: "3.12"
+          pytestargs: "--splits 4 --group 3"
+        - os: windows-latest
+          pyv: "3.12"
+          pytestargs: "--splits 4 --group 4"
 
     steps:
     - uses: actions/checkout@v4
@@ -36,7 +61,7 @@ jobs:
     - uses: hynek/setup-cached-uv@v2
       with:
         cache-dependency-path: pyproject.toml
-    - run: uv pip install -e ".[dev]" --system
+    - run: uv pip install -e ".[dev]" pytest-split --system
 
     - name: Cache mypy
       uses: actions/cache@v4
@@ -50,7 +75,7 @@ jobs:
       env:
         PYTHONUTF8: 1
       run: >
-        pytest -n=logical --timeout=300 --durations=100
+        pytest ${{ matrix.pytestargs }} -n=logical --timeout=300 --durations=0
         --cov --cov-report=xml --cov-report=term
     - name: upload coverage report
       uses: codecov/codecov-action@v3
