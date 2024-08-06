@@ -16,8 +16,37 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    timeout-minutes: 10
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - uses: hynek/setup-cached-uv@v2
+      with:
+        cache-dependency-path: pyproject.toml
+    - run: uv pip install -e ".[dev]" --system
+      env:
+        UV_LINK_MODE: ${{ runner.os == 'Windows' && 'symlink' || 'hardlink' }}
+
+    - name: Cache mypy
+      uses: actions/cache@v4
+      with:
+        path: .mypy_cache
+        key: mypy-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}
+    - uses: pre-commit/action@v3.0.1
+
   tests:
-    timeout-minutes: 50
+    timeout-minutes: 20
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -49,7 +78,6 @@ jobs:
         - os: windows-latest
           pyv: "3.12"
           pytestargs: "--splits 4 --group 4"
-
     steps:
     - uses: actions/checkout@v4
       with:
@@ -62,13 +90,8 @@ jobs:
       with:
         cache-dependency-path: pyproject.toml
     - run: uv pip install -e ".[dev]" pytest-split --system
-
-    - name: Cache mypy
-      uses: actions/cache@v4
-      with:
-        path: .mypy_cache
-        key: mypy-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}
-    - uses: pre-commit/action@v3.0.1
+      env:
+        UV_LINK_MODE: ${{ runner.os == 'Windows' && 'symlink' || 'hardlink' }}
 
     - name: run tests
       timeout-minutes: 40
@@ -76,7 +99,7 @@ jobs:
         PYTHONUTF8: 1
       run: >
         pytest ${{ matrix.pytestargs }} -n=logical --timeout=300 --durations=0
-        --cov --cov-report=xml --cov-report=term
+        --cov --cov-report=xml --cov-report=term  --durations-path=./.github/.test_durations
     - name: upload coverage report
       uses: codecov/codecov-action@v3
       with:
