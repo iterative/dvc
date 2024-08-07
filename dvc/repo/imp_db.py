@@ -4,7 +4,6 @@ from funcy import compact
 
 from dvc.exceptions import OutputDuplicationError
 from dvc.repo.scm_context import scm_context
-from dvc.ui import ui
 from dvc.utils import resolve_output, resolve_paths
 
 if TYPE_CHECKING:
@@ -25,11 +24,6 @@ def imp_db(
     force: bool = False,
     connection: Optional[str] = None,
 ):
-    ui.warn("WARNING: import-db is an experimental feature.")
-    ui.warn(
-        "The functionality may change or break without notice, "
-        "which could lead to unexpected behavior."
-    )
     assert sql or table
     assert output_format in ("csv", "json")
 
