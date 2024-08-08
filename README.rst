@@ -17,6 +17,8 @@
 
 |
 
+🚀 Check out also our new product `DataChain <https://github.com/iterative/datachain>`_ (and give it a ⭐!) if you need to version and process a large number of files. Contact us at support@iterative.ai to discuss commercial solutions and support for reproducibility and data management for AI.
+
 **Data Version Control** or **DVC** is a command line tool and `VS Code Extension`_ to help you develop reproducible machine learning projects:
 
 #. **Version** your data and models.
