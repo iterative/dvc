@@ -147,7 +147,7 @@ class Repo:
     ):
         from dvc.cachemgr import CacheManager
         from dvc.data_cloud import DataCloud
-        from dvc.fs import GitFileSystem, LocalFileSystem, localfs
+        from dvc.fs import GitFileSystem, LocalFileSystem
         from dvc.lock import LockNoop, make_lock
         from dvc.repo.artifacts import Artifacts
         from dvc.repo.datasets import Datasets
@@ -161,7 +161,7 @@ class Repo:
 
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}
-        self._fs = fs or localfs
+        self._fs = fs or LocalFileSystem()
         self._scm = scm
         self._config = config
         self._remote = remote
@@ -206,6 +206,11 @@ class Repo:
                     friendly=True,
                 )
                 os.makedirs(self.site_cache_dir, exist_ok=True)
+                if not fs and (
+                    checksum_jobs := self.config["core"].get("checksum_jobs")
+                ):
+                    self.fs.hash_jobs = checksum_jobs
+
                 self.state = State(self.root_dir, self.site_cache_dir, self.dvcignore)
             else:
                 self.lock = LockNoop()

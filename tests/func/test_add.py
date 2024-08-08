@@ -305,20 +305,20 @@ def test_should_update_state_entry_for_directory_after_add(mocker, dvc, tmp_dir)
 
     ret = main(["add", "data"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 4
+    assert file_md5_counter.mock.call_count == 3
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 5
+    assert file_md5_counter.mock.call_count == 4
 
     os.rename("data", "data.back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 6
+    assert file_md5_counter.mock.call_count == 5
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 7
+    assert file_md5_counter.mock.call_count == 6
 
 
 def test_add_commit(tmp_dir, dvc):
@@ -339,15 +339,15 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     counter = mocker.spy(dvc_data.hashfile.build, "_build_tree")
     ret = main(["add", "data"])
     assert ret == 0
+    assert counter.mock.call_count == 1
+
+    ret = main(["status"])
+    assert ret == 0
     assert counter.mock.call_count == 2
 
     ret = main(["status"])
     assert ret == 0
     assert counter.mock.call_count == 3
-
-    ret = main(["status"])
-    assert ret == 0
-    assert counter.mock.call_count == 4
 
 
 def test_should_place_stage_in_data_dir_if_repository_below_symlink(
@@ -754,6 +754,7 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc):
 def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
+    dvc.cache.local.cache_types = ["symlink", "hardlink"]
     mocker.patch("dvc_data.hashfile.checkout.test_links", return_value=[])
     dvc.add("foo")
     err = capsys.readouterr()[1]
