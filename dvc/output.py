@@ -542,7 +542,8 @@ class Output:
             desc=f"Collecting files and computing hashes in {self}",
             disable=no_progress_bar,
         ) as pb:
-            return build(*args, callback=pb.as_callback(), **kwargs)
+            kwargs["callback"] = pb.as_callback()
+            return build(*args, **kwargs)
 
     def _get_hash_meta(self):
         if self.use_cache:
@@ -751,9 +752,8 @@ class Output:
             )
             # NOTE: trying to use hardlink during transfer only if we will be
             # relinking later
-            hardlink = relink
             if granular:
-                obj = self._commit_granular_dir(filter_info, hardlink)
+                obj = self._commit_granular_dir(filter_info, hardlink=False)
             else:
                 staging, _, obj = self._build(
                     self.cache,
@@ -771,7 +771,7 @@ class Output:
                         self.cache,
                         {obj.hash_info},
                         shallow=False,
-                        hardlink=hardlink,
+                        hardlink=False,
                         callback=cb,
                     )
             if relink:
@@ -1403,7 +1403,7 @@ class Output:
                 staging,
                 self.cache,
                 {obj.hash_info},
-                hardlink=relink,
+                hardlink=False,
                 shallow=False,
                 callback=cb,
             )

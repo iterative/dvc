@@ -754,6 +754,7 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc):
 def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
+    dvc.cache.local.cache_types = ["symlink", "hardlink"]
     mocker.patch("dvc_data.hashfile.checkout.test_links", return_value=[])
     dvc.add("foo")
     err = capsys.readouterr()[1]
