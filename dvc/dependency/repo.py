@@ -115,7 +115,7 @@ class RepoDependency(Dependency):
                 state=self.repo.state,
                 prompt=confirm,
             )
-        except CheckoutError:
+        except (CheckoutError, FileNotFoundError):
             super().download(to=to, jobs=jobs)
 
     def update(self, rev: Optional[str] = None):
