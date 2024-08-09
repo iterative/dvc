@@ -59,6 +59,7 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
         "checkpoint": bool,
         Output.PARAM_REMOTE: str,
         Output.PARAM_PUSH: bool,
+        Output.PARAM_PULL: bool,
     }
 }
 

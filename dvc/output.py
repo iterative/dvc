@@ -94,6 +94,7 @@ def loadd_from(stage, d_list):
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
+        pull = d.pop(Output.PARAM_PULL, True)
         push = d.pop(Output.PARAM_PUSH, True)
         hash_name = d.pop(Output.PARAM_HASH, None)
         fs_config = d.pop(Output.PARAM_FS_CONFIG, None)
@@ -109,6 +110,7 @@ def loadd_from(stage, d_list):
                 remote=remote,
                 **annot,
                 files=files,
+                pull=pull,
                 push=push,
                 hash_name=hash_name,
                 fs_config=fs_config,
@@ -189,6 +191,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_REMOTE,
                 Output.PARAM_PUSH,
+                Output.PARAM_PULL,
                 *ANNOTATION_FIELDS,
             ],
         )
@@ -296,6 +299,7 @@ class Output:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_REMOTE = "remote"
+    PARAM_PULL = "pull"
     PARAM_PUSH = "push"
     PARAM_CLOUD = "cloud"
     PARAM_HASH = "hash"
@@ -323,6 +327,7 @@ class Output:
         repo=None,
         fs_config=None,
         files: Optional[list[dict[str, Any]]] = None,
+        pull: bool = True,
         push: bool = True,
         hash_name: Optional[str] = DEFAULT_ALGORITHM,
     ):
@@ -387,6 +392,7 @@ class Output:
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
+        self.pull = pull
         self.can_push = push
 
         self.fs_path = self._parse_path(self.fs, fs_path)
@@ -869,6 +875,9 @@ class Output:
 
             if not self.can_push:
                 ret[self.PARAM_PUSH] = self.can_push
+
+            if not self.pull:
+                ret[self.PARAM_PULL] = self.pull
 
         if with_files:
             obj = self.obj or self.get_obj()
@@ -1501,6 +1510,7 @@ SCHEMA = {
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
     Output.PARAM_REMOTE: str,
+    Output.PARAM_PULL: bool,
     Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
     Output.PARAM_FS_CONFIG: dict,
