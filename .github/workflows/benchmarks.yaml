@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with:
-            python-version: "3.11"
+            python-version: "3.12"
       - uses: iterative/dvc-bench@main
         with:
             pytest_options: "-k 'test_init or test_help'"
