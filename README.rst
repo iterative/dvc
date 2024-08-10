@@ -1,4 +1,8 @@
-|Banner|
+--------------------------
+
+🚀 Check out our new product `DataChain <https://github.com/iterative/datachain>`_ (and give it a ⭐!) if you need to version and process a large number of files. Contact us at support@iterative.ai to discuss commercial solutions and support for AI reproducibility and data management scenarious.
+
+--------------------------
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
@@ -15,11 +19,7 @@
 
 |PyPI| |PyPI Downloads| |Packages| |Brew| |Conda| |Choco| |Snap|
 
---------------------------
-
-🚀 Check out our new product `DataChain <https://github.com/iterative/datachain>`_ (and give it a ⭐!) if you need to version and process a large number of files. Contact us at support@iterative.ai to discuss commercial solutions and support for AI reproducibility and data management scenarious.
-
---------------------------
+|
 
 **Data Version Control** or **DVC** is a command line tool and `VS Code Extension`_ to help you develop reproducible machine learning projects:
 
