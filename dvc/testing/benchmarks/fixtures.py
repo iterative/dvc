@@ -1,7 +1,8 @@
 import os
 import shutil
+import sys
 from pathlib import Path
-from subprocess import check_output
+from subprocess import check_call, check_output
 from typing import Optional
 
 import pytest
@@ -23,13 +24,14 @@ class VirtualEnv:
         self.bin = self.path / ("Scripts" if os.name == "nt" else "bin")
 
     def create(self) -> None:
-        import virtualenv
+        check_call([sys.executable, "-m", "uv", "venv", self.path])  # noqa:S603
 
-        virtualenv.cli_run([os.fspath(self.path)])
+    def install(self, *packages: str) -> None:
+        check_call([sys.executable, "-m", "uv", "pip", "install", *packages])  # noqa: S603
 
     def run(self, cmd: str, *args: str, env: Optional[dict[str, str]] = None) -> None:
         exe = self.which(cmd)
-        check_output([exe, *args], env=env)  # noqa: S603
+        check_call([exe, *args], env=env)  # noqa: S603
 
     def which(self, cmd: str) -> str:
         assert self.bin.exists()
@@ -93,22 +95,21 @@ def make_dvc_bin(
     request,
 ):
     if dvc_rev:
-        venv = dvc_venvs.get(dvc_rev)
+        venv: VirtualEnv = dvc_venvs.get(dvc_rev)
         if not venv:
             venv = make_dvc_venv(dvc_rev)
-            venv.run("pip", "install", "-U", "pip")
             if bench_config.dvc_install_deps:
-                egg = f"dvc[{bench_config.dvc_install_deps}]"
+                pkg = f"dvc[{bench_config.dvc_install_deps}]"
             else:
-                egg = "dvc"
-            venv.run("pip", "install", f"git+file://{dvc_git_repo}@{dvc_rev}#egg={egg}")
-            if dvc_rev in ["2.18.1", "2.11.0", "2.6.3"]:
-                venv.run("pip", "install", "fsspec==2022.11.0")
+                pkg = "dvc"
+            packages = [f"{pkg} @ git+file://{dvc_git_repo}@{dvc_rev}"]
             try:
                 if version.Version(dvc_rev) < version.Version("3.50.3"):
-                    venv.run("pip", "install", "pygit2==1.14.1")
+                    packages.append("pygit2==1.14.1")
             except version.InvalidVersion:
                 pass
+            venv.install(*packages)
+
             dvc_venvs[dvc_rev] = venv
         dvc_bin = venv.which("dvc")
     else:

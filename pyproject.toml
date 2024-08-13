@@ -101,7 +101,7 @@ ssh_gssapi = ["dvc-ssh[gssapi]>=4,<5"]
 testing = [
   "pytest-benchmark[histogram]",
   "pytest-test-utils",
-  "virtualenv",
+  "uv",
 ]
 tests = [
     "dvc[testing]",
