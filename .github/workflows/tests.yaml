@@ -56,28 +56,28 @@ jobs:
         include:
         - os: windows-latest
           pyv: "3.9"
-          pytestargs: "--splits 4 --group 1"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 1"
         - os: windows-latest
           pyv: "3.9"
-          pytestargs: "--splits 4 --group 2"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 2"
         - os: windows-latest
           pyv: "3.9"
-          pytestargs: "--splits 4 --group 3"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 3"
         - os: windows-latest
           pyv: "3.9"
-          pytestargs: "--splits 4 --group 4"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 4"
         - os: windows-latest
           pyv: "3.12"
-          pytestargs: "--splits 4 --group 1"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 1"
         - os: windows-latest
           pyv: "3.12"
-          pytestargs: "--splits 4 --group 2"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 2"
         - os: windows-latest
           pyv: "3.12"
-          pytestargs: "--splits 4 --group 3"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 3"
         - os: windows-latest
           pyv: "3.12"
-          pytestargs: "--splits 4 --group 4"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 4"
     steps:
     - uses: actions/checkout@v4
       with:
