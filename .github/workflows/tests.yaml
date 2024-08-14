@@ -88,6 +88,7 @@ jobs:
         python-version: ${{ matrix.pyv }}
     - uses: hynek/setup-cached-uv@v2
       with:
+        cache-suffix: ${{ matrix.pyv }}
         cache-dependency-path: pyproject.toml
     - run: uv pip install -e ".[dev]" pytest-split --system
       env:
