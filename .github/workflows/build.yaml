@@ -27,14 +27,15 @@ jobs:
       with:
         python-version: 3.12
 
-    - run: python -m pip install --upgrade pip setuptools_scm build twine
+    - uses: hynek/setup-cached-uv@v2
+    - run: uv pip install --upgrade setuptools_scm build twine --system
 
     - name: Force version for Test PyPI upload
       if: ${{ !startsWith(github.ref, 'refs/tags') }}
       run: echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
 
     - run: echo 'PKG = "pip"'>dvc/_build.py
-    - run: python -m build
+    - run: python -m build --installer=uv
       env:
         SETUPTOOLS_SCM_PRETEND_VERSION_FOR_DVC: ${{ env.version }}
     - run: twine check --strict dist/*
