@@ -97,6 +97,11 @@ def test_analytics(tmp_path, server):
     }
     env.pop("DVC_TEST", None)
     env.pop("DVC_NO_ANALYTICS", None)
+    # The `iterative-telemetry` package calls `gh api` to generate a CI id.
+    # This might hang especially on Windows,
+    # possibly due to system load from the running tests.
+    # Removing the GITHUB_ACTIONS env var avoids calling `gh api`.
+    env.pop("GITHUB_ACTIONS", None)
 
     output = subprocess.check_output(
         [*_get_dvc_args(), "config", "-l", "-vv"],
@@ -113,7 +118,7 @@ def test_analytics(tmp_path, server):
     pid = int(match.group(1).strip())
 
     with suppress(psutil.NoSuchProcess):
-        psutil.Process(pid).wait(timeout=30)
+        psutil.Process(pid).wait(timeout=10)
 
     log_contents = logfile.read_text(encoding="utf8")
     expected_line = (f"Process {pid} " if os.name != "nt" else "") + "exiting with 0"
