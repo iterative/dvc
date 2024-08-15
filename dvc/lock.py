@@ -4,6 +4,7 @@ import hashlib
 import os
 from abc import ABC, abstractmethod
 from datetime import timedelta
+from typing import Optional, Union
 
 import flufl.lock
 import zc.lockfile
@@ -174,9 +175,9 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         self._owned = True
         self._retry_errnos = []
 
-    def lock(self):
+    def lock(self, timeout: Optional[Union[timedelta, int]] = None):
         try:
-            super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
+            super().lock(timeout or timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
