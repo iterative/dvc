@@ -55,7 +55,7 @@ def pull(  # noqa: C901
         rev_dict = iter_revs(repo.scm, rev, num)
         rev_set = set(rev_dict.keys())
         ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-        for _, ref_info_list in ref_info_dict.items():
+        for ref_info_list in ref_info_dict.values():
             exp_ref_set.update(ref_info_list)
 
     pull_result = _pull(repo, git_remote, exp_ref_set, force)

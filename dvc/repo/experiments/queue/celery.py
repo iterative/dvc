@@ -323,7 +323,7 @@ class LocalCeleryQueue(BaseStashQueue):
     def _get_running_task_ids(self) -> set[str]:
         running_task_ids: set[str] = set()
         active_workers = self.worker_status()
-        for _, tasks in active_workers.items():
+        for tasks in active_workers.values():
             task = first(tasks)
             if task:
                 running_task_ids.add(task["id"])

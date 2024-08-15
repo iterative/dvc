@@ -288,7 +288,7 @@ class BaseExecutor(ABC):
             stages = []
             if targets:
                 for target in targets:
-                    stages.append(
+                    stages.append(  # noqa: PERF401
                         dvc.commit(
                             target, recursive=recursive, force=True, relink=False
                         )

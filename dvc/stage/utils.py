@@ -302,9 +302,9 @@ def _get_stage_files(stage: "Stage") -> list[str]:
             and dep.is_in_repo
             and not stage.repo.dvcfs.isdvc(stage.repo.dvcfs.from_os_path(str(dep)))
         ):
-            ret.append(relpath(dep.fs_path))
+            ret.append(relpath(dep.fs_path))  # noqa: PERF401
 
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
-            ret.append(relpath(out.fs_path))
+            ret.append(relpath(out.fs_path))  # noqa: PERF401
     return ret

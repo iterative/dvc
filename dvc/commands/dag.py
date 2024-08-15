@@ -17,7 +17,7 @@ def _show_ascii(graph: "DiGraph"):
 
     ret = []
     for pipeline in pipelines:
-        ret.append(draw(pipeline.nodes, pipeline.edges))
+        ret.append(draw(pipeline.nodes, pipeline.edges))  # noqa: PERF401
 
     return "\n".join(ret)
 

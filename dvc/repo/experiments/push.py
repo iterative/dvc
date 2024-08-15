@@ -78,7 +78,7 @@ def exp_refs_from_rev(scm: "Git", rev: list[str], num: int = 1) -> set["ExpRefIn
     rev_dict = iter_revs(scm, rev, num)
     rev_set = set(rev_dict.keys())
     ref_info_dict = exp_refs_by_baseline(scm, rev_set)
-    for _, ref_info_list in ref_info_dict.items():
+    for ref_info_list in ref_info_dict.values():
         exp_ref_set.update(ref_info_list)
     return exp_ref_set
 

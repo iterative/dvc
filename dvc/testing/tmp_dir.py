@@ -71,7 +71,7 @@ class TmpDir(pathlib.Path):
 
         def __new__(cls, *args, **kwargs):
             if cls is TmpDir:
-                cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
+                cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir  # noqa: PLW0642
 
             # init parameter and `_init` method has been removed in Python 3.10.
             kw = {"init": False} if sys.version_info < (3, 10) else {}

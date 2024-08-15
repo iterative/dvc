@@ -249,7 +249,7 @@ class Experiments:
         exec_results = queue.reproduce(copy_paths=copy_paths, message=message)
 
         results: dict[str, str] = {}
-        for _, exp_result in exec_results.items():
+        for exp_result in exec_results.values():
             results.update(exp_result)
         return results
 

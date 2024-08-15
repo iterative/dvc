@@ -264,21 +264,19 @@ show-fixes = true
 
 [tool.ruff.lint]
 ignore = [
-    "N818", "S101", "ISC001", "PT004", "PT007", "RET502", "RET503", "SIM105", "SIM108", "SIM117",
-    "TRY003", "TRY300", "PLR2004", "PLW2901", "LOG007",
+    "N818", "S101", "ISC001", "PT007", "RET502", "RET503", "SIM105", "SIM108", "SIM117",
+    "TRY003", "TRY300", "PERF203", "PLR2004", "PLW2901", "LOG007",
 ]
 select = [
     "F", "E", "W", "C90", "I", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "DTZ", "T10",
-    "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
+    "EXE", "ISC", "ICN", "LOG", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
     "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
-    "FLY", "PERF101", "LOG", "RUF", "RUF022", "RUF023", "RUF024", "RUF025", "RUF026", "RUF027"
+    "FLY", "PERF", "FURB", "RUF", "RUF022", "RUF023", "RUF024", "RUF026", "RUF027", "RUF029", "RUF030",
 ]
 preview = true
 explicit-preview-rules = true
 
 [tool.ruff.lint.flake8-pytest-style]
-fixture-parentheses = false
-mark-parentheses = false
 parametrize-names-type = "csv"
 raises-extend-require-match-for = ["dvc.exceptions.DvcException", "dvc.scm.SCMError", "scmrepo.exceptions.SCMError"]
 
@@ -305,4 +303,4 @@ max-args = 10
 "dvc/commands/**" = ["N806"]
 "dvc/testing/**" = ["ARG002"]
 "dvc/testing/benchmarks/**" = ["ARG001"]
-"tests/**" = ["S", "ARG001", "ARG002", "TRY002", "TRY301"]
+"tests/**" = ["S", "ARG001", "ARG002", "TRY002", "TRY301", "PERF"]
