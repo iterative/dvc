@@ -23,7 +23,7 @@ def _lists(blob: Union[dict, list]) -> Iterable[list]:
     if isinstance(blob, list):
         yield blob
     else:
-        for _, value in blob.items():
+        for value in blob.values():
             if isinstance(value, dict):
                 yield from _lists(value)
             elif isinstance(value, list):

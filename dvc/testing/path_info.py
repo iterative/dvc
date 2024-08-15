@@ -32,7 +32,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
 
         def __new__(cls, *args):
             if cls is PathInfo:
-                cls = WindowsPathInfo if os.name == "nt" else PosixPathInfo
+                cls = WindowsPathInfo if os.name == "nt" else PosixPathInfo  # noqa: PLW0642
 
             return cls._from_parts(args)  # type: ignore[attr-defined]
 

@@ -98,7 +98,7 @@ def _resolve_exp_by_baseline(
     rev_dict = iter_revs(repo.scm, rev, num)
     rev_set = set(rev_dict.keys())
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-    for _, ref_info_list in ref_info_dict.items():
+    for ref_info_list in ref_info_dict.values():
         for ref_info in ref_info_list:
             commit_ref_dict[ref_info.name] = ref_info
     return commit_ref_dict
