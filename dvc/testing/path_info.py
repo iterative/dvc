@@ -79,13 +79,13 @@ class PathInfo(pathlib.PurePath, _BasePath):
             and self._cparts[:n] == other._cparts  # type: ignore[attr-defined]
         )
 
-    def relative_to(self, other):
+    def relative_to(self, other, *args, **kwargs):
         # pathlib relative_to raises exception when one path is not a direct
         # descendant of the other when os.path.relpath would return abspath.
         # For DVC PathInfo we only need the relpath behavior.
         # See: https://bugs.python.org/issue40358
         try:
-            path = super().relative_to(other)
+            path = super().relative_to(other, *args, **kwargs)
         except ValueError:
             path = relpath(self, other)
         return self.__class__(path)

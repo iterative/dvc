@@ -76,7 +76,7 @@ class SerDe:
         return asdict(self, filter=filter_defaults, value_serializer=value_serializer)
 
     @classmethod
-    def from_dict(cls: type["Self"], d: dict[str, Any]) -> "Self":
+    def from_dict(cls, d: dict[str, Any]) -> "Self":
         _fields = fields(cast("type[AttrsInstance]", cls))
         kwargs = {f.name: d[f.name] for f in _fields if f.name in d}
         return cls(**kwargs)
