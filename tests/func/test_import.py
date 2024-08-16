@@ -730,22 +730,15 @@ def test_reimport(tmp_dir, scm, dvc, erepo_dir, mocker):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
-    spy = mocker.spy(base, "fs_download")
+    download_spy = mocker.spy(base, "fs_download")
+    hash_spy = mocker.spy(hash, "file_md5")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
-    assert spy.called
-
-    spy.reset_mock()
-    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", force=True)
-    assert not spy.called
-
-
-def test_import_hash(tmp_dir, scm, dvc, erepo_dir, mocker):
-    with erepo_dir.chdir():
-        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
-
-    spy = mocker.spy(hash, "file_md5")
-
-    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
-
     out_path = (tmp_dir / "foo_imported").as_posix()
-    assert out_path == spy.call_args.args[0]
+    assert download_spy.called
+    assert out_path == hash_spy.call_args.args[0]
+
+    download_spy.reset_mock()
+    hash_spy.reset_mock()
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", force=True)
+    assert not download_spy.called
+    assert out_path != hash_spy.call_args.args[0]
