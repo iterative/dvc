@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 import voluptuous as vol
 
-from dvc.prompt import confirm
 from dvc.utils import as_posix
 
 from .base import Dependency
@@ -94,29 +93,19 @@ class RepoDependency(Dependency):
         }
 
     def download(self, to: "Output", jobs: Optional[int] = None):
-        from dvc_data.hashfile.build import build
-        from dvc_data.hashfile.checkout import CheckoutError, checkout
+        super().download(to=to, jobs=jobs)
 
-        try:
-            repo = self._make_fs(locked=True).repo
-
-            _, _, obj = build(
-                repo.cache.local,
-                self.fs_path,
-                repo.dvcfs,
-                repo.cache.local.fs.PARAM_CHECKSUM,
-            )
-            checkout(
-                to.fs_path,
-                to.fs,
-                obj,
-                self.repo.cache.local,
-                ignore=None,
-                state=self.repo.state,
-                prompt=confirm,
-            )
-        except (CheckoutError, FileNotFoundError):
-            super().download(to=to, jobs=jobs)
+        # Save hash info to output state.
+        fs_info = self.fs.info(self.fs_path)
+        if fs_info["type"] == "directory":
+            for _, _, files in self.fs.walk(self.fs_path, detail=True):
+                for file, file_info in files.items():
+                    path = f"{to.fs_path}{to.fs.sep}{file}"
+                    hash_info = file_info["dvc_info"]["entry"].hash_info
+                    to.cache.state.save(path, to.fs, hash_info)
+        else:
+            hash_info = fs_info["dvc_info"]["entry"].hash_info
+            to.cache.state.save(to.fs_path, to.fs, hash_info)
 
     def update(self, rev: Optional[str] = None):
         if rev:
