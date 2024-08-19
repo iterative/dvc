@@ -95,17 +95,25 @@ class RepoDependency(Dependency):
     def download(self, to: "Output", jobs: Optional[int] = None):
         super().download(to=to, jobs=jobs)
 
-        # Save hash info to output state.
-        fs_info = self.fs.info(self.fs_path)
-        if fs_info["type"] == "directory":
-            for _, _, files in self.fs.walk(self.fs_path, detail=True):
-                for file, file_info in files.items():
-                    path = f"{to.fs_path}{to.fs.sep}{file}"
-                    hash_info = file_info["dvc_info"]["entry"].hash_info
-                    to.cache.state.save(path, to.fs, hash_info)
-        else:
-            hash_info = fs_info["dvc_info"]["entry"].hash_info
-            to.cache.state.save(to.fs_path, to.fs, hash_info)
+        try:
+            # Save hash info to output state.
+            fs_info = self.fs.info(self.fs_path)
+            start = 0
+            if fs_info["type"] == "directory":
+                for root, _, files in self.fs.walk(self.fs_path, detail=True):
+                    if not start:
+                        start = len(root)
+                    for file, file_info in files.items():
+                        parts = [to.fs_path, *root[start:].split(to.fs.sep), file]
+                        path = to.fs.sep.join(parts)
+                        hash_info = file_info["dvc_info"]["entry"].hash_info
+                        to.cache.state.save(path, to.fs, hash_info)
+            else:
+                hash_info = fs_info["dvc_info"]["entry"].hash_info
+                to.cache.state.save(to.fs_path, to.fs, hash_info)
+        except (AttributeError, KeyError):
+            # If no hash info found, just keep going and output will be hashed later.
+            pass
 
     def update(self, rev: Optional[str] = None):
         if rev:
