@@ -118,32 +118,25 @@ def make_dvc_bin(
     def _dvc_bin(*args):
         return check_output([dvc_bin, *args], text=True)  # noqa: S603
 
-    _dvc_bin.version = parse_tuple(_dvc_bin("--version"))  # type: ignore[attr-defined]
+    _dvc_bin.version = _dvc_bin("--version")  # type: ignore[attr-defined]
     return _dvc_bin
-
-
-def parse_tuple(version_string):
-    from packaging.version import Version
-
-    parsed = version.parse(version_string)
-    assert isinstance(parsed, Version)
-    return (parsed.major, parsed.minor, parsed.micro)
 
 
 @pytest.fixture
 def dvc_bin(request, make_dvc_bin):
     if marker := request.node.get_closest_marker("requires"):
-        minversion = marker.kwargs.get("minversion") or first(marker.args)
-        assert minversion, (
-            "'minversion' needs to be specified as"
-            " a positional or a keyword argument"
-        )
-        reason = marker.kwargs.get("reason", "")
-        if isinstance(minversion, str):
-            minversion = parse_tuple(minversion)
-        if make_dvc_bin.version < minversion:
-            version_repr = ".".join(map(str, minversion))
-            pytest.skip(f"requires dvc>={version_repr}: {reason}")
+        from packaging.specifiers import SpecifierSet
+        from packaging.version import Version
+
+        spec = first(marker.args)
+        assert spec is not None
+        spec = SpecifierSet(spec) if isinstance(spec, str) else spec
+        reason = marker.kwargs["reason"]
+        if Version(make_dvc_bin.version) not in spec:
+            pytest.skip(
+                f"Version {make_dvc_bin.version} "
+                f"does not satisfy requirement {spec!r}: {reason}"
+            )
     return make_dvc_bin
 
 

@@ -1,9 +1,5 @@
 from shutil import rmtree
 
-import pytest
-
-pytestmark = pytest.mark.requires(minversion=(2, 15, 0), reason="new command")
-
 
 def test_data_status(bench_dvc, tmp_dir, scm, dvc, make_dataset):
     args = ("data", "status")

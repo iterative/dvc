@@ -30,7 +30,8 @@ class DVCBenchConfig:
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "requires(minversion): mark a test as requiring minimum DVC version"
+        "markers",
+        "requires(spec): mark a test to run only on versions that satisfy the spec",
     )
 
     config.bench_config = DVCBenchConfig()

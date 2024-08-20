@@ -1,10 +1,7 @@
-import pytest
-
 from dvc.repo import Repo
 from dvc.testing.benchmarks.fixtures import _pull
 
 
-@pytest.mark.requires(minversion=(2, 34, 0), reason="top-level plots not supported")
 def test_plots(project, bench_dvc):
     with Repo() as dvc:
         _pull(dvc)
