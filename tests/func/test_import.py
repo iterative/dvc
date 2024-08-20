@@ -732,5 +732,6 @@ def test_import_no_hash(tmp_dir, scm, dvc, erepo_dir, mocker):
     spy = mocker.spy(hash, "file_md5")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
     out_path = (tmp_dir / "foo_imported").as_posix()
+    assert spy.call_count == 1
     for call in spy.call_args_list:
         assert out_path != call.args[0]

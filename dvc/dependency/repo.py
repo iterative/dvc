@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from dvc.fs import DVCFileSystem
     from dvc.output import Output
     from dvc.stage import Stage
+    from dvc_data.hashfile.hash_info import HashInfo
 
 
 class RepoDependency(Dependency):
@@ -93,27 +94,25 @@ class RepoDependency(Dependency):
         }
 
     def download(self, to: "Output", jobs: Optional[int] = None):
-        super().download(to=to, jobs=jobs)
+        from dvc.fs import LocalFileSystem
 
-        try:
-            # Save hash info to output state.
-            fs_info = self.fs.info(self.fs_path)
-            start = 0
-            if fs_info["type"] == "directory":
-                for root, _, files in self.fs.walk(self.fs_path, detail=True):
-                    if not start:
-                        start = len(root)
-                    for file, file_info in files.items():
-                        parts = [to.fs_path, *root[start:].split(to.fs.sep), file]
-                        path = to.fs.sep.join(parts)
-                        hash_info = file_info["dvc_info"]["entry"].hash_info
-                        to.cache.state.save(path, to.fs, hash_info)
-            else:
-                hash_info = fs_info["dvc_info"]["entry"].hash_info
-                to.cache.state.save(to.fs_path, to.fs, hash_info)
-        except (AttributeError, KeyError):
-            # If no hash info found, just keep going and output will be hashed later.
-            pass
+        files = super().download(to=to, jobs=jobs)
+        if not isinstance(to.fs, LocalFileSystem):
+            return files
+
+        hashes: list[tuple[str, HashInfo, dict[str, Any]]] = []
+        for src_path, dest_path in files:
+            try:
+                hash_info = self.fs.info(src_path)["dvc_info"]["entry"].hash_info
+                dest_info = to.fs.info(dest_path)
+            except (OSError, KeyError, AttributeError):
+                # If no hash info found, just keep going and output will be hashed later
+                continue
+            if hash_info:
+                hashes.append((dest_path, hash_info, dest_info))
+        cache = to.cache if to.use_cache else to.local_cache
+        cache.state.save_many(hashes, to.fs)
+        return files
 
     def update(self, rev: Optional[str] = None):
         if rev:

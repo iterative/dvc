@@ -45,7 +45,7 @@ class Dependency(Output):
             self.fs_path = self.fs.version_path(self.fs_path, self.meta.version_id)
 
     def download(self, to, jobs=None):
-        fs_download(self.fs, self.fs_path, to.fs_path, jobs=jobs)
+        return fs_download(self.fs, self.fs_path, to.fs_path, jobs=jobs)
 
     def save(self):
         super().save()

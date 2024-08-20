@@ -220,7 +220,7 @@ class Artifacts:
 
             out = resolve_output(path, out, force=force)
             fs = self.repo.dvcfs
-            count = fs_download(fs, path, os.path.abspath(out), jobs=jobs)
+            count = len(fs_download(fs, path, os.path.abspath(out), jobs=jobs))
         return count, out
 
     @staticmethod
