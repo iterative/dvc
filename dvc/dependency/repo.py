@@ -105,7 +105,7 @@ class RepoDependency(Dependency):
             try:
                 hash_info = self.fs.info(src_path)["dvc_info"]["entry"].hash_info
                 dest_info = to.fs.info(dest_path)
-            except (OSError, KeyError, AttributeError):
+            except (KeyError, AttributeError):
                 # If no hash info found, just keep going and output will be hashed later
                 continue
             if hash_info:
