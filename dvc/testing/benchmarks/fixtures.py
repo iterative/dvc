@@ -126,15 +126,17 @@ def make_dvc_bin(
 def dvc_bin(request, make_dvc_bin):
     if marker := request.node.get_closest_marker("requires"):
         from packaging.specifiers import SpecifierSet
-        from packaging.version import Version
+        from packaging.version import Version, parse
 
         spec = first(marker.args)
         assert spec is not None
         spec = SpecifierSet(spec) if isinstance(spec, str) else spec
         reason = marker.kwargs["reason"]
-        if Version(make_dvc_bin.version) not in spec:
+        dvc_version = make_dvc_bin.version
+        version = Version(parse(dvc_version).base_version)
+        if version not in spec:
             pytest.skip(
-                f"Version {make_dvc_bin.version} "
+                f"Version {dvc_version} "
                 f"does not satisfy requirement {spec!r}: {reason}"
             )
     return make_dvc_bin
