@@ -6,13 +6,13 @@ from funcy import first
 
 from dvc.cachemgr import CacheManager
 from dvc.config import NoRemoteError
-from dvc.dependency import base
 from dvc.dvcfile import load_file
 from dvc.fs import system
 from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
+from dvc_data.hashfile import hash
 from dvc_data.index.index import DataIndexDirError
 
 
@@ -725,14 +725,12 @@ def test_import_invalid_configs(tmp_dir, scm, dvc, erepo_dir):
         )
 
 
-def test_reimport(tmp_dir, scm, dvc, erepo_dir, mocker):
+def test_import_no_hash(tmp_dir, scm, dvc, erepo_dir, mocker):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
-    spy = mocker.spy(base, "fs_download")
-    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
-    assert spy.called
-
-    spy.reset_mock()
-    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", force=True)
-    assert not spy.called
+    spy = mocker.spy(hash, "file_md5")
+    stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
+    assert spy.call_count == 1
+    for call in spy.call_args_list:
+        assert stage.outs[0].fs_path != call.args[0]

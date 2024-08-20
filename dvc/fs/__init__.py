@@ -47,7 +47,7 @@ known_implementations.update(
 
 def download(
     fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
-) -> int:
+) -> list[tuple[str, str]]:
     from dvc.scm import lfs_prefetch
 
     from .callbacks import TqdmCallback
@@ -61,7 +61,7 @@ def download(
             ]
             if not from_infos:
                 localfs.makedirs(to, exist_ok=True)
-                return 0
+                return []
             to_infos = [
                 localfs.join(to, *fs.relparts(info, fs_path)) for info in from_infos
             ]
@@ -81,7 +81,7 @@ def download(
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
         generic.copy(fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs)
-        return len(to_infos)
+        return list(zip(from_infos, to_infos))
 
 
 def parse_external_url(url, fs_config=None, config=None):
