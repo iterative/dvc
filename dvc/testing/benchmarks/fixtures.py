@@ -60,8 +60,8 @@ def dvc_venvs():
 
 
 @pytest.fixture(scope="session")
-def dvc_git_repo(tmp_path_factory, bench_config):
-    url = bench_config.dvc_git_repo
+def dvc_repo(tmp_path_factory, bench_config):
+    url = bench_config.dvc_repo
 
     if os.path.isdir(url):
         return url
@@ -73,8 +73,10 @@ def dvc_git_repo(tmp_path_factory, bench_config):
 
 
 @pytest.fixture(scope="session")
-def dvc_bench_git_repo(tmp_path_factory, bench_config):
-    url = bench_config.dvc_bench_git_repo
+def dvc_bench_repo(tmp_path_factory, bench_config):
+    url = bench_config.dvc_bench_repo
+    if url is None:
+        pytest.skip("--dvc-bench-repo is not set")
 
     if os.path.isdir(url):
         return Path(url)
@@ -90,7 +92,7 @@ def make_dvc_bin(
     dvc_rev,
     dvc_venvs,
     make_dvc_venv,
-    dvc_git_repo,
+    dvc_repo,
     bench_config,
     request,
 ):
@@ -102,7 +104,7 @@ def make_dvc_bin(
                 pkg = f"dvc[{bench_config.dvc_install_deps}]"
             else:
                 pkg = "dvc"
-            packages = [f"{pkg} @ git+file://{dvc_git_repo}@{dvc_rev}"]
+            packages = [f"{pkg} @ git+file://{dvc_repo}@{dvc_rev}"]
             try:
                 if version.Version(dvc_rev) < version.Version("3.50.3"):
                     packages.append("pygit2==1.14.1")
@@ -186,14 +188,14 @@ def _pull(repo, *args):
 
 
 @pytest.fixture
-def make_dataset(request, bench_config, tmp_dir, dvc_bench_git_repo):
+def make_dataset(request, bench_config, tmp_dir, dvc_bench_repo):
     def _make_dataset(
         dvcfile=False, files=True, cache=False, commit=False, remote=False
     ):
         from dvc.repo import Repo
 
         path = tmp_dir / "dataset"
-        root = dvc_bench_git_repo
+        root = dvc_bench_repo
         src = root / "data" / bench_config.dataset / "dataset"
         src_dvc = src.with_suffix(".dvc")
 
@@ -252,7 +254,7 @@ def make_project(tmp_path_factory):
 @pytest.fixture
 def project(bench_config, monkeypatch, make_project):
     rev = bench_config.project_rev
-    url = bench_config.project_git_repo
+    url = bench_config.project_repo
 
     if os.path.isdir(url):
         path = url

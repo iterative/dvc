@@ -159,7 +159,7 @@ namespaces = false
 write_to = "dvc/_dvc_version.py"
 
 [tool.pytest.ini_options]
-addopts = "-ra --cov-config pyproject.toml --dist worksteal --benchmark-skip"
+addopts = "-ra --cov-config pyproject.toml"
 filterwarnings = [
     "error::ResourceWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
