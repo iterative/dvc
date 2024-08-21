@@ -99,7 +99,7 @@ jobs:
       env:
         PYTHONUTF8: 1
       run: >
-        pytest ${{ matrix.pytestargs }} -n=logical --timeout=300 --durations=0
+        pytest ${{ matrix.pytestargs }} -n=logical --dist=worksteal --timeout=300 --durations=0
         --cov --cov-report=xml --cov-report=term  --durations-path=./.github/.test_durations
     - name: upload coverage report
       uses: codecov/codecov-action@v3

@@ -18,3 +18,9 @@ def pytest_configure(config):
     from .benchmarks.plugin import pytest_configure as bench_configure
 
     bench_configure(config)
+
+
+def pytest_report_header(config):
+    from .benchmarks.plugin import pytest_report_header as bench_report_header
+
+    return bench_report_header(config)
