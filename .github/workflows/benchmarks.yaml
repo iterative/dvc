@@ -5,6 +5,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  FORCE_COLOR: "1"
+  PY_COLORS: "1"
+
 jobs:
   bench:
     name: run benchmarks
@@ -13,6 +17,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
             python-version: "3.12"
-      - uses: iterative/dvc-bench@main
+
+      - uses: hynek/setup-cached-uv@v2
+      - uses: actions/checkout@v4
         with:
-            pytest_options: "-k 'test_init or test_help'"
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      - run: uv pip install '.[tests]' --system
+      - name: run benchmarks on base branch
+        run: pytest --benchmark-autosave dvc/testing/benchmarks/ -k 'test_init or test_help'
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: false
+      - run: uv pip install '.[tests]' --system
+      - name: run benchmarks for PR
+        run: >
+          pytest --benchmark-compare --benchmark-compare-fail=min:5%
+          --benchmark-group-by name
+          dvc/testing/benchmarks/ -k 'test_init or test_help'
