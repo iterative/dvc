@@ -118,9 +118,9 @@ def make_dvc_bin(
         dvc_bin = bench_config.dvc_bin
 
     def _dvc_bin(*args):
-        return check_output([dvc_bin, *args], text=True)  # noqa: S603
+        check_call([dvc_bin, *args])  # noqa: S603
 
-    _dvc_bin.version = _dvc_bin("--version")  # type: ignore[attr-defined]
+    _dvc_bin.version = check_output([dvc_bin, "--version"], text=True)  # type: ignore[attr-defined]  # noqa: S603
     return _dvc_bin
 
 
@@ -167,11 +167,19 @@ def make_bench(request):
 
 
 @pytest.fixture
-def bench_dvc(dvc_bin, make_bench):
+def bench_dvc(request, dvc_bin, make_bench):
     def _bench_dvc(*args, **kwargs):
         name = kwargs.pop("name", None)
         name = f"-{name}" if name else ""
         bench = make_bench(args[0] + name)
+        if request.config.getoption("--benchmark-cprofile-dump") or kwargs.pop(
+            "cprofile", False
+        ):
+            cprofile_results = request.config.invocation_params.dir / "prof"
+            cprofile_results.mkdir(exist_ok=True)
+            stats_file = cprofile_results / f"{bench.name}.prof"
+            args = (*args, "--cprofile-dump", stats_file)
+
         return bench.pedantic(dvc_bin, args=args, **kwargs)
 
     return _bench_dvc

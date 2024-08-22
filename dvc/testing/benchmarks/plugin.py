@@ -73,6 +73,13 @@ def pytest_addoption(parser):
     )
 
     parser.addoption(
+        "--benchmark-cprofile-dump",
+        action="store_true",
+        default=False,
+        help="Save cprofile results",
+    )
+
+    parser.addoption(
         "--dvc-bin",
         type=str,
         default=DEFAULT_DVC_BIN,
