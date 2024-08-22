@@ -1,7 +1,6 @@
 import pytest
 
 
-@pytest.mark.flaky(reruns=3)
 @pytest.mark.requires(
     "!=3.53.*,!=3.54.0",
     reason="Takes 10 mins to run. Regression in 3.53.0, fixed in 3.54.1",
@@ -12,4 +11,4 @@ def test_import(bench_dvc, tmp_dir, scm, dvc, make_dataset, remote):
     dataset = make_dataset(
         cache=False, files=False, dvcfile=True, commit=True, remote=True
     )
-    bench_dvc("import", tmp_dir, dataset.name, "-o", "new")
+    bench_dvc("import", f"file://{tmp_dir.as_posix()}", dataset.name, "-o", "new")

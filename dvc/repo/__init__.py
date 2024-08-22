@@ -166,7 +166,7 @@ class Repo:
         self._config = config
         self._remote = remote
         self._remote_config = remote_config
-        self._data_index = None
+        self._data_index: Optional[DataIndex] = None
 
         if rev and not fs:
             self._scm = scm = SCM(root_dir or os.curdir)
@@ -232,6 +232,7 @@ class Repo:
             Callable[[str, Exception], None]
         ] = None
         self._lock_depth: int = 0
+        self._is_remote = False
 
     def __str__(self):
         return self.url or self.root_dir
@@ -361,7 +362,9 @@ class Repo:
     def data_index(self) -> "DataIndex":
         from dvc_data.index import DataIndex
 
-        if self._data_index is None:
+        if self._is_remote:
+            self._data_index = DataIndex()
+        elif self._data_index is None:
             index_dir = os.path.join(self.site_cache_dir, "index", "data")
             os.makedirs(index_dir, exist_ok=True)
             self._data_index = DataIndex.open(os.path.join(index_dir, "db.db"))

@@ -40,7 +40,9 @@ def _external_repo(url, rev: Optional[str] = None, **kwargs) -> "Repo":
         **kwargs,
     )
 
-    return Repo(**repo_kwargs)
+    repo = Repo(**repo_kwargs)
+    repo._is_remote = True
+    return repo
 
 
 def open_repo(url, *args, **kwargs):
