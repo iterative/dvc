@@ -98,12 +98,13 @@ class RepoDependency(Dependency):
 
         files = super().download(to=to, jobs=jobs)
         if not isinstance(to.fs, LocalFileSystem):
-            return files
+            return
 
         hashes: list[tuple[str, HashInfo, dict[str, Any]]] = []
-        for src_path, dest_path in files:
+        for src_path, dest_path, *rest in files:
             try:
-                hash_info = self.fs.info(src_path)["dvc_info"]["entry"].hash_info
+                info = rest[0] if rest else self.fs.info(src_path)
+                hash_info = info["dvc_info"]["entry"].hash_info
                 dest_info = to.fs.info(dest_path)
             except (KeyError, AttributeError):
                 # If no hash info found, just keep going and output will be hashed later
@@ -112,7 +113,6 @@ class RepoDependency(Dependency):
                 hashes.append((dest_path, hash_info, dest_info))
         cache = to.cache if to.use_cache else to.local_cache
         cache.state.save_many(hashes, to.fs)
-        return files
 
     def update(self, rev: Optional[str] = None):
         if rev:

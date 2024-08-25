@@ -1,5 +1,5 @@
 import glob
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import urlparse
 
 from dvc.config import ConfigError as RepoConfigError
@@ -47,12 +47,24 @@ known_implementations.update(
 
 def download(
     fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
-) -> list[tuple[str, str]]:
+) -> list[Union[tuple[str, str], tuple[str, str, dict]]]:
     from dvc.scm import lfs_prefetch
 
     from .callbacks import TqdmCallback
 
     with TqdmCallback(desc=f"Downloading {fs.name(fs_path)}", unit="files") as cb:
+        if isinstance(fs, DVCFileSystem):
+            lfs_prefetch(
+                fs,
+                [
+                    f"{fs.normpath(glob.escape(fs_path))}/**"
+                    if fs.isdir(fs_path)
+                    else glob.escape(fs_path)
+                ],
+            )
+            if not glob.has_magic(fs_path):
+                return fs._get(fs_path, to, batch_size=jobs, callback=cb)
+
         # NOTE: We use dvc-objects generic.copy over fs.get since it makes file
         # download atomic and avoids fsspec glob/regex path expansion.
         if fs.isdir(fs_path):
@@ -69,15 +81,6 @@ def download(
             from_infos = [fs_path]
             to_infos = [to]
 
-        if isinstance(fs, DVCFileSystem):
-            lfs_prefetch(
-                fs,
-                [
-                    f"{fs.normpath(glob.escape(fs_path))}/**"
-                    if fs.isdir(fs_path)
-                    else glob.escape(fs_path)
-                ],
-            )
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
         generic.copy(fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs)

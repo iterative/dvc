@@ -13,7 +13,7 @@ from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 from dvc_data.hashfile import hash
-from dvc_data.index.index import DataIndexDirError
+from dvc_data.index.index import DataIndex, DataIndexDirError
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -725,12 +725,41 @@ def test_import_invalid_configs(tmp_dir, scm, dvc, erepo_dir):
         )
 
 
-def test_import_no_hash(tmp_dir, scm, dvc, erepo_dir, mocker):
+@pytest.mark.parametrize(
+    "files,expected_info_calls",
+    [
+        ({"foo": "foo"}, {("foo",)}),
+        (
+            {
+                "dir": {
+                    "bar": "bar",
+                    "subdir": {"lorem": "ipsum", "nested": {"lorem": "lorem"}},
+                }
+            },
+            # info calls should be made for only directories
+            {("dir",), ("dir", "subdir"), ("dir", "subdir", "nested")},
+        ),
+    ],
+)
+def test_import_no_hash(
+    tmp_dir, scm, dvc, erepo_dir, mocker, files, expected_info_calls
+):
     with erepo_dir.chdir():
-        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+        erepo_dir.dvc_gen(files, commit="create foo")
 
-    spy = mocker.spy(hash, "file_md5")
-    stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
-    assert spy.call_count == 1
-    for call in spy.call_args_list:
-        assert stage.outs[0].fs_path != call.args[0]
+    file_md5_spy = mocker.spy(hash, "file_md5")
+    index_info_spy = mocker.spy(DataIndex, "info")
+    name = next(iter(files))
+
+    dvc.imp(os.fspath(erepo_dir), name, "out")
+
+    local_hashes = [
+        call.args[0]
+        for call in file_md5_spy.call_args_list
+        if call.args[1].protocol == "local"
+    ]
+    # no files should be hashed, should use existing metadata
+    assert not local_hashes
+    assert {
+        call.args[1] for call in index_info_spy.call_args_list
+    } == expected_info_calls
