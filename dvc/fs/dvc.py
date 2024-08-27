@@ -6,19 +6,23 @@ import posixpath
 import threading
 from collections import deque
 from contextlib import ExitStack, suppress
+from glob import has_magic
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
-from fsspec.spec import AbstractFileSystem
+from fsspec.spec import DEFAULT_CALLBACK, AbstractFileSystem
 from funcy import wrap_with
 
 from dvc.log import logger
-from dvc_objects.fs.base import FileSystem
+from dvc.utils.threadpool import ThreadPoolExecutor
+from dvc_objects.fs.base import AnyFSPath, FileSystem
 
 from .data import DataFileSystem
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.types import DictStrAny, StrPath
+
+    from .callbacks import Callback
 
 logger = logger.getChild(__name__)
 
@@ -474,9 +478,110 @@ class _DVCFileSystem(AbstractFileSystem):
         info["name"] = path
         return info
 
+    def get(
+        self,
+        rpath,
+        lpath,
+        recursive=False,
+        callback=DEFAULT_CALLBACK,
+        maxdepth=None,
+        batch_size=None,
+        **kwargs,
+    ):
+        self._get(
+            rpath,
+            lpath,
+            recursive=recursive,
+            callback=callback,
+            maxdepth=maxdepth,
+            batch_size=batch_size,
+            **kwargs,
+        )
+
+    def _get(  # noqa: C901
+        self,
+        rpath,
+        lpath,
+        recursive=False,
+        callback=DEFAULT_CALLBACK,
+        maxdepth=None,
+        batch_size=None,
+        **kwargs,
+    ) -> list[Union[tuple[str, str], tuple[str, str, dict]]]:
+        if (
+            isinstance(rpath, list)
+            or isinstance(lpath, list)
+            or has_magic(rpath)
+            or not self.exists(rpath)
+            or not recursive
+        ):
+            super().get(
+                rpath,
+                lpath,
+                recursive=recursive,
+                callback=callback,
+                maxdepth=maxdepth,
+                **kwargs,
+            )
+            return []
+
+        if os.path.isdir(lpath) or lpath.endswith(os.path.sep):
+            lpath = self.join(lpath, os.path.basename(rpath))
+
+        if self.isfile(rpath):
+            with callback.branched(rpath, lpath) as child:
+                self.get_file(rpath, lpath, callback=child, **kwargs)
+                return [(rpath, lpath)]
+
+        _files = []
+        _dirs: list[str] = []
+        for root, dirs, files in self.walk(rpath, maxdepth=maxdepth, detail=True):
+            if files:
+                callback.set_size((callback.size or 0) + len(files))
+
+            parts = self.relparts(root, rpath)
+            if parts in ((os.curdir,), ("",)):
+                parts = ()
+            dest_root = os.path.join(lpath, *parts)
+            if not maxdepth or len(parts) < maxdepth - 1:
+                _dirs.extend(f"{dest_root}{os.path.sep}{d}" for d in dirs)
+
+            key = self._get_key_from_relative(root)
+            _, dvc_fs, _ = self._get_subrepo_info(key)
+
+            for name, info in files.items():
+                src_path = f"{root}{self.sep}{name}"
+                dest_path = f"{dest_root}{os.path.sep}{name}"
+                _files.append((dvc_fs, src_path, dest_path, info))
+
+        os.makedirs(lpath, exist_ok=True)
+        for d in _dirs:
+            os.mkdir(d)
+
+        def _get_file(arg):
+            dvc_fs, src, dest, info = arg
+            dvc_info = info.get("dvc_info")
+            if dvc_info and dvc_fs:
+                dvc_path = dvc_info["name"]
+                dvc_fs.get_file(
+                    dvc_path, dest, callback=callback, info=dvc_info, **kwargs
+                )
+            else:
+                self.get_file(src, dest, callback=callback, **kwargs)
+            return src, dest, info
+
+        with ThreadPoolExecutor(max_workers=batch_size) as executor:
+            return list(executor.imap_unordered(_get_file, _files))
+
     def get_file(self, rpath, lpath, **kwargs):
         key = self._get_key_from_relative(rpath)
         fs_path = self._from_key(key)
+
+        dirpath = os.path.dirname(lpath)
+        if dirpath:
+            # makedirs raises error if the string is empty
+            os.makedirs(dirpath, exist_ok=True)
+
         try:
             return self.repo.fs.get_file(fs_path, lpath, **kwargs)
         except FileNotFoundError:
@@ -552,6 +657,45 @@ class DVCFileSystem(FileSystem):
 
     def getcwd(self):
         return self.fs.getcwd()
+
+    def _get(
+        self,
+        from_info: Union[AnyFSPath, list[AnyFSPath]],
+        to_info: Union[AnyFSPath, list[AnyFSPath]],
+        callback: "Callback" = DEFAULT_CALLBACK,
+        recursive: bool = False,
+        batch_size: Optional[int] = None,
+        **kwargs,
+    ) -> list[Union[tuple[str, str], tuple[str, str, dict]]]:
+        # FileSystem.get is non-recursive by default if arguments are lists
+        # otherwise, it's recursive.
+        recursive = not (isinstance(from_info, list) and isinstance(to_info, list))
+        return self.fs._get(
+            from_info,
+            to_info,
+            callback=callback,
+            recursive=recursive,
+            batch_size=batch_size,
+            **kwargs,
+        )
+
+    def get(
+        self,
+        from_info: Union[AnyFSPath, list[AnyFSPath]],
+        to_info: Union[AnyFSPath, list[AnyFSPath]],
+        callback: "Callback" = DEFAULT_CALLBACK,
+        recursive: bool = False,
+        batch_size: Optional[int] = None,
+        **kwargs,
+    ) -> None:
+        self._get(
+            from_info,
+            to_info,
+            callback=callback,
+            batch_size=batch_size,
+            recursive=recursive,
+            **kwargs,
+        )
 
     @property
     def fsid(self) -> str:
