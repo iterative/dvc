@@ -529,7 +529,6 @@ class _DVCFileSystem(AbstractFileSystem):
             lpath = self.join(lpath, os.path.basename(rpath))
 
         if self.isfile(rpath):
-            os.makedirs(os.path.dirname(lpath), exist_ok=True)
             with callback.branched(rpath, lpath) as child:
                 self.get_file(rpath, lpath, callback=child, **kwargs)
                 return [(rpath, lpath)]
@@ -544,7 +543,8 @@ class _DVCFileSystem(AbstractFileSystem):
             if parts in ((os.curdir,), ("",)):
                 parts = ()
             dest_root = os.path.join(lpath, *parts)
-            _dirs.extend(f"{dest_root}{os.path.sep}{d}" for d in dirs)
+            if not maxdepth or len(parts) < maxdepth - 1:
+                _dirs.extend(f"{dest_root}{os.path.sep}{d}" for d in dirs)
 
             key = self._get_key_from_relative(root)
             _, dvc_fs, _ = self._get_subrepo_info(key)
@@ -576,6 +576,11 @@ class _DVCFileSystem(AbstractFileSystem):
     def get_file(self, rpath, lpath, **kwargs):
         key = self._get_key_from_relative(rpath)
         fs_path = self._from_key(key)
+
+        dirpath = os.path.dirname(lpath)
+        if dirpath:
+            # makedirs raises error if the string is empty
+            os.makedirs(dirpath, exist_ok=True)
 
         try:
             return self.repo.fs.get_file(fs_path, lpath, **kwargs)
