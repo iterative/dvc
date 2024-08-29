@@ -1,5 +1,6 @@
 import glob
-from typing import Optional, Union
+from itertools import repeat
+from typing import Optional
 from urllib.parse import urlparse
 
 from dvc.config import ConfigError as RepoConfigError
@@ -47,7 +48,7 @@ known_implementations.update(
 
 def download(
     fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
-) -> list[Union[tuple[str, str], tuple[str, str, dict]]]:
+) -> list[tuple[str, str, Optional[dict]]]:
     from dvc.scm import lfs_prefetch
 
     from .callbacks import TqdmCallback
@@ -84,7 +85,7 @@ def download(
         cb.set_size(len(from_infos))
         jobs = jobs or fs.jobs
         generic.copy(fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs)
-        return list(zip(from_infos, to_infos))
+        return list(zip(from_infos, to_infos, repeat(None)))
 
 
 def parse_external_url(url, fs_config=None, config=None):
