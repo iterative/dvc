@@ -558,25 +558,29 @@ class _DVCFileSystem(AbstractFileSystem):
         for d in _dirs:
             os.mkdir(d)
 
+        repo_fs = self.repo.fs
+
         def _get_file(arg):
             dvc_fs, src, dest, info = arg
             dvc_info = info.get("dvc_info")
-            if dvc_info and dvc_fs:
+            fs_info = info.get("fs_info")
+            if dvc_fs and dvc_info and not fs_info:
                 dvc_path = dvc_info["name"]
                 dvc_fs.get_file(
                     dvc_path, dest, callback=callback, info=dvc_info, **kwargs
                 )
             else:
-                self.get_file(src, dest, callback=callback, **kwargs)
+                fs_path = fs_info["name"]
+                repo_fs.get_file(fs_path, dest, callback=callback, **kwargs)
             return src, dest, info
 
         with ThreadPoolExecutor(max_workers=batch_size) as executor:
             return list(executor.imap_unordered(_get_file, _files))
 
     def get_file(self, rpath, lpath, **kwargs):
+        dvc_info = kwargs.pop("info", {}).pop("dvc_info", None)
         key = self._get_key_from_relative(rpath)
         fs_path = self._from_key(key)
-
         dirpath = os.path.dirname(lpath)
         if dirpath:
             # makedirs raises error if the string is empty
@@ -590,7 +594,7 @@ class _DVCFileSystem(AbstractFileSystem):
                 raise
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
-        return dvc_fs.get_file(dvc_path, lpath, **kwargs)
+        return dvc_fs.get_file(dvc_path, lpath, info=dvc_info, **kwargs)
 
     def du(self, path, total=True, maxdepth=None, withdirs=False, **kwargs):
         if maxdepth is not None:
