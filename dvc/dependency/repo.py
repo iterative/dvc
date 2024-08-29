@@ -101,9 +101,9 @@ class RepoDependency(Dependency):
             return
 
         hashes: list[tuple[str, HashInfo, dict[str, Any]]] = []
-        for src_path, dest_path, *rest in files:
+        for src_path, dest_path, maybe_info in files:
             try:
-                info = rest[0] if rest else self.fs.info(src_path)
+                info = maybe_info or self.fs.info(src_path)
                 hash_info = info["dvc_info"]["entry"].hash_info
                 dest_info = to.fs.info(dest_path)
             except (KeyError, AttributeError):
