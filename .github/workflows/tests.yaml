@@ -31,9 +31,10 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - uses: hynek/setup-cached-uv@v2
+    - uses: astral-sh/setup-uv@v2
       with:
-        cache-dependency-path: pyproject.toml
+        enable-cache: true
+        cache-dependency-glob: pyproject.toml
     - run: uv pip install -e ".[dev]" --system
       env:
         UV_LINK_MODE: ${{ runner.os == 'Windows' && 'symlink' || 'hardlink' }}
@@ -86,10 +87,11 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyv }}
-    - uses: hynek/setup-cached-uv@v2
+    - uses: astral-sh/setup-uv@v2
       with:
+        enable-cache: true
+        cache-dependency-glob: pyproject.toml
         cache-suffix: ${{ matrix.pyv }}
-        cache-dependency-path: pyproject.toml
     - run: uv pip install -e ".[dev]" pytest-split --system
       env:
         UV_LINK_MODE: ${{ runner.os == 'Windows' && 'symlink' || 'hardlink' }}

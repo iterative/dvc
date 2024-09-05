@@ -38,11 +38,11 @@ jobs:
       with:
         python-version: ${{ matrix.pyv }}
 
-    - uses: hynek/setup-cached-uv@v2
+    - uses: astral-sh/setup-uv@v2
       with:
-        cache-dependency-path: |
-          dvc/pyproject.toml
-          ${{ matrix.plugin }}/pyproject.toml
+        enable-cache: true
+        cache-dependency-glob: "**/pyproject.toml"
+        cache-suffix: ${{ matrix.pyv }}
 
     - name: Install plugin + DVC@PR
       run: |

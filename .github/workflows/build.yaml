@@ -27,15 +27,18 @@ jobs:
       with:
         python-version: 3.12
 
-    - uses: hynek/setup-cached-uv@v2
-    - run: uv pip install --upgrade setuptools_scm build twine --system
+    - uses: astral-sh/setup-uv@v2
+      with:
+        enable-cache: true
+
+    - run: uv pip install --upgrade setuptools_scm twine --system
 
     - name: Force version for Test PyPI upload
       if: ${{ !startsWith(github.ref, 'refs/tags') }}
       run: echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
 
     - run: echo 'PKG = "pip"'>dvc/_build.py
-    - run: python -m build --installer=uv
+    - run: uv build
       env:
         SETUPTOOLS_SCM_PRETEND_VERSION_FOR_DVC: ${{ env.version }}
     - run: twine check --strict dist/*
@@ -67,6 +70,7 @@ jobs:
     - name: Upload package to Test PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
+        attestations: true
         repository-url: https://test.pypi.org/legacy/
         skip-existing: true
 
@@ -91,3 +95,5 @@ jobs:
 
     - name: Upload package to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        attestations: true
