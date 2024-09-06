@@ -18,7 +18,11 @@ jobs:
         with:
             python-version: "3.12"
 
-      - uses: hynek/setup-cached-uv@v2
+      - uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
