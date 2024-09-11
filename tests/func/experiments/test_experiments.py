@@ -1,6 +1,7 @@
 import itertools
 import logging
 import os
+import re
 import stat
 from textwrap import dedent
 
@@ -27,6 +28,7 @@ from dvc.scm import SCMError, resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.testing.scripts import COPY_SCRIPT
 from dvc.utils.serialize import PythonFileCorruptedError
+from dvc_task.proc.process import ManagedProcess
 
 
 @pytest.mark.parametrize("name", [None, "foo"])
@@ -477,6 +479,33 @@ def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
         with fs.open("metrics.yaml", mode="r", encoding="utf-8") as fobj:
             metrics.add(fobj.read().strip())
     assert expected == metrics
+
+
+def test_run_celery_queues_two_jobs_each_one_with_cleaning_flag(
+    tmp_dir, scm, dvc, exp_stage, mocker
+):
+    # This is one of the tests we need to update
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
+    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
+    assert len(dvc.experiments.stash_revs) == 2
+
+    repro_spy = mocker.spy(dvc.experiments, "reproduce_celery")
+    spawn_spy = mocker.spy(ManagedProcess, "spawn")
+    dvc.experiments.run(run_all=True, jobs=2)
+
+    repro_spy.assert_called_once_with(jobs=2)
+
+    call_1_args, call_2_args = [spawn_spy.call_args_list[n].args[0] for n in (0, 1)]
+
+    pattern = r"^dvc-exp-[0-9A-Fa-f]{6}-[1,2]@localhost$"  # dvc-exp-4c8d13-1@localhost
+    first_queue, second_queue = [
+        re.match(pattern, call_arg[3]).group(0)
+        for call_arg in [call_1_args, call_2_args]
+    ]
+
+    assert call_1_args == ["dvc", "exp", "queue-worker", first_queue, "--clean", "-v"]
+    assert call_2_args == ["dvc", "exp", "queue-worker", second_queue, "--clean", "-v"]
+    assert spawn_spy.call_count == 2
 
 
 def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):

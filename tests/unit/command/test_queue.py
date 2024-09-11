@@ -96,6 +96,10 @@ def test_experiments_start(dvc, scm, mocker):
     assert cmd.run() == 0
     assert m.call_count == 3
 
+    # Ensure each call to _spawn_worker will be for the nth worker
+    for n, call_arg in enumerate(m.call_args_list, start=1):
+        assert call_arg[0][0] == n
+
 
 def test_experiments_stop(dvc, scm, mocker):
     cli_args = parse_args(["queue", "stop", "--kill"])

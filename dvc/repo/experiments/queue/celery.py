@@ -129,9 +129,11 @@ class LocalCeleryQueue(BaseStashQueue):
         wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
         node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
         cmd = ["exp", "queue-worker", node_name]
-        if num == 1:
-            # automatically run celery cleanup when primary worker shuts down
-            cmd.append("--clean")
+
+        # Always clean the queues as non expired messages will be excluded by dvc_task
+        # effectively skipping the cleaning.
+        cmd.append("--clean")
+
         if logger.getEffectiveLevel() <= logging.DEBUG:
             cmd.append("-v")
         name = f"dvc-exp-worker-{num}"
