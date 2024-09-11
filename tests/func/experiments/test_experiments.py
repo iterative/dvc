@@ -484,7 +484,6 @@ def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
 def test_run_celery_queues_two_jobs_each_one_with_cleaning_flag(
     tmp_dir, scm, dvc, exp_stage, mocker
 ):
-    # This is one of the tests we need to update
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
     dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
     assert len(dvc.experiments.stash_revs) == 2
