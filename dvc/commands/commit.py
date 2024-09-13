@@ -20,6 +20,7 @@ class CmdCommit(CmdBase):
                     with_deps=self.args.with_deps,
                     recursive=self.args.recursive,
                     force=self.args.force,
+                    allow_missing=self.args.allow_missing,
                     relink=self.args.relink,
                 )
             except DvcException:
@@ -50,6 +51,12 @@ def add_parser(subparsers, parent_parser):
             "Commit data even if hash values for dependencies or "
             "outputs did not change."
         ),
+    )
+    commit_parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        default=False,
+        help="Ignore errors if some of the files or directories are missing.",
     )
     commit_parser.add_argument(
         "-d",
