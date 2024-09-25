@@ -28,9 +28,6 @@ jobs:
         python-version: 3.12
 
     - uses: astral-sh/setup-uv@v3
-      with:
-        enable-cache: true
-
     - run: uv pip install --upgrade setuptools_scm twine --system
 
     - name: Force version for Test PyPI upload
