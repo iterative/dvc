@@ -83,7 +83,7 @@ class RawData:
 def create_stage(cls: type[_T], repo, path, **kwargs) -> _T:
     from dvc.dvcfile import check_dvcfile_path
 
-    wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
+    wdir = os.path.abspath(kwargs.get("wdir") or os.curdir)
     path = os.path.abspath(path)
 
     check_dvcfile_path(repo, path)
@@ -435,7 +435,7 @@ class Stage(params.StageParams):
         elif not self.changed(True, upstream) and pull:
             try:
                 logger.info("Pulling data for %s", self)
-                self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
+                self.repo.pull(self.addressing, jobs=kwargs.get("jobs"))
                 self.checkout()
                 return None
             except CheckoutError:
@@ -609,7 +609,7 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=False, force=False)
 
         if (self.is_import and not self.frozen) or self.is_partial_import:
-            self._sync_import(dry, force, kwargs.get("jobs", None), no_download)
+            self._sync_import(dry, force, kwargs.get("jobs"), no_download)
         elif not self.frozen and self.cmd:
             self._run_stage(dry, force, **kwargs)
         elif not dry:
