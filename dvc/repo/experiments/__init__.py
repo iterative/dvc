@@ -205,7 +205,7 @@ class Experiments:
         Experiment will be derived from the current workspace.
         """
 
-        name = kwargs.get("name", None)
+        name = kwargs.get("name")
         baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
 
         if name:
