@@ -571,7 +571,7 @@ class _DVCFileSystem(AbstractFileSystem):
 
         os.makedirs(lpath, exist_ok=True)
         for d in _dirs:
-            os.mkdir(d)
+            os.makedirs(d, exist_ok=True)
 
         def get_file(arg: tuple[FileSystem, tuple[str, str, Optional[dict]]]):
             fs, (src, dest, info) = arg

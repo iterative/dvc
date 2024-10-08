@@ -18,15 +18,15 @@ jobs:
         with:
             python-version: "3.12"
 
-      - uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-          cache-dependency-glob: pyproject.toml
-
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
       - run: uv pip install '.[tests]' --system
       - name: run benchmarks on base branch
