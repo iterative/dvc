@@ -50,7 +50,7 @@ repos:
         language: system
         name: DVC pre-commit
         stages:
-          - Nonepre-commitNone
+          - pre-commit
         verbose: true
         require_serial: true
       - args:
@@ -61,7 +61,7 @@ repos:
         language: system
         name: DVC pre-push
         stages:
-          - Nonepre-pushNone
+          - pre-push
         require_serial: true
       - always_run: true
         args:
