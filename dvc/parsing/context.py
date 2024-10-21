@@ -176,8 +176,9 @@ class Container(Node, ABC):
             return value
         if isinstance(value, (list, dict)):
             assert meta
-            container = CtxDict if isinstance(value, dict) else CtxList
-            return container(value, meta=meta)
+            if isinstance(value, dict):
+                return CtxDict(value, meta=meta)
+            return CtxList(value, meta=meta)
         msg = f"Unsupported value of type '{type(value).__name__}' in '{meta}'"
         raise TypeError(msg)
 

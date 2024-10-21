@@ -61,7 +61,7 @@ def _load_data(
 ):
     open_fn = fs.open if fs else open
     encoding = "utf-8"
-    with open_fn(path, encoding=encoding, **kwargs) as fd:  # type: ignore[operator]
+    with open_fn(path, encoding=encoding, **kwargs) as fd:  # type: ignore[arg-type]
         with reraise(UnicodeDecodeError, EncodingError(path, encoding)):
             return parser(fd.read(), path)
 
@@ -74,7 +74,7 @@ def _dump_data(
     **dumper_args,
 ):
     open_fn = fs.open if fs else open
-    with open_fn(path, "w+", encoding="utf-8") as fd:  # type: ignore[operator]
+    with open_fn(path, "w+", encoding="utf-8") as fd:  # type: ignore[call-overload]
         dumper(data, fd, **dumper_args)
 
 
