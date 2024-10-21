@@ -9,18 +9,25 @@ from dvc.ui import ui
 logger = logger.getChild(__name__)
 
 
-def _format_entry(entry, fmt):
+def _format_entry(entry, fmt, with_size=True, with_md5=False):
     from dvc.utils.humanize import naturalsize
 
-    size = entry.get("size")
-    if size is None:
-        size = ""
-    else:
-        size = naturalsize(size)
-    return size, fmt(entry)
+    ret = []
+    if with_size:
+        size = entry.get("size")
+        if size is None:
+            size = ""
+        else:
+            size = naturalsize(size)
+        ret.append(size)
+    if with_md5:
+        md5 = entry.get("md5", "")
+        ret.append(md5)
+    ret.append(fmt(entry))
+    return ret
 
 
-def show_entries(entries, with_color=False, with_size=False):
+def show_entries(entries, with_color=False, with_size=False, with_md5=False):
     if with_color:
         ls_colors = LsColors()
         fmt = ls_colors.format
@@ -29,8 +36,13 @@ def show_entries(entries, with_color=False, with_size=False):
         def fmt(entry):
             return entry["path"]
 
-    if with_size:
-        ui.table([_format_entry(entry, fmt) for entry in entries])
+    if with_size or with_md5:
+        ui.table(
+            [
+                _format_entry(entry, fmt, with_size=with_size, with_md5=with_md5)
+                for entry in entries
+            ]
+        )
         return
 
     # NOTE: this is faster than ui.table for very large number of entries
@@ -55,7 +67,12 @@ class CmdList(CmdBaseNoRepo):
             if self.args.json:
                 ui.write_json(entries)
             elif entries:
-                show_entries(entries, with_color=True, with_size=self.args.size)
+                show_entries(
+                    entries,
+                    with_color=True,
+                    with_size=self.args.size,
+                    with_md5=self.args.show_hash,
+                )
             return 0
         except FileNotFoundError:
             logger.exception("")
@@ -123,6 +140,12 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     list_parser.add_argument("--size", action="store_true", help="Show sizes.")
+    list_parser.add_argument(
+        "--show-hash",
+        help="Display hash value for each item.",
+        action="store_true",
+        default=False,
+    )
     list_parser.add_argument(
         "path",
         nargs="?",
