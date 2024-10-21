@@ -57,7 +57,7 @@ dependencies = [
     "omegaconf",
     "packaging>=19",
     "pathspec>=0.10.3",
-    "platformdirs<4,>=3.1.1",
+    "platformdirs>=3.1.1,<5",
     "psutil>=5.8",
     "pydot>=1.2.4",
     "pygtrie>=2.3.2",
