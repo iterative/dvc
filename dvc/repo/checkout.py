@@ -128,7 +128,10 @@ def checkout(  # noqa: C901
         raise  # noqa: PLE0704
 
     view = self.index.targets_view(
-        targets, recursive=recursive, with_deps=with_deps, onerror=onerror
+        targets,
+        recursive=recursive,
+        with_deps=with_deps,
+        onerror=onerror,
     )
 
     with ui.progress(unit="entry", desc="Building workspace index", leave=True) as pb:
@@ -145,16 +148,16 @@ def checkout(  # noqa: C901
         _check_can_delete(diff.files_delete, new, self.root_dir, self.fs)
 
     failed = set()
-    out_paths = [out.fs_path for out in view.outs if out.use_cache and out.is_in_repo]
+    outs = [out for out in view.outs if out.use_cache and out.is_in_repo]
 
     def checkout_onerror(src_path, dest_path, _exc):
         logger.debug(
             "failed to create '%s' from '%s'", dest_path, src_path, exc_info=True
         )
 
-        for out_path in out_paths:
-            if self.fs.isin_or_eq(dest_path, out_path):
-                failed.add(out_path)
+        for out in outs:
+            if self.fs.isin_or_eq(dest_path, out.fs_path):
+                failed.add(out)
 
     with ui.progress(unit="file", desc="Applying changes", leave=True) as pb:
         apply(
@@ -171,16 +174,21 @@ def checkout(  # noqa: C901
     out_changes = _build_out_changes(view, diff.changes)
 
     typ_map = {ADD: "added", DELETE: "deleted", MODIFY: "modified"}
+    failed_paths = {out.fs_path for out in failed}
     for key, typ in out_changes.items():
         out_path = self.fs.join(self.root_dir, *key)
 
-        if out_path in failed:
+        if out_path in failed_paths:
             self.fs.remove(out_path, recursive=True)
         else:
             self.state.save_link(out_path, self.fs)
             stats[typ_map[typ]].append(_fspath_dir(out_path))
 
-    if failed and not allow_missing:
-        raise CheckoutError([relpath(out_path) for out_path in failed], stats)
-
+    unexpected_failure = [
+        out.fs_path for out in failed if out.pull or (targets and any(targets))
+    ]
+    if unexpected_failure and not allow_missing:
+        raise CheckoutError(
+            [relpath(out_path) for out_path in unexpected_failure], stats
+        )
     return stats
