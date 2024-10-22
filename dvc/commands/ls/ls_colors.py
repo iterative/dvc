@@ -32,7 +32,9 @@ class LsColors:
         if entry.get("isexec", False):
             return self._format(text, code="ex")
 
-        _, ext = os.path.splitext(text)
+        stem, ext = os.path.splitext(text)
+        if not ext and stem.startswith("."):
+            ext = stem
         return self._format(text, ext=ext)
 
     def _format(self, text, code=None, ext=None):
