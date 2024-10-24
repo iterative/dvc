@@ -144,6 +144,13 @@ class Stage(params.StageParams):
         desc: Optional[str] = None,
         meta=None,
     ):
+        """
+        A stage represents a dvc file?
+
+        Attributes:
+            path (str): the absolute path to a .dvc file
+            outs (List[Output]): the "outs" associated with this .dvc file
+        """
         if deps is None:
             deps = []
         if outs is None:
