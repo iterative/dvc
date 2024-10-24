@@ -29,6 +29,7 @@ PARAM_PERSIST = Output.PARAM_PERSIST
 PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
 PARAM_PUSH = Output.PARAM_PUSH
+PARAM_PULL = Output.PARAM_PULL
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -51,6 +52,8 @@ def _get_flags(out):
         yield PARAM_REMOTE, out.remote
     if not out.can_push:
         yield PARAM_PUSH, False
+    if not out.pull:
+        yield PARAM_PULL, False
 
 
 def _serialize_out(out):
