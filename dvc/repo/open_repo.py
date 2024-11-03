@@ -50,7 +50,7 @@ def open_repo(url, *args, **kwargs):
     if os.path.exists(url):
         url = os.path.abspath(url)
         try:
-            config = _get_remote_config(url)
+            config = _get_remote_config(url, *args, **kwargs)
             config.update(kwargs.get("config") or {})
             kwargs["config"] = config
             return Repo(url, *args, **kwargs)
@@ -97,9 +97,9 @@ def clean_repos():
         _remove(path)
 
 
-def _get_remote_config(url):
+def _get_remote_config(url, *args, **kwargs):
     try:
-        repo = Repo(url)
+        repo = Repo(url, *args, **kwargs)
     except NotDvcRepoError:
         return {}
 
