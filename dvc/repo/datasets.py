@@ -16,7 +16,7 @@ from dvc.types import StrPath
 from dvc_data.hashfile.meta import Meta
 
 if TYPE_CHECKING:
-    from dvcx.dataset import DatasetRecord, DatasetVersion  # type: ignore[import]
+    from datachain.dataset import DatasetRecord, DatasetVersion  # type: ignore[import]
     from typing_extensions import Self
 
     from dvc.repo import Repo
@@ -29,10 +29,10 @@ def _get_dataset_record(name: str) -> "DatasetRecord":
     from dvc.exceptions import DvcException
 
     try:
-        from dvcx.catalog import get_catalog  # type: ignore[import]
+        from datachain.catalog import get_catalog  # type: ignore[import]
 
     except ImportError as exc:
-        raise DvcException("dvcx is not installed") from exc
+        raise DvcException("datachain is not installed") from exc
 
     catalog = get_catalog()
     return catalog.get_remote_dataset(name)
@@ -86,7 +86,7 @@ class SerDe:
 class DatasetSpec(SerDe):
     name: str
     url: str
-    type: Literal["dvc", "dvcx", "url"]
+    type: Literal["dvc", "dc", "url"]
 
 
 @frozen(kw_only=True)
@@ -108,7 +108,7 @@ class DVCDatasetLock(DVCDatasetSpec):
 
 
 @frozen(kw_only=True)
-class DVCXDatasetLock(DatasetSpec):
+class DatachainDatasetLock(DatasetSpec):
     version: int
     created_at: datetime = field(converter=to_datetime)
 
@@ -160,13 +160,13 @@ class DVCDataset:
 
 
 @frozen(kw_only=True)
-class DVCXDataset:
+class DatachainDataset:
     manifest_path: str
     spec: "DatasetSpec"
-    lock: "Optional[DVCXDatasetLock]" = field(default=None)
+    lock: "Optional[DatachainDatasetLock]" = field(default=None)
     _invalidated: bool = field(default=False, eq=False, repr=False)
 
-    type: ClassVar[Literal["dvcx"]] = "dvcx"
+    type: ClassVar[Literal["dc"]] = "dc"
 
     @property
     def pinned(self) -> bool:
@@ -193,7 +193,7 @@ class DVCXDataset:
         name, _version = self.name_version
         version = version if version is not None else _version
         version_info = _get_dataset_info(name, record=record, version=version)
-        lock = DVCXDatasetLock(
+        lock = DatachainDatasetLock(
             **self.spec.to_dict(),
             version=version_info.version,
             created_at=version_info.created_at,
@@ -226,9 +226,9 @@ class URLDataset:
         return evolve(self, lock=lock)
 
 
-Lock = Union[DVCDatasetLock, DVCXDatasetLock, URLDatasetLock]
+Lock = Union[DVCDatasetLock, DatachainDatasetLock, URLDatasetLock]
 Spec = Union[DatasetSpec, DVCDatasetSpec]
-Dataset = Union[DVCDataset, DVCXDataset, URLDataset]
+Dataset = Union[DVCDataset, DatachainDataset, URLDataset]
 
 
 class DatasetNotFoundError(DvcException, KeyError):
@@ -307,13 +307,13 @@ class Datasets(Mapping[str, Dataset]):
             raise ValueError("type should be present in spec")
         if typ == "dvc":
             return DVCDatasetSpec.from_dict(spec)
-        if typ in {"dvcx", "url"}:
+        if typ in {"dc", "url"}:
             return DatasetSpec.from_dict(spec)
         raise ValueError(f"unknown dataset type: {spec.get('type', '')}")
 
     @staticmethod
     def _lock_from_info(lock: Optional[dict[str, Any]]) -> Optional[Lock]:
-        kl = {"dvc": DVCDatasetLock, "dvcx": DVCXDatasetLock, "url": URLDatasetLock}
+        kl = {"dvc": DVCDatasetLock, "dc": DatachainDatasetLock, "url": URLDatasetLock}
         if lock and (cls := kl.get(lock.get("type", ""))):  # type: ignore[assignment]
             return cls.from_dict(lock)  # type: ignore[attr-defined]
         return None
@@ -356,9 +356,9 @@ class Datasets(Mapping[str, Dataset]):
                 lock=lock,
                 invalidated=_invalidated,
             )
-        if spec.type == "dvcx":
-            assert lock is None or isinstance(lock, DVCXDatasetLock)
-            return DVCXDataset(
+        if spec.type == "dc":
+            assert lock is None or isinstance(lock, DatachainDatasetLock)
+            return DatachainDataset(
                 manifest_path=manifest_path,
                 spec=spec,
                 lock=lock,
@@ -374,7 +374,7 @@ class Datasets(Mapping[str, Dataset]):
         manifest_path: StrPath = "dvc.yaml",
         **kwargs: Any,
     ) -> Dataset:
-        assert type in {"dvc", "dvcx", "url"}
+        assert type in {"dvc", "dc", "url"}
         kwargs.update({"name": name, "url": url, "type": type})
         dataset = self._build_dataset(os.path.abspath(manifest_path), kwargs)
         dataset = dataset.update(self.repo)
@@ -389,13 +389,16 @@ class Datasets(Mapping[str, Dataset]):
 
         if dataset.type == "url" and (version or kwargs.get("rev")):
             raise ValueError("cannot update version/revision for a url")
-        if dataset.type == "dvcx" and version is not None:
+        if dataset.type == "dc" and version is not None:
             if not isinstance(version, int):
                 raise TypeError(
-                    f"dvcx version has to be an integer, got {type(version).__name__!r}"
+                    "DataChain dataset version has to be an integer, "
+                    f"got {type(version).__name__!r}"
                 )
             if version < 1:
-                raise ValueError(f"dvcx version should be >=1, got {version}")
+                raise ValueError(
+                    f"DataChain dataset version should be >=1, got {version}"
+                )
 
         new = dataset.update(self.repo, **kwargs)
 
