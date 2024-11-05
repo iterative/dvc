@@ -8,13 +8,13 @@ from attrs import define, evolve, field, has
 from dvc.dependency.base import Dependency
 from dvc.exceptions import ReproductionError
 from dvc.repo.datasets import (
+    DatachainDataset,
+    DatachainDatasetLock,
     DatasetNotFoundError,
     DatasetSpec,
     DVCDataset,
     DVCDatasetLock,
     DVCDatasetSpec,
-    DVCXDataset,
-    DVCXDatasetLock,
     FileInfo,
     URLDataset,
     URLDatasetLock,
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 @define
-class MockedDVCXVersionInfo:
+class MockedDatachainVersionInfo:
     version: int
     created_at: datetime = field(factory=lambda: datetime.now(timezone.utc))
 
@@ -77,21 +77,21 @@ def test_dvc(tmp_dir, scm, dvc: "Repo"):
     assert old == new
 
 
-def test_dvcx(tmp_dir, dvc, mocker):
+def test_datachain(tmp_dir, dvc, mocker):
     datasets = dvc.datasets
 
-    version_info = [MockedDVCXVersionInfo(1), MockedDVCXVersionInfo(2)]
+    version_info = [MockedDatachainVersionInfo(1), MockedDatachainVersionInfo(2)]
     version_info.append(version_info[1])
     mocker.patch("dvc.repo.datasets._get_dataset_info", side_effect=version_info)
 
-    dataset = datasets.add("mydataset", "dataset", "dvcx")
-    expected = DVCXDataset(
+    dataset = datasets.add("mydataset", "dataset", "dc")
+    expected = DatachainDataset(
         manifest_path=(tmp_dir / "dvc.yaml").fs_path,
-        spec=DatasetSpec(name="mydataset", url="dataset", type="dvcx"),
-        lock=DVCXDatasetLock(
+        spec=DatasetSpec(name="mydataset", url="dataset", type="dc"),
+        lock=DatachainDatasetLock(
             name="mydataset",
             url="dataset",
-            type="dvcx",
+            type="dc",
             version=1,
             created_at=version_info[0].created_at,
         ),
@@ -189,16 +189,16 @@ def test_dvc_dump(tmp_dir, dvc):
     assert dvc.datasets["mydataset"] == dataset
 
 
-def test_dvcx_dump(tmp_dir, dvc):
+def test_datachain_dump(tmp_dir, dvc):
     manifest_path = os.path.join(tmp_dir, "dvc.yaml")
-    spec = DatasetSpec(name="mydataset", url="dataset", type="dvcx")
+    spec = DatasetSpec(name="mydataset", url="dataset", type="dc")
     dt = datetime.now(tz=timezone.utc)
-    lock = DVCXDatasetLock(version=1, created_at=dt, **spec.to_dict())
-    dataset = DVCXDataset(manifest_path=manifest_path, spec=spec, lock=lock)
+    lock = DatachainDatasetLock(version=1, created_at=dt, **spec.to_dict())
+    dataset = DatachainDataset(manifest_path=manifest_path, spec=spec, lock=lock)
 
     dvc.datasets.dump(dataset)
 
-    spec_d = {"name": "mydataset", "type": "dvcx", "url": "dataset"}
+    spec_d = {"name": "mydataset", "type": "dc", "url": "dataset"}
     assert (tmp_dir / "dvc.yaml").parse() == {"datasets": [spec_d]}
     assert (tmp_dir / "dvc.lock").parse() == {
         "schema": "2.0",
@@ -244,10 +244,10 @@ def test_url_dump(tmp_dir, dvc):
 def test_invalidation(tmp_dir, dvc):
     manifest_path = os.path.join(tmp_dir, "dvc.yaml")
     spec = DatasetSpec(name="mydataset", url="url1", type="url")
-    lock = DVCXDatasetLock(
+    lock = DatachainDatasetLock(
         name="mydataset",
         url="dataset",
-        type="dvcx",
+        type="dc",
         version=1,
         created_at=datetime.now(tz=timezone.utc),
     )
@@ -289,15 +289,15 @@ def test_dvc_dataset_pipeline(tmp_dir, dvc, scm):
     assert dvc.reproduce() == [stage]
 
 
-def test_dvcx_dataset_pipeline(mocker, tmp_dir, dvc):
-    version_info = [MockedDVCXVersionInfo(1), MockedDVCXVersionInfo(2)]
+def test_datachain_dataset_pipeline(mocker, tmp_dir, dvc):
+    version_info = [MockedDatachainVersionInfo(1), MockedDatachainVersionInfo(2)]
     mocker.patch("dvc.repo.datasets._get_dataset_info", side_effect=version_info)
 
-    dvc.datasets.add("mydataset", "dataset", "dvcx")
+    dvc.datasets.add("mydataset", "dataset", "dc")
 
     stage = dvc.stage.add(cmd="echo", name="train", deps=["ds://mydataset"])
     assert (tmp_dir / "dvc.yaml").parse() == {
-        "datasets": [{"name": "mydataset", "url": "dataset", "type": "dvcx"}],
+        "datasets": [{"name": "mydataset", "url": "dataset", "type": "dc"}],
         "stages": {"train": {"cmd": "echo", "deps": ["ds://mydataset"]}},
     }
 
@@ -360,10 +360,10 @@ def test_url_dataset_pipeline(mocker, tmp_dir, dvc):
 def test_pipeline_when_not_in_sync(tmp_dir, dvc):
     manifest_path = os.path.join(tmp_dir, "dvc.yaml")
     spec = DatasetSpec(name="mydataset", url="url1", type="url")
-    lock = DVCXDatasetLock(
+    lock = DatachainDatasetLock(
         name="mydataset",
         url="dataset",
-        type="dvcx",
+        type="dc",
         version=1,
         created_at=datetime.now(tz=timezone.utc),
     )
@@ -382,9 +382,9 @@ def test_pipeline_when_not_in_sync(tmp_dir, dvc):
 def test_collect(tmp_dir, dvc):
     manifest_path1 = os.path.join(tmp_dir, "dvc.yaml")
     dt = datetime.now(tz=timezone.utc)
-    spec = DatasetSpec(name="mydataset1", url="url1", type="dvcx")
-    lock = DVCXDatasetLock(version=1, created_at=dt, **spec.to_dict())
-    mydataset1 = DVCXDataset(manifest_path=manifest_path1, spec=spec, lock=lock)
+    spec = DatasetSpec(name="mydataset1", url="url1", type="dc")
+    lock = DatachainDatasetLock(version=1, created_at=dt, **spec.to_dict())
+    mydataset1 = DatachainDataset(manifest_path=manifest_path1, spec=spec, lock=lock)
     dvc.datasets.dump(mydataset1)
 
     (tmp_dir / "sub").mkdir()
@@ -418,7 +418,7 @@ def test_parametrized(tmp_dir, dvc):
     (tmp_dir / "dvc.yaml").dump(
         {
             "datasets": [
-                {"name": "${ds1.name}", "url": "${ds1.url}", "type": "dvcx"},
+                {"name": "${ds1.name}", "url": "${ds1.url}", "type": "dc"},
                 {
                     "name": "${ds2.name}",
                     "url": "${ds2.url}",
@@ -435,7 +435,7 @@ def test_parametrized(tmp_dir, dvc):
     )
     (tmp_dir / "params.yaml").dump(
         {
-            "ds1": {"name": "dogs", "url": "dvcx://dogs"},
+            "ds1": {"name": "dogs", "url": "dc://dogs"},
             "ds2": {
                 "name": "example-get-started",
                 "url": "git@github.com:iterative/example-get-started.git",
@@ -450,9 +450,9 @@ def test_parametrized(tmp_dir, dvc):
 
     path = (tmp_dir / "dvc.yaml").fs_path
     assert dict(dvc.datasets.items()) == {
-        "dogs": DVCXDataset(
+        "dogs": DatachainDataset(
             manifest_path=path,
-            spec=DatasetSpec(name="dogs", url="dvcx://dogs", type="dvcx"),
+            spec=DatasetSpec(name="dogs", url="dc://dogs", type="dc"),
         ),
         "example-get-started": DVCDataset(
             manifest_path=path,
