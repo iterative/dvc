@@ -16,7 +16,7 @@ def pre_commit_install(scm: "Git") -> None:
     with modify_yaml(config_path) as config:
         entry = {
             "repo": "https://github.com/iterative/dvc",
-            "rev": "3.56.0",
+            "rev": ".".join(map(str, version_tuple[:3])),
             "hooks": [
                 {
                     "id": "dvc-pre-commit",
