@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
+from dvc import version_tuple
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
