@@ -14,9 +14,9 @@ from dvc.cli import main
             "Adding ds (url:/path @ main)\n",
         ),
         (
-            {"name": "mydataset", "url": "dvcx://dataset", "type": "dvcx"},
+            {"name": "mydataset", "url": "dc://dataset", "type": "dc"},
             {"version": 1, "created_at": datetime.now(tz=timezone.utc)},
-            "Adding mydataset (dvcx://dataset @ v1)\n",
+            "Adding mydataset (dc://dataset @ v1)\n",
         ),
         (
             {"name": "mydataset", "url": "s3://bucket/path", "type": "url"},
@@ -45,7 +45,7 @@ def test_add_already_exists(dvc, caplog, mocker):
     dataset = dvc.datasets._build_dataset("dvc.yaml", spec, None)
     mocker.patch("dvc.repo.datasets.Datasets.get", return_value=dataset)
 
-    assert main(["dataset", "add", "ds", "--dvcx", "dataset"]) == 255
+    assert main(["dataset", "add", "ds", "--dc", "dataset"]) == 255
     assert "ds already exists in dvc.yaml, use the --force to overwrite" in caplog.text
 
 
@@ -64,21 +64,21 @@ def test_add_already_exists(dvc, caplog, mocker):
             },
         ),
         (
-            {"name": "mydataset", "url": "dvcx://dataset", "type": "dvcx"},
+            {"name": "mydataset", "url": "dc://dataset", "type": "dc"},
             {"version": 1, "created_at": datetime.now(tz=timezone.utc)},
             {"version": 2},
             {
-                "missing": "Updating mydataset (dvcx://dataset @ v2)\n",
+                "missing": "Updating mydataset (dc://dataset @ v2)\n",
                 "unchanged": "Nothing to update\n",
                 "updated": "Updating mydataset (v1 -> v2)\n",
             },
         ),
         (
-            {"name": "mydataset", "url": "dvcx://dataset", "type": "dvcx"},
+            {"name": "mydataset", "url": "dc://dataset", "type": "dc"},
             {"version": 2, "created_at": datetime.now(tz=timezone.utc)},
             {"version": 1},
             {
-                "missing": "Updating mydataset (dvcx://dataset @ v1)\n",
+                "missing": "Updating mydataset (dc://dataset @ v1)\n",
                 "unchanged": "Nothing to update\n",
                 "updated": "Downgrading mydataset (v2 -> v1)\n",
             },

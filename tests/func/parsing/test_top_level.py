@@ -121,7 +121,7 @@ def test_artifacts(tmp_dir, dvc):
 def test_datasets(tmp_dir, dvc):
     template = {
         "datasets": [
-            {"name": "${ds1.name}", "url": "${ds1.url}", "type": "dvcx"},
+            {"name": "${ds1.name}", "url": "${ds1.url}", "type": "dc"},
             {
                 "name": "${ds2.name}",
                 "url": "${ds2.url}",
@@ -138,7 +138,7 @@ def test_datasets(tmp_dir, dvc):
 
     (tmp_dir / "params.yaml").dump(
         {
-            "ds1": {"name": "dogs", "url": "dvcx://dogs"},
+            "ds1": {"name": "dogs", "url": "dc://dogs"},
             "ds2": {
                 "name": "example-get-started",
                 "url": "git@github.com:iterative/example-get-started.git",
@@ -153,7 +153,7 @@ def test_datasets(tmp_dir, dvc):
 
     resolver = DataResolver(dvc, tmp_dir, template)
     assert resolver.resolve_datasets() == [
-        {"name": "dogs", "url": "dvcx://dogs", "type": "dvcx"},
+        {"name": "dogs", "url": "dc://dogs", "type": "dc"},
         {
             "name": "example-get-started",
             "url": "git@github.com:iterative/example-get-started.git",

@@ -1,8 +1,8 @@
 from typing import Literal, TypedDict, Union
 
 
-class DVCXDataset(TypedDict):
-    type: Literal["dvcx"]
+class DatachainDataset(TypedDict):
+    type: Literal["dc"]
     name: str
     version: int
 
@@ -20,7 +20,7 @@ class URLDataset(TypedDict):
     path: str
 
 
-def get(name: str) -> Union[DVCXDataset, DVCDataset, URLDataset]:
+def get(name: str) -> Union[DatachainDataset, DVCDataset, URLDataset]:
     from difflib import get_close_matches
 
     from dvc.fs import get_cloud_fs
@@ -46,9 +46,9 @@ def get(name: str) -> Union[DVCXDataset, DVCDataset, URLDataset]:
             path=dataset.lock.path,
             sha=dataset.lock.rev_lock,
         )
-    if dataset.type == "dvcx":
-        return DVCXDataset(
-            type="dvcx", name=dataset.name_version[0], version=dataset.lock.version
+    if dataset.type == "dc":
+        return DatachainDataset(
+            type="dc", name=dataset.name_version[0], version=dataset.lock.version
         )
     if dataset.type == "url":
         fs_cls, _, path = get_cloud_fs(repo.config, url=dataset.lock.url)
