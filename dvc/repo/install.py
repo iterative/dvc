@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from dvc import version_tuple
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
@@ -16,19 +17,19 @@ def pre_commit_install(scm: "Git") -> None:
     with modify_yaml(config_path) as config:
         entry = {
             "repo": "https://github.com/iterative/dvc",
-            "rev": "main",
+            "rev": ".".join(map(str, version_tuple[:3])),
             "hooks": [
                 {
                     "id": "dvc-pre-commit",
                     "additional_dependencies": [".[all]"],
                     "language_version": "python3",
-                    "stages": ["commit"],
+                    "stages": ["pre-commit"],
                 },
                 {
                     "id": "dvc-pre-push",
                     "additional_dependencies": [".[all]"],
                     "language_version": "python3",
-                    "stages": ["push"],
+                    "stages": ["pre-push"],
                 },
                 {
                     "id": "dvc-post-checkout",
