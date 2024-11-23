@@ -205,3 +205,26 @@ def test_keep_selected_by_name(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp1_ref)) is None
     assert scm.get_ref(str(exp2_ref)) is not None
     assert scm.get_ref(str(exp3_ref)) is None
+
+def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage):
+    # Setup: Run experiments and commit
+    baseline = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"], name="exp1")
+    exp1_ref = first(exp_refs_by_rev(scm, first(results)))
+    scm.commit("commit1")
+
+    new_results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name="exp2")
+    exp2_ref = first(exp_refs_by_rev(scm, first(new_results)))
+    new_rev = scm.get_rev()
+
+    # Ensure experiments exist
+    assert scm.get_ref(str(exp1_ref)) is not None
+    assert scm.get_ref(str(exp2_ref)) is not None
+
+    # Keep the experiment from the new revision
+    removed = dvc.experiments.remove(rev=new_rev, num=1, keep_selected=True)
+    assert removed == ["exp1"]
+
+    # Check remaining experiments
+    assert scm.get_ref(str(exp2_ref)) is not None
+    assert scm.get_ref(str(exp1_ref)) is None
