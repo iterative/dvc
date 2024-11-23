@@ -233,8 +233,6 @@ def test_keep_selected_multiple_by_name(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp3_ref)) is None
 
 def test_keep_selected_all_by_name(tmp_dir, scm, dvc, exp_stage):
-
-
     # Setup: Run experiments
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"], name="exp1")
     exp1_ref = first(exp_refs_by_rev(scm, first(results)))
@@ -259,6 +257,31 @@ def test_keep_selected_all_by_name(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp2_ref)) is not None
     assert scm.get_ref(str(exp3_ref)) is not None
 
+def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
+    # Setup: Run experiments
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"], name="exp1")
+    exp1_ref = first(exp_refs_by_rev(scm, first(results)))
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name="exp2")
+    exp2_ref = first(exp_refs_by_rev(scm, first(results)))
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"], name="exp3")
+    exp3_ref = first(exp_refs_by_rev(scm, first(results)))
+
+    # Ensure experiments exist
+    assert scm.get_ref(str(exp1_ref)) is not None
+    assert scm.get_ref(str(exp2_ref)) is not None
+    assert scm.get_ref(str(exp3_ref)) is not None
+
+    # Keep "exp1" and "exp2" and remove "exp3"
+    removed = dvc.experiments.remove(exp_names=["nonexistent"], keep_selected=True)
+    assert removed == ["exp1", "exp2", "exp3"]
+
+    # Check remaining experiments
+    assert scm.get_ref(str(exp1_ref)) is None
+    assert scm.get_ref(str(exp2_ref)) is None
+    assert scm.get_ref(str(exp3_ref)) is None
+
 def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage):
     # Setup: Run experiments and commit
     baseline = scm.get_rev()
@@ -279,5 +302,37 @@ def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage):
     assert removed == ["exp1"]
 
     # Check remaining experiments
+    assert scm.get_ref(str(exp2_ref)) is not None
+    assert scm.get_ref(str(exp1_ref)) is None
+
+def test_keep_selected_by_rev_multiple(tmp_dir, scm, dvc, exp_stage):
+    # Setup: Run experiments and commit
+    baseline = scm.get_rev()
+    exp1_rev = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"], name="exp1")
+    exp1_ref = first(exp_refs_by_rev(scm, first(results)))
+    scm.commit("commit1")
+
+    exp2_rev = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name="exp2")
+    exp2_ref = first(exp_refs_by_rev(scm, first(results)))
+    scm.commit("commit2")
+
+    exp3_rev = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"], name="exp3")
+    exp3_ref = first(exp_refs_by_rev(scm, first(results)))
+    scm.commit("commit3")
+
+    # Ensure experiments exist
+    assert scm.get_ref(str(exp1_ref)) is not None
+    assert scm.get_ref(str(exp2_ref)) is not None
+    assert scm.get_ref(str(exp3_ref)) is not None
+
+    # Keep the last 2, remove first
+    removed = dvc.experiments.remove(rev=exp3_rev, num=2, keep_selected=True)
+    assert removed == ["exp1"]
+
+    # Check remaining experiments
+    assert scm.get_ref(str(exp3_ref)) is not None
     assert scm.get_ref(str(exp2_ref)) is not None
     assert scm.get_ref(str(exp1_ref)) is None
