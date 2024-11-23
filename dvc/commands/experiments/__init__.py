@@ -57,7 +57,13 @@ def add_parser(subparsers, parent_parser):
         cmd.add_parser(experiments_subparsers, parent_parser)
     hide_subparsers_from_help(experiments_subparsers)
 
-
+def add_keep_selection_flag(experiments_subcmd_parser):
+    experiments_subcmd_parser.add_argument(
+        "--keep",
+        action="store_true",
+        default=False,
+        help="Keep the selected experiments instead of removing them (use it with `--rev` and `--num` or with experiment names).",
+    )
 def add_rev_selection_flags(
     experiments_subcmd_parser, command: str, default: bool = True
 ):
