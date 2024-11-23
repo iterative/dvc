@@ -489,10 +489,10 @@ class Stage(params.StageParams):
         logger.debug("Computed %s md5: '%s'", self, m)
         return m
 
-    def save(self, allow_missing: bool = False, run_cache: bool = True):
+    def save(self, allow_missing: bool = False, run_cache: bool = True, old_stage=None):
         self.save_deps(allow_missing=allow_missing)
 
-        self.save_outs(allow_missing=allow_missing)
+        self.save_outs(allow_missing=allow_missing, old_stage=old_stage)
 
         self.md5 = self.compute_md5()
 
@@ -509,25 +509,26 @@ class Stage(params.StageParams):
                 if not allow_missing:
                     raise
 
-    def get_versioned_outs(self) -> dict[str, "Output"]:
+    def get_versioned_outs(self, old_stage=None) -> dict[str, "Output"]:
         from .exceptions import StageFileDoesNotExistError, StageNotFound
 
-        try:
-            old = self.reload()
-        except (StageFileDoesNotExistError, StageNotFound):
-            return {}
+        if not old_stage:
+            try:
+                old_stage = self.reload()
+            except (StageFileDoesNotExistError, StageNotFound):
+                return {}
 
         return {
             out.def_path: out
-            for out in old.outs
+            for out in old_stage.outs
             if out.files is not None
             or (out.meta is not None and out.meta.version_id is not None)
         }
 
-    def save_outs(self, allow_missing: bool = False):
+    def save_outs(self, allow_missing: bool = False, old_stage=None):
         from dvc.output import OutputDoesNotExistError
 
-        old_versioned_outs = self.get_versioned_outs()
+        old_versioned_outs = self.get_versioned_outs(old_stage=old_stage)
         for out in self.outs:
             try:
                 out.save()

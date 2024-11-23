@@ -52,6 +52,8 @@ def commit(
     data_only=False,
     relink=True,
 ):
+    from dvc.dvcfile import ProjectFile
+
     stages_info = [
         info
         for info in self.stage.collect_granular(
@@ -59,21 +61,46 @@ def commit(
         )
         if not data_only or info.stage.is_data_source
     ]
+
+    stages_by_dvcfile = {}
     for stage_info in stages_info:
         stage = stage_info.stage
-        if force:
-            stage.save(allow_missing=allow_missing)
+        if stage.dvcfile.path not in stages_by_dvcfile:
+            stages_by_dvcfile[stage.dvcfile.path] = {
+                "dvcfile": stage.dvcfile,
+                "stages": [],
+            }
+        stages_by_dvcfile[stage.dvcfile.path]["stages"].append(stage)
+
+    for val in stages_by_dvcfile.values():
+        dvcfile = val["stages"][0].dvcfile
+        dvcfile._reset()
+        old_stages = dict(dvcfile.stages)
+
+        for stage in val["stages"]:
+            if force:
+                stage.save(
+                    allow_missing=allow_missing, old_stage=old_stages[stage.name]
+                )
+            else:
+                changes = stage.changed_entries()
+                if any(changes):
+                    prompt_to_commit(stage, changes, force=force)
+                    stage.save(
+                        allow_missing=allow_missing, old_stage=old_stages[stage.name]
+                    )
+            stage.commit(
+                filter_info=stage_info.filter_info,
+                allow_missing=allow_missing,
+                relink=relink,
+            )
+
+        if isinstance(dvcfile, ProjectFile):
+            dvcfile.batch_dump(val["stages"], update_pipeline=False)
         else:
-            changes = stage.changed_entries()
-            if any(changes):
-                prompt_to_commit(stage, changes, force=force)
-                stage.save(allow_missing=allow_missing)
-        stage.commit(
-            filter_info=stage_info.filter_info,
-            allow_missing=allow_missing,
-            relink=relink,
-        )
-        stage.dump(update_pipeline=False)
+            for stage in val["stages"]:
+                stage.dump(update_pipeline=False)
+
     return [s.stage for s in stages_info]
 
 
