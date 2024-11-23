@@ -78,10 +78,10 @@ def commit(
             dvcfile._reset()
             old_stages = dict(dvcfile.stages)
         else:
-            old_stages = {}
+            old_stages = None
 
         for stage in val["stages"]:
-            old_stage = old_stages.get(stage.name, None)
+            old_stage = old_stages[stage.name] if old_stages else None
 
             if force:
                 stage.save(allow_missing=allow_missing, old_stage=old_stage)
