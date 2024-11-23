@@ -48,15 +48,7 @@ def remove(  # noqa: C901, PLR0912
     if keep_selected:
         # In keep_selected mode, identify all experiments and remove the unselected ones
         all_exp_refs = exp_refs(repo.scm, git_remote)
-
-        if exp_names:
-            selected_exp_names = set(exp_names) if isinstance(exp_names, list) else {exp_names}
-        elif rev:
-            selected_exp_names = set(
-                _resolve_exp_by_baseline(repo, [rev] if isinstance(rev, str) else rev, num, git_remote).keys()
-            )
-        else:
-            selected_exp_names = set()
+        selected_exp_names = resolve_selected_exp_names(exp_names, git_remote, num, repo, rev)
 
         # Identify experiments to remove: all experiments - selected experiments
         unselected_exp_refs = [ref for ref in all_exp_refs if ref.name not in selected_exp_names]
@@ -110,6 +102,17 @@ def remove(  # noqa: C901, PLR0912
         notify_refs_to_studio(repo, git_remote, removed=removed_refs)
 
     return removed
+
+
+def resolve_selected_exp_names(exp_names, git_remote, num, repo, rev):
+    selected_exp_names = set()
+    if exp_names:
+        selected_exp_names = set(exp_names) if isinstance(exp_names, list) else {exp_names}
+    elif rev:
+        selected_exp_names = set(
+            _resolve_exp_by_baseline(repo, [rev] if isinstance(rev, str) else rev, num, git_remote).keys()
+        )
+    return selected_exp_names
 
 
 def _resolve_exp_by_baseline(

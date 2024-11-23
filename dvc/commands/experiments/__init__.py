@@ -62,7 +62,8 @@ def add_keep_selection_flag(experiments_subcmd_parser):
         "--keep",
         action="store_true",
         default=False,
-        help="Keep the selected experiments instead of removing them (use it with `--rev` and `--num` or with experiment names).",
+        help="Keep the selected experiments instead of removing them "
+             "(use it with `--rev`' and `--num` or with experiment names)."
     )
 def add_rev_selection_flags(
     experiments_subcmd_parser, command: str, default: bool = True

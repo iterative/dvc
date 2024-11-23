@@ -284,7 +284,6 @@ def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
 
 def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage):
     # Setup: Run experiments and commit
-    baseline = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"], name="exp1")
     exp1_ref = first(exp_refs_by_rev(scm, first(results)))
     scm.commit("commit1")
@@ -307,13 +306,10 @@ def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage):
 
 def test_keep_selected_by_rev_multiple(tmp_dir, scm, dvc, exp_stage):
     # Setup: Run experiments and commit
-    baseline = scm.get_rev()
-    exp1_rev = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"], name="exp1")
     exp1_ref = first(exp_refs_by_rev(scm, first(results)))
     scm.commit("commit1")
 
-    exp2_rev = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name="exp2")
     exp2_ref = first(exp_refs_by_rev(scm, first(results)))
     scm.commit("commit2")
