@@ -74,21 +74,22 @@ def commit(
 
     for val in stages_by_dvcfile.values():
         dvcfile = val["stages"][0].dvcfile
-        dvcfile._reset()
-        old_stages = dict(dvcfile.stages)
+        if isinstance(dvcfile, ProjectFile):
+            dvcfile._reset()
+            old_stages = dict(dvcfile.stages)
+        else:
+            old_stages = {}
 
         for stage in val["stages"]:
+            old_stage = old_stages.get(stage.name, None)
+
             if force:
-                stage.save(
-                    allow_missing=allow_missing, old_stage=old_stages[stage.name]
-                )
+                stage.save(allow_missing=allow_missing, old_stage=old_stage)
             else:
                 changes = stage.changed_entries()
                 if any(changes):
                     prompt_to_commit(stage, changes, force=force)
-                    stage.save(
-                        allow_missing=allow_missing, old_stage=old_stages[stage.name]
-                    )
+                    stage.save(allow_missing=allow_missing, old_stage=old_stage)
             stage.commit(
                 filter_info=stage_info.filter_info,
                 allow_missing=allow_missing,
