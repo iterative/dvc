@@ -34,7 +34,7 @@ class CmdExperimentsRemove(CmdBase):
             num=self.args.num,
             queue=self.args.queue,
             git_remote=self.args.git_remote,
-            keep_selected=self.args.keep
+            keep_selected=self.args.keep,
         )
         if removed:
             ui.write(f"Removed experiments: {humanize.join(map(repr, removed))}")
@@ -45,7 +45,7 @@ class CmdExperimentsRemove(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    from . import add_rev_selection_flags, add_keep_selection_flag
+    from . import add_keep_selection_flag, add_rev_selection_flags
 
     EXPERIMENTS_REMOVE_HELP = "Remove experiments."
     experiments_remove_parser = experiments_subparsers.add_parser(

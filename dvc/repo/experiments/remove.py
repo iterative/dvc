@@ -30,7 +30,7 @@ def remove(  # noqa: C901, PLR0912
     num: int = 1,
     queue: bool = False,
     git_remote: Optional[str] = None,
-    keep_selected: bool = False, # keep the experiments instead of removing them
+    keep_selected: bool = False,  # keep the experiments instead of removing them
 ) -> list[str]:
     removed: list[str] = []
     if not any([exp_names, queue, all_commits, rev]):
@@ -50,16 +50,22 @@ def remove(  # noqa: C901, PLR0912
         all_exp_refs = exp_refs(repo.scm, git_remote)
 
         if exp_names:
-            selected_exp_names = set(exp_names) if isinstance(exp_names, list) else {exp_names}
+            selected_exp_names = (
+                set(exp_names) if isinstance(exp_names, list) else {exp_names}
+            )
         elif rev:
             selected_exp_names = set(
-                _resolve_exp_by_baseline(repo, [rev] if isinstance(rev, str) else rev, num, git_remote).keys()
+                _resolve_exp_by_baseline(
+                    repo, [rev] if isinstance(rev, str) else rev, num, git_remote
+                ).keys()
             )
         else:
             selected_exp_names = set()
 
         # Identify experiments to remove: all experiments - selected experiments
-        unselected_exp_refs = [ref for ref in all_exp_refs if ref.name not in selected_exp_names]
+        unselected_exp_refs = [
+            ref for ref in all_exp_refs if ref.name not in selected_exp_names
+        ]
         removed = [ref.name for ref in unselected_exp_refs]
 
         # Remove the unselected experiments
