@@ -250,9 +250,7 @@ def test_keep_selected_all_by_name(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp3_ref)) is not None
 
     # Keep "exp1" and "exp2" and remove "exp3"
-    removed = dvc.experiments.remove(
-        exp_names=["exp1", "exp2", "exp3"], keep=True
-    )
+    removed = dvc.experiments.remove(exp_names=["exp1", "exp2", "exp3"], keep=True)
     assert removed == []
 
     # Check remaining experiments
@@ -280,7 +278,6 @@ def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
     # non existent name should raise an error
     with pytest.raises(UnresolvedExpNamesError):
         dvc.experiments.remove(exp_names=["nonexistent"], keep=True)
-
 
     # Check nothing has been deleted
     assert scm.get_ref(str(exp1_ref)) is not None

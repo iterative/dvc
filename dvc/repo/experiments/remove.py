@@ -75,16 +75,22 @@ def remove(  # noqa: C901, PLR0912
     if keep:
         all_exp_refs = exp_refs(repo.scm, git_remote)  # Get all experiments
         selected_exp_names = {ref.name for ref in exp_ref_list}  # Current selection
-        exp_ref_list = [ref for ref in all_exp_refs if ref.name not in selected_exp_names]
+        exp_ref_list = [
+            ref for ref in all_exp_refs if ref.name not in selected_exp_names
+        ]
 
         # Handle queued experiments
         all_queue_entries = list(celery_queue.iter_queued())
         selected_queue_entries = {entry.name for entry in queue_entry_list}
         queue_entry_list = [
-            entry for entry in all_queue_entries if entry.name not in selected_queue_entries
+            entry
+            for entry in all_queue_entries
+            if entry.name not in selected_queue_entries
         ]
 
-        removed = [ref.name for ref in exp_ref_list] + [entry.name for entry in queue_entry_list]
+        removed = [ref.name for ref in exp_ref_list] + [
+            entry.name for entry in queue_entry_list
+        ]
 
     if exp_ref_list:
         _remove_commited_exps(repo.scm, exp_ref_list, git_remote)
