@@ -30,7 +30,7 @@ def remove(  # noqa: C901, PLR0912
     num: int = 1,
     queue: bool = False,
     git_remote: Optional[str] = None,
-    keep_selected: bool = False,  # keep the experiments instead of removing them
+    keep: bool = False, 
 ) -> list[str]:
     removed: list[str] = []
     if not any([exp_names, queue, all_commits, rev]):
@@ -45,7 +45,7 @@ def remove(  # noqa: C901, PLR0912
     exp_ref_list: list[ExpRefInfo] = []
     queue_entry_list: list[QueueEntry] = []
 
-    if keep_selected:
+    if keep:
         # In keep_selected mode, identify all experiments and remove the unselected ones
         all_exp_refs = exp_refs(repo.scm, git_remote)
         selected_exp_names = resolve_selected_exp_names(

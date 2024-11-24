@@ -34,7 +34,7 @@ class CmdExperimentsRemove(CmdBase):
             num=self.args.num,
             queue=self.args.queue,
             git_remote=self.args.git_remote,
-            keep_selected=self.args.keep,
+            keep=self.args.keep,
         )
         if removed:
             ui.write(f"Removed experiments: {humanize.join(map(repr, removed))}")

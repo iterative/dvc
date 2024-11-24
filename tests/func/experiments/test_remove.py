@@ -198,7 +198,7 @@ def test_keep_selected_by_name(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp3_ref)) is not None
 
     # Keep "exp2" and remove others
-    removed = dvc.experiments.remove(exp_names=["exp2"], keep_selected=True)
+    removed = dvc.experiments.remove(exp_names=["exp2"], keep=True)
     assert removed == ["exp1", "exp3"]
 
     # Check remaining experiments
@@ -224,7 +224,7 @@ def test_keep_selected_multiple_by_name(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp3_ref)) is not None
 
     # Keep "exp1" and "exp2" and remove "exp3"
-    removed = dvc.experiments.remove(exp_names=["exp1", "exp2"], keep_selected=True)
+    removed = dvc.experiments.remove(exp_names=["exp1", "exp2"], keep=True)
     assert removed == ["exp3"]
 
     # Check remaining experiments
@@ -251,7 +251,7 @@ def test_keep_selected_all_by_name(tmp_dir, scm, dvc, exp_stage):
 
     # Keep "exp1" and "exp2" and remove "exp3"
     removed = dvc.experiments.remove(
-        exp_names=["exp1", "exp2", "exp3"], keep_selected=True
+        exp_names=["exp1", "exp2", "exp3"], keep=True
     )
     assert removed == []
 
@@ -278,7 +278,7 @@ def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp3_ref)) is not None
 
     # Keep "exp1" and "exp2" and remove "exp3"
-    removed = dvc.experiments.remove(exp_names=["nonexistent"], keep_selected=True)
+    removed = dvc.experiments.remove(exp_names=["nonexistent"], keep=True)
     assert removed == ["exp1", "exp2", "exp3"]
 
     # Check remaining experiments
@@ -304,7 +304,7 @@ def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp2_ref)) is not None
 
     # Keep the experiment from the new revision
-    removed = dvc.experiments.remove(rev=new_rev, num=1, keep_selected=True)
+    removed = dvc.experiments.remove(rev=new_rev, num=1, keep=True)
     assert removed == ["exp1"]
 
     # Check remaining experiments
@@ -333,7 +333,7 @@ def test_keep_selected_by_rev_multiple(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(exp3_ref)) is not None
 
     # Keep the last 2, remove first
-    removed = dvc.experiments.remove(rev=exp3_rev, num=2, keep_selected=True)
+    removed = dvc.experiments.remove(rev=exp3_rev, num=2, keep=True)
     assert removed == ["exp1"]
 
     # Check remaining experiments
