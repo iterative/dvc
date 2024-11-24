@@ -89,7 +89,7 @@ def remove(  # noqa: C901, PLR0912
         ]
 
         removed = [ref.name for ref in exp_ref_list] + [
-            entry.name for entry in queue_entry_list
+            entry.name for entry in queue_entry_list if entry.name
         ]
 
     if exp_ref_list:
