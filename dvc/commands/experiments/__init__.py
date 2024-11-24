@@ -64,7 +64,6 @@ def add_keep_selection_flag(experiments_subcmd_parser):
         action="store_true",
         default=False,
         help="Keep the selected experiments instead of removing them "
-        "(use it with `--rev`' and `--num` or with experiment names).",
     )
 
 
