@@ -20,7 +20,7 @@ from dvc_objects.fs import (  # noqa: F401
     system,
     utils,
 )
-from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401, TCH001
+from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401, TC001
 from dvc_objects.fs.errors import (  # noqa: F401
     AuthError,
     ConfigError,

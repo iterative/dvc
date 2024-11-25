@@ -12,7 +12,7 @@ from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
-from dvc_data.hashfile import hash
+from dvc_data.hashfile import hash as _hash
 from dvc_data.index.index import DataIndex, DataIndexDirError
 
 
@@ -747,7 +747,7 @@ def test_import_no_hash(
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(files, commit="create foo")
 
-    file_md5_spy = mocker.spy(hash, "file_md5")
+    file_md5_spy = mocker.spy(_hash, "file_md5")
     index_info_spy = mocker.spy(DataIndex, "info")
     name = next(iter(files))
 

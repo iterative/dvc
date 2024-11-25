@@ -33,7 +33,7 @@ class LoaderFn(Protocol):
     def __call__(self, path: "StrPath", fs: Optional["FileSystem"] = None) -> Any: ...
 
 
-ReadType = Union[bytes, None, str]
+ReadType = Union[bytes, str, None]
 ParserFn = Callable[[ReadType, "StrPath"], dict]
 
 
