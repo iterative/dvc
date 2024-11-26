@@ -24,7 +24,7 @@ logger = logger.getChild(__name__)
 @scm_context
 def remove(  # noqa: C901, PLR0912
     repo: "Repo",
-    exp_names: Union[None, str, list[str]] = None,
+    exp_names: Union[str, list[str], None] = None,
     rev: Optional[Union[list[str], str]] = None,
     all_commits: bool = False,
     num: int = 1,

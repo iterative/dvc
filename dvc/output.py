@@ -431,7 +431,7 @@ class Output:
             self.meta.nfiles = len(self.files)
             self.meta.size = sum(filter(None, (f.get("size") for f in self.files)))
             self.meta.remote = first(f.get("remote") for f in self.files)
-        elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
+        elif self.meta.nfiles or (self.hash_info and self.hash_info.isdir):
             self.meta.isdir = True
             if not self.hash_info and self.hash_name not in ("md5", "md5-dos2unix"):
                 md5 = getattr(self.meta, "md5", None)

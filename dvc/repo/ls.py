@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 def _open_repo(
     url: str,
     rev: Optional[str] = None,
-    config: Union[None, dict[str, Any], str] = None,
+    config: Union[dict[str, Any], str, None] = None,
     remote: Optional[str] = None,
     remote_config: Optional[dict] = None,
 ):
@@ -49,7 +49,7 @@ def ls(
     rev: Optional[str] = None,
     recursive: Optional[bool] = None,
     dvc_only: bool = False,
-    config: Union[None, dict[str, Any], str] = None,
+    config: Union[dict[str, Any], str, None] = None,
     remote: Optional[str] = None,
     remote_config: Optional[dict] = None,
     maxdepth: Optional[int] = None,
@@ -90,7 +90,7 @@ def ls_tree(
     path: Optional[str] = None,
     rev: Optional[str] = None,
     dvc_only: bool = False,
-    config: Union[None, dict[str, Any], str] = None,
+    config: Union[dict[str, Any], str, None] = None,
     remote: Optional[str] = None,
     remote_config: Optional[dict] = None,
     maxdepth: Optional[int] = None,
