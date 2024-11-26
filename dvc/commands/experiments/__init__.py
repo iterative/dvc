@@ -64,7 +64,7 @@ def add_keep_selection_flag(experiments_subcmd_parser):
         action="store_true",
         default=False,
         help="Keep the selected (committed, not queued) experiments "
-            "instead of removing them.",
+        "instead of removing them.",
     )
 
 
