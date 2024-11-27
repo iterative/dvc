@@ -73,7 +73,6 @@ def remove(  # noqa: C901, PLR0912
         exp_ref_list.extend(exp_refs(repo.scm, git_remote))
         removed = [ref.name for ref in exp_ref_list]
 
-
     if keep:
         exp_ref_list = list(set(exp_refs(repo.scm, git_remote)) - set(exp_ref_list))
         removed = [ref.name for ref in exp_ref_list]
@@ -93,6 +92,7 @@ def remove(  # noqa: C901, PLR0912
         notify_refs_to_studio(repo, git_remote, removed=removed_refs)
 
     return removed
+
 
 def _resolve_exp_by_baseline(
     repo: "Repo",

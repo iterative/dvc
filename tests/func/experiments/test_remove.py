@@ -187,15 +187,16 @@ def test_remove_multi_rev(tmp_dir, scm, dvc, exp_stage):
         [["exp1"], ["exp2", "exp3"]],
         [["exp1", "exp2"], ["exp3"]],
         [["exp1", "exp2", "exp3"], []],
-        [[], []] # remove does nothing if no experiments are specified
-    ]
+        [[], []],  # remove does nothing if no experiments are specified
+    ],
 )
 def test_keep_selected_by_name(tmp_dir, scm, dvc, exp_stage, keep, expected_removed):
     # Setup: Run experiments
     refs = {}
-    for i in range(1, len(keep)+len(expected_removed)+1):
-        results = dvc.experiments.run(exp_stage.addressing,
-                                      params=[f"foo={i}"], name=f"exp{i}")
+    for i in range(1, len(keep) + len(expected_removed) + 1):
+        results = dvc.experiments.run(
+            exp_stage.addressing, params=[f"foo={i}"], name=f"exp{i}"
+        )
         refs[f"exp{i}"] = first(exp_refs_by_rev(scm, first(results)))
         assert scm.get_ref(str(refs[f"exp{i}"])) is not None
 
@@ -210,7 +211,6 @@ def test_keep_selected_by_name(tmp_dir, scm, dvc, exp_stage, keep, expected_remo
 
 
 def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
-
     # non existent name should raise an error
     with pytest.raises(UnresolvedExpNamesError):
         dvc.experiments.remove(exp_names=["nonexistent"], keep=True)
@@ -226,19 +226,20 @@ def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
         [3, "exp2", 2, ["exp3"]],
         [4, "exp2", 2, ["exp3", "exp4"]],
         [4, "exp4", 2, ["exp1", "exp2"]],
-        [1, None, 1, []] # remove does nothing if no experiments are specified
-    ]
+        [1, None, 1, []],  # remove does nothing if no experiments are specified
+    ],
 )
-def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage, num_exps, rev,
-                              num, expected_removed):
-
+def test_keep_selected_by_rev(
+    tmp_dir, scm, dvc, exp_stage, num_exps, rev, num, expected_removed
+):
     refs = {}
     revs = {}
     # Setup: Run experiments and commit
     for i in range(1, num_exps + 1):
         scm.commit(f"commit{i}")
-        results = dvc.experiments.run(exp_stage.addressing,
-                                      params=[f"foo={i}"], name=f"exp{i}")
+        results = dvc.experiments.run(
+            exp_stage.addressing, params=[f"foo={i}"], name=f"exp{i}"
+        )
         refs[f"exp{i}"] = first(exp_refs_by_rev(scm, first(results)))
         revs[f"exp{i}"] = scm.get_rev()
         assert scm.get_ref(str(refs[f"exp{i}"])) is not None
@@ -251,6 +252,6 @@ def test_keep_selected_by_rev(tmp_dir, scm, dvc, exp_stage, num_exps, rev,
     for exp in expected_removed:
         assert scm.get_ref(str(refs[exp])) is None
 
-    for exp in refs.keys():
+    for exp in refs:
         if exp not in expected_removed:
             assert scm.get_ref(str(refs[exp])) is not None
