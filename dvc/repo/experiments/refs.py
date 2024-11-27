@@ -67,3 +67,12 @@ class ExpRefInfo:
         baseline_sha = parts[2] + parts[3]
         name = parts[4] if len(parts) == 5 else None
         return cls(baseline_sha, name)
+
+    def __eq__(self, other):
+        if not isinstance(other, ExpRefInfo):
+            return False
+
+        return self.baseline_sha == other.baseline_sha and self.name == other.name
+
+    def __hash__(self):
+        return hash((self.baseline_sha, self.name))

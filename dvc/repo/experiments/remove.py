@@ -33,6 +33,7 @@ def remove(  # noqa: C901, PLR0912
     keep: bool = False,
 ) -> list[str]:
     removed: list[str] = []
+
     if not any([exp_names, queue, all_commits, rev]):
         return removed
     celery_queue: LocalCeleryQueue = repo.experiments.celery_queue
@@ -72,13 +73,9 @@ def remove(  # noqa: C901, PLR0912
         exp_ref_list.extend(exp_refs(repo.scm, git_remote))
         removed = [ref.name for ref in exp_ref_list]
 
-    if keep:
-        all_exp_refs = exp_refs(repo.scm, git_remote)  # Get all experiments
-        selected_exp_names = {ref.name for ref in exp_ref_list}  # Current selection
-        exp_ref_list = [
-            ref for ref in all_exp_refs if ref.name not in selected_exp_names
-        ]
 
+    if keep:
+        exp_ref_list = list(set(exp_refs(repo.scm, git_remote)) - set(exp_ref_list))
         removed = [ref.name for ref in exp_ref_list]
 
     if exp_ref_list:
@@ -96,22 +93,6 @@ def remove(  # noqa: C901, PLR0912
         notify_refs_to_studio(repo, git_remote, removed=removed_refs)
 
     return removed
-
-
-def resolve_selected_exp_names(exp_names, git_remote, num, repo, rev):
-    selected_exp_names = set()
-    if exp_names:
-        selected_exp_names = (
-            set(exp_names) if isinstance(exp_names, list) else {exp_names}
-        )
-    elif rev:
-        selected_exp_names = set(
-            _resolve_exp_by_baseline(
-                repo, [rev] if isinstance(rev, str) else rev, num, git_remote
-            ).keys()
-        )
-    return selected_exp_names
-
 
 def _resolve_exp_by_baseline(
     repo: "Repo",
