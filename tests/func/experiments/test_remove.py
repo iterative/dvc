@@ -252,6 +252,6 @@ def test_keep_selected_by_rev(
     for exp in expected_removed:
         assert scm.get_ref(str(refs[exp])) is None
 
-    for exp in refs:
+    for exp, ref in refs.items():
         if exp not in expected_removed:
-            assert scm.get_ref(str(refs[exp])) is not None
+            assert scm.get_ref(str(ref)) is not None
