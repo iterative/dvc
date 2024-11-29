@@ -6,7 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, iter_revs
 
-from .exceptions import UnresolvedExpNamesError, InvalidArgumentError
+from .exceptions import InvalidArgumentError, UnresolvedExpNamesError
 from .utils import exp_refs, exp_refs_by_baseline, push_refspec
 
 if TYPE_CHECKING:

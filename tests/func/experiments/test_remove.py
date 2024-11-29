@@ -256,9 +256,9 @@ def test_keep_selected_by_rev(
         if exp not in expected_removed:
             assert scm.get_ref(str(ref)) is not None
 
+
 def test_remove_with_queue_and_keep(tmp_dir, scm, dvc, exp_stage):
     # This should raise an exception, until decided otherwise
 
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.remove(queue=True, keep=True)
-
