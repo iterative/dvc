@@ -19,6 +19,8 @@ jobs:
   lint:
     timeout-minutes: 10
     runs-on: ${{ matrix.os }}
+    env:
+       DVC_NO_ANALYTICS: true
     strategy:
       fail-fast: false
       matrix:
