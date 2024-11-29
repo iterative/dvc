@@ -6,7 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, iter_revs
 
-from .exceptions import UnresolvedExpNamesError
+from .exceptions import UnresolvedExpNamesError, InvalidArgumentError
 from .utils import exp_refs, exp_refs_by_baseline, push_refspec
 
 if TYPE_CHECKING:
@@ -34,8 +34,12 @@ def remove(  # noqa: C901, PLR0912
 ) -> list[str]:
     removed: list[str] = []
 
+    if all([keep, queue]):
+        raise InvalidArgumentError("Cannot use both `--keep` and `--queue`.")
+
     if not any([exp_names, queue, all_commits, rev]):
         return removed
+
     celery_queue: LocalCeleryQueue = repo.experiments.celery_queue
 
     if queue:
