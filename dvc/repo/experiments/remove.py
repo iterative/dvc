@@ -75,7 +75,7 @@ def remove(  # noqa: C901, PLR0912
         exp_ref_list.extend(exp_ref_dict.values())
     elif all_commits:
         exp_ref_list.extend(exp_refs(repo.scm, git_remote))
-        removed = [ref.name for ref in exp_ref_list]
+        removed.extend([ref.name for ref in exp_ref_list])
 
     if keep:
         exp_ref_list = list(set(exp_refs(repo.scm, git_remote)) - set(exp_ref_list))
