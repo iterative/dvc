@@ -179,3 +179,85 @@ def test_remove_multi_rev(tmp_dir, scm, dvc, exp_stage):
 
     assert scm.get_ref(str(baseline_exp_ref)) is None
     assert scm.get_ref(str(new_exp_ref)) is None
+
+
+@pytest.mark.parametrize(
+    "keep, expected_removed",
+    [
+        [["exp1"], ["exp2", "exp3"]],
+        [["exp1", "exp2"], ["exp3"]],
+        [["exp1", "exp2", "exp3"], []],
+        [[], []],  # remove does nothing if no experiments are specified
+    ],
+)
+def test_keep_selected_by_name(tmp_dir, scm, dvc, exp_stage, keep, expected_removed):
+    # Setup: Run experiments
+    refs = {}
+    for i in range(1, len(keep) + len(expected_removed) + 1):
+        results = dvc.experiments.run(
+            exp_stage.addressing, params=[f"foo={i}"], name=f"exp{i}"
+        )
+        refs[f"exp{i}"] = first(exp_refs_by_rev(scm, first(results)))
+        assert scm.get_ref(str(refs[f"exp{i}"])) is not None
+
+    removed = dvc.experiments.remove(exp_names=keep, keep=True)
+    assert sorted(removed) == sorted(expected_removed)
+
+    for exp in expected_removed:
+        assert scm.get_ref(str(refs[exp])) is None
+
+    for exp in keep:
+        assert scm.get_ref(str(refs[exp])) is not None
+
+
+def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
+    # non existent name should raise an error
+    with pytest.raises(UnresolvedExpNamesError):
+        dvc.experiments.remove(exp_names=["nonexistent"], keep=True)
+
+
+@pytest.mark.parametrize(
+    "num_exps, rev, num, expected_removed",
+    [
+        [2, "exp1", 1, ["exp2"]],
+        [3, "exp3", 1, ["exp1", "exp2"]],
+        [3, "exp3", 2, ["exp1"]],
+        [3, "exp3", 3, []],
+        [3, "exp2", 2, ["exp3"]],
+        [4, "exp2", 2, ["exp3", "exp4"]],
+        [4, "exp4", 2, ["exp1", "exp2"]],
+        [1, None, 1, []],  # remove does nothing if no experiments are specified
+    ],
+)
+def test_keep_selected_by_rev(
+    tmp_dir, scm, dvc, exp_stage, num_exps, rev, num, expected_removed
+):
+    refs = {}
+    revs = {}
+    # Setup: Run experiments and commit
+    for i in range(1, num_exps + 1):
+        scm.commit(f"commit{i}")
+        results = dvc.experiments.run(
+            exp_stage.addressing, params=[f"foo={i}"], name=f"exp{i}"
+        )
+        refs[f"exp{i}"] = first(exp_refs_by_rev(scm, first(results)))
+        revs[f"exp{i}"] = scm.get_rev()
+        assert scm.get_ref(str(refs[f"exp{i}"])) is not None
+
+    # Keep the experiment from the new revision
+    removed = dvc.experiments.remove(rev=revs.get(rev), num=num, keep=True)
+    assert sorted(removed) == sorted(expected_removed)
+
+    # Check remaining experiments
+    for exp in expected_removed:
+        assert scm.get_ref(str(refs[exp])) is None
+
+    for exp, ref in refs.items():
+        if exp not in expected_removed:
+            assert scm.get_ref(str(ref)) is not None
+
+
+def test_remove_with_queue_and_keep(tmp_dir, scm, dvc, exp_stage):
+    # This should raise an exception, until decided otherwise
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.remove(queue=True, keep=True)

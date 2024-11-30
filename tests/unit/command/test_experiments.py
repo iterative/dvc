@@ -384,6 +384,7 @@ def test_experiments_remove_flag(dvc, scm, mocker, capsys, caplog):
         num=2,
         queue=False,
         git_remote="myremote",
+        keep=False,
     )
 
 
@@ -410,6 +411,7 @@ def test_experiments_remove_special(dvc, scm, mocker, capsys, caplog):
         num=1,
         queue=False,
         git_remote="myremote",
+        keep=False,
     )
 
 
