@@ -43,7 +43,7 @@ def test_remove_all_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(ref_info)) is not None
 
 
-def test_remove_all_experiments_queued_and_commits(tmp_dir, scm, dvc, exp_stage):
+def test_remove_all_experiments_queued_and_completed(tmp_dir, scm, dvc, exp_stage):
     queue_length = 3
     for i in range(queue_length):
         dvc.experiments.run(
