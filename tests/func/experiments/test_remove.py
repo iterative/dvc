@@ -43,6 +43,26 @@ def test_remove_all_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(ref_info)) is not None
 
 
+def test_remove_all_experiments_queued_and_completed(tmp_dir, scm, dvc, exp_stage):
+    queue_length = 3
+    for i in range(queue_length):
+        dvc.experiments.run(
+            exp_stage.addressing, params=[f"foo={i}"], name=f"exp{i}", queue=True
+        )
+
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=[f"foo={queue_length}"], name=f"exp{queue_length}"
+    )
+    ref_info = first(exp_refs_by_rev(scm, first(results)))
+
+    removed = sorted(dvc.experiments.remove(all_commits=True, queue=True))
+
+    assert len(removed) == queue_length + 1
+    assert removed == [f"exp{i}" for i in range(queue_length)] + [ref_info.name]
+    assert len(dvc.experiments.stash_revs) == 0
+    assert scm.get_ref(str(ref_info)) is None
+
+
 def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(
         exp_stage.addressing, params=["foo=1"], queue=True, name="queue1"
