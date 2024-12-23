@@ -33,7 +33,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - uses: astral-sh/setup-uv@v4
+    - uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
         cache-dependency-glob: pyproject.toml
@@ -89,7 +89,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyv }}
-    - uses: astral-sh/setup-uv@v4
+    - uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
         cache-dependency-glob: pyproject.toml
