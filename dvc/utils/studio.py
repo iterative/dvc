@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 logger = logger.getChild(__name__)
 
-STUDIO_URL = "https://studio.dvc.ai"
+STUDIO_URL = "https://studio.datachain.ai"
 
 
 def post(
