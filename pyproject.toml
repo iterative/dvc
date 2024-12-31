@@ -34,7 +34,7 @@ dependencies = [
     "attrs>=22.2.0",
     "celery",
     "colorama>=0.3.9",
-    "configobj>=5.0.6",
+    "configobj>=5.0.9",
     "distro>=1.3",
     "dpath<3,>=2.1.0",
     "dulwich",
@@ -45,7 +45,7 @@ dependencies = [
     "dvc-studio-client>=0.21,<1",
     "dvc-task>=0.3.0,<1",
     "flatten_dict<1,>=0.4.1",
-    "flufl.lock>=8.1.0,<9", # https://github.com/iterative/dvc/issues/9654
+    "flufl.lock>=8.1.0,<9",
     "fsspec>=2024.2.0",
     "funcy>=1.14",
     "grandalf<1,>=0.7",
@@ -57,7 +57,7 @@ dependencies = [
     "omegaconf",
     "packaging>=19",
     "pathspec>=0.10.3",
-    "platformdirs<4,>=3.1.1",
+    "platformdirs<5,>=3.1.1",
     "psutil>=5.8",
     "pydot>=1.2.4",
     "pygtrie>=2.3.2",
@@ -65,7 +65,7 @@ dependencies = [
     "requests>=2.22",
     "rich>=12",
     "ruamel.yaml>=0.17.11",
-    "scmrepo>=3.3.4,<4",
+    "scmrepo>=3.3.8,<4",
     "shortuuid>=0.5",
     "shtab<2,>=1.3.4",
     "tabulate>=0.8.7",
@@ -83,7 +83,7 @@ gdrive = ["dvc-gdrive>=3,<4"]
 gs = ["dvc-gs>=3,<4"]
 hdfs = ["dvc-hdfs>=3,<4"]
 lint = [
-    "mypy==1.11.1",
+    "mypy==1.14.0",
     "pandas-stubs",
     "types-colorama",
     "types-psutil",
@@ -99,7 +99,7 @@ s3 = ["dvc-s3>=3.2.0,<4"]
 ssh = ["dvc-ssh>=4,<5"]
 ssh_gssapi = ["dvc-ssh[gssapi]>=4,<5"]
 testing = [
-  "pytest-benchmark[histogram]",
+  "pytest-benchmark[histogram]>=5,<6",
   "pytest-test-utils",
   "uv",
 ]
@@ -156,7 +156,7 @@ exclude = ["tests", "tests.*"]
 namespaces = false
 
 [tool.setuptools_scm]
-write_to = "dvc/_dvc_version.py"
+write_to = "dvc/_version.py"
 
 [tool.pytest.ini_options]
 addopts = "-ra --cov-config pyproject.toml"
@@ -270,8 +270,8 @@ ignore = [
 select = [
     "F", "E", "W", "C90", "I", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "DTZ", "T10",
     "EXE", "ISC", "ICN", "LOG", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
-    "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
-    "FLY", "PERF", "FURB", "RUF", "RUF022", "RUF023", "RUF024", "RUF026", "RUF027", "RUF029", "RUF030",
+    "SLOT", "SIM", "TID", "TC", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
+    "FLY", "PERF", "FURB", "RUF", "RUF027", "RUF029", "RUF034", "RUF036",
 ]
 preview = true
 explicit-preview-rules = true

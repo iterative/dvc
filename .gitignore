@@ -43,7 +43,7 @@ scripts/ci/gcp-creds.json
 .gcp-creds.json
 
 *~
-/dvc/_dvc_version.py
+/dvc/_version.py
 
 .mypy_cache/
 .pytest_cache/

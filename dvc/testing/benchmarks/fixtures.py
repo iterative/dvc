@@ -150,7 +150,8 @@ def make_bench(request):
         import pytest_benchmark.plugin
 
         # hack from https://github.com/ionelmc/pytest-benchmark/issues/166
-        bench = pytest_benchmark.plugin.benchmark.__pytest_wrapped__.obj(request)
+        bench_gen = pytest_benchmark.plugin.benchmark.__pytest_wrapped__.obj(request)
+        bench = next(bench_gen)
 
         suffix = f"-{name}"
 
@@ -172,7 +173,7 @@ def bench_dvc(request, dvc_bin, make_bench):
         name = kwargs.pop("name", None)
         name = f"-{name}" if name else ""
         bench = make_bench(args[0] + name)
-        if request.config.getoption("--benchmark-cprofile-dump") or kwargs.pop(
+        if request.config.getoption("--dvc-benchmark-cprofile-dump") or kwargs.pop(
             "cprofile", False
         ):
             cprofile_results = request.config.invocation_params.dir / "prof"

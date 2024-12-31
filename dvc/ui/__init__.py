@@ -300,6 +300,7 @@ class Console:
         header_styles: Optional[Union[dict[str, "Styles"], Sequence["Styles"]]] = None,
         row_styles: Optional[Sequence["Styles"]] = None,
         borders: Union[bool, str] = False,
+        colalign: Optional[tuple[str, ...]] = None,
     ) -> None:
         from dvc.ui import table as t
 
@@ -321,7 +322,13 @@ class Console:
             return
 
         return t.plain_table(
-            self, data, headers, markdown=markdown, pager=pager, force=force
+            self,
+            data,
+            headers,
+            markdown=markdown,
+            pager=pager,
+            force=force,
+            colalign=colalign,
         )
 
     def status(self, status: str, **kwargs: Any) -> "Status":

@@ -8,7 +8,7 @@
   name: DVC pre-commit
   require_serial: true
   stages:
-  - commit
+  - pre-commit
   verbose: true
 - args:
   - git-hook
@@ -20,7 +20,7 @@
   name: DVC pre-push
   require_serial: true
   stages:
-  - push
+  - pre-push
 - always_run: true
   args:
   - git-hook
@@ -29,7 +29,7 @@
   id: dvc-post-checkout
   language: python
   language_version: python3
-  minimum_pre_commit_version: 2.2.0
+  minimum_pre_commit_version: 3.2.0
   name: DVC post-checkout
   require_serial: true
   stages:

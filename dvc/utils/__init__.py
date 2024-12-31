@@ -382,7 +382,7 @@ def glob_targets(targets, glob=True, recursive=True):
 
 def error_handler(func):
     def wrapper(*args, **kwargs):
-        onerror = kwargs.get("onerror", None)
+        onerror = kwargs.get("onerror")
         result = {}
 
         try:

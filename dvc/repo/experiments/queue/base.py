@@ -609,9 +609,9 @@ class BaseStashQueue(ABC):
                 result[exp_name] = entry_name_dict[exp_name]
                 continue
             if self.scm.is_sha(exp_name):
-                for rev in entry_rev_dict:
+                for rev, entry in entry_rev_dict.items():
                     if rev.startswith(exp_name.lower()):
-                        result[exp_name] = entry_rev_dict[rev]
+                        result[exp_name] = entry
                         break
 
         return result

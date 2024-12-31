@@ -1,7 +1,7 @@
 from dvc.fs.dvc import _DVCFileSystem as DVCFileSystem
 
 from .artifacts import artifacts_show
-from .data import get_url, open, read
+from .data import get_url, open, read  # noqa: A004
 from .dataset import get as get_dataset
 from .experiments import exp_save, exp_show
 from .scm import all_branches, all_commits, all_tags

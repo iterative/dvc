@@ -6,7 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, iter_revs
 
-from .exceptions import UnresolvedExpNamesError
+from .exceptions import InvalidArgumentError, UnresolvedExpNamesError
 from .utils import exp_refs, exp_refs_by_baseline, push_refspec
 
 if TYPE_CHECKING:
@@ -24,16 +24,22 @@ logger = logger.getChild(__name__)
 @scm_context
 def remove(  # noqa: C901, PLR0912
     repo: "Repo",
-    exp_names: Union[None, str, list[str]] = None,
+    exp_names: Union[str, list[str], None] = None,
     rev: Optional[Union[list[str], str]] = None,
     all_commits: bool = False,
     num: int = 1,
     queue: bool = False,
     git_remote: Optional[str] = None,
+    keep: bool = False,
 ) -> list[str]:
     removed: list[str] = []
+
+    if all([keep, queue]):
+        raise InvalidArgumentError("Cannot use both `--keep` and `--queue`.")
+
     if not any([exp_names, queue, all_commits, rev]):
         return removed
+
     celery_queue: LocalCeleryQueue = repo.experiments.celery_queue
 
     if queue:
@@ -43,6 +49,7 @@ def remove(  # noqa: C901, PLR0912
 
     exp_ref_list: list[ExpRefInfo] = []
     queue_entry_list: list[QueueEntry] = []
+
     if exp_names:
         results: dict[str, ExpRefAndQueueEntry] = (
             celery_queue.get_ref_and_entry_by_names(exp_names, git_remote)
@@ -68,6 +75,10 @@ def remove(  # noqa: C901, PLR0912
         exp_ref_list.extend(exp_ref_dict.values())
     elif all_commits:
         exp_ref_list.extend(exp_refs(repo.scm, git_remote))
+        removed.extend([ref.name for ref in exp_ref_list])
+
+    if keep:
+        exp_ref_list = list(set(exp_refs(repo.scm, git_remote)) - set(exp_ref_list))
         removed = [ref.name for ref in exp_ref_list]
 
     if exp_ref_list:
@@ -83,6 +94,7 @@ def remove(  # noqa: C901, PLR0912
 
         removed_refs = [str(r) for r in exp_ref_list]
         notify_refs_to_studio(repo, git_remote, removed=removed_refs)
+
     return removed
 
 

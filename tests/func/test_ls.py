@@ -2,10 +2,12 @@ import os
 import shutil
 import textwrap
 from operator import itemgetter
+from os.path import join
 
 import pytest
 
 from dvc.repo import Repo
+from dvc.repo.ls import ls_tree
 from dvc.scm import CloneError
 
 FS_STRUCTURE = {
@@ -222,7 +224,12 @@ def test_ls_repo_with_missed_path_dvc_only(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     with pytest.raises(FileNotFoundError):
-        Repo.ls(os.fspath(tmp_dir), path="missed_path", recursive=True, dvc_only=True)
+        Repo.ls(
+            os.fspath(tmp_dir),
+            path="missed_path",
+            recursive=True,
+            dvc_only=True,
+        )
 
 
 def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):
@@ -467,20 +474,49 @@ def test_ls_granular(erepo_dir, M):
 
     entries = Repo.ls(os.fspath(erepo_dir), os.path.join("dir", "subdir"))
     assert entries == [
-        {"isout": True, "isdir": False, "isexec": False, "path": "bar", "size": 3},
-        {"isout": True, "isdir": False, "isexec": False, "path": "foo", "size": 3},
+        {
+            "isout": True,
+            "isdir": False,
+            "isexec": False,
+            "path": "bar",
+            "size": 3,
+            "md5": "37b51d194a7513e45b56f6524f2d51f2",
+        },
+        {
+            "isout": True,
+            "isdir": False,
+            "isexec": False,
+            "path": "foo",
+            "size": 3,
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+        },
     ]
 
     entries = Repo.ls(os.fspath(erepo_dir), "dir")
     assert entries == [
-        {"isout": True, "isdir": False, "isexec": False, "path": "1", "size": 1},
-        {"isout": True, "isdir": False, "isexec": False, "path": "2", "size": 1},
+        {
+            "isout": True,
+            "isdir": False,
+            "isexec": False,
+            "path": "1",
+            "size": 1,
+            "md5": "c4ca4238a0b923820dcc509a6f75849b",
+        },
+        {
+            "isout": True,
+            "isdir": False,
+            "isexec": False,
+            "path": "2",
+            "size": 1,
+            "md5": "c81e728d9d4c2f636f067f89cc14862c",
+        },
         {
             "isout": True,
             "isdir": True,
             "isexec": False,
             "path": "subdir",
             "size": M.instance_of(int),
+            "md5": None,
         },
     ]
 
@@ -506,14 +542,42 @@ def test_ls_target(erepo_dir, use_scm):
         return Repo.ls(os.fspath(erepo_dir), path)
 
     assert _ls(os.path.join("dir", "1")) == [
-        {"isout": isout, "isdir": False, "isexec": False, "path": "1", "size": 1}
+        {
+            "isout": isout,
+            "isdir": False,
+            "isexec": False,
+            "path": "1",
+            "size": 1,
+            "md5": "c4ca4238a0b923820dcc509a6f75849b" if not use_scm else None,
+        }
     ]
     assert _ls(os.path.join("dir", "subdir", "foo")) == [
-        {"isout": isout, "isdir": False, "isexec": False, "path": "foo", "size": 3}
+        {
+            "isout": isout,
+            "isdir": False,
+            "isexec": False,
+            "path": "foo",
+            "size": 3,
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8" if not use_scm else None,
+        }
     ]
     assert _ls(os.path.join("dir", "subdir")) == [
-        {"isdir": False, "isexec": 0, "isout": isout, "path": "bar", "size": 3},
-        {"isdir": False, "isexec": 0, "isout": isout, "path": "foo", "size": 3},
+        {
+            "isdir": False,
+            "isexec": 0,
+            "isout": isout,
+            "path": "bar",
+            "size": 3,
+            "md5": "37b51d194a7513e45b56f6524f2d51f2" if not use_scm else None,
+        },
+        {
+            "isdir": False,
+            "isexec": 0,
+            "isout": isout,
+            "path": "foo",
+            "size": 3,
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8" if not use_scm else None,
+        },
     ]
 
 
@@ -576,6 +640,7 @@ def test_broken_symlink(tmp_dir, dvc, M):
             "isexec": False,
             "path": ".dvcignore",
             "size": M.instance_of(int),
+            "md5": None,
         },
         {
             "isout": False,
@@ -583,6 +648,7 @@ def test_broken_symlink(tmp_dir, dvc, M):
             "isexec": False,
             "path": "link",
             "size": 0,
+            "md5": None,
         },
     ]
 
@@ -614,14 +680,23 @@ def test_ls_broken_dir(tmp_dir, dvc, M):
             "isout": False,
             "path": ".dvcignore",
             "size": M.instance_of(int),
+            "md5": None,
         },
-        {"isdir": True, "isexec": False, "isout": True, "path": "broken", "size": 3},
+        {
+            "isdir": True,
+            "isexec": False,
+            "isout": True,
+            "path": "broken",
+            "size": 3,
+            "md5": "630bd47b538d2a513c7d267d07e0bc44.dir",
+        },
         {
             "isdir": False,
             "isexec": False,
             "isout": False,
             "path": "broken.dvc",
             "size": M.instance_of(int),
+            "md5": None,
         },
         {
             "isdir": True,
@@ -629,6 +704,7 @@ def test_ls_broken_dir(tmp_dir, dvc, M):
             "isout": True,
             "path": "dir",
             "size": M.instance_of(int),
+            "md5": "91aaa9bb58b657d623ef143b195a67e4.dir",
         },
         {
             "isdir": False,
@@ -636,14 +712,23 @@ def test_ls_broken_dir(tmp_dir, dvc, M):
             "isout": False,
             "path": "dir.dvc",
             "size": M.instance_of(int),
+            "md5": None,
         },
-        {"isdir": False, "isexec": False, "isout": True, "path": "foo", "size": 3},
+        {
+            "isdir": False,
+            "isexec": False,
+            "isout": True,
+            "path": "foo",
+            "size": 3,
+            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+        },
         {
             "isdir": False,
             "isexec": False,
             "isout": False,
             "path": "foo.dvc",
             "size": M.instance_of(int),
+            "md5": None,
         },
     ]
 
@@ -652,3 +737,264 @@ def test_ls_broken_dir(tmp_dir, dvc, M):
 
     with pytest.raises(DataIndexDirError):
         Repo.ls(os.fspath(tmp_dir), recursive=True)
+
+
+def test_ls_maxdepth(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
+    tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
+
+    files = Repo.ls(os.fspath(tmp_dir), "structure.xml", maxdepth=0, recursive=True)
+    match_files(files, ((("structure.xml",), True),))
+
+    files = Repo.ls(os.fspath(tmp_dir), maxdepth=0, recursive=True)
+    match_files(files, (((os.curdir,), False),))
+
+    files = Repo.ls(os.fspath(tmp_dir), maxdepth=1, recursive=True)
+    match_files(
+        files,
+        (
+            ((".dvcignore",), False),
+            ((".gitignore",), False),
+            (("README.md",), False),
+            (("structure.xml.dvc",), False),
+            (("model",), False),
+            (("data",), False),
+            (("structure.xml",), True),
+        ),
+    )
+    files = Repo.ls(os.fspath(tmp_dir), maxdepth=2, recursive=True)
+    match_files(
+        files,
+        (
+            ((".dvcignore",), False),
+            ((".gitignore",), False),
+            (("README.md",), False),
+            ((join("data", "subcontent"),), False),
+            ((join("model", ".gitignore"),), False),
+            ((join("model", "people.csv"),), True),
+            ((join("model", "people.csv.dvc"),), False),
+            ((join("model", "script.py"),), False),
+            ((join("model", "train.py"),), False),
+            (("structure.xml",), True),
+            (("structure.xml.dvc",), False),
+        ),
+    )
+
+    files = Repo.ls(os.fspath(tmp_dir), maxdepth=3, recursive=True)
+    match_files(
+        files,
+        (
+            ((".dvcignore",), False),
+            ((".gitignore",), False),
+            (("README.md",), False),
+            ((join("data", "subcontent", ".gitignore"),), False),
+            ((join("data", "subcontent", "data.xml"),), True),
+            ((join("data", "subcontent", "data.xml.dvc"),), False),
+            ((join("data", "subcontent", "statistics"),), False),
+            ((join("model", ".gitignore"),), False),
+            ((join("model", "people.csv"),), True),
+            ((join("model", "people.csv.dvc"),), False),
+            ((join("model", "script.py"),), False),
+            ((join("model", "train.py"),), False),
+            ((join("structure.xml"),), True),
+            ((join("structure.xml.dvc"),), False),
+        ),
+    )
+
+    files = Repo.ls(os.fspath(tmp_dir), maxdepth=4, recursive=True)
+    match_files(
+        files,
+        (
+            ((".dvcignore",), False),
+            ((".gitignore",), False),
+            (("README.md",), False),
+            ((join("data", "subcontent", ".gitignore"),), False),
+            ((join("data", "subcontent", "data.xml"),), True),
+            ((join("data", "subcontent", "data.xml.dvc"),), False),
+            ((join("data", "subcontent", "statistics", ".gitignore"),), False),
+            ((join("data", "subcontent", "statistics", "data.csv"),), True),
+            ((join("data", "subcontent", "statistics", "data.csv.dvc"),), False),
+            ((join("model", ".gitignore"),), False),
+            ((join("model", "people.csv"),), True),
+            ((join("model", "people.csv.dvc"),), False),
+            ((join("model", "script.py"),), False),
+            ((join("model", "train.py"),), False),
+            (("structure.xml",), True),
+            (("structure.xml.dvc",), False),
+        ),
+    )
+
+
+def _simplify_tree(files):
+    ret = {}
+    for path, info in files.items():
+        if content := info.get("contents"):
+            ret[path] = _simplify_tree(content)
+        else:
+            ret[path] = None
+    return ret
+
+
+def test_ls_tree(M, tmp_dir, scm, dvc):
+    tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
+    tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
+
+    files = ls_tree(os.fspath(tmp_dir), "structure.xml")
+    assert _simplify_tree(files) == {"structure.xml": None}
+
+    files = ls_tree(os.fspath(tmp_dir))
+
+    expected = {
+        ".": {
+            ".dvcignore": None,
+            ".gitignore": None,
+            "README.md": None,
+            "data": {
+                "subcontent": {
+                    ".gitignore": None,
+                    "data.xml": None,
+                    "data.xml.dvc": None,
+                    "statistics": {
+                        ".gitignore": None,
+                        "data.csv": None,
+                        "data.csv.dvc": None,
+                    },
+                }
+            },
+            "model": {
+                ".gitignore": None,
+                "people.csv": None,
+                "people.csv.dvc": None,
+                "script.py": None,
+                "train.py": None,
+            },
+            "structure.xml": None,
+            "structure.xml.dvc": None,
+        }
+    }
+    assert _simplify_tree(files) == expected
+
+    files = ls_tree(os.fspath(tmp_dir), "model")
+    assert _simplify_tree(files) == {
+        "model": {
+            ".gitignore": None,
+            "people.csv": None,
+            "people.csv.dvc": None,
+            "script.py": None,
+            "train.py": None,
+        }
+    }
+
+
+def test_ls_tree_dvc_only(M, tmp_dir, scm, dvc):
+    tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
+    tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
+
+    files = ls_tree(os.fspath(tmp_dir), dvc_only=True)
+
+    expected = {
+        ".": {
+            "data": {
+                "subcontent": {"data.xml": None, "statistics": {"data.csv": None}}
+            },
+            "model": {"people.csv": None},
+            "structure.xml": None,
+        }
+    }
+    assert _simplify_tree(files) == expected
+
+
+def test_ls_tree_maxdepth(M, tmp_dir, scm, dvc):
+    tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
+    tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
+
+    files = ls_tree(os.fspath(tmp_dir), maxdepth=0)
+    assert _simplify_tree(files) == {".": None}
+
+    files = ls_tree(os.fspath(tmp_dir), maxdepth=1)
+    assert _simplify_tree(files) == {
+        ".": {
+            ".dvcignore": None,
+            ".gitignore": None,
+            "README.md": None,
+            "data": None,
+            "model": None,
+            "structure.xml": None,
+            "structure.xml.dvc": None,
+        }
+    }
+
+    files = ls_tree(os.fspath(tmp_dir), maxdepth=2)
+    assert _simplify_tree(files) == {
+        ".": {
+            ".dvcignore": None,
+            ".gitignore": None,
+            "README.md": None,
+            "data": {"subcontent": None},
+            "model": {
+                ".gitignore": None,
+                "people.csv": None,
+                "people.csv.dvc": None,
+                "script.py": None,
+                "train.py": None,
+            },
+            "structure.xml": None,
+            "structure.xml.dvc": None,
+        }
+    }
+
+    files = ls_tree(os.fspath(tmp_dir), maxdepth=3)
+    assert _simplify_tree(files) == {
+        ".": {
+            ".dvcignore": None,
+            ".gitignore": None,
+            "README.md": None,
+            "data": {
+                "subcontent": {
+                    ".gitignore": None,
+                    "data.xml": None,
+                    "data.xml.dvc": None,
+                    "statistics": None,
+                }
+            },
+            "model": {
+                ".gitignore": None,
+                "people.csv": None,
+                "people.csv.dvc": None,
+                "script.py": None,
+                "train.py": None,
+            },
+            "structure.xml": None,
+            "structure.xml.dvc": None,
+        }
+    }
+
+    files = ls_tree(os.fspath(tmp_dir), maxdepth=4)
+    assert _simplify_tree(files) == {
+        ".": {
+            ".dvcignore": None,
+            ".gitignore": None,
+            "README.md": None,
+            "data": {
+                "subcontent": {
+                    ".gitignore": None,
+                    "data.xml": None,
+                    "data.xml.dvc": None,
+                    "statistics": {
+                        ".gitignore": None,
+                        "data.csv": None,
+                        "data.csv.dvc": None,
+                    },
+                }
+            },
+            "model": {
+                ".gitignore": None,
+                "people.csv": None,
+                "people.csv.dvc": None,
+                "script.py": None,
+                "train.py": None,
+            },
+            "structure.xml": None,
+            "structure.xml.dvc": None,
+        }
+    }

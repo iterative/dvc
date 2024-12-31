@@ -54,7 +54,7 @@ class CmdGC(CmdBase):
             msg += " and all experiments"
 
         if self.args.not_in_remote:
-            msg += " that are present in the DVC remote"
+            msg += " that are not present in the DVC remote"
 
         if self.args.repos:
             msg += " of the current and the following repos:"

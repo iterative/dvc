@@ -164,7 +164,7 @@ def _spawn(
         return _detached_subprocess(executable + args, env=env, **kwargs)
 
 
-def daemonize(args: list[str], executable: Union[None, str, list[str]] = None) -> None:
+def daemonize(args: list[str], executable: Union[str, list[str], None] = None) -> None:
     if os.name not in ("posix", "nt"):
         return
 

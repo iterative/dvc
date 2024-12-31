@@ -73,7 +73,7 @@ def pytest_addoption(parser):
     )
 
     parser.addoption(
-        "--benchmark-cprofile-dump",
+        "--dvc-benchmark-cprofile-dump",
         action="store_true",
         default=False,
         help="Save cprofile results",

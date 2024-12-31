@@ -29,6 +29,7 @@ def plain_table(
     markdown: bool = False,
     pager: bool = False,
     force: bool = True,
+    colalign: Optional[tuple[str, ...]] = None,
 ) -> None:
     from funcy import nullcontext
     from tabulate import tabulate
@@ -40,6 +41,7 @@ def plain_table(
         disable_numparse=True,
         # None will be shown as "" by default, overriding
         missingval="-",
+        colalign=colalign,
     )
     if markdown:
         # NOTE: md table is incomplete without the trailing newline

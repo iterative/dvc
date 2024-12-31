@@ -431,7 +431,7 @@ class Output:
             self.meta.nfiles = len(self.files)
             self.meta.size = sum(filter(None, (f.get("size") for f in self.files)))
             self.meta.remote = first(f.get("remote") for f in self.files)
-        elif self.meta.nfiles or self.hash_info and self.hash_info.isdir:
+        elif self.meta.nfiles or (self.hash_info and self.hash_info.isdir):
             self.meta.isdir = True
             if not self.hash_info and self.hash_name not in ("md5", "md5-dos2unix"):
                 md5 = getattr(self.meta, "md5", None)
@@ -752,8 +752,9 @@ class Output:
             granular = (
                 self.is_dir_checksum and filter_info and filter_info != self.fs_path
             )
+            hardlink = relink and next(iter(self.cache.cache_types), None) == "hardlink"
             if granular:
-                obj = self._commit_granular_dir(filter_info, hardlink=False)
+                obj = self._commit_granular_dir(filter_info, hardlink=hardlink)
             else:
                 staging, _, obj = self._build(
                     self.cache,
@@ -771,7 +772,7 @@ class Output:
                         self.cache,
                         {obj.hash_info},
                         shallow=False,
-                        hardlink=False,
+                        hardlink=hardlink,
                         callback=cb,
                     )
             if relink:
@@ -1399,12 +1400,14 @@ class Output:
 
         assert staging
         assert obj.hash_info
+
+        hardlink = relink and next(iter(self.cache.cache_types), None) == "hardlink"
         with TqdmCallback(desc=f"Adding {self} to cache", unit="file") as cb:
             otransfer(
                 staging,
                 self.cache,
                 {obj.hash_info},
-                hardlink=False,
+                hardlink=hardlink,
                 shallow=False,
                 callback=cb,
             )

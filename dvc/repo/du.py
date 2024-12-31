@@ -6,7 +6,7 @@ def du(
     path: Optional[str] = None,
     rev: Optional[str] = None,
     summarize: bool = False,
-    config: Union[None, dict[str, Any], str] = None,
+    config: Union[dict[str, Any], str, None] = None,
     remote: Optional[str] = None,
     remote_config: Optional[dict] = None,
 ):
