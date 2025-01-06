@@ -114,13 +114,13 @@ def assert_index_equal(first, second, strict=True, ordered=True):
     assert len(first) == len(second), "Index have different no. of stages"
     assert set(first) == set(second), "Index does not have same stages"
     if ordered:
-        assert list(first) == list(
-            second
-        ), "Index does not have same sequence of stages"
+        assert list(first) == list(second), (
+            "Index does not have same sequence of stages"
+        )
     if strict:
-        assert set(map(id, first)) == set(
-            map(id, second)
-        ), "Index is not strictly equal"
+        assert set(map(id, first)) == set(map(id, second)), (
+            "Index is not strictly equal"
+        )
 
 
 def test_skip_graph_checks(dvc, mocker):

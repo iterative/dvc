@@ -205,11 +205,8 @@ def test_plots_show_nested_x_dict(tmp_dir, dvc, scm):
 
     dvclive_metrics_dir.gen(
         {
-            "Error.tsv": "step\tError\n" "0\t0.11\n" "1\t0.22\n" "2\t0.44\n",
-            "Max_Leaf_Nodes.tsv": "step\tMax_Leaf_Nodes\n"
-            "0\t5\n"
-            "1\t50\n"
-            "2\t500\n",
+            "Error.tsv": "step\tError\n0\t0.11\n1\t0.22\n2\t0.44\n",
+            "Max_Leaf_Nodes.tsv": "step\tMax_Leaf_Nodes\n0\t5\n1\t50\n2\t500\n",
         }
     )
 

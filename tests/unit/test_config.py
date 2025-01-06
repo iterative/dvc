@@ -130,6 +130,5 @@ def test_feature_section_supports_arbitrary_values(caplog):
     assert "random_key_1" not in data
     assert "random_key_2" not in data
     assert (
-        "'feature.random_key_1', 'feature.random_key_2' "
-        "config options are unsupported"
+        "'feature.random_key_1', 'feature.random_key_2' config options are unsupported"
     ) in caplog.text

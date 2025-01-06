@@ -106,7 +106,7 @@ def test_add_already_exists(dvc, caplog, mocker):
                 "missing": "Updating mydataset (s3://bucket/path)\n",
                 "unchanged": "Nothing to update\n",
                 "updated": (
-                    "Updating mydataset (s3://bucket/path)\n"
+                    r"Updating mydataset (s3://bucket/path)\n"
                     "M\tbaz\n"
                     "A\tfoobar\n"
                     "D\tfoo\n"

@@ -27,11 +27,9 @@ def _remove_slash(rule):
 
 def _match_all_level(rule):
     if rule[:-1].find("/") >= 0 and not rule.startswith("**/"):
-        if rule.startswith("/"):
-            rule = rule[1:]
+        rule = rule.removeprefix("/")
         return False, rule
-    if rule.startswith("**/"):
-        rule = rule[3:]
+    rule = rule.removeprefix("**/")
     return True, rule
 
 

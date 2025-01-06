@@ -104,9 +104,7 @@ class TestColorFormatter:
                 logger.exception("")
 
             expected = (
-                "{red}{datetime}{nc} "
-                "{red}ERROR{nc}: description\n"
-                "{stack_trace}".format(
+                "{red}{datetime}{nc} {red}ERROR{nc}: description\n{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -144,9 +142,7 @@ class TestColorFormatter:
                 logger.exception("something", extra={"tb_only": True})
 
             expected = (
-                "{red}{datetime}{nc} "
-                "{red}ERROR{nc}: something\n"
-                "{stack_trace}".format(
+                "{red}{datetime}{nc} {red}ERROR{nc}: something\n{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
