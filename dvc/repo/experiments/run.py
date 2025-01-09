@@ -93,7 +93,7 @@ def run(  # noqa: C901, PLR0912
 
     for idx, sweep_overrides in enumerate(sweeps):
         if hydra_sweep and name_prefix is not None:
-            kwargs["name"] = f"{name_prefix}-{idx+1}"
+            kwargs["name"] = f"{name_prefix}-{idx + 1}"
         queue_entry = repo.experiments.queue_one(
             repo.experiments.celery_queue,
             targets=targets,

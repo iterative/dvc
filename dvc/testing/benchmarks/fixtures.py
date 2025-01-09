@@ -138,8 +138,7 @@ def dvc_bin(request, make_dvc_bin):
         version = Version(parse(dvc_version).base_version)
         if version not in spec:
             pytest.skip(
-                f"Version {dvc_version} "
-                f"does not satisfy requirement {spec!r}: {reason}"
+                f"Version {dvc_version} does not satisfy requirement {spec!r}: {reason}"
             )
     return make_dvc_bin
 

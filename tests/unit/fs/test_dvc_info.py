@@ -123,6 +123,6 @@ def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, dvcfs):
 
     for path in ["subrepo", "subrepo/foo", "subrepo/foobar"]:
         info = dvcfs.info(path)
-        assert info["repo"].root_dir == str(
-            subrepo
-        ), f"repo root didn't match for {path}"
+        assert info["repo"].root_dir == str(subrepo), (
+            f"repo root didn't match for {path}"
+        )
