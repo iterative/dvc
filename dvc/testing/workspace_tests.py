@@ -225,6 +225,39 @@ class TestLsUrl:
             ],
         )
 
+        result = ls_url(
+            str(cloud / "dir"), fs_config=cloud.config, recursive=True, maxdepth=0
+        )
+        match_files(
+            fs,
+            result,
+            [{"path": (cloud / "dir").fs_path, "isdir": False}],
+        )
+
+        result = ls_url(
+            str(cloud / "dir"), fs_config=cloud.config, recursive=True, maxdepth=1
+        )
+        match_files(
+            fs,
+            result,
+            [
+                {"path": "foo", "isdir": False},
+                {"path": "subdir", "isdir": True},
+            ],
+        )
+
+        result = ls_url(
+            str(cloud / "dir"), fs_config=cloud.config, recursive=True, maxdepth=2
+        )
+        match_files(
+            fs,
+            result,
+            [
+                {"path": "foo", "isdir": False},
+                {"path": "subdir/bar", "isdir": False},
+            ],
+        )
+
     def test_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
             ls_url(str(cloud / "dir"), fs_config=cloud.config)

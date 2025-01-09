@@ -6,8 +6,9 @@ from os.path import join
 
 import pytest
 
+from dvc.fs import MemoryFileSystem
 from dvc.repo import Repo
-from dvc.repo.ls import ls_tree
+from dvc.repo.ls import _ls_tree, ls_tree
 from dvc.scm import CloneError
 
 FS_STRUCTURE = {
@@ -998,3 +999,64 @@ def test_ls_tree_maxdepth(M, tmp_dir, scm, dvc):
             "structure.xml.dvc": None,
         }
     }
+
+
+def test_fs_ls_tree():
+    fs = MemoryFileSystem(global_store=False)
+    fs.pipe({f: content.encode() for f, content in FS_STRUCTURE.items()})
+    root = fs.root_marker
+
+    files = _ls_tree(fs, "README.md")
+    assert _simplify_tree(files) == {"README.md": None}
+    files = _ls_tree(fs, root)
+    expected = {
+        root: {
+            ".gitignore": None,
+            "README.md": None,
+            "model": {
+                "script.py": None,
+                "train.py": None,
+            },
+        }
+    }
+    assert _simplify_tree(files) == expected
+
+    files = _ls_tree(fs, "model")
+    assert _simplify_tree(files) == {
+        "model": {
+            "script.py": None,
+            "train.py": None,
+        }
+    }
+
+
+def test_fs_ls_tree_maxdepth():
+    fs = MemoryFileSystem(global_store=False)
+    fs.pipe({f: content.encode() for f, content in FS_STRUCTURE.items()})
+
+    files = _ls_tree(fs, "/", maxdepth=0)
+    assert _simplify_tree(files) == {"/": None}
+
+    files = _ls_tree(fs, "/", maxdepth=1)
+    assert _simplify_tree(files) == {
+        "/": {
+            ".gitignore": None,
+            "README.md": None,
+            "model": None,
+        }
+    }
+
+    files = _ls_tree(fs, "/", maxdepth=2)
+    assert _simplify_tree(files) == {
+        "/": {
+            ".gitignore": None,
+            "README.md": None,
+            "model": {
+                "script.py": None,
+                "train.py": None,
+            },
+        }
+    }
+
+    files = _ls_tree(fs, "README.md", maxdepth=3)
+    assert _simplify_tree(files) == {"README.md": None}
