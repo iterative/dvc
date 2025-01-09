@@ -1,7 +1,5 @@
 import logging
-import time
 import traceback
-from datetime import datetime
 
 import colorama
 import pytest
@@ -22,11 +20,9 @@ colors = {
 
 @pytest.fixture
 def dt(mocker):
-    mocker.patch(
-        "time.time",
-        return_value=time.mktime(datetime(2020, 2, 2).timetuple()),  # noqa: DTZ001
-    )
-    return "2020-02-02 00:00:00,000"
+    dt_str = "2020-02-02 00:00:00,000"
+    mocker.patch.object(formatter, "formatTime", return_value=dt_str)
+    return dt_str
 
 
 class TestColorFormatter:
