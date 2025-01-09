@@ -77,10 +77,7 @@ def _build_tree_structure(
 
     num_entries = len(entries)
     for i, (name, entry) in enumerate(entries.items()):
-        # show full path for root, otherwise only show the name
-        if _depth > 0:
-            entry["path"] = name
-
+        entry["path"] = name
         is_last = i >= num_entries - 1
         tree_part = ""
         if _depth > 0:

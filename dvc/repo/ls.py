@@ -99,7 +99,9 @@ def ls_tree(
         path = path or ""
         fs: DVCFileSystem = repo.dvcfs
         fs_path = fs.from_os_path(path)
-        return _ls_tree(fs, fs_path, dvc_only, maxdepth)
+        return _ls_tree(
+            fs, fs_path, maxdepth=maxdepth, dvc_only=dvc_only, dvcfiles=True
+        )
 
 
 def _ls(
@@ -145,27 +147,34 @@ def _ls(
     return ret_list
 
 
-def _ls_tree(
-    fs, path, dvc_only: bool = False, maxdepth: Optional[int] = None, _info=None
-):
-    ret = {}
+def _ls_tree(fs, path, maxdepth=None, _info=None, **fs_kwargs):
     info = _info or fs.info(path)
+    if _info is None:
+        # preserve the original path name
+        name = path
+        if not name:
+            name = os.curdir if fs.protocol == "local" else fs.root_marker
+        path = info["name"]
+    else:
+        name = path.rsplit(fs.sep, 1)[-1]
 
-    path = info["name"].rstrip(fs.sep) or os.curdir
-    name = path.rsplit("/", 1)[-1]
+    ret = {}
     ls_info = _adapt_info(info)
     ls_info["path"] = path
 
     recurse = maxdepth is None or maxdepth > 0
     if recurse and info["type"] == "directory":
-        infos = fs.ls(path, dvcfiles=True, dvc_only=dvc_only, detail=True)
+        try:
+            infos = fs.ls(path, detail=True, **fs_kwargs)
+        except FileNotFoundError:
+            # broken symlink?
+            infos = []
+
         infos.sort(key=lambda f: f["name"])
         maxdepth = maxdepth - 1 if maxdepth is not None else None
         contents = {}
         for info in infos:
-            d = _ls_tree(
-                fs, info["name"], dvc_only=dvc_only, maxdepth=maxdepth, _info=info
-            )
+            d = _ls_tree(fs, info["name"], maxdepth=maxdepth, _info=info, **fs_kwargs)
             contents.update(d)
         ls_info["contents"] = contents
 
