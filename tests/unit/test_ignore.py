@@ -168,7 +168,7 @@ def test_match_ignore_from_file(
 ):
     from dvc.fs import localfs
 
-    root = os.path.sep * (2 if os.name == "nt" else 1)
+    root = r"\\" if os.name == "nt" else "/"
     dvcignore_path = os.path.join(
         root, "full", "path", "to", "ignore", "file", ".dvcignore"
     )

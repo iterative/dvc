@@ -732,9 +732,10 @@ class DVCFileSystem(FileSystem):
         return self.fs.repo_url
 
     def from_os_path(self, path: str) -> str:
-        if os.path.isabs(path):
+        if os.path.isabs(path) or (
+            os.name == "nt" and posixpath.isabs(path) and ntpath.sep not in path
+        ):
             path = os.path.relpath(path, self.repo.root_dir)
-
         return as_posix(path)
 
     def close(self):
