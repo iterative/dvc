@@ -1,6 +1,8 @@
 """DVC config objects."""
 
+import ntpath
 import os
+import posixpath
 import re
 from contextlib import contextmanager
 from functools import partial
@@ -268,12 +270,17 @@ class Config(dict):
         if re.match(r"\w+://", path):
             return path
 
+        if os.name == "nt" and posixpath.isabs(path) and ntpath.sep not in path:
+            return path
+
         if os.path.isabs(path):
             return path
 
         # on windows convert slashes to backslashes
         # to have path compatible with abs_conf_dir
         if os.path.sep == "\\" and "/" in path:
+            if path.startswith("/"):
+                path = path.replace("/", "\\\\", 1)
             path = path.replace("/", "\\")
 
         expanded = os.path.expanduser(path)
@@ -304,6 +311,9 @@ class Config(dict):
 
         if os.path.expanduser(path) != path:
             return localfs.as_posix(path)
+
+        if os.name == "nt" and posixpath.isabs(path) and ntpath.sep not in path:
+            return path
 
         if isinstance(path, RelPath) or not os.path.isabs(path):
             path = relpath(path, conf_dir)
