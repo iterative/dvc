@@ -1,4 +1,5 @@
 import io
+import sys
 from collections import OrderedDict
 from contextlib import contextmanager
 from typing import Any, TextIO
@@ -47,7 +48,7 @@ def _get_yaml():
 
     yaml = YAML()
     # prevent strings from wrapping for a proper round-trip
-    yaml.width = float("inf")
+    yaml.width = sys.maxsize
     yaml.default_flow_style = False
 
     # tell Dumper to represent OrderedDict as normal dict
