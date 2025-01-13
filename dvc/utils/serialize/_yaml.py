@@ -46,6 +46,8 @@ def _get_yaml():
     from ruamel.yaml import YAML
 
     yaml = YAML()
+    # prevent strings from wrapping for a proper round-trip
+    yaml.width = float("inf")
     yaml.default_flow_style = False
 
     # tell Dumper to represent OrderedDict as normal dict
