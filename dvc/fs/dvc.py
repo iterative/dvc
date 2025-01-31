@@ -580,7 +580,6 @@ class _DVCFileSystem(AbstractFileSystem):
                 kw = kw | {"info": info}
             with callback.branched(src, dest) as child:
                 fs.get_file(src, dest, callback=child, **kw)
-            callback.relative_update()
 
         if batch_size == 1:
             ctx: AbstractContextManager = nullcontext()
@@ -591,7 +590,7 @@ class _DVCFileSystem(AbstractFileSystem):
 
         with ctx:
             it = ((fs, f) for fs, files in _files.items() for f in files)
-            deque(map_fn(get_file, it), maxlen=0)
+            deque(callback.wrap(map_fn(get_file, it)), maxlen=0)
         return result
 
     def get_file(self, rpath, lpath, **kwargs):
