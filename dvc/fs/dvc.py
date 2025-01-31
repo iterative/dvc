@@ -500,7 +500,7 @@ class _DVCFileSystem(AbstractFileSystem):
             **kwargs,
         )
 
-    def _get(  # noqa: C901, PLR0912
+    def _get(  # noqa: C901, PLR0912, PLR0915
         self,
         rpath,
         lpath,
@@ -578,7 +578,8 @@ class _DVCFileSystem(AbstractFileSystem):
             kw = kwargs
             if isinstance(fs, DataFileSystem):
                 kw = kw | {"info": info}
-            return fs.get_file(src, dest, callback=callback, **kw)
+            with callback.branched(src, dest) as child:
+                fs.get_file(src, dest, callback=child, **kw)
 
         if batch_size == 1:
             ctx: AbstractContextManager = nullcontext()
@@ -589,7 +590,7 @@ class _DVCFileSystem(AbstractFileSystem):
 
         with ctx:
             it = ((fs, f) for fs, files in _files.items() for f in files)
-            deque(map_fn(get_file, it), maxlen=0)
+            deque(callback.wrap(map_fn(get_file, it)), maxlen=0)
         return result
 
     def get_file(self, rpath, lpath, **kwargs):
