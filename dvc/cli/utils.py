@@ -40,7 +40,7 @@ def hide_subparsers_from_help(subparsers):
     # from the 'positional arguments' choices list
     # see: https://bugs.python.org/issue22848
     # Need to set `add_help=False`, but avoid setting `help`
-    # (not even to `argparse.SUPPPRESS`).
+    # (not even to `argparse.SUPPRESS`).
     # NOTE: The argument is the parent subparser, not the subcommand parser.
     cmds = [cmd for cmd, parser in subparsers.choices.items() if parser.add_help]
     subparsers.metavar = "{{{}}}".format(",".join(cmds))
