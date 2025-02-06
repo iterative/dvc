@@ -3,6 +3,7 @@ default_language_version:
 
 ci:
   skip: [mypy, dvc-pre-commit]
+  autoupdate_schedule: monthly
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
