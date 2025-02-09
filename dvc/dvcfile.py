@@ -240,6 +240,20 @@ class ProjectFile(FileMixin):
         if update_lock:
             self._dump_lockfile(stage, **kwargs)
 
+    def batch_dump(self, stages, update_pipeline=True, update_lock=True, **kwargs):
+        """Batch-dumps given stages appropriately in the dvcfile."""
+        from dvc.stage import PipelineStage
+
+        for stage in stages:
+            assert isinstance(stage, PipelineStage)
+            if self.verify:
+                check_dvcfile_path(self.repo, self.path)
+            if update_pipeline and not stage.is_data_source:
+                self._dump_pipeline_file(stage)
+
+        if update_lock:
+            self._batch_dump_lockfile(stages, **kwargs)
+
     def dump_dataset(self, dataset):
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             parsed = self.datasets if data else []
@@ -262,6 +276,9 @@ class ProjectFile(FileMixin):
 
     def _dump_lockfile(self, stage, **kwargs):
         self._lockfile.dump(stage, **kwargs)
+
+    def _batch_dump_lockfile(self, stages, **kwargs):
+        self._lockfile.batch_dump(stages, **kwargs)
 
     @staticmethod
     def _check_if_parametrized(stage, action: str = "dump") -> None:
@@ -400,25 +417,33 @@ class Lockfile(FileMixin):
         self.repo.scm_context.track_file(self.relpath)
 
     def dump(self, stage, **kwargs):
-        stage_data = serialize.to_lockfile(stage, **kwargs)
-
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             if not data:
                 data.update({"schema": "2.0"})
                 # order is important, meta should always be at the top
                 logger.info("Generating lock file '%s'", self.relpath)
+            self.dump_stage_in_data(stage, data, **kwargs)
 
-            data["stages"] = data.get("stages", {})
-            modified = data["stages"].get(stage.name, {}) != stage_data.get(
-                stage.name, {}
-            )
-            if modified:
-                logger.info("Updating lock file '%s'", self.relpath)
+    def dump_stage_in_data(self, stage, data, **kwargs):
+        stage_data = serialize.to_lockfile(stage, **kwargs)
+        data["stages"] = data.get("stages", {})
+        modified = data["stages"].get(stage.name, {}) != stage_data.get(stage.name, {})
+        if modified:
+            logger.info("Updating lock file '%s'", self.relpath)
 
-            data["stages"].update(stage_data)
+        data["stages"].update(stage_data)
 
         if modified:
             self.repo.scm_context.track_file(self.relpath)
+
+    def batch_dump(self, stages):
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
+            if not data:
+                data.update({"schema": "2.0"})
+                # order is important, meta should always be at the top
+                logger.info("Generating lock file '%s'", self.relpath)
+            for stage in stages:
+                self.dump_stage_in_data(stage, data)
 
     def remove_stage(self, stage):
         if not self.exists():
