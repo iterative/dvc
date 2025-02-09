@@ -28,7 +28,7 @@ def _format_entry(entry, name, with_size=True, with_hash=False):
     ret = []
     if with_size:
         size = entry.get("size")
-        if size is None:
+        if size is None or (size <= 0 and entry.get("isdir")):
             size = ""
         else:
             size = naturalsize(size)
