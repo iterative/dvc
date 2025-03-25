@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=61", "setuptools_scm[toml]>=7"]
+requires = ["setuptools>=77", "setuptools_scm[toml]>=7"]
 
 [project]
 name = "dvc"
@@ -16,7 +16,8 @@ keywords = [
     "machine-learning",
     "reproducibility",
 ]
-license = { text = "Apache License 2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 maintainers = [{ name = "Iterative", email = "support@dvc.org" }]
 authors = [{ name = "Dmitry Petrov", email = "dmitry@dvc.org" }]
 requires-python = ">=3.9"
@@ -148,9 +149,6 @@ dvc = "dvc.fs.dvc_path:DVCPath"
 [project.entry-points."pyinstaller40"]
 hook-dirs = "dvc.__pyinstaller:get_hook_dirs"
 tests = "dvc.__pyinstaller:get_PyInstaller_tests"
-
-[tool.setuptools]
-license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
