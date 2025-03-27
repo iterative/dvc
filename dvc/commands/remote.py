@@ -130,8 +130,13 @@ class CmdRemoteList(CmdRemote):
             )
             del remotes[default_remote]
 
+            # to align all other remotes with the default remote
+            prefix = "  "
+        else:
+            prefix = ""
+
         for name, remote_conf in remotes.items():
-            ui.write(name, remote_conf["url"], sep="\t")
+            ui.write(f"{prefix}{name}", remote_conf["url"], sep="\t")
         return 0
 
 
