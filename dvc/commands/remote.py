@@ -108,35 +108,18 @@ class CmdRemoteDefault(CmdRemote):
 
 
 class CmdRemoteList(CmdRemote):
-    @staticmethod
-    def _default_remote(conf):
-        try:
-            return conf["core"]["remote"]
-        except KeyError:
-            return None
-
     def run(self):
         conf = self.config.read(self.args.level)
-        default_remote = self._default_remote(conf)
-        remotes = conf["remote"]
+        default_remote = conf["core"].get("remote")
 
-        # use "git branch" style to indicate default remote
-        if default_remote:
-            ui.write(
-                f"* {default_remote}",
-                remotes[default_remote]["url"],
-                sep="\t",
-                style="success",
-            )
-            del remotes[default_remote]
-
-            # to align all other remotes with the default remote
-            prefix = "  "
-        else:
-            prefix = ""
-
-        for name, remote_conf in remotes.items():
-            ui.write(f"{prefix}{name}", remote_conf["url"], sep="\t")
+        for name, remote_conf in conf["remote"].items():
+            if name == default_remote:
+                text = f"{name}\t{remote_conf['url']}\t(default)"
+                color = "green"
+            else:
+                text = f"{name}\t{remote_conf['url']}"
+                color = ""
+            ui.write(ui.rich_text(text, style=color), styled=True)
         return 0
 
 

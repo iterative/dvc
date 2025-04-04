@@ -10,7 +10,6 @@ from dvc.cli import main
 from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.utils.fs import remove
-from tests.func.parsing.test_errors import escape_ansi
 
 
 def test_remote(dvc):
@@ -119,15 +118,15 @@ def test_show_default(dvc, capsys):
 def test_list_shows_default(dvc, capsys):
     default_remote = "foo"
     other_remote = "bar"
-    assert main(["remote", "add", default_remote, "s3://bucket/name"]) == 0
-    assert main(["remote", "add", other_remote, "s3://bucket/name"]) == 0
+    bucket_url = "s3://bucket/name"
+    assert main(["remote", "add", default_remote, bucket_url]) == 0
+    assert main(["remote", "add", other_remote, bucket_url]) == 0
     assert main(["remote", "default", default_remote]) == 0
     assert main(["remote", "list"]) == 0
     out, _ = capsys.readouterr()
-    out_texts = escape_ansi(out).splitlines()
-
-    assert out_texts[0] == f"* {default_remote}\ts3://bucket/name"
-    assert out_texts[1] == f"  {other_remote}\ts3://bucket/name"
+    out_lines = out.splitlines()
+    assert out_lines[0].split() == [default_remote, bucket_url, "(default)"]
+    assert out_lines[1].split() == [other_remote, bucket_url]
 
 
 def test_upper_case_remote(tmp_dir, dvc, local_cloud):
