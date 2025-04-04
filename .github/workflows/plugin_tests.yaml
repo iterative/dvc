@@ -43,11 +43,12 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "**/pyproject.toml"
         cache-suffix: ${{ matrix.pyv }}
+        python-version: ${{ matrix.pyv }}
 
     - name: Install plugin + DVC@PR
       run: |
-        uv pip install "./dvc[testing]" --system
-        uv pip install -e "./${{ matrix.plugin }}[tests]" --system
+        uv pip install "./dvc[testing]"
+        uv pip install -e "./${{ matrix.plugin }}[tests]"
 
     - name: Run plugin tests
       timeout-minutes: 15

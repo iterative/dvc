@@ -37,10 +37,8 @@ jobs:
       with:
         enable-cache: true
         cache-dependency-glob: pyproject.toml
-    - run: uv pip install -e ".[dev]" --system
-      env:
-        UV_LINK_MODE: ${{ runner.os == 'Windows' && 'symlink' || 'hardlink' }}
-
+        python-version: '3.13'
+    - run: uv pip install -e ".[dev]"
     - name: Cache mypy
       uses: actions/cache@v4
       with:
@@ -130,9 +128,8 @@ jobs:
         enable-cache: true
         cache-dependency-glob: pyproject.toml
         cache-suffix: ${{ matrix.pyv }}
-    - run: uv pip install -e ".[dev]" pytest-split --system
-      env:
-        UV_LINK_MODE: ${{ runner.os == 'Windows' && 'symlink' || 'hardlink' }}
+        python-version: ${{ matrix.pyv }}
+    - run: uv pip install -e ".[dev]" pytest-split
 
     - name: run tests
       timeout-minutes: 40

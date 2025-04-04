@@ -27,8 +27,9 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
+          python-version: "3.13"
 
-      - run: uv pip install '.[tests]' --system
+      - run: uv pip install '.[tests]'
       - name: run benchmarks on base branch
         run: pytest --benchmark-autosave dvc/testing/benchmarks/ -k 'test_init or test_help'
 
@@ -36,7 +37,7 @@ jobs:
         with:
           fetch-depth: 0
           clean: false
-      - run: uv pip install '.[tests]' --system
+      - run: uv pip install '.[tests]'
       - name: run benchmarks for PR
         run: >
           pytest --benchmark-compare --benchmark-compare-fail=min:5%
