@@ -27,8 +27,7 @@ def _postprocess(results):
             }
             processed[rev] = processed[rev] | to_merge
 
-    if "workspace" in processed:
-        del processed["workspace"]
+    processed.pop("workspace", None)
 
     return processed
 
