@@ -105,7 +105,7 @@ class Meta:
 
     @staticmethod
     def update_path(meta: "Meta", path: Union[str, int]):
-        dpaths = meta.dpaths[:] + [str(path)]
+        dpaths = [*meta.dpaths, str(path)]
         return replace(meta, dpaths=dpaths)
 
     def __str__(self):
