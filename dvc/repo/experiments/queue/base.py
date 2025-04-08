@@ -372,7 +372,7 @@ class BaseStashQueue(ABC):
         )
 
     def _stash_commit_deps(self, *args, **kwargs):
-        if len(args):
+        if args:
             targets = args[0]
         else:
             targets = kwargs.get("targets")

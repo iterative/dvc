@@ -18,7 +18,7 @@ def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
         ref_name_list.append(str(ref_info))
 
     with pytest.raises(InvalidArgumentError):
-        dvc.experiments.remove(ref_name_list[:2] + ["non-exist"])
+        dvc.experiments.remove([*ref_name_list[:2], "non-exist"])
     assert scm.get_ref(ref_name_list[0]) is not None
     assert scm.get_ref(ref_name_list[1]) is not None
     assert scm.get_ref(ref_name_list[2]) is not None

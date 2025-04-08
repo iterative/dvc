@@ -759,7 +759,7 @@ def test_repro_dry(tmp_dir, dvc, copy_script):
 
     stages = dvc.reproduce(stage.addressing, dry=True)
 
-    assert len(stages), 2
+    assert len(stages) == 2
     assert not filecmp.cmp("file1", "bar", shallow=False)
 
     ret = main(["repro", "--dry", stage.addressing])

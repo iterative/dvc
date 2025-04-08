@@ -104,21 +104,21 @@ class AsciiCanvas:
                 if dx == 0:
                     y = y0
                 else:
-                    y = y0 + int(round((x - x0) * dy / float(dx)))
+                    y = y0 + round((x - x0) * dy / float(dx))
                 self.point(x, y, char)
         elif y0 < y1:
             for y in range(y0, y1 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x0 + int(round((y - y0) * dx / float(dy)))
+                    x = x0 + round((y - y0) * dx / float(dy))
                 self.point(x, y, char)
         else:
             for y in range(y1, y0 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x1 + int(round((y - y1) * dx / float(dy)))
+                    x = x1 + round((y - y1) * dx / float(dy))
                 self.point(x, y, char)
 
     def text(self, x, y, text):
@@ -258,8 +258,8 @@ def draw(vertices, edges):
     maxx = max(Xs)
     maxy = max(Ys)
 
-    canvas_cols = int(math.ceil(math.ceil(maxx) - math.floor(minx))) + 1
-    canvas_lines = int(round(maxy - miny))
+    canvas_cols = math.ceil(math.ceil(maxx) - math.floor(minx)) + 1
+    canvas_lines = round(maxy - miny)
 
     canvas = AsciiCanvas(canvas_cols, canvas_lines)
 
@@ -270,10 +270,10 @@ def draw(vertices, edges):
             start = edge.view._pts[index - 1]
             end = edge.view._pts[index]
 
-            start_x = int(round(start[0] - minx))
-            start_y = int(round(start[1] - miny))
-            end_x = int(round(end[0] - minx))
-            end_y = int(round(end[1] - miny))
+            start_x = round(start[0] - minx)
+            start_y = round(start[1] - miny)
+            end_x = round(end[0] - minx)
+            end_y = round(end[1] - miny)
 
             assert start_x >= 0
             assert start_y >= 0
@@ -288,12 +288,12 @@ def draw(vertices, edges):
         y = vertex.view.xy[1]
 
         canvas.box(
-            int(round(x - minx)),
-            int(round(y - miny)),
+            round(x - minx),
+            round(y - miny),
             vertex.view.w,
             vertex.view.h,
         )
 
-        canvas.text(int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data)
+        canvas.text(round(x - minx) + 1, round(y - miny) + 1, vertex.data)
 
     return canvas.draw()

@@ -99,7 +99,7 @@ def test_load_from_pipeline_error_on_typ(dvc, typ):
         output.load_from_pipeline(Stage(dvc), ["file1"], typ)
 
 
-@pytest.mark.parametrize("key", [3, "list".split()])
+@pytest.mark.parametrize("key", [3, ["list"]])
 def test_load_from_pipeline_illegal_type(dvc, key):
     stage = Stage(dvc)
     with pytest.raises(ValueError, match=f"'{type(key).__name__}' not supported."):

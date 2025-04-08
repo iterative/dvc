@@ -36,7 +36,7 @@ def add_logging_level(level_name, level_num, method_name=None):
             self._log(level_num, message, args, **kwargs)
 
     def log_to_root(message, *args, **kwargs):
-        logging.log(level_num, message, *args, **kwargs)
+        logging.log(level_num, message, *args, **kwargs)  # noqa: LOG015
 
     # getLevelName resolves the numeric log level if already defined,
     # otherwise returns a string
