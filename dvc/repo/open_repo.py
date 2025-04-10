@@ -50,7 +50,7 @@ def open_repo(url, *args, **kwargs):
     if os.path.exists(url):
         url = os.path.abspath(url)
         try:
-            config = _get_remote_config(url)
+            config = _get_remote_config(url, *args, **kwargs)
             config.update(kwargs.get("config") or {})
             kwargs["config"] = config
             return Repo(url, *args, **kwargs)
@@ -97,9 +97,22 @@ def clean_repos():
         _remove(path)
 
 
-def _get_remote_config(url):
+def _get_remote_config(url, *args, **kwargs):
     try:
-        repo = Repo(url)
+        # Get the config dict passed from the parent call, default to empty dict
+        user_config = kwargs.get("config", {})
+        # It seems some tests might be passing a 'config' key that is not a dict
+        if not isinstance(user_config, dict):
+            user_config = {}
+        no_scm_flag = user_config.get("core", {}).get("no_scm", None)
+
+        if no_scm_flag is not None:
+            # Honour specific SCM treatment if requested in the call
+            repo = Repo(url, config={"core": {"no_scm": no_scm_flag}})
+        else:
+            # Default to the .dvc/config contents otherwise
+            repo = Repo(url)
+
     except NotDvcRepoError:
         return {}
 
