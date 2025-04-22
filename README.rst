@@ -1,7 +1,3 @@
-🚀 Check out our new product `DataChain <https://github.com/iterative/datachain>`_ (and give it a ⭐!) if you need to version and process a large number of files. Contact us at support@iterative.ai to discuss commercial solutions and support for AI reproducibility and data management scenarios.
-
---------------------------
-
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
