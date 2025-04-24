@@ -1,3 +1,5 @@
+|Banner|
+
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
