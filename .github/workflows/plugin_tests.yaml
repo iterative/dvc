@@ -38,7 +38,7 @@ jobs:
       with:
         python-version: ${{ matrix.pyv }}
 
-    - uses: astral-sh/setup-uv@v5
+    - uses: astral-sh/setup-uv@v6
       with:
         enable-cache: true
         cache-dependency-glob: "**/pyproject.toml"
