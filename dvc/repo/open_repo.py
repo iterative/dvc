@@ -99,19 +99,19 @@ def clean_repos():
 
 def _get_remote_config(url, *args, **kwargs):
     try:
-        # Get the config dict passed from the parent call, default to empty dict
-        user_config = kwargs.get("config", {})
-        # It seems some tests might be passing a 'config' key that is not a dict
-        if not isinstance(user_config, dict):
-            user_config = {}
-        no_scm_flag = user_config.get("core", {}).get("no_scm", None)
+        config = kwargs.get("config", {})
 
-        if no_scm_flag is not None:
-            # Honour specific SCM treatment if requested in the call
-            repo = Repo(url, config={"core": {"no_scm": no_scm_flag}})
-        else:
-            # Default to the .dvc/config contents otherwise
-            repo = Repo(url)
+        # Import operations will use this function to get the remote's cache. However,
+        # while the `url` sent will point to the external repo, the cache information
+        # in `kwargs["config"]["cache"]["dir"]`) will point to the local repo,
+        # see `dvc/dependency/repo.py:RepoDependency._make_fs()`
+        #
+        # This breaks this function, since we'd be instructing `Repo()` to use the wrong
+        # cache to being with. We need to remove the cache info from `kwargs["config"]`
+        # to read the actual remote repo data.
+        if isinstance(config, dict):
+            _ = config.pop("cache", None)
+        repo = Repo(url, config=config)
 
     except NotDvcRepoError:
         return {}
