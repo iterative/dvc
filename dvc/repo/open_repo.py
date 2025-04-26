@@ -1,3 +1,4 @@
+import copy
 import os
 import tempfile
 import threading
@@ -99,7 +100,8 @@ def clean_repos():
 
 def _get_remote_config(url, *args, **kwargs):
     try:
-        config = kwargs.get("config", {})
+        # Copy to avoid modifying the original config dictionary
+        config = copy.deepcopy(kwargs.get("config"))
 
         # Import operations will use this function to get the remote's cache. However,
         # while the `url` sent will point to the external repo, the cache information
