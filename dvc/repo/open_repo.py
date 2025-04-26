@@ -100,7 +100,7 @@ def clean_repos():
 
 def _get_remote_config(url, *args, **kwargs):
     try:
-        # Copy to avoid modifying the original config dictionary
+        # Deepcopy to prevent modifying the original `kwargs['config']`
         config = copy.deepcopy(kwargs.get("config"))
 
         # Import operations will use this function to get the remote's cache. However,
@@ -111,8 +111,9 @@ def _get_remote_config(url, *args, **kwargs):
         # This breaks this function, since we'd be instructing `Repo()` to use the wrong
         # cache to being with. We need to remove the cache info from `kwargs["config"]`
         # to read the actual remote repo data.
-        if isinstance(config, dict):
+        if config:
             _ = config.pop("cache", None)
+
         repo = Repo(url, config=config)
 
     except NotDvcRepoError:
