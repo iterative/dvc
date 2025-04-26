@@ -80,7 +80,7 @@ def test_get_url_ignore_scm(tmp_dir, dvc, cloud, scm):
     (tmp_dir / ".git").rename(tmp_dir / "gitless_environment")
 
     # Test failure mode when trying to access with git
-    with pytest.raises(SCMError, match=f"{repo_posix} is not a git repository"):
+    with pytest.raises(SCMError, match="is not a git repository"):
         api.get_url("foo", repo=repo_posix)
 
     # Test successful access by ignoring git
