@@ -112,7 +112,7 @@ def _get_remote_config(url, *args, **kwargs):
         # cache to being with. We need to remove the cache info from `kwargs["config"]`
         # to read the actual remote repo data.
         if config:
-            _ = config.pop("cache", None)
+            config.pop("cache", None)
 
         repo = Repo(url, config=config)
 
