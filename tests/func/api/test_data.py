@@ -5,6 +5,7 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import OutputNotFoundError, PathMissingError
+from dvc.scm import CloneError, SCMError
 from dvc.testing.api_tests import TestAPI  # noqa: F401
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
@@ -63,6 +64,38 @@ def test_get_url_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
         api.get_url("foo", repo=repo_url, remote_config={"url": cloud.url})
         == (cloud / expected_rel_path).url
     )
+
+
+def test_get_url_ignore_scm(tmp_dir, dvc, cloud, scm):
+    tmp_dir.add_remote(config=cloud.config)
+    tmp_dir.dvc_gen("foo", "foo", commit="add foo")
+
+    repo_posix = tmp_dir.as_posix()
+    expected_url = (cloud / "files" / "md5" / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
+
+    # Test baseline with scm
+    assert api.get_url("foo", repo=repo_posix) == expected_url
+
+    # Simulate gitless environment (e.g. deployed container)
+    (tmp_dir / ".git").rename(tmp_dir / "gitless_environment")
+
+    # Test failure mode when trying to access with git
+    with pytest.raises(SCMError, match="is not a git repository"):
+        api.get_url("foo", repo=repo_posix)
+
+    # Test successful access by ignoring git
+    assert (
+        api.get_url("foo", repo=repo_posix, config={"core": {"no_scm": True}})
+        == expected_url
+    )
+
+    # Addressing repos with `file://` triggers git, so it fails in a gitless environment
+    repo_url = f"file://{repo_posix}"
+    with pytest.raises(
+        CloneError,
+        match="SCM error",
+    ):
+        api.get_url("foo", repo=repo_url, config={"core": {"no_scm": True}})
 
 
 def test_open_external(tmp_dir, erepo_dir, cloud):

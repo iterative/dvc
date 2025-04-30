@@ -146,6 +146,10 @@ class RepoDependency(Dependency):
         else:
             config = Config.load_file(conf)
 
+        # Setup config to the new DVCFileSystem to use the remote repo, but rely on the
+        # local cache instead of the remote's cache. This avoids re-streaming of data,
+        # but messes up the call to `_get_remote_config()` downstream, which will need
+        # to ignore cache parameters.
         config["cache"] = self.repo.config["cache"]
         config["cache"]["dir"] = self.repo.cache.local_cache_dir
 
