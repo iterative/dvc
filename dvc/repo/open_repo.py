@@ -1,4 +1,3 @@
-import copy
 import os
 import tempfile
 import threading
@@ -51,7 +50,7 @@ def open_repo(url, *args, **kwargs):
     if os.path.exists(url):
         url = os.path.abspath(url)
         try:
-            config = _get_remote_config(url, *args, **kwargs)
+            config = _get_remote_config(url)
             config.update(kwargs.get("config") or {})
             kwargs["config"] = config
             return Repo(url, *args, **kwargs)
@@ -98,24 +97,9 @@ def clean_repos():
         _remove(path)
 
 
-def _get_remote_config(url, *args, **kwargs):
+def _get_remote_config(url):
     try:
-        # Deepcopy to prevent modifying the original `kwargs['config']`
-        config = copy.deepcopy(kwargs.get("config"))
-
-        # Import operations will use this function to get the remote's cache. However,
-        # while the `url` sent will point to the external repo, the cache information
-        # in `kwargs["config"]["cache"]["dir"]`) will point to the local repo,
-        # see `dvc/dependency/repo.py:RepoDependency._make_fs()`
-        #
-        # This breaks this function, since we'd be instructing `Repo()` to use the wrong
-        # cache to being with. We need to remove the cache info from `kwargs["config"]`
-        # to read the actual remote repo data.
-        if config:
-            config.pop("cache", None)
-
-        repo = Repo(url, config=config)
-
+        repo = Repo(url, uninitialized=True)
     except NotDvcRepoError:
         return {}
 
@@ -125,10 +109,16 @@ def _get_remote_config(url, *args, **kwargs):
             # Fill the empty upstream entry with a new remote pointing to the
             # original repo's cache location.
             name = "auto-generated-upstream"
-            return {
-                "core": {"remote": name},
-                "remote": {name: {"url": repo.cache.local_cache_dir}},
-            }
+            try:
+                local_cache_dir = repo.cache.local_cache_dir
+            except AttributeError:
+                # if the `.dvc` dir is missing, we get an AttributeError
+                return {}
+            else:
+                return {
+                    "core": {"remote": name},
+                    "remote": {name: {"url": local_cache_dir}},
+                }
 
         # Use original remote to make sure that we are using correct url,
         # credential paths, etc if they are relative to the config location.
