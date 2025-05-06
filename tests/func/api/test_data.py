@@ -5,7 +5,7 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.scm import CloneError, SCMError
+from dvc.scm import CloneError
 from dvc.testing.api_tests import TestAPI  # noqa: F401
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
@@ -79,11 +79,7 @@ def test_get_url_ignore_scm(tmp_dir, dvc, cloud, scm):
     # Simulate gitless environment (e.g. deployed container)
     (tmp_dir / ".git").rename(tmp_dir / "gitless_environment")
 
-    # Test failure mode when trying to access with git
-    with pytest.raises(SCMError, match="is not a git repository"):
-        api.get_url("foo", repo=repo_posix)
-
-    # Test successful access by ignoring git
+    assert api.get_url("foo", repo=repo_posix) == expected_url
     assert (
         api.get_url("foo", repo=repo_posix, config={"core": {"no_scm": True}})
         == expected_url
