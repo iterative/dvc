@@ -101,6 +101,7 @@ def test_get_used_objs(exists, expected_message, mocker, caplog):
         Output, "exists", new_callable=mocker.PropertyMock
     ).return_value = exists
 
+    caplog.clear()
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert output.get_used_objs() == {}
     assert first(caplog.messages) == expected_message
