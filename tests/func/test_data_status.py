@@ -5,7 +5,7 @@ import pytest
 
 from dvc.repo import Repo
 from dvc.repo.data import _transform_git_paths_to_dvc, posixpath_to_os_path
-from dvc.testing.tmp_dir import make_subrepo
+from dvc.testing.tmp_dir import TmpDir, make_subrepo
 from dvc.utils.fs import remove
 
 EMPTY_STATUS = {
@@ -421,6 +421,42 @@ def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
         ),
         "git": M.dict(),
     }
+
+
+@pytest.fixture
+def dvc_pipeline_with_push_false(
+    tmp_dir: TmpDir, dvc: Repo, scm, mocker, local_remote
+) -> None:
+    """DVC pipeline with with two outs, one with push=False."""
+    tmp_dir.gen("fixed", "fixed")
+    dvc.stage.add(
+        name="create-foo", cmd="echo foo > foo", deps=["fixed"], outs_no_push=["foo"]
+    )
+    dvc.stage.add(name="create-bar", cmd="echo bar > bar", deps=["fixed"], outs=["bar"])
+    dvc.reproduce()
+
+    assert set(
+        dvc.data_status(remote_refresh=True, not_in_remote=True)["not_in_remote"]
+    ) == {"foo", "bar"}
+
+
+def test_missing_remote_push_false(dvc_pipeline_with_push_false: None, dvc: TmpDir):
+    dvc.push()
+    assert set(
+        dvc.data_status(remote_refresh=True, not_in_remote=True)["not_in_remote"]
+    ) == {"foo"}
+
+
+def test_missing_remote_push_false_respects_no_push_flag(
+    dvc_pipeline_with_push_false: None, dvc: TmpDir
+):
+    dvc.push()
+    assert (
+        dvc.data_status(
+            remote_refresh=True, not_in_remote=True, not_in_remote_no_push=True
+        )["not_in_remote"]
+        == []
+    )
 
 
 def test_root_from_dir_to_file(M, tmp_dir, dvc, scm):
