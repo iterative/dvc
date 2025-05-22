@@ -62,6 +62,7 @@ def fill_stage_outputs(stage, **kwargs):
         "plots_persist_no_cache",
         "outs_no_cache",
         "outs",
+        "outs_no_push",
     ]
 
     stage.outs = []
@@ -74,6 +75,7 @@ def fill_stage_outputs(stage, **kwargs):
             persist="persist" in key,
             metric="metrics" in key,
             plot="plots" in key,
+            push="no_push" not in key,
         )
 
 
