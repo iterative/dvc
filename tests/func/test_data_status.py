@@ -438,23 +438,22 @@ def dvc_pipeline_with_push_false(
     assert set(
         dvc.data_status(remote_refresh=True, not_in_remote=True)["not_in_remote"]
     ) == {"foo", "bar"}
-
-
-def test_missing_remote_push_false(dvc_pipeline_with_push_false: None, dvc: TmpDir):
     dvc.push()
+
+
+def test_missing_remote_push_false(dvc_pipeline_with_push_false: None, dvc: Repo):
     assert set(
         dvc.data_status(remote_refresh=True, not_in_remote=True)["not_in_remote"]
     ) == {"foo"}
 
 
 def test_missing_remote_push_false_respects_no_push_flag(
-    dvc_pipeline_with_push_false: None, dvc: TmpDir
+    dvc_pipeline_with_push_false: None, dvc: Repo
 ):
-    dvc.push()
     assert (
-        dvc.data_status(
-            remote_refresh=True, not_in_remote=True, not_in_remote_no_push=True
-        )["not_in_remote"]
+        dvc.data_status(remote_refresh=True, not_in_remote=True, respect_no_push=True)[
+            "not_in_remote"
+        ]
         == []
     )
 
