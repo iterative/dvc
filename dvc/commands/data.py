@@ -112,6 +112,7 @@ class CmdDataStatus(CmdBase):
                 untracked_files=self.args.untracked_files,
                 not_in_remote=self.args.not_in_remote,
                 remote_refresh=self.args.remote_refresh,
+                respect_no_push=self.args.respect_no_push,
             )
 
         if not self.args.unchanged:
@@ -178,6 +179,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show files not in remote.",
+    )
+    data_status_parser.add_argument(
+        "--respect-no-push",
+        action="store_true",
+        default=False,
+        help="Respect the `push: false` flag in the DVC stage's outs.",
     )
     data_status_parser.add_argument(
         "--no-remote-refresh",
