@@ -696,3 +696,20 @@ def test_fsid_url(erepo_dir):
         fs = DVCFileSystem(repo=dvc)
         assert fs.fsid != old_fsid
         assert fs.fsid == "dvcfs_" + tokenize(url, erepo_dir.scm.get_rev())
+
+
+@pytest.mark.parametrize(
+    "fs_kwargs",
+    [
+        lambda tmp_dir, dvc: {},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"repo": tmp_dir},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"repo": os.fspath(tmp_dir)},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"url": tmp_dir},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"url": os.fspath(tmp_dir)},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"repo": dvc},  # noqa: ARG005
+    ],
+)
+def test_init_arg(tmp_dir, dvc, fs_kwargs):
+    fs = DVCFileSystem(**fs_kwargs(tmp_dir, dvc))
+
+    assert fs.repo.root_dir == dvc.root_dir
