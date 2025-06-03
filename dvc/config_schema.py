@@ -215,6 +215,7 @@ SCHEMA = {
                     "credentialpath": str,
                     "endpointurl": str,
                     Optional("verify", default=False): Bool,
+                    Optional("allow_anonymous_login", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "ssh": {
