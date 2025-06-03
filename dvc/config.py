@@ -340,6 +340,7 @@ class Config(dict):
                     "gdrive_user_credentials_file": func,
                     "gdrive_service_account_json_file_path": func,
                     "credentialpath": func,
+                    "configpath": func,
                     "keyfile": func,
                     "cert_path": func,
                     "key_path": func,
