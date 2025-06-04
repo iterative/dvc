@@ -1,3 +1,4 @@
+import inspect
 import os
 import shutil
 import sys
@@ -76,7 +77,10 @@ def dvc_repo(tmp_path_factory, bench_config):
 def dvc_bench_repo(tmp_path_factory, bench_config):
     url = bench_config.dvc_bench_repo
     if url is None:
-        pytest.skip("--dvc-bench-repo is not set")
+        pytest.skip(
+            "--dvc-bench-repo is not set, "
+            "clone https://github.com/iterative/dvc-bench repository and set its path"
+        )
 
     if os.path.isdir(url):
         return Path(url)
@@ -149,8 +153,18 @@ def make_bench(request):
         import pytest_benchmark.plugin
 
         # hack from https://github.com/ionelmc/pytest-benchmark/issues/166
-        bench_gen = pytest_benchmark.plugin.benchmark.__pytest_wrapped__.obj(request)
-        bench = next(bench_gen)
+        fixture_function = pytest_benchmark.plugin.benchmark
+        try:
+            # pytest >= 8.4.0
+            wrapped_func = fixture_function._get_wrapped_function()
+        except AttributeError:
+            wrapped_func = fixture_function.__pytest_wrapped__.obj
+        assert inspect.isgeneratorfunction(wrapped_func)
+
+        generator = wrapped_func(request)
+        bench = next(generator)
+        assert isinstance(bench, pytest_benchmark.plugin.BenchmarkFixture)
+        request.addfinalizer(lambda: next(generator, None))
 
         suffix = f"-{name}"
 
