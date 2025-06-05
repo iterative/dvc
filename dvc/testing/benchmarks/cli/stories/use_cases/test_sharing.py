@@ -5,7 +5,7 @@ from packaging import version
 
 def test_sharing(bench_dvc, tmp_dir, dvc, make_dataset, remote, dvc_rev):
     is_gs = dvc.config["remote"]["upstream"]["url"].startswith("gs://")
-    if is_gs and version.Version(dvc_rev) < version.Version("3.59.3"):
+    if dvc_rev and is_gs and version.Version(dvc_rev) < version.Version("3.59.3"):
         # support for allow_anonymous_login in gs was introduced in dvc==3.59.3
         with dvc.config.edit() as d:
             d["remote"]["upstream"].pop("allow_anonymous_login", None)
