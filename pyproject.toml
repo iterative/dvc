@@ -173,6 +173,7 @@ filterwarnings = [
     "ignore:nx.nx_pydot.* depends on the pydot package, which has.*known issues and is not actively maintained:DeprecationWarning",
     # TODO: investigate where we are not closing sqlite3.Connection
     "ignore:unclosed database.*sqlite3.Connection:ResourceWarning",
+    "ignore:unclosed.*<socket.socket:ResourceWarning",
 ]
 log_level = "debug"
 markers = [
