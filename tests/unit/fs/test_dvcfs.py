@@ -779,7 +779,7 @@ def test_maxdepth(tmp_dir, dvc, scm):
         commit="add dir",
     )
 
-    fs = DVCFileSystem(url=tmp_dir)
+    fs = DVCFileSystem(tmp_dir)
     fs.get("dir", "dir1", recursive=True, maxdepth=1)
     assert (tmp_dir / "dir1").read_text() == {"file1": "file1"}
 
@@ -803,3 +803,25 @@ def test_maxdepth(tmp_dir, dvc, scm):
             "subdir2": {"file3": "file3", "subdir3": {"file4": "file4"}},
         },
     }
+
+
+@pytest.mark.parametrize(
+    "fs_args",
+    [
+        lambda tmp_dir, dvc: ((), {}),  # noqa: ARG005
+        lambda tmp_dir, dvc: ((dvc,), {}),  # noqa: ARG005
+        lambda tmp_dir, dvc: ((tmp_dir,), {}),  # noqa: ARG005
+        lambda tmp_dir, dvc: ((str(tmp_dir),), {}),  # noqa: ARG005
+        lambda tmp_dir, dvc: ((), {"repo": tmp_dir}),  # noqa: ARG005
+        lambda tmp_dir, dvc: ((), {"repo": os.fspath(tmp_dir)}),  # noqa: ARG005
+        # url= is deprecated, but is still supported for backward compatibility
+        lambda tmp_dir, dvc: ((), {"url": tmp_dir}),  # noqa: ARG005
+        lambda tmp_dir, dvc: ((), {"url": os.fspath(tmp_dir)}),  # noqa: ARG005
+        lambda tmp_dir, dvc: ((), {"repo": dvc}),  # noqa: ARG005
+    ],
+)
+def test_init_arg(tmp_dir, dvc, fs_args):
+    args, kwargs = fs_args(tmp_dir, dvc)
+    fs = DVCFileSystem(*args, **kwargs)
+
+    assert fs.repo.root_dir == dvc.root_dir

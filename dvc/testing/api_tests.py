@@ -32,12 +32,13 @@ class TestAPI:
         "fs_kwargs",
         [
             {},
-            {"url": "{path}"},
-            {"url": "{path}", "rev": "{default_branch}"},
-            {"url": "file://{posixpath}"},
-            {"url": "file://{posixpath}", "rev": "{default_branch}"},
+            {"repo": "{path}"},
+            {"repo": "{path}", "rev": "{default_branch}"},
+            {"repo": "file://{posixpath}"},
+            {"repo": "file://{posixpath}", "rev": "{default_branch}"},
+            {"url": "{path}"},  # test for backward compatibility
         ],
-        ids=["current", "local", "local_rev", "git", "git_rev"],
+        ids=["current", "local", "local_rev", "git", "git_rev", "local_url"],
     )
     def test_filesystem(
         self,
@@ -59,6 +60,8 @@ class TestAPI:
         if clear_cache:
             remove(dvc.cache.repo.path)
 
+        if repo := fs_kwargs.get("repo"):
+            fs_kwargs["repo"] = repo.format(path=tmp_dir, posixpath=tmp_dir.as_posix())
         if url := fs_kwargs.get("url"):
             fs_kwargs["url"] = url.format(path=tmp_dir, posixpath=tmp_dir.as_posix())
         if rev := fs_kwargs.get("rev"):
