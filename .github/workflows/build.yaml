@@ -55,7 +55,7 @@ jobs:
 
     environment:
       name: test-pypi
-      url: https://test.pypi.org/p/dvc
+      url: https://test.pypi.org/p/dvc/${{ github.event.release.tag_name }}
 
     permissions:
       id-token: write
