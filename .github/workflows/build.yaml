@@ -80,7 +80,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/dvc
+      url: https://pypi.org/p/dvc/${{ github.event.release.tag_name }}
 
     permissions:
       id-token: write
