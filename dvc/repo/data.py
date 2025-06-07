@@ -4,7 +4,10 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, TypedDict, Union
 
 from dvc.fs.callbacks import DEFAULT_CALLBACK
+from dvc.log import logger
 from dvc.ui import ui
+
+logger = logger.getChild(__name__)
 
 if TYPE_CHECKING:
     from dvc.fs.callbacks import Callback
@@ -217,7 +220,29 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> list[str]
     return [repo.fs.relpath(file, start) for file in files]
 
 
-def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
+def _filter_out_push_false_outs(repo: "Repo", not_in_remote: list[str]) -> list[str]:
+    """Filter out paths that are not pushable."""
+    filtered_not_in_remote = []
+
+    for path in not_in_remote:
+        (out,) = repo.find_outs_by_path(path)
+
+        if out.can_push:
+            filtered_not_in_remote.append(path)
+        else:
+            logger.trace(
+                f"Eliminating {path} from not_in_remote, because it is not pushable"
+            )
+
+    return filtered_not_in_remote
+
+
+def status(
+    repo: "Repo",
+    untracked_files: str = "no",
+    respect_no_push: bool = False,
+    **kwargs: Any,
+) -> Status:
     from dvc.scm import NoSCMError, SCMError
 
     head = kwargs.pop("head", "HEAD")
@@ -234,10 +259,17 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
     git_info = _git_info(repo.scm, untracked_files=untracked_files)
     untracked = git_info.get("untracked", [])
     untracked = _transform_git_paths_to_dvc(repo, untracked)
+
+    not_in_remote = uncommitted_diff.pop("not_in_remote", [])
+
+    if respect_no_push:
+        logger.debug("Filtering out paths that are not pushable")
+        not_in_remote = _filter_out_push_false_outs(repo, not_in_remote)
+
     # order matters here
     return Status(
         not_in_cache=uncommitted_diff.pop("not_in_cache", []),
-        not_in_remote=uncommitted_diff.pop("not_in_remote", []),
+        not_in_remote=not_in_remote,
         committed=committed_diff,
         uncommitted=uncommitted_diff,
         untracked=untracked,
