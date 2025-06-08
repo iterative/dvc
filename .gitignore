@@ -50,3 +50,5 @@ scripts/ci/gcp-creds.json
 .nox/
 .tox/
 htmlcov/
+run.sh
+stdout.txt
