@@ -7,11 +7,11 @@ index a3b5c8d5..7e39d172 100644
              return ret
          except FileNotFoundError:
 -            return False
-+            return False        
++            return False
 +        except PermissionError:
 +            logger.debug("Permission denied while checking path '%s'", path)
 +            return False  # We can't confirm existence without permissions
- 
+
      def isdir(self, path):
          path = self.path.abspath(path)
 @@ -232,6 +235,8 @@ class SSHFileSystem(FileSystem):
@@ -20,7 +20,7 @@ index a3b5c8d5..7e39d172 100644
              ) from exc
 +        except PermissionError as exc:
 +            raise PermissionError(f"SSH user does not have permission to access '{path}'") from exc
- 
+
      def remove(self, path):
          path = self.path.abspath(path)
 @@ -245,6 +250,8 @@ class SSHFileSystem(FileSystem):
@@ -29,7 +29,7 @@ index a3b5c8d5..7e39d172 100644
              ) from exc
 +        except PermissionError as exc:
 +            raise PermissionError(f"SSH user does not have permission to delete '{path}'") from exc
- 
+
      def makedirs(self, path):
          path = self.path.abspath(path)
 @@ -267,6 +274,8 @@ class SSHFileSystem(FileSystem):
@@ -39,7 +39,7 @@ index a3b5c8d5..7e39d172 100644
 +            elif isinstance(exc, PermissionError):
 +                raise PermissionError(f"SSH user does not have read permissions for '{from_info}'") from exc
              raise
- 
+
      def put(self, from_file, to_info, callback=None):
 @@ -284,6 +293,8 @@ class SSHFileSystem(FileSystem):
                  raise FileNotFoundError(
@@ -48,7 +48,7 @@ index a3b5c8d5..7e39d172 100644
 +            elif isinstance(exc, PermissionError):
 +                raise PermissionError(f"SSH user does not have write permissions for '{to_info}'") from exc
              raise
- 
+
      def _ssh_client(self, **kwargs):
 @@ -347,7 +358,13 @@ class SSHFileSystem(FileSystem):
          except paramiko.SSHException as exc:
@@ -63,4 +63,4 @@ index a3b5c8d5..7e39d172 100644
 +            else:
 +                raise SSHError(str(exc)) from exc
          except FileNotFoundError:
-             raise 
+             raise

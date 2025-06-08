@@ -7,7 +7,7 @@ _**User**_
 You are an expert on the current code base @/app  and the following PR:
 ref: use fs.checksum instead of get_mtime_and_size #6495 / issue /0799472f5f49caa19bc3e580c89ccb2c0e322c0a
 
-Suggest several improvements that could be made to the codebase related to the above PR 
+Suggest several improvements that could be made to the codebase related to the above PR
 
 ---
 
@@ -23,7 +23,7 @@ Let me explore the PR that changed `get_mtime_and_size` to `fs.checksum` to sugg
 
 <details>
             <summary>Searched codebase "PR #6495 fs.checksum get_mtime_and_size" • **25** results</summary>
-        
+
 | File | Lines |
 |------|-------|
 | `dvc/utils/fs.py` | L35-68 |
@@ -62,7 +62,7 @@ Let me search more specifically for the implementation of `fs.checksum` to under
 
 <details>
             <summary>Searched codebase "fs.checksum implementation BaseFileSystem" • **25** results</summary>
-        
+
 | File | Lines |
 |------|-------|
 | `dvc/fs/repo.py` | L497-513 |
@@ -101,7 +101,7 @@ Let me search for the implementation of `fs.checksum` in the local filesystem to
 
 <details>
             <summary>Searched codebase "LocalFileSystem checksum implementation" • **25** results</summary>
-        
+
 | File | Lines |
 |------|-------|
 | `dvc/objects/reference.py` | L1-53 |
@@ -140,7 +140,7 @@ Let me look at the implementation of `fsspec` since it's used by `LocalFileSyste
 
 <details>
             <summary>Searched codebase "fsspec LocalFileSystem checksum" • **25** results</summary>
-        
+
 | File | Lines |
 |------|-------|
 | `dvc/fs/fsspec_wrapper.py` | L69-126 |
@@ -179,7 +179,7 @@ Let me search for the implementation of `get_mtime_and_size` again to understand
 
 <details>
             <summary>Searched codebase "get_mtime_and_size implementation" • **25** results</summary>
-        
+
 | File | Lines |
 |------|-------|
 | `dvc/utils/fs.py` | L35-68 |
@@ -244,7 +244,7 @@ WARNING: Running pip as the 'root' user can result in broken permissions and con
 flicting beh
 aviour with the system package manager. It is recommended to use a virtual envir
 onment instead: https://pip.pypa.io/warnings/venv
-                        
+
 ```
 
 ---
@@ -275,34 +275,34 @@ root@90e994938ca8:/app#
 
 Based on the code examination of PR #6495 which replaced `get_mtime_and_size` with `fs.checksum`, I can suggest several improvements related to this change:
 
-1. **Complete the Checksum Implementation for DvcFileSystem**: 
+1. **Complete the Checksum Implementation for DvcFileSystem**:
    The DvcFileSystem.checksum method currently raises NotImplementedError when md5 is not available. This should be implemented properly to handle all cases.
 
-2. **Standardize Checksum Interface Across Filesystems**: 
+2. **Standardize Checksum Interface Across Filesystems**:
    Implement a consistent interface for the checksum method across all filesystem classes, ensuring they return HashInfo objects with both checksum and size information.
 
-3. **Add More Robust Checksum Caching**: 
+3. **Add More Robust Checksum Caching**:
    Enhance the checksum caching mechanism to reduce redundant computations, especially for large directories with many files.
 
-4. **Improve Testing for Checksum Methods**: 
+4. **Improve Testing for Checksum Methods**:
    Add comprehensive tests for each filesystem's checksum implementation to ensure consistent behavior across different filesystems.
 
-5. **Optimize Directory Checksum Calculations**: 
+5. **Optimize Directory Checksum Calculations**:
    The current implementation for directories creates a dictionary of all file mtimes and then hashes it. This could be optimized by incrementally building the hash or using more efficient data structures.
 
-6. **Add File Change Detection Method**: 
+6. **Add File Change Detection Method**:
    Implement a dedicated method to detect if a file has changed rather than relying on checksum comparison, which could be more efficient for large files.
 
-7. **Support for More Hash Algorithms**: 
+7. **Support for More Hash Algorithms**:
    Extend the checksum functionality to support multiple hash algorithms beyond just md5, such as SHA-256 for better security.
 
-8. **Handle Broken Symlinks Better**: 
+8. **Handle Broken Symlinks Better**:
    The current code has special cases for broken symlinks. A more unified approach to handle these edge cases would improve maintainability.
 
-9. **Implement Parallel Checksum Computation**: 
+9. **Implement Parallel Checksum Computation**:
    For directories with many files, implement parallel computation of checksums to improve performance.
 
-10. **Improve Documentation**: 
+10. **Improve Documentation**:
     Add more detailed documentation explaining the checksum method's behavior, especially how it differs across filesystem implementations.
 
 ---
@@ -363,7 +363,7 @@ Read file: dvc/utils/fs.py
 
 <details>
             <summary>Searched codebase "checksum test" • **0** results</summary>
-        
+
 No results found
 </details>
 
@@ -371,7 +371,7 @@ No results found
 
 <details>
             <summary>Searched codebase "test checksum filesystem" • **19** results</summary>
-        
+
 | File | Lines |
 |------|-------|
 | `tests/remotes/hdfs.py` | L195-200 |
@@ -400,7 +400,7 @@ No results found
 
 <details>
             <summary>Searched codebase "directory checksum implementation" • **15** results</summary>
-        
+
 | File | Lines |
 |------|-------|
 | `dvc/fs/dvc.py` | L240-270 |
@@ -430,32 +430,32 @@ Now let's implement our improvements:
 ---
 
 ```diff
-- 
+-
 + import os
 + import hashlib
 + from unittest.mock import patch, MagicMock
-+ 
++
 + import pytest
-+ 
++
 + from dvc.fs.local import LocalFileSystem
 + from dvc.path_info import PathInfo
 + from dvc.utils.fs import dict_md5, get_mtime_and_size
-+ 
-+ 
++
++
 + def test_local_fs_checksum_file(tmp_dir):
 +     """Test LocalFileSystem.checksum for a regular file."""
 +     tmp_dir.gen({"file.txt": "content"})
 +     fs = LocalFileSystem()
 +     path_info = PathInfo(os.path.join(tmp_dir, "file.txt"))
-+     
++
 +     # Calculate expected checksum using tokenize from fsspec
 +     from fsspec.implementations.local import tokenize
 +     expected = int(tokenize(fs.info(path_info)), 16)
-+     
++
 +     # Verify checksum method returns expected value
 +     assert fs.checksum(path_info) == str(expected)
-+ 
-+ 
++
++
 + def test_dir_checksum_implementation(tmp_dir):
 +     """Test the directory checksum implementation."""
 +     # Create a directory with multiple files
@@ -468,52 +468,52 @@ Now let's implement our improvements:
 +             }
 +         }
 +     })
-+     
++
 +     fs = LocalFileSystem()
 +     dir_path = os.path.join(tmp_dir, "dir")
-+     
++
 +     # Call checksum on directory
 +     checksum = fs.checksum(dir_path)
-+     
++
 +     # Get mtime and size for comparison
 +     mtime, size = get_mtime_and_size(dir_path, fs)
-+     
++
 +     # The directory checksum should be consistent
 +     assert checksum == mtime
-+     
++
 +     # Modify a file and verify checksum changes
 +     with open(os.path.join(dir_path, "file1.txt"), "w") as f:
 +         f.write("modified content")
-+     
++
 +     new_checksum = fs.checksum(dir_path)
 +     new_mtime, new_size = get_mtime_and_size(dir_path, fs)
-+     
++
 +     assert new_checksum != checksum
 +     assert new_mtime != mtime
 +     assert new_checksum == new_mtime
-+ 
-+ 
++
++
 + def test_dvc_fs_checksum_fallback(mocker):
 +     """Test DvcFileSystem.checksum falls back to HashInfo for missing md5."""
 +     from dvc.fs.dvc import DvcFileSystem
-+     
++
 +     # Mock DvcFileSystem and its dependencies
 +     mock_fs = DvcFileSystem.__new__(DvcFileSystem)
 +     mock_fs.info = MagicMock(return_value={"type": "file", "size": 100})
-+     
++
 +     # Mock hash_info creation
 +     mock_hash_info = MagicMock()
 +     mock_hash_info.value = "hash123"
 +     mock_get_file_hash = mocker.patch(
 +         "dvc.objects.stage._get_file_hash", return_value=mock_hash_info
 +     )
-+     
++
 +     # Test checksum method with fallback
 +     path_info = PathInfo("file.txt")
 +     result = DvcFileSystem.checksum(mock_fs, path_info)
-+     
++
 +     assert result == "hash123"
-+     mock_get_file_hash.assert_called_once_with(path_info, mock_fs, "md5") 
++     mock_get_file_hash.assert_called_once_with(path_info, mock_fs, "md5")
 ```
 
 ---
@@ -527,26 +527,26 @@ Now let's implement our improvements:
   from dvc.utils import is_exec, tmp_fname
 - from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 + from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove, get_mtime_and_size, dict_md5
-  
+
   from .base import BaseFileSystem
 ```
 
 ```diff
-  
+
       def checksum(self, path_info) -> str:
 -         return self.fs.checksum(path_info)
 +         """Calculate checksum for a file or directory.
-+         
++
 +         For files: Uses fsspec's tokenize-based checksum.
 +         For directories: Calculates a hash of all file mtimes in the directory.
 +         """
 +         import nanotime
-+         
++
 +         # For directories, implement a custom checksum method
 +         if self.isdir(path_info):
 +             size = 0
 +             files_mtimes = {}
-+             
++
 +             for file_path in self.walk_files(path_info):
 +                 try:
 +                     stats = self.info(file_path)
@@ -557,13 +557,13 @@ Now let's implement our improvements:
 +                     continue
 +                 size += stats["size"]
 +                 files_mtimes[os.fspath(file_path)] = stats["mtime"]
-+ 
++
 +             # Use dict_md5 to create a stable checksum for directories
 +             return dict_md5(files_mtimes)
 +         else:
 +             # For files, delegate to fsspec's implementation
 +             return self.fs.checksum(path_info)
-  
+
       def isfile(self, path_info) -> bool:
 ```
 
@@ -574,38 +574,38 @@ Now let's implement our improvements:
 ---
 
 ```diff
-  
+
       def checksum(self, path_info):
 +         """Get checksum for a file in DVC repo.
-+ 
++
 +         If the file is tracked by DVC, get its md5 hash from the info.
 +         Otherwise, try to calculate the hash using objects.stage._get_file_hash.
-+ 
++
 +         Args:
 +             path_info: Path to the file to get checksum for.
-+ 
++
 +         Returns:
 +             String representation of the checksum.
-+ 
++
 +         Raises:
 +             NotImplementedError: If the file is not tracked and no hash method
 +                 is available.
 +         """
 +         from dvc.objects.stage import _get_file_hash
-+ 
++
           info = self.info(path_info)
-+         
++
 +         # Try to get md5 from info first
           md5 = info.get("md5")
           if md5:
               return md5
 -         raise NotImplementedError
-+             
++
 +         # Fall back to other hashes if available
 +         for hash_name in ["sha256", "etag", "checksum"]:
 +             if hash_name in info:
 +                 return info[hash_name]
-+         
++
 +         # If no hash found in info, try to calculate it
 +         try:
 +             hash_info = _get_file_hash(path_info, self, "md5")
@@ -613,11 +613,11 @@ Now let's implement our improvements:
 +                 return hash_info.value
 +         except (NotImplementedError, FileNotFoundError):
 +             pass
-+             
++
 +         raise NotImplementedError(
 +             f"No checksum method available for {path_info}"
 +         )
-  
+
 ```
 
 ---
@@ -627,44 +627,44 @@ Now let's implement our improvements:
 ---
 
 ```diff
-- 
+-
 + """Utilities for checksum calculation across different filesystem types."""
-+ 
++
 + import os
 + import logging
 + from typing import Dict, Any, Optional, Tuple
-+ 
++
 + from dvc.hash_info import HashInfo
-+ 
++
 + logger = logging.getLogger(__name__)
-+ 
-+ 
++
++
 + def dir_checksum(
 +     path_info: Any, fs: Any, dvcignore=None, name: str = "md5"
 + ) -> Tuple[str, int]:
 +     """Calculate checksum for a directory.
-+     
++
 +     Calculates a stable checksum based on file mtimes within the directory.
-+     
++
 +     Args:
 +         path_info: Path to the directory
 +         fs: Filesystem object that implements walk_files and info methods
 +         dvcignore: Optional dvcignore object to filter files
 +         name: Hash algorithm name
-+         
++
 +     Returns:
 +         Tuple of (checksum_string, total_size)
 +     """
 +     from dvc.utils.fs import dict_md5
-+     
++
 +     size = 0
 +     files_mtimes: Dict[str, Any] = {}
-+     
++
 +     if dvcignore:
 +         walk_iterator = dvcignore.walk_files(fs, path_info)
 +     else:
 +         walk_iterator = fs.walk_files(path_info)
-+         
++
 +     for file_path in walk_iterator:
 +         try:
 +             stats = fs.info(file_path)
@@ -675,32 +675,32 @@ Now let's implement our improvements:
 +             continue
 +         size += stats["size"]
 +         files_mtimes[os.fspath(file_path)] = stats["mtime"]
-+ 
++
 +     # Create a stable hash from the file mtimes dictionary
 +     checksum = dict_md5(files_mtimes)
-+     
++
 +     return checksum, size
-+ 
-+ 
++
++
 + def get_file_hash(
 +     path_info: Any, fs: Any, name: str = "md5", dry_run: bool = False
 + ) -> Optional[HashInfo]:
 +     """Get file hash using the appropriate hash function.
-+     
++
 +     Attempts to use filesystem's native checksum method if available,
 +     otherwise falls back to other methods.
-+     
++
 +     Args:
 +         path_info: Path to the file
 +         fs: Filesystem object that implements info and possibly checksum methods
 +         name: Hash algorithm name
 +         dry_run: If True, don't actually calculate the hash
-+         
++
 +     Returns:
 +         HashInfo object containing the hash and size information
 +     """
 +     from dvc.objects.stage import file_md5
-+     
++
 +     # Try to use filesystem's native checksum method first
 +     try:
 +         if hasattr(fs, "checksum"):
@@ -709,7 +709,7 @@ Now let's implement our improvements:
 +             return HashInfo(name, checksum, size=size)
 +     except (NotImplementedError, AttributeError):
 +         pass
-+     
++
 +     # Get hash from info if available
 +     try:
 +         info = fs.info(path_info)
@@ -717,7 +717,7 @@ Now let's implement our improvements:
 +             return HashInfo(name, info[name], size=info["size"])
 +     except (KeyError, AttributeError):
 +         pass
-+     
++
 +     # Fall back to file_md5 for md5 algorithm
 +     if name == "md5" and not dry_run:
 +         try:
@@ -726,8 +726,8 @@ Now let's implement our improvements:
 +             return HashInfo(name, checksum, size=size)
 +         except (NotImplementedError, AttributeError):
 +             pass
-+     
-+     return None 
++
++     return None
 ```
 
 ---
@@ -740,7 +740,7 @@ Now let's implement our improvements:
   from dvc.utils import is_exec, tmp_fname
   from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove, get_mtime_and_size, dict_md5
 + from dvc.utils.checksum import dir_checksum
-  
+
   from .base import BaseFileSystem
 ```
 
@@ -748,12 +748,12 @@ Now let's implement our improvements:
           For directories: Calculates a hash of all file mtimes in the directory.
           """
 -         import nanotime
--         
+-
 -         # For directories, implement a custom checksum method
           if self.isdir(path_info):
 -             size = 0
 -             files_mtimes = {}
--             
+-
 -             for file_path in self.walk_files(path_info):
 -                 try:
 -                     stats = self.info(file_path)
@@ -764,7 +764,7 @@ Now let's implement our improvements:
 -                     continue
 -                 size += stats["size"]
 -                 files_mtimes[os.fspath(file_path)] = stats["mtime"]
-- 
+-
 -             # Use dict_md5 to create a stable checksum for directories
 -             return dict_md5(files_mtimes)
 +             # For directories, use our custom directory checksum implementation
@@ -781,11 +781,11 @@ Now let's implement our improvements:
 ---
 
 ```diff
-  
+
           If the file is tracked by DVC, get its md5 hash from the info.
 -         Otherwise, try to calculate the hash using objects.stage._get_file_hash.
 +         Otherwise, try to calculate the hash using utils.checksum.get_file_hash.
-  
+
           Args:
 ```
 
@@ -794,17 +794,17 @@ Now let's implement our improvements:
           """
 -         from dvc.objects.stage import _get_file_hash
 +         from dvc.utils.checksum import get_file_hash
-  
+
 +         # Try to get checksum from info first
           info = self.info(path_info)
--         
+-
 -         # Try to get md5 from info first
           md5 = info.get("md5")
           if md5:
 ```
 
 ```diff
-          
+
           # If no hash found in info, try to calculate it
 -         try:
 -             hash_info = _get_file_hash(path_info, self, "md5")
@@ -813,7 +813,7 @@ Now let's implement our improvements:
               return hash_info.value
 -         except (NotImplementedError, FileNotFoundError):
 -             pass
-              
+
           raise NotImplementedError(
 ```
 
@@ -828,7 +828,7 @@ git add dvc/fs/local.py dvc/fs/dvc.py dvc/utils/checksum.py tests/unit/fs/test_c
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -849,7 +849,7 @@ git diff --cached dvc/fs/local.py > save/location/local_fs_diff.diff
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -860,7 +860,7 @@ git diff --cached dvc/fs/dvc.py > save/location/dvc_fs_diff.diff
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -871,7 +871,7 @@ git diff --cached dvc/utils/checksum.py > save/location/checksum_util_diff.diff
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -882,7 +882,7 @@ git diff --cached tests/unit/fs/test_checksum.py > save/location/test_checksum_d
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -943,7 +943,7 @@ git commit -m "Improve fs.checksum implementation for directories and add unifie
 ```
 <on for directories and add unified checksum utility module"
 error: cannot run ssh-keygen: No such file or directory
-error: 
+error:
 fatal: failed to write commit object
 root@90e994938ca8:/app#
 ```
@@ -961,7 +961,7 @@ git config --global user.email "user@example.com" && git config --global user.na
 ```
 <on for directories and add unified checksum utility module"
 error: cannot run ssh-keygen: No such file or directory
-error: 
+error:
 fatal: failed to write commit object
 root@90e994938ca8:/app#
 ```
@@ -979,7 +979,7 @@ export GIT_SSH_COMMAND="echo 'No SSH needed'" && git commit -m "Improve fs.check
 ```
 <on for directories and add unified checksum utility module"
 error: cannot run ssh-keygen: No such file or directory
-error: 
+error:
 fatal: failed to write commit object
 root@90e994938ca8:/app#
 ```
@@ -1087,50 +1087,50 @@ _**Assistant**_
 ---
 
 ```diff
-- 
+-
 + # Step Rubric: Improving File System Checksum Implementation
-+ 
++
 + ## Summary
 + This step enhances the checksum functionality across DVC file systems, particularly improving directory checksum calculation and providing a unified interface for all checksum operations.
-+ 
++
 + ## Requirements
-+ 
++
 + ### 1. Directory Checksum Calculation (✓)
 + - **Must Have**: Specialized implementation for directory checksums in `LocalFileSystem.checksum`
 + - **Must Have**: Consistent behavior between `get_mtime_and_size` and new directory checksum implementation
-+ 
++
 + ### 2. DVC File System Enhancements (✓)
 + - **Must Have**: Improved `DvcFileSystem.checksum` with better fallback mechanisms
 + - **Must Have**: Support for multiple hash types (md5, sha256, etag, checksum)
 + - **Must Have**: Descriptive error messages when checksums are unavailable
-+ 
++
 + ### 3. Unified Checksum Utilities (✓)
 + - **Must Have**: New utility module (`dvc/utils/checksum.py`) with standardized functions
 + - **Must Have**: `dir_checksum` function for directory checksum calculation
 + - **Must Have**: `get_file_hash` function for unified hash retrieval
 + - **Must Have**: Proper error handling and fallback mechanisms
-+ 
++
 + ### 4. Test Coverage (✓)
 + - **Must Have**: Tests for file checksum implementation
 + - **Must Have**: Tests for directory checksum implementation
 + - **Must Have**: Tests for fallback mechanisms
-+ 
++
 + ## Implementation Quality
-+ 
++
 + ### Code Quality (✓)
 + - **Must Have**: Clear documentation for all new functions
 + - **Must Have**: Type hints for improved code maintenance
 + - **Must Have**: Consistent error handling patterns
 + - **Must Have**: Backward compatibility with existing code
-+ 
++
 + ### Performance (✓)
 + - **Must Have**: Efficient directory checksum calculation
 + - **Should Have**: Reuse of existing functionality when appropriate
-+ 
++
 + ## Success Criteria
 + - All tests pass for both file and directory checksum operations
 + - The implementation maintains compatibility with the original PR (#6495) that replaced `get_mtime_and_size` with `fs.checksum`
-+ - The codebase has improved maintainability through the unified checksum utility module 
++ - The codebase has improved maintainability through the unified checksum utility module
 ```
 
 ---
@@ -1142,7 +1142,7 @@ The rubric has been saved to `save/location/rubric.md`.
 _**User**_
 
 Generating Your Own Repository Improvements
-@/app 
+@/app
 
 We ask you to generate your own ideas for potential improvements to the repo. You can either brainstorm your own improvement ideas or use Cursor to help generate suggestions. Your improvements should fit into one of these suggested improvement areas:
 
@@ -1183,10 +1183,10 @@ The current directory checksum implementation processes files sequentially, whic
 def parallel_dir_checksum(path_info, fs, dvcignore=None, workers=4):
     """Calculate directory checksum using parallel processing."""
     import concurrent.futures
-    
+
     # Split directory files into batches
     files = list(fs.walk_files(path_info))
-    
+
     # Process batches in parallel
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         # Implementation details for parallelized checksumming
@@ -1199,11 +1199,11 @@ Enhance the checksum caching mechanism to track file dependencies, allowing for 
 ```python
 class ChecksumCache:
     """Cache for file and directory checksums with dependency tracking."""
-    
+
     def __init__(self, cache_dir):
         self.cache_dir = cache_dir
         self.dependency_graph = {}  # Track which files affect which directories
-    
+
     def get(self, path_info, fs):
         # Check if cached value is still valid based on dependency graph
 ```
@@ -1215,9 +1215,9 @@ Create a plugin system allowing users to register custom hash algorithms beyond 
 ```python
 class HashAlgorithmRegistry:
     """Registry for hash algorithm implementations."""
-    
+
     _algorithms = {}
-    
+
     @classmethod
     def register(cls, name, algorithm_class):
         """Register a new hash algorithm implementation."""
@@ -1234,7 +1234,7 @@ def incremental_dir_checksum(path_info, fs, previous_state=None):
     if previous_state is None:
         # Full calculation if no previous state
         return full_dir_checksum(path_info, fs)
-    
+
     # Otherwise, only process files that have changed since previous_state
 ```
 
@@ -1360,65 +1360,65 @@ I need to implement the parallel directory checksum calculation feature and its 
 + import multiprocessing
 + from typing import Dict, Any, Optional, Tuple, List
 + from concurrent.futures import ThreadPoolExecutor
-  
+
   from dvc.hash_info import HashInfo
 ```
 
 ```diff
           size += stats["size"]
           files_mtimes[os.fspath(file_path)] = stats["mtime"]
-+ 
++
 +     # Create a stable hash from the file mtimes dictionary
 +     checksum = dict_md5(files_mtimes)
-+     
++
 +     return checksum, size
-+ 
-+ 
++
++
 + def parallel_dir_checksum(
-+     path_info: Any, 
-+     fs: Any, 
-+     dvcignore=None, 
++     path_info: Any,
++     fs: Any,
++     dvcignore=None,
 +     name: str = "md5",
 +     workers: int = None
 + ) -> Tuple[str, int]:
 +     """Calculate checksum for a directory using parallel processing.
-+     
++
 +     Calculates a stable checksum based on file mtimes within the directory,
 +     processing files in parallel for improved performance on large directories.
-+     
++
 +     Args:
 +         path_info: Path to the directory
 +         fs: Filesystem object that implements walk_files and info methods
 +         dvcignore: Optional dvcignore object to filter files
 +         name: Hash algorithm name
 +         workers: Number of worker threads to use (defaults to CPU count)
-+         
++
 +     Returns:
 +         Tuple of (checksum_string, total_size)
 +     """
 +     from dvc.utils.fs import dict_md5
-+     
++
 +     # Default to number of CPUs if workers not specified
 +     if workers is None:
 +         workers = max(1, multiprocessing.cpu_count())
-+     
++
 +     # Collect all files first to enable parallel processing
 +     if dvcignore:
 +         files = list(dvcignore.walk_files(fs, path_info))
 +     else:
 +         files = list(fs.walk_files(path_info))
-+     
++
 +     if not files:
 +         # Empty directory case
 +         return dict_md5({}), 0
-+     
++
 +     # Process files in parallel
 +     def process_file(file_path):
 +         try:
 +             stats = fs.info(file_path)
 +             return (
-+                 os.fspath(file_path), 
-+                 stats["mtime"], 
++                 os.fspath(file_path),
++                 stats["mtime"],
 +                 stats["size"]
 +             )
 +         except OSError as exc:
@@ -1426,20 +1426,20 @@ I need to implement the parallel directory checksum calculation feature and its 
 +             if exc.errno != os.errno.ENOENT:
 +                 raise
 +             return None
-+     
++
 +     files_mtimes: Dict[str, Any] = {}
 +     size = 0
-+     
++
 +     with ThreadPoolExecutor(max_workers=workers) as executor:
 +         results = list(executor.map(process_file, files))
-+         
++
 +     # Process results
 +     for result in results:
 +         if result is not None:
 +             file_path, mtime, file_size = result
 +             files_mtimes[file_path] = mtime
 +             size += file_size
-      
+
       # Create a stable hash from the file mtimes dictionary
 ```
 
@@ -1454,7 +1454,7 @@ Now, let's modify the LocalFileSystem to use our new parallel implementation:
   from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove, get_mtime_and_size, dict_md5
 - from dvc.utils.checksum import dir_checksum
 + from dvc.utils.checksum import dir_checksum, parallel_dir_checksum
-  
+
   from .base import BaseFileSystem
 ```
 
@@ -1464,14 +1464,14 @@ Now, let's modify the LocalFileSystem to use our new parallel implementation:
 +         # Use parallel processing by default, can be disabled in config
 +         self.use_parallel = config.get("use_parallel_checksum", True)
 +         self.checksum_jobs = config.get("checksum_jobs", None)
-  
+
       @staticmethod
 ```
 
 ```diff
           For files: Uses fsspec's tokenize-based checksum.
           For directories: Calculates a hash of all file mtimes in the directory.
-+         
++
 +         For large directories, parallel processing is used by default to improve
 +         performance. This can be disabled by setting use_parallel_checksum=False
 +         in the filesystem config.
@@ -1496,18 +1496,18 @@ Now, let's create tests for the parallel directory checksum feature:
 ---
 
 ```diff
-- 
+-
 + import os
 + import time
 + from concurrent.futures import ThreadPoolExecutor
-+ 
++
 + import pytest
-+ 
++
 + from dvc.fs.local import LocalFileSystem
 + from dvc.path_info import PathInfo
 + from dvc.utils.checksum import dir_checksum, parallel_dir_checksum
-+ 
-+ 
++
++
 + def test_parallel_dir_checksum_correctness(tmp_dir):
 +     """Test that parallel checksum gives the same result as sequential."""
 +     # Create a directory with multiple files
@@ -1521,86 +1521,86 @@ Now, let's create tests for the parallel directory checksum feature:
 +             }
 +         }
 +     })
-+     
++
 +     fs = LocalFileSystem()
 +     dir_path = os.path.join(tmp_dir, "dir")
-+     
++
 +     # Calculate checksums using both methods
 +     sequential_checksum, sequential_size = dir_checksum(dir_path, fs)
 +     parallel_checksum, parallel_size = parallel_dir_checksum(dir_path, fs)
-+     
++
 +     # Results should be identical
 +     assert sequential_checksum == parallel_checksum
 +     assert sequential_size == parallel_size
-+ 
-+ 
++
++
 + def test_parallel_dir_checksum_with_different_workers(tmp_dir):
 +     """Test parallel checksum with different worker counts."""
 +     # Create a directory with more files
 +     files = {f"file{i}.txt": f"content{i}" for i in range(20)}
 +     tmp_dir.gen({"dir": files})
-+     
++
 +     fs = LocalFileSystem()
 +     dir_path = os.path.join(tmp_dir, "dir")
-+     
++
 +     # Calculate checksums with different worker counts
 +     checksum1, size1 = parallel_dir_checksum(dir_path, fs, workers=1)
 +     checksum2, size2 = parallel_dir_checksum(dir_path, fs, workers=2)
 +     checksum4, size4 = parallel_dir_checksum(dir_path, fs, workers=4)
-+     
++
 +     # Results should be identical regardless of worker count
 +     assert checksum1 == checksum2 == checksum4
 +     assert size1 == size2 == size4
-+ 
-+ 
++
++
 + def test_parallel_dir_checksum_empty_directory(tmp_dir):
 +     """Test parallel checksum with an empty directory."""
 +     # Create an empty directory
 +     empty_dir = tmp_dir / "empty"
 +     empty_dir.mkdir()
-+     
++
 +     fs = LocalFileSystem()
-+     
++
 +     # Calculate checksums using both methods
 +     sequential_checksum, sequential_size = dir_checksum(empty_dir, fs)
 +     parallel_checksum, parallel_size = parallel_dir_checksum(empty_dir, fs)
-+     
++
 +     # Results should be identical and size should be 0
 +     assert sequential_checksum == parallel_checksum
 +     assert sequential_size == parallel_size == 0
-+ 
-+ 
++
++
 + def test_parallel_dir_checksum_performance(tmp_dir):
 +     """Test that parallel implementation is faster for large directories."""
 +     # Skip if running in CI to avoid flaky tests
 +     if os.environ.get("CI"):
 +         pytest.skip("Skipping performance test in CI environment")
-+         
++
 +     # Create a directory with many files to ensure measurable difference
 +     files = {}
 +     for i in range(100):
 +         files[f"file{i}.txt"] = f"content{i}" * 100  # Make files larger
-+     
++
 +     tmp_dir.gen({"dir": files})
-+     
++
 +     fs = LocalFileSystem()
 +     dir_path = os.path.join(tmp_dir, "dir")
-+     
++
 +     # Measure sequential execution time
 +     start_time = time.time()
 +     dir_checksum(dir_path, fs)
 +     sequential_time = time.time() - start_time
-+     
++
 +     # Measure parallel execution time with multiple workers
 +     start_time = time.time()
 +     parallel_dir_checksum(dir_path, fs, workers=4)
 +     parallel_time = time.time() - start_time
-+     
++
 +     # Parallel should be faster (or at least not significantly slower)
 +     # Allow some margin for overhead with small directories
 +     assert parallel_time <= sequential_time * 1.2
-+ 
-+ 
++
++
 + def test_filesystem_parallel_checksum_config(tmp_dir):
 +     """Test that filesystem config controls parallel checksum behavior."""
 +     # Create a test directory
@@ -1610,20 +1610,20 @@ Now, let's create tests for the parallel directory checksum feature:
 +             "file2.txt": "content2",
 +         }
 +     })
-+     
++
 +     dir_path = os.path.join(tmp_dir, "dir")
-+     
++
 +     # Create filesystem instances with different configs
 +     fs_parallel = LocalFileSystem(use_parallel_checksum=True, checksum_jobs=2)
 +     fs_sequential = LocalFileSystem(use_parallel_checksum=False)
-+     
++
 +     # Both should produce the same checksum
 +     checksum_parallel = fs_parallel.checksum(dir_path)
 +     checksum_sequential = fs_sequential.checksum(dir_path)
-+     
++
 +     assert checksum_parallel == checksum_sequential
-+ 
-+ 
++
++
 + def test_parallel_dir_checksum_file_modification(tmp_dir):
 +     """Test that parallel checksum detects file modifications."""
 +     # Create a directory with files
@@ -1633,22 +1633,22 @@ Now, let's create tests for the parallel directory checksum feature:
 +             "file2.txt": "content2",
 +         }
 +     })
-+     
++
 +     fs = LocalFileSystem()
 +     dir_path = os.path.join(tmp_dir, "dir")
-+     
++
 +     # Get initial checksum
 +     initial_checksum, _ = parallel_dir_checksum(dir_path, fs)
-+     
++
 +     # Modify a file
 +     with open(os.path.join(dir_path, "file1.txt"), "w") as f:
 +         f.write("modified content")
-+     
++
 +     # Get new checksum
 +     new_checksum, _ = parallel_dir_checksum(dir_path, fs)
-+     
++
 +     # Checksums should be different
-+     assert initial_checksum != new_checksum 
++     assert initial_checksum != new_checksum
 ```
 
 ---
@@ -1658,32 +1658,32 @@ Let's create a simple documentation file to explain the new feature:
 ---
 
 ```diff
-- 
+-
 + # Parallel Directory Checksum
-+ 
++
 + DVC now supports parallel processing for directory checksums, which can significantly improve performance when working with large repositories.
-+ 
++
 + ## How It Works
-+ 
++
 + When calculating checksums for directories, DVC needs to process each file in the directory to determine the overall checksum. For large directories with many files, this can be time-consuming when done sequentially.
-+ 
++
 + The parallel directory checksum feature distributes this work across multiple threads, allowing files to be processed concurrently. This can result in substantial performance improvements, especially on systems with multiple CPU cores.
-+ 
++
 + ## Configuration
-+ 
++
 + The parallel directory checksum feature is enabled by default, but can be configured in several ways:
-+ 
++
 + ### In `dvc.yaml` or `.dvc/config`
-+ 
++
 + ```yaml
 + # Enable or disable parallel checksum globally
 + core:
 +   use_parallel_checksum: true
 +   checksum_jobs: 4  # Number of worker threads (defaults to CPU count)
 + ```
-+ 
++
 + ### For specific remote storages
-+ 
++
 + ```yaml
 + remote:
 +   myremote:
@@ -1691,35 +1691,35 @@ Let's create a simple documentation file to explain the new feature:
 +     use_parallel_checksum: true
 +     checksum_jobs: 8
 + ```
-+ 
++
 + ### Via command line
-+ 
++
 + ```bash
 + # Set globally
 + dvc config core.use_parallel_checksum true
 + dvc config core.checksum_jobs 4
-+ 
++
 + # For a specific remote
 + dvc config --local remote.myremote.use_parallel_checksum true
 + dvc config --local remote.myremote.checksum_jobs 8
 + ```
-+ 
++
 + ## Performance Considerations
-+ 
++
 + - For very small directories (few files), the overhead of parallel processing might outweigh the benefits
 + - The optimal number of worker threads depends on your specific hardware and the number of CPU cores
 + - Setting `checksum_jobs` too high may lead to diminishing returns or even reduced performance due to thread overhead
 + - For best results on large directories, set `checksum_jobs` to match the number of available CPU cores
-+ 
++
 + ## Implementation Details
-+ 
++
 + The parallel implementation ensures that results are identical to the sequential implementation, maintaining consistency across all DVC operations while improving performance.
-+ 
++
 + When using the parallel implementation:
 + - Files are first collected from the directory
 + - Each file is processed in a separate thread to extract its metadata
 + - Results are combined to produce the final checksum
-+ - Thread resources are properly managed and cleaned up after processing is complete 
++ - Thread resources are properly managed and cleaned up after processing is complete
 ```
 
 ---
@@ -1733,7 +1733,7 @@ mkdir -p save/location/code save/location/tests save/location/docs
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -1744,7 +1744,7 @@ git add dvc/utils/checksum.py dvc/fs/local.py docs/user-guide/parallel_checksum.
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -1755,7 +1755,7 @@ git diff --cached dvc/utils/checksum.py > save/location/code/checksum_py.txt
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -1766,7 +1766,7 @@ git diff --cached dvc/fs/local.py > save/location/code/local_fs_py.txt
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -1777,7 +1777,7 @@ git diff --cached tests/unit/utils/test_parallel_checksum.py > save/location/tes
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -1788,7 +1788,7 @@ git diff --cached docs/user-guide/parallel_checksum.md > save/location/docs/para
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -1845,71 +1845,71 @@ _**Assistant**_
 ---
 
 ```diff
-- 
+-
 + diff --git a/dvc/utils/checksum.py b/dvc/utils/checksum.py
 + index aabdae631..14d3eae86 100644
 + --- a/dvc/utils/checksum.py
 + +++ b/dvc/utils/checksum.py
 + @@ -2,7 +2,9 @@
-+  
++
 +  import os
 +  import logging
 + -from typing import Dict, Any, Optional, Tuple
 + +import multiprocessing
 + +from typing import Dict, Any, Optional, Tuple, List
 + +from concurrent.futures import ThreadPoolExecutor
-+  
++
 +  from dvc.hash_info import HashInfo
-+  
++
 + @@ -52,6 +54,78 @@ def dir_checksum(
 +      return checksum, size
-+  
-+  
++
++
 + +def parallel_dir_checksum(
-+ +    path_info: Any, 
-+ +    fs: Any, 
-+ +    dvcignore=None, 
++ +    path_info: Any,
++ +    fs: Any,
++ +    dvcignore=None,
 + +    name: str = "md5",
 + +    workers: int = None
 + +) -> Tuple[str, int]:
 + +    """Calculate checksum for a directory using parallel processing.
-+ +    
++ +
 + +    Calculates a stable checksum based on file mtimes within the directory,
 + +    processing files in parallel for improved performance on large directories.
-+ +    
++ +
 + +    Args:
 + +        path_info: Path to the directory
 + +        fs: Filesystem object that implements walk_files and info methods
 + +        dvcignore: Optional dvcignore object to filter files
 + +        name: Hash algorithm name
 + +        workers: Number of worker threads to use (defaults to CPU count)
-+ +        
++ +
 + +    Returns:
 + +        Tuple of (checksum_string, total_size)
 + +    """
 + +    from dvc.utils.fs import dict_md5
-+ +    
++ +
 + +    # Default to number of CPUs if workers not specified
 + +    if workers is None:
 + +        workers = max(1, multiprocessing.cpu_count())
-+ +    
++ +
 + +    # Collect all files first to enable parallel processing
 + +    if dvcignore:
 + +        files = list(dvcignore.walk_files(fs, path_info))
 + +    else:
 + +        files = list(fs.walk_files(path_info))
-+ +    
++ +
 + +    if not files:
 + +        # Empty directory case
 + +        return dict_md5({}), 0
-+ +    
++ +
 + +    # Process files in parallel
 + +    def process_file(file_path):
 + +        try:
 + +            stats = fs.info(file_path)
 + +            return (
-+ +                os.fspath(file_path), 
-+ +                stats["mtime"], 
++ +                os.fspath(file_path),
++ +                stats["mtime"],
 + +                stats["size"]
 + +            )
 + +        except OSError as exc:
@@ -1917,30 +1917,30 @@ _**Assistant**_
 + +            if exc.errno != os.errno.ENOENT:
 + +                raise
 + +            return None
-+ +    
++ +
 + +    files_mtimes: Dict[str, Any] = {}
 + +    size = 0
-+ +    
++ +
 + +    with ThreadPoolExecutor(max_workers=workers) as executor:
 + +        results = list(executor.map(process_file, files))
-+ +        
++ +
 + +    # Process results
 + +    for result in results:
 + +        if result is not None:
 + +            file_path, mtime, file_size = result
 + +            files_mtimes[file_path] = mtime
 + +            size += file_size
-+ +    
++ +
 + +    # Create a stable hash from the file mtimes dictionary
 + +    checksum = dict_md5(files_mtimes)
-+ +    
++ +
 + +    return checksum, size
 + +
 + +
 +  def get_file_hash(
 +      path_info: Any, fs: Any, name: str = "md5", dry_run: bool = False
 +  ) -> Optional[HashInfo]:
-+  
++
 + diff --git a/dvc/fs/local.py b/dvc/fs/local.py
 + index 9320d8250..de02e6648 100644
 + --- a/dvc/fs/local.py
@@ -1951,24 +1951,24 @@ _**Assistant**_
 +  from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove, get_mtime_and_size, dict_md5
 + -from dvc.utils.checksum import dir_checksum
 + +from dvc.utils.checksum import dir_checksum, parallel_dir_checksum
-+  
++
 +  from .base import BaseFileSystem
-+  
++
 + @@ -27,6 +27,9 @@ class LocalFileSystem(BaseFileSystem):
-+  
++
 +          super().__init__(**config)
 +          self.fs = LocalFS()
 + +        # Use parallel processing by default, can be disabled in config
 + +        self.use_parallel = config.get("use_parallel_checksum", True)
 + +        self.checksum_jobs = config.get("checksum_jobs", None)
-+  
++
 +      @staticmethod
 +      def open(path_info, mode="r", encoding=None, **kwargs):
 + @@ -41,10 +44,20 @@ class LocalFileSystem(BaseFileSystem):
-+          
++
 +          For files: Uses fsspec's tokenize-based checksum.
 +          For directories: Calculates a hash of all file mtimes in the directory.
-+ +        
++ +
 + +        For large directories, parallel processing is used by default to improve
 + +        performance. This can be disabled by setting use_parallel_checksum=False
 + +        in the filesystem config.
@@ -1986,7 +1986,7 @@ _**Assistant**_
 + +                checksum, _ = dir_checksum(path_info, self)
 +              return checksum
 +          else:
-+              # For files, delegate to fsspec's implementation 
++              # For files, delegate to fsspec's implementation
 ```
 
 ---
@@ -1996,8 +1996,8 @@ Now let's create a test diff file:
 ---
 
 ```diff
-- 
-+  
+-
++
 ```
 
 ---
@@ -2007,7 +2007,7 @@ cat save/location/tests/test_parallel_checksum_py.txt > diff_test.txt
 ```
 
 ```
-root@90e994938ca8:/app# 
+root@90e994938ca8:/app#
 
 ```
 
@@ -2144,52 +2144,52 @@ First, let's create the `parallel_dir_checksum` function in `dvc/utils/checksum.
 
 ```python
 def parallel_dir_checksum(
-    path_info: Any, 
-    fs: Any, 
-    dvcignore=None, 
+    path_info: Any,
+    fs: Any,
+    dvcignore=None,
     name: str = "md5",
     workers: int = None
 ) -> Tuple[str, int]:
     """Calculate checksum for a directory using parallel processing.
-    
+
     Calculates a stable checksum based on file mtimes within the directory,
     processing files in parallel for improved performance on large directories.
-    
+
     Args:
         path_info: Path to the directory
         fs: Filesystem object that implements walk_files and info methods
         dvcignore: Optional dvcignore object to filter files
         name: Hash algorithm name
         workers: Number of worker threads to use (defaults to CPU count)
-        
+
     Returns:
         Tuple of (checksum_string, total_size)
     """
     from dvc.utils.fs import dict_md5
     import multiprocessing
     from concurrent.futures import ThreadPoolExecutor
-    
+
     # Default to number of CPUs if workers not specified
     if workers is None:
         workers = max(1, multiprocessing.cpu_count())
-    
+
     # Collect all files first to enable parallel processing
     if dvcignore:
         files = list(dvcignore.walk_files(fs, path_info))
     else:
         files = list(fs.walk_files(path_info))
-    
+
     if not files:
         # Empty directory case
         return dict_md5({}), 0
-    
+
     # Process files in parallel
     def process_file(file_path):
         try:
             stats = fs.info(file_path)
             return (
-                os.fspath(file_path), 
-                stats["mtime"], 
+                os.fspath(file_path),
+                stats["mtime"],
                 stats["size"]
             )
         except OSError as exc:
@@ -2197,23 +2197,23 @@ def parallel_dir_checksum(
             if exc.errno != os.errno.ENOENT:
                 raise
             return None
-    
+
     files_mtimes = {}
     size = 0
-    
+
     with ThreadPoolExecutor(max_workers=workers) as executor:
         results = list(executor.map(process_file, files))
-        
+
     # Process results
     for result in results:
         if result is not None:
             file_path, mtime, file_size = result
             files_mtimes[file_path] = mtime
             size += file_size
-    
+
     # Create a stable hash from the file mtimes dictionary
     checksum = dict_md5(files_mtimes)
-    
+
     return checksum, size
 ```
 
@@ -2225,7 +2225,7 @@ from dvc.utils.checksum import dir_checksum, parallel_dir_checksum
 
 class LocalFileSystem(BaseFileSystem):
     # ... existing code ...
-    
+
     def __init__(self, **config):
         from fsspec.implementations.local import LocalFileSystem as LocalFS
 
@@ -2234,15 +2234,15 @@ class LocalFileSystem(BaseFileSystem):
         # Use parallel processing by default, can be disabled in config
         self.use_parallel = config.get("use_parallel_checksum", True)
         self.checksum_jobs = config.get("checksum_jobs", None)
-    
+
     # ... existing code ...
-    
+
     def checksum(self, path_info) -> str:
         """Calculate checksum for a file or directory.
-        
+
         For files: Uses fsspec's tokenize-based checksum.
         For directories: Calculates a hash of all file mtimes in the directory.
-        
+
         For large directories, parallel processing is used by default to improve
         performance. This can be disabled by setting use_parallel_checksum=False
         in the filesystem config.
@@ -2341,28 +2341,28 @@ Now, let's implement the parallel directory checksum function:
 
 ```python
 def parallel_dir_checksum(
-    path_info: Any, 
-    fs: Any, 
-    dvcignore=None, 
+    path_info: Any,
+    fs: Any,
+    dvcignore=None,
     name: str = "md5",
     workers: int = None
 ) -> Tuple[str, int]:
     """Calculate directory checksum using parallel processing."""
     from dvc.utils.fs import dict_md5
-    
+
     # Use available CPU cores by default
     workers = workers or max(1, multiprocessing.cpu_count())
-    
+
     # Get all files first - this allows parallel processing
     if dvcignore:
         all_files = list(dvcignore.walk_files(fs, path_info))
     else:
         all_files = list(fs.walk_files(path_info))
-    
+
     # Early return for empty directories
     if not all_files:
         return dict_md5({}), 0
-        
+
     # Define the worker function to process each file
     def _process_file(file_path):
         try:
@@ -2372,21 +2372,21 @@ def parallel_dir_checksum(
             if exc.errno != os.errno.ENOENT:  # Handle broken symlinks
                 raise
             return None
-    
+
     # Process files in parallel
     with ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(_process_file, all_files)
-    
+
     # Aggregate results
     files_mtimes = {}
     total_size = 0
-    
+
     for result in results:
         if result:
             path, mtime, size = result
             files_mtimes[path] = mtime
             total_size += size
-    
+
     # Generate final checksum
     checksum = dict_md5(files_mtimes)
     return checksum, total_size
@@ -2399,18 +2399,18 @@ from dvc.utils.checksum import dir_checksum, parallel_dir_checksum
 
 class LocalFileSystem(BaseFileSystem):
     # Existing code...
-    
+
     def __init__(self, **config):
         from fsspec.implementations.local import LocalFileSystem as LocalFS
         super().__init__(**config)
         self.fs = LocalFS()
-        
+
         # Configuration for parallel processing
         self.use_parallel = config.get("use_parallel_checksum", True)
         self.checksum_jobs = config.get("checksum_jobs", None)
-    
+
     # Existing code...
-    
+
     def checksum(self, path_info) -> str:
         """Calculate checksum with parallel processing for directories."""
         if self.isdir(path_info):
@@ -2460,43 +2460,43 @@ from dvc.hash_info import HashInfo
 logger = logging.getLogger(__name__)
 
 def parallel_dir_checksum(
-    path_info: Any, 
-    fs: Any, 
-    dvcignore=None, 
+    path_info: Any,
+    fs: Any,
+    dvcignore=None,
     name: str = "md5",
     workers: int = None
 ) -> Tuple[str, int]:
     """Calculate directory checksum in parallel.
-    
+
     Uses multiple threads to process files concurrently, providing
     significant performance improvements for large directories.
-    
+
     Args:
         path_info: Directory path to calculate checksum for
         fs: Filesystem implementation to use
         dvcignore: Optional DVC ignore patterns
         name: Hash algorithm name
         workers: Number of worker threads (defaults to CPU count)
-        
+
     Returns:
         Tuple of (checksum_string, total_size)
     """
     from dvc.utils.fs import dict_md5
-    
+
     # Set default worker count
     if workers is None:
         workers = max(1, multiprocessing.cpu_count())
-    
+
     # Collect files for parallel processing
     if dvcignore:
         files = list(dvcignore.walk_files(fs, path_info))
     else:
         files = list(fs.walk_files(path_info))
-    
+
     # Handle empty directory case
     if not files:
         return dict_md5({}), 0
-    
+
     # File processing function for each thread
     def process_file(file_path):
         try:
@@ -2511,7 +2511,7 @@ def parallel_dir_checksum(
             if exc.errno != os.errno.ENOENT:
                 raise
             return None
-    
+
     # Execute parallel processing
     file_stats = []
     with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -2520,14 +2520,14 @@ def parallel_dir_checksum(
             result = future.result()
             if result:
                 file_stats.append(result)
-    
+
     # Build result data
     files_mtimes = {stat["path"]: stat["mtime"] for stat in file_stats if stat}
     size = sum(stat["size"] for stat in file_stats if stat)
-    
+
     # Generate final checksum
     checksum = dict_md5(files_mtimes)
-    
+
     return checksum, size
 ```
 
@@ -2541,21 +2541,21 @@ from dvc.utils.checksum import dir_checksum, parallel_dir_checksum
 
 class LocalFileSystem(BaseFileSystem):
     # Existing code...
-    
+
     def __init__(self, **config):
         from fsspec.implementations.local import LocalFileSystem as LocalFS
         super().__init__(**config)
         self.fs = LocalFS()
-        
+
         # Parallel processing configuration
         self.use_parallel = config.get("use_parallel_checksum", True)
         self.checksum_jobs = config.get("checksum_jobs", None)
-    
+
     # Existing code...
-    
+
     def checksum(self, path_info) -> str:
         """Calculate checksum for a file or directory.
-        
+
         Uses parallel processing for directories by default for improved
         performance with large directories. This can be configured through
         the 'use_parallel_checksum' and 'checksum_jobs' settings.
@@ -2691,7 +2691,7 @@ Critical Rubrics - Response Fails
 
 These are rubrics that the reference answer DID NOT have.
 
-and use 1. 2. 
+and use 1. 2.
 
 ---
 
@@ -3340,4 +3340,3 @@ Yes, I created:
 All rubrics are properly categorized between Code and Commentary, with critical failure cases included in both categories as required.
 
 ---
-

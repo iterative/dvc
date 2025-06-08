@@ -38,4 +38,4 @@ The changes are backward compatible and work with both the built-in Python excep
 
 ## Impact
 
-These changes significantly improve the user experience when working with SSH remotes by providing clear, actionable error messages rather than misleading ones. Users will now be able to quickly identify and fix permission-related issues when using commands like `dvc push`, `dvc pull`, `dvc get`, etc. with SSH remotes. 
+These changes significantly improve the user experience when working with SSH remotes by providing clear, actionable error messages rather than misleading ones. Users will now be able to quickly identify and fix permission-related issues when using commands like `dvc push`, `dvc pull`, `dvc get`, etc. with SSH remotes.

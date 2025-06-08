@@ -19,4 +19,4 @@ Fixes #7861
 
 * [x] 📖 Documentation update: Since this is a bug fix that improves error messages without changing the API, a separate documentation PR isn't required. However, it might be beneficial to update the troubleshooting guide to mention the improved error messages for SSH remotes.
 
-Thank you for the contribution - we'll try to review it as soon as possible. 🙏 
+Thank you for the contribution - we'll try to review it as soon as possible. 🙏

@@ -1,6 +1,7 @@
 import os
-import pytest
 from unittest import mock
+
+import pytest
 
 # Skip all tests if not in a normal test environment
 # Assume we're in a test environment if we have pytest configured
@@ -29,6 +30,7 @@ pytestmark = pytest.mark.skipif(
 SFTP_NO_SUCH_FILE = 2
 SFTP_PERMISSION_DENIED = 3
 
+
 @pytest.fixture
 def ssh_fs():
     """Create a mock SSH filesystem for testing."""
@@ -36,22 +38,23 @@ def ssh_fs():
     fs._client = mock.MagicMock()
     return fs
 
+
 def test_ssh_path_not_exists_error(ssh_fs):
     """Test that non-existent path errors are properly identified."""
     # Setup mock SFTP
     mock_sftp = mock.MagicMock()
     ssh_fs._client.open_sftp.return_value = mock_sftp
-    
+
     # Create a mock exception that mimics paramiko's SFTPError
     class MockSFTPError(Exception):
         def __init__(self, code, message):
             self.code = code
             self.message = message
             super().__init__(message)
-    
+
     # Make the SFTP stat method raise a "No such file" error
     mock_sftp.stat.side_effect = MockSFTPError(SFTP_NO_SUCH_FILE, "No such file")
-    
+
     # Test that a built-in FileNotFoundError is raised when accessing a non-existent path
     with pytest.raises(FileNotFoundError):
         # This is a simplified version of what SSHFileSystem.exists would do
@@ -62,22 +65,25 @@ def test_ssh_path_not_exists_error(ssh_fs):
                 raise FileNotFoundError(f"'{ssh_fs}' does not exist") from exc
             raise
 
+
 def test_ssh_permission_denied_error(ssh_fs):
     """Test that permission errors are properly identified."""
     # Setup mock SFTP
     mock_sftp = mock.MagicMock()
     ssh_fs._client.open_sftp.return_value = mock_sftp
-    
+
     # Create a mock exception that mimics paramiko's SFTPError
     class MockSFTPError(Exception):
         def __init__(self, code, message):
             self.code = code
             self.message = message
             super().__init__(message)
-    
+
     # Make the SFTP stat method raise a "Permission denied" error
-    mock_sftp.stat.side_effect = MockSFTPError(SFTP_PERMISSION_DENIED, "Permission denied")
-    
+    mock_sftp.stat.side_effect = MockSFTPError(
+        SFTP_PERMISSION_DENIED, "Permission denied"
+    )
+
     # Test that a built-in PermissionError is raised when accessing a path without permissions
     with pytest.raises(PermissionError):
         # This is a simplified version of what SSHFileSystem.exists would do
@@ -85,25 +91,30 @@ def test_ssh_permission_denied_error(ssh_fs):
             mock_sftp.stat("permission_denied_path")
         except MockSFTPError as exc:
             if exc.code == SFTP_PERMISSION_DENIED:
-                raise PermissionError(f"SSH user does not have permission to access path") from exc
+                raise PermissionError(
+                    "SSH user does not have permission to access path"
+                ) from exc
             raise
+
 
 def test_ssh_download_permission_error(ssh_fs):
     """Test that download permission errors show clear messages."""
     # Setup mock SFTP
     mock_sftp = mock.MagicMock()
     ssh_fs._client.open_sftp.return_value = mock_sftp
-    
+
     # Create a mock exception that mimics paramiko's SFTPError
     class MockSFTPError(Exception):
         def __init__(self, code, message):
             self.code = code
             self.message = message
             super().__init__(message)
-    
+
     # Make the SFTP get method raise a "Permission denied" error
-    mock_sftp.get.side_effect = MockSFTPError(SFTP_PERMISSION_DENIED, "Permission denied")
-    
+    mock_sftp.get.side_effect = MockSFTPError(
+        SFTP_PERMISSION_DENIED, "Permission denied"
+    )
+
     # Test that a PermissionError with appropriate message is raised
     with pytest.raises(PermissionError) as excinfo:
         # This is a simplified version of what SSHFileSystem.get would do
@@ -111,29 +122,34 @@ def test_ssh_download_permission_error(ssh_fs):
             mock_sftp.get("remote_path", "local_path")
         except MockSFTPError as exc:
             if exc.code == SFTP_PERMISSION_DENIED:
-                raise PermissionError("SSH user does not have read permissions") from exc
+                raise PermissionError(
+                    "SSH user does not have read permissions"
+                ) from exc
             raise
-    
+
     # Check that the error message is appropriate
     assert "permission" in str(excinfo.value).lower()
     assert "read" in str(excinfo.value).lower()
+
 
 def test_ssh_upload_permission_error(ssh_fs):
     """Test that upload permission errors show clear messages."""
     # Setup mock SFTP
     mock_sftp = mock.MagicMock()
     ssh_fs._client.open_sftp.return_value = mock_sftp
-    
+
     # Create a mock exception that mimics paramiko's SFTPError
     class MockSFTPError(Exception):
         def __init__(self, code, message):
             self.code = code
             self.message = message
             super().__init__(message)
-    
+
     # Make the SFTP put method raise a "Permission denied" error
-    mock_sftp.put.side_effect = MockSFTPError(SFTP_PERMISSION_DENIED, "Permission denied")
-    
+    mock_sftp.put.side_effect = MockSFTPError(
+        SFTP_PERMISSION_DENIED, "Permission denied"
+    )
+
     # Test that a PermissionError with appropriate message is raised
     with pytest.raises(PermissionError) as excinfo:
         # This is a simplified version of what SSHFileSystem.put would do
@@ -141,9 +157,11 @@ def test_ssh_upload_permission_error(ssh_fs):
             mock_sftp.put("local_path", "remote_path")
         except MockSFTPError as exc:
             if exc.code == SFTP_PERMISSION_DENIED:
-                raise PermissionError("SSH user does not have write permissions") from exc
+                raise PermissionError(
+                    "SSH user does not have write permissions"
+                ) from exc
             raise
-    
+
     # Check that the error message is appropriate
     assert "permission" in str(excinfo.value).lower()
-    assert "write" in str(excinfo.value).lower() 
+    assert "write" in str(excinfo.value).lower()

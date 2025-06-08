@@ -25,4 +25,4 @@ Improve error handling for SSH remotes to provide clear, accurate error messages
 - Correct error identification: 40%
 - Clear error messages: 30%
 - Comprehensive test coverage: 20%
-- Documentation quality: 10% 
+- Documentation quality: 10%
