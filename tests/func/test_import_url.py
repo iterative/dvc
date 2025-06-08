@@ -10,6 +10,7 @@ from dvc.dvcfile import load_file
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
 from dvc.testing.workspace_tests import TestImport as _TestImport
+from tests.utils import get_gitignore_content
 
 
 def test_cmd_import(tmp_dir, dvc):
@@ -170,7 +171,7 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
     )
 
 
-def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
+def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, scm, local_remote):
     tmp_abs_dir = make_tmp_dir("abs")
     tmp_foo = tmp_abs_dir / "foo"
     tmp_foo.write_text("foo")
@@ -181,6 +182,7 @@ def test_import_url_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote)
     assert stage.deps[0].fspath == str(tmp_foo)
     assert stage.outs[0].fspath == os.fspath(foo)
     assert foo.with_suffix(".dvc").exists()
+    assert get_gitignore_content() == ["/foo"]
 
 
 def test_import_url_to_remote_invalid_combinations(dvc):
@@ -218,9 +220,7 @@ def test_import_url_no_download(tmp_dir, scm, dvc, local_workspace):
     assert out.meta.size is None
 
     status = dvc.status()
-    assert status["file.dvc"] == [
-        {"changed outs": {"file": "deleted"}},
-    ]
+    assert status["file.dvc"] == [{"changed outs": {"file": "deleted"}}]
 
 
 def test_partial_import_pull(tmp_dir, scm, dvc, local_workspace):
@@ -249,9 +249,19 @@ def test_import_url_fs_config(tmp_dir, dvc, workspace, mocker):
     dep_init = mocker.spy(Dependency, "__init__")
     dvc.imp_url(url, fs_config={"jobs": 42})
 
+    stage = load_file(dvc, "foo.dvc").stage
+    assert stage.deps[0].def_fs_config == {"jobs": 42}
+
     dep_init_kwargs = dep_init.call_args[1]
     assert dep_init_kwargs.get("fs_config") == {"jobs": 42}
 
     assert get_fs_config.call_args_list[0][1] == {"url": "foo"}
     assert get_fs_config.call_args_list[1][1] == {"url": url, "jobs": 42}
     assert get_fs_config.call_args_list[2][1] == {"name": "workspace"}
+
+    dep_init.reset_mock()
+
+    dvc.pull("foo.dvc")
+
+    dep_init_kwargs = dep_init.call_args[1]
+    assert dep_init_kwargs.get("fs_config") == {"jobs": 42}

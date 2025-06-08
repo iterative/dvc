@@ -1,8 +1,11 @@
+import logging
 import os
 
 import pytest
+from funcy import first
 
 from dvc.dvcfile import LOCK_FILE
+from dvc.stage.cache import RunCacheNotSupported, _get_stage_hash
 from dvc.utils.fs import remove
 
 
@@ -99,6 +102,7 @@ def test_memory_for_multiple_runs_of_same_stage(tmp_dir, dvc, run_copy, mocker):
     from dvc.stage import run as _run
 
     mock_restore = mocker.spy(dvc.stage_cache, "restore")
+    mocker.spy(dvc.stage_cache, "_load_cache")
     mock_run = mocker.spy(_run, "cmd_run")
 
     (tmp_dir / "bar").unlink()
@@ -121,6 +125,46 @@ def test_memory_for_multiple_runs_of_same_stage(tmp_dir, dvc, run_copy, mocker):
     assert (tmp_dir / "bar").exists()
     assert not (tmp_dir / "foo").unlink()
     assert (tmp_dir / LOCK_FILE).exists()
+
+
+def test_newest_entry_is_loaded_for_non_deterministic_stage(tmp_dir, dvc, mocker):
+    tmp_dir.gen("foo", "foo")
+    assert not os.path.exists(dvc.stage_cache.cache_dir)
+
+    dvc.stage.add(
+        name="non-deterministic",
+        cmd='python -c "from time import time; print(time())" > bar',
+        deps=["foo"],
+        outs=["bar"],
+    )
+
+    for i in range(4):
+        (stage,) = dvc.reproduce("non-deterministic", force=True)
+        assert _recurse_count_files(dvc.stage_cache.cache_dir) == i + 1
+
+    key = _get_stage_hash(stage)
+    cache_dir = dvc.stage_cache._get_cache_dir(key)
+    old_entries = os.listdir(cache_dir)
+
+    (stage,) = dvc.reproduce("non-deterministic", force=True)
+    newest_output = (tmp_dir / "bar").read_text()
+    newest_entry = first(e for e in os.listdir(cache_dir) if e not in old_entries)
+
+    from dvc.stage import run as _run
+
+    mock_restore = mocker.spy(dvc.stage_cache, "restore")
+    mock_load = mocker.spy(dvc.stage_cache, "_load_cache")
+    mock_run = mocker.spy(_run, "cmd_run")
+
+    (tmp_dir / "bar").unlink()
+    (tmp_dir / LOCK_FILE).unlink()
+    (stage,) = dvc.reproduce("non-deterministic")
+
+    assert (tmp_dir / LOCK_FILE).exists()
+    assert (tmp_dir / "bar").read_text() == newest_output
+    mock_run.assert_not_called()
+    mock_restore.assert_called_once_with(stage, dry=False)
+    mock_load.assert_called_with(key, newest_entry)
 
 
 def test_memory_runs_of_multiple_stages(tmp_dir, dvc, run_copy, mocker):
@@ -186,3 +230,17 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
     assert (tmp_dir / "bar").exists()
     assert not (tmp_dir / "foo").unlink()
     assert (tmp_dir / LOCK_FILE).exists()
+
+
+def test_push_pull_unsupported(tmp_dir, dvc, mocker, run_copy, local_remote, caplog):
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    mocker.patch.object(
+        dvc.cloud, "get_remote_odb", side_effect=RunCacheNotSupported("foo")
+    )
+    with caplog.at_level(logging.DEBUG):
+        dvc.push(run_cache=True)
+        assert "failed to push run cache" in caplog.text
+    with caplog.at_level(logging.DEBUG):
+        dvc.pull(run_cache=True)
+        assert "failed to pull run cache" in caplog.text

@@ -84,10 +84,7 @@ def test_directory(M, tmp_dir, dvc, scm):
     assert dvc.data_status(granular=True, untracked_files="all") == {
         **EMPTY_STATUS,
         "committed": {
-            "added": M.unordered(
-                join("dir", "bar"),
-                join("dir", "foobar"),
-            ),
+            "added": M.unordered(join("dir", "bar"), join("dir", "foobar")),
             "modified": [join("dir", "")],
         },
         "uncommitted": {
@@ -137,10 +134,7 @@ def test_new_empty_git_repo(M, tmp_dir, scm):
     dvc = Repo.init()
     assert dvc.data_status() == {
         **EMPTY_STATUS,
-        "git": M.dict(
-            is_empty=True,
-            is_dirty=True,
-        ),
+        "git": M.dict(is_empty=True, is_dirty=True),
     }
 
 
@@ -180,10 +174,7 @@ def test_outs_with_no_hashes(M, tmp_dir, dvc, scm):
     dvc.stage.add(single_stage=True, outs=["bar"])
     dvc.stage.add(deps=["bar"], outs=["foo"], name="copy", cmd="cp foo bar")
 
-    expected_output = {
-        **EMPTY_STATUS,
-        "git": M.dict(),
-    }
+    expected_output = {**EMPTY_STATUS, "git": M.dict()}
     assert dvc.data_status() == expected_output
     assert dvc.data_status(granular=True) == expected_output
 
@@ -251,10 +242,7 @@ def test_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
         "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
         "committed": {"added": M.unordered("foobar", join("dir", ""))},
         "uncommitted": {"unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))},
-        "not_in_cache": M.unordered(
-            "foobar",
-            join("dir", ""),
-        ),
+        "not_in_cache": M.unordered("foobar", join("dir", "")),
         "git": M.dict(),
     }
 
@@ -297,10 +285,7 @@ def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
     }
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
-        "not_in_cache": M.unordered(
-            "foobar",
-            join("dir", ""),
-        ),
+        "not_in_cache": M.unordered("foobar", join("dir", "")),
         "uncommitted": {"unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))},
         "git": M.dict(),
         "unchanged": M.unordered("foobar", join("dir", "")),
@@ -389,9 +374,7 @@ def test_missing_dir_object_from_index(M, tmp_dir, dvc, scm):
     }
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
-        "committed": {
-            "modified": [join("dir", "")],
-        },
+        "committed": {"modified": [join("dir", "")]},
         "uncommitted": {"unknown": [join("dir", "foobar")]},
         "not_in_cache": [join("dir", "")],
         "git": M.dict(),

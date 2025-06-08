@@ -1,11 +1,12 @@
 import argparse
-import logging
 
+from dvc.cli import formatter
 from dvc.cli.utils import append_doc_link
 from dvc.commands.repro import CmdRepro
 from dvc.commands.repro import add_arguments as add_repro_arguments
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdExperimentsRun(CmdRepro):
@@ -17,7 +18,6 @@ class CmdExperimentsRun(CmdRepro):
             jobs=self.args.jobs,
             params=self.args.set_param,
             tmp_dir=self.args.tmp_dir,
-            machine=self.args.machine,
             copy_paths=self.args.copy_paths,
             message=self.args.message,
             **self._common_kwargs,
@@ -27,13 +27,13 @@ class CmdExperimentsRun(CmdRepro):
 
 
 def add_parser(experiments_subparsers, parent_parser):
-    EXPERIMENTS_RUN_HELP = "Run or resume an experiment."
+    EXPERIMENTS_RUN_HELP = "Run an experiment."
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_RUN_HELP, "exp/run"),
         help=EXPERIMENTS_RUN_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     _add_run_common(experiments_run_parser)
     experiments_run_parser.set_defaults(func=CmdExperimentsRun)
@@ -91,15 +91,6 @@ def _add_run_common(parser):
         ),
     )
     parser.add_argument(
-        "--machine",
-        default=None,
-        help=argparse.SUPPRESS,
-        # help=(
-        #     "Run this experiment on the specified 'dvc machine' instance."
-        # )
-        # metavar="<name>",
-    )
-    parser.add_argument(
         "-C",
         "--copy-paths",
         action="append",
@@ -116,3 +107,4 @@ def _add_run_common(parser):
         default=None,
         help="Custom commit message to use when committing the experiment.",
     )
+    parser.add_argument("-M", dest="message", help=argparse.SUPPRESS)  # obsolete

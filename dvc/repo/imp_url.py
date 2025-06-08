@@ -14,7 +14,7 @@ from . import locked
 
 @locked
 @scm_context
-def imp_url(  # noqa: C901, PLR0913
+def imp_url(  # noqa: PLR0913
     self: "Repo",
     url,
     out=None,
@@ -77,6 +77,7 @@ def imp_url(  # noqa: C901, PLR0913
     elif to_remote:
         remote_odb = self.cloud.get_remote_odb(remote, "import-url")
         stage.outs[0].transfer(url, odb=remote_odb, jobs=jobs)
+        stage.outs[0].ignore()
         stage.save_deps()
         stage.md5 = stage.compute_md5()
     else:

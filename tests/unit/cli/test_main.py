@@ -42,11 +42,7 @@ def test_remote_missing_deps_are_correctly_reported(tmp_dir, caplog, mocker, pkg
     mocker.patch("dvc.PKG", pkg)
     mocker.patch(
         "dvc.cli.parse_args",
-        return_value=Namespace(
-            func=raiser(error),
-            quiet=False,
-            verbose=True,
-        ),
+        return_value=Namespace(func=raiser(error), quiet=False, verbose=True),
     )
 
     assert main() == 255
@@ -73,11 +69,7 @@ def test_ignore_in_collected_dir_error_is_logged(tmp_dir, caplog, mocker):
     error = IgnoreInCollectedDirError(".dvcignore", "dir")
     mocker.patch(
         "dvc.cli.parse_args",
-        return_value=Namespace(
-            func=raiser(error),
-            quiet=False,
-            verbose=True,
-        ),
+        return_value=Namespace(func=raiser(error), quiet=False, verbose=True),
     )
     assert main() == 255
     expected = ".dvcignore file should not be in collected dir path: 'dir'"

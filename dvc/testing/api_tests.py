@@ -4,8 +4,6 @@ from dvc import api
 from dvc.api import DVCFileSystem
 from dvc.utils.fs import remove
 
-# pylint: disable=unused-argument
-
 
 class TestAPI:
     def test_get_url(self, tmp_dir, dvc, remote):
@@ -17,12 +15,7 @@ class TestAPI:
         assert api.get_url("foo") == expected_url
 
     def test_open(self, tmp_dir, dvc, remote):
-        tmp_dir.dvc_gen(
-            {
-                "foo": "foo-text",
-                "dir": {"bar": "bar-text"},
-            }
-        )
+        tmp_dir.dvc_gen({"foo": "foo-text", "dir": {"bar": "bar-text"}})
         dvc.push()
 
         # Remove cache to force download
@@ -39,12 +32,13 @@ class TestAPI:
         "fs_kwargs",
         [
             {},
-            {"url": "{path}"},
-            {"url": "{path}", "rev": "master"},
-            {"url": "file://{posixpath}"},
-            {"url": "file://{posixpath}", "rev": "master"},
+            {"repo": "{path}"},
+            {"repo": "{path}", "rev": "{default_branch}"},
+            {"repo": "file://{posixpath}"},
+            {"repo": "file://{posixpath}", "rev": "{default_branch}"},
+            {"url": "{path}"},  # test for backward compatibility
         ],
-        ids=["current", "local", "local_rev", "git", "git_rev"],
+        ids=["current", "local", "local_rev", "git", "git_rev", "local_url"],
     )
     def test_filesystem(
         self,
@@ -66,8 +60,12 @@ class TestAPI:
         if clear_cache:
             remove(dvc.cache.repo.path)
 
+        if repo := fs_kwargs.get("repo"):
+            fs_kwargs["repo"] = repo.format(path=tmp_dir, posixpath=tmp_dir.as_posix())
         if url := fs_kwargs.get("url"):
             fs_kwargs["url"] = url.format(path=tmp_dir, posixpath=tmp_dir.as_posix())
+        if rev := fs_kwargs.get("rev"):
+            fs_kwargs["rev"] = rev.format(default_branch=scm.active_branch())
 
         fs = DVCFileSystem(**fs_kwargs)
 
@@ -117,10 +115,10 @@ class TestAPI:
             assert fobj.read() == b"script1"
 
         tmp = make_tmp_dir("temp-download")
-        fs.get_file("data/foo", tmp / "foo")
+        fs.get_file("data/foo", (tmp / "foo").fs_path)
         assert (tmp / "foo").read_text() == "foo"
 
-        fs.get_file("scripts/script1", tmp / "script1")
+        fs.get_file("scripts/script1", (tmp / "script1").fs_path)
         assert (tmp / "script1").read_text() == "script1"
 
         fs.get("/", (tmp / "all").fs_path, recursive=True)

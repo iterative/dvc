@@ -1,15 +1,16 @@
-import operator
-from functools import reduce
+import shutil
+from os.path import join
 
 import pytest
 
+from dvc.dvcfile import PROJECT_FILE
 from dvc.repo import Repo
-from dvc.repo.stage import PROJECT_FILE
-from dvc.utils.serialize import YAMLFileCorruptedError
+from dvc.repo.metrics.show import FileResult, Result
+from dvc_data.index import DataIndexDirError
 
 
 def test_show_empty(dvc):
-    assert dvc.params.show() == {}
+    assert dvc.params.show() == {"": {"data": {}}}
 
 
 def test_show(tmp_dir, dvc):
@@ -98,7 +99,7 @@ def test_pipeline_params(tmp_dir, scm, dvc, run_copy):
     tmp_dir.scm_gen("params.yaml", "foo: baz\nxyz: val\nabc: ignore", commit="baz")
     tmp_dir.scm_gen("params.yaml", "foo: qux\nxyz: val\nabc: ignore", commit="qux")
 
-    assert dvc.params.show(revs=["master"], deps=True) == {
+    assert dvc.params.show(revs=["master"], deps_only=True) == {
         "master": {"data": {"params.yaml": {"data": {"foo": "qux", "xyz": "val"}}}}
     }
     assert dvc.params.show(revs=["master"]) == {
@@ -120,51 +121,12 @@ def test_show_no_repo(tmp_dir):
     }
 
 
-@pytest.mark.parametrize(
-    "file,error_path",
-    (
-        (PROJECT_FILE, ["v1", "error"]),
-        ("params_other.yaml", ["v1", "data", "params_other.yaml", "error"]),
-    ),
-)
-def test_log_errors(tmp_dir, scm, dvc, capsys, file, error_path):
-    tmp_dir.gen("params_other.yaml", "foo: bar")
-    dvc.run(
-        cmd="echo params_other.yaml",
-        params=["params_other.yaml:foo"],
-        name="train",
-    )
-
-    rename = (tmp_dir / file).read_text()
-    with open(tmp_dir / file, "a", encoding="utf-8") as fd:
-        fd.write("\nmalformed!")
-
-    scm.add([PROJECT_FILE, "params_other.yaml"])
-    scm.commit("init")
-    scm.tag("v1")
-
-    (tmp_dir / file).write_text(rename)
-
-    result = dvc.params.show(revs=["v1"])
-
-    _, error = capsys.readouterr()
-
-    assert isinstance(
-        reduce(operator.getitem, error_path, result), YAMLFileCorruptedError
-    )
-    assert "DVC failed to load some parameters for following revisions: 'v1'." in error
-
-
 @pytest.mark.parametrize("file", ["params.yaml", "other_params.yaml"])
 def test_show_without_targets_specified(tmp_dir, dvc, scm, file):
     params_file = tmp_dir / file
     data = {"foo": {"bar": "bar"}, "x": "0"}
     params_file.dump(data)
-    dvc.stage.add(
-        name="test",
-        cmd=f"echo {file}",
-        params=[{file: None}],
-    )
+    dvc.stage.add(name="test", cmd=f"echo {file}", params=[{file: None}])
 
     assert dvc.params.show() == {"": {"data": {file: {"data": data}}}}
 
@@ -177,7 +139,7 @@ def test_deps_multi_stage(tmp_dir, scm, dvc, run_copy):
     scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
-    assert dvc.params.show(revs=["master"], deps=True) == {
+    assert dvc.params.show(revs=["master"], deps_only=True) == {
         "master": {"data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}}
     }
 
@@ -190,21 +152,61 @@ def test_deps_with_targets(tmp_dir, scm, dvc, run_copy):
     scm.add(["params.yaml", PROJECT_FILE])
     scm.commit("add stage")
 
-    assert dvc.params.show(targets=["params.yaml"], deps=True) == {
-        "": {"data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}}
+    assert dvc.params.show(targets=["params.yaml"], deps_only=True) == {
+        "": {
+            "data": {
+                "params.yaml": {"data": {"abc": "ignore", "foo": "bar", "xyz": "val"}}
+            }
+        }
     }
 
 
-def test_deps_with_bad_target(tmp_dir, scm, dvc, run_copy):
-    tmp_dir.gen(
+def test_cached_params(tmp_dir, dvc, scm, remote):
+    tmp_dir.dvc_gen(
         {
-            "foo": "foo",
-            "foobar": "",
-            "params.yaml": "foo: bar\nxyz: val\nabc: ignore",
+            "dir": {"params.yaml": "foo: 3\nbar: 10"},
+            "dir2": {"params.yaml": "foo: 42\nbar: 4"},
         }
     )
-    run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
-    run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
-    scm.add(["params.yaml", PROJECT_FILE])
-    scm.commit("add stage")
-    assert dvc.params.show(targets=["foobar"], deps=True) == {}
+    dvc.push()
+    dvc.cache.local.clear()
+
+    (tmp_dir / "dvc.yaml").dump({"params": ["dir/params.yaml", "dir2"]})
+
+    assert dvc.params.show() == {
+        "": {
+            "data": {
+                join("dir", "params.yaml"): {"data": {"foo": 3, "bar": 10}},
+                join("dir2", "params.yaml"): {"data": {"foo": 42, "bar": 4}},
+            }
+        }
+    }
+
+
+def test_top_level_parametrized(tmp_dir, dvc):
+    (tmp_dir / "param.json").dump({"foo": 3, "bar": 10})
+    (tmp_dir / "params.yaml").dump({"param_file": "param.json"})
+    (tmp_dir / "dvc.yaml").dump({"params": ["${param_file}"]})
+    assert dvc.params.show() == {
+        "": {
+            "data": {
+                "param.json": {"data": {"foo": 3, "bar": 10}},
+                "params.yaml": {"data": {"param_file": "param.json"}},
+            }
+        }
+    }
+
+
+def test_param_in_a_tracked_directory_with_missing_dir_file(M, tmp_dir, dvc):
+    tmp_dir.dvc_gen({"dir": {"file": "2"}})
+    (tmp_dir / "dvc.yaml").dump({"params": [join("dir", "file")]})
+    shutil.rmtree(tmp_dir / "dir")  # remove from workspace
+    dvc.cache.local.clear()  # remove .dir file
+
+    assert dvc.params.show() == {
+        "": Result(
+            data={
+                join("dir", "file"): FileResult(error=M.instance_of(DataIndexDirError)),
+            }
+        )
+    }

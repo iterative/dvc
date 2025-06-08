@@ -3,7 +3,7 @@ from collections import OrderedDict
 import pytest
 
 from dvc.exceptions import DvcException
-from dvc.render import VERSION_FIELD
+from dvc.render import FIELD, FILENAME, REVISION
 from dvc.render.converter.vega import FieldNotFoundError, VegaConverter, _lists
 
 
@@ -24,6 +24,7 @@ def test_finding_lists(dictionary, expected_result):
     assert list(result) == expected_result
 
 
+@pytest.mark.studio
 @pytest.mark.parametrize(
     "input_data,properties,expected_datapoints,expected_properties",
     [
@@ -34,23 +35,25 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "v": 1,
                     "step": 0,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                 },
                 {
                     "v": 2,
                     "step": 1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                 },
             ],
-            {"x": "step", "y": "v", "x_label": "step", "y_label": "v"},
+            {
+                "anchors_y_definitions": [{FILENAME: "f", FIELD: "v"}],
+                "x": "step",
+                "y": "v",
+                "x_label": "step",
+                "y_label": "v",
+            },
             id="default_x_y",
         ),
         pytest.param(
@@ -60,23 +63,25 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "v": 1,
                     "v2": 0.1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
                 {
                     "v": 2,
                     "v2": 0.2,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
             ],
-            {"x": "v", "y": "v2", "x_label": "v", "y_label": "v2"},
+            {
+                "anchors_y_definitions": [{FILENAME: "f", FIELD: "v2"}],
+                "x": "v",
+                "y": "v2",
+                "x_label": "v",
+                "y_label": "v2",
+            },
             id="choose_x_y",
         ),
         pytest.param(
@@ -98,23 +103,25 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "v": 1,
                     "v2": 0.1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
                 {
                     "v": 2,
                     "v2": 0.2,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
             ],
-            {"x": "v", "y": "v2", "x_label": "x", "y_label": "y"},
+            {
+                "anchors_y_definitions": [{FILENAME: "f", FIELD: "v2"}],
+                "x": "v",
+                "y": "v2",
+                "x_label": "x",
+                "y_label": "y",
+            },
             id="find_in_nested_structure",
         ),
         pytest.param(
@@ -122,44 +129,36 @@ def test_finding_lists(dictionary, expected_result):
             {"y": {"f": ["v", "v2"]}},
             [
                 {
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                     "dvc_inferred_y_value": 1,
                     "v": 1,
                     "v2": 0.1,
                     "step": 0,
                 },
                 {
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                     "dvc_inferred_y_value": 2,
                     "v": 2,
                     "v2": 0.2,
                     "step": 1,
                 },
                 {
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                     "dvc_inferred_y_value": 0.1,
                     "v2": 0.1,
                     "v": 1,
                     "step": 0,
                 },
                 {
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                     "v": 2,
                     "v2": 0.2,
                     "dvc_inferred_y_value": 0.2,
@@ -167,6 +166,10 @@ def test_finding_lists(dictionary, expected_result):
                 },
             ],
             {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v"},
+                    {FILENAME: "f", FIELD: "v2"},
+                ],
                 "x": "step",
                 "y": "dvc_inferred_y_value",
                 "y_label": "y",
@@ -188,47 +191,43 @@ def test_finding_lists(dictionary, expected_result):
                     "z": 3,
                     "v": 1,
                     "step": 0,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                 },
                 {
                     "dvc_inferred_y_value": 2,
                     "z": 4,
                     "step": 1,
                     "v": 2,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                 },
                 {
                     "dvc_inferred_y_value": 3,
                     "v": 1,
                     "z": 3,
                     "step": 0,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "z",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "z",
                 },
                 {
                     "dvc_inferred_y_value": 4,
                     "v": 2,
                     "z": 4,
                     "step": 1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "z",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "z",
                 },
             ],
             {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v"},
+                    {FILENAME: "f", FIELD: "z"},
+                ],
                 "x": "step",
                 "y": "dvc_inferred_y_value",
                 "y_label": "y",
@@ -246,32 +245,35 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "v": 1,
                     "v2": 0.1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
                 {
                     "v": 2,
                     "v2": 0.2,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
                 {
                     "v": 3,
                     "v2": 0.3,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f2",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f2",
+                    FIELD: "v2",
                 },
             ],
-            {"x": "v", "y": "v2", "x_label": "v", "y_label": "v2"},
+            {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v2"},
+                    {FILENAME: "f2", FIELD: "v2"},
+                ],
+                "x": "v",
+                "y": "v2",
+                "x_label": "v",
+                "y_label": "v2",
+            },
             id="multi_file_json",
         ),
         pytest.param(
@@ -283,47 +285,43 @@ def test_finding_lists(dictionary, expected_result):
                     "v": 1,
                     "v2": 0.1,
                     "step": 0,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                 },
                 {
                     "dvc_inferred_y_value": 2,
                     "v": 2,
                     "v2": 0.2,
                     "step": 1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
                 },
                 {
                     "dvc_inferred_y_value": 0.1,
                     "v": 1,
                     "v2": 0.1,
                     "step": 0,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
                 {
                     "dvc_inferred_y_value": 0.2,
                     "v": 2,
                     "v2": 0.2,
                     "step": 1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
             ],
             {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v"},
+                    {FILENAME: "f", FIELD: "v2"},
+                ],
                 "x": "step",
                 "y": "dvc_inferred_y_value",
                 "x_label": "step",
@@ -343,35 +341,34 @@ def test_finding_lists(dictionary, expected_result):
                     "v": 1,
                     "v2": 0.1,
                     "v3": 0.01,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
                 {
                     "dvc_inferred_y_value": 0.01,
                     "v": 1,
                     "v2": 0.1,
                     "v3": 0.01,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v3",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v3",
                 },
                 {
                     "dvc_inferred_y_value": 0.1,
                     "v": 1,
                     "v2": 0.1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f2",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f2",
+                    FIELD: "v2",
                 },
             ],
             {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v2"},
+                    {FILENAME: "f", FIELD: "v3"},
+                    {FILENAME: "f2", FIELD: "v2"},
+                ],
                 "x": "v",
                 "y": "dvc_inferred_y_value",
                 "x_label": "v",
@@ -389,23 +386,23 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "v": 1,
                     "v2": 0.1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
                 },
                 {
                     "v": 1,
                     "v2": 0.1,
-                    VERSION_FIELD: {
-                        "revision": "r",
-                        "filename": "f2",
-                        "field": "v2",
-                    },
+                    REVISION: "r",
+                    FILENAME: "f2",
+                    FIELD: "v2",
                 },
             ],
             {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v2"},
+                    {FILENAME: "f2", FIELD: "v2"},
+                ],
                 "x": "v",
                 "y": "v2",
                 "x_label": "v",
@@ -413,14 +410,110 @@ def test_finding_lists(dictionary, expected_result):
             },
             id="multi_file_y_same_prefix",
         ),
+        pytest.param(
+            {
+                "f": {"metric": [{"x1": 1, "v": 0.1}]},
+                "f2": {"metric": [{"x2": 100, "v": 0.1}]},
+            },
+            {"y": {"f": ["v"], "f2": ["v"]}, "x": {"f": "x1", "f2": "x2"}},
+            [
+                {
+                    "x1": 1,
+                    "v": 0.1,
+                    "dvc_inferred_x_value": 1,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
+                },
+                {
+                    "x2": 100,
+                    "v": 0.1,
+                    "dvc_inferred_x_value": 100,
+                    REVISION: "r",
+                    FILENAME: "f2",
+                    FIELD: "v",
+                },
+            ],
+            {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v"},
+                    {FILENAME: "f2", FIELD: "v"},
+                ],
+                "x": "dvc_inferred_x_value",
+                "y": "v",
+                "x_label": "x",
+                "y_label": "v",
+            },
+            id="multiple_x_fields",
+        ),
+        pytest.param(
+            {
+                "f": {
+                    "metric": [
+                        {"v": 1, "v2": 0.1, "x1": 100},
+                        {"v": 2, "v2": 0.2, "x1": 1000},
+                    ]
+                },
+                "f2": {"metric": [{"x2": -2}, {"x2": -4}]},
+            },
+            {"y": ["v", "v2"], "x": {"f": "x1", "f2": "x2"}},
+            [
+                {
+                    "dvc_inferred_x_value": 100,
+                    "dvc_inferred_y_value": 1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "x1": 100,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
+                },
+                {
+                    "dvc_inferred_x_value": 1000,
+                    "dvc_inferred_y_value": 2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "x1": 1000,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v",
+                },
+                {
+                    "dvc_inferred_x_value": -2,
+                    "dvc_inferred_y_value": 0.1,
+                    "v": 1,
+                    "v2": 0.1,
+                    "x1": 100,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
+                },
+                {
+                    "dvc_inferred_x_value": -4,
+                    "dvc_inferred_y_value": 0.2,
+                    "v": 2,
+                    "v2": 0.2,
+                    "x1": 1000,
+                    REVISION: "r",
+                    FILENAME: "f",
+                    FIELD: "v2",
+                },
+            ],
+            {
+                "anchors_y_definitions": [
+                    {FILENAME: "f", FIELD: "v"},
+                    {FILENAME: "f", FIELD: "v2"},
+                ],
+                "x": "dvc_inferred_x_value",
+                "y": "dvc_inferred_y_value",
+                "x_label": "x",
+                "y_label": "y",
+            },
+            id="y_list_x_dict",
+        ),
     ],
 )
-def test_convert(
-    input_data,
-    properties,
-    expected_datapoints,
-    expected_properties,
-):
+def test_convert(input_data, properties, expected_datapoints, expected_properties):
     converter = VegaConverter("f", input_data, properties)
     datapoints, resolved_properties = converter.flat_datapoints("r")
 

@@ -12,6 +12,7 @@ from dvc.dvcfile import PROJECT_FILE
 from dvc.env import (
     DVC_EXP_BASELINE_REV,
     DVC_EXP_NAME,
+    DVC_ROOT,
     DVC_STUDIO_OFFLINE,
     DVC_STUDIO_REPO_URL,
     DVC_STUDIO_TOKEN,
@@ -24,8 +25,8 @@ from dvc.repo.experiments.refs import CELERY_STASH
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import SCMError, resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
+from dvc.testing.scripts import COPY_SCRIPT
 from dvc.utils.serialize import PythonFileCorruptedError
-from tests.scripts import COPY_SCRIPT
 
 
 @pytest.mark.parametrize("name", [None, "foo"])
@@ -99,14 +100,7 @@ def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
     assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
-def test_failed_exp_workspace(
-    tmp_dir,
-    scm,
-    dvc,
-    failed_exp_stage,
-    mocker,
-    capsys,
-):
+def test_failed_exp_workspace(tmp_dir, scm, dvc, failed_exp_stage, mocker, capsys):
     tmp_dir.gen("params.yaml", "foo: 2")
     with pytest.raises(ReproductionError):
         dvc.experiments.run(failed_exp_stage.addressing)
@@ -348,7 +342,8 @@ def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 def test_list(tmp_dir, scm, dvc, exp_stage):
-    baseline_a = scm.get_rev()
+    baseline_old = scm.get_rev()
+
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
     ref_info_a = first(exp_refs_by_rev(scm, exp_a))
@@ -358,34 +353,36 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
     tmp_dir.scm_gen("new", "new", commit="new")
+    baseline_new = scm.get_rev()
+
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
 
-    assert dvc.experiments.ls() == {"refs/heads/master": [(ref_info_c.name, exp_c)]}
+    assert dvc.experiments.ls() == {baseline_new: [(ref_info_c.name, exp_c)]}
 
     exp_list = dvc.experiments.ls(rev=ref_info_a.baseline_sha)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)}
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)}
     }
 
-    exp_list = dvc.experiments.ls(rev=[baseline_a, scm.get_rev()])
+    exp_list = dvc.experiments.ls(rev=[baseline_old, baseline_new])
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
-        "refs/heads/master": {(ref_info_c.name, exp_c)},
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
+        baseline_new: {(ref_info_c.name, exp_c)},
     }
 
     exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
-        "refs/heads/master": {(ref_info_c.name, exp_c)},
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
+        baseline_new: {(ref_info_c.name, exp_c)},
     }
 
     scm.checkout("branch", True)
     exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
-        "refs/heads/branch": {(ref_info_c.name, exp_c)},
+        baseline_old: {(ref_info_a.name, exp_a), (ref_info_b.name, exp_b)},
+        baseline_new: {(ref_info_c.name, exp_c)},
     }
 
 
@@ -441,13 +438,7 @@ def test_subrepo(tmp_dir, request, scm, workspace):
             name="copy-file",
             no_exec=True,
         )
-        scm.add(
-            [
-                subrepo / "dvc.yaml",
-                subrepo / "copy.py",
-                subrepo / "params.yaml",
-            ]
-        )
+        scm.add([subrepo / "dvc.yaml", subrepo / "copy.py", subrepo / "params.yaml"])
         scm.commit("init")
 
         results = subrepo.dvc.experiments.run(
@@ -589,11 +580,7 @@ def test_experiment_name_invalid(tmp_dir, scm, dvc, exp_stage, mocker):
 
     new_mock = mocker.spy(BaseStashQueue, "_stash_exp")
     with pytest.raises(InvalidArgumentError):
-        dvc.experiments.run(
-            exp_stage.addressing,
-            name="fo^o",
-            params=["foo=3"],
-        )
+        dvc.experiments.run(exp_stage.addressing, name="fo^o", params=["foo=3"])
     new_mock.assert_not_called()
 
 
@@ -617,6 +604,7 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
         from dvc.env import (
             DVC_EXP_BASELINE_REV,
             DVC_EXP_NAME,
+            DVC_ROOT,
             DVC_STUDIO_OFFLINE,
             DVC_STUDIO_REPO_URL,
             DVC_STUDIO_TOKEN,
@@ -625,6 +613,7 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
         for v in (
             DVC_EXP_BASELINE_REV,
             DVC_EXP_NAME,
+            DVC_ROOT,
             DVC_STUDIO_OFFLINE,
             DVC_STUDIO_REPO_URL,
             DVC_STUDIO_TOKEN,
@@ -645,13 +634,11 @@ def test_run_env(tmp_dir, dvc, scm, mocker):
     )
     (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
     baseline = scm.get_rev()
-    dvc.stage.add(
-        cmd="python dump_run_env.py",
-        name="run_env",
-    )
+    dvc.stage.add(cmd="python dump_run_env.py", name="run_env")
     dvc.experiments.run()
     assert (tmp_dir / DVC_EXP_BASELINE_REV).read_text().strip() == baseline
     assert (tmp_dir / DVC_EXP_NAME).read_text().strip()
+    assert (tmp_dir / DVC_ROOT).read_text().strip() == dvc.root_dir
     assert (tmp_dir / DVC_STUDIO_TOKEN).read_text().strip() == "TOKEN"
     assert (tmp_dir / DVC_STUDIO_REPO_URL).read_text().strip() == "REPO_URL"
     assert (tmp_dir / DVC_STUDIO_URL).read_text().strip() == "BASE_URL"
@@ -666,13 +653,15 @@ def test_experiment_unchanged(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing)
     dvc.experiments.run(exp_stage.addressing)
 
-    assert len(dvc.experiments.ls()["refs/heads/master"]) == 2
+    assert len(dvc.experiments.ls()[scm.get_rev()]) == 2
 
 
-def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage):
+def test_experiment_run_dry(tmp_dir, scm, dvc, exp_stage, mocker):
+    repro = mocker.spy(dvc.experiments, "reproduce_one")
     dvc.experiments.run(exp_stage.addressing, dry=True)
 
     assert len(dvc.experiments.ls()["master"]) == 0
+    assert repro.call_args.kwargs["tmp_dir"] is True
 
 
 def test_clean(tmp_dir, scm, dvc, mocker):
@@ -719,11 +708,7 @@ def test_local_config_is_propagated_to_tmp(tmp_dir, scm, dvc):
 @pytest.mark.parametrize("tmp", [True, False])
 def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc, tmp):
     (tmp_dir / "dvc.yaml").dump(
-        {
-            "metrics": ["metrics.json"],
-            "params": ["params.yaml"],
-            "plots": ["plots.csv"],
-        }
+        {"metrics": ["metrics.json"], "params": ["params.yaml"], "plots": ["plots.csv"]}
     )
     stage = dvc.stage.add(
         cmd="touch metrics.json && touch params.yaml && touch plots.csv",
@@ -739,10 +724,7 @@ def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc, tmp):
 
 @pytest.mark.parametrize("tmp", [True, False])
 def test_copy_paths(tmp_dir, scm, dvc, tmp):
-    stage = dvc.stage.add(
-        cmd="cat file && ls dir",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="cat file && ls dir", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     (tmp_dir / "dir").mkdir()
@@ -761,10 +743,7 @@ def test_copy_paths(tmp_dir, scm, dvc, tmp):
 
 
 def test_copy_paths_errors(tmp_dir, scm, dvc, mocker):
-    stage = dvc.stage.add(
-        cmd="echo foo",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="echo foo", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     with pytest.raises(DvcException, match="Unable to copy"):
@@ -805,10 +784,7 @@ def test_mixed_git_dvc_out(tmp_dir, scm, dvc, exp_stage):
 
 @pytest.mark.parametrize("tmp", [True, False])
 def test_custom_commit_message(tmp_dir, scm, dvc, tmp):
-    stage = dvc.stage.add(
-        cmd="echo foo",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="echo foo", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     exp = first(

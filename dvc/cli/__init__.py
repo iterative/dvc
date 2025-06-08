@@ -2,15 +2,17 @@
 
 import logging
 import sys
+from typing import Optional
+
+from dvc.log import logger
 
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
 # [2] https://bugs.python.org/issue29288
-from typing import Optional
-
 "".encode("idna")
 
-logger = logging.getLogger("dvc")
+
+logger = logger.getChild(__name__)
 
 
 class DvcParserError(Exception):
@@ -165,18 +167,18 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
     # the copied parent's standard file descriptors. If we make any logging
     # calls in this state it will cause an exception due to writing to a closed
     # file descriptor.
-    if sys.stderr.closed:  # pylint: disable=using-constant-test
+    if not sys.stderr or sys.stderr.closed:
         logging.disable()
-    elif sys.stdout.closed:  # pylint: disable=using-constant-test
+    elif not sys.stdout or sys.stdout.closed:
         logging.disable(logging.INFO)
 
     args = None
 
     outer_log_level = logger.level
+    level = None
     try:
         args = parse_args(argv)
 
-        level = None
         if args.quiet:
             level = logging.CRITICAL
         elif args.verbose == 1:
@@ -197,9 +199,9 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
             logger.debug("v%s%s, %s on %s", __version__, pkg, pyv, platform())
             logger.debug("command: %s", " ".join(argv or sys.argv))
 
-        logger.trace(args)  # type: ignore[attr-defined]
+        logger.trace(args)
 
-        if not sys.stdout.closed and not args.quiet:
+        if sys.stdout and not sys.stdout.closed and not args.quiet:
             from dvc.ui import ui
 
             ui.enable()
@@ -230,15 +232,18 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
         logger.exception("")
     except DvcParserError:
         ret = 254
-    except Exception as exc:  # noqa, pylint: disable=broad-except
-        # pylint: disable=no-member
+    except Exception as exc:  # noqa: BLE001
         ret = _log_exceptions(exc) or 255
 
     try:
+        import os
+
         from dvc import analytics
 
         if analytics.is_enabled():
             analytics.collect_and_send_report(args, ret)
+
+        logger.trace("Process %s exiting with %s", os.getpid(), ret)
 
         return ret
     finally:

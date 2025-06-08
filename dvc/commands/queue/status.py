@@ -1,12 +1,11 @@
-import argparse
-import logging
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.compare import TabularData
+from dvc.log import logger
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdQueueStatus(CmdBase):
@@ -52,6 +51,6 @@ def add_parser(queue_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(QUEUE_STATUS_HELP, "queue/status"),
         help=QUEUE_STATUS_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     queue_status_parser.set_defaults(func=CmdQueueStatus)

@@ -2,7 +2,6 @@ import os
 
 from dvc.output import Output
 from dvc.stage import Stage
-from dvc.utils import relpath
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 
@@ -11,7 +10,7 @@ def test_str_workdir_outside_repo(tmp_dir, erepo_dir):
     stage = Stage(erepo_dir.dvc)
     output = Output(stage, "path", cache=False)
 
-    assert relpath("path", erepo_dir.dvc.root_dir) == str(output)
+    assert os.path.abspath("path") == str(output)
 
 
 def test_str_workdir_inside_repo(dvc):

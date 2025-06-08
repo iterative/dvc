@@ -1,9 +1,10 @@
 """Manages dvc remotes that user can use with push/pull/status commands."""
 
-import logging
-from typing import TYPE_CHECKING, Iterable, Optional, Set, Tuple
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 from dvc.config import NoRemoteError, RemoteConfigError
+from dvc.log import logger
 from dvc.utils.objects import cached_property
 from dvc_data.hashfile.db import get_index
 from dvc_data.hashfile.transfer import TransferResult
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.status import CompareStatusResult
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class Remote:
@@ -35,11 +36,9 @@ class Remote:
 
         path = self.path
         if self.worktree:
-            path = self.fs.path.join(
-                path, ".dvc", CacheManager.FILES_DIR, DEFAULT_ALGORITHM
-            )
+            path = self.fs.join(path, ".dvc", CacheManager.FILES_DIR, DEFAULT_ALGORITHM)
         else:
-            path = self.fs.path.join(path, CacheManager.FILES_DIR, DEFAULT_ALGORITHM)
+            path = self.fs.join(path, CacheManager.FILES_DIR, DEFAULT_ALGORITHM)
         return get_odb(self.fs, path, hash_name=DEFAULT_ALGORITHM, **self.config)
 
     @cached_property
@@ -52,7 +51,7 @@ class Remote:
 
 def _split_legacy_hash_infos(
     hash_infos: Iterable["HashInfo"],
-) -> Tuple[Set["HashInfo"], Set["HashInfo"]]:
+) -> tuple[set["HashInfo"], set["HashInfo"]]:
     from dvc.cachemgr import LEGACY_HASH_NAMES
 
     legacy = set()
@@ -90,7 +89,7 @@ class DataCloud:
         if name:
             from dvc.fs import get_cloud_fs
 
-            cls, config, fs_path = get_cloud_fs(self.repo, name=name)
+            cls, config, fs_path = get_cloud_fs(self.repo.config, name=name)
 
             if config.get("worktree"):
                 version_aware = config.get("version_aware")
@@ -134,7 +133,7 @@ class DataCloud:
 
         remote = self.get_remote(name=name, command=command)
         if remote.fs.version_aware or remote.worktree:
-            raise NoRemoteError(
+            raise RemoteConfigError(
                 f"'{command}' is unsupported for cloud versioned remotes"
             )
         if hash_name in LEGACY_HASH_NAMES:
@@ -205,19 +204,26 @@ class DataCloud:
         jobs: Optional[int] = None,
         odb: "HashFileDB",
     ) -> "TransferResult":
+        from dvc.fs.callbacks import TqdmCallback
+
         if odb.hash_name == "md5-dos2unix":
             cache = self.repo.cache.legacy
         else:
             cache = self.repo.cache.local
-        return self.transfer(
-            cache,
-            odb,
-            objs,
-            jobs=jobs,
-            dest_index=get_index(odb),
-            cache_odb=cache,
-            validate_status=self._log_missing,
-        )
+        with TqdmCallback(
+            desc=f"Pushing to {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            return self.transfer(
+                cache,
+                odb,
+                objs,
+                jobs=jobs,
+                dest_index=get_index(odb),
+                cache_odb=cache,
+                validate_status=self._log_missing,
+                callback=cb,
+            )
 
     def pull(
         self,
@@ -259,20 +265,27 @@ class DataCloud:
         jobs: Optional[int] = None,
         odb: "HashFileDB",
     ) -> "TransferResult":
+        from dvc.fs.callbacks import TqdmCallback
+
         if odb.hash_name == "md5-dos2unix":
             cache = self.repo.cache.legacy
         else:
             cache = self.repo.cache.local
-        return self.transfer(
-            odb,
-            cache,
-            objs,
-            jobs=jobs,
-            src_index=get_index(odb),
-            cache_odb=cache,
-            verify=odb.verify,
-            validate_status=self._log_missing,
-        )
+        with TqdmCallback(
+            desc=f"Fetching from {odb.fs.unstrip_protocol(odb.path)}",
+            unit="file",
+        ) as cb:
+            return self.transfer(
+                odb,
+                cache,
+                objs,
+                jobs=jobs,
+                src_index=get_index(odb),
+                cache_odb=cache,
+                verify=odb.verify,
+                validate_status=self._log_missing,
+                callback=cb,
+            )
 
     def status(
         self,

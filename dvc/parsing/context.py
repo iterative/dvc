@@ -1,15 +1,15 @@
-import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from funcy import identity, lfilter, nullcontext, select
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.parsing.interpolate import (
     get_expression,
     get_matches,
@@ -20,9 +20,9 @@ from dvc.parsing.interpolate import (
     validate_value,
 )
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 SeqOrMap = Union[Sequence, Mapping]
-DictStr = Dict[str, Any]
+DictStr = dict[str, Any]
 
 
 class ContextError(DvcException):
@@ -100,12 +100,12 @@ def recurse_not_a_node(data: dict):
 @dataclass
 class Meta:
     source: Optional[str] = None
-    dpaths: List[str] = field(default_factory=list)
+    dpaths: list[str] = field(default_factory=list)
     local: bool = True
 
     @staticmethod
     def update_path(meta: "Meta", path: Union[str, int]):
-        dpaths = meta.dpaths[:] + [str(path)]
+        dpaths = [*meta.dpaths, str(path)]
         return replace(meta, dpaths=dpaths)
 
     def __str__(self):
@@ -176,8 +176,9 @@ class Container(Node, ABC):
             return value
         if isinstance(value, (list, dict)):
             assert meta
-            container = CtxDict if isinstance(value, dict) else CtxList
-            return container(value, meta=meta)
+            if isinstance(value, dict):
+                return CtxDict(value, meta=meta)
+            return CtxList(value, meta=meta)
         msg = f"Unsupported value of type '{type(value).__name__}' in '{meta}'"
         raise TypeError(msg)
 
@@ -297,7 +298,7 @@ class Context(CtxDict):
         """
         super().__init__(*args, **kwargs)
         self._track = False
-        self._tracked_data: Dict[str, Dict] = defaultdict(dict)
+        self._tracked_data: dict[str, dict] = defaultdict(dict)
         self.imports = {}
         self._reserved_keys = {}
 
@@ -322,11 +323,9 @@ class Context(CtxDict):
                 continue
             params_file = self._tracked_data[source]
             keys = [keys] if isinstance(keys, str) else keys
-            params_file.update({key: node.value for key in keys})
+            params_file.update(dict.fromkeys(keys, node.value))
 
-    def select(
-        self, key: str, unwrap: bool = False
-    ):  # pylint: disable=arguments-differ
+    def select(self, key: str, unwrap: bool = False):
         """Select the item using key, similar to `__getitem__`
            but can track the usage of the data on interpolation
            as well and can get from nested data structure by using
@@ -350,7 +349,7 @@ class Context(CtxDict):
 
     @classmethod
     def load_from(
-        cls, fs, path: str, select_keys: Optional[List[str]] = None
+        cls, fs, path: str, select_keys: Optional[list[str]] = None
     ) -> "Context":
         from dvc.utils.serialize import load_path
 
@@ -386,7 +385,7 @@ class Context(CtxDict):
 
     def merge_from(self, fs, item: str, wdir: str, overwrite=False):
         path, _, keys_str = item.partition(":")
-        path = fs.path.normpath(fs.path.join(wdir, path))
+        path = fs.normpath(fs.join(wdir, path))
 
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
         if path in self.imports:
@@ -425,18 +424,18 @@ class Context(CtxDict):
     def load_from_vars(
         self,
         fs,
-        vars_: List,
+        vars_: list,
         wdir: str,
         stage_name: Optional[str] = None,
         default: Optional[str] = None,
     ):
         if default:
-            to_import = fs.path.join(wdir, default)
+            to_import = fs.join(wdir, default)
             if fs.exists(to_import):
                 self.merge_from(fs, default, wdir)
             else:
                 msg = "%s does not exist, it won't be used in parametrization"
-                logger.trace(msg, to_import)  # type: ignore[attr-defined]
+                logger.trace(msg, to_import)
 
         stage_name = stage_name or ""
         for index, item in enumerate(vars_):

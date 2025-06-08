@@ -8,15 +8,7 @@ from dvc.exceptions import DvcException
 
 
 def test_import_url(mocker, dvc):
-    cli_args = parse_args(
-        [
-            "import-url",
-            "src",
-            "out",
-            "--jobs",
-            "4",
-        ]
-    )
+    cli_args = parse_args(["import-url", "src", "out", "--jobs", "4"])
     assert cli_args.func == CmdImportUrl
 
     cmd = cli_args.func(cli_args)
@@ -34,6 +26,7 @@ def test_import_url(mocker, dvc):
         jobs=4,
         force=False,
         version_aware=False,
+        fs_config=None,
     )
 
 
@@ -61,14 +54,7 @@ def test_failed_import_url(mocker, caplog, dvc):
     ],
 )
 def test_import_url_no_exec_download_flags(mocker, flag, expected, dvc):
-    cli_args = parse_args(
-        [
-            "import-url",
-            flag,
-            "src",
-            "out",
-        ]
-    )
+    cli_args = parse_args(["import-url", flag, "src", "out"])
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch.object(cmd.repo, "imp_url", autospec=True)
@@ -83,6 +69,7 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected, dvc):
         jobs=None,
         force=False,
         version_aware=False,
+        fs_config=None,
         **expected,
     )
 
@@ -115,6 +102,7 @@ def test_import_url_to_remote(mocker, dvc):
         jobs=None,
         force=False,
         version_aware=False,
+        fs_config=None,
     )
 
 

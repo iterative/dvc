@@ -1,6 +1,6 @@
 import os
 import pathlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from funcy import concat, first, lsplit, rpartial
 
@@ -32,14 +32,14 @@ def check_stage_path(repo, path, is_wdir=False):
         wdir_or_path="stage working dir" if is_wdir else "file path", path=path
     )
 
-    real_path = os.path.realpath(path)
+    real_path = os.path.abspath(path)
     if not os.path.exists(real_path):
         raise StagePathNotFoundError(error_msg.format("does not exist"))
 
     if not os.path.isdir(real_path):
         raise StagePathNotDirectoryError(error_msg.format("is not directory"))
 
-    proj_dir = os.path.realpath(repo.root_dir)
+    proj_dir = os.path.abspath(repo.root_dir)
     if real_path != proj_dir and not path_isin(real_path, proj_dir):
         raise StagePathOutsideError(error_msg.format("is outside of DVC repo"))
 
@@ -77,12 +77,14 @@ def fill_stage_outputs(stage, **kwargs):
         )
 
 
-def fill_stage_dependencies(stage, deps=None, erepo=None, params=None, fs_config=None):
+def fill_stage_dependencies(
+    stage, deps=None, erepo=None, params=None, fs_config=None, db=None
+):
     from dvc.dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
-    stage.deps += loads_from(stage, deps or [], erepo=erepo, fs_config=fs_config)
+    stage.deps += loads_from(stage, deps or [], erepo=erepo, fs_config=fs_config, db=db)
     stage.deps += loads_params(stage, params or [])
 
 
@@ -90,9 +92,7 @@ def check_no_externals(stage):
     from dvc.utils import format_link
 
     def _is_cached_external(out):
-        if out.is_in_repo or not out.use_cache:
-            return False
-        return True
+        return not out.is_in_repo and out.use_cache
 
     outs = [str(out) for out in stage.outs if _is_cached_external(out)]
     if not outs:
@@ -182,9 +182,9 @@ def resolve_wdir(wdir, path):
 
 
 def resolve_paths(fs, path, wdir=None):
-    path = fs.path.abspath(path)
+    path = fs.abspath(path)
     wdir = wdir or os.curdir
-    wdir = fs.path.abspath(fs.path.join(fs.path.dirname(path), wdir))
+    wdir = fs.abspath(fs.join(fs.dirname(path), wdir))
     return path, wdir
 
 
@@ -208,7 +208,7 @@ def get_dump(stage: "Stage", **kwargs):
 
 def split_params_deps(
     stage: "Stage",
-) -> Tuple[List["ParamsDependency"], List["Dependency"]]:
+) -> tuple[list["ParamsDependency"], list["Dependency"]]:
     from dvc.dependency import ParamsDependency
 
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
@@ -263,7 +263,7 @@ def check_stage_exists(repo: "Repo", stage: Union["Stage", "PipelineStage"], pat
 
 def validate_kwargs(
     single_stage: bool = False, fname: Optional[str] = None, **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Prepare, validate and process kwargs passed from cli"""
     cmd = kwargs.get("cmd")
     if not cmd and not single_stage:
@@ -286,15 +286,15 @@ def validate_kwargs(
     return kwargs
 
 
-def _get_stage_files(stage: "Stage") -> List[str]:
+def _get_stage_files(stage: "Stage") -> list[str]:
     from dvc.dvcfile import ProjectFile
     from dvc.utils import relpath
 
-    ret: List[str] = []
+    ret: list[str] = []
     file = stage.dvcfile
     ret.append(file.relpath)
     if isinstance(file, ProjectFile):
-        ret.append(file._lockfile.relpath)  # pylint: disable=protected-access
+        ret.append(file._lockfile.relpath)
 
     for dep in stage.deps:
         if (
@@ -302,9 +302,9 @@ def _get_stage_files(stage: "Stage") -> List[str]:
             and dep.is_in_repo
             and not stage.repo.dvcfs.isdvc(stage.repo.dvcfs.from_os_path(str(dep)))
         ):
-            ret.append(relpath(dep.fs_path))
+            ret.append(relpath(dep.fs_path))  # noqa: PERF401
 
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
-            ret.append(relpath(out.fs_path))
+            ret.append(relpath(out.fs_path))  # noqa: PERF401
     return ret

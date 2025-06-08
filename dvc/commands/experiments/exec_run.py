@@ -1,8 +1,7 @@
-import logging
-
 from dvc.cli.command import CmdBaseNoRepo
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdExecutorRun(CmdBaseNoRepo):
@@ -49,7 +48,7 @@ def add_parser(experiments_subparsers, parent_parser):
         ),
     )
     exec_run_parser.add_argument(
-        "-M",
+        "-m",
         "--message",
         type=str,
         default=None,

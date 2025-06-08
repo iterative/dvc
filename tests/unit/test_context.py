@@ -60,7 +60,7 @@ def test_context_list():
         _ = context["lst"][3]
 
     context["lst"].insert(0, "baz")
-    assert context["lst"] == CtxList(["baz"] + lst[:2])
+    assert context["lst"] == CtxList(["baz", *lst[:2]])
 
 
 def test_context_setitem_getitem():

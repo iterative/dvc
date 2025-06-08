@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Set, TypeVar
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Optional, TypeVar
 
 from dvc.fs import localfs
 from dvc.utils.fs import path_isin
@@ -21,7 +22,7 @@ def check_acyclic(graph: "DiGraph") -> None:
     except nx.NetworkXNoCycle:
         return
 
-    stages: Set["Stage"] = set()
+    stages: set[Stage] = set()
     for from_node, to_node, _ in edges:
         stages.add(from_node)
         stages.add(to_node)
@@ -31,6 +32,9 @@ def check_acyclic(graph: "DiGraph") -> None:
 
 def get_pipeline(pipelines, node):
     found = [i for i in pipelines if i.has_node(node)]
+    if not found:
+        return None
+
     assert len(found) == 1
     return found[0]
 
@@ -42,7 +46,7 @@ def get_pipelines(graph: "DiGraph"):
 
 
 def get_subgraph_of_nodes(
-    graph: "DiGraph", sources: Optional[List[Any]] = None, downstream: bool = False
+    graph: "DiGraph", sources: Optional[list[Any]] = None, downstream: bool = False
 ) -> "DiGraph":
     from networkx import dfs_postorder_nodes, reverse_view
 
@@ -60,10 +64,13 @@ def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:
     import networkx as nx
 
     pipeline = get_pipeline(get_pipelines(graph), stage)
+    if not pipeline:
+        return iter([])
+
     return nx.dfs_postorder_nodes(pipeline, stage)
 
 
-def collect_inside_path(path: str, graph: "DiGraph") -> List["Stage"]:
+def collect_inside_path(path: str, graph: "DiGraph") -> list["Stage"]:
     import networkx as nx
 
     stages = nx.dfs_postorder_nodes(graph)
@@ -110,6 +117,7 @@ def build_graph(stages, outs_trie=None):
     """
     import networkx as nx
 
+    from dvc.dependency import DatasetDependency
     from dvc.exceptions import StagePathAsOutputError
 
     from .trie import build_outs_trie
@@ -120,7 +128,7 @@ def build_graph(stages, outs_trie=None):
     outs_trie = outs_trie or build_outs_trie(stages)
 
     for stage in stages:
-        out = outs_trie.shortest_prefix(localfs.path.parts(stage.path)).value
+        out = outs_trie.shortest_prefix(localfs.parts(stage.path)).value
         if out:
             raise StagePathAsOutputError(stage, str(out))
 
@@ -129,9 +137,13 @@ def build_graph(stages, outs_trie=None):
     for stage in stages:
         if stage.is_repo_import:
             continue
+        if stage.is_db_import:
+            continue
 
         for dep in stage.deps:
-            dep_key = dep.fs.path.parts(dep.fs_path)
+            if isinstance(dep, DatasetDependency):
+                continue
+            dep_key = dep.fs.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
                 overlapping.extend(outs_trie.values(prefix=dep_key))
@@ -148,15 +160,20 @@ def build_graph(stages, outs_trie=None):
 def build_outs_graph(graph, outs_trie):
     import networkx as nx
 
+    from dvc.dependency import DatasetDependency
+
     outs_graph = nx.DiGraph()
 
     outs_graph.add_nodes_from(outs_trie.values())
     for stage in graph.nodes():
+        if stage.is_repo_import:
+            continue
+        if stage.is_db_import:
+            continue
         for dep in stage.deps:
-            if dep.fs_path is None:
-                # RepoDependency don't have a path
+            if isinstance(dep, DatasetDependency):
                 continue
-            dep_key = dep.fs.path.parts(dep.fs_path)
+            dep_key = dep.fs.parts(dep.fs_path)
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
                 overlapping.extend(outs_trie.values(prefix=dep_key))

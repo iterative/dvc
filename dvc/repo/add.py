@@ -1,15 +1,7 @@
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import (
-    TYPE_CHECKING,
-    Dict,
-    Iterator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from dvc.exceptions import (
     CacheLinkError,
@@ -37,7 +29,7 @@ class StageInfo(NamedTuple):
 
 def find_targets(
     targets: Union["StrOrBytesPath", Iterator["StrOrBytesPath"]], glob: bool = False
-) -> List[str]:
+) -> list[str]:
     if isinstance(targets, (str, bytes, os.PathLike)):
         targets_list = [os.fsdecode(targets)]
     else:
@@ -99,7 +91,7 @@ OVERLAPPING_PARENT_FMT = (
 
 
 @contextmanager
-def translate_graph_error(stages: List["Stage"]) -> Iterator[None]:
+def translate_graph_error(stages: list["Stage"]) -> Iterator[None]:
     try:
         yield
     except OverlappingOutputPathsError as exc:
@@ -120,11 +112,11 @@ def translate_graph_error(stages: List["Stage"]) -> Iterator[None]:
         )
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(  # noqa: B904
-            exc.output, list(set(exc.stages) - set(stages))
+            exc.output, set(exc.stages) - set(stages)
         )
 
 
-def progress_iter(stages: Dict[str, StageInfo]) -> Iterator[Tuple[str, StageInfo]]:
+def progress_iter(stages: dict[str, StageInfo]) -> Iterator[tuple[str, StageInfo]]:
     total = len(stages)
     desc = "Adding..."
     with ui.progress(
@@ -140,7 +132,6 @@ def progress_iter(stages: Dict[str, StageInfo]) -> Iterator[Tuple[str, StageInfo
                 pbar.refresh()
             yield item, stage_info
             if total == 1:  # restore bar format for stats
-                # pylint: disable=no-member
                 pbar.bar_format = pbar.BAR_FMT_DEFAULT
 
 
@@ -152,8 +143,8 @@ LINK_FAILURE_MESSAGE = (
 
 
 @contextmanager
-def warn_link_failures() -> Iterator[List[str]]:
-    link_failures: List[str] = []
+def warn_link_failures() -> Iterator[list[str]]:
+    link_failures: list[str] = []
     try:
         yield link_failures
     finally:
@@ -180,11 +171,16 @@ def _add_transfer(
     stage.dump()
 
 
-def _add(stage: "Stage", source: Optional[str] = None, no_commit: bool = False) -> None:
+def _add(
+    stage: "Stage",
+    source: Optional[str] = None,
+    no_commit: bool = False,
+    relink: bool = True,
+) -> None:
     out = stage.outs[0]
-    path = out.fs.path.abspath(source) if source else None
+    path = out.fs.abspath(source) if source else None
     try:
-        stage.add_outs(path, no_commit=no_commit)
+        stage.add_outs(path, no_commit=no_commit, relink=relink)
     except CacheLinkError:
         stage.dump()
         raise
@@ -203,7 +199,8 @@ def add(
     to_remote: bool = False,
     remote_jobs: Optional[int] = None,
     force: bool = False,
-) -> List["Stage"]:
+    relink: bool = True,
+) -> list["Stage"]:
     add_targets = find_targets(targets, glob=glob)
     if not add_targets:
         return []
@@ -233,7 +230,12 @@ def add(
     with warn_link_failures() as link_failures:
         for source, (stage, output_exists) in progress_iter(stages_with_targets):
             try:
-                _add(stage, source if output_exists else None, no_commit=no_commit)
+                _add(
+                    stage,
+                    source if output_exists else None,
+                    no_commit=no_commit,
+                    relink=relink,
+                )
             except CacheLinkError:
                 link_failures.append(stage.relpath)
     return stages

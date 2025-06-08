@@ -4,6 +4,7 @@ import hashlib
 import os
 from abc import ABC, abstractmethod
 from datetime import timedelta
+from typing import Optional, Union
 
 import flufl.lock
 import zc.lockfile
@@ -59,7 +60,7 @@ class LockBase(ABC):
 
 
 class LockNoop(LockBase):
-    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
+    def __init__(self, *args, **kwargs):
         self._lock = False
 
     def lock(self):
@@ -149,9 +150,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         tmp_dir (str): a directory to store claim files.
     """
 
-    def __init__(
-        self, lockfile, tmp_dir=None, **kwargs
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, lockfile, tmp_dir=None, **kwargs):
         import socket
 
         self._tmp_dir = tmp_dir
@@ -176,9 +175,9 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         self._owned = True
         self._retry_errnos = []
 
-    def lock(self):  # pylint: disable=arguments-differ
+    def lock(self, timeout: Optional[Union[timedelta, int]] = None):
         try:
-            super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
+            super().lock(timeout or timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
@@ -187,9 +186,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
 
         if self._tmp_dir is not None:
             # Under Windows file path length is limited so we hash it
-            hasher = hashlib.md5(  # nosec B324, B303  # noqa: S324
-                self._claimfile.encode()
-            )
+            hasher = hashlib.md5(self._claimfile.encode())  # noqa: S324
             filename = hasher.hexdigest()
             self._claimfile = os.path.join(self._tmp_dir, filename + ".lock")
 

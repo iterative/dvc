@@ -12,7 +12,11 @@ from dvc.cachemgr import CacheManager
 from dvc.cli import main
 from dvc.config import ConfigError
 from dvc.dvcfile import DVC_FILE_SUFFIX
-from dvc.exceptions import DvcException, OverlappingOutputPathsError
+from dvc.exceptions import (
+    DvcException,
+    OutputDuplicationError,
+    OverlappingOutputPathsError,
+)
 from dvc.fs import LocalFileSystem, system
 from dvc.output import (
     OutputAlreadyTrackedError,
@@ -22,7 +26,7 @@ from dvc.output import (
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageExternalOutputsError, StagePathNotFoundError
 from dvc.utils.fs import path_isin
-from dvc.utils.serialize import YAMLFileCorruptedError
+from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml
 from dvc_data.hashfile.hash import file_md5
 from dvc_data.hashfile.hash_info import HashInfo
 from tests.utils import get_gitignore_content
@@ -301,20 +305,20 @@ def test_should_update_state_entry_for_directory_after_add(mocker, dvc, tmp_dir)
 
     ret = main(["add", "data"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 4
+    assert file_md5_counter.mock.call_count == 3
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 5
+    assert file_md5_counter.mock.call_count == 4
 
     os.rename("data", "data.back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 6
+    assert file_md5_counter.mock.call_count == 5
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 7
+    assert file_md5_counter.mock.call_count == 6
 
 
 def test_add_commit(tmp_dir, dvc):
@@ -335,15 +339,15 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     counter = mocker.spy(dvc_data.hashfile.build, "_build_tree")
     ret = main(["add", "data"])
     assert ret == 0
+    assert counter.mock.call_count == 1
+
+    ret = main(["status"])
+    assert ret == 0
     assert counter.mock.call_count == 2
 
     ret = main(["status"])
     assert ret == 0
     assert counter.mock.call_count == 3
-
-    ret = main(["status"])
-    assert ret == 0
-    assert counter.mock.call_count == 4
 
 
 def test_should_place_stage_in_data_dir_if_repository_below_symlink(
@@ -452,9 +456,9 @@ def temporary_windows_drive(tmp_path_factory):
         if len(s) > 0
     ]
 
-    new_drive_name = [
+    new_drive_name = next(
         letter for letter in string.ascii_uppercase if letter not in drives
-    ][0]
+    )
     new_drive = f"{new_drive_name}:"
 
     target_path = tmp_path_factory.mktemp("tmp_windows_drive")
@@ -656,6 +660,25 @@ def test_try_adding_pipeline_tracked_output(tmp_dir, dvc, run_copy):
         dvc.add("bar")
 
 
+def test_try_adding_multiple_overlaps(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvcyaml_content = {
+        "stages": {
+            "echo-foo": {
+                "cmd": "echo foo > foo",
+                "outs": ["foo"],
+            }
+        }
+    }
+    dump_yaml("dvc.yaml", dvcyaml_content)
+    msg = (
+        "\nUse `dvc remove` with any of the above targets to stop tracking the "
+        "overlapping output."
+    )
+    with pytest.raises(OutputDuplicationError, match=msg):
+        dvc.add("foo")
+
+
 def test_add_pipeline_file(tmp_dir, dvc, run_copy):
     from dvc.dvcfile import PROJECT_FILE
 
@@ -731,10 +754,8 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc):
 def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
-    mocker.patch(
-        "dvc_data.hashfile.checkout.test_links",
-        return_value=[],
-    )
+    dvc.cache.local.cache_types = ["symlink", "hardlink"]
+    mocker.patch("dvc_data.hashfile.checkout.test_links", return_value=[])
     dvc.add("foo")
     err = capsys.readouterr()[1]
     assert "reconfigure cache types" in err
@@ -958,10 +979,7 @@ def test_add_does_not_remove_stage_file_on_failure(tmp_dir, dvc, mocker, target)
     dvcfile_contents = (tmp_dir / stage.path).read_text()
 
     exc_msg = f"raising error from mocked '{target}'"
-    mocker.patch(
-        target,
-        side_effect=DvcException(exc_msg),
-    )
+    mocker.patch(target, side_effect=DvcException(exc_msg))
 
     with pytest.raises(DvcException, match=exc_msg):
         dvc.add("foo")

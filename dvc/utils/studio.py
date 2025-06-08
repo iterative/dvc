@@ -1,5 +1,5 @@
-import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+import os
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -12,19 +12,24 @@ from dvc.env import (
     DVC_STUDIO_TOKEN,
     DVC_STUDIO_URL,
 )
+from dvc.log import logger
+from dvc.utils import as_posix
 
 if TYPE_CHECKING:
     from requests import Response
 
-logger = logging.getLogger(__name__)
+    from dvc.repo import Repo
 
-STUDIO_URL = "https://studio.iterative.ai"
+
+logger = logger.getChild(__name__)
+
+STUDIO_URL = "https://studio.datachain.ai"
 
 
 def post(
     url: str,
     token: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     base_url: Optional[str] = STUDIO_URL,
     max_retries: int = 3,
     timeout: int = 5,
@@ -33,7 +38,7 @@ def post(
     session = requests.Session()
     session.mount(url, HTTPAdapter(max_retries=max_retries))
 
-    logger.trace("Sending %s to %s", data, url)  # type: ignore[attr-defined]
+    logger.trace("Sending %s to %s", data, url)
 
     headers = {"Authorization": f"token {token}"}
     r = session.post(
@@ -48,8 +53,8 @@ def notify_refs(
     token: str,
     *,
     base_url: Optional[str] = STUDIO_URL,
-    **refs: List[str],
-) -> Dict[str, Any]:
+    **refs: list[str],
+) -> dict[str, Any]:
     extra_keys = refs.keys() - {"pushed", "removed"}
     assert not extra_keys, f"got extra args: {extra_keys}"
 
@@ -66,14 +71,14 @@ def notify_refs(
     try:
         r = post("webhook/dvc", token, data, base_url=base_url)
     except requests.RequestException as e:
-        logger.trace("", exc_info=True)  # type: ignore[attr-defined]
+        logger.trace("", exc_info=True)
 
         msg = str(e)
         if e.response is None:
             logger.warning("failed to notify Studio: %s", msg.lower())
             return {}
 
-        r = cast("Response", e.response)
+        r = e.response
         d = ignore(Exception, default={})(r.json)()
         status = r.status_code
         if detail := d.get("detail"):
@@ -83,13 +88,11 @@ def notify_refs(
         d = r.json()
 
     if d:
-        logger.trace(  # type: ignore[attr-defined]
-            "received response: %s (status=%r)", d, r.status_code
-        )
+        logger.trace("received response: %s (status=%r)", d, r.status_code)
     return d
 
 
-def config_to_env(config: Dict[str, Any]) -> Dict[str, Any]:
+def config_to_env(config: dict[str, Any]) -> dict[str, Any]:
     env = {}
     if "offline" in config:
         env[DVC_STUDIO_OFFLINE] = config["offline"]
@@ -102,7 +105,7 @@ def config_to_env(config: Dict[str, Any]) -> Dict[str, Any]:
     return env
 
 
-def env_to_config(env: Dict[str, Any]) -> Dict[str, Any]:
+def env_to_config(env: dict[str, Any]) -> dict[str, Any]:
     config = {}
     if DVC_STUDIO_OFFLINE in env:
         config["offline"] = env[DVC_STUDIO_OFFLINE]
@@ -113,3 +116,29 @@ def env_to_config(env: Dict[str, Any]) -> Dict[str, Any]:
     if DVC_STUDIO_URL in env:
         config["url"] = env[DVC_STUDIO_URL]
     return config
+
+
+def get_subrepo_relpath(repo: "Repo") -> str:
+    from dvc.fs import GitFileSystem
+
+    scm_root_dir = "/" if isinstance(repo.fs, GitFileSystem) else repo.scm.root_dir
+
+    relpath = as_posix(repo.fs.relpath(repo.root_dir, scm_root_dir))
+
+    return "" if relpath == "." else relpath
+
+
+def get_repo_url(repo: "Repo") -> str:
+    from dulwich.porcelain import get_remote_repo
+
+    from dvc.env import DVC_EXP_GIT_REMOTE
+
+    repo_url = os.getenv(
+        DVC_EXP_GIT_REMOTE, repo.config.get("exp", {}).get("git_remote")
+    )
+    if repo_url:
+        try:
+            _, repo_url = get_remote_repo(repo.scm.dulwich.repo, repo_url)
+        except IndexError:
+            pass
+    return repo_url

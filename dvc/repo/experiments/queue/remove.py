@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Collection, Dict, Iterable, List, Set, Union
+from collections.abc import Collection, Iterable
+from typing import TYPE_CHECKING, Union
 
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 from dvc.repo.experiments.queue.base import QueueDoneResult
@@ -20,11 +21,11 @@ def remove_tasks(  # noqa: C901, PLR0912
     """
     from celery.result import AsyncResult
 
-    stash_revs: Dict[str, "ExpStashEntry"] = {}
-    failed_stash_revs: List["ExpStashEntry"] = []
-    done_entry_set: Set["QueueEntry"] = set()
+    stash_revs: dict[str, ExpStashEntry] = {}
+    failed_stash_revs: list[ExpStashEntry] = []
+    done_entry_set: set[QueueEntry] = set()
     stash_rev_all = celery_queue.stash.stash_revs
-    failed_rev_all: Dict[str, "ExpStashEntry"] = {}
+    failed_rev_all: dict[str, ExpStashEntry] = {}
     if celery_queue.failed_stash:
         failed_rev_all = celery_queue.failed_stash.stash_revs
     for entry in queue_entries:
@@ -36,20 +37,14 @@ def remove_tasks(  # noqa: C901, PLR0912
                 failed_stash_revs.append(failed_rev_all[entry.stash_rev])
 
     try:
-        for (
-            msg,
-            queue_entry,
-        ) in celery_queue._iter_queued():  # pylint: disable=protected-access
+        for msg, queue_entry in celery_queue._iter_queued():
             if queue_entry.stash_rev in stash_revs and msg.delivery_tag:
                 celery_queue.celery.reject(msg.delivery_tag)
     finally:
         celery_queue.stash.remove_revs(list(stash_revs.values()))
 
     try:
-        for (
-            msg,
-            queue_entry,
-        ) in celery_queue._iter_processed():  # pylint: disable=protected-access
+        for msg, queue_entry in celery_queue._iter_processed():
             if queue_entry not in done_entry_set:
                 continue
             task_id = msg.headers["id"]
@@ -64,7 +59,7 @@ def remove_tasks(  # noqa: C901, PLR0912
 
 
 def _get_names(entries: Iterable[Union["QueueEntry", "QueueDoneResult"]]):
-    names: List[str] = []
+    names: list[str] = []
     for entry in entries:
         if isinstance(entry, QueueDoneResult):
             if entry.result and entry.result.ref_info:
@@ -82,7 +77,7 @@ def celery_clear(
     queued: bool = False,
     failed: bool = False,
     success: bool = False,
-) -> List[str]:
+) -> list[str]:
     """Remove entries from the queue.
 
     Arguments:
@@ -94,18 +89,18 @@ def celery_clear(
         Revisions which were removed.
     """
 
-    removed: List[str] = []
-    entry_list: List["QueueEntry"] = []
+    removed: list[str] = []
+    entry_list: list[QueueEntry] = []
     if queued:
-        queue_entries: List["QueueEntry"] = list(self.iter_queued())
+        queue_entries: list[QueueEntry] = list(self.iter_queued())
         entry_list.extend(queue_entries)
         removed.extend(_get_names(queue_entries))
     if failed:
-        failed_tasks: List["QueueDoneResult"] = list(self.iter_failed())
+        failed_tasks: list[QueueDoneResult] = list(self.iter_failed())
         entry_list.extend([result.entry for result in failed_tasks])
         removed.extend(_get_names(failed_tasks))
     if success:
-        success_tasks: List["QueueDoneResult"] = list(self.iter_success())
+        success_tasks: list[QueueDoneResult] = list(self.iter_success())
         entry_list.extend([result.entry for result in success_tasks])
         removed.extend(_get_names(success_tasks))
 
@@ -114,10 +109,7 @@ def celery_clear(
     return removed
 
 
-def celery_remove(
-    self: "LocalCeleryQueue",
-    revs: Collection[str],
-) -> List[str]:
+def celery_remove(self: "LocalCeleryQueue", revs: Collection[str]) -> list[str]:
     """Remove the specified entries from the queue.
 
     Arguments:
@@ -131,9 +123,9 @@ def celery_remove(
         revs, self.iter_queued(), self.iter_done()
     )
 
-    remained: List[str] = []
-    removed: List[str] = []
-    entry_to_remove: List["QueueEntry"] = []
+    remained: list[str] = []
+    removed: list[str] = []
+    entry_to_remove: list[QueueEntry] = []
     for name, entry in match_results.items():
         if entry:
             entry_to_remove.append(entry)

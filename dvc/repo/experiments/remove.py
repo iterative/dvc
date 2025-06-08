@@ -1,11 +1,12 @@
-import logging
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional, Union
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import Git, iter_revs
 
-from .exceptions import UnresolvedExpNamesError
+from .exceptions import InvalidArgumentError, UnresolvedExpNamesError
 from .utils import exp_refs, exp_refs_by_baseline, push_refspec
 
 if TYPE_CHECKING:
@@ -16,37 +17,44 @@ if TYPE_CHECKING:
     from .refs import ExpRefInfo
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked
 @scm_context
 def remove(  # noqa: C901, PLR0912
     repo: "Repo",
-    exp_names: Union[None, str, List[str]] = None,
-    rev: Optional[Union[List[str], str]] = None,
+    exp_names: Union[str, list[str], None] = None,
+    rev: Optional[Union[list[str], str]] = None,
     all_commits: bool = False,
     num: int = 1,
     queue: bool = False,
     git_remote: Optional[str] = None,
-) -> List[str]:
-    removed: List[str] = []
+    keep: bool = False,
+) -> list[str]:
+    removed: list[str] = []
+
+    if all([keep, queue]):
+        raise InvalidArgumentError("Cannot use both `--keep` and `--queue`.")
+
     if not any([exp_names, queue, all_commits, rev]):
         return removed
-    celery_queue: "LocalCeleryQueue" = repo.experiments.celery_queue
+
+    celery_queue: LocalCeleryQueue = repo.experiments.celery_queue
 
     if queue:
         removed.extend(celery_queue.clear(queued=True))
 
     assert isinstance(repo.scm, Git)
 
-    exp_ref_list: List["ExpRefInfo"] = []
-    queue_entry_list: List["QueueEntry"] = []
+    exp_ref_list: list[ExpRefInfo] = []
+    queue_entry_list: list[QueueEntry] = []
+
     if exp_names:
-        results: Dict[
-            str, "ExpRefAndQueueEntry"
-        ] = celery_queue.get_ref_and_entry_by_names(exp_names, git_remote)
-        remained: List[str] = []
+        results: dict[str, ExpRefAndQueueEntry] = (
+            celery_queue.get_ref_and_entry_by_names(exp_names, git_remote)
+        )
+        remained: list[str] = []
         for name, result in results.items():
             if not result.exp_ref_info and not result.queue_entry:
                 remained.append(name)
@@ -67,6 +75,10 @@ def remove(  # noqa: C901, PLR0912
         exp_ref_list.extend(exp_ref_dict.values())
     elif all_commits:
         exp_ref_list.extend(exp_refs(repo.scm, git_remote))
+        removed.extend([ref.name for ref in exp_ref_list])
+
+    if keep:
+        exp_ref_list = list(set(exp_refs(repo.scm, git_remote)) - set(exp_ref_list))
         removed = [ref.name for ref in exp_ref_list]
 
     if exp_ref_list:
@@ -82,22 +94,23 @@ def remove(  # noqa: C901, PLR0912
 
         removed_refs = [str(r) for r in exp_ref_list]
         notify_refs_to_studio(repo, git_remote, removed=removed_refs)
+
     return removed
 
 
 def _resolve_exp_by_baseline(
     repo: "Repo",
-    rev: List[str],
+    rev: list[str],
     num: int,
     git_remote: Optional[str] = None,
-) -> Dict[str, "ExpRefInfo"]:
+) -> dict[str, "ExpRefInfo"]:
     assert isinstance(repo.scm, Git)
 
-    commit_ref_dict: Dict[str, "ExpRefInfo"] = {}
+    commit_ref_dict: dict[str, ExpRefInfo] = {}
     rev_dict = iter_revs(repo.scm, rev, num)
     rev_set = set(rev_dict.keys())
     ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-    for _, ref_info_list in ref_info_dict.items():
+    for ref_info_list in ref_info_dict.values():
         for ref_info in ref_info_list:
             commit_ref_dict[ref_info.name] = ref_info
     return commit_ref_dict
@@ -105,7 +118,7 @@ def _resolve_exp_by_baseline(
 
 def _remove_commited_exps(
     scm: "Git", exp_refs_list: Iterable["ExpRefInfo"], remote: Optional[str]
-) -> List[str]:
+) -> list[str]:
     if remote:
         from dvc.scm import TqdmGit
 

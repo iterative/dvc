@@ -3,6 +3,7 @@ import posixpath
 import shutil
 
 import pytest
+from fsspec.utils import tokenize
 
 from dvc.fs import localfs
 from dvc.fs.dvc import DVCFileSystem
@@ -172,6 +173,23 @@ def test_ls_dirty(tmp_dir, dvc):
     assert set(fs.ls("data")) == {"data/foo", "data/bar"}
 
 
+def test_ls_file_not_found(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"data": "data"})
+
+    fs = DVCFileSystem(repo=dvc)
+    with pytest.raises(FileNotFoundError):
+        fs.ls("missing")
+
+
+def test_ls_dir_empty(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"data": "data"})
+    empty = tmp_dir / "empty"
+    empty.mkdir()
+
+    fs = DVCFileSystem(repo=dvc)
+    assert set(fs.ls("empty")) == set()
+
+
 @pytest.mark.parametrize(
     "dvcfiles,extra_expected",
     [
@@ -284,11 +302,7 @@ def test_walk_mixed_dir(tmp_dir, scm, dvc):
 
     fs = DVCFileSystem(repo=dvc)
 
-    expected = [
-        "dir/foo",
-        "dir/bar",
-        "dir/.gitignore",
-    ]
+    expected = ["dir/foo", "dir/bar", "dir/.gitignore"]
     actual = []
     for root, dirs, files in fs.walk("dir"):
         for entry in dirs + files:
@@ -439,11 +453,7 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     ]
 
     actual = []
-    for root, dirs, files in fs.walk(
-        "dir",
-        dvcfiles=dvcfiles,
-        ignore_subrepos=False,
-    ):
+    for root, dirs, files in fs.walk("dir", dvcfiles=dvcfiles, ignore_subrepos=False):
         for entry in dirs + files:
             actual.append(posixpath.join(root, entry))
 
@@ -652,3 +662,54 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
     for root, dirs, files in fs.walk("/", ignore_subrepos=not traverse_subrepos):
         actual[root] = set(dirs + files)
     assert expected == actual
+
+
+def test_fsid_noscm(tmp_dir, dvc):
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, None)
+
+
+def test_fsid(tmp_dir, dvc, scm):
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, scm.get_rev())
+    old_fsid = fs.fsid
+
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="foo")
+    fs = DVCFileSystem(repo=dvc)
+    assert fs.fsid != old_fsid
+    assert fs.fsid == "dvcfs_" + tokenize(dvc.root_dir, scm.get_rev())
+
+
+def test_fsid_url(erepo_dir):
+    from dvc.repo import Repo
+
+    url = f"file://{erepo_dir.as_posix()}"
+    with Repo.open(url) as dvc:
+        fs = DVCFileSystem(repo=dvc)
+        assert fs.fsid == "dvcfs_" + tokenize(url, erepo_dir.scm.get_rev())
+        old_fsid = fs.fsid
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"foo": "foo"}, commit="foo")
+
+    with Repo.open(url) as dvc:
+        fs = DVCFileSystem(repo=dvc)
+        assert fs.fsid != old_fsid
+        assert fs.fsid == "dvcfs_" + tokenize(url, erepo_dir.scm.get_rev())
+
+
+@pytest.mark.parametrize(
+    "fs_kwargs",
+    [
+        lambda tmp_dir, dvc: {},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"repo": tmp_dir},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"repo": os.fspath(tmp_dir)},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"url": tmp_dir},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"url": os.fspath(tmp_dir)},  # noqa: ARG005
+        lambda tmp_dir, dvc: {"repo": dvc},  # noqa: ARG005
+    ],
+)
+def test_init_arg(tmp_dir, dvc, fs_kwargs):
+    fs = DVCFileSystem(**fs_kwargs(tmp_dir, dvc))
+
+    assert fs.repo.root_dir == dvc.root_dir

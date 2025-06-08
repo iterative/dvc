@@ -16,6 +16,7 @@ def test_checkout(tmp_dir, dvc, mocker):
         recursive=False,
         relink=True,
         with_deps=True,
+        allow_missing=False,
     )
 
 

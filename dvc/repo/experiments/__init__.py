@@ -1,10 +1,11 @@
-import logging
 import os
 import re
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 from funcy import chain, first
 
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
@@ -36,7 +37,7 @@ if TYPE_CHECKING:
     from .queue.workspace import WorkspaceQueue
     from .stash import ExpStashEntry
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class Experiments:
@@ -104,7 +105,7 @@ class Experiments:
         return ExpCache(self.repo)
 
     @property
-    def stash_revs(self) -> Dict[str, "ExpStashEntry"]:
+    def stash_revs(self) -> dict[str, "ExpStashEntry"]:
         revs = {}
         for queue in (self.workspace_queue, self.celery_queue):
             revs.update(queue.stash.stash_revs)
@@ -113,12 +114,12 @@ class Experiments:
     def reproduce_one(
         self,
         tmp_dir: bool = False,
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
     ):
         """Reproduce and checkout a single (standalone) experiment."""
-        exp_queue: "BaseStashQueue" = (
+        exp_queue: BaseStashQueue = (
             self.tempdir_queue if tmp_dir else self.workspace_queue
         )
         self.queue_one(exp_queue, **kwargs)
@@ -130,37 +131,20 @@ class Experiments:
             self._log_reproduced(results, tmp_dir=tmp_dir)
         return results
 
-    def queue_one(
-        self,
-        queue: "BaseStashQueue",
-        **kwargs,
-    ) -> "QueueEntry":
+    def queue_one(self, queue: "BaseStashQueue", **kwargs) -> "QueueEntry":
         """Queue a single experiment."""
-        if kwargs.pop("machine", None) is not None:
-            # TODO: decide how to handle queued remote execution
-            raise NotImplementedError
+        return self.new(queue, **kwargs)
 
-        return self.new(
-            queue,
-            **kwargs,
-        )
-
-    def reproduce_celery(  # noqa: C901
+    def reproduce_celery(
         self, entries: Optional[Iterable["QueueEntry"]] = None, **kwargs
-    ) -> Dict[str, str]:
-        results: Dict[str, str] = {}
+    ) -> dict[str, str]:
+        results: dict[str, str] = {}
         if entries is None:
             entries = list(
-                chain(
-                    self.celery_queue.iter_active(),
-                    self.celery_queue.iter_queued(),
-                )
+                chain(self.celery_queue.iter_active(), self.celery_queue.iter_queued())
             )
 
-        logger.debug(
-            "reproduce all these entries '%s'",
-            entries,
-        )
+        logger.debug("reproduce all these entries '%s'", entries)
 
         if not entries:
             return results
@@ -214,23 +198,14 @@ class Experiments:
             )
         else:
             ui.write("Experiment results have been applied to your workspace.")
-        ui.write(
-            "\nTo promote an experiment to a Git branch run:\n\n"
-            "\tdvc exp branch <exp> <branch>\n"
-        )
 
-    def new(
-        self,
-        queue: "BaseStashQueue",
-        *args,
-        **kwargs,
-    ) -> "QueueEntry":
+    def new(self, queue: "BaseStashQueue", *args, **kwargs) -> "QueueEntry":
         """Create and enqueue a new experiment.
 
         Experiment will be derived from the current workspace.
         """
 
-        name = kwargs.get("name", None)
+        name = kwargs.get("name")
         baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
 
         if name:
@@ -249,7 +224,7 @@ class Experiments:
                 self.check_baseline(last_applied)
             return last_applied
         except BaselineMismatchError:
-            # If HEAD has moved since the the last applied experiment,
+            # If HEAD has moved since the last applied experiment,
             # the applied experiment is no longer relevant
             self.scm.remove_ref(EXEC_APPLY)
         return None
@@ -258,10 +233,10 @@ class Experiments:
     def _reproduce_queue(
         self,
         queue: "BaseStashQueue",
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Reproduce queued experiments.
 
         Arguments:
@@ -273,8 +248,8 @@ class Experiments:
         """
         exec_results = queue.reproduce(copy_paths=copy_paths, message=message)
 
-        results: Dict[str, str] = {}
-        for _, exp_result in exec_results.items():
+        results: dict[str, str] = {}
+        for exp_result in exec_results.values():
             results.update(exp_result)
         return results
 
@@ -327,12 +302,12 @@ class Experiments:
             raise MultipleBranchError(rev, ref_infos)
         return str(ref_infos[0])
 
-    def get_exact_name(self, revs: Iterable[str]) -> Dict[str, Optional[str]]:
+    def get_exact_name(self, revs: Iterable[str]) -> dict[str, Optional[str]]:
         """Returns preferred name for the specified revision.
 
         Prefers tags, branches (heads), experiments in that order.
         """
-        result: Dict[str, Optional[str]] = {}
+        result: dict[str, Optional[str]] = {}
         exclude = f"{EXEC_NAMESPACE}/*"
         ref_dict = self.scm.describe(revs, base=EXPS_NAMESPACE, exclude=exclude)
         for rev in revs:
@@ -402,6 +377,11 @@ class Experiments:
         from dvc.repo.experiments.remove import remove
 
         return remove(self.repo, *args, **kwargs)
+
+    def rename(self, *args, **kwargs):
+        from dvc.repo.experiments.rename import rename
+
+        return rename(self.repo, *args, **kwargs)
 
     def clean(self, *args, **kwargs):
         from dvc.repo.experiments.clean import clean

@@ -1,8 +1,8 @@
-import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 
 from .collections import merge_dicts, remove_missing_keys, to_omegaconf
 
@@ -10,14 +10,28 @@ if TYPE_CHECKING:
     from dvc.types import StrPath
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
+
+
+def load_hydra_plugins(plugins_path: str):
+    import sys
+
+    from hydra.core.plugins import Plugins
+
+    sys.path.append(plugins_path)
+    try:
+        Plugins.instance()
+    finally:
+        sys.path.remove(plugins_path)
 
 
 def compose_and_dump(
     output_file: "StrPath",
-    config_dir: str,
+    config_dir: Optional[str],
+    config_module: Optional[str],
     config_name: str,
-    overrides: List[str],
+    plugins_path: str,
+    overrides: list[str],
 ) -> None:
     """Compose Hydra config and dumpt it to `output_file`.
 
@@ -25,19 +39,32 @@ def compose_and_dump(
         output_file: File where the composed config will be dumped.
         config_dir: Folder containing the Hydra config files.
             Must be absolute file system path.
+        config_module: Module containing the Hydra config files.
+            Ignored if `config_dir` is not `None`.
         config_name: Name of the config file containing defaults,
             without the .yaml extension.
+        plugins_path: Path to auto discover Hydra plugins.
         overrides: List of `Hydra Override`_ patterns.
 
     .. _Hydra Override:
         https://hydra.cc/docs/advanced/override_grammar/basic/
     """
-    from hydra import compose, initialize_config_dir
+    from hydra import compose, initialize_config_dir, initialize_config_module
     from omegaconf import OmegaConf
 
     from .serialize import DUMPERS
 
-    with initialize_config_dir(config_dir, version_base=None):
+    config_source = config_dir or config_module
+    if not config_source:
+        raise ValueError("Either `config_dir` or `config_module` should be provided.")
+    initialize_config = (
+        initialize_config_dir if config_dir else initialize_config_module
+    )
+
+    load_hydra_plugins(plugins_path)
+    with initialize_config(  # type: ignore[attr-defined]
+        config_source, version_base=None
+    ):
         cfg = compose(config_name=config_name, overrides=overrides)
 
     OmegaConf.resolve(cfg)
@@ -48,12 +75,12 @@ def compose_and_dump(
         dumper(output_file, OmegaConf.to_object(cfg))
     else:
         Path(output_file).write_text(OmegaConf.to_yaml(cfg), encoding="utf-8")
-    logger.trace(  # type: ignore[attr-defined]
+    logger.trace(
         "Hydra composition enabled. Contents dumped to %s:\n %s", output_file, cfg
     )
 
 
-def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
+def apply_overrides(path: "StrPath", overrides: list[str]) -> None:
     """Update `path` params with the provided `Hydra Override`_ patterns.
 
     Args:
@@ -82,7 +109,7 @@ def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
                 flags={"allow_objects": True},
             )
             OmegaConf.set_struct(new_data, True)
-            # pylint: disable=protected-access
+
             ConfigLoaderImpl._apply_overrides_to_config(parsed, new_data)
             new_data = OmegaConf.to_object(new_data)
         except hydra_errors as e:

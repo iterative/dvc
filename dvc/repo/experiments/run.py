@@ -1,13 +1,14 @@
-import logging
-from typing import Dict, Iterable, Optional
+from collections.abc import Iterable
+from typing import Optional
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.ui import ui
 from dvc.utils.cli_parse import to_path_overrides
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked
@@ -22,7 +23,7 @@ def run(  # noqa: C901, PLR0912
     copy_paths: Optional[Iterable[str]] = None,
     message: Optional[str] = None,
     **kwargs,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Reproduce the specified targets as an experiment.
 
     Accepts the same additional kwargs as Repo.reproduce.
@@ -30,6 +31,9 @@ def run(  # noqa: C901, PLR0912
     Returns a dict mapping new experiment SHAs to the results
     of `repro` for that experiment.
     """
+    if kwargs.get("dry"):
+        tmp_dir = True
+
     if run_all:
         return repo.experiments.reproduce_celery(jobs=jobs)
 
@@ -89,7 +93,7 @@ def run(  # noqa: C901, PLR0912
 
     for idx, sweep_overrides in enumerate(sweeps):
         if hydra_sweep and name_prefix is not None:
-            kwargs["name"] = f"{name_prefix}-{idx+1}"
+            kwargs["name"] = f"{name_prefix}-{idx + 1}"
         queue_entry = repo.experiments.queue_one(
             repo.experiments.celery_queue,
             targets=targets,

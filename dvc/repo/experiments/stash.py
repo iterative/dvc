@@ -1,17 +1,18 @@
-import logging
 import re
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from typing import Dict, Iterable, Iterator, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 from scmrepo.git import Stash
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc_objects.fs.local import localfs
 from dvc_objects.fs.utils import as_atomic
 
 from .refs import APPLY_HEAD, APPLY_STASH
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ExpStashEntry(NamedTuple):
@@ -42,7 +43,7 @@ class ExpStash(Stash):
     )
 
     @property
-    def stash_revs(self) -> Dict[str, ExpStashEntry]:
+    def stash_revs(self) -> dict[str, ExpStashEntry]:
         revs = {}
         for i, entry in enumerate(self):
             msg = entry.message.decode("utf-8").strip()
@@ -110,27 +111,19 @@ class ApplyStash(Stash):
     )
 
     @property
-    def stash_revs(self) -> Dict[str, ApplyStashEntry]:
+    def stash_revs(self) -> dict[str, ApplyStashEntry]:
         revs = {}
         for i, entry in enumerate(self):
             msg = entry.message.decode("utf-8").strip()
             m = self.MESSAGE_RE.match(msg)
             if m:
                 revs[entry.new_sha.decode("utf-8")] = ApplyStashEntry(
-                    i,
-                    m.group("head_rev"),
-                    m.group("rev"),
-                    m.group("name"),
+                    i, m.group("head_rev"), m.group("rev"), m.group("name")
                 )
         return revs
 
     @classmethod
-    def format_message(
-        cls,
-        head_rev: str,
-        rev: str,
-        name: Optional[str] = None,
-    ) -> str:
+    def format_message(cls, head_rev: str, rev: str, name: Optional[str] = None) -> str:
         return cls.MESSAGE_FORMAT.format(
             head_rev=head_rev, rev=rev, name=name if name else ""
         )
@@ -150,7 +143,7 @@ class ApplyStash(Stash):
             yield stash_rev
             if stash_rev:
                 self._apply_difference(stash_rev, rev)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             self.revert_workspace()
             raise
 
@@ -171,7 +164,7 @@ class ApplyStash(Stash):
         right_fs = self.scm.get_fs(right_rev)
         paths = [path for path in left_fs.find("/") if not right_fs.exists(path)]
         dest_paths = [
-            localfs.path.join(self.scm.root_dir, left_fs.path.relpath(path, "/"))
+            localfs.join(self.scm.root_dir, left_fs.relpath(path, "/"))
             for path in paths
         ]
         for src, dest in zip(paths, dest_paths):

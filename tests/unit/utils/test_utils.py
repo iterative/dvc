@@ -40,19 +40,8 @@ def test_fix_env_pyenv(path, orig):
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")
-def test_relpath_windows(monkeypatch):
-    """test that relpath correctly generated when run on a
-    windows network share. The drive mapped path is mapped
-    to a UNC path by os.path.realpath"""
-
-    def dummy_realpath(path):
-        return path.replace("x:", "\\\\server\\share")
-
-    monkeypatch.setattr(os.path, "realpath", dummy_realpath)
-    assert (
-        relpath("x:\\dir1\\dir2\\file.txt", "\\\\server\\share\\dir1")
-        == "dir2\\file.txt"
-    )
+def test_relpath_windows():
+    assert relpath("x:\\dir1\\dir2\\file.txt", "x:\\dir1") == "dir2\\file.txt"
 
     assert (
         relpath("y:\\dir1\\dir2\\file.txt", "\\\\server\\share\\dir1")
@@ -91,9 +80,7 @@ def test_resolve_output(inp, out, is_dir, expected, mocker):
         ["dvc.yaml:name", ("dvc.yaml", "name"), None],
         [":name", ("dvc.yaml", "name"), None],
         ["stage.dvc", ("stage.dvc", None), None],
-        ["dvc.yaml:name", ("dvc.yaml", "name"), None],
         ["../models/stage.dvc", ("../models/stage.dvc", None), "def"],
-        [":name", ("default", "name"), "default"],
         [":name", ("default", "name"), "default"],
         ["something.dvc:name", ("something.dvc", "name"), None],
         ["../something.dvc:name", ("../something.dvc", "name"), None],

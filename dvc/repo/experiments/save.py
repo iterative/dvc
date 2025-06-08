@@ -1,21 +1,25 @@
-import logging
 import os
-from typing import TYPE_CHECKING, List, Optional
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 from funcy import first
+
+from dvc.log import logger
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def save(
     repo: "Repo",
+    targets: Optional[Iterable[str]] = None,
     name: Optional[str] = None,
+    recursive: bool = False,
     force: bool = False,
-    include_untracked: Optional[List[str]] = None,
+    include_untracked: Optional[list[str]] = None,
     message: Optional[str] = None,
 ) -> Optional[str]:
     """Save the current workspace status as an experiment.
@@ -31,6 +35,8 @@ def save(
     try:
         save_result = executor.save(
             executor.info,
+            targets=targets,
+            recursive=recursive,
             force=force,
             include_untracked=include_untracked,
             message=message,

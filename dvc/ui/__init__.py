@@ -1,17 +1,6 @@
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager, nullcontext
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    Optional,
-    Sequence,
-    TextIO,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, TextIO, Union
 
 import colorama
 
@@ -46,7 +35,7 @@ def disable_colorama():
 
 class Formatter:
     def __init__(
-        self, theme: Optional[Dict] = None, defaults: Optional[Dict] = None
+        self, theme: Optional[dict] = None, defaults: Optional[dict] = None
     ) -> None:
         from collections import defaultdict
 
@@ -57,9 +46,7 @@ class Formatter:
         }
         self.theme = defaultdict(lambda: defaults or {}, theme)
 
-    def format(  # noqa: A003
-        self, message: str, style: Optional[str] = None, **kwargs
-    ) -> str:
+    def format(self, message: str, style: Optional[str] = None, **kwargs) -> str:
         from dvc.utils import colorize
 
         return colorize(message, **self.theme[style])
@@ -106,7 +93,7 @@ class Console:
             styled=styled,
         )
 
-    def write_json(  # noqa: PLR0913
+    def write_json(
         self,
         data: Any,
         indent: Optional[int] = None,
@@ -232,7 +219,7 @@ class Console:
             return print(*values, sep=sep, end=end, file=file)
 
     @property
-    def rich_text(self) -> "Type[RichText]":
+    def rich_text(self) -> "type[RichText]":
         from rich.text import Text
 
         return Text
@@ -310,9 +297,10 @@ class Console:
         rich_table: bool = False,
         force: bool = True,
         pager: bool = False,
-        header_styles: Optional[Union[Dict[str, "Styles"], Sequence["Styles"]]] = None,
+        header_styles: Optional[Union[dict[str, "Styles"], Sequence["Styles"]]] = None,
         row_styles: Optional[Sequence["Styles"]] = None,
         borders: Union[bool, str] = False,
+        colalign: Optional[tuple[str, ...]] = None,
     ) -> None:
         from dvc.ui import table as t
 
@@ -334,16 +322,25 @@ class Console:
             return
 
         return t.plain_table(
-            self, data, headers, markdown=markdown, pager=pager, force=force
+            self,
+            data,
+            headers,
+            markdown=markdown,
+            pager=pager,
+            force=force,
+            colalign=colalign,
         )
 
     def status(self, status: str, **kwargs: Any) -> "Status":
         return self.error_console.status(status, **kwargs)
 
-    def isatty(self) -> bool:
+    @staticmethod
+    def isatty() -> bool:
         import sys
 
-        return sys.stdout.isatty()
+        from dvc import utils
+
+        return utils.isatty(sys.stdout)
 
     def open_browser(self, file: "StrPath") -> int:
         import webbrowser

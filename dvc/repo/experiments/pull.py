@@ -1,9 +1,10 @@
-import logging
-from typing import Iterable, List, Mapping, Optional, Set, Union
+from collections.abc import Iterable, Mapping
+from typing import Optional, Union
 
 from funcy import group_by
 from scmrepo.git.backend.base import SyncStatus
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit, iter_revs
@@ -13,7 +14,7 @@ from .exceptions import UnresolvedExpNamesError
 from .refs import ExpRefInfo
 from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked
@@ -23,13 +24,13 @@ def pull(  # noqa: C901
     git_remote: str,
     exp_names: Optional[Union[Iterable[str], str]] = None,
     all_commits=False,
-    rev: Optional[Union[List[str], str]] = None,
+    rev: Optional[Union[list[str], str]] = None,
     num=1,
     force: bool = False,
     pull_cache: bool = False,
     **kwargs,
 ) -> Iterable[str]:
-    exp_ref_set: Set["ExpRefInfo"] = set()
+    exp_ref_set: set[ExpRefInfo] = set()
     if all_commits:
         exp_ref_set.update(exp_refs(repo.scm, git_remote))
     elif exp_names:
@@ -54,7 +55,7 @@ def pull(  # noqa: C901
         rev_dict = iter_revs(repo.scm, rev, num)
         rev_set = set(rev_dict.keys())
         ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-        for _, ref_info_list in ref_info_dict.items():
+        for ref_info_list in ref_info_dict.values():
             exp_ref_set.update(ref_info_list)
 
     pull_result = _pull(repo, git_remote, exp_ref_set, force)
@@ -81,7 +82,7 @@ def _pull(
     git_remote: str,
     refs: Iterable["ExpRefInfo"],
     force: bool,
-) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
+) -> Mapping[SyncStatus, list["ExpRefInfo"]]:
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
     logger.debug("git pull experiment '%s' -> '%s'", git_remote, refspec_list)
 
@@ -96,7 +97,7 @@ def _pull(
     def group_result(refspec):
         return results[str(refspec)]
 
-    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(group_result, refs)
+    pull_result: Mapping[SyncStatus, list[ExpRefInfo]] = group_by(group_result, refs)
 
     return pull_result
 
@@ -112,4 +113,6 @@ def _pull_cache(
         refs = [refs]
     revs = list(exp_commits(repo.scm, refs))
     logger.debug("dvc fetch experiment '%s'", refs)
-    repo.fetch(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)
+    repo.fetch(
+        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, workspace=False
+    )

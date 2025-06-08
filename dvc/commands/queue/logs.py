@@ -1,10 +1,9 @@
-import argparse
-import logging
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdQueueLogs(CmdBase):
@@ -29,7 +28,7 @@ def add_parser(queue_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(QUEUE_LOGS_HELP, "queue/logs"),
         help=QUEUE_LOGS_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     queue_logs_parser.add_argument(
         "-e",
@@ -46,9 +45,5 @@ def add_parser(queue_subparsers, parent_parser):
         ),
         action="store_true",
     )
-    queue_logs_parser.add_argument(
-        "task",
-        help="Task to show.",
-        metavar="<task>",
-    )
+    queue_logs_parser.add_argument("task", help="Task to show.", metavar="<task>")
     queue_logs_parser.set_defaults(func=CmdQueueLogs)

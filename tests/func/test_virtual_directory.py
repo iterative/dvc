@@ -166,32 +166,27 @@ def test_virtual_update_noop(tmp_dir, dvc, remote):
 
 
 def test_partial_checkout_and_update(M, tmp_dir, dvc, remote):
-    tmp_dir.gen({"dir": {"foo": "foo", "subdir": {"lorem": "lorem"}}})
+    dir1 = {f"{i}.txt": f"dir1 {i}" for i in range(10)}
+    dir2 = {f"{i}.txt": f"dir2 {i}" for i in range(10)}
+    tmp_dir.gen({"dir": {"foo": "foo", "subdir": dir1, "subdir2": dir2}})
 
     (stage,) = dvc.add("dir")
     out = stage.outs[0]
 
-    assert out.hash_info == HashInfo(
-        name="md5", value="22a16c9bf84b3068bc2206d88a6b5776.dir"
-    )
-    assert out.meta == Meta(isdir=True, size=8, nfiles=2)
+    assert out.hash_info == HashInfo("md5", "9899dc38082ee0ec33de077df62a4a12.dir")
+    assert out.meta == Meta(isdir=True, size=123, nfiles=21)
 
-    assert dvc.push() == 3
+    assert dvc.push() == 22
     dvc.cache.local.clear()
     shutil.rmtree("dir")
 
-    assert dvc.pull("dir/subdir") == M.dict(
-        added=[join("dir", "")],
-        fetched=3,
-    )
-    assert (tmp_dir / "dir").read_text() == {"subdir": {"lorem": "lorem"}}
+    assert dvc.pull("dir/subdir") == M.dict(added=[join("dir", "")], fetched=11)
+    assert (tmp_dir / "dir").read_text() == {"subdir": dir1}
 
-    tmp_dir.gen({"dir": {"subdir": {"ipsum": "ipsum"}}})
-    (stage,) = dvc.add("dir/subdir/ipsum")
+    tmp_dir.gen({"dir": {"subdir": {"file": "file"}}})
+    (stage,) = dvc.add(join("dir", "subdir", "file"))
 
     out = stage.outs[0]
-    assert out.hash_info == HashInfo(
-        name="md5", value="06d953a10e0b0ffacba04876a9351e39.dir"
-    )
-    assert out.meta == Meta(isdir=True, size=13, nfiles=3)
+    assert out.hash_info == HashInfo("md5", "e7531c3930f28a00edc25e6cef91db03.dir")
+    assert out.meta == Meta(isdir=True, size=127, nfiles=22)
     assert dvc.push() == 2

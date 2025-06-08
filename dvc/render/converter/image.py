@@ -1,8 +1,8 @@
 import base64
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any
 
-from dvc.render import FILENAME_FIELD, REVISION_FIELD, SRC_FIELD
+from dvc.render import FILENAME, REVISION, SRC
 
 from . import Converter
 
@@ -28,19 +28,17 @@ class ImageConverter(Converter):
         return img_path
 
     @staticmethod
-    def _encode_image(
-        image_data: bytes,
-    ) -> str:
+    def _encode_image(image_data: bytes) -> str:
         base64_str = base64.b64encode(image_data).decode()
         return f"data:image;base64,{base64_str}"
 
-    def convert(self) -> Tuple[List[Tuple[str, str, Any]], Dict]:
+    def convert(self) -> tuple[list[tuple[str, str, Any]], dict]:
         datas = []
         for filename, image_data in self.data.items():
             datas.append((filename, "", image_data))
         return datas, self.properties
 
-    def flat_datapoints(self, revision: str) -> Tuple[List[Dict], Dict]:
+    def flat_datapoints(self, revision: str) -> tuple[list[dict], dict]:
         """
         Convert the DVC Plots content to DVC Render datapoints.
         Return both generated datapoints and updated properties.
@@ -57,10 +55,6 @@ class ImageConverter(Converter):
                 )
             else:
                 src = self._encode_image(image_data)
-            datapoint = {
-                REVISION_FIELD: revision,
-                FILENAME_FIELD: filename,
-                SRC_FIELD: src,
-            }
+            datapoint = {REVISION: revision, FILENAME: filename, SRC: src}
             datapoints.append(datapoint)
         return datapoints, properties

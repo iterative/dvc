@@ -3,6 +3,7 @@ import os
 
 import pytest
 
+from dvc.config import Config
 from dvc.exceptions import FileExistsLocallyError, URLMissingError
 from dvc.repo import Repo
 from dvc.testing.workspace_tests import TestGetUrl as _TestGetUrl
@@ -66,3 +67,12 @@ def test_get_url_nonexistent(tmp_dir):
 
 class TestGetUrl(_TestGetUrl):
     pass
+
+
+def test_get_url_config(tmp_dir, dvc, make_remote):
+    remote_path = make_remote("myremote", default=False, typ="local")
+    (remote_path / "foo").write_text("foo")
+    (remote_path / "bar").write_text("bar")
+
+    Repo.get_url("remote://myremote/foo", config=Config.from_cwd())
+    assert (tmp_dir / "foo").read_text() == "foo"

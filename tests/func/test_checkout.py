@@ -186,12 +186,7 @@ def test_checkout_empty_dir(tmp_dir, dvc):
 
 def test_checkout_not_cached_file(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
-    dvc.run(
-        cmd="cp foo bar",
-        deps=["foo"],
-        outs_no_cache=["bar"],
-        name="copy-file",
-    )
+    dvc.run(cmd="cp foo bar", deps=["foo"], outs_no_cache=["bar"], name="copy-file")
     stats = dvc.checkout(force=True)
     assert not any(stats.values())
 
@@ -520,12 +515,7 @@ def test_checkout_with_relink_existing(tmp_dir, dvc, link):
 
 def test_checkout_with_deps(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
-    dvc.run(
-        cmd="echo foo > bar",
-        outs=["bar"],
-        deps=["foo"],
-        name="copy-file",
-    )
+    dvc.run(cmd="echo foo > bar", outs=["bar"], deps=["foo"], name="copy-file")
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "foo").unlink()
@@ -754,3 +744,12 @@ def test_checkout_dir_compat(tmp_dir, dvc):
     remove("data")
     dvc.checkout()
     assert (tmp_dir / "data").read_text() == {"foo": "foo"}
+
+
+def test_checkout_cleanup_properly_on_untracked_nested_directories(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"datasets": {"dir1": {"file1": "file1"}}})
+    tmp_dir.gen({"datasets": {"dir2": {"dir3": {"file2": "file2"}}}})
+
+    dvc.checkout(force=True)
+
+    assert (tmp_dir / "datasets").read_text() == {"dir1": {"file1": "file1"}}

@@ -49,11 +49,7 @@ def make_executor(local=None, **kwargs):
         local_executor.update(local)
     else:
         local_executor = ANY
-    data = {
-        "state": ANY,
-        "local": local_executor,
-        "name": ANY,
-    }
+    data = {"state": ANY, "local": local_executor, "name": ANY}
     data.update(kwargs)
     return data
 
@@ -62,13 +58,7 @@ def make_data(params=None, **kwargs):
     params = {"data": params or {"foo": 1}}
     data = {
         "rev": ANY,
-        "deps": {
-            "copy.py": {
-                "hash": ANY,
-                "size": ANY,
-                "nfiles": None,
-            }
-        },
+        "deps": {"copy.py": {"hash": ANY, "size": ANY, "nfiles": None}},
         "metrics": {"metrics.yaml": params},
         "outs": {},
         "params": {"params.yaml": params},
@@ -111,7 +101,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
 @pytest.mark.parametrize("workspace", [True, False])
 def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
     baseline_rev = scm.get_rev()
-    timestamp = datetime.fromtimestamp(
+    timestamp = datetime.fromtimestamp(  # noqa: DTZ006
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
     )
 
@@ -233,23 +223,14 @@ def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage, test_queue)
                         "experiments": None,
                     }
                 ],
-                "executor": make_executor(
-                    state="failed",
-                    local={"returncode": 255},
-                ),
+                "executor": make_executor(state="failed", local={"returncode": 255}),
                 "name": ANY,
             }
         ],
     }
 
 
-def test_show_filter(
-    tmp_dir,
-    scm,
-    dvc,
-    capsys,
-    copy_script,
-):
+def test_show_filter(tmp_dir, scm, dvc, capsys, copy_script):
     capsys.readouterr()
 
     params_file = tmp_dir / "params.yaml"
@@ -352,6 +333,20 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
     assert main(["exp", "show", "--no-pager", "--sort-by=metrics.yaml:foo"]) == 0
 
 
+def test_show_sort_metric_sep(tmp_dir, scm, dvc, caplog):
+    metrics_path = tmp_dir / "metrics:1.json"
+    metrics_path.write_text('{"my::metric": 1, "other_metric": 0.5}')
+    metrics_path = tmp_dir / "metrics:2.json"
+    metrics_path.write_text('{"my::metric": 2}')
+    dvcyaml_path = tmp_dir / "dvc.yaml"
+    dvcyaml_path.write_text("metrics: ['metrics:1.json', 'metrics:2.json']")
+    dvc.experiments.save()
+    assert (
+        main(["exp", "show", "--no-pager", "--sort-by=metrics:1.json:my::metric"]) == 0
+    )
+    assert main(["exp", "show", "--no-pager", "--sort-by=:other_metric"]) == 0
+
+
 @pytest.mark.vscode
 @pytest.mark.parametrize(
     "status, pid_exists",
@@ -428,7 +423,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     baseline_rev = scm.get_rev()
 
     def _get_rev_isotimestamp(rev):
-        return datetime.fromtimestamp(
+        return datetime.fromtimestamp(  # noqa: DTZ006
             scm.gitpython.repo.rev_parse(rev).committed_date
         ).isoformat()
 
@@ -458,25 +453,18 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
         in cap.out
     )
     assert (
-        "{},{},branch_base,{},,2,2,{}".format(
-            ref_info1.name, rev1[:7], _get_rev_isotimestamp(rev1), data_hash
-        )
+        f"{ref_info1.name},{rev1[:7]},branch_base,{_get_rev_isotimestamp(rev1)},,2,2,{data_hash}"
         in cap.out
     )
     assert (
-        "{},{},branch_commit,{},,3,3,{}".format(
-            ref_info2.name, rev2[:7], _get_rev_isotimestamp(rev2), data_hash
-        )
+        f"{ref_info2.name},{rev2[:7]},branch_commit,{_get_rev_isotimestamp(rev2)},,3,3,{data_hash}"
         in cap.out
     )
 
 
 def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
-    params_data = {
-        "foo": 1,
-        "goobar": 1,
-    }
+    params_data = {"foo": 1, "goobar": 1}
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
@@ -520,10 +508,7 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
 @pytest.mark.vscode
 def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
     params_file = tmp_dir / "params.yaml"
-    params_data = {
-        "foo": 1,
-        "bar": 1,
-    }
+    params_data = {"foo": 1, "bar": 1}
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
@@ -627,9 +612,7 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
 
 def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
-    params_data = {
-        "foo": 1,
-    }
+    params_data = {"foo": 1}
     (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
@@ -660,14 +643,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
         name="copy-file",
         deps=["copy.py"],
     )
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            "params.yaml",
-            "scores.yaml",
-        ]
-    )
+    scm.add(["dvc.yaml", "dvc.lock", "params.yaml", "scores.yaml"])
     scm.commit("scores.yaml")
     scores_rev = scm.get_rev()
 
@@ -676,7 +652,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
     cap = capsys.readouterr()
 
     def _get_rev_isotimestamp(rev):
-        return datetime.fromtimestamp(
+        return datetime.fromtimestamp(  # noqa: DTZ006
             scm.gitpython.repo.rev_parse(rev).committed_date
         ).isoformat()
 
@@ -695,11 +671,7 @@ def test_show_sorted_deps(tmp_dir, dvc, scm, capsys):
     tmp_dir.gen("c", "c")
     tmp_dir.gen("z", "z")
 
-    dvc.run(
-        cmd="echo foo",
-        name="deps",
-        deps=["a", "b", "z", "c"],
-    )
+    dvc.run(cmd="echo foo", name="deps", deps=["a", "b", "z", "c"])
 
     capsys.readouterr()
     assert main(["exp", "show", "--csv"]) == 0

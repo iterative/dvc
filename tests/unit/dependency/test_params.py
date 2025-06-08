@@ -103,10 +103,7 @@ def test_dumpd_with_info(dvc):
 
 def test_dumpd_without_info(dvc):
     dep = ParamsDependency(Stage(dvc), None, list(PARAMS.keys()))
-    assert dep.dumpd() == {
-        "path": DEFAULT_PARAMS_FILE,
-        "params": list(PARAMS.keys()),
-    }
+    assert dep.dumpd() == {"path": DEFAULT_PARAMS_FILE, "params": list(PARAMS.keys())}
 
 
 def test_read_params_nonexistent_file(dvc):

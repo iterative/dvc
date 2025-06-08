@@ -1,6 +1,5 @@
-import logging
 import os
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import (
     CheckoutError,
@@ -8,6 +7,7 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import relpath
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from dvc_data.index import BaseDataIndex, DataIndexEntry
     from dvc_objects.fs.base import FileSystem
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _fspath_dir(path):
@@ -51,26 +51,22 @@ def _build_out_changes(index, changes):
         out_keys.append(key)
 
     out_changes = {}
-    for objects in changes.values():
-        for change in objects:
-            for out_key in out_keys:
-                if (
-                    len(out_key) > len(change.key)
-                    or change.key[: len(out_key)] != out_key
-                ):
-                    continue
+    for key, change in changes.items():
+        for out_key in out_keys:
+            if len(out_key) > len(key) or key[: len(out_key)] != out_key:
+                continue
 
-                if change.key == out_key:
-                    out_changes[out_key] = change.typ
-                elif not out_changes.get(out_key):
-                    out_changes[out_key] = MODIFY
-                break
+            if key == out_key:
+                out_changes[out_key] = change.typ
+            elif not out_changes.get(out_key):
+                out_changes[out_key] = MODIFY
+            break
 
     return out_changes
 
 
 def _check_can_delete(
-    entries: List["DataIndexEntry"],
+    entries: list["DataIndexEntry"],
     index: "BaseDataIndex",
     path: str,
     fs: "FileSystem",
@@ -85,7 +81,7 @@ def _check_can_delete(
         if cache_fs.exists(cache_path):
             continue
 
-        entry_paths.append(fs.path.join(path, *entry.key))
+        entry_paths.append(fs.join(path, *(entry.key or ())))
 
     if not entry_paths:
         return
@@ -111,7 +107,7 @@ def checkout(  # noqa: C901
     from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
     from dvc_data.index.checkout import ADD, DELETE, MODIFY, apply, compare
 
-    stats: Dict[str, List[str]] = {
+    stats: dict[str, list[str]] = {
         "added": [],
         "deleted": [],
         "modified": [],
@@ -126,40 +122,23 @@ def checkout(  # noqa: C901
     def onerror(target, exc):
         if target and isinstance(
             exc,
-            (
-                StageFileDoesNotExistError,
-                StageFileBadNameError,
-                NoOutputOrStageError,
-            ),
+            (StageFileDoesNotExistError, StageFileBadNameError, NoOutputOrStageError),
         ):
             raise CheckoutErrorSuggestGit(target) from exc
-        raise  # pylint: disable=misplaced-bare-raise
+        raise  # noqa: PLE0704
 
     view = self.index.targets_view(
-        targets,
-        recursive=recursive,
-        with_deps=with_deps,
-        onerror=onerror,
+        targets, recursive=recursive, with_deps=with_deps, onerror=onerror
     )
 
-    with ui.progress(
-        unit="entry",
-        desc="Building data index",
-    ) as pb:
+    with ui.progress(unit="entry", desc="Building workspace index", leave=True) as pb:
         old = build_data_index(
-            view,
-            self.root_dir,
-            self.fs,
-            compute_hash=True,
-            callback=pb.as_callback(),
+            view, self.root_dir, self.fs, compute_hash=True, callback=pb.as_callback()
         )
 
     new = view.data["repo"]
 
-    with ui.progress(
-        desc="Comparing indexes",
-        unit="entry",
-    ) as pb:
+    with ui.progress(desc="Comparing indexes", unit="entry", leave=True) as pb:
         diff = compare(old, new, relink=relink, delete=True, callback=pb.as_callback())
 
     if not force:
@@ -174,13 +153,10 @@ def checkout(  # noqa: C901
         )
 
         for out_path in out_paths:
-            if self.fs.path.isin_or_eq(dest_path, out_path):
+            if self.fs.isin_or_eq(dest_path, out_path):
                 failed.add(out_path)
 
-    with ui.progress(
-        unit="file",
-        desc="Checkout",
-    ) as pb:
+    with ui.progress(unit="file", desc="Applying changes", leave=True) as pb:
         apply(
             diff,
             self.root_dir,
@@ -196,7 +172,7 @@ def checkout(  # noqa: C901
 
     typ_map = {ADD: "added", DELETE: "deleted", MODIFY: "modified"}
     for key, typ in out_changes.items():
-        out_path = self.fs.path.join(self.root_dir, *key)
+        out_path = self.fs.join(self.root_dir, *key)
 
         if out_path in failed:
             self.fs.remove(out_path, recursive=True)

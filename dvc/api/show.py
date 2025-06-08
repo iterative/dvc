@@ -1,18 +1,15 @@
 import typing
 from collections import Counter
-from typing import Dict, Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Optional, Union
 
 from funcy import first
 
 from dvc.repo import Repo
 
 
-def _onerror_raise(exception: Exception, *args, **kwargs):
-    raise exception
-
-
 def _postprocess(results):
-    processed: Dict[str, Dict] = {}
+    processed: dict[str, dict] = {}
     for rev, rev_data in results.items():
         if not rev_data:
             continue
@@ -23,16 +20,14 @@ def _postprocess(results):
         for file_data in rev_data["data"].values():
             for k in file_data["data"]:
                 counts[k] += 1
-
         for file_name, file_data in rev_data["data"].items():
             to_merge = {
                 (k if counts[k] == 1 else f"{file_name}:{k}"): v
                 for k, v in file_data["data"].items()
             }
-            processed[rev] = {**processed[rev], **to_merge}
+            processed[rev] = processed[rev] | to_merge
 
-    if "workspace" in processed:
-        del processed["workspace"]
+    processed.pop("workspace", None)
 
     return processed
 
@@ -41,8 +36,8 @@ def metrics_show(
     *targets: str,
     repo: Optional[str] = None,
     rev: Optional[str] = None,
-    config: Optional[Dict] = None,
-) -> Dict:
+    config: Optional[dict] = None,
+) -> dict:
     """Get metrics tracked in `repo`.
 
     Without arguments, this function will retrieve all metrics from all tracked
@@ -138,13 +133,17 @@ def metrics_show(
     .. _Git revision:
         https://git-scm.com/docs/revisions
     """
+    from dvc.repo.metrics.show import to_relpath
 
     with Repo.open(repo, config=config) as _repo:
         metrics = _repo.metrics.show(
             targets=targets,
             revs=rev if rev is None else [rev],
-            onerror=_onerror_raise,
+            on_error="raise",
         )
+        metrics = {
+            k: to_relpath(_repo.fs, _repo.root_dir, v) for k, v in metrics.items()
+        }
 
     metrics = _postprocess(metrics)
 
@@ -160,8 +159,8 @@ def params_show(
     stages: Optional[Union[str, Iterable[str]]] = None,
     rev: Optional[str] = None,
     deps: bool = False,
-    config: Optional[Dict] = None,
-) -> Dict:
+    config: Optional[dict] = None,
+) -> dict:
     """Get parameters tracked in `repo`.
 
     Without arguments, this function will retrieve all params from all tracked
@@ -382,6 +381,8 @@ def params_show(
         https://git-scm.com/docs/revisions
 
     """
+    from dvc.repo.metrics.show import to_relpath
+
     if isinstance(stages, str):
         stages = [stages]
 
@@ -389,10 +390,11 @@ def params_show(
         params = _repo.params.show(
             revs=rev if rev is None else [rev],
             targets=targets,
-            deps=deps,
-            onerror=_onerror_raise,
+            deps_only=deps,
+            on_error="raise",
             stages=stages,
         )
+        params = {k: to_relpath(_repo.fs, _repo.root_dir, v) for k, v in params.items()}
 
     params = _postprocess(params)
 

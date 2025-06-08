@@ -1,14 +1,14 @@
 import argparse
-import logging
 import os
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import compact, first, get_in
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -16,39 +16,30 @@ if TYPE_CHECKING:
     from dvc.render.match import RendererWithErrors
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _show_json(
-    renderers_with_errors: List["RendererWithErrors"],
+    renderers_with_errors: list["RendererWithErrors"],
     split=False,
-    errors: Optional[Dict[str, Exception]] = None,
+    errors: Optional[dict[str, Exception]] = None,
 ):
     from dvc.render.convert import to_json
     from dvc.utils.serialize import encode_exception
 
-    all_errors: List[Dict] = []
+    all_errors: list[dict] = []
     data = {}
 
     for renderer, src_errors, def_errors in renderers_with_errors:
         name = renderer.name
         data[name] = to_json(renderer, split)
         all_errors.extend(
-            {
-                "name": name,
-                "rev": rev,
-                "source": source,
-                **encode_exception(e),
-            }
+            {"name": name, "rev": rev, "source": source, **encode_exception(e)}
             for rev, per_rev_src_errors in src_errors.items()
             for source, e in per_rev_src_errors.items()
         )
         all_errors.extend(
-            {
-                "name": name,
-                "rev": rev,
-                **encode_exception(e),
-            }
+            {"name": name, "rev": rev, **encode_exception(e)}
             for rev, e in def_errors.items()
         )
 
@@ -57,49 +48,6 @@ def _show_json(
     all_errors.extend({"rev": rev, **encode_exception(e)} for rev, e in errors.items())
 
     ui.write_json(compact({"errors": all_errors, "data": data}), highlight=False)
-
-
-def _adjust_vega_renderers(renderers):
-    from dvc.render import REVISION_FIELD, VERSION_FIELD
-    from dvc_render import VegaRenderer
-
-    for r in renderers:
-        if isinstance(r, VegaRenderer):
-            if _data_versions_count(r) > 1:
-                summary = _summarize_version_infos(r)
-                for dp in r.datapoints:
-                    vi = dp.pop(VERSION_FIELD, {})
-                    keys = list(vi.keys())
-                    for key in keys:
-                        if not (len(summary.get(key, set())) > 1):
-                            vi.pop(key)
-                    if vi:
-                        dp["rev"] = "::".join(vi.values())
-            else:
-                for dp in r.datapoints:
-                    dp[REVISION_FIELD] = dp[VERSION_FIELD]["revision"]
-                    dp.pop(VERSION_FIELD, {})
-
-
-def _summarize_version_infos(renderer):
-    from collections import defaultdict
-
-    from dvc.render import VERSION_FIELD
-
-    result = defaultdict(set)
-
-    for dp in renderer.datapoints:
-        for key, value in dp.get(VERSION_FIELD, {}).items():
-            result[key].add(value)
-    return dict(result)
-
-
-def _data_versions_count(renderer):
-    from itertools import product
-
-    summary = _summarize_version_infos(renderer)
-    x = product(summary.get("filename", {None}), summary.get("field", {None}))
-    return len(set(x))
 
 
 class CmdPlots(CmdBase):
@@ -124,7 +72,7 @@ class CmdPlots(CmdBase):
                 html_template_path = os.path.join(self.repo.dvc_dir, html_template_path)
         return html_template_path
 
-    def run(self) -> int:  # noqa: C901, PLR0911, PLR0912
+    def run(self) -> int:  # noqa: C901, PLR0911
         from pathlib import Path
 
         from dvc.render.match import match_defs_renderers
@@ -144,10 +92,7 @@ class CmdPlots(CmdBase):
                 return 1
 
         try:
-            plots_data = self._func(
-                targets=self.args.targets,
-                props=self._props(),
-            )
+            plots_data = self._func(targets=self.args.targets, props=self._props())
 
             if not plots_data and not self.args.json:
                 ui.error_write(
@@ -175,11 +120,10 @@ class CmdPlots(CmdBase):
                 return 0
 
             renderers = [r.renderer for r in renderers_with_errors]
-            _adjust_vega_renderers(renderers)
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
-                    ui.write_json(renderer.get_filled_template(as_string=False))
+                    ui.write_json(renderer.get_filled_template())
                 return 0
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"
@@ -267,14 +211,13 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(PLOTS_HELP, "plots"),
         help=PLOTS_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     plots_subparsers = plots_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc plots CMD --help` to display command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(plots_subparsers)
 
     SHOW_HELP = (
         "Generate plots from target files or from `plots` definitions in `dvc.yaml`."
@@ -284,7 +227,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(SHOW_HELP, "plots/show"),
         help=SHOW_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     plots_show_parser.add_argument(
         "targets",
@@ -307,7 +250,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(PLOTS_DIFF_HELP, "plots/diff"),
         help=PLOTS_DIFF_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     plots_diff_parser.add_argument(
         "--targets",
@@ -343,7 +286,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(PLOTS_MODIFY_HELP, "plots/modify"),
         help=PLOTS_MODIFY_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
         "target",
@@ -364,7 +307,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(TEMPLATES_HELP, "plots/templates"),
         help=TEMPLATES_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     plots_templates_parser.add_argument(
         "template",

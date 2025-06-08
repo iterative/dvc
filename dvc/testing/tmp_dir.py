@@ -43,8 +43,6 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
-# pylint: disable=redefined-outer-name, attribute-defined-outside-init
-
 import os
 import pathlib
 import sys
@@ -69,22 +67,22 @@ class TmpDir(pathlib.Path):
     def config(self):
         return {"url": self.url}
 
-    def __new__(cls, *args, **kwargs):
-        if cls is TmpDir:
-            cls = (  # pylint: disable=self-cls-assignment
-                WindowsTmpDir if os.name == "nt" else PosixTmpDir
-            )
-        # init parameter and `_init` method has been removed in Python 3.10.
-        kw = {"init": False} if sys.version_info < (3, 10) else {}
-        # pylint: disable-next=unexpected-keyword-arg
-        self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
-        if not self._flavour.is_supported:
-            raise NotImplementedError(
-                f"cannot instantiate {cls.__name__!r} on your system"
-            )
-        if sys.version_info < (3, 10):
-            self._init()  # pylint: disable=no-member
-        return self
+    if sys.version_info < (3, 12):
+
+        def __new__(cls, *args, **kwargs):
+            if cls is TmpDir:
+                cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir  # noqa: PLW0642
+
+            # init parameter and `_init` method has been removed in Python 3.10.
+            kw = {"init": False} if sys.version_info < (3, 10) else {}
+            self = cls._from_parts(args, **kw)  # type: ignore[attr-defined]
+            if not self._flavour.is_supported:
+                raise NotImplementedError(
+                    f"cannot instantiate {cls.__name__!r} on your system"
+                )
+            if sys.version_info < (3, 10):
+                self._init()
+            return self
 
     def init(self, *, scm=False, dvc=False, subdir=False):
         from dvc.repo import Repo
@@ -115,8 +113,8 @@ class TmpDir(pathlib.Path):
     def _require(self, name):
         if not hasattr(self, name):
             raise TypeError(
-                "Can't use {name} for this temporary dir. "
-                'Did you forget to use "{name}" fixture?'.format(name=name)
+                f"Can't use {name} for this temporary dir. "
+                f'Did you forget to use "{name}" fixture?'
             )
 
     # Bootstrapping methods
@@ -222,7 +220,7 @@ class TmpDir(pathlib.Path):
         finally:
             self.scm.checkout(old)
 
-    def read_text(self, *args, **kwargs):  # pylint: disable=signature-differs
+    def read_text(self, *args, **kwargs):
         # NOTE: on windows we'll get PermissionError instead of
         # IsADirectoryError when we try to `open` a directory, so we can't
         # rely on exception flow control

@@ -1,6 +1,5 @@
 """Negative tests for the parametrization."""
 
-
 import logging
 import re
 

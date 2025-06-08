@@ -1,4 +1,3 @@
-import logging
 import os
 from urllib.parse import urlparse
 
@@ -8,6 +7,7 @@ from voluptuous import (
     All,
     Any,
     Coerce,
+    Exclusive,
     Invalid,
     Lower,
     Optional,
@@ -15,7 +15,9 @@ from voluptuous import (
     Schema,
 )
 
-logger = logging.getLogger(__name__)
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 Bool = All(
     Lower,
@@ -72,6 +74,17 @@ def ByUrl(mapping):  # noqa: N802
         return schemas[parsed.scheme](data)
 
     return validate
+
+
+class ExpPath(str):
+    __slots__ = ("def_path",)
+
+    def_path: str
+
+    def __new__(cls, string, def_path):
+        ret = super().__new__(cls, string)
+        ret.def_path = def_path
+        return ret
 
 
 class RelPath(str):
@@ -168,7 +181,7 @@ SCHEMA = {
     "remote": {
         str: ByUrl(
             {
-                "": {**LOCAL_COMMON, **REMOTE_COMMON},
+                "": LOCAL_COMMON | REMOTE_COMMON,
                 "s3": {
                     "region": str,
                     "profile": str,
@@ -180,6 +193,7 @@ SCHEMA = {
                     "session_token": str,
                     Optional("listobjects", default=False): Bool,  # obsoleted
                     Optional("use_ssl", default=True): Bool,
+                    Optional("allow_anonymous_login", default=False): Bool,
                     "ssl_verify": Any(Bool, str),
                     "sse": str,
                     "sse_kms_key_id": str,
@@ -201,6 +215,7 @@ SCHEMA = {
                     "credentialpath": str,
                     "endpointurl": str,
                     Optional("verify", default=False): Bool,
+                    Optional("allow_anonymous_login", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "ssh": {
@@ -219,7 +234,12 @@ SCHEMA = {
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
-                "hdfs": {"user": str, "kerb_ticket": str, **REMOTE_COMMON},
+                "hdfs": {
+                    "user": str,
+                    "kerb_ticket": str,
+                    "replication": int,
+                    **REMOTE_COMMON,
+                },
                 "webhdfs": {
                     "kerberos": Bool,
                     "kerberos_principal": str,
@@ -227,6 +247,9 @@ SCHEMA = {
                     "ssl_verify": Any(Bool, str),
                     "token": str,
                     "use_https": Bool,
+                    "user": str,
+                    "password": str,
+                    "data_proxy_target": str,
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
@@ -244,6 +267,9 @@ SCHEMA = {
                     "exclude_shared_token_cache_credential": Bool,
                     "exclude_managed_identity_credential": Bool,
                     Optional("verify", default=False): Bool,
+                    "timeout": Coerce(int),
+                    "read_timeout": Coerce(int),
+                    "connection_timeout": Coerce(int),
                     **REMOTE_COMMON,
                 },
                 "oss": {
@@ -266,10 +292,10 @@ SCHEMA = {
                     Optional("verify", default=True): Bool,
                     **REMOTE_COMMON,
                 },
-                "http": {**HTTP_COMMON, **REMOTE_COMMON},
-                "https": {**HTTP_COMMON, **REMOTE_COMMON},
-                "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},
-                "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
+                "http": HTTP_COMMON | REMOTE_COMMON,
+                "https": HTTP_COMMON | REMOTE_COMMON,
+                "webdav": WEBDAV_COMMON | REMOTE_COMMON,
+                "webdavs": WEBDAV_COMMON | REMOTE_COMMON,
                 "remote": {str: object},  # Any of the above options are valid
             }
         )
@@ -317,6 +343,8 @@ SCHEMA = {
         "params": str,
         "plots": str,
         "live": str,
+        "auto_push": Bool,
+        "git_remote": str,
     },
     "parsing": {
         "bool": All(Lower, Choices("store_true", "boolean_optional")),
@@ -324,13 +352,22 @@ SCHEMA = {
     },
     "hydra": {
         Optional("enabled", default=False): Bool,
-        "config_dir": str,
+        Exclusive("config_dir", "config_source"): str,
+        Exclusive("config_module", "config_source"): str,
         "config_name": str,
+        "plugins_path": str,
     },
     "studio": {
         "token": str,
         "url": str,
         "repo_url": str,
         Optional("offline", default=False): Bool,
+    },
+    "db": {
+        str: {
+            "url": str,
+            "username": str,
+            "password": str,
+        },
     },
 }

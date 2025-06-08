@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from funcy import first
 
@@ -139,7 +141,7 @@ def test_push_ambiguous_name(tmp_dir, scm, dvc, git_upstream, exp_stage):
 
 @pytest.mark.parametrize("use_url", [True, False])
 def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
-    baseline_a = scm.get_rev()
+    baseline_old = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
     ref_info_a = first(exp_refs_by_rev(scm, exp_a))
@@ -149,6 +151,8 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
     tmp_dir.scm_gen("new", "new", commit="new")
+    baseline_new = scm.get_rev()
+
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
@@ -160,15 +164,15 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     assert downstream_exp.ls(git_remote=remote) == {}
 
     git_downstream.tmp_dir.scm.fetch_refspecs(remote, ["master:master"])
-    exp_list = downstream_exp.ls(rev=baseline_a, git_remote=remote)
+    exp_list = downstream_exp.ls(rev=baseline_old, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, None), (ref_info_b.name, None)}
+        baseline_old: {(ref_info_a.name, None), (ref_info_b.name, None)}
     }
 
     exp_list = downstream_exp.ls(all_commits=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
-        baseline_a: {(ref_info_a.name, None), (ref_info_b.name, None)},
-        "refs/heads/master": {(ref_info_c.name, None)},
+        baseline_old: {(ref_info_a.name, None), (ref_info_b.name, None)},
+        baseline_new: {(ref_info_c.name, None)},
     }
 
 
@@ -352,9 +356,84 @@ def test_get(tmp_dir, scm, dvc, exp_stage, erepo_dir, use_ref):
     exp_ref = first(exp_refs_by_rev(scm, exp_rev))
 
     with erepo_dir.chdir():
-        Repo.get(
-            str(tmp_dir),
-            "params.yaml",
-            rev=exp_ref.name if use_ref else exp_rev,
-        )
+        Repo.get(str(tmp_dir), "params.yaml", rev=exp_ref.name if use_ref else exp_rev)
         assert (erepo_dir / "params.yaml").read_text().strip() == "foo: 2"
+
+
+def test_push_pull_invalid_workspace(
+    tmp_dir, scm, dvc, git_upstream, exp_stage, local_remote, caplog
+):
+    dvc.experiments.run()
+
+    with open("dvc.yaml", mode="a") as f:
+        f.write("\ninvalid")
+
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        dvc.experiments.push(git_upstream.remote, push_cache=True)
+        dvc.experiments.pull(git_upstream.remote, pull_cache=True)
+        assert "failed to collect" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "auto_push, expected_key", [(True, "up_to_date"), (False, "success")]
+)
+def test_auto_push_on_run(
+    tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage, auto_push, expected_key
+):
+    remote = git_upstream.remote
+
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = auto_push
+        conf["exp"]["git_remote"] = remote
+
+    exp_name = "foo"
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
+
+    assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == expected_key
+
+
+@pytest.mark.parametrize(
+    "auto_push, expected_key", [(True, "up_to_date"), (False, "success")]
+)
+def test_auto_push_on_save(
+    tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage, auto_push, expected_key
+):
+    remote = git_upstream.remote
+    exp_name = "foo"
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
+
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = auto_push
+        conf["exp"]["git_remote"] = remote
+
+    dvc.experiments.save(name=exp_name, force=True)
+
+    assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == expected_key
+
+
+def test_auto_push_misconfigured(
+    tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage, caplog
+):
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = True
+        conf["exp"]["git_remote"] = "notfound"
+
+    exp_name = "foo"
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        dvc.experiments.run(exp_stage.addressing, params=["foo=2"], name=exp_name)
+        assert "Failed to validate remotes" in caplog.text
+
+
+def test_auto_push_tmp_dir(tmp_dir, scm, dvc, git_upstream, local_remote, exp_stage):
+    remote = git_upstream.remote
+
+    with dvc.config.edit() as conf:
+        conf["exp"]["auto_push"] = True
+        conf["exp"]["git_remote"] = remote
+
+    exp_name = "foo"
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], name=exp_name, tmp_dir=True
+    )
+
+    assert first(dvc.experiments.push(name=exp_name, git_remote=remote)) == "up_to_date"

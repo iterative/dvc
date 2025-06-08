@@ -1,16 +1,17 @@
 import logging
 import os
 import shutil
+from os.path import join
 
 import pytest
-from flaky.flaky_decorator import flaky
 
 import dvc_data
 from dvc.cli import main
 from dvc.exceptions import CheckoutError
 from dvc.repo.open_repo import clean_repos
+from dvc.scm import CloneError
 from dvc.stage.exceptions import StageNotFound
-from dvc.testing.remote_tests import TestRemote  # noqa, pylint: disable=unused-import
+from dvc.testing.remote_tests import TestRemote  # noqa: F401
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
@@ -146,7 +147,7 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     assert ret == 0
     ret = main(["push"])
     assert ret == 0
-    assert test_file_md5.mock.call_count == 1
+    assert test_file_md5.mock.call_count == 3
 
 
 def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
@@ -175,10 +176,7 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     assert bar in caplog.text
 
     caplog.clear()
-    assert dvc.status(cloud=True) == {
-        "bar": "missing",
-        "foo": "missing",
-    }
+    assert dvc.status(cloud=True) == {"bar": "missing", "foo": "missing"}
     assert header not in caplog.text
     assert foo not in caplog.text
     assert bar not in caplog.text
@@ -203,17 +201,17 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     # Removing cache will invalidate existing state entries
     dvc.cache.local.clear()
 
-    dvc.config["remote"]["upstream"]["verify"] = True
+    with dvc.config.edit() as conf:
+        conf["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
     assert hash_spy.call_count == 10
 
 
-@flaky(max_runs=3, min_passes=1)
-@pytest.mark.parametrize(
-    "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
-)
-def test_pull_git_imports(tmp_dir, dvc, scm, erepo):
+@pytest.mark.flaky(reruns=3)
+@pytest.mark.parametrize("erepo_type", ["git_dir", "erepo_dir"])
+def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo_type):
+    erepo = request.getfixturevalue(erepo_type)
     with erepo.chdir():
         erepo.scm_gen({"dir": {"bar": "bar"}}, commit="second")
         erepo.scm_gen("foo", "foo", commit="first")
@@ -268,10 +266,32 @@ def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     result = dvc.pull("file")
-    assert result["fetched"] == 0
+    assert result["fetched"] == 1
     assert dst.exists()
 
     assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
+
+
+def test_pull_partial_import_missing(tmp_dir, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
+
+    (local_workspace / "file").unlink()
+    with pytest.raises(CheckoutError):
+        dvc.pull("file")
+    assert not dst.exists()
+
+
+def test_pull_partial_import_modified(tmp_dir, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
+
+    local_workspace.gen("file", "updated file content")
+    with pytest.raises(CheckoutError):
+        dvc.pull("file")
+    assert not dst.exists()
 
 
 def test_pull_external_dvc_imports_mixed(tmp_dir, dvc, scm, erepo_dir, local_remote):
@@ -478,12 +498,13 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
 
 def test_pull_partial(tmp_dir, dvc, local_remote):
-    tmp_dir.dvc_gen({"foo": {"bar": {"baz": "baz"}, "spam": "spam"}})
+    other_files = {f"spam{i}": f"spam{i}" for i in range(10)}
+    tmp_dir.dvc_gen({"foo": {"bar": {"baz": "baz"}, **other_files}})
     dvc.push()
     clean(["foo"], dvc)
 
     stats = dvc.pull(os.path.join("foo", "bar"))
-    assert stats["fetched"] == 3
+    assert stats["fetched"] == 2
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
 
 
@@ -561,6 +582,58 @@ def test_target_remote(tmp_dir, dvc, make_remote):
     }
 
 
+def test_output_target_remote(tmp_dir, dvc, make_remote):
+    make_remote("default", default=True)
+    make_remote("for_foo", default=False)
+    make_remote("for_bar", default=False)
+
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("bar", "bar")
+    tmp_dir.dvc_gen("data", {"one": "one", "two": "two"})
+
+    with (tmp_dir / "foo.dvc").modify() as d:
+        d["outs"][0]["remote"] = "for_foo"
+
+    with (tmp_dir / "bar.dvc").modify() as d:
+        d["outs"][0]["remote"] = "for_bar"
+
+    # push foo and data to for_foo remote
+    dvc.push(remote="for_foo")
+
+    default = dvc.cloud.get_remote_odb("default")
+    for_foo = dvc.cloud.get_remote_odb("for_foo")
+    for_bar = dvc.cloud.get_remote_odb("for_bar")
+
+    # hashes for foo and data, but not bar
+    expected = {
+        "acbd18db4cc2f85cedef654fccc4a4d8",
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }
+
+    assert set(default.all()) == set()
+    assert set(for_foo.all()) == expected
+    assert set(for_bar.all()) == set()
+
+    # push everything without specifying remote
+    dvc.push()
+    assert set(default.all()) == {
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }
+    assert set(for_foo.all()) == expected
+    assert set(for_bar.all()) == {"37b51d194a7513e45b56f6524f2d51f2"}
+
+    clean(["foo", "bar", "data"], dvc)
+
+    # pull foo and data from for_foo remote
+    dvc.pull(remote="for_foo", allow_missing=True)
+
+    assert set(dvc.cache.local.all()) == expected
+
+
 def test_pull_allow_missing(tmp_dir, dvc, local_remote):
     dvc.stage.add(name="bar", outs=["bar"], cmd="echo bar > bar")
 
@@ -573,3 +646,35 @@ def test_pull_allow_missing(tmp_dir, dvc, local_remote):
 
     stats = dvc.pull(allow_missing=True)
     assert stats["fetched"] == 1
+
+
+def test_pull_granular_excluding_import_that_cannot_be_pulled(
+    tmp_dir, dvc, local_remote, mocker
+):
+    """Regression test for https://github.com/iterative/dvc/issues/10309."""
+
+    mocker.patch("dvc.fs.dvc._DVCFileSystem", side_effect=CloneError("SCM error"))
+    (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    imp_stage = dvc.imp(
+        "https://user:token@github.com/iterative/dvc.git",
+        "dir",
+        out="new_dir",
+        rev="HEAD",
+        no_exec=True,
+    )
+    dvc.push()
+
+    shutil.rmtree("dir")
+    dvc.cache.local.clear()
+
+    assert dvc.pull(stage.addressing) == {
+        "added": [join("dir", "")],
+        "deleted": [],
+        "modified": [],
+        "fetched": 3,
+    }
+
+    with pytest.raises(CloneError, match="SCM error"):
+        dvc.pull()
+    with pytest.raises(CloneError, match="SCM error"):
+        dvc.pull(imp_stage.addressing)

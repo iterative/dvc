@@ -64,13 +64,28 @@ def test_get_repo_dir(tmp_dir, erepo_dir):
     assert (tmp_dir / "dir_imported").read_text() == {"file": "contents"}
 
 
-@pytest.mark.parametrize(
-    "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
-)
-def test_get_git_file(tmp_dir, erepo):
+def test_get_repo_broken_dir(tmp_dir, erepo_dir):
+    import shutil
+
+    from dvc_data.index import DataIndexDirError
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"broken": {"file": "contents"}})
+        erepo_dir.dvc.cache.local.clear()
+        shutil.rmtree(erepo_dir / "broken")
+
+    with pytest.raises(DataIndexDirError):
+        Repo.get(os.fspath(erepo_dir), "broken", "out")
+
+    assert not (tmp_dir / "out").exists()
+
+
+@pytest.mark.parametrize("erepo_type", ["git_dir", "erepo_dir"])
+def test_get_git_file(request, tmp_dir, erepo_type):
     src = "some_file"
     dst = "some_file_imported"
 
+    erepo = request.getfixturevalue(erepo_type)
     erepo.scm_gen({src: "hello"}, commit="add a regular file")
 
     Repo.get(os.fspath(erepo), src, dst)
@@ -78,13 +93,12 @@ def test_get_git_file(tmp_dir, erepo):
     assert (tmp_dir / dst).read_text() == "hello"
 
 
-@pytest.mark.parametrize(
-    "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
-)
-def test_get_git_dir(tmp_dir, erepo):
+@pytest.mark.parametrize("erepo_type", ["git_dir", "erepo_dir"])
+def test_get_git_dir(request, tmp_dir, erepo_type):
     src = "some_directory"
     dst = "some_directory_imported"
 
+    erepo = request.getfixturevalue(erepo_type)
     erepo.scm_gen({src: {"dir": {"file.txt": "hello"}}}, commit="add a regular dir")
 
     Repo.get(os.fspath(erepo), src, dst)
@@ -227,15 +241,7 @@ def test_get_url_positive(tmp_dir, erepo_dir, caplog, local_cloud):
 def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert (
-            main(
-                [
-                    "get",
-                    os.fspath(erepo_dir),
-                    "not-existing-file",
-                    "--show-url",
-                ]
-            )
-            != 0
+            main(["get", os.fspath(erepo_dir), "not-existing-file", "--show-url"]) != 0
         )
 
 
@@ -316,7 +322,4 @@ def test_get_complete_repo(tmp_dir, dvc, erepo_dir):
     }
 
     Repo.get(os.fspath(erepo_dir), ".", out="out")
-    assert (tmp_dir / "out").read_text() == {
-        ".gitignore": "/foo\n",
-        "foo": "foo",
-    }
+    assert (tmp_dir / "out").read_text() == {".gitignore": "/foo\n", "foo": "foo"}

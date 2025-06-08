@@ -1,6 +1,4 @@
-import argparse
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.commands.status import CmdDataStatus
@@ -119,10 +117,7 @@ and then the stage name name.
         "--pull",
         action="store_true",
         default=False,
-        help=(
-            "Try automatically pulling missing cache for outputs restored "
-            "from the run-cache."
-        ),
+        help="Try automatically pulling missing data.",
     )
     repro_parser.add_argument(
         "--allow-missing",
@@ -167,7 +162,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(REPRO_HELP, "repro"),
         help=REPRO_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     # repro/exp run shared args
     add_arguments(repro_parser)

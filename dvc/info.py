@@ -123,7 +123,7 @@ def _get_supported_remotes():
         if not fs_cls.get_missing_deps():
             dependencies = []
             for requirement in fs_cls.REQUIRES:
-                dependencies.append(
+                dependencies.append(  # noqa: PERF401
                     f"{requirement} = {importlib_metadata.version(requirement)}"
                 )
 

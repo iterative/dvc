@@ -1,19 +1,22 @@
 import argparse
-import logging
 
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdExperimentsSave(CmdBase):
     def run(self):
         try:
             ref = self.repo.experiments.save(
+                targets=self.args.targets,
                 name=self.args.name,
+                recursive=self.args.recursive,
                 force=self.args.force,
                 include_untracked=self.args.include_untracked,
                 message=self.args.message,
@@ -27,10 +30,6 @@ class CmdExperimentsSave(CmdBase):
         else:
             name = self.repo.experiments.get_exact_name([ref])[ref]
             ui.write(f"Experiment has been saved as: {name}")
-            ui.write(
-                "\nTo promote an experiment to a Git branch run:\n\n"
-                "\tdvc exp branch <exp> <branch>\n"
-            )
 
         return 0
 
@@ -42,7 +41,19 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_SAVE_HELP, "exp/save"),
         help=EXPERIMENTS_SAVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
+    )
+    save_parser.add_argument(
+        "targets",
+        nargs="*",
+        help=("Limit DVC caching to these .dvc files and stage names."),
+    ).complete = completion.DVCFILES_AND_STAGE
+    save_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="Cache subdirectories of the specified directory.",
     )
     save_parser.add_argument(
         "-f",
@@ -76,10 +87,11 @@ def add_parser(experiments_subparsers, parent_parser):
         metavar="<path>",
     )
     save_parser.add_argument(
-        "-M",
+        "-m",
         "--message",
         type=str,
         default=None,
         help="Custom commit message to use when committing the experiment.",
     )
+    save_parser.add_argument("-M", dest="message", help=argparse.SUPPRESS)  # obsolete
     save_parser.set_defaults(func=CmdExperimentsSave)

@@ -10,7 +10,8 @@ from dvc.exceptions import DvcException
 from dvc.utils.flatten import flatten
 
 if typing.TYPE_CHECKING:
-    from typing import List, Match, NoReturn
+    from re import Match
+    from typing import NoReturn
 
     from pyparsing import ParseException
 
@@ -73,7 +74,7 @@ def embrace(s: str):
 
 def escape_str(value):
     if os.name == "nt":
-        from subprocess import list2cmdline  # nosec B404
+        from subprocess import list2cmdline
 
         return list2cmdline([value])
     from shlex import quote
@@ -82,12 +83,12 @@ def escape_str(value):
 
 
 @singledispatch
-def to_str(obj, config=None) -> str:  # noqa: ARG001, pylint: disable=unused-argument
+def to_str(obj, config=None) -> str:  # noqa: ARG001
     return str(obj)
 
 
 @to_str.register(bool)
-def _(obj: bool, config=None):  # noqa: ARG001, pylint: disable=unused-argument
+def _(obj: bool, config=None):  # noqa: ARG001
     return "true" if obj else "false"
 
 
@@ -205,7 +206,7 @@ def validate_value(value, key):
 
 def str_interpolate(
     template: str,
-    matches: "List[Match]",
+    matches: "list[Match]",
     context: "Context",
     skip_checks: bool = False,
     key=None,
@@ -225,5 +226,5 @@ def str_interpolate(
     return buf.replace(r"\${", BRACE_OPEN)
 
 
-def is_exact_string(src: str, matches: "List[Match]"):
+def is_exact_string(src: str, matches: "list[Match]"):
     return len(matches) == 1 and src == matches[0].group(0)

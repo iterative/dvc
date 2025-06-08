@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from dvc.fs import GitFileSystem, Schemes
 from dvc_data.hashfile.db import get_odb
@@ -15,7 +15,7 @@ def _get_odb(
     repo,
     settings,
     fs=None,
-    prefix: Optional[Tuple[str, ...]] = None,
+    prefix: Optional[tuple[str, ...]] = None,
     hash_name: Optional[str] = None,
     **kwargs,
 ):
@@ -24,10 +24,10 @@ def _get_odb(
     if not settings:
         return None
 
-    cls, config, fs_path = get_cloud_fs(repo, **settings)
+    cls, config, fs_path = get_cloud_fs(repo.config, **settings)
     fs = fs or cls(**config)
     if prefix:
-        fs_path = fs.path.join(fs_path, *prefix)
+        fs_path = fs.join(fs_path, *prefix)
     if hash_name:
         config["hash_name"] = hash_name
     return get_odb(fs, fs_path, state=repo.state, **config)
@@ -36,17 +36,15 @@ def _get_odb(
 class CacheManager:
     CACHE_DIR = "cache"
     FILES_DIR = "files"
+    FS_DIR = "fs"
 
     def __init__(self, repo):
         self._repo = repo
         self.config = config = repo.config["cache"]
         self._odb = {}
 
-        default = None
-        if repo and repo.local_dvc_dir:
-            default = os.path.join(repo.local_dvc_dir, self.CACHE_DIR)
-
         local = config.get("local")
+        default = self.default_local_cache_dir
 
         if local:
             settings = {"name": local}
@@ -76,6 +74,21 @@ class CacheManager:
         legacy_odb = _get_odb(repo, settings, hash_name="md5-dos2unix", **kwargs)
         self._odb["legacy"] = legacy_odb
 
+    @property
+    def fs_cache(self):
+        """Filesystem-based cache.
+
+        Currently used as a temporary location to download files that we don't
+        yet have a regular oid (e.g. md5) for.
+        """
+        from dvc_data.index import FileStorage
+
+        return FileStorage(
+            key=(),
+            fs=self.local.fs,
+            path=self.local.fs.join(self.default_local_cache_dir, self.FS_DIR),
+        )
+
     def _init_odb(self, schemes):
         for scheme in schemes:
             remote = self.config.get(scheme)
@@ -103,6 +116,13 @@ class CacheManager:
         """
         return self.legacy.path
 
+    @property
+    def default_local_cache_dir(self) -> Optional[str]:
+        repo = self._repo
+        if repo and repo.local_dvc_dir:
+            return os.path.join(repo.local_dvc_dir, self.CACHE_DIR)
+        return None
+
 
 def migrate_2_to_3(repo: "Repo", dry: bool = False):
     """Migrate legacy 2.x objects to 3.x cache.
@@ -117,22 +137,16 @@ def migrate_2_to_3(repo: "Repo", dry: bool = False):
     src = repo.cache.legacy
     dest = repo.cache.local
     if dry:
-        oids = list(src._list_oids())  # pylint: disable=protected-access
+        oids = list(src._list_oids())
         ui.write(
             f"{len(oids)} files will be re-hashed and migrated to the DVC 3.0 cache "
             "location."
         )
         return
 
-    with TqdmCallback(
-        desc="Computing DVC 3.0 hashes",
-        unit="files",
-    ) as cb:
+    with TqdmCallback(desc="Computing DVC 3.0 hashes", unit="files") as cb:
         migration = prepare(src, dest, callback=cb)
 
-    with TqdmCallback(
-        desc="Migrating to DVC 3.0 cache",
-        unit="files",
-    ) as cb:
+    with TqdmCallback(desc="Migrating to DVC 3.0 cache", unit="files") as cb:
         count = migrate(migration, callback=cb)
     ui.write(f"Migrated {count} files to DVC 3.0 cache location.")

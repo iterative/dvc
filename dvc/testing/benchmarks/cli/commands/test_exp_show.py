@@ -1,8 +1,3 @@
-# pylint: disable=unused-argument
-import pytest
-
-
-@pytest.mark.requires(minversion=(2, 28, 0))
 def test_exp_show(make_project, monkeypatch, bench_dvc, dvc_bin):
     url = "https://github.com/iterative/example-get-started"
     rev = "main"

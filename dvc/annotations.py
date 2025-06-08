@@ -1,5 +1,5 @@
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Optional
 
 from funcy import compact
 from voluptuous import Required
@@ -13,11 +13,11 @@ class Annotation:
     PARAM_META: ClassVar[str] = "meta"
 
     desc: Optional[str] = None
-    type: Optional[str] = None  # noqa: A003
-    labels: List[str] = field(default_factory=list)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    type: Optional[str] = None
+    labels: list[str] = field(default_factory=list)
+    meta: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return compact(asdict(self))
 
 
@@ -31,11 +31,11 @@ class Artifact:
 
     path: str
     desc: Optional[str] = None
-    type: Optional[str] = None  # noqa: A003
-    labels: List[str] = field(default_factory=list)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    type: Optional[str] = None
+    labels: list[str] = field(default_factory=list)
+    meta: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return compact(asdict(self))
 
 
@@ -46,7 +46,7 @@ ANNOTATION_SCHEMA = {
     Annotation.PARAM_LABELS: [str],
     Annotation.PARAM_META: object,
 }
-ARTIFACT_SCHEMA = {
+ARTIFACT_SCHEMA: dict[Any, Any] = {
     Required(Artifact.PARAM_PATH): str,
     **ANNOTATION_SCHEMA,  # type: ignore[arg-type]
 }

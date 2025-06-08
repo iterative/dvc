@@ -1,3 +1,5 @@
+from pydoc import plainpager
+
 import pytest
 
 from dvc.env import DVC_PAGER
@@ -70,8 +72,8 @@ def test_dvc_sets_some_options_on_less_if_less_env_defined(mocker, monkeypatch, 
     assert find_pager() == "less --RAW-CONTROL-CHARS --chop-long-lines"
 
 
-def test_make_pager_when_no_pager_found(mocker, monkeypatch):
-    assert make_pager(None).__name__ == "plainpager"
+def test_make_pager_when_no_pager_found():
+    assert make_pager(None) is plainpager
 
 
 def test_pager(mocker, monkeypatch):

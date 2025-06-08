@@ -1,5 +1,5 @@
 # ruff: noqa: N999
-from PyInstaller.utils.hooks import copy_metadata  # pylint:disable=import-error
+from PyInstaller.utils.hooks import copy_metadata
 
 # needed for `dvc doctor` to show dep versions
 datas = copy_metadata("adlfs", recursive=True)
@@ -22,6 +22,7 @@ hiddenimports = [
     "dvc_hdfs",
     "dvc_oss",
     "dvc_s3",
+    "dvc_ssh",
     "dvc_webdav",
     "dvc_webhdfs",
     # https://github.com/pypa/setuptools/issues/1963

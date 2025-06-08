@@ -15,8 +15,8 @@ class PythonFileCorruptedError(ParseError):
         super().__init__(path, message)
 
 
-def load_py(path, fs=None):
-    return _load_data(path, parser=parse_py, fs=fs)
+def load_py(path, fs=None, **kwargs):
+    return _load_data(path, parser=parse_py, fs=fs, **kwargs)
 
 
 def parse_py(text, path):

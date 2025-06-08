@@ -1,9 +1,12 @@
 from collections import defaultdict
-from typing import Any, Mapping, Set
+from collections.abc import Mapping
+from typing import Any
 
 from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
+from .dataset import DatasetDependency
+from .db import DbDependency
 from .param import ParamsDependency
 from .repo import RepoDependency
 
@@ -14,19 +17,27 @@ from .repo import RepoDependency
 SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
+    **DbDependency.DB_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
+    Output.PARAM_FS_CONFIG: dict,
 }
 
 
 def _get(stage, p, info, **kwargs):
-    if info and info.get(RepoDependency.PARAM_REPO):
-        repo = info.pop(RepoDependency.PARAM_REPO)
-        return RepoDependency(repo, stage, p, info)
+    d = info or {}
+    params = d.pop(ParamsDependency.PARAM_PARAMS, None)
+    repo = d.pop(RepoDependency.PARAM_REPO, None)
 
-    if info and info.get(ParamsDependency.PARAM_PARAMS):
-        params = info.pop(ParamsDependency.PARAM_PARAMS)
+    if params:
         return ParamsDependency(stage, p, params)
+    if DbDependency.PARAM_DB in d:
+        return DbDependency(stage, d)
 
+    assert p
+    if DatasetDependency.is_dataset(p):
+        return DatasetDependency(stage, p, info)
+    if repo:
+        return RepoDependency(repo, stage, p, info)
     return Dependency(stage, p, info, **kwargs)
 
 
@@ -36,30 +47,27 @@ def loadd_from(stage, d_list):
         p = d.pop(Output.PARAM_PATH, None)
         files = d.pop(Output.PARAM_FILES, None)
         hash_name = d.pop(Output.PARAM_HASH, None)
-        ret.append(_get(stage, p, d, files=files, hash_name=hash_name))
+        fs_config = d.pop(Output.PARAM_FS_CONFIG, None)
+        ret.append(
+            _get(stage, p, d, files=files, hash_name=hash_name, fs_config=fs_config)
+        )
     return ret
 
 
-def loads_from(stage, s_list, erepo=None, fs_config=None):
+def loads_from(stage, s_list, erepo=None, fs_config=None, db=None):
     assert isinstance(s_list, list)
     info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
-    return [
-        _get(
-            stage,
-            s,
-            info.copy(),
-            fs_config=fs_config,
-        )
-        for s in s_list
-    ]
+    if db:
+        info.update({"db": db})
+    return [_get(stage, s, info.copy(), fs_config=fs_config) for s in s_list]
 
 
-def _merge_params(s_list):
+def _merge_params(s_list) -> dict[str, list[str]]:
     d = defaultdict(list)
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
 
     # figure out completely tracked params file, and ignore specific keys
-    wholly_tracked: Set[str] = set()
+    wholly_tracked: set[str] = set()
     for key in s_list:
         if not isinstance(key, dict):
             continue

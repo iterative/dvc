@@ -71,9 +71,7 @@ def test_load_vars_with_relpath(tmp_dir, scm, dvc):
     revisions = ["HEAD", "workspace"]
     for rev in dvc.brancher(revs=["HEAD"]):
         assert rev == revisions.pop()
-        d = {
-            "vars": [f"../{DEFAULT_PARAMS_FILE}"],
-        }
+        d = {"vars": [f"../{DEFAULT_PARAMS_FILE}"]}
         resolver = DataResolver(dvc, "subdir", d)
         assert resolver.context == deepcopy(DATA)
 

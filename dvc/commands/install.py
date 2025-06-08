@@ -1,11 +1,10 @@
-import argparse
-import logging
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdInstall(CmdBase):
@@ -25,7 +24,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(INSTALL_HELP, "install"),
         help=INSTALL_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     install_parser.add_argument(
         "--use-pre-commit-tool",

@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Union
+from typing import Union
 
 import pytest
 from funcy import first
@@ -73,7 +73,7 @@ class TestImport:
         # of directories. So instead we create an empty file that ends with a
         # trailing slash in order to actually support this operation
         if is_object_storage:
-            contents: Union[str, Dict[str, str]] = ""
+            contents: Union[str, dict[str, str]] = ""
         else:
             contents = {}
 
@@ -95,6 +95,9 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "file").read_text() == "file"
         assert dvc.status() == {}
 
+        orig_version_id = stage.deps[0].meta.version_id
+        orig_def_path = stage.deps[0].def_path
+
         dvc.cache.local.clear()
         remove(tmp_dir / "file")
         dvc.pull()
@@ -103,10 +106,15 @@ class TestImportURLVersionAware:
         (remote_version_aware / "file").write_text("modified")
         assert dvc.status().get("file.dvc") == [
             {"changed deps": {"remote://upstream/file": "update available"}},
+            {"changed outs": {"file": "not in cache"}},
         ]
         dvc.update(str(tmp_dir / "file.dvc"))
         assert (tmp_dir / "file").read_text() == "modified"
         assert dvc.status() == {}
+
+        stage = first(dvc.index.stages)
+        assert orig_version_id != stage.deps[0].meta.version_id
+        assert orig_def_path == stage.deps[0].def_path
 
         dvc.cache.local.clear()
         remove(tmp_dir / "file")
@@ -130,6 +138,7 @@ class TestImportURLVersionAware:
         (remote_version_aware / "data_dir" / "new_file").write_text("new")
         assert dvc.status().get("data_dir.dvc") == [
             {"changed deps": {"remote://upstream/data_dir": "modified"}},
+            {"changed outs": {"data_dir": "not in cache"}},
         ]
         dvc.update(str(tmp_dir / "data_dir.dvc"))
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"
@@ -142,22 +151,39 @@ class TestImportURLVersionAware:
         assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "modified"
         assert (tmp_dir / "data_dir" / "new_file").read_text() == "new"
 
-    def test_import_no_download(self, tmp_dir, dvc, remote_version_aware):
+    def test_import_no_download(self, tmp_dir, dvc, remote_version_aware, scm):
         remote_version_aware.gen({"data_dir": {"subdir": {"file": "file"}}})
         dvc.imp_url("remote://upstream/data_dir", version_aware=True, no_download=True)
+        scm.add(["data_dir.dvc", ".gitignore"])
+        scm.commit("v1")
+        scm.tag("v1")
+
         stage = first(dvc.index.stages)
         assert not stage.outs[0].can_push
 
-        dvc.pull()
-        assert (tmp_dir / "data_dir" / "subdir" / "file").read_text() == "file"
+        (remote_version_aware / "data_dir" / "foo").write_text("foo")
+        dvc.update(no_download=True)
+        assert dvc.pull()["fetched"] == 2
+        assert (tmp_dir / "data_dir").read_text() == {
+            "foo": "foo",
+            "subdir": {"file": "file"},
+        }
+        scm.add(["data_dir.dvc", ".gitignore"])
+        scm.commit("update")
+
+        scm.checkout("v1")
+        dvc.cache.local.clear()
+        remove(tmp_dir / "data_dir")
+        assert dvc.pull()["fetched"] == 1
+        assert (tmp_dir / "data_dir").read_text() == {"subdir": {"file": "file"}}
 
         dvc.commit(force=True)
         assert dvc.status() == {}
 
 
 def match_files(fs, entries, expected):
-    entries_content = {(fs.path.normpath(d["path"]), d["isdir"]) for d in entries}
-    expected_content = {(fs.path.normpath(d["path"]), d["isdir"]) for d in expected}
+    entries_content = {(fs.normpath(d["path"]), d["isdir"]) for d in entries}
+    expected_content = {(fs.normpath(d["path"]), d["isdir"]) for d in expected}
     assert entries_content == expected_content
 
 
@@ -166,19 +192,15 @@ class TestLsUrl:
     def test_file(self, cloud, fname):
         cloud.gen({fname: "foo contents"})
         fs, fs_path = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / fname), config=cloud.config)
-        match_files(
-            fs,
-            result,
-            [{"path": fs.path.join(fs_path, fname), "isdir": False}],
-        )
+        result = ls_url(str(cloud / fname), fs_config=cloud.config)
+        match_files(fs, result, [{"path": fs.join(fs_path, fname), "isdir": False}])
 
     def test_dir(self, cloud):
         cloud.gen({"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"})
         if not (cloud / "dir").is_dir():
             pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / "dir"), config=cloud.config)
+        result = ls_url(str(cloud / "dir"), fs_config=cloud.config)
         match_files(
             fs,
             result,
@@ -193,7 +215,40 @@ class TestLsUrl:
         if not (cloud / "dir").is_dir():
             pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / "dir"), config=cloud.config, recursive=True)
+        result = ls_url(str(cloud / "dir"), fs_config=cloud.config, recursive=True)
+        match_files(
+            fs,
+            result,
+            [
+                {"path": "foo", "isdir": False},
+                {"path": "subdir/bar", "isdir": False},
+            ],
+        )
+
+        result = ls_url(
+            str(cloud / "dir"), fs_config=cloud.config, recursive=True, maxdepth=0
+        )
+        match_files(
+            fs,
+            result,
+            [{"path": (cloud / "dir").fs_path, "isdir": False}],
+        )
+
+        result = ls_url(
+            str(cloud / "dir"), fs_config=cloud.config, recursive=True, maxdepth=1
+        )
+        match_files(
+            fs,
+            result,
+            [
+                {"path": "foo", "isdir": False},
+                {"path": "subdir", "isdir": True},
+            ],
+        )
+
+        result = ls_url(
+            str(cloud / "dir"), fs_config=cloud.config, recursive=True, maxdepth=2
+        )
         match_files(
             fs,
             result,
@@ -205,14 +260,14 @@ class TestLsUrl:
 
     def test_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
-            ls_url(str(cloud / "dir"), config=cloud.config)
+            ls_url(str(cloud / "dir"), fs_config=cloud.config)
 
 
 class TestGetUrl:
     def test_get_file(self, cloud, tmp_dir):
         cloud.gen({"foo": "foo contents"})
 
-        Repo.get_url(str(cloud / "foo"), "foo_imported", config=cloud.config)
+        Repo.get_url(str(cloud / "foo"), "foo_imported", fs_config=cloud.config)
 
         assert (tmp_dir / "foo_imported").is_file()
         assert (tmp_dir / "foo_imported").read_text() == "foo contents"
@@ -222,7 +277,7 @@ class TestGetUrl:
         if not (cloud / "foo").is_dir():
             pytest.skip("Cannot create directories on this cloud")
 
-        Repo.get_url(str(cloud / "foo"), "foo_imported", config=cloud.config)
+        Repo.get_url(str(cloud / "foo"), "foo_imported", fs_config=cloud.config)
 
         assert (tmp_dir / "foo_imported").is_dir()
         assert (tmp_dir / "foo_imported" / "foo").is_file()
@@ -235,14 +290,14 @@ class TestGetUrl:
             pytest.skip("Cannot create directories on this cloud")
         tmp_dir.gen({"dir": {"subdir": {}}})
 
-        Repo.get_url(str(cloud / "src" / "foo"), dname, config=cloud.config)
+        Repo.get_url(str(cloud / "src" / "foo"), dname, fs_config=cloud.config)
 
         assert (tmp_dir / dname).is_dir()
         assert (tmp_dir / dname / "foo").read_text() == "foo contents"
 
     def test_get_url_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
-            Repo.get_url(str(cloud / "nonexistent"), config=cloud.config)
+            Repo.get_url(str(cloud / "nonexistent"), fs_config=cloud.config)
 
 
 class TestToRemote:

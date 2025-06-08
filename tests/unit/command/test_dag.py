@@ -43,13 +43,7 @@ def repo(tmp_dir, dvc):
 
     dvc.run(no_exec=True, deps=["a", "c"], outs=["d", "e"], cmd="cmd1", name="1")
     dvc.run(no_exec=True, deps=["b", "c"], outs=["f", "g"], cmd="cmd2", name="2")
-    dvc.run(
-        no_exec=True,
-        deps=["a", "b", "c"],
-        outs=["h", "i"],
-        cmd="cmd3",
-        name="3",
-    )
+    dvc.run(no_exec=True, deps=["a", "b", "c"], outs=["h", "i"], cmd="cmd3", name="3")
     dvc.run(no_exec=True, deps=["a", "h"], outs=["j"], cmd="cmd4", name="4")
 
     return dvc
@@ -139,7 +133,7 @@ def test_show_dot(repo):
         "\"stage: 'b.dvc'\" -> \"stage: '2'\";",
         "\"stage: 'b.dvc'\" -> \"stage: '3'\";",
         "\"stage: 'b.dvc'\";",
-        "strict digraph  {",
+        "strict digraph {",
         "}",
     ]
     actual = sorted(line.rstrip() for line in _show_dot(repo.index.graph).splitlines())
@@ -159,7 +153,7 @@ def test_show_dot_properly_escapes():
     )
 
     expected = {
-        "strict digraph  {",
+        "strict digraph {",
         '"data\\raw\\2.dvc";',
         '"prepare";',
         '"4";',

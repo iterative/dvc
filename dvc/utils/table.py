@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from rich.table import Table as RichTable
 
@@ -7,15 +7,13 @@ if TYPE_CHECKING:
 
 
 class Table(RichTable):
-    def add_column(  # pylint: disable=arguments-differ
-        self, *args: Any, collapse: bool = False, **kwargs: Any
-    ) -> None:
+    def add_column(self, *args: Any, collapse: bool = False, **kwargs: Any) -> None:
         super().add_column(*args, **kwargs)
         self.columns[-1].collapse = collapse  # type: ignore[attr-defined]
 
     def _calculate_column_widths(
         self, console: "Console", options: "ConsoleOptions"
-    ) -> List[int]:
+    ) -> list[int]:
         """Calculate the widths of each column, including padding, not
         including borders.
 
@@ -48,21 +46,18 @@ class Table(RichTable):
         return widths
 
     def _collapse_widths(  # type: ignore[override]
-        # pylint: disable=arguments-differ
         self,
-        widths: List[int],
-        wrapable: List[bool],
+        widths: list[int],
+        wrapable: list[bool],
         max_width: int,
-    ) -> List[int]:
+    ) -> list[int]:
         """Collapse columns right-to-left if possible to fit table into
         max_width.
 
         If table is still too wide after collapsing, rich's automatic overflow
         handling will be used.
         """
-        collapsible = [
-            column.collapse for column in self.columns  # type: ignore[attr-defined]
-        ]
+        collapsible = [column.collapse for column in self.columns]  # type: ignore[attr-defined]
         total_width = sum(widths)
         excess_width = total_width - max_width
         if any(collapsible):

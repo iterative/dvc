@@ -14,16 +14,8 @@ from dvc_objects.errors import ObjectFormatError
 def test_cache(tmp_dir, dvc):
     cache1_md5 = "123"
     cache2_md5 = "234"
-    cache1 = os.path.join(
-        dvc.cache.local.path,
-        cache1_md5[0:2],
-        cache1_md5[2:],
-    )
-    cache2 = os.path.join(
-        dvc.cache.local.path,
-        cache2_md5[0:2],
-        cache2_md5[2:],
-    )
+    cache1 = os.path.join(dvc.cache.local.path, cache1_md5[:2], cache1_md5[2:])
+    cache2 = os.path.join(dvc.cache.local.path, cache2_md5[:2], cache2_md5[2:])
     tmp_dir.gen({cache1: "1", cache2: "2"})
 
     assert os.path.exists(cache1)
@@ -165,7 +157,7 @@ def test_default_cache_type(dvc):
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize("group", [False, True])
 def test_shared_cache(tmp_dir, dvc, group):
-    from dvc.fs import system
+    from dvc_data.hashfile.db.local import umask
 
     if group:
         with dvc.config.edit() as conf:
@@ -178,7 +170,7 @@ def test_shared_cache(tmp_dir, dvc, group):
     tmp_dir.dvc_gen({"file": "file content", "dir": {"file2": "file 2 content"}})
 
     file_mode = oct(0o444)
-    dir_mode = oct(0o2775 if group else (0o777 & ~system.umask))
+    dir_mode = oct(0o2775 if group else (0o777 & ~umask))
     for root, dnames, fnames in os.walk(cache_dir):
         for dname in dnames:
             path = os.path.join(root, dname)

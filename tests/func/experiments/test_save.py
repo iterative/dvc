@@ -67,11 +67,12 @@ def test_exp_save_after_commit(tmp_dir, dvc, scm):
     dvc.experiments.save(name="exp-1", force=True)
 
     tmp_dir.scm_gen({"new_file": "new_file"}, commit="new baseline")
+    baseline_new = scm.get_rev()
     dvc.experiments.save(name="exp-2", force=True)
 
     all_exps = dvc.experiments.ls(all_commits=True)
     assert all_exps[baseline][0][0] == "exp-1"
-    assert all_exps["refs/heads/master"][0][0] == "exp-2"
+    assert all_exps[baseline_new][0][0] == "exp-2"
 
 
 def test_exp_save_with_staged_changes(tmp_dir, dvc, scm):
@@ -120,11 +121,7 @@ def test_exp_save_include_untracked_warning(tmp_dir, dvc, scm, mocker):
 
 def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc):
     (tmp_dir / "dvc.yaml").dump(
-        {
-            "metrics": ["metrics.json"],
-            "params": ["params.yaml"],
-            "plots": ["plots.csv"],
-        }
+        {"metrics": ["metrics.json"], "params": ["params.yaml"], "plots": ["plots.csv"]}
     )
     stage = dvc.stage.add(
         cmd="touch metrics.json && touch params.yaml && touch plots.csv",
@@ -139,10 +136,7 @@ def test_untracked_top_level_files_are_included_in_exp(tmp_dir, scm, dvc):
 
 
 def test_untracked_dvclock_is_included_in_exp(tmp_dir, scm, dvc):
-    stage = dvc.stage.add(
-        cmd="echo foo",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="echo foo", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
     dvc.reproduce(stage.addressing)
 
@@ -155,8 +149,36 @@ def test_untracked_dvclock_is_included_in_exp(tmp_dir, scm, dvc):
     assert fs.exists("dvc.lock")
 
 
+def test_exp_save_include_untracked_force(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
+
+    new_file = tmp_dir / "new_file"
+    new_file.write_text("new_file")
+    dvc.scm.ignore(new_file)
+    exp = dvc.experiments.save(include_untracked=["new_file"])
+
+    fs = scm.get_fs(exp)
+    assert fs.exists("new_file")
+
+
 def test_exp_save_custom_message(tmp_dir, dvc, scm):
     setup_stage(tmp_dir, dvc, scm)
 
     exp = dvc.experiments.save(message="custom commit message")
     assert scm.gitpython.repo.commit(exp).message == "custom commit message"
+
+
+def test_exp_save_target(tmp_dir, dvc, scm):
+    setup_stage(tmp_dir, dvc, scm)
+    orig_dvclock = (tmp_dir / "dvc.lock").read_text()
+    (tmp_dir / "bar").write_text("modified")
+
+    tmp_dir.dvc_gen({"file": "orig"}, commit="add files")
+    orig_dvcfile = (tmp_dir / "file.dvc").read_text()
+    (tmp_dir / "file").write_text("modified")
+
+    dvc.experiments.save(["file"])
+    assert (tmp_dir / "bar").read_text() == "modified"
+    assert (tmp_dir / "dvc.lock").read_text() == orig_dvclock
+    assert (tmp_dir / "file").read_text() == "modified"
+    assert (tmp_dir / "file.dvc").read_text() != orig_dvcfile

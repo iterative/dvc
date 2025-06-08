@@ -1,47 +1,95 @@
-name: Build package
+name: Build and upload package
 on:
   push:
     branches:
     - main
   release:
-    types: [released, prereleased]
+    types:
+    - published
   workflow_dispatch:
+
+env:
+  FORCE_COLOR: 1
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  pip:
+  build:
+    name: Build & Verify package
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.13
 
-    - run: python -m pip install --upgrade pip setuptools_scm build twine
-    - name: Force version for Test PyPI upload
-      if: ${{ !startsWith(github.ref, 'refs/tags') }}
-      run: echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
+    - uses: astral-sh/setup-uv@v6
 
-    - run: |
+    - name: Omit local version for Test PyPI upload
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: echo SETUPTOOLS_SCM_OVERRIDES_FOR_DVC='{local_scheme="no-local-version"}' >> $GITHUB_ENV
+
+    - name: Build Python Package
+      run: |
         echo 'PKG = "pip"'>dvc/_build.py
-        python -m build
-      env:
-        SETUPTOOLS_SCM_PRETEND_VERSION: ${{ env.version }}
-    - run: twine check --strict dist/*
+        uv build
 
-    - name: Publish to PyPI
-      if: github.event_name == 'release'
-      uses: pypa/gh-action-pypi-publish@release/v1
+    - name: Check dist
+      run: uv tool run twine check --strict dist/*
 
-    - name: Publish to Test PyPI
-      if: ${{ github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Packages
+        path: dist/
+        if-no-files-found: error
+
+  test-pypi-publish:
+    name: Publish dev package to test.pypi.org
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ github.event.action == 'published' || (github.repository == 'iterative/dvc' && github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+
+    environment:
+      name: test-pypi
+      url: https://test.pypi.org/p/dvc/${{ github.event.release.tag_name }}
+
+    permissions:
+      id-token: write
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: Packages
+        path: dist
+
+    - name: Upload package to Test PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
         skip-existing: true
+
+  pypi-publish:
+    name: Publish released package to pypi.org
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event.action == 'published'
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dvc/${{ github.event.release.tag_name }}
+
+    permissions:
+      id-token: write
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: Packages
+        path: dist
+
+    - name: Upload package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,12 +1,13 @@
 """Main parser for the dvc cli."""
+
 import argparse
-import logging
 import os
 from functools import lru_cache
 
 from dvc import __version__
 from dvc.commands import (
     add,
+    artifacts,
     cache,
     check_ignore,
     checkout,
@@ -17,8 +18,10 @@ from dvc.commands import (
     dag,
     data,
     data_sync,
+    dataset,
     destroy,
     diff,
+    du,
     experiments,
     freeze,
     gc,
@@ -26,12 +29,12 @@ from dvc.commands import (
     get_url,
     git_hook,
     imp,
+    imp_db,
     imp_url,
     init,
     install,
     ls,
     ls_url,
-    machine,
     metrics,
     move,
     params,
@@ -42,65 +45,71 @@ from dvc.commands import (
     repro,
     root,
     stage,
+    studio,
     unprotect,
     update,
     version,
 )
+from dvc.log import logger
 
-from . import DvcParserError
+from . import DvcParserError, formatter
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 COMMANDS = [
-    init,
-    queue,
-    get,
-    get_url,
-    destroy,
     add,
-    remove,
-    move,
-    unprotect,
-    repro,
-    data_sync,
-    gc,
-    imp,
-    imp_url,
-    config,
-    checkout,
-    remote,
+    artifacts,
     cache,
-    metrics,
-    params,
-    install,
-    root,
-    ls,
-    ls_url,
-    freeze,
-    dag,
-    daemon,
+    check_ignore,
+    checkout,
     commit,
     completion,
-    diff,
-    version,
-    update,
-    git_hook,
-    plots,
-    stage,
-    experiments,
-    check_ignore,
-    machine,
+    config,
+    daemon,
+    dag,
     data,
+    data_sync,
+    dataset,
+    destroy,
+    diff,
+    du,
+    experiments,
+    freeze,
+    gc,
+    get,
+    get_url,
+    git_hook,
+    imp,
+    imp_db,
+    imp_url,
+    init,
+    install,
+    ls,
+    ls_url,
+    metrics,
+    move,
+    params,
+    plots,
+    queue,
+    remote,
+    remove,
+    repro,
+    root,
+    stage,
+    studio,
+    unprotect,
+    update,
+    version,
 ]
 
 
 def _find_parser(parser, cmd_cls):
-    defaults = parser._defaults  # pylint: disable=protected-access
+    defaults = parser._defaults
     if not cmd_cls or cmd_cls == defaults.get("func"):
         parser.print_help()
         raise DvcParserError
 
-    actions = parser._actions  # pylint: disable=protected-access
+    actions = parser._actions
     for action in actions:
         if not isinstance(action.choices, dict):
             # NOTE: we are only interested in subparsers
@@ -112,7 +121,7 @@ def _find_parser(parser, cmd_cls):
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
+    def error(self, message, cmd_cls=None):
         logger.error(message)
         _find_parser(self, cmd_cls)
 
@@ -159,7 +168,7 @@ def get_main_parser():
         prog="dvc",
         description=desc,
         parents=[parent_parser],
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=formatter.RawTextHelpFormatter,
         add_help=False,
     )
 
@@ -194,14 +203,11 @@ def get_main_parser():
     # Sub commands
     subparsers = parser.add_subparsers(
         title="Available Commands",
-        metavar="COMMAND",
+        metavar="command",
         dest="cmd",
-        help="Use `dvc COMMAND --help` for command-specific help.",
+        help="Use `dvc command --help` for command-specific help.",
+        required=True,
     )
-
-    from .utils import fix_subparsers
-
-    fix_subparsers(subparsers)
 
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)

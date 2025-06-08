@@ -1,13 +1,14 @@
 import json
-import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
+from collections.abc import Collection, Generator
+from typing import TYPE_CHECKING, Optional
 
 import psutil
 from funcy import first
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExpQueueEmptyError
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 
     from .base import QueueDoneResult
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class WorkspaceQueue(BaseStashQueue):
@@ -82,9 +83,9 @@ class WorkspaceQueue(BaseStashQueue):
         raise NotImplementedError
 
     def reproduce(
-        self, copy_paths: Optional[List[str]] = None, message: Optional[str] = None
-    ) -> Dict[str, Dict[str, str]]:
-        results: Dict[str, Dict[str, str]] = defaultdict(dict)
+        self, copy_paths: Optional[list[str]] = None, message: Optional[str] = None
+    ) -> dict[str, dict[str, str]]:
+        results: dict[str, dict[str, str]] = defaultdict(dict)
         try:
             while True:
                 entry, executor = self.get()
@@ -99,11 +100,11 @@ class WorkspaceQueue(BaseStashQueue):
 
     def _reproduce_entry(
         self, entry: QueueEntry, executor: "BaseExecutor", **kwargs
-    ) -> Dict[str, Dict[str, str]]:
+    ) -> dict[str, dict[str, str]]:
         kwargs.pop("copy_paths", None)
         from dvc_task.proc.process import ProcessInfo
 
-        results: Dict[str, Dict[str, str]] = defaultdict(dict)
+        results: dict[str, dict[str, str]] = defaultdict(dict)
         exec_name = self._EXEC_NAME or entry.stash_rev
         proc_info = ProcessInfo(os.getpid(), None, None, None, None)
         proc_info_path = self._proc_info_path(exec_name)
@@ -130,7 +131,7 @@ class WorkspaceQueue(BaseStashQueue):
                 )
         except DvcException:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise DvcException(f"Failed to reproduce experiment '{rev[:7]}'") from exc
         finally:
             executor.cleanup(infofile)
@@ -158,12 +159,12 @@ class WorkspaceQueue(BaseStashQueue):
         return None
 
     @staticmethod
-    def collect_executor(  # pylint: disable=unused-argument
+    def collect_executor(
         exp: "Experiments",
         executor: "BaseExecutor",  # noqa: ARG004
         exec_result: "ExecutorResult",
-    ) -> Dict[str, str]:
-        results: Dict[str, str] = {}
+    ) -> dict[str, str]:
+        results: dict[str, str] = {}
         exp_rev = exp.scm.get_ref(EXEC_BRANCH)
         if exp_rev:
             assert exec_result.exp_hash
@@ -181,12 +182,7 @@ class WorkspaceQueue(BaseStashQueue):
     def shutdown(self, kill: bool = False):
         raise NotImplementedError
 
-    def logs(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-        follow: bool = False,
-    ):
+    def logs(self, rev: str, encoding: Optional[str] = None, follow: bool = False):
         raise NotImplementedError
 
     def get_running_exp(self) -> Optional[str]:
@@ -207,7 +203,7 @@ class WorkspaceQueue(BaseStashQueue):
         baseline_revs: Optional[Collection[str]],
         fetch_refs: bool = False,  # noqa: ARG002
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         from dvc.repo.experiments.collect import collect_exec_branch
         from dvc.repo.experiments.serialize import (
             ExpExecutor,
@@ -215,7 +211,7 @@ class WorkspaceQueue(BaseStashQueue):
             LocalExpExecutor,
         )
 
-        result: Dict[str, List[ExpRange]] = defaultdict(list)
+        result: dict[str, list[ExpRange]] = defaultdict(list)
         pid = self._active_pid
         if pid is None:
             return result
@@ -248,12 +244,12 @@ class WorkspaceQueue(BaseStashQueue):
         self,
         baseline_revs: Optional[Collection[str]],
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         raise NotImplementedError
 
     def collect_failed_data(
         self,
         baseline_revs: Optional[Collection[str]],
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         raise NotImplementedError

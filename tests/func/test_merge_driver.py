@@ -132,7 +132,8 @@ def test_merge_different_output_options(tmp_dir, dvc, caplog):
     )
 
     (tmp_dir / "their").write_text(
-        "outs:\n"
+        r"outs:"
+        "\n"
         "- md5: f987654321.dir\n"
         "  hash: md5\n"
         "  path: path\n"

@@ -2,21 +2,13 @@ import logging
 import os
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from itertools import product
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
 
 from funcy import collecting, first, isa, join, reraise
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.parsing.interpolate import ParseError
 from dvc.utils.objects import cached_property
 
@@ -29,6 +21,7 @@ from .context import (
     VarsAlreadyLoaded,
 )
 from .interpolate import (
+    check_expression,
     check_recursive_parse_errors,
     is_interpolated_string,
     recurse,
@@ -44,13 +37,20 @@ if TYPE_CHECKING:
     from .context import SeqOrMap
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
-STAGES_KWD = "stages"
 VARS_KWD = "vars"
 WDIR_KWD = "wdir"
+
+ARTIFACTS_KWD = "artifacts"
+DATASETS_KWD = "datasets"
+METRICS_KWD = "metrics"
 PARAMS_KWD = "params"
+PLOTS_KWD = "plots"
+STAGES_KWD = "stages"
+
 FOREACH_KWD = "foreach"
+MATRIX_KWD = "matrix"
 DO_KWD = "do"
 
 DEFAULT_PARAMS_FILE = "params.yaml"
@@ -82,7 +82,7 @@ def format_and_raise(exc: Exception, msg: str, path: str) -> "NoReturn":
 
 
 def _reraise_err(
-    exc_cls: Type[Exception], *args, from_exc: Optional[Exception] = None
+    exc_cls: type[Exception], *args, from_exc: Optional[Exception] = None
 ) -> "NoReturn":
     err = exc_cls(*args)
     if from_exc and logger.isEnabledFor(logging.DEBUG):
@@ -105,7 +105,7 @@ def is_map_or_seq(data: Any) -> bool:
     return not isinstance(data, str) and _is_map_or_seq(data)
 
 
-def split_foreach_name(name: str) -> Tuple[str, Optional[str]]:
+def split_group_name(name: str) -> tuple[str, Optional[str]]:
     group, *keys = name.rsplit(JOIN, maxsplit=1)
     return group, first(keys)
 
@@ -120,13 +120,15 @@ def check_interpolations(data: "DictStrAny", where: str, path: str):
     return recurse(func)(data)
 
 
-Definition = Union["ForeachDefinition", "EntryDefinition"]
+Definition = Union["ForeachDefinition", "EntryDefinition", "MatrixDefinition"]
 
 
 def make_definition(
     resolver: "DataResolver", name: str, definition: "DictStrAny", **kwargs
 ) -> Definition:
     args = resolver, resolver.context, name, definition
+    if MATRIX_KWD in definition:
+        return MatrixDefinition(*args, **kwargs)
     if FOREACH_KWD in definition:
         return ForeachDefinition(*args, **kwargs)
     return EntryDefinition(*args, **kwargs)
@@ -138,11 +140,11 @@ class DataResolver:
         self.parsing_config = repo.config.get("parsing", {})
 
         if os.path.isabs(wdir):
-            wdir = fs.path.relpath(wdir)
+            wdir = fs.relpath(wdir)
             wdir = "" if wdir == os.curdir else wdir
 
         self.wdir = wdir
-        self.relpath = fs.path.normpath(fs.path.join(self.wdir, "dvc.yaml"))
+        self.relpath = fs.normpath(fs.join(self.wdir, "dvc.yaml"))
 
         vars_ = d.get(VARS_KWD, [])
         check_interpolations(vars_, VARS_KWD, self.relpath)
@@ -156,24 +158,47 @@ class DataResolver:
 
         # we use `tracked_vars` to keep a dictionary of used variables
         # by the interpolated entries.
-        self.tracked_vars: Dict[str, Mapping] = {}
+        self.tracked_vars: dict[str, Mapping] = {}
 
         stages_data = d.get(STAGES_KWD, {})
-        # we wrap the definitions into ForeachDefinition and EntryDefinition,
+        # we wrap the definitions into:
+        # ForeachDefinition, MatrixDefinition, and EntryDefinition
         # that helps us to optimize, cache and selectively load each one of
         # them as we need, and simplify all of this DSL/parsing logic.
-        self.definitions: Dict[str, Definition] = {
+        self.definitions: dict[str, Definition] = {
             name: make_definition(self, name, definition)
             for name, definition in stages_data.items()
         }
 
+        self.artifacts = [
+            ArtifactDefinition(self, self.context, name, definition, ARTIFACTS_KWD)
+            for name, definition in d.get(ARTIFACTS_KWD, {}).items()
+        ]
+        self.datasets = [
+            TopDefinition(self, self.context, str(i), definition, DATASETS_KWD)
+            for i, definition in enumerate(d.get(DATASETS_KWD, []))
+        ]
+        self.metrics = [
+            TopDefinition(self, self.context, str(i), definition, METRICS_KWD)
+            for i, definition in enumerate(d.get(METRICS_KWD, []))
+        ]
+        self.params = [
+            TopDefinition(self, self.context, str(i), definition, PARAMS_KWD)
+            for i, definition in enumerate(d.get(PARAMS_KWD, []))
+        ]
+        self.plots = [
+            TopDefinition(self, self.context, str(i), definition, PLOTS_KWD)
+            for i, definition in enumerate(d.get(PLOTS_KWD, []))
+        ]
+
     def resolve_one(self, name: str):
-        group, key = split_foreach_name(name)
+        group, key = split_group_name(name)
 
         if not self._has_group_and_key(group, key):
             raise EntryNotFound(f"Could not find '{name}'")
 
-        # all of the checks for `key` not being None for `ForeachDefinition`
+        # all of the checks for `key` not being None for
+        # `ForeachDefinition`/`MatrixDefinition`
         # and/or `group` not existing in the `interim`, etc. should be
         # handled by the `self.has_key()` above.
         definition = self.definitions[group]
@@ -186,11 +211,32 @@ class DataResolver:
     def resolve(self):
         """Used for testing purposes, otherwise use resolve_one()."""
         data = join(map(self.resolve_one, self.get_keys()))
-        logger.trace("Resolved dvc.yaml:\n%s", data)  # type: ignore[attr-defined]
+        logger.trace("Resolved dvc.yaml:\n%s", data)
         return {STAGES_KWD: data}
 
+    # Top-level sections are eagerly evaluated, whereas stages are lazily evaluated,
+    # one-by-one.
+
+    def resolve_artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
+        d: dict[str, Optional[dict[str, Any]]] = {}
+        for item in self.artifacts:
+            d.update(item.resolve())
+        return d
+
+    def resolve_datasets(self) -> list[dict[str, Any]]:
+        return [item.resolve() for item in self.datasets]
+
+    def resolve_metrics(self) -> list[str]:
+        return [item.resolve() for item in self.metrics]
+
+    def resolve_params(self) -> list[str]:
+        return [item.resolve() for item in self.params]
+
+    def resolve_plots(self) -> list[Any]:
+        return [item.resolve() for item in self.plots]
+
     def has_key(self, key: str):
-        return self._has_group_and_key(*split_foreach_name(key))
+        return self._has_group_and_key(*split_group_name(key))
 
     def _has_group_and_key(self, group: str, key: Optional[str] = None):
         try:
@@ -198,16 +244,14 @@ class DataResolver:
         except KeyError:
             return False
 
-        if key:
-            return isinstance(definition, ForeachDefinition) and definition.has_member(
-                key
-            )
-        return not isinstance(definition, ForeachDefinition)
+        if not isinstance(definition, (ForeachDefinition, MatrixDefinition)):
+            return key is None
+        return key is not None and definition.has_member(key)
 
     @collecting
     def get_keys(self):
         for name, definition in self.definitions.items():
-            if isinstance(definition, ForeachDefinition):
+            if isinstance(definition, (ForeachDefinition, MatrixDefinition)):
                 yield from definition.get_generated_names()
                 continue
             yield name
@@ -243,7 +287,7 @@ class EntryDefinition:
             wdir = to_str(context.resolve_str(wdir))
         except (ContextError, ParseError) as exc:
             format_and_raise(exc, f"'{self.where}.{name}.wdir'", self.relpath)
-        return self.resolver.fs.path.join(self.wdir, wdir)
+        return self.resolver.fs.join(self.wdir, wdir)
 
     def resolve(self, **kwargs):
         try:
@@ -256,8 +300,9 @@ class EntryDefinition:
         name = self.name
         if not skip_checks:
             # we can check for syntax errors as we go for interpolated entries,
-            # but for foreach-generated ones, once is enough, which it does
-            # that itself. See `ForeachDefinition.do_definition`.
+            # but for foreach and matrix generated ones, once is enough, which it does
+            # that itself. See `ForeachDefinition.template`
+            # and `MatrixDefinition.template`.
             check_syntax_errors(self.definition, name, self.relpath)
 
         # we need to pop vars from generated/evaluated data
@@ -278,9 +323,7 @@ class EntryDefinition:
         except VarsAlreadyLoaded as exc:
             format_and_raise(exc, f"'{self.where}.{name}.vars'", self.relpath)
 
-        logger.trace(  # type: ignore[attr-defined]
-            "Context during resolution of stage %s:\n%s", name, context
-        )
+        logger.trace("Context during resolution of stage %s:\n%s", name, context)
 
         with context.track() as tracked_data:
             # NOTE: we do not pop "wdir", and resolve it again
@@ -331,17 +374,18 @@ class ForeachDefinition:
         self.name = name
 
         assert DO_KWD in definition
+        assert MATRIX_KWD not in definition
         self.foreach_data = definition[FOREACH_KWD]
-        self._do_definition = definition[DO_KWD]
+        self._template = definition[DO_KWD]
 
         self.pair = IterationPair()
         self.where = where
 
     @cached_property
-    def do_definition(self):
+    def template(self):
         # optimization: check for syntax errors only once for `foreach` stages
-        check_syntax_errors(self._do_definition, self.name, self.relpath)
-        return self._do_definition
+        check_syntax_errors(self._template, self.name, self.relpath)
+        return self._template
 
     @cached_property
     def resolved_iterable(self):
@@ -371,7 +415,7 @@ class ForeachDefinition:
                 f" in '{self.relpath}': expected list/dictionary, got " + typ
             )
 
-    def _warn_if_overwriting(self, keys: List[str]):
+    def _warn_if_overwriting(self, keys: list[str]):
         warn_for = [k for k in keys if k in self.context]
         if warn_for:
             linking_verb = "is" if len(warn_for) == 1 else "are"
@@ -385,7 +429,7 @@ class ForeachDefinition:
                 self.name,
             )
 
-    def _inserted_keys(self, iterable) -> List[str]:
+    def _inserted_keys(self, iterable) -> list[str]:
         keys = [self.pair.value]
         if isinstance(iterable, Mapping):
             keys.append(self.pair.key)
@@ -444,16 +488,169 @@ class ForeachDefinition:
             # i.e. quadratic complexity).
             generated = self._generate_name(key)
             entry = EntryDefinition(
-                self.resolver, self.context, generated, self.do_definition
+                self.resolver, self.context, generated, self.template
             )
             try:
                 # optimization: skip checking for syntax errors on each foreach
-                # generated stages. We do it once when accessing do_definition.
+                # generated stages. We do it once when accessing template.
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
                 format_and_raise(exc, f"stage '{generated}'", self.relpath)
 
-            # let mypy know that this state is unreachable as format_and_raise
-            # does not return at all (it's not able to understand it for some
-            # reason)
-            raise AssertionError("unreachable")
+
+class MatrixDefinition:
+    def __init__(
+        self,
+        resolver: DataResolver,
+        context: Context,
+        name: str,
+        definition: "DictStrAny",
+        where: str = STAGES_KWD,
+    ):
+        self.resolver = resolver
+        self.relpath = self.resolver.relpath
+        self.context = context
+        self.name = name
+
+        assert MATRIX_KWD in definition
+        assert DO_KWD not in definition
+        assert FOREACH_KWD not in definition
+
+        self._template = definition.copy()
+        self.matrix_data = self._template.pop(MATRIX_KWD)
+
+        self.pair = IterationPair()
+        self.where = where
+
+    @cached_property
+    def template(self) -> "DictStrAny":
+        # optimization: check for syntax errors only once for `matrix` stages
+        check_syntax_errors(self._template, self.name, self.relpath)
+        return self._template
+
+    @cached_property
+    def resolved_iterable(self) -> dict[str, list]:
+        return self._resolve_matrix_data()
+
+    def _resolve_matrix_data(self) -> dict[str, list]:
+        try:
+            iterable = self.context.resolve(self.matrix_data, unwrap=False)
+        except (ContextError, ParseError) as exc:
+            format_and_raise(exc, f"'{self.where}.{self.name}.matrix'", self.relpath)
+
+        # Matrix entries will have `key` and `item` added to the context.
+        # Warn users if these are already in the context from the global vars.
+        self._warn_if_overwriting([self.pair.key, self.pair.value])
+        return iterable
+
+    def _warn_if_overwriting(self, keys: list[str]):
+        warn_for = [k for k in keys if k in self.context]
+        if warn_for:
+            linking_verb = "is" if len(warn_for) == 1 else "are"
+            logger.warning(
+                (
+                    "%s %s already specified, "
+                    "will be overwritten for stages generated from '%s'"
+                ),
+                " and ".join(warn_for),
+                linking_verb,
+                self.name,
+            )
+
+    @cached_property
+    def normalized_iterable(self) -> dict[str, "DictStrAny"]:
+        """Convert sequence to Mapping with keys normalized."""
+        iterable = self.resolved_iterable
+        assert isinstance(iterable, Mapping)
+
+        ret: dict[str, DictStrAny] = {}
+        matrix = {key: enumerate(v) for key, v in iterable.items()}
+        for combination in product(*matrix.values()):
+            d: DictStrAny = {}
+            fragments: list[str] = []
+            for k, (i, v) in zip(matrix.keys(), combination):
+                d[k] = v
+                fragments.append(f"{k}{i}" if is_map_or_seq(v) else to_str(v))
+
+            key = "-".join(fragments)
+            ret[key] = d
+        return ret
+
+    def has_member(self, key: str) -> bool:
+        return key in self.normalized_iterable
+
+    def get_generated_names(self) -> list[str]:
+        return list(map(self._generate_name, self.normalized_iterable))
+
+    def _generate_name(self, key: str) -> str:
+        return f"{self.name}{JOIN}{key}"
+
+    def resolve_all(self) -> "DictStrAny":
+        return join(map(self.resolve_one, self.normalized_iterable))
+
+    def resolve_one(self, key: str) -> "DictStrAny":
+        return self._each_iter(key)
+
+    def _each_iter(self, key: str) -> "DictStrAny":
+        err_message = f"Could not find '{key}' in matrix group '{self.name}'"
+        with reraise(KeyError, EntryNotFound(err_message)):
+            value = self.normalized_iterable[key]
+
+        temp_dict = {self.pair.key: key, self.pair.value: value}
+        with self.context.set_temporarily(temp_dict, reserve=True):
+            # optimization: item and key can be removed on __exit__() as they
+            # are top-level values, and are not merged recursively.
+            # This helps us avoid cloning context, which is slower
+            # (increasing the size of the context might increase
+            # the no. of items to be generated which means more cloning,
+            # i.e. quadratic complexity).
+            generated = self._generate_name(key)
+            entry = EntryDefinition(
+                self.resolver, self.context, generated, self.template
+            )
+            try:
+                # optimization: skip checking for syntax errors on each matrix
+                # generated stages. We do it once when accessing template.
+                return entry.resolve_stage(skip_checks=True)
+            except ContextError as exc:
+                format_and_raise(exc, f"stage '{generated}'", self.relpath)
+
+
+class TopDefinition:
+    def __init__(
+        self,
+        resolver: DataResolver,
+        context: Context,
+        name: str,
+        definition: "Any",
+        where: str,
+    ):
+        self.resolver = resolver
+        self.context = context
+        self.name = name
+        self.definition = definition
+        self.where = where
+        self.relpath = self.resolver.relpath
+
+    def resolve(self):
+        try:
+            check_recursive_parse_errors(self.definition)
+            return self.context.resolve(self.definition)
+        except (ParseError, ContextError) as exc:
+            format_and_raise(exc, f"'{self.where}.{self.name}'", self.relpath)
+
+
+class ArtifactDefinition(TopDefinition):
+    def resolve(self) -> dict[str, Optional[dict[str, Any]]]:
+        try:
+            check_expression(self.name)
+            name = self.context.resolve(self.name)
+            if not isinstance(name, str):
+                typ = type(name).__name__
+                raise ResolveError(
+                    f"failed to resolve '{self.where}.{self.name}'"
+                    f" in '{self.relpath}': expected str, got " + typ
+                )
+        except (ParseError, ContextError) as exc:
+            format_and_raise(exc, f"'{self.where}.{self.name}'", self.relpath)
+        return {name: super().resolve()}

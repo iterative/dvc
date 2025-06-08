@@ -3,11 +3,8 @@ import shutil
 
 import pytest
 
-from dvc.stage.cache import RunCacheNotSupported
 from dvc.utils.fs import remove
 from dvc_data.hashfile.tree import Tree
-
-# pylint: disable=unused-argument
 
 
 def _check_status(status, **kwargs):
@@ -17,7 +14,7 @@ def _check_status(status, **kwargs):
 
 
 class TestRemote:
-    def test(self, tmp_dir, dvc, remote):  # pylint: disable=W0613
+    def test(self, tmp_dir, dvc, remote):
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
         out = stage.outs[0]
         cache = out.cache_path
@@ -99,8 +96,10 @@ class TestRemote:
         status_dir = dvc.cloud.status(dir_hashes)
         _check_status(status_dir, ok=dir_hashes)
 
-    @pytest.mark.xfail(raises=RunCacheNotSupported, strict=False)
     def test_stage_cache_push_pull(self, tmp_dir, dvc, remote):
+        if remote.scheme in ("http", "https"):
+            pytest.skip("HTTP remote does not support stage cache")
+
         tmp_dir.gen("foo", "foo")
         stage = dvc.stage.add(
             deps=["foo"], outs=["bar"], name="copy-foo-bar", cmd="cp foo bar"
@@ -169,22 +168,44 @@ class TestRemote:
 
 
 class TestRemoteVersionAware:
-    def test_file(self, tmp_dir, dvc, remote_version_aware):  # pylint: disable=W0613
+    def test_file(self, tmp_dir, dvc, run_copy, remote_version_aware):
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
+        run_copy("foo", "foo_copy", name="copy")
 
-        dvc.push()
-        assert "version_id" in (tmp_dir / "foo.dvc").read_text()
+        assert dvc.push()
+        assert (remote_version_aware / "foo").read_text() == "foo"
+        assert (remote_version_aware / "foo_copy").read_text() == "foo"
+        foo_dvc = (tmp_dir / "foo.dvc").read_text()
+        assert "version_id" in foo_dvc
         stage = stage.reload()
         out = stage.outs[0]
         assert out.meta.version_id
+        dvc_lock = (tmp_dir / "dvc.lock").read_text()
 
         remove(dvc.cache.local.path)
         remove(tmp_dir / "foo")
+        remove(tmp_dir / "foo_copy")
 
-        dvc.pull()
+        assert dvc.pull()
         assert (tmp_dir / "foo").read_text() == "foo"
+        assert (tmp_dir / "foo_copy").read_text() == "foo"
+        assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
 
-    def test_dir(self, tmp_dir, dvc, remote_version_aware):  # pylint: disable=W0613
+        assert not dvc.push()
+        assert (remote_version_aware / "foo").read_text() == "foo"
+        assert (remote_version_aware / "foo_copy").read_text() == "foo"
+        assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+        dvc.reproduce()
+        assert not dvc.push()
+        assert (remote_version_aware / "foo").read_text() == "foo"
+        assert (remote_version_aware / "foo_copy").read_text() == "foo"
+        assert (tmp_dir / "foo.dvc").read_text() == foo_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+    def test_dir(self, tmp_dir, dvc, run_copy, remote_version_aware):  # noqa: PLR0915
         (stage,) = tmp_dir.dvc_gen(
             {
                 "data_dir": {
@@ -195,9 +216,12 @@ class TestRemoteVersionAware:
             }
         )
 
-        dvc.push()
-        assert "files" in (tmp_dir / "data_dir.dvc").read_text()
-        assert "version_id" in (tmp_dir / "data_dir.dvc").read_text()
+        assert not dvc.fetch()
+        assert dvc.push()
+
+        data_dir_dvc = (tmp_dir / "data_dir.dvc").read_text()
+        assert "files" in data_dir_dvc
+        assert "version_id" in data_dir_dvc
         stage = stage.reload()
         out = stage.outs[0]
         assert out.files
@@ -208,15 +232,61 @@ class TestRemoteVersionAware:
         remove(dvc.cache.local.path)
         remove(tmp_dir / "data_dir")
 
-        dvc.pull()
+        assert dvc.pull()
         assert (tmp_dir / "data_dir" / "data").read_text() == "data"
         assert (
             tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
+        ).read_text() == "data_sub"
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+
+        run_copy("data_dir", "data_dir_copy", name="copy")
+        dvc_lock = (tmp_dir / "dvc.lock").read_text()
+
+        assert dvc.push()
+        assert (remote_version_aware / "data_dir").exists()
+        assert (remote_version_aware / "data_dir" / "data").exists()
+        assert (remote_version_aware / "data_dir_copy").exists()
+        assert (remote_version_aware / "data_dir_copy" / "data").exists()
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+        assert (tmp_dir / "dvc.lock").read_text() != dvc_lock
+        dvc_lock = (tmp_dir / "dvc.lock").read_text()
+
+        assert not dvc.push()
+        assert (remote_version_aware / "data_dir").exists()
+        assert (remote_version_aware / "data_dir" / "data").exists()
+        assert (remote_version_aware / "data_dir_copy").exists()
+        assert (remote_version_aware / "data_dir_copy" / "data").exists()
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+        dvc.cache.local.clear()
+        remove(tmp_dir / "data_dir")
+        remove(tmp_dir / "data_dir_copy")
+        assert not dvc.push()
+        assert (remote_version_aware / "data_dir").exists()
+        assert (remote_version_aware / "data_dir" / "data").exists()
+        assert (remote_version_aware / "data_dir_copy").exists()
+        assert (remote_version_aware / "data_dir_copy" / "data").exists()
+        assert (tmp_dir / "data_dir.dvc").read_text() == data_dir_dvc
+        assert (tmp_dir / "dvc.lock").read_text() == dvc_lock
+
+        (remote_version_aware / "data_dir").rmdir()
+        (remote_version_aware / "data_dir_copy").rmdir()
+        assert not (remote_version_aware / "data_dir").exists()
+        assert not (remote_version_aware / "data_dir_copy").exists()
+        assert dvc.pull()
+        assert (tmp_dir / "data_dir" / "data").read_text() == "data"
+        assert (
+            tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
+        ).read_text() == "data_sub"
+        assert (tmp_dir / "data_dir_copy" / "data").read_text() == "data"
+        assert (
+            tmp_dir / "data_dir_copy" / "data_sub_dir" / "data_sub"
         ).read_text() == "data_sub"
 
 
 class TestRemoteWorktree:
-    def test_file(self, tmp_dir, dvc, remote_worktree):  # pylint: disable=W0613
+    def test_file(self, tmp_dir, dvc, remote_worktree):
         (stage,) = tmp_dir.dvc_gen("foo", "foo")
 
         dvc.push()
@@ -231,7 +301,7 @@ class TestRemoteWorktree:
         dvc.pull()
         assert (tmp_dir / "foo").read_text() == "foo"
 
-    def test_dir(self, tmp_dir, dvc, remote_worktree):  # pylint: disable=W0613
+    def test_dir(self, tmp_dir, dvc, remote_worktree):
         (stage,) = tmp_dir.dvc_gen(
             {
                 "data_dir": {
@@ -261,9 +331,7 @@ class TestRemoteWorktree:
             tmp_dir / "data_dir" / "data_sub_dir" / "data_sub"
         ).read_text() == "data_sub"
 
-    def test_deletion(
-        self, tmp_dir, dvc, scm, remote_worktree  # pylint: disable=W0613
-    ):
+    def test_deletion(self, tmp_dir, dvc, scm, remote_worktree):
         tmp_dir.dvc_gen(
             {
                 "data_dir": {
@@ -292,7 +360,7 @@ class TestRemoteWorktree:
         dvc.pull()
         assert (tmp_dir / "data_dir" / "data").read_text() == "data"
 
-    def test_update(self, tmp_dir, dvc, remote_worktree):  # pylint: disable=W0613
+    def test_update(self, tmp_dir, dvc, remote_worktree):
         (foo_stage,) = tmp_dir.dvc_gen("foo", "foo")
         (data_dir_stage,) = tmp_dir.dvc_gen(
             {

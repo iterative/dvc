@@ -18,35 +18,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
-        pyv: ["3.10"]
+        os: [ubuntu-latest]
+        pyv: ["3.13"]
         plugin: ["dvc-s3"]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         path: dvc
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         repository: iterative/${{ matrix.plugin }}
         ref: main
         path: ${{ matrix.plugin }}
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyv }}
-        cache: pip
-        cache-dependency-path: |
-          dvc/pyproject.toml
-          ${{ matrix.plugin }}/setup.cfg
+
+    - uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+        cache-dependency-glob: "**/pyproject.toml"
+        cache-suffix: ${{ matrix.pyv }}
 
     - name: Install plugin + DVC@PR
       run: |
-        pip install --upgrade pip wheel
-        pip install "./dvc[testing]"
-        pip install -e "./${{ matrix.plugin }}[tests]"
+        uv pip install "./dvc[testing]" --system
+        uv pip install -e "./${{ matrix.plugin }}[tests]" --system
 
     - name: Run plugin tests
       timeout-minutes: 15

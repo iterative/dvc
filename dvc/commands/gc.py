@@ -1,12 +1,12 @@
-import argparse
-import logging
 import os
 
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdGC(CmdBase):
@@ -25,6 +25,10 @@ class CmdGC(CmdBase):
             cloud=self.args.cloud,
             not_in_remote=self.args.not_in_remote,
         )
+
+        # Don't prompt during dry run
+        if self.args.dry:
+            self.args.force = True
 
         if self.args.rev:
             self.args.num = self.args.num or 1
@@ -50,13 +54,13 @@ class CmdGC(CmdBase):
             msg += " and all experiments"
 
         if self.args.not_in_remote:
-            msg += " that are present in the DVC remote"
+            msg += " that are not present in the DVC remote"
 
         if self.args.repos:
             msg += " of the current and the following repos:"
 
             for repo_path in self.args.repos:
-                msg += "\n  - %s" % os.path.abspath(repo_path)
+                msg += f"\n  - {os.path.abspath(repo_path)}"
         else:
             msg += " of the current repo."
 
@@ -81,6 +85,8 @@ class CmdGC(CmdBase):
             rev=self.args.rev,
             num=self.args.num,
             not_in_remote=self.args.not_in_remote,
+            dry=self.args.dry,
+            skip_failed=self.args.skip_failed,
         )
         return 0
 
@@ -96,7 +102,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(GC_DESCRIPTION, "gc"),
         help=GC_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     gc_parser.add_argument(
         "-w",
@@ -150,12 +156,12 @@ def add_parser(subparsers, parent_parser):
         "--date",
         type=str,
         dest="commit_date",
-        metavar="<YYYY-MM-DD>",
+        metavar="<yyyy-mm-dd>",
         default=None,
         help=(
             "Keep cached data referenced in the commits after ( inclusive )"
             " a certain time. Date must match the extended ISO 8601 format "
-            "(YYYY-MM-DD)."
+            "(yyyy-mm-dd)."
         ),
     )
     gc_parser.add_argument(
@@ -182,6 +188,12 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to collect garbage in",
         metavar="<name>",
+    )
+    gc_parser.add_argument(
+        "--skip-failed",
+        action="store_true",
+        default=False,
+        help="Skip revisions that fail when collected.",
     )
     gc_parser.add_argument(
         "-f",
@@ -212,5 +224,11 @@ def add_parser(subparsers, parent_parser):
             "Useful if you share a single cache across repos."
         ),
         metavar="<paths>",
+    )
+    gc_parser.add_argument(
+        "--dry",
+        action="store_true",
+        default=False,
+        help=("Only print what would get removed without actually removing."),
     )
     gc_parser.set_defaults(func=CmdGC)

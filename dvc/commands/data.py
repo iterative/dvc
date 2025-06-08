@@ -1,11 +1,11 @@
-import argparse
-import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from funcy import chunks, compact, log_durations
 
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import colorize
 
@@ -13,18 +13,18 @@ if TYPE_CHECKING:
     from dvc.repo.data import Status as DataStatus
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdDataStatus(CmdBase):
-    COLORS = {
+    COLORS: ClassVar[dict[str, str]] = {
         "not_in_remote": "red",
         "not_in_cache": "red",
         "committed": "green",
         "uncommitted": "yellow",
         "untracked": "cyan",
     }
-    LABELS = {
+    LABELS: ClassVar[dict[str, str]] = {
         "not_in_remote": "Not in remote",
         "not_in_cache": "Not in cache",
         "committed": "DVC committed changes",
@@ -32,7 +32,7 @@ class CmdDataStatus(CmdBase):
         "untracked": "Untracked files",
         "unchanged": "DVC unchanged files",
     }
-    HINTS = {
+    HINTS: ClassVar[dict[str, tuple[str, ...]]] = {
         "not_in_remote": ('use "dvc push <file>..." to upload files',),
         "not_in_cache": ('use "dvc fetch <file>..." to download files',),
         "committed": ("git commit the corresponding dvc files to update the repo",),
@@ -106,9 +106,7 @@ class CmdDataStatus(CmdBase):
         return 0
 
     def run(self) -> int:
-        with log_durations(
-            logger.trace, "in data_status"  # type: ignore[attr-defined]
-        ):
+        with log_durations(logger.trace, "in data_status"):
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
@@ -131,13 +129,13 @@ def add_parser(subparsers, parent_parser):
     data_parser = subparsers.add_parser(
         "data",
         parents=[parent_parser],
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     data_subparsers = data_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc data CMD --help` to display command-specific help.",
+        required=True,
     )
-    fix_subparsers(data_subparsers)
 
     DATA_STATUS_HELP = (
         "Show changes between the last git commit, the dvcfiles and the workspace."
@@ -146,7 +144,7 @@ def add_parser(subparsers, parent_parser):
         "status",
         parents=[parent_parser],
         description=append_doc_link(DATA_STATUS_HELP, "data/status"),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
         help=DATA_STATUS_HELP,
     )
     data_status_parser.add_argument(

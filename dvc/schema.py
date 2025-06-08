@@ -1,6 +1,7 @@
 from collections.abc import Mapping
+from typing import Any
 
-from voluptuous import Any, Equal, Optional, Required, Schema
+import voluptuous as vol
 
 from dvc import dependency, output
 from dvc.annotations import ANNOTATION_SCHEMA, ARTIFACT_SCHEMA
@@ -11,15 +12,15 @@ from dvc.output import (
     META_SCHEMA,
     Output,
 )
-from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
+from dvc.parsing import DO_KWD, FOREACH_KWD, MATRIX_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_MD5: output.CHECKSUM_SCHEMA,
-    StageParams.PARAM_WDIR: Any(str, None),
-    StageParams.PARAM_DEPS: Any([dependency.SCHEMA], None),
-    StageParams.PARAM_OUTS: Any([output.SCHEMA], None),
+    StageParams.PARAM_WDIR: vol.Any(str, None),
+    StageParams.PARAM_DEPS: vol.Any([dependency.SCHEMA], None),
+    StageParams.PARAM_OUTS: vol.Any([output.SCHEMA], None),
     StageParams.PARAM_LOCKED: bool,  # backward compatibility
     StageParams.PARAM_FROZEN: bool,
     StageParams.PARAM_META: object,
@@ -27,16 +28,17 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_DESC: str,
 }
 
-DATA_SCHEMA = {
+DATA_SCHEMA: dict[Any, Any] = {
     **CHECKSUMS_SCHEMA,
     **META_SCHEMA,
-    Required("path"): str,
+    vol.Required("path"): str,
     Output.PARAM_CLOUD: CLOUD_SCHEMA,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
     Output.PARAM_HASH: str,
+    **dependency.DatasetDependency.DATASET_SCHEMA,
 }
 LOCK_FILE_STAGE_SCHEMA = {
-    Required(StageParams.PARAM_CMD): Any(str, list),
+    vol.Required(StageParams.PARAM_CMD): vol.Any(str, list),
     StageParams.PARAM_DEPS: [DATA_SCHEMA],
     StageParams.PARAM_PARAMS: {str: {str: object}},
     StageParams.PARAM_OUTS: [DATA_SCHEMA],
@@ -44,7 +46,8 @@ LOCK_FILE_STAGE_SCHEMA = {
 
 LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 LOCKFILE_SCHEMA = {
-    Required("schema"): Equal("2.0", "invalid schema version"),
+    vol.Required("schema"): vol.Equal("2.0", "invalid schema version"),
+    "datasets": object,
     STAGES: LOCKFILE_STAGES_SCHEMA,
 }
 
@@ -69,26 +72,27 @@ PLOT_PROPS = {
     Output.PARAM_PLOT_TITLE: str,
     Output.PARAM_PLOT_HEADER: bool,
 }
-PLOT_PROPS_SCHEMA = {**OUT_PSTAGE_DETAILED_SCHEMA[str], **PLOT_PROPS}
-PLOT_PSTAGE_SCHEMA = {str: Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
+PLOT_PROPS_SCHEMA = OUT_PSTAGE_DETAILED_SCHEMA[str] | PLOT_PROPS
+PLOT_PSTAGE_SCHEMA = {str: vol.Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
 
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 
 VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
-    Required(StageParams.PARAM_CMD): Any(str, list),
-    Optional(StageParams.PARAM_WDIR): str,
-    Optional(StageParams.PARAM_DEPS): [str],
-    Optional(StageParams.PARAM_PARAMS): [Any(str, dict)],
-    Optional(VARS_KWD): VARS_SCHEMA,
-    Optional(StageParams.PARAM_FROZEN): bool,
-    Optional(StageParams.PARAM_META): object,
-    Optional(StageParams.PARAM_DESC): str,
-    Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
-    Optional(StageParams.PARAM_OUTS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
-    Optional(StageParams.PARAM_METRICS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
-    Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
+    MATRIX_KWD: {str: vol.Any(str, list)},
+    vol.Required(StageParams.PARAM_CMD): vol.Any(str, list),
+    vol.Optional(StageParams.PARAM_WDIR): str,
+    vol.Optional(StageParams.PARAM_DEPS): [str],
+    vol.Optional(StageParams.PARAM_PARAMS): [vol.Any(str, dict)],
+    vol.Optional(VARS_KWD): VARS_SCHEMA,
+    vol.Optional(StageParams.PARAM_FROZEN): bool,
+    vol.Optional(StageParams.PARAM_META): object,
+    vol.Optional(StageParams.PARAM_DESC): str,
+    vol.Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
+    vol.Optional(StageParams.PARAM_OUTS): [vol.Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
+    vol.Optional(StageParams.PARAM_METRICS): [vol.Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
+    vol.Optional(StageParams.PARAM_PLOTS): [vol.Any(str, PLOT_PSTAGE_SCHEMA)],
 }
 
 
@@ -97,31 +101,36 @@ def either_or(primary, fallback, fallback_includes=None):
         schema = primary
         if isinstance(data, Mapping) and set(fallback_includes or []) & data.keys():
             schema = fallback
-        return Schema(schema)(data)
+        return vol.Schema(schema)(data)
 
     return validator
 
 
 PLOT_DEFINITION = {
-    Output.PARAM_PLOT_X: Any(str, {str: str}),
-    Output.PARAM_PLOT_Y: Any(str, [str], {str: Any(str, [str])}),
+    Output.PARAM_PLOT_X: vol.Any(str, {str: str}),
+    Output.PARAM_PLOT_Y: vol.Any(str, [str], {str: vol.Any(str, [str])}),
     Output.PARAM_PLOT_X_LABEL: str,
     Output.PARAM_PLOT_Y_LABEL: str,
     Output.PARAM_PLOT_TITLE: str,
     Output.PARAM_PLOT_TEMPLATE: str,
 }
-SINGLE_PLOT_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
+SINGLE_PLOT_SCHEMA = {vol.Required(str): vol.Any(PLOT_DEFINITION, None)}
 ARTIFACTS = "artifacts"
-SINGLE_ARTIFACT_SCHEMA = Schema({str: ARTIFACT_SCHEMA})
+SINGLE_ARTIFACT_SCHEMA = vol.Schema({str: ARTIFACT_SCHEMA})
 FOREACH_IN = {
-    Required(FOREACH_KWD): Any(dict, list, str),
-    Required(DO_KWD): STAGE_DEFINITION,
+    vol.Required(FOREACH_KWD): vol.Any(dict, list, str),
+    vol.Required(DO_KWD): STAGE_DEFINITION,
 }
 SINGLE_PIPELINE_STAGE_SCHEMA = {
     str: either_or(STAGE_DEFINITION, FOREACH_IN, [FOREACH_KWD, DO_KWD])
 }
+
+DATASET_SCHEMA = vol.Schema(
+    {vol.Required("type"): str, vol.Required("name"): str}, extra=vol.ALLOW_EXTRA
+)
 MULTI_STAGE_SCHEMA = {
-    PLOTS: [Any(str, SINGLE_PLOT_SCHEMA)],
+    "datasets": object,
+    PLOTS: [vol.Any(str, SINGLE_PLOT_SCHEMA)],
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
     VARS_KWD: VARS_SCHEMA,
     StageParams.PARAM_PARAMS: [str],
@@ -129,7 +138,7 @@ MULTI_STAGE_SCHEMA = {
     ARTIFACTS: SINGLE_ARTIFACT_SCHEMA,
 }
 
-COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)
-COMPILED_MULTI_STAGE_SCHEMA = Schema(MULTI_STAGE_SCHEMA)
-COMPILED_LOCK_FILE_STAGE_SCHEMA = Schema(LOCK_FILE_STAGE_SCHEMA)
-COMPILED_LOCKFILE_SCHEMA = Schema(LOCKFILE_SCHEMA)
+COMPILED_SINGLE_STAGE_SCHEMA = vol.Schema(SINGLE_STAGE_SCHEMA)
+COMPILED_MULTI_STAGE_SCHEMA = vol.Schema(MULTI_STAGE_SCHEMA)
+COMPILED_LOCK_FILE_STAGE_SCHEMA = vol.Schema(LOCK_FILE_STAGE_SCHEMA)
+COMPILED_LOCKFILE_SCHEMA = vol.Schema(LOCKFILE_SCHEMA)

@@ -1,6 +1,5 @@
 """Draws DAG in ASCII."""
 
-import logging
 import math
 import os
 
@@ -8,7 +7,9 @@ from grandalf.graphs import Edge, Graph, Vertex
 from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import EdgeViewer, route_with_lines
 
-logger = logging.getLogger(__name__)
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 
 class VertexViewer:
@@ -22,17 +23,16 @@ class VertexViewer:
     HEIGHT = 3  # top and bottom box edges + text
 
     def __init__(self, name):
-        # pylint: disable=invalid-name
         self._h = self.HEIGHT  # top and bottom box edges + text
         self._w = len(name) + 2  # right and left bottom edges + text
 
     @property
-    def h(self):  # pylint: disable=invalid-name
+    def h(self):
         """Height of the box."""
         return self._h
 
     @property
-    def w(self):  # pylint: disable=invalid-name
+    def w(self):
         """Width of the box."""
         return self._w
 
@@ -90,7 +90,6 @@ class AsciiCanvas:
             y1 (int): y coordinate where the line should end.
             char (str): character to draw the line with.
         """
-        # pylint: disable=too-many-arguments, too-many-branches
         if x0 > x1:
             x1, x0 = x0, x1
             y1, y0 = y0, y1
@@ -105,21 +104,21 @@ class AsciiCanvas:
                 if dx == 0:
                     y = y0
                 else:
-                    y = y0 + int(round((x - x0) * dy / float(dx)))
+                    y = y0 + round((x - x0) * dy / float(dx))
                 self.point(x, y, char)
         elif y0 < y1:
             for y in range(y0, y1 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x0 + int(round((y - y0) * dx / float(dy)))
+                    x = x0 + round((y - y0) * dx / float(dy))
                 self.point(x, y, char)
         else:
             for y in range(y1, y0 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x1 + int(round((y - y1) * dx / float(dy)))
+                    x = x1 + round((y - y1) * dx / float(dy))
                 self.point(x, y, char)
 
     def text(self, x, y, text):
@@ -234,11 +233,11 @@ def draw(vertices, edges):
              | 1 |
              +---+
     """
-    # pylint: disable=too-many-locals
+
     # NOTE: coordinates might me negative, so we need to shift
     # everything to the positive plane before we actually draw it.
-    Xs = []  # noqa: N806, pylint: disable=invalid-name
-    Ys = []  # noqa: N806, pylint: disable=invalid-name
+    Xs = []  # noqa: N806
+    Ys = []  # noqa: N806
 
     sug = _build_sugiyama_layout(vertices, edges)
 
@@ -250,7 +249,7 @@ def draw(vertices, edges):
         Ys.append(vertex.view.xy[1] + vertex.view.h)
 
     for edge in sug.g.sE:
-        for x, y in edge.view._pts:  # pylint: disable=protected-access
+        for x, y in edge.view._pts:
             Xs.append(x)
             Ys.append(y)
 
@@ -259,23 +258,22 @@ def draw(vertices, edges):
     maxx = max(Xs)
     maxy = max(Ys)
 
-    canvas_cols = int(math.ceil(math.ceil(maxx) - math.floor(minx))) + 1
-    canvas_lines = int(round(maxy - miny))
+    canvas_cols = math.ceil(math.ceil(maxx) - math.floor(minx)) + 1
+    canvas_lines = round(maxy - miny)
 
     canvas = AsciiCanvas(canvas_cols, canvas_lines)
 
     # NOTE: first draw edges so that node boxes could overwrite them
     for edge in sug.g.sE:
-        # pylint: disable=protected-access
         assert len(edge.view._pts) > 1
         for index in range(1, len(edge.view._pts)):
             start = edge.view._pts[index - 1]
             end = edge.view._pts[index]
 
-            start_x = int(round(start[0] - minx))
-            start_y = int(round(start[1] - miny))
-            end_x = int(round(end[0] - minx))
-            end_y = int(round(end[1] - miny))
+            start_x = round(start[0] - minx)
+            start_y = round(start[1] - miny)
+            end_x = round(end[0] - minx)
+            end_y = round(end[1] - miny)
 
             assert start_x >= 0
             assert start_y >= 0
@@ -290,12 +288,12 @@ def draw(vertices, edges):
         y = vertex.view.xy[1]
 
         canvas.box(
-            int(round(x - minx)),
-            int(round(y - miny)),
+            round(x - minx),
+            round(y - miny),
             vertex.view.w,
             vertex.view.h,
         )
 
-        canvas.text(int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data)
+        canvas.text(round(x - minx) + 1, round(y - miny) + 1, vertex.data)
 
     return canvas.draw()

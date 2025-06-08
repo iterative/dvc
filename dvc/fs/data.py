@@ -1,8 +1,8 @@
 import functools
-import logging
 import os
 from typing import TYPE_CHECKING
 
+from dvc.log import logger
 from dvc.utils import as_posix
 from dvc_objects.fs.base import FileSystem
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from dvc_data.fs import DataFileSystem as _DataFileSystem
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class DataFileSystem(FileSystem):
@@ -22,12 +22,13 @@ class DataFileSystem(FileSystem):
         return config
 
     @functools.cached_property
-    def fs(  # pylint: disable=invalid-overridden-method
-        self,
-    ) -> "_DataFileSystem":
+    def fs(self) -> "_DataFileSystem":
         from dvc_data.fs import DataFileSystem as _DataFileSystem
 
         return _DataFileSystem(**self.fs_args)
+
+    def getcwd(self):
+        return self.fs.getcwd()
 
     def isdvc(self, path, **kwargs):
         return self.fs.isdvc(path, **kwargs)

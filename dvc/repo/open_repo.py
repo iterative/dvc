@@ -1,12 +1,12 @@
-import logging
 import os
 import tempfile
 import threading
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from funcy import retry, wrap_with
 
 from dvc.exceptions import NotDvcRepoError
+from dvc.log import logger
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
@@ -14,15 +14,11 @@ from dvc.utils import relpath
 if TYPE_CHECKING:
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @map_scm_exception()
-def _external_repo(
-    url,
-    rev: Optional[str] = None,
-    **kwargs,
-) -> "Repo":
+def _external_repo(url, rev: Optional[str] = None, **kwargs) -> "Repo":
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev)
     # Local HEAD points to the tip of whatever branch we first cloned from
@@ -71,15 +67,15 @@ def erepo_factory(url, root_dir, cache_config):
         _config = cache_config.copy()
         if os.path.isdir(url):
             fs = fs or localfs
-            repo_path = os.path.join(url, *fs.path.relparts(path, root_dir))
+            repo_path = os.path.join(url, *fs.relparts(path, root_dir))
             _config.update(_get_remote_config(repo_path))
         return Repo(path, fs=fs, config=_config, **_kwargs)
 
     return make_repo
 
 
-CLONES: Dict[str, Tuple[str, bool]] = {}
-CACHE_DIRS: Dict[str, str] = {}
+CLONES: dict[str, tuple[str, bool]] = {}
+CACHE_DIRS: dict[str, str] = {}
 
 
 @wrap_with(threading.Lock())
@@ -103,7 +99,7 @@ def clean_repos():
 
 def _get_remote_config(url):
     try:
-        repo = Repo(url)
+        repo = Repo(url, uninitialized=True)
     except NotDvcRepoError:
         return {}
 
@@ -113,10 +109,16 @@ def _get_remote_config(url):
             # Fill the empty upstream entry with a new remote pointing to the
             # original repo's cache location.
             name = "auto-generated-upstream"
-            return {
-                "core": {"remote": name},
-                "remote": {name: {"url": repo.cache.local_cache_dir}},
-            }
+            try:
+                local_cache_dir = repo.cache.local_cache_dir
+            except AttributeError:
+                # if the `.dvc` dir is missing, we get an AttributeError
+                return {}
+            else:
+                return {
+                    "core": {"remote": name},
+                    "remote": {name: {"url": local_cache_dir}},
+                }
 
         # Use original remote to make sure that we are using correct url,
         # credential paths, etc if they are relative to the config location.
@@ -150,7 +152,7 @@ def _cached_clone(url, rev):
 
 
 @wrap_with(threading.Lock())
-def _clone_default_branch(url, rev):  # noqa: C901, PLR0912
+def _clone_default_branch(url, rev):
     """Get or create a clean clone of the url.
 
     The cloned is reactualized with git pull unless rev is a known sha.

@@ -7,6 +7,7 @@ from funcy import decorator
 def rwlocked(call, read=None, write=None):
     import sys
 
+    from dvc.dependency.db import AbstractDependency
     from dvc.dependency.repo import RepoDependency
     from dvc.rwlock import rwlock
 
@@ -16,7 +17,7 @@ def rwlocked(call, read=None, write=None):
     if write is None:
         write = []
 
-    stage = call._args[0]  # pylint: disable=protected-access
+    stage = call._args[0]
 
     assert stage.repo.lock.is_locked
 
@@ -27,7 +28,7 @@ def rwlocked(call, read=None, write=None):
             for item in getattr(stage, attr)
             # There is no need to lock RepoDependency deps, as there is no
             # corresponding OutputREPO, so we can't even write it.
-            if not isinstance(item, RepoDependency)
+            if not isinstance(item, (RepoDependency, AbstractDependency))
         ]
 
     cmd = " ".join(sys.argv)
@@ -47,7 +48,7 @@ def unlocked_repo(f):
     @wraps(f)
     def wrapper(stage, *args, **kwargs):
         stage.repo.lock.unlock()
-        stage.repo._reset()  # pylint: disable=protected-access
+        stage.repo._reset()
         try:
             ret = f(stage, *args, **kwargs)
         finally:
@@ -65,7 +66,7 @@ def relock_repo(f):
             ret = f(stage, *args, **kwargs)
         finally:
             stage.repo.lock.unlock()
-            stage.repo._reset()  # pylint: disable=protected-access
+            stage.repo._reset()
         return ret
 
     return wrapper

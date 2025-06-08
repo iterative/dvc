@@ -1,6 +1,5 @@
 import datetime
 import random
-from typing import Dict, List
 
 import pytest
 
@@ -22,8 +21,8 @@ def test_collect_stable_sorting(dvc, scm, mocker):
         "7" * 40,
     ]
 
-    def collect_queued_patched(_, baseline_revs) -> Dict[str, List["ExpRange"]]:
-        single_timestamp = datetime.datetime(2023, 6, 20, 0, 0, 0)
+    def collect_queued_patched(_, baseline_revs) -> dict[str, list["ExpRange"]]:
+        single_timestamp = datetime.datetime(2023, 6, 20, 0, 0, 0)  # noqa: DTZ001
 
         exp_ranges = [
             ExpRange(
@@ -42,7 +41,7 @@ def test_collect_stable_sorting(dvc, scm, mocker):
         # shuffle collection order
         random.shuffle(exp_ranges)
 
-        return {baseline_rev: exp_ranges for baseline_rev in baseline_revs}
+        return dict.fromkeys(baseline_revs, exp_ranges)
 
     mocker.patch("dvc.repo.experiments.collect.collect_queued", collect_queued_patched)
     mocker.patch("dvc.repo.experiments.collect.collect_active", return_value={})
@@ -58,10 +57,7 @@ def test_collect_stable_sorting(dvc, scm, mocker):
         _assert_experiment_rev_order(collected[1].experiments, expected_revs)
 
 
-def _assert_experiment_rev_order(
-    actual: List["ExpRange"],
-    expected_revs: List[str],
-):
+def _assert_experiment_rev_order(actual: list["ExpRange"], expected_revs: list[str]):
     expected_revs = expected_revs.copy()
 
     for actual_exp_range in actual:

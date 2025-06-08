@@ -1,11 +1,11 @@
 import argparse
-import logging
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdDataBase(CmdBase):
@@ -14,6 +14,10 @@ class CmdDataBase(CmdBase):
         from dvc.utils.humanize import get_summary
 
         default_msg = "Everything is up to date."
+
+        if not self.args.remote and not self.repo.config["core"].get("remote"):
+            ui.warn("No remote provided and no default remote set.")
+
         ui.write(get_summary(stats.items()) or default_msg)
 
 
@@ -141,7 +145,7 @@ def add_parser(subparsers, _parent_parser):
         parents=[shared_parent_parser()],
         description=append_doc_link(PULL_HELP, "pull"),
         help=PULL_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     pull_parser.add_argument(
         "-r", "--remote", help="Remote storage to pull from", metavar="<name>"
@@ -190,7 +194,7 @@ def add_parser(subparsers, _parent_parser):
     )
     pull_parser.add_argument(
         "--run-cache",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=False,
         help="Fetch run history for all stages.",
     )
@@ -216,7 +220,7 @@ def add_parser(subparsers, _parent_parser):
         parents=[shared_parent_parser()],
         description=append_doc_link(PUSH_HELP, "push"),
         help=PUSH_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     push_parser.add_argument(
         "-r", "--remote", help="Remote storage to push to", metavar="<name>"
@@ -258,7 +262,7 @@ def add_parser(subparsers, _parent_parser):
     )
     push_parser.add_argument(
         "--run-cache",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=False,
         help="Push run history for all stages.",
     )
@@ -278,7 +282,7 @@ def add_parser(subparsers, _parent_parser):
         parents=[shared_parent_parser()],
         description=append_doc_link(FETCH_HELP, "fetch"),
         help=FETCH_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     fetch_parser.add_argument(
         "-r", "--remote", help="Remote storage to fetch from", metavar="<name>"
@@ -320,7 +324,7 @@ def add_parser(subparsers, _parent_parser):
     )
     fetch_parser.add_argument(
         "--run-cache",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=False,
         help="Fetch run history for all stages.",
     )
@@ -351,7 +355,7 @@ def add_parser(subparsers, _parent_parser):
         description=append_doc_link(STATUS_HELP, "status"),
         help=STATUS_HELP,
         conflict_handler="resolve",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     status_parser.add_argument(
         "-q",
@@ -424,6 +428,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Show status in JSON format.",
+    )
+    status_parser.add_argument(
+        "--no-updates",
+        dest="check_updates",
+        action="store_false",
+        help="Ignore updates to imported data.",
     )
 
     status_parser.set_defaults(func=CmdDataStatus)

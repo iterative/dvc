@@ -58,7 +58,7 @@ def test_stage_overwrites_if_already_exists(tmp_dir, dvc):
 
 
 def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
-    assert {} == Lockfile(dvc, "pipelines.lock").load()
+    assert Lockfile(dvc, "pipelines.lock").load() == {}
 
 
 @pytest.mark.parametrize(

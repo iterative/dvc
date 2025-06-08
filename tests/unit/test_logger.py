@@ -1,7 +1,5 @@
 import logging
-import time
 import traceback
-from datetime import datetime
 
 import colorama
 import pytest
@@ -22,10 +20,9 @@ colors = {
 
 @pytest.fixture
 def dt(mocker):
-    mocker.patch(
-        "time.time", return_value=time.mktime(datetime(2020, 2, 2).timetuple())
-    )
-    return "2020-02-02 00:00:00,000"
+    dt_str = "2020-02-02 00:00:00,000"
+    mocker.patch.object(formatter, "formatTime", return_value=dt_str)
+    return dt_str
 
 
 class TestColorFormatter:
@@ -103,9 +100,7 @@ class TestColorFormatter:
                 logger.exception("")
 
             expected = (
-                "{red}{datetime}{nc} "
-                "{red}ERROR{nc}: description\n"
-                "{stack_trace}".format(
+                "{red}{datetime}{nc} {red}ERROR{nc}: description\n{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,
@@ -143,9 +138,7 @@ class TestColorFormatter:
                 logger.exception("something", extra={"tb_only": True})
 
             expected = (
-                "{red}{datetime}{nc} "
-                "{red}ERROR{nc}: something\n"
-                "{stack_trace}".format(
+                "{red}{datetime}{nc} {red}ERROR{nc}: something\n{stack_trace}".format(
                     stack_trace=stack_trace,
                     **colors,
                     datetime=dt,

@@ -1,41 +1,43 @@
 import os
-import subprocess  # nosec B404
-from typing import Dict, Tuple
+import pathlib
+import subprocess
 
 import pytest
 
-# pylint: disable=redefined-outer-name,unused-argument
+from .scripts import copy_script
 
 __all__ = [
-    "make_tmp_dir",
-    "tmp_dir",
-    "scm",
+    "cloud",
+    "copy_script",
+    "docker_compose_project_name",
+    "docker_services",
     "dvc",
+    "local_cloud",
+    "local_remote",
+    "local_workspace",
     "make_cloud",
     "make_cloud_version_aware",
     "make_local",
-    "cloud",
-    "local_cloud",
     "make_remote",
     "make_remote_version_aware",
     "make_remote_worktree",
+    "make_tmp_dir",
+    "make_workspace",
     "remote",
     "remote_version_aware",
     "remote_worktree",
-    "local_remote",
+    "run_copy",
+    "scm",
+    "tmp_dir",
     "workspace",
-    "make_workspace",
-    "local_workspace",
-    "docker_compose_project_name",
-    "docker_services",
 ]
 
-CACHE: Dict[Tuple[bool, bool, bool], str] = {}
+CACHE: dict[tuple[bool, bool, bool], str] = {}
 
 
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request, worker_id):
-    def make(name, *, scm=False, dvc=False, subdir=False):  # pylint: disable=W0621
+    def make(name, *, scm=False, dvc=False, subdir=False):
         from shutil import copytree, ignore_patterns
 
         from dvc.repo import Repo
@@ -124,7 +126,7 @@ def local_cloud(make_cloud):
 @pytest.fixture
 def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
-        cloud = make_cloud(typ)  # pylint: disable=W0621
+        cloud = make_cloud(typ)
         tmp_dir.add_remote(name=name, config=cloud.config, **kwargs)
         return cloud
 
@@ -134,7 +136,7 @@ def make_remote(tmp_dir, dvc, make_cloud):  # noqa: ARG001
 @pytest.fixture
 def make_remote_version_aware(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
-        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        cloud = make_cloud_version_aware(typ)
         config = dict(cloud.config)
         config["version_aware"] = True
         tmp_dir.add_remote(name=name, config=config, **kwargs)
@@ -146,7 +148,7 @@ def make_remote_version_aware(tmp_dir, dvc, make_cloud_version_aware):  # noqa: 
 @pytest.fixture
 def make_remote_worktree(tmp_dir, dvc, make_cloud_version_aware):  # noqa: ARG001
     def _make_remote(name, typ="local", **kwargs):
-        cloud = make_cloud_version_aware(typ)  # pylint: disable=W0621
+        cloud = make_cloud_version_aware(typ)
         config = dict(cloud.config)
         config["worktree"] = True
         tmp_dir.add_remote(name=name, config=config, **kwargs)
@@ -183,7 +185,7 @@ def make_workspace(tmp_dir, dvc, make_cloud):
     def _make_workspace(name, typ="local"):
         from dvc.cachemgr import CacheManager
 
-        cloud = make_cloud(typ)  # pylint: disable=W0621
+        cloud = make_cloud(typ)
 
         tmp_dir.add_remote(name=name, config=cloud.config, default=False)
         tmp_dir.add_remote(
@@ -219,22 +221,17 @@ def docker_compose_project_name():
 
 
 @pytest.fixture(scope="session")
-def docker_services(
-    tmp_path_factory,
-    docker_compose_command,
-    docker_compose_file,
-    docker_compose_project_name,
-    docker_setup,
-):
+def docker_services(tmp_path_factory, request):
     from filelock import FileLock
-    from pytest_docker.plugin import DockerComposeExecutor, Services
 
     if os.environ.get("CI") and os.name == "nt":
         pytest.skip("disabled for Windows on CI")
 
     try:
-        subprocess.check_output(  # nosec B607, B602,
-            "docker ps", stderr=subprocess.STDOUT, shell=True  # noqa: S602, S607
+        subprocess.check_output(  # noqa: S602
+            "docker ps",  # noqa: S607
+            stderr=subprocess.STDOUT,
+            shell=True,
         )
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
@@ -242,22 +239,31 @@ def docker_services(
 
     try:
         cmd = "docker-compose version"
-        subprocess.check_output(
-            cmd, stderr=subprocess.STDOUT, shell=True  # nosec B602 # noqa: S602
-        )
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)  # noqa: S602
     except subprocess.CalledProcessError as err:
         out = (err.output or b"").decode("utf-8")
         pytest.skip(f"docker-compose is not installed: {out}")
-
-    executor = DockerComposeExecutor(
-        docker_compose_command, docker_compose_file, docker_compose_project_name
-    )
 
     # making sure we don't accidentally launch docker-compose in parallel,
     # as it might result in network conflicts. Inspired by:
     # https://github.com/pytest-dev/pytest-xdist#making-session-scoped-fixtures-execute-only-once
     lockfile = tmp_path_factory.getbasetemp().parent / "docker-compose.lock"
     with FileLock(os.fspath(lockfile)):
-        executor.execute(docker_setup)
-        # note: we are not tearing down the containers here
-        return Services(executor)
+        return request.getfixturevalue("docker_services")
+
+
+@pytest.fixture
+def run_copy(tmp_dir, copy_script, dvc):  # noqa: ARG001
+    def run_copy(src, dst, **run_kwargs):
+        wdir = pathlib.Path(run_kwargs.get("wdir", "."))
+        wdir = pathlib.Path("../" * len(wdir.parts))
+        script_path = wdir / "copy.py"
+
+        return dvc.run(
+            cmd=f"python {script_path} {src} {dst}",
+            outs=[dst],
+            deps=[src, f"{script_path}"],
+            **run_kwargs,
+        )
+
+    return run_copy

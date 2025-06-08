@@ -115,6 +115,20 @@ def test_show_default(dvc, capsys):
     assert out == "foo\n"
 
 
+def test_list_shows_default(dvc, capsys):
+    default_remote = "foo"
+    other_remote = "bar"
+    bucket_url = "s3://bucket/name"
+    assert main(["remote", "add", default_remote, bucket_url]) == 0
+    assert main(["remote", "add", other_remote, bucket_url]) == 0
+    assert main(["remote", "default", default_remote]) == 0
+    assert main(["remote", "list"]) == 0
+    out, _ = capsys.readouterr()
+    out_lines = out.splitlines()
+    assert out_lines[0].split() == [default_remote, bucket_url, "(default)"]
+    assert out_lines[1].split() == [other_remote, bucket_url]
+
+
 def test_upper_case_remote(tmp_dir, dvc, local_cloud):
     remote_name = "UPPERCASEREMOTE"
 

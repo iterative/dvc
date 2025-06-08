@@ -1,13 +1,29 @@
-def fix_subparsers(subparsers):
-    """Workaround for bug in Python 3. See more info at:
-    https://bugs.python.org/issue16308
-    https://github.com/iterative/dvc/issues/769
+import argparse
 
-    Args:
-        subparsers: subparsers to fix.
-    """
-    subparsers.required = True
-    subparsers.dest = "cmd"
+
+class DictAction(argparse.Action):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("metavar", "<name>=<value>")
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, parser, args, values, option_string=None):  # noqa: ARG002
+        d = getattr(args, self.dest) or {}
+
+        if isinstance(values, list):
+            kvs = values
+        else:
+            kvs = [values]
+
+        for kv in kvs:
+            key, value = kv.split("=", 1)
+            if not value:
+                raise argparse.ArgumentError(
+                    self,
+                    f'Could not parse argument "{values}" as k1=v1 k2=v2 ... format',
+                )
+            d[key] = value
+
+        setattr(args, self.dest, d)
 
 
 def append_doc_link(help_message, path):
@@ -24,7 +40,7 @@ def hide_subparsers_from_help(subparsers):
     # from the 'positional arguments' choices list
     # see: https://bugs.python.org/issue22848
     # Need to set `add_help=False`, but avoid setting `help`
-    # (not even to `argparse.SUPPPRESS`).
+    # (not even to `argparse.SUPPRESS`).
     # NOTE: The argument is the parent subparser, not the subcommand parser.
     cmds = [cmd for cmd, parser in subparsers.choices.items() if parser.add_help]
     subparsers.metavar = "{{{}}}".format(",".join(cmds))

@@ -1,12 +1,13 @@
-import logging
 import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
+from dvc.log import logger
+
 if TYPE_CHECKING:
     from dvc.config import Config
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdBase(ABC):
@@ -17,8 +18,8 @@ class CmdBase(ABC):
 
         os.chdir(args.cd)
 
-        self.repo: "Repo" = Repo(uninitialized=self.UNINITIALIZED)
-        self.config: "Config" = self.repo.config
+        self.repo: Repo = Repo(uninitialized=self.UNINITIALIZED)
+        self.config: Config = self.repo.config
         self.args = args
 
     def do_run(self):
@@ -31,7 +32,7 @@ class CmdBase(ABC):
 
 
 class CmdBaseNoRepo(CmdBase):
-    def __init__(self, args):  # pylint: disable=super-init-not-called
+    def __init__(self, args):
         self.args = args
 
         os.chdir(args.cd)

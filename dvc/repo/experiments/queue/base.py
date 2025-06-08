@@ -1,28 +1,15 @@
-import logging
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Collection, Generator, Iterable, Mapping
 from dataclasses import asdict, dataclass
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Collection,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
 
-from dvc_studio_client.post_live_metrics import get_studio_config
 from funcy import retry
 
 from dvc.dependency import ParamsDependency
-from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
+from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVC_ROOT
 from dvc.lock import LockError
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.executor.local import WorkspaceExecutor
@@ -36,6 +23,7 @@ from dvc.repo.experiments.utils import (
 )
 from dvc.utils.objects import cached_property
 from dvc.utils.studio import config_to_env
+from dvc_studio_client.post_live_metrics import get_studio_config
 
 from .utils import get_remote_executor_refs
 
@@ -46,7 +34,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.serialize import ExpRange
     from dvc.scm import Git
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @dataclass(frozen=True)
@@ -69,11 +57,11 @@ class QueueEntry:
             and self.stash_rev == other.stash_rev
         )
 
-    def asdict(self) -> Dict[str, Any]:
+    def asdict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "QueueEntry":
+    def from_dict(cls, d: dict[str, Any]) -> "QueueEntry":
         return cls(**d)
 
 
@@ -150,7 +138,7 @@ class BaseStashQueue(ABC):
         all_: bool = False,
         queued: bool = False,
         **kwargs,
-    ) -> List[str]:
+    ) -> list[str]:
         """Remove the specified entries from the queue.
 
         Arguments:
@@ -165,8 +153,8 @@ class BaseStashQueue(ABC):
         if all_ or queued:
             return self.clear()
 
-        name_to_remove: List[str] = []
-        entry_to_remove: List[ExpStashEntry] = []
+        name_to_remove: list[str] = []
+        entry_to_remove: list[ExpStashEntry] = []
         queue_entries = self.match_queue_entry_by_name(revs, self.iter_queued())
         for name, entry in queue_entries.items():
             if entry:
@@ -176,7 +164,7 @@ class BaseStashQueue(ABC):
         self.stash.remove_revs(entry_to_remove)
         return name_to_remove
 
-    def clear(self, **kwargs) -> List[str]:
+    def clear(self, **kwargs) -> list[str]:
         """Remove all entries from the queue."""
         stash_revs = self.stash.stash_revs
         name_to_remove = list(stash_revs)
@@ -184,21 +172,21 @@ class BaseStashQueue(ABC):
 
         return name_to_remove
 
-    def status(self) -> List[Dict[str, Any]]:
+    def status(self) -> list[dict[str, Any]]:
         """Show the status of exp tasks in queue"""
         from datetime import datetime
 
-        result: List[Dict[str, Optional[str]]] = []
+        result: list[dict[str, Optional[str]]] = []
 
         def _get_timestamp(rev: str) -> datetime:
             commit = self.scm.resolve_commit(rev)
-            return datetime.fromtimestamp(commit.commit_time)
+            return datetime.fromtimestamp(commit.commit_time)  # noqa: DTZ006
 
         def _format_entry(
             entry: QueueEntry,
             exp_result: Optional["ExecutorResult"] = None,
             status: str = "Unknown",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             name = entry.name
             if not name and exp_result and exp_result.ref_info:
                 name = exp_result.ref_info.name
@@ -251,7 +239,7 @@ class BaseStashQueue(ABC):
 
     @abstractmethod
     def reproduce(
-        self, copy_paths: Optional[List[str]] = None, message: Optional[str] = None
+        self, copy_paths: Optional[list[str]] = None, message: Optional[str] = None
     ) -> Mapping[str, Mapping[str, str]]:
         """Reproduce queued experiments sequentially."""
 
@@ -281,12 +269,7 @@ class BaseStashQueue(ABC):
         """
 
     @abstractmethod
-    def logs(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-        follow: bool = False,
-    ):
+    def logs(self, rev: str, encoding: Optional[str] = None, follow: bool = False):
         """Print redirected output logs for an exp process.
 
         Args:
@@ -297,10 +280,10 @@ class BaseStashQueue(ABC):
                 output.
         """
 
-    def _stash_exp(  # noqa: C901
+    def _stash_exp(
         self,
         *args,
-        params: Optional[Dict[str, List[str]]] = None,
+        params: Optional[dict[str, list[str]]] = None,
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
         name: Optional[str] = None,
@@ -342,18 +325,19 @@ class BaseStashQueue(ABC):
                     self._stash_commit_deps(*args, **kwargs)
 
                     # save additional repro command line arguments
-                    run_env = {
-                        DVC_EXP_BASELINE_REV: baseline_rev,
-                    }
+                    run_env = {DVC_EXP_BASELINE_REV: baseline_rev}
                     if not name:
                         name = get_random_exp_name(self.scm, baseline_rev)
                     run_env[DVC_EXP_NAME] = name
+                    # Override DVC_ROOT env var to point to the parent DVC repo
+                    # root (and not an executor tempdir root)
+                    run_env[DVC_ROOT] = self.repo.root_dir
 
                     # save studio config to read later by dvc and dvclive
                     studio_config = get_studio_config(
                         dvc_studio_config=self.repo.config.get("studio")
                     )
-                    run_env = {**config_to_env(studio_config), **run_env}
+                    run_env = config_to_env(studio_config) | run_env
                     self._pack_args(*args, run_env=run_env, **kwargs)
                     # save experiment as a stash commit
                     msg = self._stash_msg(
@@ -388,7 +372,7 @@ class BaseStashQueue(ABC):
         )
 
     def _stash_commit_deps(self, *args, **kwargs):
-        if len(args):
+        if args:
             targets = args[0]
         else:
             targets = kwargs.get("targets")
@@ -422,7 +406,7 @@ class BaseStashQueue(ABC):
         return msg
 
     def _pack_args(self, *args, **kwargs) -> None:
-        import pickle  # nosec B403
+        import pickle
 
         if os.path.exists(self.args_file) and self.scm.is_tracked(self.args_file):
             logger.warning(
@@ -437,8 +421,8 @@ class BaseStashQueue(ABC):
             )
             with open(self.args_file, "rb") as fobj:
                 try:
-                    data = pickle.load(fobj)  # noqa: S301  # nosec B301
-                except Exception:  # noqa: BLE001, pylint: disable=broad-except
+                    data = pickle.load(fobj)  # noqa: S301
+                except Exception:  # noqa: BLE001
                     data = {}
             extra = int(data.get("extra", 0)) + 1
         else:
@@ -457,7 +441,7 @@ class BaseStashQueue(ABC):
             f"from '{config_path}': {param_list}"
         )
 
-    def _update_params(self, params: Dict[str, List[str]]):
+    def _update_params(self, params: dict[str, list[str]]):
         """Update param files with the provided `Hydra Override`_ patterns.
 
         Args:
@@ -476,14 +460,22 @@ class BaseStashQueue(ABC):
         hydra_output_file = ParamsDependency.DEFAULT_PARAMS_FILE
         for path, overrides in params.items():
             if hydra_enabled and path == hydra_output_file:
-                config_dir = os.path.join(
-                    self.repo.root_dir, hydra_config.get("config_dir", "conf")
-                )
+                if (config_module := hydra_config.get("config_module")) is None:
+                    config_dir = os.path.join(
+                        self.repo.root_dir, hydra_config.get("config_dir", "conf")
+                    )
+                else:
+                    config_dir = None
                 config_name = hydra_config.get("config_name", "config")
+                plugins_path = os.path.join(
+                    self.repo.root_dir, hydra_config.get("plugins_path", "")
+                )
                 compose_and_dump(
                     path,
                     config_dir,
+                    config_module,
                     config_name,
+                    plugins_path,
                     overrides,
                 )
             else:
@@ -497,10 +489,7 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @retry(180, errors=LockError, timeout=1)
-    def get_stash_entry(
-        exp: "Experiments",
-        queue_entry: QueueEntry,
-    ) -> "ExpStashEntry":
+    def get_stash_entry(exp: "Experiments", queue_entry: QueueEntry) -> "ExpStashEntry":
         stash = ExpStash(exp.scm, queue_entry.stash_ref)
         stash_rev = queue_entry.stash_rev
         with get_exp_rwlock(exp.repo, writes=[queue_entry.stash_ref]):
@@ -517,7 +506,7 @@ class BaseStashQueue(ABC):
         cls,
         exp: "Experiments",
         queue_entry: QueueEntry,
-        executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
+        executor_cls: type[BaseExecutor] = WorkspaceExecutor,
         **kwargs,
     ) -> BaseExecutor:
         stash_entry = cls.get_stash_entry(exp, queue_entry)
@@ -552,7 +541,7 @@ class BaseStashQueue(ABC):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: "ExecutorResult",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         results = {}
 
         def on_diverged(ref: str):
@@ -582,7 +571,7 @@ class BaseStashQueue(ABC):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: "ExecutorResult",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         results = cls.collect_git(exp, executor, exec_result)
 
         if exec_result.ref_info is not None:
@@ -594,11 +583,11 @@ class BaseStashQueue(ABC):
         self,
         exp_names: Collection[str],
         *entries: Iterable[Union[QueueEntry, QueueDoneResult]],
-    ) -> Dict[str, Optional[QueueEntry]]:
+    ) -> dict[str, Optional[QueueEntry]]:
         from funcy import concat
 
-        entry_name_dict: Dict[str, QueueEntry] = {}
-        entry_rev_dict: Dict[str, QueueEntry] = {}
+        entry_name_dict: dict[str, QueueEntry] = {}
+        entry_rev_dict: dict[str, QueueEntry] = {}
         for entry in concat(*entries):
             if isinstance(entry, QueueDoneResult):
                 queue_entry: QueueEntry = entry.entry
@@ -613,16 +602,16 @@ class BaseStashQueue(ABC):
                 entry_name_dict[name] = queue_entry
             entry_rev_dict[queue_entry.stash_rev] = queue_entry
 
-        result: Dict[str, Optional[QueueEntry]] = {}
+        result: dict[str, Optional[QueueEntry]] = {}
         for exp_name in exp_names:
             result[exp_name] = None
             if exp_name in entry_name_dict:
                 result[exp_name] = entry_name_dict[exp_name]
                 continue
             if self.scm.is_sha(exp_name):
-                for rev in entry_rev_dict:
+                for rev, entry in entry_rev_dict.items():
                     if rev.startswith(exp_name.lower()):
-                        result[exp_name] = entry_rev_dict[rev]
+                        result[exp_name] = entry
                         break
 
         return result
@@ -655,7 +644,7 @@ class BaseStashQueue(ABC):
         baseline_revs: Optional[Collection[str]],
         fetch_refs: bool = False,
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         """Collect data for active (running) experiments.
 
         Args:
@@ -674,7 +663,7 @@ class BaseStashQueue(ABC):
         self,
         baseline_revs: Optional[Collection[str]],
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         """Collect data for queued experiments.
 
         Args:
@@ -691,7 +680,7 @@ class BaseStashQueue(ABC):
         self,
         baseline_revs: Optional[Collection[str]],
         **kwargs,
-    ) -> Dict[str, List["ExpRange"]]:
+    ) -> dict[str, list["ExpRange"]]:
         """Collect data for failed experiments.
 
         Args:

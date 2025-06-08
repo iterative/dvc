@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=61", "setuptools_scm[toml]>=7"]
+requires = ["setuptools>=77", "setuptools_scm[toml]>=8"]
 
 [project]
 name = "dvc"
@@ -16,40 +16,50 @@ keywords = [
     "machine-learning",
     "reproducibility",
 ]
-license = { text = "Apache License 2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 maintainers = [{ name = "Iterative", email = "support@dvc.org" }]
 authors = [{ name = "Dmitry Petrov", email = "dmitry@dvc.org" }]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dynamic = ["version"]
+
 dependencies = [
+    "attrs>=22.2.0",
+    "celery",
     "colorama>=0.3.9",
-    "configobj>=5.0.6",
+    "configobj>=5.0.9",
     "distro>=1.3",
     "dpath<3,>=2.1.0",
-    "dvc-data>=2.6.0,<2.7.0",
+    "dulwich",
+    "dvc-data>=3.16.2,<3.17",
     "dvc-http>=2.29.0",
-    "dvc-render>=0.3.1,<1",
-    "dvc-studio-client>=0.9.2,<1",
+    "dvc-objects",
+    "dvc-render>=1.0.1,<2",
+    "dvc-studio-client>=0.21,<1",
     "dvc-task>=0.3.0,<1",
     "flatten_dict<1,>=0.4.1",
-    # https://github.com/iterative/dvc/issues/9654
-    "flufl.lock>=5,<8",
+    "flufl.lock>=8.1.0,<9",
+    "fsspec>=2024.2.0",
     "funcy>=1.14",
     "grandalf<1,>=0.7",
+    "gto>=1.6.0,<2",
     "hydra-core>=1.1",
     "iterative-telemetry>=0.0.7",
+    "kombu",
     "networkx>=2.5",
+    "omegaconf",
     "packaging>=19",
     "pathspec>=0.10.3",
-    "platformdirs<4,>=3.1.1",
+    "platformdirs<5,>=3.1.1",
     "psutil>=5.8",
     "pydot>=1.2.4",
     "pygtrie>=2.3.2",
@@ -57,7 +67,7 @@ dependencies = [
     "requests>=2.22",
     "rich>=12",
     "ruamel.yaml>=0.17.11",
-    "scmrepo>=1.0.4,<2",
+    "scmrepo>=3.3.8,<4",
     "shortuuid>=0.5",
     "shtab<2,>=1.3.4",
     "tabulate>=0.8.7",
@@ -69,14 +79,14 @@ dependencies = [
 
 [project.optional-dependencies]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
-azure = ["dvc-azure>=2.21.2"]
-dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,terraform,tests,webdav,webhdfs]"]
-gdrive = ["dvc-gdrive==2.20"]
-gs = ["dvc-gs==2.22.1"]
-hdfs = ["dvc-hdfs==2.19"]
+azure = ["dvc-azure>=3.1.0,<4"]
+dev = ["dvc[azure,gdrive,gs,hdfs,lint,oss,s3,ssh,tests,webdav,webhdfs]"]
+gdrive = ["dvc-gdrive>=3,<4"]
+gs = ["dvc-gs>=3.0.2,<4"]
+hdfs = ["dvc-hdfs>=3,<4"]
 lint = [
-    "mypy==1.4.1",
-    "pylint==2.17.4",
+    "mypy==1.15.0",
+    "pandas-stubs",
     "types-colorama",
     "types-psutil",
     "types-pyinstaller",
@@ -84,37 +94,38 @@ lint = [
     "types-tabulate",
     "types-toml",
     "types-tqdm",
+    "typing-extensions",
 ]
-oss = ["dvc-oss==2.19"]
-s3 = ["dvc-s3==2.23.0"]
-ssh = ["dvc-ssh>=2.22.1,<3"]
-ssh_gssapi = ["dvc-ssh[gssapi]>=2.22.1,<3"]
-terraform = ["tpi[ssh]>=2.1"]
+oss = ["dvc-oss>=3,<4"]
+s3 = ["dvc-s3>=3.2.0,<4"]
+ssh = ["dvc-ssh>=4,<5"]
+ssh_gssapi = ["dvc-ssh[gssapi]>=4,<5"]
 testing = [
+  "pytest-benchmark[histogram]>=5,<6",
   "pytest-test-utils",
-  "pytest-benchmark[histogram]",
-  "pytest-virtualenv",
+  "uv",
 ]
 tests = [
     "dvc[testing]",
     "beautifulsoup4>=4.4",
     "dvc-ssh",
     "filelock",
-    "flaky",
-    "pytest<8,>=7",
+    "pytest>=7,<9",
+    "pytest-rerunfailures",
     "pytest-cov>=4.1.0",
-    "pytest-docker>=1,<2",
-    "pytest-lazy-fixture",
+    "pytest-docker>=1,<4",
     "pytest-mock",
     "pytest-test-utils",
     "pytest-timeout>=2",
     "pytest-xdist>=3.2",
     'pywin32>=225; sys_platform == "win32"', # optional test dependency
     'tzdata; sys_platform == "win32"',  # for testing with celery
+    "sqlalchemy>=1,<3", # optional dependency for `import-db`
+    "pandas>=1", # optional dependency for `import-db`
 ]
-webdav = ["dvc-webdav==2.19.1"]
-webhdfs = ["dvc-webhdfs==2.19"]
-webhdfs_kerberos = ["dvc-webhdfs[kerberos]==2.19"]
+webdav = ["dvc-webdav>=3,<4"]
+webhdfs = ["dvc-webhdfs>=3.1,<4"]
+webhdfs_kerberos = ["dvc-webhdfs[kerberos]>=3.1,<4"]
 
 [project.urls]
 Documentation = "https://dvc.org/doc"
@@ -127,29 +138,27 @@ dvc = "dvc.cli:main"
 [project.entry-points."fsspec.specs"]
 dvc = "dvc.api:DVCFileSystem"
 
-[project.entry-points."pytest11"]
-dvc-testing = "dvc.testing.plugin"
+[project.entry-points."universal_pathlib.implementations"]
+dvc = "dvc.fs.dvc_path:DVCPath"
+# universal_pathlib does not support fsspec url chaining yet.
+# see https://github.com/fsspec/universal_pathlib/issues/28.
+"dvc+http" = "dvc.fs.dvc_path:DVCPath"
+"dvc+https" = "dvc.fs.dvc_path:DVCPath"
+"dvc+ssh" = "dvc.fs.dvc_path:DVCPath"
 
 [project.entry-points."pyinstaller40"]
 hook-dirs = "dvc.__pyinstaller:get_hook_dirs"
 tests = "dvc.__pyinstaller:get_PyInstaller_tests"
-
-[tool.setuptools]
-license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
 namespaces = false
 
 [tool.setuptools_scm]
-write_to = "dvc/_dvc_version.py"
-
-[tool.isort]
-known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
-profile = "black"
+write_to = "dvc/_version.py"
 
 [tool.pytest.ini_options]
-addopts = "-ra --cov-config pyproject.toml --dist worksteal"
+addopts = "-ra --cov-config pyproject.toml"
 filterwarnings = [
     "error::ResourceWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
@@ -160,10 +169,11 @@ filterwarnings = [
     # google.logging: https://github.com/googleapis/python-logging/issues/730
     # Also happens with `zc.lockfile`.
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
-    # tpi imports pkg_resources
-    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
     # see https://github.com/networkx/networkx/issues/5723.
     "ignore:nx.nx_pydot.* depends on the pydot package, which has.*known issues and is not actively maintained:DeprecationWarning",
+    # TODO: investigate where we are not closing sqlite3.Connection
+    "ignore:unclosed database.*sqlite3.Connection:ResourceWarning",
+    "ignore:unclosed.*<socket.socket:ResourceWarning",
 ]
 log_level = "debug"
 markers = [
@@ -203,7 +213,7 @@ show_error_codes = true
 show_error_context = true
 show_traceback = true
 strict_equality = true
-strict_concatenate = true
+extra_checks = true
 warn_no_return = true
 warn_redundant_casts = true
 warn_unreachable = true
@@ -212,6 +222,7 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = [
+    "agate.*",
     "celery.*",
     "configobj.*",
     "dpath.*",
@@ -233,12 +244,12 @@ module = [
     "pyparsing",
     "pytest_benchmark.*",
     "pytest_docker.plugin",
-    "pytest_virtualenv.*",
     "ruamel.*",
     "ruamel.yaml.*",
     "shortuuid",
     "shtab",
-    "tpi.*",
+    "upath",
+    "virtualenv",
     "viztracer",
     "voluptuous",
     "yappi",
@@ -247,70 +258,51 @@ module = [
 
 [tool.codespell]
 ignore-words-list = "ba,datas,fo,uptodate,cachable,falsy"
-
-[tool.pylint.message_control]
-disable = [
-    "cyclic-import", "design", "duplicate-code", "fixme", "format", "import-outside-toplevel", "invalid-name",
-    "missing-class-docstring", "missing-function-docstring", "missing-module-docstring", "multiple-imports",
-    "raise-missing-from", "refactoring", "spelling",
-    "ungrouped-imports", "unused-wildcard-import", "wrong-import-order", "wrong-import-position",
-]
-enable = ["c-extension-no-member", "no-else-return"]
-
-[tool.pylint.typecheck]
-generated-members = ["argparse.Namespace", "logger.trace", "logging.TRACE", "pytest.lazy_fixture", "sys.getwindowsversion"]
-signature-mutators = ["funcy.decorators.decorator"]
-
-[tool.pylint.variables]
-dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)"
-ignored-argument-names = "_.*|args|kwargs"
+skip = "CODE_OF_CONDUCT.md"
 
 [tool.ruff]
-# external flake8 codes that should be preserved
-external = ["B301", "C901", "E302", "W601"]
+output-format = "full"
+show-fixes = true
+
+[tool.ruff.lint]
 ignore = [
-    "N818", "S101", "PT004", "PT007", "RET501", "RET502", "RET503", "SIM105", "SIM108",
-    "SIM117", "TRY003", "TRY200", "TRY300", "PLR2004", "PLW2901", "RUF012"
+    "N818", "S101", "A005", "PT007", "RET502", "RET503", "SIM105", "SIM108", "SIM117",
+    "TRY003", "TRY300", "PERF203", "PLR2004", "PLW2901", "LOG007",
 ]
 select = [
-    "F", "E", "W", "C90", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "T10",
-    "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
-    "SLOT", "SIM", "TID", "TCH", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
-    "FLY", "PERF101", "RUF",
+    "F", "E", "W", "C90", "I", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "DTZ", "T10",
+    "EXE", "ISC", "ICN", "LOG", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET",
+    "SLOT", "SIM", "TID", "TC", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "TRY",
+    "FLY", "PERF", "FURB", "RUF", "RUF027", "RUF029", "RUF036",
 ]
-show-source = true
+preview = true
+explicit-preview-rules = true
 
-[tool.ruff.flake8-pytest-style]
-fixture-parentheses = false
-mark-parentheses = false
+[tool.ruff.lint.flake8-pytest-style]
 parametrize-names-type = "csv"
 raises-extend-require-match-for = ["dvc.exceptions.DvcException", "dvc.scm.SCMError", "scmrepo.exceptions.SCMError"]
 
-[tool.ruff.flake8-tidy-imports]
-[tool.ruff.flake8-tidy-imports.banned-api]
+[tool.ruff.lint.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
 "funcy.cached_property" = {msg = "use `from dvc.utils.objects import cached_property` instead."}
 
-[tool.ruff.flake8-type-checking]
+[tool.ruff.lint.flake8-type-checking]
 strict = true
 
-[tool.ruff.flake8-unused-arguments]
+[tool.ruff.lint.flake8-unused-arguments]
 ignore-variadic-names = true
 
-[tool.ruff.isort]
-known-first-party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "dvc_task", "tests"]
+[tool.ruff.lint.isort]
+known-first-party = ["dvc", "dvc_*", "tests"]
 
-[tool.ruff.pep8-naming]
-ignore-names = ["M", "SCM"]
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = ["M", "SCM"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.ruff.lint.per-file-ignores]
 "dvc/commands/**" = ["N806"]
 "dvc/testing/**" = ["ARG002"]
 "dvc/testing/benchmarks/**" = ["ARG001"]
-"tests/**" = ["S", "ARG001", "ARG002", "TRY002", "TRY301"]
-
-[tool.ruff.pylint]
-max-args = 10
-
-[tool.bandit]
-exclude_dirs = ["tests", "dvc/repo/experiments/utils.py"]
-skips = ["B101"]
+"tests/**" = ["S", "ARG001", "ARG002", "TRY002", "TRY301", "PERF"]

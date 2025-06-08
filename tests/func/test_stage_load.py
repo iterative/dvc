@@ -42,10 +42,7 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
 
     run_copy("foo", "foobar", name="copy-foo-foobar")
     assert collect_outs(":copy-foo-foobar") == {"foobar"}
-    assert collect_outs(":copy-foo-foobar", with_deps=True) == {
-        "foobar",
-        "foo",
-    }
+    assert collect_outs(":copy-foo-foobar", with_deps=True) == {"foobar", "foo"}
     assert collect_outs("dvc.yaml:copy-foo-foobar", recursive=True) == {"foobar"}
     assert collect_outs("copy-foo-foobar") == {"foobar"}
     assert collect_outs("copy-foo-foobar", with_deps=True) == {"foobar", "foo"}
@@ -68,11 +65,7 @@ def test_collect_dir_recursive(tmp_dir, dvc, run_head):
     with (tmp_dir / "dir").chdir():
         stage2 = run_head("foo", name="head-foo")
         stage3 = run_head("foo-1", name="head-foo1")
-    assert set(dvc.stage.collect("dir", recursive=True)) == {
-        stage1,
-        stage2,
-        stage3,
-    }
+    assert set(dvc.stage.collect("dir", recursive=True)) == {stage1, stage2, stage3}
 
 
 def test_collect_with_not_existing_output_or_stage_name(tmp_dir, dvc, run_copy):
@@ -368,8 +361,7 @@ def test_collect_optimization(tmp_dir, dvc, mocker):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.Repo.index",
-        property(raiser(Exception("Should not collect"))),
+        "dvc.repo.Repo.index", property(raiser(Exception("Should not collect")))
     )
 
     # Should read stage directly instead of collecting the whole graph
@@ -383,8 +375,7 @@ def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.Repo.index",
-        property(raiser(Exception("Should not collect"))),
+        "dvc.repo.Repo.index", property(raiser(Exception("Should not collect")))
     )
 
     # Should read stage directly instead of collecting the whole graph

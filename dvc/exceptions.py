@@ -1,8 +1,12 @@
 """Exceptions raised by the dvc."""
+
 import errno
-from typing import Dict, List
+from typing import TYPE_CHECKING, Optional
 
 from dvc.utils import format_link
+
+if TYPE_CHECKING:
+    from dvc.stage import Stage
 
 
 class DvcException(Exception):
@@ -17,6 +21,10 @@ class DvcException(Exception):
 class InvalidArgumentError(ValueError, DvcException):
     """Thrown if arguments are invalid."""
 
+    def __init__(self, msg, *args):
+        self.msg = msg
+        super().__init__(msg, *args)
+
 
 class OutputDuplicationError(DvcException):
     """Thrown if a file/directory is specified as an output in more than one
@@ -27,24 +35,25 @@ class OutputDuplicationError(DvcException):
         stages (list): list of paths to stages.
     """
 
-    def __init__(self, output, stages):
+    def __init__(self, output: str, stages: set["Stage"]):
         from funcy import first
 
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
-        msg = ""
-        stage_names = [s.addressing for s in stages]
-        stages_str = " ".join(stage_names)
         if len(stages) == 1:
-            stage_name = first(stages)
-            msg = f"output '{output}' is already specified in {stage_name}."
-        else:
-            msg = "output '{}' is already specified in stages:\n{}".format(
-                output, "\n".join(f"\t- {s}" for s in stage_names)
+            stage = first(stages)
+            msg = (
+                f"output '{output}' is already specified in {stage}."
+                f"\nUse `dvc remove {stage.addressing}` to stop tracking the "
+                "overlapping output."
             )
-        msg += (
-            f"\nUse `dvc remove {stages_str}` to stop tracking the overlapping output."
-        )
+        else:
+            stage_names = "\n".join(["\t- " + s.addressing for s in stages])
+            msg = (
+                f"output '{output}' is specified in:\n{stage_names}"
+                "\nUse `dvc remove` with any of the above targets to stop tracking the "
+                "overlapping output."
+            )
         super().__init__(msg)
         self.stages = stages
         self.output = output
@@ -65,6 +74,10 @@ class OutputNotFoundError(DvcException):
         super().__init__(
             f"Unable to find DVC file with output {relpath(self.output)!r}"
         )
+
+
+class StageNotFoundError(DvcException):
+    pass
 
 
 class StagePathAsOutputError(DvcException):
@@ -120,11 +133,11 @@ class MoveNotDataSourceError(DvcException):
     def __init__(self, path):
         msg = (
             "move is not permitted for stages that are not data sources. "
-            "You need to either move '{path}' to a new location and edit "
-            "it by hand, or remove '{path}' and create a new one at the "
+            f"You need to either move {path!r} to a new location and edit "
+            f"it by hand, or remove {path!r} and create a new one at the "
             "desired location."
         )
-        super().__init__(msg.format(path=path))
+        super().__init__(msg)
 
 
 class NotDvcRepoError(DvcException):
@@ -188,7 +201,7 @@ class ETagMismatchError(DvcException):
     def __init__(self, etag, cached_etag):
         super().__init__(
             "ETag mismatch detected when copying file to cache! "
-            "(expected: '{}', actual: '{}')".format(etag, cached_etag)
+            f"(expected: '{etag}', actual: '{cached_etag}')"
         )
 
 
@@ -229,7 +242,7 @@ class UploadError(FileTransferError):
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos: List[str], stats: Dict[str, List[str]]):
+    def __init__(self, target_infos: list[str], stats: dict[str, list[str]]):
         from dvc.utils import error_link
 
         self.target_infos = target_infos
@@ -258,9 +271,8 @@ class NoOutputInExternalRepoError(DvcException):
         from dvc.utils import relpath
 
         super().__init__(
-            "Output '{}' not found in target repository '{}'".format(
-                relpath(path, external_repo_path), external_repo_url
-            )
+            f"Output {relpath(path, external_repo_path)!r} "
+            f"not found in target repository '{external_repo_url}'"
         )
 
 
@@ -289,7 +301,7 @@ class URLMissingError(DvcException):
         super().__init__(f"The path '{url}' does not exist")
 
 
-class IsADirectoryError(DvcException):  # noqa,pylint:disable=redefined-builtin
+class IsADirectoryError(DvcException):  # noqa: A001
     """Raised when a file operation is requested on a directory."""
 
 
@@ -324,3 +336,36 @@ class CacheLinkError(DvcException):
 class PrettyDvcException(DvcException):
     def __pretty_exc__(self, **kwargs):
         """Print prettier exception message."""
+
+
+class ArtifactNotFoundError(DvcException):
+    """Thrown if an artifact is not found in the DVC repo.
+
+    Args:
+        name (str): artifact name.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        version: Optional[str] = None,
+        stage: Optional[str] = None,
+    ):
+        self.name = name
+        self.version = version
+        self.stage = stage
+
+        desc = f" @ {stage or version}" if (stage or version) else ""
+        super().__init__(f"Unable to find artifact '{name}{desc}'")
+
+
+class RevCollectionError(DvcException):
+    """Thrown if a revision failed to be collected.
+
+    Args:
+        rev (str): revision that failed (or "workspace").
+    """
+
+    def __init__(self, rev):
+        self.rev = rev
+        super().__init__(f"Failed to collect '{rev}'")

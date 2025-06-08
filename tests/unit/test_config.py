@@ -21,6 +21,29 @@ def test_to_relpath(path, expected):
     assert Config._to_relpath(os.path.join(".", "config"), path) == expected
 
 
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        ("cache", os.path.abspath(os.path.join("conf_dir", "cache"))),
+        ("dir/cache", os.path.abspath(os.path.join("conf_dir", "dir", "cache"))),
+        ("../cache", os.path.abspath("cache")),
+        (os.getcwd(), os.getcwd()),
+        ("ssh://some/path", "ssh://some/path"),
+    ],
+)
+def test_resolve(path, expected):
+    conf_dir = os.path.abspath("conf_dir")
+    assert Config._resolve(conf_dir, path) == expected
+
+
+def test_resolve_homedir():
+    # NOTE: our test suit patches $HOME, but that only works within the
+    # test itself, so we can't use expanduser in @parametrize here.
+    conf_dir = os.path.abspath("conf_dir")
+    expected = os.path.expanduser(os.path.join("~", "cache"))
+    assert Config._resolve(conf_dir, "~/cache") == expected
+
+
 def test_get_fs(tmp_dir, scm):
     tmp_dir.scm_gen("foo", "foo", commit="add foo")
 
@@ -76,8 +99,7 @@ def test_s3_ssl_verify(tmp_dir, dvc):
 def test_load_unicode_error(tmp_dir, dvc, mocker):
     config = Config.from_cwd(validate=False)
     mocker.patch(
-        "configobj.ConfigObj",
-        side_effect=UnicodeDecodeError("", b"", 0, 0, ""),
+        "configobj.ConfigObj", side_effect=UnicodeDecodeError("", b"", 0, 0, "")
     )
     with pytest.raises(ConfigError):
         with config.edit():
@@ -88,10 +110,7 @@ def test_load_configob_error(tmp_dir, dvc, mocker):
     from configobj import ConfigObjError
 
     config = Config.from_cwd(validate=False)
-    mocker.patch(
-        "configobj.ConfigObj",
-        side_effect=ConfigObjError(),
-    )
+    mocker.patch("configobj.ConfigObj", side_effect=ConfigObjError())
     with pytest.raises(ConfigError):
         with config.edit():
             pass
@@ -111,6 +130,5 @@ def test_feature_section_supports_arbitrary_values(caplog):
     assert "random_key_1" not in data
     assert "random_key_2" not in data
     assert (
-        "'feature.random_key_1', 'feature.random_key_2' "
-        "config options are unsupported"
+        "'feature.random_key_1', 'feature.random_key_2' config options are unsupported"
     ) in caplog.text

@@ -1,9 +1,11 @@
+import glob
+from itertools import repeat
+from typing import Optional
 from urllib.parse import urlparse
-
-from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
 
 from dvc.config import ConfigError as RepoConfigError
 from dvc.config_schema import SCHEMA, Invalid
+from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
 
 # pylint: disable=unused-import
 from dvc_objects.fs import (  # noqa: F401
@@ -18,17 +20,16 @@ from dvc_objects.fs import (  # noqa: F401
     system,
     utils,
 )
-from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
+from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401, TC001
 from dvc_objects.fs.errors import (  # noqa: F401
     AuthError,
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc_objects.fs.path import Path  # noqa: F401
 
-from .callbacks import Callback
+from .callbacks import Callback  # noqa: F401
 from .data import DataFileSystem  # noqa: F401
-from .dvc import DVCFileSystem  # noqa: F401
+from .dvc import DVCFileSystem
 from .git import GitFileSystem  # noqa: F401
 
 known_implementations.update(
@@ -45,22 +46,53 @@ known_implementations.update(
 )
 
 
-# pylint: enable=unused-import
+def download(
+    fs: "FileSystem", fs_path: str, to: str, jobs: Optional[int] = None
+) -> list[tuple[str, str, Optional[dict]]]:
+    from dvc.scm import lfs_prefetch
+
+    from .callbacks import TqdmCallback
+
+    with TqdmCallback(desc=f"Downloading {fs.name(fs_path)}", unit="files") as cb:
+        if isinstance(fs, DVCFileSystem):
+            lfs_prefetch(
+                fs,
+                [
+                    f"{fs.normpath(glob.escape(fs_path))}/**"
+                    if fs.isdir(fs_path)
+                    else glob.escape(fs_path)
+                ],
+            )
+            if not glob.has_magic(fs_path):
+                return fs._get(fs_path, to, batch_size=jobs, callback=cb)
+
+        # NOTE: We use dvc-objects generic.copy over fs.get since it makes file
+        # download atomic and avoids fsspec glob/regex path expansion.
+        if fs.isdir(fs_path):
+            from_infos = [
+                path for path in fs.find(fs_path) if not path.endswith(fs.flavour.sep)
+            ]
+            if not from_infos:
+                localfs.makedirs(to, exist_ok=True)
+                return []
+            to_infos = [
+                localfs.join(to, *fs.relparts(info, fs_path)) for info in from_infos
+            ]
+        else:
+            from_infos = [fs_path]
+            to_infos = [to]
+
+        cb.set_size(len(from_infos))
+        jobs = jobs or fs.jobs
+        generic.copy(fs, from_infos, localfs, to_infos, callback=cb, batch_size=jobs)
+        return list(zip(from_infos, to_infos, repeat(None)))
 
 
-def download(fs, fs_path, to, jobs=None):
-    with Callback.as_tqdm_callback(
-        desc=f"Downloading {fs.path.name(fs_path)}",
-        unit="files",
-    ) as cb:
-        fs.get(fs_path, to.fs_path, batch_size=jobs, callback=cb)
-
-
-def parse_external_url(url, config=None):
-    remote_config = dict(config) if config else {}
+def parse_external_url(url, fs_config=None, config=None):
+    remote_config = dict(fs_config) if fs_config else {}
     remote_config["url"] = url
-    fs_cls, fs_config, fs_path = get_cloud_fs(None, **remote_config)
-    fs = fs_cls(**fs_config)
+    fs_cls, resolved_fs_config, fs_path = get_cloud_fs(config, **remote_config)
+    fs = fs_cls(**resolved_fs_config)
     return fs, fs_path
 
 
@@ -105,18 +137,14 @@ def _resolve_remote_refs(config, remote_conf):
         return remote_conf
 
     base = get_fs_config(config, name=parsed.netloc)
-    cls, _, _ = _get_cloud_fs(config, **base)
+    cls, _, _ = get_cloud_fs(config, **base)
     relpath = parsed.path.lstrip("/").replace("/", cls.sep)
     url = cls.sep.join((base["url"], relpath))
     return {**base, **remote_conf, "url": url}
 
 
-def get_cloud_fs(repo, **kwargs):
-    repo_config = repo.config if repo else {}
-    return _get_cloud_fs(repo_config, **kwargs)
-
-
-def _get_cloud_fs(repo_config, **kwargs):
+def get_cloud_fs(repo_config, **kwargs):
+    repo_config = repo_config or {}
     core_config = repo_config.get("core", {})
 
     remote_conf = get_fs_config(repo_config, **kwargs)
@@ -138,8 +166,8 @@ def _get_cloud_fs(repo_config, **kwargs):
         # should be treated as being a root path.
         fs_path = cls.root_marker
     else:
-        fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
+        fs_path = cls._strip_protocol(url)
 
-    extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
-    conf = {**extras, **remote_conf}  # remote config takes priority
+    extras = cls._get_kwargs_from_urls(url)
+    conf = extras | remote_conf  # remote config takes priority
     return cls, conf, fs_path

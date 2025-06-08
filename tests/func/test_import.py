@@ -12,6 +12,8 @@ from dvc.scm import Git
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
+from dvc_data.hashfile import hash as _hash
+from dvc_data.index.index import DataIndex, DataIndexDirError
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -94,6 +96,19 @@ def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+def test_import_broken_dir(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
+        erepo_dir.dvc.cache.local.clear()
+        remove(erepo_dir / "dir")
+
+    with pytest.raises(DataIndexDirError):
+        dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
+
+    assert not (tmp_dir / "dir_imported").exists()
+    assert not (tmp_dir / "dir_imported.dvc").exists()
 
 
 def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
@@ -259,11 +274,7 @@ def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
     assert stage.outs[0].meta.isdir
 
 
-def test_pull_import_no_download_rev_lock(
-    tmp_dir,
-    dvc,
-    erepo_dir,
-):
+def test_pull_import_no_download_rev_lock(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="add")
 
@@ -295,11 +306,12 @@ def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     assert scm.is_ignored("foo_imported")
 
 
-def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
+@pytest.mark.parametrize("dirpath", ["dir", "dir/"])
+def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir, dirpath):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
 
-    dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
+    stage = dvc.imp(os.fspath(erepo_dir), dirpath, "dir_imported")
 
     remove("dir_imported")
     dvc.cache.local.clear()
@@ -307,6 +319,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.pull(["dir_imported.dvc"])
 
     assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
+    assert stage.deps[0].fs_path == "dir"
 
 
 def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
@@ -346,7 +359,8 @@ def test_push_wildcard_from_bare_git_repo(
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
 
-        dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
+        with pytest.raises(DataIndexDirError):
+            dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
@@ -543,10 +557,7 @@ def test_import_complete_repo(tmp_dir, dvc, erepo_dir):
     }
 
     dvc.imp(os.fspath(erepo_dir), os.curdir, out="out")
-    assert (tmp_dir / "out").read_text() == {
-        ".gitignore": "/foo\n",
-        "foo": "foo",
-    }
+    assert (tmp_dir / "out").read_text() == {".gitignore": "/foo\n", "foo": "foo"}
 
 
 def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
@@ -643,3 +654,112 @@ def test_parameterized_repo(tmp_dir, dvc, scm, erepo_dir, paths):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+@pytest.mark.parametrize(
+    "options, def_repo",
+    [
+        ({"config": "myconfig"}, {"config": "myconfig"}),
+        ({"remote": "myremote"}, {"remote": "myremote"}),
+        ({"remote_config": {"key": "value"}}, {"remote": {"key": "value"}}),
+        (
+            {
+                "remote": "myremote",
+                "remote_config": {"key": "value"},
+            },
+            {
+                "config": {
+                    "core": {"remote": "myremote"},
+                    "remote": {
+                        "myremote": {"key": "value"},
+                    },
+                },
+            },
+        ),
+        (
+            {
+                "remote": "myremote",
+                "remote_config": {"key": "value"},
+                "config": {"otherkey": "othervalue"},
+            },
+            {
+                "config": {
+                    "core": {"remote": "myremote"},
+                    "remote": {
+                        "myremote": {"key": "value"},
+                    },
+                    "otherkey": "othervalue",
+                },
+            },
+        ),
+    ],
+)
+def test_import_configs(tmp_dir, scm, dvc, erepo_dir, options, def_repo):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    (tmp_dir / "myconfig").touch()
+
+    stage = dvc.imp(
+        os.fspath(erepo_dir), "foo", "foo_imported", no_exec=True, **options
+    )
+    assert stage.deps[0].def_repo == {"url": os.fspath(erepo_dir), **def_repo}
+
+
+def test_import_invalid_configs(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    with pytest.raises(
+        ValueError,
+        match="Can't specify config path together with both remote and remote_config",
+    ):
+        dvc.imp(
+            os.fspath(erepo_dir),
+            "foo",
+            "foo_imported",
+            no_exec=True,
+            config="myconfig",
+            remote="myremote",
+            remote_config={"key": "value"},
+        )
+
+
+@pytest.mark.parametrize(
+    "files,expected_info_calls",
+    [
+        ({"foo": "foo"}, {("foo",)}),
+        (
+            {
+                "dir": {
+                    "bar": "bar",
+                    "subdir": {"lorem": "ipsum", "nested": {"lorem": "lorem"}},
+                }
+            },
+            # info calls should be made for only directories
+            {("dir",), ("dir", "subdir"), ("dir", "subdir", "nested")},
+        ),
+    ],
+)
+def test_import_no_hash(
+    tmp_dir, scm, dvc, erepo_dir, mocker, files, expected_info_calls
+):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(files, commit="create foo")
+
+    file_md5_spy = mocker.spy(_hash, "file_md5")
+    index_info_spy = mocker.spy(DataIndex, "info")
+    name = next(iter(files))
+
+    dvc.imp(os.fspath(erepo_dir), name, "out")
+
+    local_hashes = [
+        call.args[0]
+        for call in file_md5_spy.call_args_list
+        if call.args[1].protocol == "local"
+    ]
+    # no files should be hashed, should use existing metadata
+    assert not local_hashes
+    assert {
+        call.args[1] for call in index_info_spy.call_args_list
+    } == expected_info_calls

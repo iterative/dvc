@@ -56,13 +56,7 @@ def test_run(tmp_dir, dvc, copy_script):
 
 
 def test_run_empty(dvc):
-    dvc.run(
-        cmd="echo hello world",
-        deps=[],
-        outs=[],
-        outs_no_cache=[],
-        name="empty",
-    )
+    dvc.run(cmd="echo hello world", deps=[], outs=[], outs_no_cache=[], name="empty")
 
 
 def test_run_missing_dep(dvc):
@@ -264,11 +258,7 @@ class TestRunDuplicatedArguments:
 class TestRunBadWdir:
     def test(self, make_tmp_dir, dvc):
         with pytest.raises(StagePathOutsideError):
-            dvc.run(
-                cmd="command",
-                wdir=make_tmp_dir("tmp"),
-                name="bad-wdir",
-            )
+            dvc.run(cmd="command", wdir=make_tmp_dir("tmp"), name="bad-wdir")
 
     def test_same_prefix(self, tmp_dir, dvc):
         path = f"{tmp_dir}-{uuid.uuid4()}"
@@ -287,21 +277,12 @@ class TestRunBadWdir:
         path = path / str(uuid.uuid4())
         path.touch()
         with pytest.raises(StagePathNotDirectoryError):
-            dvc.run(
-                cmd="command",
-                wdir=os.fspath(path),
-                name="bad-wdir",
-            )
+            dvc.run(cmd="command", wdir=os.fspath(path), name="bad-wdir")
 
 
 class TestCmdRunWorkingDirectory:
     def test_default_wdir_is_not_written(self, tmp_dir, dvc):
-        dvc.run(
-            cmd="echo test > foo",
-            outs=["foo"],
-            wdir=".",
-            name="echo-foo",
-        )
+        dvc.run(cmd="echo test > foo", outs=["foo"], wdir=".", name="echo-foo")
 
         d = load_yaml("dvc.yaml")
         assert "wdir" not in get_in(d, ["stages", "echo-foo"])
@@ -520,11 +501,7 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
     assert (tmp_dir / PROJECT_FILE).read_text() == text.format(src="foo1", dest="bar1")
 
 
-def test_run_external_outputs(
-    tmp_dir,
-    dvc,
-    local_workspace,
-):
+def test_run_external_outputs(tmp_dir, dvc, local_workspace):
     hash_name = "md5"
     foo_hash = "acbd18db4cc2f85cedef654fccc4a4d8"
     bar_hash = "37b51d194a7513e45b56f6524f2d51f2"

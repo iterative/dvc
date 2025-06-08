@@ -4,12 +4,19 @@ import pytest
 from requests import Response
 
 from dvc.env import (
+    DVC_EXP_GIT_REMOTE,
     DVC_STUDIO_OFFLINE,
     DVC_STUDIO_REPO_URL,
     DVC_STUDIO_TOKEN,
     DVC_STUDIO_URL,
 )
-from dvc.utils.studio import STUDIO_URL, config_to_env, env_to_config, notify_refs
+from dvc.utils.studio import (
+    STUDIO_URL,
+    config_to_env,
+    env_to_config,
+    get_repo_url,
+    notify_refs,
+)
 
 CONFIG = {"offline": True, "repo_url": "repo_url", "token": "token", "url": "url"}
 
@@ -67,3 +74,18 @@ def test_config_to_env():
 
 def test_env_to_config():
     assert env_to_config(ENV) == CONFIG
+
+
+@pytest.mark.parametrize(
+    "exp_git_remote, repo_url",
+    [
+        (None, None),
+        ("origin", "git@url"),
+        ("http://url", "http://url"),
+    ],
+)
+def test_get_repo_url(dvc, scm, monkeypatch, exp_git_remote, repo_url):
+    scm.gitpython.repo.create_remote("origin", "git@url")
+    if exp_git_remote:
+        monkeypatch.setenv(DVC_EXP_GIT_REMOTE, exp_git_remote)
+    assert get_repo_url(dvc) == repo_url

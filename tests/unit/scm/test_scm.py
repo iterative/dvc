@@ -6,11 +6,7 @@ from dvc.repo.experiments import ExpRefInfo
 from dvc.scm import iter_revs
 
 
-def test_iter_revs(
-    tmp_dir,
-    scm,
-    mocker,
-):
+def test_iter_revs(tmp_dir, scm, mocker):
     """
     new         other
      │            │
@@ -72,19 +68,31 @@ def test_iter_revs(
         if rev == rev_root:
             return GitCommit(
                 "dummy",
-                commit_time=datetime(2022, 6, 28).timestamp(),
+                commit_time=datetime(2022, 6, 28).timestamp(),  # noqa: DTZ001
                 commit_time_offset=0,
                 message="dummy",
                 parents=["dummy"],
+                committer_name="dummy",
+                committer_email="dummy",
+                author_name="dummy",
+                author_email="dummy",
+                author_time=datetime(2022, 6, 28).timestamp(),  # noqa: DTZ001
+                author_time_offset=0,
             )
         if rev == rev_old:
             raise SCMError
         return GitCommit(
             "dummy",
-            commit_time=datetime(2022, 6, 30).timestamp(),
+            commit_time=datetime(2022, 6, 30).timestamp(),  # noqa: DTZ001
             commit_time_offset=0,
             message="dummy",
             parents=["dummy"],
+            committer_name="dummy",
+            committer_email="dummy",
+            author_name="dummy",
+            author_email="dummy",
+            author_time=datetime(2022, 6, 28).timestamp(),  # noqa: DTZ001
+            author_time_offset=0,
         )
 
     mocker.patch(

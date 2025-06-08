@@ -5,10 +5,10 @@ import logging.config
 import logging.handlers
 import os
 import sys
+from typing import ClassVar
 
 import colorama
 
-from dvc.env import DVC_SHOW_TRACEBACK
 from dvc.progress import Tqdm
 
 
@@ -33,11 +33,10 @@ def add_logging_level(level_name, level_num, method_name=None):
 
     def log_for_level(self, message, *args, **kwargs):
         if self.isEnabledFor(level_num):
-            # pylint: disable=protected-access
             self._log(level_num, message, args, **kwargs)
 
     def log_to_root(message, *args, **kwargs):
-        logging.log(level_num, message, *args, **kwargs)
+        logging.log(level_num, message, *args, **kwargs)  # noqa: LOG015
 
     # getLevelName resolves the numeric log level if already defined,
     # otherwise returns a string
@@ -80,7 +79,7 @@ class ColorFormatter(logging.Formatter):
     """
 
     reset = colorama.Fore.RESET
-    color_codes = {
+    color_codes: ClassVar[dict[str, str]] = {
         "TRACE": colorama.Fore.GREEN,
         "DEBUG": colorama.Fore.BLUE,
         "WARNING": colorama.Fore.YELLOW,
@@ -93,7 +92,7 @@ class ColorFormatter(logging.Formatter):
         self.log_colors = log_colors
         self.show_traceback = show_traceback
 
-    def format(self, record) -> str:  # noqa: A003, C901
+    def format(self, record) -> str:  # noqa: C901
         record.message = record.getMessage()
         msg = self.formatMessage(record)
 
@@ -151,8 +150,7 @@ class LoggerHandler(logging.StreamHandler):
                         self.emit_pretty_exception(exc, verbose=_is_verbose())
                         if not _is_verbose():
                             return
-                    # pylint: disable-next=broad-except
-                    except Exception:  # noqa: BLE001, S110  # nosec B110
+                    except Exception:  # noqa: BLE001, S110
                         pass
 
             msg = self.format(record)
@@ -160,7 +158,7 @@ class LoggerHandler(logging.StreamHandler):
             self.flush()
         except (BrokenPipeError, RecursionError):
             raise
-        except Exception:  # noqa, pylint: disable=broad-except
+        except Exception:  # noqa: BLE001
             self.handleError(record)
 
 
@@ -184,7 +182,10 @@ def set_loggers_level(level: int = logging.INFO) -> None:
 def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     colorama.init()
 
-    formatter = ColorFormatter(log_colors=log_colors and sys.stdout.isatty())
+    color_out = log_colors and bool(sys.stdout) and sys.stdout.isatty()
+    color_err = log_colors and bool(sys.stderr) and sys.stderr.isatty()
+
+    formatter = ColorFormatter(log_colors=color_out)
 
     console_info = LoggerHandler(sys.stdout)
     console_info.setLevel(logging.INFO)
@@ -203,10 +204,8 @@ def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
     console_trace.setFormatter(formatter)
     console_trace.addFilter(exclude_filter(logging.DEBUG))
 
-    show_traceback = bool(os.environ.get(DVC_SHOW_TRACEBACK))
-    err_formatter = ColorFormatter(
-        log_colors=log_colors and sys.stderr.isatty(), show_traceback=show_traceback
-    )
+    show_traceback = bool(os.environ.get("DVC_SHOW_TRACEBACK"))
+    err_formatter = ColorFormatter(log_colors=color_err, show_traceback=show_traceback)
     console_errors = LoggerHandler(sys.stderr)
     console_errors.setLevel(logging.WARNING)
     console_errors.setFormatter(err_formatter)

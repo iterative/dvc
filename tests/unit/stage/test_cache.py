@@ -7,10 +7,7 @@ import dvc.output as dvc_output
 
 def test_stage_cache(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
-    tmp_dir.gen(
-        "script.py",
-        'open("out", "w+").write("out"); ',
-    )
+    tmp_dir.gen("script.py", 'open("out", "w+").write("out"); ')
     stage = dvc.run(
         cmd="python script.py",
         deps=["script.py", "dep"],
@@ -31,8 +28,7 @@ def test_stage_cache(tmp_dir, dvc, mocker):
         "c7a85d71de1912c43d9c5b6218c71630d6277e8fc11e4ccf5e12b3c202234838",
     )
     cache_file = os.path.join(
-        cache_dir,
-        "5e2824029f8da9ef6c57131a638ceb65f27c02f16c85d71e85671c27daed0501",
+        cache_dir, "5e2824029f8da9ef6c57131a638ceb65f27c02f16c85d71e85671c27daed0501"
     )
 
     assert os.path.isdir(cache_dir)
@@ -54,10 +50,7 @@ def test_stage_cache(tmp_dir, dvc, mocker):
 def test_stage_cache_params(tmp_dir, dvc, mocker):
     tmp_dir.gen("params.yaml", "foo: 1\nbar: 2")
     tmp_dir.gen("myparams.yaml", "baz: 3\nqux: 4")
-    tmp_dir.gen(
-        "script.py",
-        'open("out", "w+").write("out"); ',
-    )
+    tmp_dir.gen("script.py", 'open("out", "w+").write("out"); ')
     stage = dvc.run(
         cmd="python script.py",
         params=["foo,bar", "myparams.yaml:baz,qux"],
@@ -78,8 +71,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
         "8fdb377d1b4c0a303b788771b122dfba9bbbbc43f14ce41d35715cf4fea08459",
     )
     cache_file = os.path.join(
-        cache_dir,
-        "9ce1963a69beb1299800188647cd960b7afff101be19fd46226e32bb8be8ee44",
+        cache_dir, "9ce1963a69beb1299800188647cd960b7afff101be19fd46226e32bb8be8ee44"
     )
 
     assert os.path.isdir(cache_dir)
@@ -100,10 +92,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
 
 def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
-    tmp_dir.gen(
-        "script.py",
-        'open("out", "w+").write("out"); ',
-    )
+    tmp_dir.gen("script.py", 'open("out", "w+").write("out"); ')
     tmp_dir.gen({"wdir": {}})
     stage = dvc.run(
         cmd="python ../script.py",
@@ -126,8 +115,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
         "6ad5cce3347e9e96c77d4353d84e5c8cae8c9151c486c4ea3d3d79e9051800f1",
     )
     cache_file = os.path.join(
-        cache_dir,
-        "1fa3e1a9f785f8364ad185d62bd0813ce8794afcfc79410e985eac0443cc5462",
+        cache_dir, "1fa3e1a9f785f8364ad185d62bd0813ce8794afcfc79410e985eac0443cc5462"
     )
 
     assert os.path.isdir(cache_dir)
@@ -168,8 +156,7 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
         "6d4c6de74e7c0d60d2122e2063b4724a8c78a6799def6c7cf5093f45e7f2f3b7",
     )
     cache_file = os.path.join(
-        cache_dir,
-        "435e34f80692059e79ec53346cbfe29fd9ee65b62f5f06f17f5950ce5a7408ea",
+        cache_dir, "435e34f80692059e79ec53346cbfe29fd9ee65b62f5f06f17f5950ce5a7408ea"
     )
 
     # sanity check

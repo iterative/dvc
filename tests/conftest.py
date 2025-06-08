@@ -7,11 +7,11 @@ import pytest
 
 from dvc import env
 from dvc.stage import PipelineStage
-from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
+from dvc.testing.fixtures import *  # noqa: F403
 
-from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
-from .remotes import *  # noqa, pylint: disable=wildcard-import
-from .scripts import *  # noqa, pylint: disable=wildcard-import
+from .dir_helpers import *  # noqa: F403
+from .remotes import *  # noqa: F403
+from .scripts import *  # noqa: F403
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -123,7 +123,7 @@ def pytest_runtest_setup(item):
     if "CI" in os.environ and item.get_closest_marker("needs_internet") is not None:
         # remotes that need internet connection might be flaky,
         # so we rerun them in case it fails.
-        item.add_marker(pytest.mark.flaky(max_runs=5, min_passes=1))
+        item.add_marker(pytest.mark.flaky(reruns=5))
 
 
 @pytest.fixture(scope="session")

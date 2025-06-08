@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: 'DVC: Data Version Control - Git for Data & Models"'
+message: >-
+  If you use this software as part of a publication and wish
+  to cite it, please use the metadata from this file.
+type: software
+authors:
+  - name: The DVC team and contributors
+    website: 'https://github.com/iterative'
+repository-code: 'https://github.com/iterative/dvc'
+url: 'https://dvc.org'
+abstract: >-
+  DVC is a tool for data science that takes advantage of existing software engineering toolset.
+  It helps machine learning teams manage large datasets, make projects reproducible, and collaborate better.
+keywords:
+  - ai
+  - collaboration
+  - data-science
+  - data-version-control
+  - developer-tools
+  - git
+  - machine-learning
+  - python
+  - reproducibility
+license: Apache-2.0

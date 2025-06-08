@@ -32,6 +32,14 @@ class Cloud(ABC):
     def write_bytes(self, contents):
         raise NotImplementedError
 
+    @abstractmethod
+    def unlink(self, missing_ok: bool = False) -> None:
+        pass
+
+    @abstractmethod
+    def rmdir(self, recursive: bool = True) -> None:
+        pass
+
     def read_text(self, encoding=None, errors=None):
         if not encoding:
             encoding = locale.getpreferredencoding(False)

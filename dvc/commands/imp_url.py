@@ -1,12 +1,10 @@
-import argparse
-import logging
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdImportUrl(CmdBase):
@@ -22,6 +20,7 @@ class CmdImportUrl(CmdBase):
                 jobs=self.args.jobs,
                 force=self.args.force,
                 version_aware=self.args.version_aware,
+                fs_config=self.args.fs_config,
             )
         except DvcException:
             logger.exception(
@@ -43,7 +42,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(IMPORT_HELP, "import-url"),
         help=IMPORT_HELP,
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=formatter.RawTextHelpFormatter,
     )
     import_parser.add_argument(
         "url",
@@ -113,5 +112,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Import using cloud versioning. Implied if the URL contains a version ID.",
+    )
+    import_parser.add_argument(
+        "--fs-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help="Config options for the target url.",
     )
     import_parser.set_defaults(func=CmdImportUrl)

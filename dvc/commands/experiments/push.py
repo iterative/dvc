@@ -1,18 +1,18 @@
 import argparse
-import logging
-from typing import Any, Dict
+from typing import Any
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdExperimentsPush(CmdBase):
     @staticmethod
-    def log_result(result: Dict[str, Any], remote: str):
+    def log_result(result: dict[str, Any], remote: str):
         from dvc.utils import humanize
 
         def join_exps(exps):
@@ -90,7 +90,7 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_PUSH_HELP, "exp/push"),
         help=EXPERIMENTS_PUSH_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     add_rev_selection_flags(experiments_push_parser, "Push", True)
     experiments_push_parser.add_argument(
@@ -121,7 +121,7 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_push_parser.add_argument(
         "--run-cache",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=False,
         help="Push run history for all stages.",
     )

@@ -5,7 +5,8 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.testing.api_tests import TestAPI  # noqa, pylint: disable=unused-import
+from dvc.scm import CloneError
+from dvc.testing.api_tests import TestAPI  # noqa: F401
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 
@@ -31,6 +32,68 @@ def test_get_url_requires_dvc(tmp_dir, scm):
         api.get_url("foo", repo=f"file://{tmp_dir.as_posix()}")
 
 
+def test_get_url_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
+    erepo_dir.add_remote(config=cloud.config, name="other")
+    erepo_dir.add_remote(config=local_cloud.config, default=True)
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo", commit="add foo")
+
+    # Using file url to force clone to tmp repo
+    repo_url = f"file://{erepo_dir.as_posix()}"
+    expected_rel_path = os.path.join(
+        "files", "md5", "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    )
+
+    # Test default remote
+    assert api.get_url("foo", repo=repo_url) == (local_cloud / expected_rel_path).url
+
+    # Test remote arg
+    assert (
+        api.get_url("foo", repo=repo_url, remote="other")
+        == (cloud / expected_rel_path).url
+    )
+
+    # Test config arg
+    assert (
+        api.get_url("foo", repo=repo_url, config={"core": {"remote": "other"}})
+        == (cloud / expected_rel_path).url
+    )
+
+    # Test remote_config arg
+    assert (
+        api.get_url("foo", repo=repo_url, remote_config={"url": cloud.url})
+        == (cloud / expected_rel_path).url
+    )
+
+
+def test_get_url_ignore_scm(tmp_dir, dvc, cloud, scm):
+    tmp_dir.add_remote(config=cloud.config)
+    tmp_dir.dvc_gen("foo", "foo", commit="add foo")
+
+    repo_posix = tmp_dir.as_posix()
+    expected_url = (cloud / "files" / "md5" / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
+
+    # Test baseline with scm
+    assert api.get_url("foo", repo=repo_posix) == expected_url
+
+    # Simulate gitless environment (e.g. deployed container)
+    (tmp_dir / ".git").rename(tmp_dir / "gitless_environment")
+
+    assert api.get_url("foo", repo=repo_posix) == expected_url
+    assert (
+        api.get_url("foo", repo=repo_posix, config={"core": {"no_scm": True}})
+        == expected_url
+    )
+
+    # Addressing repos with `file://` triggers git, so it fails in a gitless environment
+    repo_url = f"file://{repo_posix}"
+    with pytest.raises(
+        CloneError,
+        match="SCM error",
+    ):
+        api.get_url("foo", repo=repo_url, config={"core": {"no_scm": True}})
+
+
 def test_open_external(tmp_dir, erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
 
@@ -41,7 +104,7 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
             # NOTE: need file to be other size for Mac
             erepo_dir.dvc_gen("version", "branchver", commit="add version")
 
-    erepo_dir.dvc.push(all_branches=True)
+    assert erepo_dir.dvc.push(all_branches=True) == 2
 
     # Remove cache to force download
     remove(erepo_dir.dvc.cache.local.path)
@@ -250,6 +313,15 @@ def test_read_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
             os.path.join("dir", "foo"),
             repo=f"file://{erepo_dir.as_posix()}",
             config={"core": {"remote": "other"}},
+        )
+        == "foo content"
+    )
+
+    assert (
+        api.read(
+            os.path.join("dir", "foo"),
+            repo=f"file://{erepo_dir.as_posix()}",
+            remote_config={"url": cloud.url},
         )
         == "foo content"
     )

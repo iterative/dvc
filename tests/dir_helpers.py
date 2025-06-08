@@ -43,37 +43,17 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
-
 import os
-import pathlib
 
 import pytest
 
 __all__ = [
-    "run_copy",
-    "run_head",
     "erepo_dir",
     "git_dir",
-    "git_upstream",
     "git_downstream",
+    "git_upstream",
+    "run_head",
 ]
-
-
-@pytest.fixture
-def run_copy(tmp_dir, copy_script, dvc):
-    def run_copy(src, dst, **run_kwargs):
-        wdir = pathlib.Path(run_kwargs.get("wdir", "."))
-        wdir = pathlib.Path("../" * len(wdir.parts))
-        script_path = wdir / "copy.py"
-
-        return dvc.run(
-            cmd=f"python {script_path} {src} {dst}",
-            outs=[dst],
-            deps=[src, f"{script_path}"],
-            **run_kwargs,
-        )
-
-    return run_copy
 
 
 @pytest.fixture

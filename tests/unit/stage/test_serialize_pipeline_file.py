@@ -198,7 +198,4 @@ def test_order_deps_outs(dvc, typ):
 
     stage = create_stage(PipelineStage, dvc, **kwargs, **extra)
     assert typ not in to_pipeline_file(stage)["something"]
-    assert list(to_pipeline_file(stage)["something"].keys()) == [
-        "cmd",
-        *all_types,
-    ]
+    assert list(to_pipeline_file(stage)["something"].keys()) == ["cmd", *all_types]

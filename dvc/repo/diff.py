@@ -1,13 +1,13 @@
 import errno
-import logging
 import os
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Optional
 
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _path(entry):
@@ -22,11 +22,11 @@ def _hash(entry):
     return None
 
 
-def _diff(old, new, with_missing=False):
+def _diff(old, new, data_keys, with_missing=False):
     from dvc_data.index.diff import ADD, DELETE, MODIFY, RENAME
     from dvc_data.index.diff import diff as idiff
 
-    ret: "Dict[str, List[Dict]]" = {
+    ret: dict[str, list[dict]] = {
         "added": [],
         "deleted": [],
         "modified": [],
@@ -34,43 +34,40 @@ def _diff(old, new, with_missing=False):
         "not in cache": [],
     }
 
+    def meta_cmp_key(meta):
+        if not meta:
+            return meta
+        return meta.isdir
+
     for change in idiff(
         old,
         new,
         with_renames=True,
-        hash_only=True,
+        meta_cmp_key=meta_cmp_key,
+        roots=data_keys,
     ):
+        if (change.old and change.old.isdir and not change.old.hash_info) or (
+            change.new and change.new.isdir and not change.new.hash_info
+        ):
+            continue
+
         if change.typ == ADD:
-            ret["added"].append(
-                {
-                    "path": _path(change.new),
-                    "hash": _hash(change.new),
-                }
-            )
+            ret["added"].append({"path": _path(change.new), "hash": _hash(change.new)})
         elif change.typ == DELETE:
             ret["deleted"].append(
-                {
-                    "path": _path(change.old),
-                    "hash": _hash(change.old),
-                }
+                {"path": _path(change.old), "hash": _hash(change.old)}
             )
         elif change.typ == MODIFY:
             ret["modified"].append(
                 {
                     "path": _path(change.old),
-                    "hash": {
-                        "old": _hash(change.old),
-                        "new": _hash(change.new),
-                    },
+                    "hash": {"old": _hash(change.old), "new": _hash(change.new)},
                 }
             )
         elif change.typ == RENAME:
             ret["renamed"].append(
                 {
-                    "path": {
-                        "old": _path(change.old),
-                        "new": _path(change.new),
-                    },
+                    "path": {"old": _path(change.old), "new": _path(change.new)},
                     "hash": _hash(change.old),
                 }
             )
@@ -82,10 +79,7 @@ def _diff(old, new, with_missing=False):
             and not old.storage_map.cache_exists(change.old)
         ):
             ret["not in cache"].append(
-                {
-                    "path": _path(change.old),
-                    "hash": _hash(change.old),
-                }
+                {"path": _path(change.old), "hash": _hash(change.old)}
             )
 
     return ret if any(ret.values()) else {}
@@ -96,7 +90,7 @@ def diff(
     self,
     a_rev: str = "HEAD",
     b_rev: Optional[str] = None,
-    targets: Optional[List[str]] = None,
+    targets: Optional[list[str]] = None,
     recursive: bool = False,
 ):
     """
@@ -116,6 +110,7 @@ def diff(
         b_rev = "workspace"
         with_missing = True
 
+    data_keys = set()
     for rev in self.brancher(revs=[a_rev, b_rev]):
         if rev == "workspace" and b_rev != "workspace":
             # brancher always returns workspace, but we only need to compute
@@ -123,25 +118,17 @@ def diff(
             continue
 
         def onerror(target, _exc):
-            # pylint: disable-next=cell-var-from-loop
             missing_targets[rev].add(target)  # noqa: B023
 
-        view = self.index.targets_view(
-            targets,
-            onerror=onerror,
-            recursive=recursive,
-        )
+        view = self.index.targets_view(targets, onerror=onerror, recursive=recursive)
+
+        data_keys.update(view.data_keys.get("repo", set()))
 
         if rev == "workspace":
             from .index import build_data_index
 
             with ui.status("Building workspace index"):
-                data = build_data_index(
-                    view,
-                    self.root_dir,
-                    self.fs,
-                    compute_hash=True,
-                )
+                data = build_data_index(view, self.root_dir, self.fs, compute_hash=True)
         else:
             data = view.data["repo"]
 
@@ -165,4 +152,4 @@ def diff(
         new = indexes[b_rev]
 
     with ui.status("Calculating diff"):
-        return _diff(old, new, with_missing=with_missing)
+        return _diff(old, new, data_keys, with_missing=with_missing)

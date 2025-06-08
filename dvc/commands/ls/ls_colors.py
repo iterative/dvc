@@ -20,7 +20,7 @@ class LsColors:
             else:
                 self._codes[code] = color
 
-    def format(self, entry):  # noqa: A003
+    def format(self, entry):
         text = entry["path"]
 
         if entry.get("isout", False) and "out" in self._codes:
@@ -32,7 +32,9 @@ class LsColors:
         if entry.get("isexec", False):
             return self._format(text, code="ex")
 
-        _, ext = os.path.splitext(text)
+        stem, ext = os.path.splitext(text)
+        if not ext and stem.startswith("."):
+            ext = stem
         return self._format(text, ext=ext)
 
     def _format(self, text, code=None, ext=None):

@@ -1,20 +1,21 @@
 import fnmatch
-import logging
 import typing
+from collections.abc import Iterable
 from contextlib import suppress
 from functools import wraps
-from typing import Iterable, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import NamedTuple, Optional, Union
 
 from dvc.exceptions import (
     NoOutputOrStageError,
     OutputDuplicationError,
     OutputNotFoundError,
 )
+from dvc.log import logger
 from dvc.repo import lock_repo
 from dvc.ui import ui
 from dvc.utils import as_posix, parse_target
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 if typing.TYPE_CHECKING:
     from networkx import DiGraph
@@ -31,17 +32,25 @@ class StageInfo(NamedTuple):
     filter_info: Optional[str] = None
 
 
-StageList = List["Stage"]
+StageList = list["Stage"]
 StageIter = Iterable["Stage"]
-StageSet = Set["Stage"]
+StageSet = set["Stage"]
 
 
 def _collect_with_deps(stages: StageList, graph: "DiGraph") -> StageSet:
+    from dvc.exceptions import StageNotFoundError
     from dvc.repo.graph import collect_pipeline
 
     res: StageSet = set()
     for stage in stages:
-        res.update(collect_pipeline(stage, graph=graph))
+        pl = list(collect_pipeline(stage, graph=graph))
+        if not pl:
+            raise StageNotFoundError(
+                f"Stage {stage} is not found in the project. "
+                "Check that there are no symlinks in the parents "
+                "leading up to it within the project."
+            )
+        res.update(pl)
     return res
 
 
@@ -64,7 +73,7 @@ def _collect_specific_target(
     target: str,
     with_deps: bool,
     recursive: bool,
-) -> Tuple[StageIter, Optional[str], Optional[str]]:
+) -> tuple[StageIter, Optional[str], Optional[str]]:
     from dvc.dvcfile import is_valid_filename
 
     # Optimization: do not collect the graph for a specific target
@@ -99,7 +108,7 @@ def locked(f):
 
 class StageLoad:
     def __init__(self, repo: "Repo") -> None:
-        self.repo: "Repo" = repo
+        self.repo: Repo = repo
 
     @property
     def fs(self):
@@ -211,7 +220,7 @@ class StageLoad:
         self, path: Optional[str] = None, name: Optional[str] = None
     ) -> str:
         if path:
-            return self.repo.fs.path.realpath(path)
+            return self.repo.fs.abspath(path)
 
         path = PROJECT_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
@@ -235,7 +244,7 @@ class StageLoad:
     ) -> Iterable[str]:
         if not name:
             return stages.keys()
-        if accept_group and stages.is_foreach_generated(name):
+        if accept_group and stages.is_foreach_or_matrix_generated(name):
             return self._get_group_keys(stages, name)
         if glob:
             return fnmatch.filter(stages.keys(), name)
@@ -253,7 +262,7 @@ class StageLoad:
         Args:
             path: if not provided, default `dvc.yaml` is assumed.
             name: required for `dvc.yaml` files, ignored for `.dvc` files.
-            accept_group: if true, all of the the stages generated from `name`
+            accept_group: if true, all of the stages generated from `name`
                 foreach are returned.
             glob: if true, `name` is considered as a glob, which is
                 used to filter list of stages from the given `path`.
@@ -340,7 +349,7 @@ class StageLoad:
         if recursive and self.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
 
-            path = self.fs.path.abspath(target)
+            path = self.fs.abspath(target)
             return collect_inside_path(path, graph or self.repo.index.graph)
 
         stages = self.from_target(target, glob=glob)
@@ -355,7 +364,7 @@ class StageLoad:
         with_deps: bool = False,
         recursive: bool = False,
         graph: Optional["DiGraph"] = None,
-    ) -> List[StageInfo]:
+    ) -> list[StageInfo]:
         """Collects a list of (stage, filter_info) from the given target.
 
         Priority is in the order of following in case of ambiguity:
@@ -385,7 +394,7 @@ class StageLoad:
             if not (recursive and self.fs.isdir(target)):
                 try:
                     (out,) = self.repo.find_outs_by_path(target, strict=False)
-                    return [StageInfo(out.stage, self.fs.path.abspath(target))]
+                    return [StageInfo(out.stage, self.fs.abspath(target))]
                 except OutputNotFoundError:
                     pass
 
@@ -393,12 +402,7 @@ class StageLoad:
             from dvc.stage.exceptions import StageFileDoesNotExistError, StageNotFound
 
             try:
-                stages = self.collect(
-                    target,
-                    with_deps,
-                    recursive,
-                    graph,
-                )
+                stages = self.collect(target, with_deps, recursive, graph)
             except StageFileDoesNotExistError as exc:
                 # collect() might try to use `target` as a stage name
                 # and throw error that dvc.yaml does not exist, whereas it

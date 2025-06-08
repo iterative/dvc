@@ -1,10 +1,9 @@
-import logging
-
 from dvc.exceptions import CheckoutError
+from dvc.log import logger
 from dvc.repo import locked
 from dvc.utils import glob_targets
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 @locked

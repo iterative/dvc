@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import InvalidArgumentError
 
@@ -34,7 +34,7 @@ def update(  # noqa: C901
         raise InvalidArgumentError("--remote can't be used without --to-remote")
 
     import_stages = set()
-    other_stage_infos: List["StageInfo"] = []
+    other_stage_infos: list[StageInfo] = []
 
     for stage_info in self.index.collect_targets(targets, recursive=recursive):
         if stage_info.stage.is_import:
@@ -61,10 +61,7 @@ def update(  # noqa: C901
             )
         if to_remote:
             raise InvalidArgumentError("--to-remote can't be used with worktree update")
-        update_worktree_stages(
-            self,
-            other_stage_infos,
-        )
+        update_worktree_stages(self, other_stage_infos)
 
     stages = import_stages | {stage_info.stage for stage_info in other_stage_infos}
     return list(stages)

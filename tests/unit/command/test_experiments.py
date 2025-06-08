@@ -9,6 +9,7 @@ from dvc.commands.experiments.ls import CmdExperimentsList
 from dvc.commands.experiments.pull import CmdExperimentsPull
 from dvc.commands.experiments.push import CmdExperimentsPush
 from dvc.commands.experiments.remove import CmdExperimentsRemove
+from dvc.commands.experiments.rename import CmdExperimentsRename
 from dvc.commands.experiments.run import CmdExperimentsRun
 from dvc.commands.experiments.save import CmdExperimentsSave
 from dvc.commands.experiments.show import CmdExperimentsShow
@@ -125,13 +126,33 @@ def test_experiments_run(dvc, scm, mocker):
         "run_all": False,
         "jobs": 1,
         "tmp_dir": False,
-        "machine": None,
         "copy_paths": [],
         "message": None,
     }
     default_arguments.update(repro_arguments)
 
     cmd = CmdExperimentsRun(parse_args(["exp", "run"]))
+    mocker.patch.object(cmd.repo, "reproduce")
+    mocker.patch.object(cmd.repo.experiments, "run")
+    cmd.run()
+    cmd.repo.experiments.run.assert_called_with(**default_arguments)
+
+
+@pytest.mark.parametrize("flag", ["-m", "-M", "--message"])
+def test_experiments_run_message(dvc, scm, mocker, flag):
+    default_arguments = {
+        "params": [],
+        "name": None,
+        "queue": False,
+        "run_all": False,
+        "jobs": 1,
+        "tmp_dir": False,
+        "copy_paths": [],
+        "message": "mymessage",
+    }
+    default_arguments.update(repro_arguments)
+
+    cmd = CmdExperimentsRun(parse_args(["exp", "run", flag, "mymessage"]))
     mocker.patch.object(cmd.repo, "reproduce")
     mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()
@@ -189,7 +210,7 @@ def test_experiments_list(dvc, scm, mocker):
 @pytest.mark.parametrize(
     "args,expected",
     [
-        ([], "main:\n\tsha-a [exp-a]\n"),
+        ([], "master:\n\tsha-a [exp-a]\n"),
         (["--name-only"], "exp-a\n"),
         (["--sha-only"], "sha-a\n"),
     ],
@@ -198,7 +219,7 @@ def test_experiments_list_format(mocker, capsys, args, expected, dvc, scm):
     mocker.patch(
         "dvc.repo.experiments.ls.ls",
         return_value={
-            "refs/heads/main": [
+            scm.get_rev(): [
                 ("exp-a", "sha-a"),
             ]
         },
@@ -285,13 +306,7 @@ def test_experiments_push(dvc, scm, mocker):
         run_cache=True,
     )
 
-    cli_args = parse_args(
-        [
-            "experiments",
-            "push",
-            "origin",
-        ]
-    )
+    cli_args = parse_args(["experiments", "push", "origin"])
     cmd = cli_args.func(cli_args)
 
     assert cmd.run() == 0
@@ -337,13 +352,7 @@ def test_experiments_pull(dvc, scm, mocker):
         run_cache=True,
     )
 
-    cli_args = parse_args(
-        [
-            "experiments",
-            "pull",
-            "origin",
-        ]
-    )
+    cli_args = parse_args(["experiments", "pull", "origin"])
     cmd = cli_args.func(cli_args)
 
     assert cmd.run() == 0
@@ -375,6 +384,7 @@ def test_experiments_remove_flag(dvc, scm, mocker, capsys, caplog):
         num=2,
         queue=False,
         git_remote="myremote",
+        keep=False,
     )
 
 
@@ -401,6 +411,7 @@ def test_experiments_remove_special(dvc, scm, mocker, capsys, caplog):
         num=1,
         queue=False,
         git_remote="myremote",
+        keep=False,
     )
 
 
@@ -419,8 +430,44 @@ def test_experiments_remove_invalid(dvc, scm, mocker, capsys, caplog):
     )
 
 
+def test_experiments_rename_flag(dvc, scm, mocker, capsys, caplog):
+    cli_args = parse_args(
+        [
+            "experiments",
+            "rename",
+            "--git-remote",
+            "myremote",
+            "exp-123",
+            "exp-234",
+        ]
+    )
+    assert cli_args.func == CmdExperimentsRename
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.rename.rename", return_value={})
+    assert cmd.run() == 0
+    m.assert_called_once_with(
+        cmd.repo,
+        exp_name="exp-123",
+        new_name="exp-234",
+        git_remote="myremote",
+        force=False,
+    )
+
+
+def test_experiments_rename_invalid(dvc, scm, mocker, capsys, caplog):
+    cmd = CmdExperimentsRename(parse_args(["exp", "rename", "exp-1"]))
+    with pytest.raises(InvalidArgumentError) as excinfo:
+        cmd.run()
+    assert (
+        str(excinfo.value)
+        == "An experiment to rename and a new experiment name are required."
+    )
+
+
 def test_experiments_save(dvc, scm, mocker):
-    cli_args = parse_args(["exp", "save", "--name", "exp-name", "--force"])
+    cli_args = parse_args(
+        ["exp", "save", "target", "--name", "exp-name", "--recursive", "--force"]
+    )
     assert cli_args.func == CmdExperimentsSave
 
     cmd = cli_args.func(cli_args)
@@ -429,7 +476,34 @@ def test_experiments_save(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, name="exp-name", force=True, include_untracked=[], message=None
+        cmd.repo,
+        targets=["target"],
+        name="exp-name",
+        recursive=True,
+        force=True,
+        include_untracked=[],
+        message=None,
+    )
+
+
+@pytest.mark.parametrize("flag", ["-m", "-M", "--message"])
+def test_experiments_save_message(dvc, scm, mocker, flag):
+    cli_args = parse_args(["exp", "save", flag, "custom commit message"])
+    assert cli_args.func == CmdExperimentsSave
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.save.save", return_value="acabb")
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo,
+        targets=[],
+        name=None,
+        recursive=False,
+        force=False,
+        include_untracked=[],
+        message="custom commit message",
     )
 
 

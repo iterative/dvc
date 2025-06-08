@@ -36,12 +36,7 @@ def test_cmd_move(tmp_dir, dvc):
 
 def test_move_not_data_source(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
-    dvc.run(
-        cmd="cp foo file1",
-        outs=["file1"],
-        deps=["foo"],
-        name="copy-foo-file1",
-    )
+    dvc.run(cmd="cp foo file1", outs=["file1"], deps=["foo"], name="copy-foo-file1")
 
     with pytest.raises(MoveNotDataSourceError):
         dvc.move("file1", "dst")

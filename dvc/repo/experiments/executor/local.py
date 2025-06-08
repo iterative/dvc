@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import ExitStack
 from tempfile import mkdtemp
@@ -9,6 +8,7 @@ from funcy import retry
 from shortuuid import uuid
 
 from dvc.lock import LockError
+from dvc.log import logger
 from dvc.repo.experiments.refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.stash import ExpStashEntry
     from dvc.scm import NoSCM
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class BaseLocalExecutor(BaseExecutor):
@@ -65,7 +65,6 @@ class TempDirExecutor(BaseLocalExecutor):
     # debugging user code), and suppress other DVC hints (like `git add`
     # suggestions) that are not applicable outside of workspace runs
     WARN_UNTRACKED = True
-    QUIET = True
     DEFAULT_LOCATION = "tempdir"
 
     @retry(180, errors=LockError, timeout=1)
@@ -97,9 +96,10 @@ class TempDirExecutor(BaseLocalExecutor):
             temp_merge: stash_rev,
             temp_baseline: entry.baseline_rev,
         }
-        with get_exp_rwlock(
-            repo, writes=[temp_head, temp_merge, temp_baseline]
-        ), self.set_temp_refs(scm, temp_ref_dict):
+        with (
+            get_exp_rwlock(repo, writes=[temp_head, temp_merge, temp_baseline]),
+            self.set_temp_refs(scm, temp_ref_dict),
+        ):
             # Executor will be initialized with an empty git repo that
             # we populate by pushing:
             #   EXEC_HEAD - the base commit for this experiment
@@ -131,13 +131,11 @@ class TempDirExecutor(BaseLocalExecutor):
 
         self.scm.stash.apply(merge_rev)
         self._update_config(repo.config.read("local"))
+        local_git_config = os.path.join(repo.scm.root_dir, ".git", "config")
+        self._update_git_config(ConfigObj(local_git_config, list_values=False))
 
     def _update_config(self, update):
-        local_config = os.path.join(
-            self.root_dir,
-            self.dvc_dir,
-            "config.local",
-        )
+        local_config = os.path.join(self.root_dir, self.dvc_dir, "config.local")
         logger.debug("Writing experiments local config '%s'", local_config)
         if os.path.exists(local_config):
             conf_obj = ConfigObj(local_config)
@@ -148,8 +146,23 @@ class TempDirExecutor(BaseLocalExecutor):
             with open(local_config, "wb") as fobj:
                 conf_obj.write(fobj)
 
+    def _update_git_config(self, update):
+        local_config = os.path.join(self.scm.root_dir, ".git", "config")
+        logger.debug("Writing experiments local Git config '%s'", local_config)
+        if os.path.exists(local_config):
+            conf_obj = ConfigObj(local_config, list_values=False)
+            conf_obj.merge(update)
+        else:
+            conf_obj = ConfigObj(update, list_values=False)
+        if conf_obj:
+            with open(local_config, "wb") as fobj:
+                conf_obj.write(fobj)
+
     def init_cache(
-        self, repo: "Repo", rev: str, run_cache: bool = True  # noqa: ARG002
+        self,
+        repo: "Repo",
+        rev: str,  # noqa: ARG002
+        run_cache: bool = True,  # noqa: ARG002
     ):
         """Initialize DVC cache."""
         self._update_config({"cache": {"dir": repo.cache.local_cache_dir}})
@@ -186,14 +199,9 @@ class WorkspaceExecutor(BaseLocalExecutor):
         self._detach_stack = ExitStack()
 
     @classmethod
-    def from_stash_entry(
-        cls,
-        repo: "Repo",
-        entry: "ExpStashEntry",
-        **kwargs,
-    ):
+    def from_stash_entry(cls, repo: "Repo", entry: "ExpStashEntry", **kwargs):
         root_dir = repo.scm.root_dir
-        executor: "WorkspaceExecutor" = cls._from_stash_entry(
+        executor: WorkspaceExecutor = cls._from_stash_entry(
             repo, entry, root_dir, **kwargs
         )
         logger.debug("Init workspace executor in '%s'", root_dir)

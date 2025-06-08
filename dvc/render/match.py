@@ -1,14 +1,14 @@
-import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, DefaultDict, Dict, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 import dpath
 import dpath.options
 from funcy import get_in, last
 
+from dvc.log import logger
 from dvc.repo.plots import _normpath, infer_data_sources
-from dvc.utils.plots import get_plot_id
+from dvc.utils.plots import group_definitions_by_id
 
 from .convert import _get_converter
 
@@ -18,32 +18,27 @@ if TYPE_CHECKING:
 
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
-def _squash_plots_properties(data: List) -> Dict:
+def _squash_plots_properties(data: list) -> dict:
     configs = [last(group) for group in data]
-    resolved: Dict = {}
+    resolved: dict = {}
     for config in reversed(configs):
-        resolved = {**resolved, **config}
+        resolved = resolved | config
     return resolved
 
 
 class PlotsData:
-    def __init__(self, data: Dict):
+    def __init__(self, data: dict):
         self.data = data
 
     def group_definitions(self):
         groups = defaultdict(list)
         for rev, rev_content in self.data.items():
-            for config_file, config_file_content in (
-                rev_content.get("definitions", {}).get("data", {}).items()
-            ):
-                for plot_id, plot_definition in config_file_content.get(
-                    "data", {}
-                ).items():
-                    full_id = get_plot_id(plot_id, config_file)
-                    groups[full_id].append((rev, plot_id, plot_definition))
+            definitions = rev_content.get("definitions", {}).get("data", {})
+            for plot_id, definition in group_definitions_by_id(definitions).items():
+                groups[plot_id].append((rev, *definition))
         return dict(groups)
 
     def get_definition_data(self, target_files, rev):
@@ -67,15 +62,15 @@ class PlotsData:
 
 class RendererWithErrors(NamedTuple):
     renderer: "Renderer"
-    source_errors: Dict[str, Dict[str, Exception]]
-    definition_errors: Dict[str, Exception]
+    source_errors: dict[str, dict[str, Exception]]
+    definition_errors: dict[str, Exception]
 
 
 def match_defs_renderers(  # noqa: C901, PLR0912
     data,
     out=None,
     templates_dir: Optional["StrPath"] = None,
-) -> List[RendererWithErrors]:
+) -> list[RendererWithErrors]:
     from dvc_render import ImageRenderer, VegaRenderer
 
     plots_data = PlotsData(data)
@@ -83,18 +78,19 @@ def match_defs_renderers(  # noqa: C901, PLR0912
     renderer_cls = None
 
     for plot_id, group in plots_data.group_definitions().items():
-        plot_datapoints: List[Dict] = []
+        plot_datapoints: list[dict] = []
         props = _squash_plots_properties(group)
-        final_props: Dict = {}
+        first_props: dict = {}
 
-        def_errors: Dict[str, Exception] = {}
-        src_errors: DefaultDict[str, Dict[str, Exception]] = defaultdict(dict)
+        def_errors: dict[str, Exception] = {}
+        src_errors: defaultdict[str, dict[str, Exception]] = defaultdict(dict)
 
         if out is not None:
             props["out"] = out
         if templates_dir is not None:
             props["template_dir"] = templates_dir
 
+        revs = []
         for rev, inner_id, plot_definition in group:
             plot_sources = infer_data_sources(inner_id, plot_definition)
             definitions_data = plots_data.get_definition_data(plot_sources, rev)
@@ -114,19 +110,24 @@ def match_defs_renderers(  # noqa: C901, PLR0912
 
             try:
                 dps, rev_props = converter.flat_datapoints(rev)
-            except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
+                if dps and rev not in revs:
+                    revs.append(rev)
+            except Exception as e:  # noqa: BLE001
                 logger.warning("In %r, %s", rev, str(e).lower())
                 def_errors[rev] = e
                 continue
 
-            if not final_props and rev_props:
-                final_props = rev_props
+            if not first_props and rev_props:
+                first_props = rev_props
             plot_datapoints.extend(dps)
 
-        if "title" not in final_props:
-            final_props["title"] = renderer_id
+        if "title" not in first_props:
+            first_props["title"] = renderer_id
+
+        if revs:
+            first_props["revs_with_datapoints"] = revs
 
         if renderer_cls is not None:
-            renderer = renderer_cls(plot_datapoints, renderer_id, **final_props)
+            renderer = renderer_cls(plot_datapoints, renderer_id, **first_props)
             renderers.append(RendererWithErrors(renderer, dict(src_errors), def_errors))
     return renderers

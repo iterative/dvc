@@ -1,11 +1,10 @@
-import logging
-
 from dvc.commands.data_sync import CmdDataBase
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils import format_link
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdDataStatus(CmdDataBase):
@@ -61,17 +60,18 @@ class CmdDataStatus(CmdDataBase):
                     all_commits=self.args.all_commits,
                     with_deps=self.args.with_deps,
                     recursive=self.args.recursive,
+                    check_updates=self.args.check_updates,
                 )
             except DvcException:
                 logger.exception("")
                 return 1
 
-            if self.args.quiet:
-                return bool(st)
-
             if self.args.json:
                 ui.write_json(st)
                 return 0
+
+            if self.args.quiet:
+                return bool(st)
 
             if st:
                 self._show(st, indent)

@@ -1,6 +1,6 @@
-import argparse
 from typing import TYPE_CHECKING
 
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.ui import ui
@@ -17,7 +17,7 @@ def _show_ascii(graph: "DiGraph"):
 
     ret = []
     for pipeline in pipelines:
-        ret.append(draw(pipeline.nodes, pipeline.edges))
+        ret.append(draw(pipeline.nodes, pipeline.edges))  # noqa: PERF401
 
     return "\n".join(ret)
 
@@ -86,7 +86,7 @@ def _collect_targets(repo, target, outs):
             targets.extend([str(out) for out in stage.outs])
             continue
 
-        for out in outs_trie.itervalues(prefix=repo.fs.path.parts(path)):  # noqa: B301
+        for out in outs_trie.itervalues(prefix=repo.fs.parts(path)):
             targets.extend(str(out))
 
     return targets
@@ -160,7 +160,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(DAG_HELP, "dag"),
         help=DAG_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     dag_parser.add_argument(
         "--dot",

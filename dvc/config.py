@@ -1,22 +1,25 @@
 """DVC config objects."""
-import logging
+
+import ntpath
 import os
+import posixpath
 import re
 from contextlib import contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.log import logger
 
 from .utils.objects import cached_property
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
-    from dvc.types import DictStrAny, StrPath
+    from dvc.types import DictStrAny
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ConfigError(DvcException):
@@ -89,21 +92,31 @@ class Config(dict):
 
     def __init__(
         self,
-        dvc_dir: Optional["StrPath"] = None,
+        dvc_dir: Optional[str] = None,
+        local_dvc_dir: Optional[str] = None,
         validate: bool = True,
         fs: Optional["FileSystem"] = None,
         config: Optional["DictStrAny"] = None,
-    ):  # pylint: disable=super-init-not-called
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
+    ):
         from dvc.fs import LocalFileSystem
 
+        dvc_dir = os.fspath(dvc_dir) if dvc_dir else None
         self.dvc_dir = dvc_dir
         self.wfs = LocalFileSystem()
         self.fs = fs or self.wfs
 
         if dvc_dir:
-            self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
+            self.dvc_dir = self.fs.abspath(dvc_dir)
 
-        self.load(validate=validate, config=config)
+        self.local_dvc_dir = local_dvc_dir
+        if not fs and not local_dvc_dir:
+            self.local_dvc_dir = dvc_dir
+
+        self.load(
+            validate=validate, config=config, remote=remote, remote_config=remote_config
+        )
 
     @classmethod
     def from_cwd(cls, fs: Optional["FileSystem"] = None, **kwargs):
@@ -128,15 +141,17 @@ class Config(dict):
             return system_config_dir()
 
     @cached_property
-    def files(self) -> Dict[str, str]:
+    def files(self) -> dict[str, str]:
         files = {
             level: os.path.join(self.get_dir(level), self.CONFIG)
             for level in ("system", "global")
         }
 
         if self.dvc_dir is not None:
-            files["repo"] = self.fs.path.join(self.dvc_dir, self.CONFIG)
-            files["local"] = self.fs.path.join(self.dvc_dir, self.CONFIG_LOCAL)
+            files["repo"] = self.fs.join(self.dvc_dir, self.CONFIG)
+
+        if self.local_dvc_dir is not None:
+            files["local"] = self.wfs.join(self.local_dvc_dir, self.CONFIG_LOCAL)
 
         return files
 
@@ -154,7 +169,16 @@ class Config(dict):
         with open(config_file, "w+", encoding="utf-8"):
             return Config(dvc_dir)
 
-    def load(self, validate: bool = True, config: Optional["DictStrAny"] = None):
+    def merge(self, config):
+        merge(self, config)
+
+    def load(
+        self,
+        validate: bool = True,
+        config: Optional["DictStrAny"] = None,
+        remote: Optional[str] = None,
+        remote_config: Optional["DictStrAny"] = None,
+    ):
         """Loads config from all the config files.
 
         Raises:
@@ -169,6 +193,17 @@ class Config(dict):
             conf = self.validate(conf)
 
         self.clear()
+
+        if remote:
+            conf["core"]["remote"] = remote
+
+        if remote_config:
+            remote = remote or conf["core"].get("remote")
+            if not remote:
+                raise ValueError("Missing remote name")
+
+            merge(conf, {"remote": {remote: remote_config}})
+
         self.update(conf)
 
     def _get_fs(self, level):
@@ -176,23 +211,32 @@ class Config(dict):
         # the repo.
         return self.fs if level == "repo" else self.wfs
 
-    def _load_config(self, level):
+    @staticmethod
+    def load_file(path, fs=None) -> dict:
         from configobj import ConfigObj, ConfigObjError
 
+        from dvc.fs import localfs
+
+        fs = fs or localfs
+
+        with fs.open(path) as fobj:
+            try:
+                conf_obj = ConfigObj(fobj)
+            except UnicodeDecodeError as exc:
+                raise ConfigError(str(exc)) from exc
+            except ConfigObjError as exc:
+                raise ConfigError(str(exc)) from exc
+
+        return _parse_named(_lower_keys(conf_obj.dict()))
+
+    def _load_config(self, level):
         filename = self.files[level]
         fs = self._get_fs(level)
 
-        if fs.exists(filename):
-            with fs.open(filename) as fobj:
-                try:
-                    conf_obj = ConfigObj(fobj)
-                except UnicodeDecodeError as exc:
-                    raise ConfigError(str(exc)) from exc
-                except ConfigObjError as exc:
-                    raise ConfigError(str(exc)) from exc
-        else:
-            conf_obj = ConfigObj()
-        return _parse_named(_lower_keys(conf_obj.dict()))
+        try:
+            return self.load_file(filename, fs=fs)
+        except FileNotFoundError:
+            return {}
 
     def _save_config(self, level, conf_dict):
         from configobj import ConfigObj
@@ -220,21 +264,35 @@ class Config(dict):
         return conf
 
     @staticmethod
-    def _load_paths(conf, filename):
-        abs_conf_dir = os.path.abspath(os.path.dirname(filename))
+    def _resolve(conf_dir, path):
+        from .config_schema import ExpPath, RelPath
 
-        def resolve(path):
-            from .config_schema import RelPath
+        if re.match(r"\w+://", path):
+            return path
 
-            if os.path.isabs(path) or re.match(r"\w+://", path):
-                return path
+        if os.name == "nt" and posixpath.isabs(path) and ntpath.sep not in path:
+            return path
 
-            # on windows convert slashes to backslashes
-            # to have path compatible with abs_conf_dir
-            if os.path.sep == "\\" and "/" in path:
-                path = path.replace("/", "\\")
+        if os.path.isabs(path):
+            return path
 
-            return RelPath(os.path.join(abs_conf_dir, path))
+        # on windows convert slashes to backslashes
+        # to have path compatible with abs_conf_dir
+        if os.path.sep == "\\" and "/" in path:
+            if path.startswith("/"):
+                path = path.replace("/", "\\\\", 1)
+            path = path.replace("/", "\\")
+
+        expanded = os.path.expanduser(path)
+        if os.path.isabs(expanded):
+            return ExpPath(expanded, path)
+
+        return RelPath(os.path.abspath(os.path.join(conf_dir, path)))
+
+    @classmethod
+    def _load_paths(cls, conf, filename):
+        conf_dir = os.path.abspath(os.path.dirname(filename))
+        resolve = partial(cls._resolve, conf_dir)
 
         return Config._map_dirs(conf, resolve)
 
@@ -243,14 +301,23 @@ class Config(dict):
         from dvc.fs import localfs
         from dvc.utils import relpath
 
-        from .config_schema import RelPath
+        from .config_schema import ExpPath, RelPath
 
         if re.match(r"\w+://", path):
             return path
 
+        if isinstance(path, ExpPath):
+            return path.def_path
+
+        if os.path.expanduser(path) != path:
+            return localfs.as_posix(path)
+
+        if os.name == "nt" and posixpath.isabs(path) and ntpath.sep not in path:
+            return path
+
         if isinstance(path, RelPath) or not os.path.isabs(path):
             path = relpath(path, conf_dir)
-            return localfs.path.as_posix(path)
+            return localfs.as_posix(path)
 
         return path
 
@@ -273,6 +340,7 @@ class Config(dict):
                     "gdrive_user_credentials_file": func,
                     "gdrive_service_account_json_file_path": func,
                     "credentialpath": func,
+                    "configpath": func,
                     "keyfile": func,
                     "cert_path": func,
                     "key_path": func,
@@ -288,7 +356,7 @@ class Config(dict):
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
     def load_config_to_level(self, level=None):
-        merged_conf: Dict = {}
+        merged_conf: dict = {}
         for merge_level in self.LEVELS:
             if merge_level == level:
                 break
@@ -334,10 +402,10 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result: Dict[str, Dict] = {"remote": {}, "machine": {}}
+    result: dict[str, dict] = {"remote": {}, "machine": {}, "db": {}}
 
     for section, val in conf.items():
-        match = re_find(r'^\s*(remote|machine)\s*"(.*)"\s*$', section)
+        match = re_find(r'^\s*(remote|machine|db)\s*"(.*)"\s*$', section)
         if match:
             key, name = match
             result[key][name] = val
@@ -352,7 +420,7 @@ def _pack_named(conf):
     result = compact(conf)
 
     # Transform remote.name -> 'remote "name"'
-    for key in ("remote", "machine"):
+    for key in ("remote", "machine", "db"):
         for name, val in conf[key].items():
             result[f'{key} "{name}"'] = val
         result.pop(key, None)

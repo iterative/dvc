@@ -1,11 +1,9 @@
-import argparse
-import logging
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdCommit(CmdBase):
@@ -22,6 +20,7 @@ class CmdCommit(CmdBase):
                     with_deps=self.args.with_deps,
                     recursive=self.args.recursive,
                     force=self.args.force,
+                    relink=self.args.relink,
                 )
             except DvcException:
                 logger.exception("failed to commit%s", (" " + target) if target else "")
@@ -40,14 +39,17 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(COMMIT_HELP, "commit"),
         help=COMMIT_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     commit_parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         default=False,
-        help="Commit even if hash value for dependencies/outputs changed.",
+        help=(
+            "Commit data even if hash values for dependencies or "
+            "outputs did not change."
+        ),
     )
     commit_parser.add_argument(
         "-d",
@@ -63,6 +65,13 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Commit cache for subdirectories of the specified directory.",
     )
+    commit_parser.add_argument(
+        "--no-relink",
+        dest="relink",
+        action="store_false",
+        help="Don't recreate links from cache to workspace.",
+    )
+    commit_parser.set_defaults(relink=True)
     commit_parser.add_argument(
         "targets",
         nargs="*",

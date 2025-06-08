@@ -1,7 +1,8 @@
 from collections import abc
+from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from itertools import zip_longest
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from dvc.types import DictStrAny
 
@@ -28,6 +29,7 @@ def plain_table(
     markdown: bool = False,
     pager: bool = False,
     force: bool = True,
+    colalign: Optional[tuple[str, ...]] = None,
 ) -> None:
     from funcy import nullcontext
     from tabulate import tabulate
@@ -39,6 +41,7 @@ def plain_table(
         disable_numparse=True,
         # None will be shown as "" by default, overriding
         missingval="-",
+        colalign=colalign,
     )
     if markdown:
         # NOTE: md table is incomplete without the trailing newline
@@ -54,7 +57,6 @@ def console_width(table: "Table", console: "RichConsole", val: int) -> Iterator[
     # NOTE: rich does not have native support for unlimited width
     # via pager. we override rich table compression by setting
     # console width to the full width of the table
-    # pylint: disable=protected-access
 
     console_options = console.options
     original = console_options.max_width
@@ -76,7 +78,7 @@ def rich_table(
     data: TableData,
     headers: Optional[Headers] = None,
     pager: bool = False,
-    header_styles: Optional[Union[Dict[str, Styles], Sequence[Styles]]] = None,
+    header_styles: Optional[Union[dict[str, Styles], Sequence[Styles]]] = None,
     row_styles: Optional[Sequence[Styles]] = None,
     borders: Union[bool, str] = False,
 ) -> None:
@@ -95,7 +97,7 @@ def rich_table(
     table = Table(box=border_style[borders])
 
     if isinstance(header_styles, abc.Sequence):
-        hs: Dict[str, Styles] = dict(zip(headers or [], header_styles))
+        hs: dict[str, Styles] = dict(zip(headers or [], header_styles))
     else:
         hs = header_styles or {}
 

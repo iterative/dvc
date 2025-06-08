@@ -1,19 +1,11 @@
 import logging
 import shlex
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Optional, Union
 
+from dvc.log import logger
 from dvc.utils import relpath
 from dvc.utils.collections import ensure_list
 
@@ -22,19 +14,19 @@ if TYPE_CHECKING:
     from dvc.scm import Base
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class SCMContext:
-    def __init__(self, scm: "Base", config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, scm: "Base", config: Optional[dict[str, Any]] = None) -> None:
         from funcy import get_in
 
-        self.scm: "Base" = scm
+        self.scm: Base = scm
         self.autostage: bool = get_in(
             config or {}, ["core", "autostage"], default=False
         )
-        self.ignored_paths: List[str] = []
-        self.files_to_track: Set[str] = set()
+        self.ignored_paths: list[str] = []
+        self.files_to_track: set[str] = set()
         self.quiet: bool = False
 
     def track_file(self, paths: Union[str, Iterable[str], None] = None) -> None:
@@ -136,12 +128,12 @@ class SCMContext:
         self.files_to_track = set()
 
     def __enter__(self) -> "SCMContext":
-        self._cm = self()  # pylint: disable=attribute-defined-outside-init
-        return self._cm.__enter__()  # pylint: disable=no-member
+        self._cm = self()
+        return self._cm.__enter__()
 
     def __exit__(self, *exc_args) -> None:
         assert self._cm
-        self._cm.__exit__(*exc_args)  # pylint: disable=no-member
+        self._cm.__exit__(*exc_args)
 
 
 def scm_context(method, autostage: Optional[bool] = None, quiet: Optional[bool] = None):

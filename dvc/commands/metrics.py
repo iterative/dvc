@@ -1,14 +1,11 @@
-import argparse
-import logging
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.exceptions import DvcException
+from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils.serialize import encode_exception
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 DEFAULT_PRECISION = 5
@@ -20,17 +17,25 @@ class CmdMetricsBase(CmdBase):
 
 class CmdMetricsShow(CmdMetricsBase):
     def run(self):
-        try:
-            metrics = self.repo.metrics.show(
-                self.args.targets,
-                all_branches=self.args.all_branches,
-                all_tags=self.args.all_tags,
-                all_commits=self.args.all_commits,
-                recursive=self.args.recursive,
+        from dvc.repo.metrics.show import to_relpath
+        from dvc.utils import errored_revisions
+
+        metrics = self.repo.metrics.show(
+            self.args.targets,
+            all_branches=self.args.all_branches,
+            all_tags=self.args.all_tags,
+            all_commits=self.args.all_commits,
+        )
+        metrics = {
+            k: to_relpath(self.repo.fs, self.repo.root_dir, v)
+            for k, v in metrics.items()
+        }
+
+        if errored := errored_revisions(metrics):
+            ui.error_write(
+                "DVC failed to load some metrics for following revisions:"
+                f" '{', '.join(errored)}'."
             )
-        except DvcException:
-            logger.exception("")
-            return 1
 
         if self.args.json:
             ui.write_json(metrics, default=encode_exception)
@@ -52,17 +57,26 @@ class CmdMetricsShow(CmdMetricsBase):
 
 class CmdMetricsDiff(CmdMetricsBase):
     def run(self):
-        try:
-            diff = self.repo.metrics.diff(
-                a_rev=self.args.a_rev,
-                b_rev=self.args.b_rev,
-                targets=self.args.targets,
-                recursive=self.args.recursive,
-                all=self.args.all,
+        import os
+        from os.path import relpath
+
+        diff_result = self.repo.metrics.diff(
+            a_rev=self.args.a_rev,
+            b_rev=self.args.b_rev,
+            targets=self.args.targets,
+            all=self.args.all,
+        )
+
+        errored = [rev for rev, err in diff_result.get("errors", {}).items() if err]
+        if errored:
+            ui.error_write(
+                "DVC failed to load some metrics for following revisions:"
+                f" '{', '.join(errored)}'."
             )
-        except DvcException:
-            logger.exception("failed to show metrics diff")
-            return 1
+
+        start = relpath(os.getcwd(), self.repo.root_dir)
+        diff = diff_result.get("diff", {})
+        diff = {relpath(path, start): result for path, result in diff.items()}
 
         if self.args.json:
             ui.write_json(diff)
@@ -91,15 +105,14 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(METRICS_HELP, "metrics"),
         help=METRICS_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
 
     metrics_subparsers = metrics_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc metrics CMD --help` to display command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(metrics_subparsers)
 
     METRICS_SHOW_HELP = "Print metrics, with optional formatting."
     metrics_show_parser = metrics_subparsers.add_parser(
@@ -107,7 +120,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(METRICS_SHOW_HELP, "metrics/show"),
         help=METRICS_SHOW_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     metrics_show_parser.add_argument(
         "targets",
@@ -181,13 +194,17 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(METRICS_DIFF_HELP, "metrics/diff"),
         help=METRICS_DIFF_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     metrics_diff_parser.add_argument(
-        "a_rev", nargs="?", help="Old Git commit to compare (defaults to HEAD)"
+        "a_rev",
+        nargs="?",
+        help="Old Git commit to compare (defaults to HEAD)",
+        default="HEAD",
     )
     metrics_diff_parser.add_argument(
         "b_rev",
+        default="workspace",
         nargs="?",
         help="New Git commit to compare (defaults to the current workspace)",
     )

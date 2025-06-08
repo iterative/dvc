@@ -69,7 +69,7 @@ def test_stage_update(dvc, mocker):
     is_repo_import.return_value = True
     with dvc.lock:
         stage.update()
-    reproduce.assert_called_once_with(no_download=None, jobs=None)
+    reproduce.assert_called_once_with(no_download=None, jobs=None, force=False)
 
     is_repo_import.return_value = False
     with pytest.raises(StageUpdateError):
@@ -77,10 +77,7 @@ def test_stage_update(dvc, mocker):
 
 
 @pytest.mark.skipif(
-    not isinstance(
-        threading.current_thread(),
-        threading._MainThread,
-    ),
+    not isinstance(threading.current_thread(), threading._MainThread),
     reason="Not running in the main thread.",
 )
 def test_stage_run_ignore_sigint(dvc, mocker):

@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from dvc.cli import main
 from dvc.fs import localfs
 
@@ -30,19 +32,25 @@ def test_implied_cloud(dvc, mocker):
     assert mock_status.called
 
 
-def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir):
+@pytest.mark.parametrize("check_updates", [True, False])
+def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir, check_updates):
     with git_dir.branch("branch", new=True):
         git_dir.scm_gen("file", "first version", commit="first version")
 
     dvc.imp(os.fspath(git_dir), "file", "file", rev="branch")
 
-    assert dvc.status(["file.dvc"]) == {}
+    assert dvc.status(["file.dvc"], check_updates=check_updates) == {}
 
     with git_dir.branch("branch", new=False):
         git_dir.scm_gen("file", "second version", commit="update file")
 
-    (status,) = dvc.status(["file.dvc"])["file.dvc"]
-    assert status == {"changed deps": {f"file ({git_dir})": "update available"}}
+    status = dvc.status(["file.dvc"], check_updates=check_updates)
+    if check_updates:
+        assert status == {
+            "file.dvc": [{"changed deps": {f"file ({git_dir})": "update available"}}]
+        }
+    else:
+        assert status == {}
 
 
 def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):

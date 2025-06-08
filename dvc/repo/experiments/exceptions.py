@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Collection, Iterable, Optional
+from collections.abc import Collection, Iterable
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 
@@ -24,8 +25,6 @@ class ExperimentExistsError(DvcException):
             "Experiment conflicts with existing experiment "
             f"'{name}'. To overwrite the existing experiment run:\n\n"
             f"\tdvc exp {command} -f ...\n\n"
-            f"To {command} this experiment with a different name run:\n\n"
-            f"\tdvc exp {command} -n <new_name> ...\n"
         )
         super().__init__(msg)
         self.name = name
@@ -52,11 +51,7 @@ class MultipleBranchError(DvcException):
 
 
 class AmbiguousExpRefInfo(InvalidArgumentError):
-    def __init__(
-        self,
-        exp_name: str,
-        exp_ref_list: Iterable["ExpRefInfo"],
-    ):
+    def __init__(self, exp_name: str, exp_ref_list: Iterable["ExpRefInfo"]):
         msg = [
             (
                 f"Ambiguous name '{exp_name}' refers to multiple experiments."

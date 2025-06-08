@@ -1,7 +1,6 @@
-import argparse
 import operator
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import CheckoutError
@@ -37,6 +36,7 @@ class CmdCheckout(CmdBase):
                 force=self.args.force,
                 relink=self.args.relink,
                 recursive=self.args.recursive,
+                allow_missing=self.args.allow_missing,
             )
         except CheckoutError as _exc:
             exc = _exc
@@ -66,7 +66,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(CHECKOUT_HELP, "checkout"),
         help=CHECKOUT_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     checkout_parser.add_argument(
         "--summary",
@@ -100,6 +100,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Recreate links or copies from cache to workspace.",
+    )
+    checkout_parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        default=False,
+        help="Ignore errors if some of the files or directories are missing.",
     )
     checkout_parser.add_argument(
         "targets",

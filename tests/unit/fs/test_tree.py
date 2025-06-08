@@ -13,11 +13,11 @@ def test_get_cloud_fs(tmp_dir, dvc):
     first = f"{base}/first"
     second = f"{first}/second"
 
-    _, _, path = get_cloud_fs(dvc, name="base")
+    _, _, path = get_cloud_fs(dvc.config, name="base")
     assert path == base
-    _, _, path = get_cloud_fs(dvc, name="first")
+    _, _, path = get_cloud_fs(dvc.config, name="first")
     assert path == first
-    _, _, path = get_cloud_fs(dvc, name="second")
+    _, _, path = get_cloud_fs(dvc.config, name="second")
     assert path == second
 
 
@@ -34,9 +34,9 @@ def test_get_cloud_fs_validate(tmp_dir, dvc):
         default=False,
     )
 
-    assert get_cloud_fs(dvc, name="base")[1]["host"] == "example.com"
-    assert get_cloud_fs(dvc, name="first")[1]["host"] == "example.com"
-    assert get_cloud_fs(dvc, name="first")[1]["type"] == ["symlink"]
+    assert get_cloud_fs(dvc.config, name="base")[1]["host"] == "example.com"
+    assert get_cloud_fs(dvc.config, name="first")[1]["host"] == "example.com"
+    assert get_cloud_fs(dvc.config, name="first")[1]["type"] == ["symlink"]
 
     with pytest.raises(ConfigError):
-        get_cloud_fs(dvc, name="second")
+        get_cloud_fs(dvc.config, name="second")

@@ -1,12 +1,12 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 from unittest.mock import ANY
 
 if TYPE_CHECKING:
     from unittest.mock import Mock
 
 
-def issubset(subset: Dict, superset: Dict) -> bool:
-    assert {**superset, **subset} == superset
+def issubset(subset: dict, superset: dict) -> bool:
+    assert superset == superset | subset
     return True
 
 

@@ -5,20 +5,12 @@ from dvc import daemon
 
 
 def test_daemon(mocker):
-    mock_windows = mocker.patch("dvc.daemon._spawn_windows")
-    mock_posix = mocker.patch("dvc.daemon._spawn_posix")
+    mock = mocker.patch("dvc.daemon._spawn")
     daemon.daemon(["updater"])
 
-    if os.name == "nt":
-        mock_posix.assert_not_called()
-        mock_windows.assert_called()
-        args = mock_windows.call_args[0]
-    else:
-        mock_windows.assert_not_called()
-        mock_posix.assert_called()
-        args = mock_posix.call_args[0]
-
-    env = args[1]
+    mock.assert_called()
+    args = mock.call_args[0]
+    env = args[2]
     assert "PYTHONPATH" in env
 
     file_path = os.path.abspath(inspect.stack()[0][1])

@@ -1,12 +1,10 @@
-import argparse
-import logging
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import DvcException
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdMove(CmdBase):
@@ -30,10 +28,11 @@ def add_parser(subparsers, parent_parser):
 
     move_parser = subparsers.add_parser(
         "move",
+        aliases=["mv"],
         parents=[parent_parser],
         description=append_doc_link(MOVE_DESCRIPTION, "move"),
         help=MOVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     move_parser.add_argument(
         "src", help="Source path to a data file or directory."

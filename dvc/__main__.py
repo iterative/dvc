@@ -1,4 +1,5 @@
 """Main entry point for DVC command line tool."""
+
 import sys
 
 from dvc.cli import main

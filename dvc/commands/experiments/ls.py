@@ -1,12 +1,11 @@
-import argparse
-import logging
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import InvalidArgumentError
+from dvc.log import logger
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdExperimentsList(CmdBase):
@@ -23,15 +22,22 @@ class CmdExperimentsList(CmdBase):
             git_remote=git_remote,
         )
 
+        from dvc.repo.experiments.utils import describe
+        from dvc.scm import Git
+
+        if name_only or sha_only:
+            names = {}
+        else:
+            assert isinstance(self.repo.scm, Git)
+            names = describe(
+                self.repo.scm,
+                (baseline for baseline in exps),
+                logger=logger,
+            )
+
         for baseline in exps:
             if not (name_only or sha_only):
-                tag_base = "refs/tags/"
-                branch_base = "refs/heads/"
-                name = baseline[:7]
-                if baseline.startswith(tag_base):
-                    name = baseline[len(tag_base) :]
-                elif baseline.startswith(branch_base):
-                    name = baseline[len(branch_base) :]
+                name = names.get(baseline) or baseline[:7]
                 ui.write(f"{name}:")
             for exp_name, rev in exps[baseline]:
                 if name_only:
@@ -52,10 +58,11 @@ def add_parser(experiments_subparsers, parent_parser):
     EXPERIMENTS_LIST_HELP = "List local and remote experiments."
     experiments_list_parser = experiments_subparsers.add_parser(
         "list",
+        aliases=["ls"],
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_LIST_HELP, "exp/list"),
         help=EXPERIMENTS_LIST_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     add_rev_selection_flags(experiments_list_parser, "List")
     display_group = experiments_list_parser.add_mutually_exclusive_group()

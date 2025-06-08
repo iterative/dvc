@@ -1,18 +1,21 @@
-import logging
 import os
 import typing
 from collections import defaultdict
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Optional
 
 import dpath
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.utils.serialize import ParseError, load_path
 from dvc_data.hashfile.hash_info import HashInfo
 
 from .base import Dependency
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from dvc.fs import FileSystem
+
+logger = logger.getChild(__name__)
 
 
 class MissingParamsError(DvcException):
@@ -31,6 +34,40 @@ class BadParamFileError(DvcException):
     pass
 
 
+def read_param_file(
+    fs: "FileSystem",
+    path: str,
+    key_paths: Optional[list[str]] = None,
+    flatten: bool = False,
+    **load_kwargs,
+) -> Any:
+    config = load_path(path, fs, **load_kwargs)
+    if not key_paths:
+        return config
+
+    ret = {}
+    if flatten:
+        for key_path in key_paths:
+            try:
+                ret[key_path] = dpath.get(config, key_path, separator=".")
+            except KeyError:
+                continue
+        return ret
+
+    from copy import deepcopy
+
+    from dpath import merge
+    from funcy import distinct
+
+    for key_path in distinct(key_paths):
+        merge(
+            ret,
+            deepcopy(dpath.search(config, key_path, separator=".")),
+            separator=".",
+        )
+    return ret
+
+
 class ParamsDependency(Dependency):
     PARAM_PARAMS = "params"
     DEFAULT_PARAMS_FILE = "params.yaml"
@@ -39,10 +76,7 @@ class ParamsDependency(Dependency):
         self.params = list(params) if params else []
         hash_info = HashInfo()
         if isinstance(params, dict):
-            hash_info = HashInfo(
-                self.PARAM_PARAMS,
-                params,  # type: ignore[arg-type]
-            )
+            hash_info = HashInfo(self.PARAM_PARAMS, params)  # type: ignore[arg-type]
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
         super().__init__(stage, path, repo=repo)
@@ -66,40 +100,25 @@ class ParamsDependency(Dependency):
         for param in self.params:
             if param in values:
                 info[param] = values[param]
-        self.hash_info = HashInfo(
-            self.PARAM_PARAMS,
-            info,  # type: ignore[arg-type]
-        )
+        self.hash_info = HashInfo(self.PARAM_PARAMS, info)  # type: ignore[arg-type]
 
     def read_params(
         self, flatten: bool = True, **kwargs: typing.Any
-    ) -> Dict[str, typing.Any]:
+    ) -> dict[str, typing.Any]:
         try:
-            config = self.read_file()
+            self.validate_filepath()
         except MissingParamsFile:
-            config = {}
+            return {}
 
-        if not self.params:
-            return config
-
-        ret = {}
-        if flatten:
-            for param in self.params:
-                try:
-                    ret[param] = dpath.get(config, param, separator=".")
-                except KeyError:
-                    continue
-            return ret
-
-        from dpath import merge
-
-        for param in self.params:
-            merge(
-                ret,
-                dpath.search(config, param, separator="."),
-                separator=".",
+        try:
+            return read_param_file(
+                self.repo.fs,
+                self.fs_path,
+                list(self.params) if self.params else None,
+                flatten=flatten,
             )
-        return ret
+        except ParseError as exc:
+            raise BadParamFileError(f"Unable to read parameters from '{self}'") from exc
 
     def workspace_status(self):
         if not self.exists:
@@ -109,9 +128,9 @@ class ParamsDependency(Dependency):
 
         from funcy import ldistinct
 
-        status: Dict[str, Any] = defaultdict(dict)
-        assert isinstance(self.hash_info.value, dict)
+        status: dict[str, Any] = defaultdict(dict)
         info = self.hash_info.value if self.hash_info else {}
+        assert isinstance(info, dict)
         actual = self.read_params()
 
         # NOTE: we want to preserve the order of params as specified in the
@@ -148,13 +167,6 @@ class ParamsDependency(Dependency):
             raise ParamsIsADirectoryError(
                 f"'{self}' is a directory, expected a parameters file"
             )
-
-    def read_file(self):
-        self.validate_filepath()
-        try:
-            return load_path(self.fs_path, self.repo.fs)
-        except ParseError as exc:
-            raise BadParamFileError(f"Unable to read parameters from '{self}'") from exc
 
     def get_hash(self):
         info = self.read_params()

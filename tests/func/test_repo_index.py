@@ -1,3 +1,4 @@
+import os
 from itertools import chain
 
 import pytest
@@ -113,13 +114,13 @@ def assert_index_equal(first, second, strict=True, ordered=True):
     assert len(first) == len(second), "Index have different no. of stages"
     assert set(first) == set(second), "Index does not have same stages"
     if ordered:
-        assert list(first) == list(
-            second
-        ), "Index does not have same sequence of stages"
+        assert list(first) == list(second), (
+            "Index does not have same sequence of stages"
+        )
     if strict:
-        assert set(map(id, first)) == set(
-            map(id, second)
-        ), "Index is not strictly equal"
+        assert set(map(id, first)) == set(map(id, second)), (
+            "Index is not strictly equal"
+        )
 
 
 def test_skip_graph_checks(dvc, mocker):
@@ -189,23 +190,13 @@ def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
     # view should exclude any siblings of the target
     view = index.targets_view("dir/subdir")
 
-    assert view.data_keys == {
-        "repo": {
-            ("dir", "subdir"),
-        }
-    }
+    assert view.data_keys == {"repo": {("dir", "subdir")}}
 
     data_index = view.data["repo"]
     assert ("dir",) in data_index
-    assert (
-        "dir",
-        "subdir",
-    ) in data_index
+    assert ("dir", "subdir") in data_index
     assert ("dir", "subdir", "in-subdir") in data_index
-    assert (
-        "dir",
-        "in-dir",
-    ) not in data_index
+    assert ("dir", "in-dir") not in data_index
 
 
 def test_view_onerror(tmp_dir, scm, dvc):
@@ -315,3 +306,99 @@ def test_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
     (stage,) = tmp_dir.dvc_gen({"data/raw/tracked.csv": "5,6,7,8"})
     index = Index.from_repo(dvc)
     assert index.stages == [stage]
+
+
+def test_param_keys_returns_default_file(tmp_dir, dvc):
+    tmp_dir.gen({"params.yaml": "param: 100\n"})
+    index = Index.from_repo(dvc)
+    assert index.param_keys == {"repo": {("params.yaml",)}}
+
+
+def test_param_keys_no_params(dvc):
+    index = Index.from_repo(dvc)
+    assert index.param_keys == {"repo": set()}
+
+
+def test_param_keys_top_level_params(tmp_dir, dvc):
+    params_file_path = "classifier/custom_params_file.yaml"
+    top_level_params = f"""
+params:
+  - {params_file_path}
+    """
+    tmp_dir.gen(params_file_path, "param: 100\n")
+    tmp_dir.gen("dvc.yaml", top_level_params)
+    index = Index.from_repo(dvc)
+    assert index.param_keys == {"repo": {("classifier", "custom_params_file.yaml")}}
+
+
+def test_data_index(tmp_dir, dvc, local_cloud, erepo_dir):
+    tmp_dir.dvc_gen({"foo": b"foo", "dir": {"bar": b"bar", "subdir": {"baz": b"baz"}}})
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("efoo", b"efoo", commit="create efoo")
+        erepo_dir.dvc_gen(
+            "edir",
+            {"ebar": b"ebar", "esubdir": {"ebaz": b"ebaz"}},
+            commit="create edir",
+        )
+
+    dvc.imp(os.fspath(erepo_dir), "efoo")
+    dvc.imp(os.fspath(erepo_dir), "edir")
+
+    dvc.imp(os.fspath(erepo_dir), "efoo", "efoo_partial", no_download=True)
+    dvc.imp(os.fspath(erepo_dir), "edir", "edir_partial", no_download=True)
+
+    local_cloud.gen("ifoo", b"ifoo")
+    local_cloud.gen("idir", {"ibar": b"ibar", "isubdir": {"ibaz": b"ibaz"}})
+
+    dvc.imp_url(str(local_cloud / "ifoo"))
+    dvc.imp_url(str(local_cloud / "idir"))
+
+    dvc.imp_url(str(local_cloud / "ifoo"), "ifoo_partial", no_download=True)
+    dvc.imp_url(str(local_cloud / "idir"), "idir_partial", no_download=True)
+
+    index = Index.from_repo(dvc)
+    assert index.data_keys == {
+        "local": set(),
+        "repo": {
+            ("foo",),
+            ("dir",),
+            ("efoo",),
+            ("edir",),
+            ("efoo_partial",),
+            ("edir_partial",),
+            ("ifoo",),
+            ("idir",),
+            ("ifoo_partial",),
+            ("idir_partial",),
+        },
+    }
+
+    data = index.data["repo"]
+    assert set(data.keys()) == {
+        ("foo",),
+        ("dir",),
+        ("efoo",),
+        ("edir",),
+        ("efoo_partial",),
+        ("edir_partial",),
+        ("ifoo",),
+        ("idir",),
+        ("ifoo_partial",),
+        ("idir_partial",),
+    }
+
+    assert not data.storage_map[("foo",)].remote
+    assert not data.storage_map[("dir",)].remote
+
+    assert data.storage_map[("efoo",)].remote.read_only
+    assert data.storage_map[("edir",)].remote.read_only
+
+    assert data.storage_map[("efoo_partial",)].remote.read_only
+    assert data.storage_map[("edir_partial",)].remote.read_only
+
+    assert not data.storage_map[("ifoo",)].remote
+    assert not data.storage_map[("idir",)].remote
+
+    assert data.storage_map[("ifoo_partial",)].remote.read_only
+    assert data.storage_map[("idir_partial",)].remote.read_only

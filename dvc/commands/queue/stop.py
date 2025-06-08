@@ -1,11 +1,10 @@
-import argparse
-import logging
-
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.ui import ui
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdQueueStop(CmdBase):
@@ -32,7 +31,7 @@ def add_parser(queue_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(QUEUE_STOP_HELP, "queue/stop"),
         help=QUEUE_STOP_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     queue_stop_parser.add_argument(
         "--kill",

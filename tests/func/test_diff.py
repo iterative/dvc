@@ -668,3 +668,59 @@ def test_rename_multiple_files_same_hashes(tmp_dir, scm, dvc):
             },
         ],
     }
+
+
+def test_diff_granular(tmp_dir, dvc, scm):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "data": {
+                    "subdir": {"subfoo": "subfoo", "subbar": "subbar"},
+                    "foo": "foo",
+                    "bar": "bar",
+                },
+            },
+        }
+    )
+
+    dvc.add(os.path.join("dir", "data"))
+    scm.add(os.path.join("dir", "data.dvc"))
+    scm.add(os.path.join("dir", ".gitignore"))
+    scm.commit("data")
+
+    assert dvc.diff() == {}
+
+    (tmp_dir / "dir" / "data" / "subdir" / "new").write_text("new")
+
+    assert dvc.diff() == {
+        "added": [
+            {
+                "hash": "22af645d1859cb5ca6da0c484f1f37ea",
+                "path": os.path.join("dir", "data", "subdir", "new"),
+            }
+        ],
+        "deleted": [],
+        "modified": [
+            {
+                "hash": {
+                    "new": "efa5b20d5f935dcc5555b26db6e19b76.dir",
+                    "old": "1aca2c799df82929bbdd976557975546.dir",
+                },
+                "path": os.path.join("dir", "data", ""),
+            }
+        ],
+        "not in cache": [],
+        "renamed": [],
+    }
+    assert dvc.diff(targets=[os.path.join("dir", "data", "subdir")]) == {
+        "added": [
+            {
+                "hash": "22af645d1859cb5ca6da0c484f1f37ea",
+                "path": os.path.join("dir", "data", "subdir", "new"),
+            }
+        ],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+        "renamed": [],
+    }

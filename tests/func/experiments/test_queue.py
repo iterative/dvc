@@ -10,15 +10,7 @@ def to_dict(tasks):
 
 
 @pytest.mark.parametrize("follow", [True, False])
-def test_celery_logs(
-    tmp_dir,
-    scm,
-    dvc,
-    failed_exp_stage,
-    follow,
-    capsys,
-    test_queue,
-):
+def test_celery_logs(tmp_dir, scm, dvc, failed_exp_stage, follow, capsys, test_queue):
     celery_queue = dvc.experiments.celery_queue
     dvc.experiments.run(failed_exp_stage.addressing, queue=True, name="foo")
     dvc.experiments.run(run_all=True)
@@ -37,23 +29,14 @@ def test_queue_doesnt_remove_untracked_params_file(tmp_dir, dvc, scm):
     """Regression test for https://github.com/iterative/dvc/issues/7842"""
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(cmd="echo ${foo}", params=["foo"], name="echo-foo")
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            ".gitignore",
-        ]
-    )
+    scm.add(["dvc.yaml", "dvc.lock", ".gitignore"])
     scm.commit("init")
     dvc.experiments.run(stage.addressing, params=["foo=2"], queue=True)
     assert (tmp_dir / "params.yaml").exists()
 
 
 def test_copy_paths_queue(tmp_dir, scm, dvc):
-    stage = dvc.stage.add(
-        cmd="cat file && ls dir",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="cat file && ls dir", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     (tmp_dir / "dir").mkdir()
@@ -72,10 +55,7 @@ def test_copy_paths_queue(tmp_dir, scm, dvc):
 
 
 def test_custom_commit_message_queue(tmp_dir, scm, dvc):
-    stage = dvc.stage.add(
-        cmd="echo foo",
-        name="foo",
-    )
+    stage = dvc.stage.add(cmd="echo foo", name="foo")
     scm.add_commit(["dvc.yaml"], message="add dvc.yaml")
 
     dvc.experiments.run(stage.addressing, queue=True, message="custom commit message")

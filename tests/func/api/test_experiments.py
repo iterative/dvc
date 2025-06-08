@@ -20,6 +20,8 @@ def test_exp_save(tmp_dir, dvc, scm):
 
 
 def test_exp_show(tmp_dir, dvc, scm, exp_stage):  # noqa: F811
+    with open("params.yaml", "a") as fobj:
+        fobj.write("\nbar: 0")
     exps = api.exp_show()
 
     assert len(exps) == 2
@@ -32,3 +34,5 @@ def test_exp_show(tmp_dir, dvc, scm, exp_stage):  # noqa: F811
     assert exps[0]["State"] is None
     # Postprocessing empty string as `None`
     assert exps[0]["Experiment"] is None
+    # Postprocessing 0 as float
+    assert exps[0]["bar"] == 0.0

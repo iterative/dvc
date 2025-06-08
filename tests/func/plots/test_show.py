@@ -7,8 +7,7 @@ from dvc.cli import main
 from dvc.dvcfile import PROJECT_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
-from dvc.repo.plots import PlotMetricTypeError
-from dvc.utils import onerror_collect
+from dvc.repo.plots import PlotMetricTypeError, onerror_collect
 from dvc.utils.fs import remove
 from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError, modify_yaml
 from tests.utils.plots import get_plot
@@ -156,10 +155,7 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     )
     with (tmp_dir / "dvc.yaml").modify() as d:
         # trying to make an output overlaps error
-        d["stages"]["corrupted-stage"] = {
-            "cmd": "mkdir data",
-            "outs": ["data"],
-        }
+        d["stages"]["corrupted-stage"] = {"cmd": "mkdir data", "outs": ["data"]}
 
     # running by clearing and not clearing stuffs
     # so as it works even for optimized cases
@@ -174,6 +170,84 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
         get_plot(result, "workspace", endkey="error"),
         OverlappingOutputPathsError,
     )
+
+
+def test_plots_show_nested_x_dict(tmp_dir, dvc, scm):
+    rel_pipeline_dir = "pipelines/data-increment"
+
+    pipeline_rel_dvclive_metrics_dir = "dvclive/plots/metrics"
+    dvc_rel_dvclive_metrics_dir = (
+        f"{rel_pipeline_dir}/{pipeline_rel_dvclive_metrics_dir}"
+    )
+
+    pipeline_dir = tmp_dir / rel_pipeline_dir
+    dvclive_metrics_dir = pipeline_dir / pipeline_rel_dvclive_metrics_dir
+    dvclive_metrics_dir.mkdir(parents=True)
+
+    def _get_plot_defn(rel_dir: str) -> dict:
+        return {
+            "template": "simple",
+            "x": {f"{rel_dir}/Max_Leaf_Nodes.tsv": "Max_Leaf_Nodes"},
+            "y": {f"{rel_dir}/Error.tsv": "Error"},
+        }
+
+    (pipeline_dir / "dvc.yaml").dump(
+        {
+            "plots": [
+                {
+                    "Error vs max_leaf_nodes": _get_plot_defn(
+                        pipeline_rel_dvclive_metrics_dir
+                    )
+                },
+            ]
+        },
+    )
+
+    dvclive_metrics_dir.gen(
+        {
+            "Error.tsv": "step\tError\n0\t0.11\n1\t0.22\n2\t0.44\n",
+            "Max_Leaf_Nodes.tsv": "step\tMax_Leaf_Nodes\n0\t5\n1\t50\n2\t500\n",
+        }
+    )
+
+    scm.commit("add dvc.yaml and dvclive metrics")
+
+    result = dvc.plots.show()
+    assert result == {
+        "workspace": {
+            "definitions": {
+                "data": {
+                    f"{rel_pipeline_dir}/dvc.yaml": {
+                        "data": {
+                            "Error vs max_leaf_nodes": _get_plot_defn(
+                                dvc_rel_dvclive_metrics_dir
+                            )
+                        },
+                    }
+                }
+            },
+            "sources": {
+                "data": {
+                    f"{dvc_rel_dvclive_metrics_dir}/Error.tsv": {
+                        "data": [
+                            {"Error": "0.11", "step": "0"},
+                            {"Error": "0.22", "step": "1"},
+                            {"Error": "0.44", "step": "2"},
+                        ],
+                        "props": {},
+                    },
+                    f"{dvc_rel_dvclive_metrics_dir}/Max_Leaf_Nodes.tsv": {
+                        "data": [
+                            {"Max_Leaf_Nodes": "5", "step": "0"},
+                            {"Max_Leaf_Nodes": "50", "step": "1"},
+                            {"Max_Leaf_Nodes": "500", "step": "2"},
+                        ],
+                        "props": {},
+                    },
+                }
+            },
+        }
+    }
 
 
 def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
@@ -357,12 +431,7 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
         ),
     ],
 )
-def test_top_level_plots(
-    tmp_dir,
-    dvc,
-    plot_config,
-    expected_datafiles,
-):
+def test_top_level_plots(tmp_dir, dvc, plot_config, expected_datafiles):
     data = {
         "data1.json": [
             {"a": 1, "b": 0.1, "c": 0.01},
@@ -426,5 +495,75 @@ def test_show_plots_defined_with_native_os_path(tmp_dir, dvc, scm, capsys):
     assert "errors" not in json_out
 
     json_data = json_out["data"]
-    assert json_data[f"dvc.yaml::{top_level_plot}"]
+    assert json_data[f"{top_level_plot}"]
     assert json_data[stage_plot]
+
+
+@pytest.mark.parametrize(
+    "plot_config,expanded_config,expected_datafiles",
+    [
+        (
+            {
+                "comparison": {
+                    "x": {"${data1}": "${a}"},
+                    "y": {"sub/dir/data2.json": "${b}"},
+                }
+            },
+            {
+                "comparison": {
+                    "x": {"data1.json": "a"},
+                    "y": {"sub/dir/data2.json": "b"},
+                }
+            },
+            ["data1.json", os.path.join("sub", "dir", "data2.json")],
+        ),
+        (
+            {"${data1}": None},
+            {"data1.json": {}},
+            ["data1.json"],
+        ),
+        (
+            "${data1}",
+            {"data1.json": {}},
+            ["data1.json"],
+        ),
+    ],
+)
+def test_top_level_parametrized(
+    tmp_dir, dvc, plot_config, expanded_config, expected_datafiles
+):
+    (tmp_dir / "params.yaml").dump(
+        {"data1": "data1.json", "a": "a", "b": "b", "c": "c"}
+    )
+    data = {
+        "data1.json": [
+            {"a": 1, "b": 0.1, "c": 0.01},
+            {"a": 2, "b": 0.2, "c": 0.02},
+        ],
+        os.path.join("sub", "dir", "data.json"): [
+            {"a": 6, "b": 0.6, "c": 0.06},
+            {"a": 7, "b": 0.7, "c": 0.07},
+        ],
+    }
+
+    for filename, content in data.items():
+        dirname = os.path.dirname(filename)
+        if dirname:
+            os.makedirs(dirname)
+        (tmp_dir / filename).dump_json(content, sort_keys=True)
+
+    config_file = "dvc.yaml"
+    with modify_yaml(config_file) as dvcfile_content:
+        dvcfile_content["plots"] = [plot_config]
+
+    result = dvc.plots.show()
+
+    assert expanded_config == get_plot(
+        result, "workspace", typ="definitions", file=config_file
+    )
+
+    for filename, content in data.items():
+        if filename in expected_datafiles:
+            assert content == get_plot(result, "workspace", file=filename)
+        else:
+            assert filename not in get_plot(result, "workspace")

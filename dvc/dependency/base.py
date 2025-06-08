@@ -1,5 +1,3 @@
-from typing import Dict, Type
-
 from dvc.exceptions import DvcException
 from dvc.fs import download as fs_download
 from dvc.output import Output
@@ -25,15 +23,15 @@ class DependencyIsStageFileError(DvcException):
 class Dependency(Output):
     IS_DEPENDENCY = True
 
-    DoesNotExistError: Type[DvcException] = DependencyDoesNotExistError
-    IsNotFileOrDirError: Type[DvcException] = DependencyIsNotFileOrDirError
-    IsStageFileError: Type[DvcException] = DependencyIsStageFileError
+    DoesNotExistError: type[DvcException] = DependencyDoesNotExistError
+    IsNotFileOrDirError: type[DvcException] = DependencyIsNotFileOrDirError
+    IsStageFileError: type[DvcException] = DependencyIsStageFileError
 
-    def workspace_status(self) -> Dict[str, str]:
+    def workspace_status(self) -> dict[str, str]:
         if self.fs.version_aware:
             old_fs_path = self.fs_path
             try:
-                self.fs_path = self.fs.path.version_path(self.fs_path, None)
+                self.fs_path = self.fs.version_path(self.fs_path, None)
                 if self.changed_meta():
                     return {str(self): "update available"}
             finally:
@@ -42,20 +40,17 @@ class Dependency(Output):
 
     def update(self, rev=None):
         if self.fs.version_aware:
-            self.fs_path = self.fs.path.version_path(self.fs_path, rev)
+            self.fs_path = self.fs.version_path(self.fs_path, rev)
             self.meta = self.get_meta()
-            self.def_path = self.fs.path.version_path(
-                self.def_path, self.meta.version_id
-            )
-            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
+            self.fs_path = self.fs.version_path(self.fs_path, self.meta.version_id)
 
     def download(self, to, jobs=None):
-        fs_download(self.fs, self.fs_path, to, jobs=jobs)
+        return fs_download(self.fs, self.fs_path, to.fs_path, jobs=jobs)
 
     def save(self):
         super().save()
         if self.fs.version_aware:
-            self.fs_path = self.fs.path.version_path(self.fs_path, self.meta.version_id)
+            self.fs_path = self.fs.version_path(self.fs_path, self.meta.version_id)
 
     def dumpd(self, **kwargs):
         if self.fs.version_aware:

@@ -1,7 +1,6 @@
-from collections import defaultdict
-from typing import Dict, List, Union
+from typing import Union
 
-from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY, VERSION_FIELD
+from dvc.render import REVISION, REVISIONS, SRC, TYPE_KEY
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 
@@ -19,39 +18,31 @@ def _get_converter(
     raise ValueError(f"Invalid renderer class {renderer_class}")
 
 
-def _group_by_rev(datapoints):
-    grouped = defaultdict(list)
-    for datapoint in datapoints:
-        rev = datapoint.get(VERSION_FIELD, {}).get("revision")
-        grouped[rev].append(datapoint)
-    return dict(grouped)
-
-
-def to_json(renderer, split: bool = False) -> List[Dict]:
+def to_json(renderer, split: bool = False) -> list[dict]:
     if renderer.TYPE == "vega":
-        grouped = _group_by_rev(renderer.datapoints)
+        if not renderer.datapoints:
+            return []
+        revs = renderer.get_revs()
         if split:
-            content = renderer.get_filled_template(
-                skip_anchors=["data"], as_string=False
-            )
+            content, split_content = renderer.get_partial_filled_template()
         else:
-            content = renderer.get_filled_template(as_string=False)
-        if grouped:
-            return [
-                {
-                    TYPE_KEY: renderer.TYPE,
-                    REVISIONS_KEY: sorted(grouped.keys()),
-                    "content": content,
-                    "datapoints": grouped,
-                }
-            ]
-        return []
+            content = renderer.get_filled_template()
+            split_content = {}
+
+        return [
+            {
+                TYPE_KEY: renderer.TYPE,
+                REVISIONS: revs,
+                "content": content,
+                **split_content,
+            }
+        ]
     if renderer.TYPE == "image":
         return [
             {
                 TYPE_KEY: renderer.TYPE,
-                REVISIONS_KEY: [datapoint.get(REVISION_FIELD)],
-                "url": datapoint.get(SRC_FIELD),
+                REVISIONS: [datapoint.get(REVISION)],
+                "url": datapoint.get(SRC),
             }
             for datapoint in renderer.datapoints
         ]

@@ -1,7 +1,6 @@
 import os
 import shutil
 from pathlib import Path
-from typing import List
 
 import pytest
 
@@ -14,7 +13,7 @@ from dvc_data.hashfile.build import IgnoreInCollectedDirError
 from dvc_data.hashfile.utils import get_mtime_and_size
 
 
-def _to_pattern_info_list(str_list: List):
+def _to_pattern_info_list(str_list: list):
     return [PatternInfo(a, "") for a in str_list]
 
 
@@ -241,10 +240,7 @@ def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
     files = ["foo"]
     dirs = ["bar"]
     root = os.fspath(subrepo_dir)
-    assert dvc.dvcignore(root, dirs, files, ignore_subrepos=False) == (
-        dirs,
-        files,
-    )
+    assert dvc.dvcignore(root, dirs, files, ignore_subrepos=False) == (dirs, files)
     assert dvc.dvcignore(root, dirs, files) == ([], [])
 
     assert dvc.dvcignore.is_ignored_dir(os.fspath(subrepo_dir / "bar"))

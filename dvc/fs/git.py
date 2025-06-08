@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from dvc.scm import Git
 
 
-class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
+class GitFileSystem(FileSystem):
     """Proxies the repo file access methods to Git objects"""
 
     protocol = "local"
@@ -39,16 +39,16 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
         )
 
     @functools.cached_property
-    def fs(  # pylint: disable=invalid-overridden-method
-        self,
-    ) -> "FsspecGitFileSystem":
+    def fs(self) -> "FsspecGitFileSystem":
         from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
 
         return FsspecGitFileSystem(**self.fs_args)
 
-    @functools.cached_property
-    def path(self):  # pylint: disable=invalid-overridden-method
-        return self.fs.path
+    def getcwd(self):
+        return self.fs.getcwd()
+
+    def chdir(self, path):
+        self.fs.chdir(path)
 
     @property
     def rev(self) -> str:

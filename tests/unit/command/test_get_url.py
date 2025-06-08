@@ -1,8 +1,9 @@
 from dvc.cli import parse_args
 from dvc.commands.get_url import CmdGetUrl
+from dvc.config import Config
 
 
-def test_get_url(mocker):
+def test_get_url(mocker, M):
     cli_args = parse_args(["get-url", "src", "out", "-j", "5"])
     assert cli_args.func == CmdGetUrl
 
@@ -11,4 +12,11 @@ def test_get_url(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", out="out", jobs=5, force=False)
+    m.assert_called_once_with(
+        "src",
+        out="out",
+        jobs=5,
+        force=False,
+        fs_config=None,
+        config=M.instance_of(Config),
+    )

@@ -110,15 +110,8 @@ def test_celery_queue_kill(test_queue, mocker, force):
             (mocker.Mock(headers={"id": "foobar"}), mock_entry_foobar),
         ],
     )
-    mocker.patch.object(
-        AsyncResult,
-        "ready",
-        return_value=False,
-    )
-    mark_mocker = mocker.patch.object(
-        test_queue.celery.backend,
-        "mark_as_failure",
-    )
+    mocker.patch.object(AsyncResult, "ready", return_value=False)
+    mark_mocker = mocker.patch.object(test_queue.celery.backend, "mark_as_failure")
 
     def kill_function(rev):
         if rev == "foo":
@@ -148,11 +141,7 @@ def test_celery_queue_kill_invalid(test_queue, mocker, force):
     mocker.patch.object(
         test_queue,
         "match_queue_entry_by_name",
-        return_value={
-            "bar": mock_entry_bar,
-            "foo": mock_entry_foo,
-            "foobar": None,
-        },
+        return_value={"bar": mock_entry_bar, "foo": mock_entry_foo, "foobar": None},
     )
 
     kill_mock = mocker.patch.object(test_queue, "_kill_entries")
@@ -200,13 +189,13 @@ def test_queue_status(test_queue, scm, mocker):
 
     def resolve_commit(rev):
         if rev == "active":
-            commit_time = datetime(2022, 8, 7).timestamp()
+            commit_time = datetime(2022, 8, 7).timestamp()  # noqa: DTZ001
         elif rev == "queued":
-            commit_time = datetime(2022, 8, 6).timestamp()
+            commit_time = datetime(2022, 8, 6).timestamp()  # noqa: DTZ001
         elif rev == "failed":
-            commit_time = datetime(2022, 8, 5).timestamp()
+            commit_time = datetime(2022, 8, 5).timestamp()  # noqa: DTZ001
         elif rev == "success":
-            commit_time = datetime(2022, 8, 4).timestamp()
+            commit_time = datetime(2022, 8, 4).timestamp()  # noqa: DTZ001
         return mocker.Mock(commit_time=commit_time)
 
     mocker.patch.object(
@@ -241,24 +230,24 @@ def test_queue_status(test_queue, scm, mocker):
             "name": "foo",
             "rev": "active",
             "status": "Running",
-            "timestamp": datetime(2022, 8, 7, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 7, 0, 0, 0),  # noqa: DTZ001
         },
         {
             "name": None,
             "rev": "queued",
             "status": "Queued",
-            "timestamp": datetime(2022, 8, 6, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 6, 0, 0, 0),  # noqa: DTZ001
         },
         {
             "name": "bar",
             "rev": "failed",
             "status": "Failed",
-            "timestamp": datetime(2022, 8, 5, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 5, 0, 0, 0),  # noqa: DTZ001
         },
         {
             "name": "foobar",
             "rev": "success",
             "status": "Success",
-            "timestamp": datetime(2022, 8, 4, 0, 0, 0),
+            "timestamp": datetime(2022, 8, 4, 0, 0, 0),  # noqa: DTZ001
         },
     ]

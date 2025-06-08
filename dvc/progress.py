@@ -1,8 +1,9 @@
 """Manages progress bars for DVC repo."""
+
 import logging
 import sys
 from threading import RLock
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from tqdm import tqdm
 
@@ -33,14 +34,14 @@ class Tqdm(tqdm):
         " [{elapsed}<{remaining}, {rate_fmt:>11}]"
     )
     BAR_FMT_NOTOTAL = "{desc}{bar:b}|{postfix[info]}{n_fmt} [{elapsed}, {rate_fmt:>11}]"
-    BYTES_DEFAULTS = {
+    BYTES_DEFAULTS: ClassVar[dict[str, Any]] = {
         "unit": "B",
         "unit_scale": True,
         "unit_divisor": 1024,
         "miniters": 1,
     }
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         iterable=None,
         disable=None,
@@ -48,7 +49,7 @@ class Tqdm(tqdm):
         desc=None,
         leave=False,
         bar_format=None,
-        bytes=False,  # noqa: A002, pylint: disable=redefined-builtin
+        bytes=False,  # noqa: A002
         file=None,
         total=None,
         postfix=None,
@@ -68,7 +69,7 @@ class Tqdm(tqdm):
         """
         kwargs = kwargs.copy()
         if bytes:
-            kwargs = {**self.BYTES_DEFAULTS, **kwargs}
+            kwargs = self.BYTES_DEFAULTS | kwargs
         else:
             kwargs.setdefault("unit_scale", total > 999 if total else True)
         if file is None:

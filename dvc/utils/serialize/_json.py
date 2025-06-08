@@ -10,8 +10,8 @@ class JSONFileCorruptedError(ParseError):
         super().__init__(path, "JSON file structure is corrupted")
 
 
-def load_json(path, fs=None):
-    return _load_data(path, parser=parse_json, fs=fs)
+def load_json(path, fs=None, **kwargs):
+    return _load_data(path, parser=parse_json, fs=fs, **kwargs)
 
 
 def parse_json(text, path, **kwargs):

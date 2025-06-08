@@ -1,6 +1,6 @@
 from contextlib import _GeneratorContextManager as GCM
 from contextlib import contextmanager
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from funcy import reraise
 
@@ -25,7 +25,14 @@ def _wrap_exceptions(repo, url):
         raise PathMissingError(exc.path, url) from exc
 
 
-def get_url(path, repo=None, rev=None, remote=None):
+def get_url(
+    path: str,
+    repo: Optional[str] = None,
+    rev: Optional[str] = None,
+    remote: Optional[str] = None,
+    config: Optional[dict[str, Any]] = None,
+    remote_config: Optional[dict[str, Any]] = None,
+):
     """
     Returns the URL to the storage location of a data file or directory tracked
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
@@ -35,15 +42,44 @@ def get_url(path, repo=None, rev=None, remote=None):
 
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
+
+    Args:
+        path (str): location and file name of the target, relative to the root
+            of `repo`.
+        repo (str, optional): location of the DVC project or Git Repo.
+            Defaults to the current DVC project (found by walking up from the
+            current working directory tree).
+            It can be a URL or a file system path.
+            Both HTTP and SSH protocols are supported for online Git repos
+            (e.g. [user@]server:project.git).
+        rev (str, optional): Any `Git revision`_ such as a branch or tag name,
+            a commit hash or a dvc experiment name.
+            Defaults to HEAD.
+            If `repo` is not a Git repo, this option is ignored.
+        remote (str, optional): Name of the `DVC remote`_ used to form the
+            returned URL string.
+            Defaults to the `default remote`_ of `repo`.
+            For local projects, the cache is tried before the default remote.
+        config(dict, optional): config to be passed to the DVC repository.
+            Defaults to None.
+        remote_config(dict, optional): remote config to be passed to the DVC
+            repository.
+            Defaults to None.
+
+    Returns:
+        str: URL to the file or directory.
     """
     from dvc.config import NoRemoteError
     from dvc_data.index import StorageKeyError
 
-    repo_kwargs: Dict[str, Any] = {}
-    if remote:
-        repo_kwargs["config"] = {"core": {"remote": remote}}
     with Repo.open(
-        repo, rev=rev, subrepos=True, uninitialized=True, **repo_kwargs
+        repo,
+        rev=rev,
+        subrepos=True,
+        uninitialized=True,
+        remote=remote,
+        config=config,
+        remote_config=remote_config,
     ) as _repo:
         index, entry = _repo.get_data_index_entry(path)
         with reraise(
@@ -55,26 +91,23 @@ def get_url(path, repo=None, rev=None, remote=None):
 
 
 class _OpenContextManager(GCM):
-    def __init__(self, func, args, kwds):  # pylint: disable=super-init-not-called
+    def __init__(self, func, args, kwds):
         self.gen = func(*args, **kwds)
-        self.func, self.args, self.kwds = (  # type: ignore[assignment]
-            func,
-            args,
-            kwds,
-        )
+        self.func, self.args, self.kwds = (func, args, kwds)  # type: ignore[assignment]
 
     def __getattr__(self, name):
         raise AttributeError("dvc.api.open() should be used in a with statement.")
 
 
-def open(  # noqa, pylint: disable=redefined-builtin
+def open(  # noqa: A001
     path: str,
     repo: Optional[str] = None,
     rev: Optional[str] = None,
     remote: Optional[str] = None,
     mode: str = "r",
     encoding: Optional[str] = None,
-    config: Optional[Dict[str, Any]] = None,
+    config: Optional[dict[str, Any]] = None,
+    remote_config: Optional[dict[str, Any]] = None,
 ):
     """
     Opens a file tracked in a DVC project.
@@ -117,6 +150,9 @@ def open(  # noqa, pylint: disable=redefined-builtin
             This should only be used in text mode.
             Mirrors the namesake parameter in builtin `open()`_.
         config(dict, optional): config to be passed to the DVC repository.
+            Defaults to None.
+        remote_config(dict, optional): remote config to be passed to the DVC
+            repository.
             Defaults to None.
 
     Returns:
@@ -214,22 +250,27 @@ def open(  # noqa, pylint: disable=redefined-builtin
         "mode": mode,
         "encoding": encoding,
         "config": config,
+        "remote_config": remote_config,
     }
     return _OpenContextManager(_open, args, kwargs)
 
 
-def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None, config=None):
-    if remote:
-        if config is not None:
-            raise ValueError(
-                "can't specify both `remote` and `config` at the same time"
-            )
-        config = {"core": {"remote": remote}}
-
-    repo_kwargs: Dict[str, Any] = {
+def _open(
+    path,
+    repo=None,
+    rev=None,
+    remote=None,
+    mode="r",
+    encoding=None,
+    config=None,
+    remote_config=None,
+):
+    repo_kwargs: dict[str, Any] = {
         "subrepos": True,
         "uninitialized": True,
+        "remote": remote,
         "config": config,
+        "remote_config": remote_config,
     }
 
     with Repo.open(repo, rev=rev, **repo_kwargs) as _repo:
@@ -244,7 +285,7 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None, confi
             if TYPE_CHECKING:
                 from dvc.fs import FileSystem
 
-            fs: Union["FileSystem", DataFileSystem, DVCFileSystem]
+            fs: Union[FileSystem, DataFileSystem, DVCFileSystem]
             if os.path.isabs(path):
                 fs = DataFileSystem(index=_repo.index.data["local"])
                 fs_path = path
@@ -253,11 +294,7 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None, confi
                 fs_path = fs.from_os_path(path)
 
             try:
-                with fs.open(
-                    fs_path,
-                    mode=mode,
-                    encoding=encoding,
-                ) as fobj:
+                with fs.open(fs_path, mode=mode, encoding=encoding) as fobj:
                     yield fobj
             except FileNotFoundError as exc:
                 raise FileMissingError(path) from exc
@@ -265,7 +302,16 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None, confi
                 raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 
 
-def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None, config=None):
+def read(
+    path,
+    repo=None,
+    rev=None,
+    remote=None,
+    mode="r",
+    encoding=None,
+    config=None,
+    remote_config=None,
+):
     """
     Returns the contents of a tracked file (by DVC or Git). For Git repos, HEAD
     is used unless a rev argument is supplied. The default remote is tried
@@ -279,5 +325,6 @@ def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None, config
         mode=mode,
         encoding=encoding,
         config=config,
+        remote_config=remote_config,
     ) as fd:
         return fd.read()

@@ -103,11 +103,7 @@ def test_hydra_sweep(
     patched = mocker.patch.object(dvc.experiments, "queue_one")
 
     if hydra_enabled:
-        hydra_setup(
-            tmp_dir,
-            config_dir="conf",
-            config_name="config",
-        )
+        hydra_setup(tmp_dir, config_dir="conf", config_name="config")
         with dvc.config.edit() as conf:
             conf["hydra"]["enabled"] = True
 
@@ -137,7 +133,7 @@ def test_hydra_sweep_prefix_name(tmp_dir, params_repo, dvc):
     db_values = ["mysql", "postgresql"]
     param = "+db=" + ",".join(db_values)
     dvc.experiments.run(params=[param], queue=True, name=prefix)
-    expected_names = [f"{prefix}-{i+1}" for i, _ in enumerate(db_values)]
+    expected_names = [f"{prefix}-{i + 1}" for i, _ in enumerate(db_values)]
     exp_names = [entry.name for entry in dvc.experiments.celery_queue.iter_queued()]
     for name, expected in zip(exp_names, expected_names):
         assert name == expected

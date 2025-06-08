@@ -1,17 +1,8 @@
 """Common utilities for serialize."""
+
 import os
-from contextlib import contextmanager
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ContextManager,
-    Dict,
-    Optional,
-    Protocol,
-    TextIO,
-    Union,
-)
+from contextlib import AbstractContextManager, contextmanager
+from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, TextIO, Union
 
 from funcy import reraise
 
@@ -25,28 +16,24 @@ if TYPE_CHECKING:
 class DumperFn(Protocol):
     def __call__(
         self, path: "StrPath", data: Any, fs: Optional["FileSystem"] = None
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class DumpersFn(Protocol):
-    def __call__(self, data: Any, stream: TextIO) -> Any:
-        ...
+    def __call__(self, data: Any, stream: TextIO) -> Any: ...
 
 
 class ModifierFn(Protocol):
     def __call__(
         self, path: "StrPath", fs: Optional["FileSystem"] = None
-    ) -> ContextManager[Dict]:
-        ...
+    ) -> AbstractContextManager[dict]: ...
 
 
 class LoaderFn(Protocol):
-    def __call__(self, path: "StrPath", fs: Optional["FileSystem"] = None) -> Any:
-        ...
+    def __call__(self, path: "StrPath", fs: Optional["FileSystem"] = None) -> Any: ...
 
 
-ReadType = Union[bytes, None, str]
+ReadType = Union[bytes, str, None]
 ParserFn = Callable[[ReadType, "StrPath"], dict]
 
 
@@ -69,10 +56,12 @@ class EncodingError(ParseError):
         super().__init__(path, f"is not valid {encoding}")
 
 
-def _load_data(path: "StrPath", parser: ParserFn, fs: Optional["FileSystem"] = None):
+def _load_data(
+    path: "StrPath", parser: ParserFn, fs: Optional["FileSystem"] = None, **kwargs
+):
     open_fn = fs.open if fs else open
     encoding = "utf-8"
-    with open_fn(path, encoding=encoding) as fd:  # type: ignore[operator]
+    with open_fn(path, encoding=encoding, **kwargs) as fd:  # type: ignore[arg-type]
         with reraise(UnicodeDecodeError, EncodingError(path, encoding)):
             return parser(fd.read(), path)
 
@@ -85,7 +74,7 @@ def _dump_data(
     **dumper_args,
 ):
     open_fn = fs.open if fs else open
-    with open_fn(path, "w+", encoding="utf-8") as fd:  # type: ignore[operator]
+    with open_fn(path, "w+", encoding="utf-8") as fd:  # type: ignore[call-overload]
         dumper(data, fd, **dumper_args)
 
 

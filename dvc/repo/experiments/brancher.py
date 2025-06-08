@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
-from typing import TYPE_CHECKING, Iterator, Tuple
+from typing import TYPE_CHECKING
 
 from dvc.repo.experiments.exceptions import InvalidExpRevError
 from dvc.scm import RevError
@@ -9,10 +10,7 @@ if TYPE_CHECKING:
 
 
 @contextmanager
-def switch_repo(
-    repo: "Repo",
-    rev: str,
-) -> Iterator[Tuple["Repo", str]]:
+def switch_repo(repo: "Repo", rev: str) -> Iterator[tuple["Repo", str]]:
     """Return a repo instance (brancher) switched to rev.
 
     If rev is the name of a running experiment, the returned instance will be

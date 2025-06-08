@@ -1,15 +1,17 @@
 import json
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from dvc.exceptions import DvcException
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
-from dvc.utils import onerror_collect, relpath
+from dvc.utils import relpath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.repo.metrics.show import FileResult
 
 
 class DeserializeError(DvcException):
@@ -29,18 +31,17 @@ class SerializableExp:
 
     rev: str
     timestamp: Optional[datetime] = None
-    params: Dict[str, Any] = field(default_factory=dict)
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    deps: Dict[str, "ExpDep"] = field(default_factory=dict)
-    outs: Dict[str, "ExpOut"] = field(default_factory=dict)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, "FileResult"] = field(default_factory=dict)
+    metrics: dict[str, "FileResult"] = field(default_factory=dict)
+    deps: dict[str, "ExpDep"] = field(default_factory=dict)
+    outs: dict[str, "ExpOut"] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_repo(
         cls,
         repo: "Repo",
         rev: Optional[str] = None,
-        onerror: Optional[Callable] = None,
         param_deps: bool = False,
         **kwargs,
     ) -> "SerializableExp":
@@ -49,27 +50,18 @@ class SerializableExp:
         Params, metrics, deps, outs are filled via repo fs/index, all other fields
         should be passed via kwargs.
         """
-        from dvc.dependency import ParamsDependency, RepoDependency
-
-        if not onerror:
-            onerror = onerror_collect
+        from dvc.dependency import (
+            DatasetDependency,
+            DbDependency,
+            ParamsDependency,
+            RepoDependency,
+        )
 
         rev = rev or repo.get_rev()
         assert rev
-        # NOTE: _gather_params/_gather_metrics return defaultdict which is not
-        # supported in dataclasses.asdict() on all python releases
-        # see https://bugs.python.org/issue35540
-        params = dict(_gather_params(repo, deps=param_deps, onerror=onerror))
-        params = {k: dict(v) for k, v in params.items()}
-        metrics = dict(
-            _gather_metrics(
-                repo,
-                targets=None,
-                rev=rev[:7],
-                recursive=False,
-                onerror=onerror_collect,
-            )
-        )
+
+        params = _gather_params(repo, deps_only=param_deps, on_error="return")
+        metrics = _gather_metrics(repo, on_error="return")
         return cls(
             rev=rev,
             params=params,
@@ -81,7 +73,10 @@ class SerializableExp:
                     nfiles=dep.meta.nfiles if dep.meta else None,
                 )
                 for dep in repo.index.deps
-                if not isinstance(dep, (ParamsDependency, RepoDependency))
+                if not isinstance(
+                    dep,
+                    (ParamsDependency, RepoDependency, DatasetDependency, DbDependency),
+                )
             },
             outs={
                 relpath(out.fs_path, repo.root_dir): ExpOut(
@@ -97,7 +92,7 @@ class SerializableExp:
             **kwargs,
         )
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
     def as_bytes(self) -> bytes:
@@ -119,24 +114,21 @@ class SerializableExp:
 
     @property
     def contains_error(self) -> bool:
-        return (
-            self.params.get("error")
-            or any(value.get("error") for value in self.params.values())
-            or self.metrics.get("error")
-            or any(value.get("error") for value in self.metrics.values())
+        return any(value.get("error") for value in self.params.values()) or any(
+            value.get("error") for value in self.metrics.values()
         )
 
 
 @dataclass(frozen=True)
 class ExpDep:
-    hash: Optional[str]  # noqa: A003
+    hash: Optional[str]
     size: Optional[int]
     nfiles: Optional[int]
 
 
 @dataclass(frozen=True)
 class ExpOut:
-    hash: Optional[str]  # noqa: A003
+    hash: Optional[str]
     size: Optional[int]
     nfiles: Optional[int]
     use_cache: bool
@@ -146,9 +138,9 @@ class ExpOut:
 @dataclass(frozen=True)
 class SerializableError:
     msg: str
-    type: str = ""  # noqa: A003
+    type: str = ""
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
     def as_bytes(self) -> bytes:
@@ -171,15 +163,15 @@ class ExpState:
     name: Optional[str] = None
     data: Optional[SerializableExp] = None
     error: Optional[SerializableError] = None
-    experiments: Optional[List["ExpRange"]] = None
+    experiments: Optional[list["ExpRange"]] = None
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
 
 @dataclass
 class ExpRange:
-    revs: List["ExpState"]
+    revs: list["ExpState"]
     executor: Optional["ExpExecutor"] = None
     name: Optional[str] = None
 
@@ -192,7 +184,7 @@ class ExpRange:
     def __getitem__(self, index: int) -> "ExpState":
         return self.revs[index]
 
-    def dumpd(self) -> Dict[str, Any]:
+    def dumpd(self) -> dict[str, Any]:
         return asdict(self)
 
 

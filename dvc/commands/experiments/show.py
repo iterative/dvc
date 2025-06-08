@@ -1,15 +1,17 @@
 import argparse
-import logging
 import re
+from collections.abc import Iterable
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Dict, Iterable
+from typing import TYPE_CHECKING
 
 from funcy import lmap
 
+from dvc.cli import formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.commands.metrics import DEFAULT_PRECISION
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.ui import ui
 from dvc.utils.serialize import encode_exception
 
@@ -21,7 +23,7 @@ FILL_VALUE = "-"
 FILL_VALUE_ERRORED = "!"
 
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 experiment_types = {
@@ -54,9 +56,9 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(  # noqa: C901
+def show_experiments(
     td: "TabularData",
-    headers: Dict[str, Iterable[str]],
+    headers: dict[str, Iterable[str]],
     keep=None,
     drop=None,
     pager=True,
@@ -200,7 +202,7 @@ def add_parser(experiments_subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_SHOW_HELP, "exp/show"),
         help=EXPERIMENTS_SHOW_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     add_rev_selection_flags(experiments_show_parser, "Show")
     experiments_show_parser.add_argument(

@@ -1,12 +1,14 @@
 import argparse
 import logging
+from collections.abc import Iterable
 from contextlib import contextmanager
 from itertools import chain, filterfalse
-from typing import TYPE_CHECKING, Dict, Iterable, List
+from typing import TYPE_CHECKING
 
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.utils.cli_parse import parse_params
 from dvc.utils.humanize import truncate_text
 
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.stage import Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 MAX_TEXT_LENGTH = 80
 
@@ -32,7 +34,7 @@ def generate_description(stage: "Stage") -> str:
     def is_plot_or_metric(out: "Output"):
         return bool(out.plot) or bool(out.metric)
 
-    desc: List[str] = []
+    desc: list[str] = []
 
     outs = list(filterfalse(is_plot_or_metric, stage.outs))
     if outs:
@@ -54,7 +56,7 @@ def prepare_stages_data(
     stages: Iterable["Stage"],
     description: bool = True,
     max_length: int = MAX_TEXT_LENGTH,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     return {
         stage.addressing: (
             prepare_description(stage, max_length=max_length) if description else ""
@@ -66,10 +68,8 @@ def prepare_stages_data(
 class CmdStageList(CmdBase):
     def _get_stages(self) -> Iterable["Stage"]:
         if self.args.all:
-            stages: List["Stage"] = self.repo.index.stages
-            logger.trace(  # type: ignore[attr-defined]
-                "%d no. of stages found", len(stages)
-            )
+            stages: list[Stage] = self.repo.index.stages
+            logger.trace("%d no. of stages found", len(stages))
             return stages
 
         # removing duplicates while maintaining order
@@ -97,7 +97,7 @@ class CmdStageList(CmdBase):
         return 0
 
 
-def parse_cmd(commands: List[str]) -> str:
+def parse_cmd(commands: list[str]) -> str:
     """
     We need to take into account two cases:
 
@@ -285,15 +285,14 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(STAGES_HELP, "stage"),
         help=STAGES_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
 
     stage_subparsers = stage_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc stage CMD --help` to display command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(stage_subparsers)
 
     STAGE_ADD_HELP = "Create stage"
     stage_add_parser = stage_subparsers.add_parser(
@@ -301,7 +300,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(STAGE_ADD_HELP, "stage/add"),
         help=STAGE_ADD_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     stage_add_parser.add_argument(
         "-n", "--name", help="Name of the stage to add", required=True
@@ -315,7 +314,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(STAGE_LIST_HELP, "stage/list"),
         help=STAGE_LIST_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     stage_list_parser.add_argument(
         "targets",

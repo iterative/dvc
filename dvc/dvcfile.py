@@ -1,19 +1,9 @@
 import contextlib
-import logging
 import os
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, TypeVar, Union
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -32,7 +22,7 @@ if TYPE_CHECKING:
     from .parsing import DataResolver
     from .stage import Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 _T = TypeVar("_T")
 
 DVC_FILE_SUFFIX = ".dvc"
@@ -78,10 +68,9 @@ def is_git_ignored(repo, path):
 def check_dvcfile_path(repo, path):
     if not is_valid_filename(path):
         raise StageFileBadNameError(
-            "bad DVC file name '{}'. DVC files should be named "
-            "'{}' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                relpath(path), PROJECT_FILE, os.path.basename(path)
-            )
+            f"bad DVC file name '{relpath(path)}'. DVC files should be named "
+            f"'{PROJECT_FILE}' or have a '.dvc' suffix "
+            f"(e.g. '{os.path.basename(path)}.dvc')."
         )
 
     if is_git_ignored(repo, path):
@@ -133,7 +122,7 @@ class FileMixin:
         d, _ = self._load(**kwargs)
         return d
 
-    def _load(self, **kwargs: Any) -> Tuple[Any, str]:
+    def _load(self, **kwargs: Any) -> tuple[Any, str]:
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
         # 2. filename is not a DVC file
@@ -156,7 +145,7 @@ class FileMixin:
 
         return validate(d, cls.SCHEMA, path=fname)  # type: ignore[arg-type]
 
-    def _load_yaml(self, **kwargs: Any) -> Tuple[Any, str]:
+    def _load_yaml(self, **kwargs: Any) -> tuple[Any, str]:
         from dvc.utils import strictyaml
 
         return strictyaml.load(
@@ -166,7 +155,6 @@ class FileMixin:
             **kwargs,
         )
 
-    # pylint: disable-next=unused-argument
     def remove(self, force=False):  # noqa: ARG002
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self.path)
@@ -182,10 +170,12 @@ class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
     from dvc.stage.loader import SingleStageLoader as LOADER  # noqa: N814
 
-    metrics: List[str] = []
-    plots: Any = {}
-    params: List[str] = []
-    artifacts: Dict[str, Optional[Dict[str, Any]]] = {}
+    datasets: ClassVar[list[dict[str, Any]]] = []
+    datasets_lock: ClassVar[list[dict[str, Any]]] = []
+    metrics: ClassVar[list[str]] = []
+    plots: ClassVar[Any] = {}
+    params: ClassVar[list[str]] = []
+    artifacts: ClassVar[dict[str, Optional[dict[str, Any]]]] = {}
 
     @property
     def stage(self) -> "Stage":
@@ -208,7 +198,6 @@ class SingleStageFile(FileMixin):
         dump_yaml(self.path, serialize.to_single_stage_file(stage, **kwargs))
         self.repo.scm_context.track_file(self.relpath)
 
-    # pylint: disable-next=unused-argument
     def remove_stage(self, stage):  # noqa: ARG002
         self.remove()
 
@@ -237,9 +226,7 @@ class ProjectFile(FileMixin):
         self.__dict__.pop("resolver", None)
         self.__dict__.pop("stages", None)
 
-    def dump(
-        self, stage, update_pipeline=True, update_lock=True, **kwargs
-    ):  # pylint: disable=arguments-differ
+    def dump(self, stage, update_pipeline=True, update_lock=True, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 
@@ -252,6 +239,26 @@ class ProjectFile(FileMixin):
 
         if update_lock:
             self._dump_lockfile(stage, **kwargs)
+
+    def dump_dataset(self, dataset):
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
+            parsed = self.datasets if data else []
+            raw = data.setdefault("datasets", [])
+            loc = next(
+                (i for i, ds in enumerate(parsed) if ds["name"] == dataset["name"]),
+                None,
+            )
+            if loc is not None:
+                if raw[loc] != parsed[loc]:
+                    raise ParametrizedDumpError(
+                        "cannot update a parametrized dataset entry"
+                    )
+
+                apply_diff(dataset, raw[loc])
+                raw[loc] = dataset
+            else:
+                raw.append(dataset)
+        self.repo.scm_context.track_file(self.relpath)
 
     def _dump_lockfile(self, stage, **kwargs):
         self._lockfile.dump(stage, **kwargs)
@@ -287,18 +294,18 @@ class ProjectFile(FileMixin):
         raise DvcException("ProjectFile has multiple stages. Please specify it's name.")
 
     @cached_property
-    def contents(self) -> Dict[str, Any]:
+    def contents(self) -> dict[str, Any]:
         return self._load()[0]
 
     @cached_property
-    def lockfile_contents(self) -> Dict[str, Any]:
+    def lockfile_contents(self) -> dict[str, Any]:
         return self._lockfile.load()
 
     @cached_property
     def resolver(self) -> "DataResolver":
         from .parsing import DataResolver
 
-        wdir = self.repo.fs.path.parent(self.path)
+        wdir = self.repo.fs.parent(self.path)
         return DataResolver(self.repo, wdir, self.contents)
 
     @cached_property
@@ -306,20 +313,28 @@ class ProjectFile(FileMixin):
         return self.LOADER(self, self.contents, self.lockfile_contents)
 
     @property
-    def metrics(self) -> List[str]:
-        return self.contents.get("metrics", [])
+    def artifacts(self) -> dict[str, Optional[dict[str, Any]]]:
+        return self.resolver.resolve_artifacts()
 
     @property
-    def plots(self) -> Any:
-        return self.contents.get("plots", {})
+    def metrics(self) -> list[str]:
+        return self.resolver.resolve_metrics()
 
     @property
-    def params(self) -> List[str]:
-        return self.contents.get("params", [])
+    def params(self) -> list[str]:
+        return self.resolver.resolve_params()
 
     @property
-    def artifacts(self) -> Dict[str, Optional[Dict[str, Any]]]:
-        return self.contents.get("artifacts", {})
+    def plots(self) -> list[Any]:
+        return self.resolver.resolve_plots()
+
+    @property
+    def datasets(self) -> list[dict[str, Any]]:
+        return self.resolver.resolve_datasets()
+
+    @property
+    def datasets_lock(self) -> list[dict[str, Any]]:
+        return self.lockfile_contents.get("datasets", [])
 
     def remove(self, force=False):
         if not force:
@@ -365,6 +380,24 @@ class Lockfile(FileMixin):
             # even though it may not exist or have been .dvcignored
             self._check_gitignored()
             return {}, ""
+
+    def dump_dataset(self, dataset: dict):
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
+            data.update({"schema": "2.0"})
+            if not data:
+                logger.info("Generating lock file '%s'", self.relpath)
+
+            datasets: list[dict] = data.setdefault("datasets", [])
+            loc = next(
+                (i for i, ds in enumerate(datasets) if ds["name"] == dataset["name"]),
+                None,
+            )
+            if loc is not None:
+                datasets[loc] = dataset
+            else:
+                datasets.append(dataset)
+            data.setdefault("stages", {})
+        self.repo.scm_context.track_file(self.relpath)
 
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage, **kwargs)

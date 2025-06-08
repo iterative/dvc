@@ -1,1 +1,3 @@
-from .fixtures import *  # noqa, pylint: disable=wildcard-import
+from .fixtures import *  # noqa: F403
+
+pytest_plugins = ["dvc.testing.plugin"]

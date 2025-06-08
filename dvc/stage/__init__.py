@@ -1,27 +1,16 @@
-import logging
 import os
 import string
 from collections import defaultdict
+from collections.abc import Iterable
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union
 
 from funcy import project
 
 from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, DvcException, MergeError
+from dvc.log import logger
 from dvc.utils import relpath
 from dvc.utils.objects import cached_property
 
@@ -43,24 +32,26 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from dvc.dependency import ParamsDependency
     from dvc.dvcfile import ProjectFile, SingleStageFile
     from dvc.output import Output
     from dvc.repo import Repo
     from dvc.types import StrPath
+    from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db import ObjectDB
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 # Disallow all punctuation characters except hyphen and underscore
 INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
-Env = Dict[str, str]
-ChangedEntries = Tuple[List[str], List[str], Optional[str]]
+Env = dict[str, str]
+ChangedEntries = tuple[list[str], list[str], Optional[str]]
 
 _T = TypeVar("_T")
 
 
 def loads_from(
-    cls: Type[_T], repo: "Repo", path: str, wdir: str, data: Dict[str, Any]
+    cls: type[_T], repo: "Repo", path: str, wdir: str, data: dict[str, Any]
 ) -> _T:
     kw = {
         "repo": repo,
@@ -89,10 +80,10 @@ class RawData:
     generated_from: Optional[str] = None
 
 
-def create_stage(cls: Type[_T], repo, path, **kwargs) -> _T:
+def create_stage(cls: type[_T], repo, path, **kwargs) -> _T:
     from dvc.dvcfile import check_dvcfile_path
 
-    wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
+    wdir = os.path.abspath(kwargs.get("wdir") or os.curdir)
     path = os.path.abspath(path)
 
     check_dvcfile_path(repo, path)
@@ -103,7 +94,7 @@ def create_stage(cls: Type[_T], repo, path, **kwargs) -> _T:
     fill_stage_outputs(stage, **kwargs)
     check_no_externals(stage)
     fill_stage_dependencies(
-        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config"])
+        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config", "db"])
     )
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)
@@ -123,7 +114,7 @@ def restore_fields(stage: "Stage") -> None:
         return
 
     # will be used to restore comments later
-    # pylint: disable=protected-access
+
     stage._stage_text = old._stage_text
     stage.meta = old.meta
     stage.desc = old.desc
@@ -136,9 +127,6 @@ def restore_fields(stage: "Stage") -> None:
 
 
 class Stage(params.StageParams):
-    # pylint:disable=no-value-for-parameter
-    # rwlocked() confuses pylint
-
     def __init__(  # noqa: PLR0913
         self,
         repo,
@@ -204,6 +192,16 @@ class Stage(params.StageParams):
     @dvcfile.setter
     def dvcfile(self, dvcfile: Union["ProjectFile", "SingleStageFile"]) -> None:
         self._dvcfile = dvcfile
+
+    @property
+    def params(self) -> list["ParamsDependency"]:
+        from dvc.dependency import ParamsDependency
+
+        return [dep for dep in self.deps if isinstance(dep, ParamsDependency)]
+
+    @property
+    def metrics(self) -> list["Output"]:
+        return [out for out in self.outs if out.metric]
 
     def __repr__(self):
         return f"Stage: '{self.addressing}'"
@@ -273,11 +271,26 @@ class Stage(params.StageParams):
         return isinstance(self.deps[0], RepoDependency)
 
     @property
+    def is_db_import(self) -> bool:
+        if not self.is_import:
+            return False
+
+        from dvc.dependency import DbDependency
+
+        return isinstance(self.deps[0], DbDependency)
+
+    @property
     def is_versioned_import(self) -> bool:
-        return self.is_import and self.deps[0].fs.version_aware
+        from dvc.dependency import DbDependency
+
+        return (
+            self.is_import
+            and not isinstance(self.deps[0], DbDependency)
+            and self.deps[0].fs.version_aware
+        )
 
     def short_description(self) -> Optional["str"]:
-        desc: Optional["str"] = None
+        desc: Optional[str] = None
         if self.desc:
             with suppress(ValueError):
                 # try to use first non-empty line as a description
@@ -285,17 +298,8 @@ class Stage(params.StageParams):
                 return line.strip()
         return desc
 
-    def env(self) -> Env:
-        from dvc.env import DVC_ROOT
-
-        env: Env = {}
-        if self.repo:
-            env.update({DVC_ROOT: self.repo.root_dir})
-
-        return env
-
     def changed_deps(
-        self, allow_missing: bool = False, upstream: Optional[List] = None
+        self, allow_missing: bool = False, upstream: Optional[list] = None
     ) -> bool:
         if self.frozen:
             return False
@@ -307,7 +311,7 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"])
     def _changed_deps(
-        self, allow_missing: bool = False, upstream: Optional[List] = None
+        self, allow_missing: bool = False, upstream: Optional[list] = None
     ) -> bool:
         for dep in self.deps:
             status = dep.status()
@@ -335,7 +339,7 @@ class Stage(params.StageParams):
         for out in self.outs:
             status = out.status()
             if status:
-                if allow_missing and status[str(out)] == "not in cache":
+                if allow_missing and status[str(out)] in ["not in cache", "deleted"]:
                     continue
                 logger.debug(
                     "Output '%s' of %s changed because it is '%s'.",
@@ -355,7 +359,7 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps", "outs"])
     def changed(
-        self, allow_missing: bool = False, upstream: Optional[List] = None
+        self, allow_missing: bool = False, upstream: Optional[list] = None
     ) -> bool:
         is_changed = (
             # Short-circuit order: stage md5 is fast,
@@ -414,17 +418,28 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs) -> Optional["Stage"]:
-        if not (
-            kwargs.get("force", False)
-            or self.changed(
-                kwargs.get("allow_missing", False), kwargs.pop("upstream", None)
-            )
-        ):
+        force = kwargs.get("force", False)
+        allow_missing = kwargs.get("allow_missing", False)
+        pull = kwargs.get("pull", False)
+        upstream = kwargs.pop("upstream", None)
+        if force:
+            pass
+        # Skip stages with missing data if otherwise unchanged
+        elif not self.changed(allow_missing, upstream):
             if not isinstance(self, PipelineStage) and self.is_data_source:
                 logger.info("'%s' didn't change, skipping", self.addressing)
             else:
                 logger.info("Stage '%s' didn't change, skipping", self.addressing)
             return None
+        # Pull stages with missing data if otherwise unchanged
+        elif not self.changed(True, upstream) and pull:
+            try:
+                logger.info("Pulling data for %s", self)
+                self.repo.pull(self.addressing, jobs=kwargs.get("jobs"))
+                self.checkout()
+                return None
+            except CheckoutError:
+                logger.info("Unable to pull data for %s", self)
 
         msg = f"Going to reproduce {self}. Are you sure you want to continue?"
         if interactive and not prompt.confirm(msg):
@@ -446,6 +461,9 @@ class Stage(params.StageParams):
     ) -> None:
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
+
+        # always force update DbDep since we don't know if it's changed
+        force = self.is_db_import
         update_import(
             self,
             rev=rev,
@@ -453,12 +471,13 @@ class Stage(params.StageParams):
             remote=remote,
             no_download=no_download,
             jobs=jobs,
+            force=force,
         )
 
     def reload(self) -> "Stage":
         return self.dvcfile.stage
 
-    def dumpd(self, **kwargs) -> Dict[str, Any]:
+    def dumpd(self, **kwargs) -> dict[str, Any]:
         return get_dump(self, **kwargs)
 
     def compute_md5(self) -> Optional[str]:
@@ -490,7 +509,7 @@ class Stage(params.StageParams):
                 if not allow_missing:
                     raise
 
-    def get_versioned_outs(self) -> Dict[str, "Output"]:
+    def get_versioned_outs(self) -> dict[str, "Output"]:
         from .exceptions import StageFileDoesNotExistError, StageNotFound
 
         try:
@@ -524,7 +543,7 @@ class Stage(params.StageParams):
             out.ignore()
 
     @staticmethod
-    def _changed_entries(entries) -> List[str]:
+    def _changed_entries(entries) -> list[str]:
         return [str(entry) for entry in entries if entry.workspace_status()]
 
     def _changed_stage_entry(self) -> str:
@@ -556,9 +575,7 @@ class Stage(params.StageParams):
             raise CacheLinkError(link_failures)
 
     @rwlocked(write=["outs"])
-    def add_outs(  # noqa: C901
-        self, filter_info=None, allow_missing: bool = False, **kwargs
-    ):
+    def add_outs(self, filter_info=None, allow_missing: bool = False, **kwargs):
         from dvc.output import OutputDoesNotExistError
 
         link_failures = []
@@ -579,7 +596,7 @@ class Stage(params.StageParams):
             raise CacheLinkError(link_failures)
 
     @rwlocked(read=["deps", "outs"])
-    def run(  # noqa: C901
+    def run(
         self,
         dry=False,
         no_commit=False,
@@ -591,16 +608,10 @@ class Stage(params.StageParams):
         if (self.cmd or self.is_import) and not self.frozen and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
-        if (
-            self.is_import and (not self.frozen or kwargs.get("pull"))
-        ) or self.is_partial_import:
-            self._sync_import(dry, force, kwargs.get("jobs", None), no_download)
+        if (self.is_import and not self.frozen) or self.is_partial_import:
+            self._sync_import(dry, force, kwargs.get("jobs"), no_download)
         elif not self.frozen and self.cmd:
-            self._run_stage(dry, force, allow_missing=allow_missing, **kwargs)
-        elif kwargs.get("pull"):
-            logger.info("Pulling data for %s", self)
-            self.repo.pull(self.addressing, jobs=kwargs.get("jobs", None))
-            self.checkout()
+            self._run_stage(dry, force, **kwargs)
         elif not dry:
             args = ("outputs", "frozen ") if self.frozen else ("data sources", "")
             logger.info("Verifying %s in %s%s", *args, self)
@@ -639,30 +650,26 @@ class Stage(params.StageParams):
 
     def filter_outs(self, fs_path) -> Iterable["Output"]:
         def _func(o):
-            return o.fs.path.isin_or_eq(fs_path, o.fs_path)
+            return o.fs.isin_or_eq(fs_path, o.fs_path)
 
         return filter(_func, self.outs) if fs_path else self.outs
 
     @rwlocked(write=["outs"])
     def checkout(
         self, allow_missing: bool = False, **kwargs
-    ) -> Dict[str, List["StrPath"]]:
-        stats: Dict[str, List["StrPath"]] = defaultdict(list)
+    ) -> dict[str, list["StrPath"]]:
+        stats: dict[str, list[StrPath]] = defaultdict(list)
         if self.is_partial_import:
             return stats
 
         for out in self.filter_outs(kwargs.get("filter_info")):
-            key, outs = self._checkout(
-                out,
-                allow_missing=allow_missing,
-                **kwargs,
-            )
+            key, outs = self._checkout(out, allow_missing=allow_missing, **kwargs)
             if key:
                 stats[key].extend(outs)
         return stats
 
     @staticmethod
-    def _checkout(out, **kwargs) -> Tuple[Optional[str], List[str]]:
+    def _checkout(out, **kwargs) -> tuple[Optional[str], list[str]]:
         try:
             result = out.checkout(**kwargs)
             added, modified = result or (None, None)
@@ -675,8 +682,8 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps", "outs"])
     def status(
         self, check_updates: bool = False, filter_info: Optional[bool] = None
-    ) -> Dict[str, List[Union[str, Dict[str, str]]]]:
-        ret: List[Union[str, Dict[str, str]]] = []
+    ) -> dict[str, list[Union[str, dict[str, str]]]]:
+        ret: list[Union[str, dict[str, str]]] = []
         show_import = (
             self.is_repo_import or self.is_versioned_import
         ) and check_updates
@@ -689,7 +696,7 @@ class Stage(params.StageParams):
         return {self.addressing: ret} if ret else {}
 
     @staticmethod
-    def _status(entries: Iterable["Output"]) -> Dict[str, str]:
+    def _status(entries: Iterable["Output"]) -> dict[str, str]:
         ret = {}
 
         for entry in entries:
@@ -730,7 +737,7 @@ class Stage(params.StageParams):
 
     def get_used_objs(
         self, *args, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+    ) -> dict[Optional["HashFileDB"], set["HashInfo"]]:
         """Return set of object IDs used by this stage."""
         if self.is_partial_import and not self.is_repo_import:
             return {}
@@ -785,7 +792,7 @@ class PipelineStage(Stage):
         super().__init__(*args, **kwargs)
         self.name = name
         self.cmd_changed = False
-        self.tracked_vars: Dict[str, Dict[str, Dict[str, str]]] = {}
+        self.tracked_vars: dict[str, dict[str, dict[str, str]]] = {}
 
     def __eq__(self, other):
         return super().__eq__(other) and self.name == other.name
@@ -806,7 +813,7 @@ class PipelineStage(Stage):
 
         assert isinstance(self.dvcfile, ProjectFile)
 
-        self.dvcfile._reset()  # pylint: disable=protected-access
+        self.dvcfile._reset()
         return self.dvcfile.stages[self.name]
 
     def _status_stage(self, ret) -> None:

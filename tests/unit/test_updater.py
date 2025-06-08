@@ -151,18 +151,9 @@ def test_check(mocker, updater):
         ("deb", "To upgrade, run 'apt-get install --only-upgrade dvc'."),
         ("conda", "To upgrade, run 'conda update dvc'."),
         ("choco", "To upgrade, run 'choco upgrade dvc'."),
-        (
-            "osxpkg",
-            "To upgrade, uninstall dvc and reinstall from https://dvc.org.",
-        ),
-        (
-            "exe",
-            "To upgrade, uninstall dvc and reinstall from https://dvc.org.",
-        ),
-        (
-            "binary",
-            "To upgrade, uninstall dvc and reinstall from https://dvc.org.",
-        ),
+        ("osxpkg", "To upgrade, uninstall dvc and reinstall from https://dvc.org."),
+        ("exe", "To upgrade, uninstall dvc and reinstall from https://dvc.org."),
+        ("binary", "To upgrade, uninstall dvc and reinstall from https://dvc.org."),
         (
             None,
             (

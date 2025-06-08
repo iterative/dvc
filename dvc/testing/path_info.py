@@ -1,8 +1,8 @@
-# pylint: disable=protected-access
 import os
 import pathlib
 import posixpath
-from typing import Callable
+import sys
+from typing import Callable, ClassVar
 from urllib.parse import urlparse
 
 from dvc.utils import relpath
@@ -18,7 +18,6 @@ class _BasePath:
         return self.isin_or_eq(other) or other.isin(self)
 
     def isin_or_eq(self, other):
-        # pylint: disable-next=no-member
         return self == other or self.isin(other)  # type: ignore[attr-defined]
 
 
@@ -29,17 +28,15 @@ class PathInfo(pathlib.PurePath, _BasePath):
     __slots__ = ()
     scheme = "local"
 
-    def __new__(cls, *args):
-        # Construct a proper subclass depending on current os
-        if cls is PathInfo:
-            cls = (  # pylint: disable=self-cls-assignment
-                WindowsPathInfo if os.name == "nt" else PosixPathInfo
-            )
+    if sys.version_info < (3, 12):
 
-        return cls._from_parts(args)  # type: ignore[attr-defined]
+        def __new__(cls, *args):
+            if cls is PathInfo:
+                cls = WindowsPathInfo if os.name == "nt" else PosixPathInfo  # noqa: PLW0642
+
+            return cls._from_parts(args)  # type: ignore[attr-defined]
 
     def as_posix(self):
-        # pylint: disable-next=no-member
         f = self._flavour  # type: ignore[attr-defined]
         # Unlike original implementation [1] that uses `str()` we actually need
         # to use `fspath`, because we've overridden `__str__` method to return
@@ -72,7 +69,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
 
     def isin(self, other):
         if isinstance(other, (str, bytes)):
-            other = self.__class__(other)
+            other = self.__class__(other)  # type: ignore[arg-type]
         elif self.__class__ != other.__class__:
             return False
         # Use cached casefolded parts to compare paths
@@ -82,13 +79,13 @@ class PathInfo(pathlib.PurePath, _BasePath):
             and self._cparts[:n] == other._cparts  # type: ignore[attr-defined]
         )
 
-    def relative_to(self, other):  # pylint: disable=arguments-differ
+    def relative_to(self, other, *args, **kwargs):
         # pathlib relative_to raises exception when one path is not a direct
         # descendant of the other when os.path.relpath would return abspath.
         # For DVC PathInfo we only need the relpath behavior.
         # See: https://bugs.python.org/issue40358
         try:
-            path = super().relative_to(other)
+            path = super().relative_to(other, *args, **kwargs)
         except ValueError:
             path = relpath(self, other)
         return self.__class__(path)
@@ -125,7 +122,12 @@ class _URLPathParents:
 
 
 class URLInfo(_BasePath):
-    DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22, "hdfs": 0}
+    DEFAULT_PORTS: ClassVar[dict[str, int]] = {
+        "http": 80,
+        "https": 443,
+        "ssh": 22,
+        "hdfs": 0,
+    }
 
     def __init__(self, url):
         p = urlparse(url)
@@ -209,9 +211,7 @@ class URLInfo(_BasePath):
         return self._spath
 
     @cached_property
-    def _path(  # pylint: disable=method-hidden
-        self,
-    ) -> "_URLPathInfo":
+    def _path(self) -> "_URLPathInfo":
         return _URLPathInfo(self._spath)
 
     @property
@@ -296,7 +296,7 @@ class HTTPURLInfo(URLInfo):
         params=None,
         query=None,
         fragment=None,
-    ):  # pylint: disable=arguments-differ
+    ):
         assert bool(host) ^ bool(netloc)
 
         if netloc is not None:

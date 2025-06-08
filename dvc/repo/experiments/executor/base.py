@@ -1,33 +1,20 @@
 import logging
 import os
-import pickle  # nosec B403
+import pickle
 import shutil
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from enum import IntEnum
 from itertools import chain
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Union
 
-from funcy import get_in
 from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH, ExpRefInfo
 from dvc.repo.experiments.utils import to_studio_params
@@ -36,17 +23,23 @@ from dvc.repo.params.show import _collect_top_level_params
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
-from dvc.utils.studio import env_to_config
+from dvc.utils.studio import (
+    env_to_config,
+    get_repo_url,
+    get_subrepo_relpath,
+)
 
 if TYPE_CHECKING:
     from queue import Queue
+
+    from typing_extensions import Self
 
     from dvc.repo import Repo
     from dvc.repo.experiments.stash import ExpStashEntry
     from dvc.scm import Git
     from dvc.stage import PipelineStage, Stage
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class ExecutorResult(NamedTuple):
@@ -112,9 +105,6 @@ class ExecutorInfo:
         return cls.from_dict(load_json(filename))
 
 
-_T = TypeVar("_T", bound="BaseExecutor")
-
-
 class BaseExecutor(ABC):
     """Base class for executing experiments in parallel.
 
@@ -129,7 +119,6 @@ class BaseExecutor(ABC):
 
     PACKED_ARGS_FILE = "repro.dat"
     WARN_UNTRACKED = False
-    QUIET = False
     INFOFILE_EXT = ".run"
     DEFAULT_LOCATION: str = "workspace"
 
@@ -186,7 +175,7 @@ class BaseExecutor(ABC):
     @property
     def info(self) -> "ExecutorInfo":
         if self.result is not None:
-            result_dict: Dict[str, Any] = {
+            result_dict: dict[str, Any] = {
                 "result_hash": self.result.exp_hash,
                 "result_ref": (
                     str(self.result.ref_info) if self.result.ref_info else None
@@ -208,9 +197,9 @@ class BaseExecutor(ABC):
         )
 
     @classmethod
-    def from_info(cls: Type[_T], info: "ExecutorInfo") -> _T:
+    def from_info(cls, info: "ExecutorInfo") -> "Self":
         if info.result_hash:
-            result: Optional["ExecutorResult"] = ExecutorResult(
+            result: Optional[ExecutorResult] = ExecutorResult(
                 info.result_hash,
                 (ExpRefInfo.from_ref(info.result_ref) if info.result_ref else None),
                 info.result_force,
@@ -230,21 +219,21 @@ class BaseExecutor(ABC):
     @classmethod
     @abstractmethod
     def from_stash_entry(
-        cls: Type[_T],
+        cls,
         repo: "Repo",
         entry: "ExpStashEntry",
         **kwargs,
-    ) -> _T:
+    ) -> "Self":
         pass
 
     @classmethod
     def _from_stash_entry(
-        cls: Type[_T],
+        cls,
         repo: "Repo",
         entry: "ExpStashEntry",
         root_dir: str,
         **kwargs,
-    ) -> _T:
+    ) -> "Self":
         return cls(
             root_dir=root_dir,
             dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
@@ -256,21 +245,12 @@ class BaseExecutor(ABC):
         )
 
     @classmethod
-    def _get_stage_files(cls, stages: List["Stage"]) -> List[str]:
-        from dvc.stage.utils import _get_stage_files
-
-        ret: List[str] = []
-        for stage in stages:
-            ret.extend(_get_stage_files(stage))
-        return ret
-
-    @classmethod
-    def _get_top_level_paths(cls, repo: "Repo") -> List["str"]:
+    def _get_top_level_paths(cls, repo: "Repo") -> list["str"]:
         return list(
             chain(
                 _collect_top_level_metrics(repo),
                 _collect_top_level_params(repo),
-                repo.index._plot_sources,  # pylint: disable=protected-access
+                repo.index._plot_sources,
             )
         )
 
@@ -278,8 +258,10 @@ class BaseExecutor(ABC):
     def save(
         cls,
         info: "ExecutorInfo",
+        targets: Optional[Iterable[str]] = None,
+        recursive: bool = False,
         force: bool = False,
-        include_untracked: Optional[List[str]] = None,
+        include_untracked: Optional[list[str]] = None,
         message: Optional[str] = None,
     ) -> ExecutorResult:
         from dvc.dvcfile import LOCK_FILE
@@ -303,17 +285,29 @@ class BaseExecutor(ABC):
             include_untracked.append(LOCK_FILE)
 
         try:
-            stages = dvc.commit([], force=True, relink=False)
+            stages = []
+            if targets:
+                for target in targets:
+                    stages.append(  # noqa: PERF401
+                        dvc.commit(
+                            target, recursive=recursive, force=True, relink=False
+                        )
+                    )
+            else:
+                stages = dvc.commit([], recursive=recursive, force=True, relink=False)
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
-                dvc.scm.add(include_untracked)
-            cls.commit(
-                dvc.scm,  # type: ignore[arg-type]
-                exp_hash,
-                exp_name=info.name,
-                force=force,
-                message=message,
-            )
+                dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
+
+            with cls.auto_push(dvc):
+                cls.commit(
+                    dvc.scm,  # type: ignore[arg-type]
+                    exp_hash,
+                    exp_name=info.name,
+                    force=force,
+                    message=message,
+                )
+
             ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
             exp_ref = ExpRefInfo.from_ref(ref) if ref else None
             untracked = dvc.scm.untracked_files()
@@ -375,13 +369,13 @@ class BaseExecutor(ABC):
     @staticmethod
     def unpack_repro_args(path):
         with open(path, "rb") as fobj:
-            data = pickle.load(fobj)  # noqa: S301 # nosec B301
+            data = pickle.load(fobj)  # noqa: S301
         return data["args"], data["kwargs"]
 
     def fetch_exps(
         self,
         dest_scm: "Git",
-        refs: List[str],
+        refs: list[str],
         force: bool = False,
         on_diverged: Optional[Callable[[str], None]] = None,
         **kwargs,
@@ -456,7 +450,7 @@ class BaseExecutor(ABC):
         infofile: Optional[str] = None,
         log_errors: bool = True,
         log_level: Optional[int] = None,
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
     ) -> "ExecutorResult":
@@ -470,16 +464,13 @@ class BaseExecutor(ABC):
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.ui import ui
 
-        auto_push = env2bool(DVC_EXP_AUTO_PUSH)
-        git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
-
         if queue is not None:
             queue.put((rev, os.getpid()))
         if log_errors and log_level is not None:
             cls._set_log_level(log_level)
 
         exp_hash: Optional[str] = None
-        exp_ref: Optional["ExpRefInfo"] = None
+        exp_ref: Optional[ExpRefInfo] = None
         repro_force: bool = False
 
         if info.name:
@@ -493,9 +484,6 @@ class BaseExecutor(ABC):
             message=message,
             **kwargs,
         ) as dvc:
-            if auto_push:
-                cls._validate_remotes(dvc, git_remote)
-
             args, kwargs = cls._repro_args(dvc)
             if args:
                 targets: Optional[Union[list, str]] = args[0]
@@ -503,9 +491,7 @@ class BaseExecutor(ABC):
                 targets = kwargs.get("targets")
 
             repro_force = kwargs.get("force", False)
-            logger.trace(  # type: ignore[attr-defined]
-                "Executor repro with force = '%s'", str(repro_force)
-            )
+            logger.trace("Executor repro with force = '%s'", str(repro_force))
 
             repro_dry = kwargs.get("dry")
 
@@ -519,10 +505,8 @@ class BaseExecutor(ABC):
                     recursive=kwargs.get("recursive", False),
                 )
 
+            kwargs["repro_fn"] = cls._repro_and_track
             stages = dvc.reproduce(*args, **kwargs)
-            if paths := cls._get_stage_files(stages):
-                logger.debug("Staging stage-related files: %s", paths)
-                dvc.scm_context.add(paths)
             if paths := cls._get_top_level_paths(dvc):
                 logger.debug("Staging top-level files: %s", paths)
                 dvc.scm_context.add(paths)
@@ -533,8 +517,6 @@ class BaseExecutor(ABC):
                     dvc,
                     info,
                     exp_hash,
-                    auto_push,
-                    git_remote,
                     repro_force,
                     message=message,
                 )
@@ -547,28 +529,37 @@ class BaseExecutor(ABC):
         # multiprocessing calls
         return ExecutorResult(exp_hash, exp_ref, repro_force)
 
+    @staticmethod
+    def _repro_and_track(stage: "Stage", **kwargs) -> Optional["Stage"]:
+        from dvc.repo.reproduce import _reproduce_stage
+        from dvc.stage.utils import _get_stage_files
+
+        ret = _reproduce_stage(stage, **kwargs)
+        if not kwargs.get("dry") and (paths := _get_stage_files(stage)):
+            logger.debug("Staging stage-related files: %s", paths)
+            stage.repo.scm_context.add(paths)
+        return ret
+
     @classmethod
     def _repro_commit(
         cls,
         dvc,
         info,
         exp_hash,
-        auto_push,
-        git_remote,
         repro_force,
         message: Optional[str] = None,
-    ) -> Tuple[Optional[str], Optional["ExpRefInfo"], bool]:
-        cls.commit(
-            dvc.scm,
-            exp_hash,
-            exp_name=info.name,
-            force=repro_force,
-            message=message,
-        )
-        if auto_push:
-            cls._auto_push(dvc, dvc.scm, git_remote)
+    ) -> tuple[Optional[str], Optional["ExpRefInfo"], bool]:
+        with cls.auto_push(dvc):
+            cls.commit(
+                dvc.scm,
+                exp_hash,
+                exp_name=info.name,
+                force=repro_force,
+                message=message,
+            )
+
         ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-        exp_ref: Optional["ExpRefInfo"] = ExpRefInfo.from_ref(ref) if ref else None
+        exp_ref: Optional[ExpRefInfo] = ExpRefInfo.from_ref(ref) if ref else None
         if cls.WARN_UNTRACKED:
             untracked = dvc.scm.untracked_files()
             if untracked:
@@ -585,29 +576,27 @@ class BaseExecutor(ABC):
 
     @classmethod
     @contextmanager
-    def _repro_dvc(  # noqa: C901
+    def _repro_dvc(
         cls,
         info: "ExecutorInfo",
         infofile: Optional[str] = None,
         log_errors: bool = True,
-        copy_paths: Optional[List[str]] = None,
+        copy_paths: Optional[list[str]] = None,
         message: Optional[str] = None,
         **kwargs,
     ) -> Iterator["Repo"]:
-        from dvc_studio_client.post_live_metrics import post_live_metrics
-
         from dvc.repo import Repo
+        from dvc_studio_client.post_live_metrics import post_live_metrics
 
         with Repo(os.path.join(info.root_dir, info.dvc_dir)) as dvc:
             info.status = TaskStatus.RUNNING
             if infofile is not None:
                 info.dump_json(infofile)
-            if cls.QUIET:
-                dvc.scm_context.quiet = cls.QUIET
+            dvc.scm_context.quiet = True
             old_cwd = os.getcwd()
 
             for path in copy_paths or []:
-                cls._copy_path(os.path.realpath(path), os.path.join(dvc.root_dir, path))
+                cls._copy_path(os.path.abspath(path), os.path.join(dvc.root_dir, path))
 
             if info.wdir:
                 os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
@@ -621,7 +610,9 @@ class BaseExecutor(ABC):
             # set missing config options using saved config
             # inferring repo url will fail if not set here
             run_env_config = env_to_config(kwargs.get("run_env", {}))
-            dvc_studio_config = {**run_env_config, **dvc_studio_config}
+            dvc_studio_config = run_env_config | dvc_studio_config
+            # override studio repo url if exp git remote set
+            repo_url = get_repo_url(dvc)
             try:
                 post_live_metrics(
                     "start",
@@ -631,6 +622,8 @@ class BaseExecutor(ABC):
                     params=to_studio_params(dvc.params.show()),
                     dvc_studio_config=dvc_studio_config,
                     message=message,
+                    subdir=get_subrepo_relpath(dvc),
+                    studio_repo_url=repo_url,
                 )
                 logger.debug("Running repro in '%s'", os.getcwd())
                 yield dvc
@@ -646,14 +639,17 @@ class BaseExecutor(ABC):
                 info.status = TaskStatus.FAILED
                 raise
             finally:
+                from dvc.repo.metrics.show import _gather_metrics
+
                 post_live_metrics(
                     "done",
                     info.baseline_rev,
                     info.name,  # type: ignore[arg-type]
                     "dvc",
                     experiment_rev=dvc.experiments.scm.get_ref(EXEC_BRANCH),
-                    metrics=get_in(dvc.metrics.show(), ["", "data"]),
+                    metrics=_gather_metrics(dvc, on_error="return"),
                     dvc_studio_config=dvc_studio_config,
+                    studio_repo_url=repo_url,
                 )
 
                 if infofile is not None:
@@ -673,15 +669,46 @@ class BaseExecutor(ABC):
             kwargs = {}
         return args, kwargs
 
+    @classmethod
+    @contextmanager
+    def auto_push(cls, dvc: "Repo") -> Iterator[None]:
+        exp_config = dvc.config.get("exp", {})
+        auto_push = env2bool(DVC_EXP_AUTO_PUSH, exp_config.get("auto_push", False))
+        if not auto_push:
+            yield
+            return
+
+        git_remote = os.getenv(
+            DVC_EXP_GIT_REMOTE, exp_config.get("git_remote", "origin")
+        )
+        try:
+            cls._validate_remotes(dvc, git_remote)
+        except DvcException as exc:
+            logger.warning("Failed to validate remotes. Disabling auto push: %s", exc)
+
+            yield
+            return
+        yield
+        cls._auto_push(dvc, git_remote)
+
     @staticmethod
     def _auto_push(
         dvc: "Repo",
-        scm: "Git",
         git_remote: Optional[str],
         push_cache=True,
         run_cache=True,
     ):
-        branch = scm.get_ref(EXEC_BRANCH, follow=False)
+        from dvc.ui import ui
+        from dvc.utils import format_link
+
+        branch = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+        link = format_link(
+            "https://dvc.org/doc/user-guide/experiment-management/sharing-experiments"
+        )
+        ui.write(
+            f"Pushing experiment to '{git_remote}'. Cancel with CTRL+C. "
+            f"See {link} for more info."
+        )
         try:
             dvc.experiments.push(
                 git_remote,
@@ -689,7 +716,7 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:  # noqa: BLE001, pylint: disable=W0703
+        except DvcException as exc:
             logger.warning(
                 (
                     "Something went wrong while auto pushing experiment "
@@ -709,6 +736,7 @@ class BaseExecutor(ABC):
         message: Optional[str] = None,
     ):
         """Commit stages as an experiment and return the commit SHA."""
+
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=False):
             logger.debug("No changes to commit")
@@ -781,7 +809,7 @@ class BaseExecutor(ABC):
             raise DvcException(f"Unable to copy '{src}' to '{dst}'.") from exc
 
     @contextmanager
-    def set_temp_refs(self, scm: "Git", temp_dict: Dict[str, str]):
+    def set_temp_refs(self, scm: "Git", temp_dict: dict[str, str]):
         try:
             for ref, rev in temp_dict.items():
                 scm.set_ref(ref, rev)

@@ -1,18 +1,19 @@
-import logging
 import os
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from funcy import first
 
 from dvc import fs
+from dvc.config import RemoteConfigError
 from dvc.exceptions import CollectCacheError, DvcException
+from dvc.log import logger
 from dvc.utils import dict_sha256, relpath
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class RunCacheNotFoundError(DvcException):
@@ -99,10 +100,16 @@ class StageCache:
         if not os.path.exists(cache_dir):
             return None
 
-        for value in os.listdir(cache_dir):
-            cache = self._load_cache(key, value)
-            if cache:
-                return cache
+        newest_entry = first(
+            sorted(
+                os.listdir(cache_dir),
+                key=lambda f: os.path.getmtime(os.path.join(cache_dir, f)),
+                reverse=True,
+            )
+        )
+        cache = self._load_cache(key, newest_entry)
+        if cache:
+            return cache
 
         return None
 
@@ -174,9 +181,9 @@ class StageCache:
 
         path = self._get_cache_path(cache_key, cache_value)
         local_fs = self.repo.cache.legacy.fs
-        parent = local_fs.path.parent(path)
+        parent = local_fs.parent(path)
         self.repo.cache.legacy.makedirs(parent)
-        tmp = local_fs.path.join(parent, fs.utils.tmp_fname())
+        tmp = local_fs.join(parent, fs.utils.tmp_fname())
         assert os.path.exists(parent)
         assert os.path.isdir(parent)
         dump_yaml(tmp, cache)
@@ -222,14 +229,14 @@ class StageCache:
         if not dry:
             cached_stage.checkout()
 
-    def transfer(self, from_odb, to_odb):
+    def transfer(self, from_odb, to_odb, force=True):
         from dvc.fs import HTTPFileSystem, LocalFileSystem
-        from dvc.fs.callbacks import Callback
+        from dvc.fs.callbacks import TqdmCallback
 
         from_fs = from_odb.fs
         to_fs = to_odb.fs
         func = fs.generic.log_exceptions(fs.generic.copy)
-        runs = from_fs.path.join(from_odb.path, "runs")
+        runs = from_fs.join(from_odb.path, "runs")
 
         http_odb = next(
             (odb for odb in (from_odb, to_odb) if isinstance(odb.fs, HTTPFileSystem)),
@@ -240,43 +247,47 @@ class StageCache:
             message = f"run-cache is not supported for http filesystem: {path}"
             raise RunCacheNotSupported(message)
 
-        ret: List[Tuple[str, str]] = []
+        ret: list[tuple[str, str]] = []
         if not from_fs.exists(runs):
             return ret
 
         for src in from_fs.find(runs):
-            rel = from_fs.path.relpath(src, from_odb.path)
+            rel = from_fs.relpath(src, from_odb.path)
             if not isinstance(to_fs, LocalFileSystem):
-                rel = from_fs.path.as_posix(rel)
+                rel = from_fs.as_posix(rel)
 
-            dst = to_fs.path.join(to_odb.path, rel)
-            key = to_fs.path.parent(dst)
+            dst = to_fs.join(to_odb.path, rel)
+            key = to_fs.parent(dst)
+
             # check if any build cache already exists for this key
             # TODO: check if MaxKeys=1 or something like that applies
             # or otherwise this will take a lot of time!
-            if to_fs.exists(key) and first(to_fs.find(key)):
+            if not force and to_fs.exists(key) and first(to_fs.find(key)):
                 continue
 
-            src_name = from_fs.path.name(src)
-            parent_name = from_fs.path.name(from_fs.path.parent(src))
-            with Callback.as_tqdm_callback(
-                desc=src_name,
-                bytes=True,
-            ) as cb:
+            src_name = from_fs.name(src)
+            parent_name = from_fs.name(from_fs.parent(src))
+            with TqdmCallback(desc=src_name, bytes=True) as cb:
                 func(from_fs, src, to_fs, dst, callback=cb)
             ret.append((parent_name, src_name))
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        dest_odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "push --run-cache", hash_name="md5-dos2unix"
-        )
+        try:
+            dest_odb = odb or self.repo.cloud.get_remote_odb(
+                remote, "push --run-cache", hash_name="md5-dos2unix"
+            )
+        except RemoteConfigError as e:
+            raise RunCacheNotSupported(e) from e
         return self.transfer(self.repo.cache.legacy, dest_odb)
 
     def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        odb = odb or self.repo.cloud.get_remote_odb(
-            remote, "fetch --run-cache", hash_name="md5-dos2unix"
-        )
+        try:
+            odb = odb or self.repo.cloud.get_remote_odb(
+                remote, "fetch --run-cache", hash_name="md5-dos2unix"
+            )
+        except RemoteConfigError as e:
+            raise RunCacheNotSupported(e) from e
         return self.transfer(odb, self.repo.cache.legacy)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):

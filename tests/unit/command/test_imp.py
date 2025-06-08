@@ -14,6 +14,13 @@ def test_import(mocker, dvc):
             "version",
             "--jobs",
             "3",
+            "--config",
+            "myconfig",
+            "--remote",
+            "myremote",
+            "--remote-config",
+            "k1=v1",
+            "k2=v2",
         ]
     )
     assert cli_args.func == CmdImport
@@ -31,6 +38,10 @@ def test_import(mocker, dvc):
         no_exec=False,
         no_download=False,
         jobs=3,
+        config="myconfig",
+        remote="myremote",
+        remote_config={"k1": "v1", "k2": "v2"},
+        force=False,
     )
 
 
@@ -61,6 +72,10 @@ def test_import_no_exec(mocker, dvc):
         no_exec=True,
         no_download=False,
         jobs=None,
+        config=None,
+        remote=None,
+        remote_config=None,
+        force=False,
     )
 
 
@@ -91,4 +106,8 @@ def test_import_no_download(mocker, dvc):
         no_exec=False,
         no_download=True,
         jobs=None,
+        config=None,
+        remote=None,
+        remote_config=None,
+        force=False,
     )

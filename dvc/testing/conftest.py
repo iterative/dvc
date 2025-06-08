@@ -1,1 +1,1 @@
-from .fixtures import *  # noqa, pylint: disable=wildcard-import
+from .fixtures import *  # noqa: F403

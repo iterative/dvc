@@ -1,12 +1,10 @@
-from dataclasses import dataclass
-
 import pytest
-from dvc_http import HTTPFileSystem, HTTPSFileSystem
-from dvc_s3 import S3FileSystem
-from dvc_ssh import SSHFileSystem
 
 from dvc.config import RemoteNotFoundError
 from dvc.fs import LocalFileSystem, get_cloud_fs, get_fs_cls, get_fs_config
+from dvc_http import HTTPFileSystem, HTTPSFileSystem
+from dvc_s3 import S3FileSystem
+from dvc_ssh import SSHFileSystem
 
 url_cls_pairs = [
     ("s3://bucket/path", S3FileSystem),
@@ -63,14 +61,8 @@ def test_remote_url():
     }
 
 
-@dataclass
-class FakeRepo:
-    config: dict
-
-
 def test_get_cloud_fs():
-    repo = FakeRepo({})
-    cls, config, path = get_cloud_fs(repo, url="ssh://example.com:/dir/path")
+    cls, config, path = get_cloud_fs({}, url="ssh://example.com:/dir/path")
     assert cls is SSHFileSystem
     assert config == {"host": "example.com", "verify": False}
     assert path == "/dir/path"

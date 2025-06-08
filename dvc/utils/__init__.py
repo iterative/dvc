@@ -2,15 +2,16 @@
 
 import hashlib
 import json
-import logging
 import os
 import re
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 import colorama
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from typing import TextIO
+
 
 LARGE_DIR_SIZE = 100
 TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
@@ -202,7 +203,7 @@ def boxify(message, border_color=None):
 
 
 def _visual_width(line):
-    """Get the the number of columns required to display a string"""
+    """Get the number of columns required to display a string"""
 
     return len(re.sub(colorama.ansitowin32.AnsiToWin32.ANSI_CSI_RE, "", line))
 
@@ -218,23 +219,13 @@ def _visual_center(line, width):
 
 
 def relpath(path, start=os.curdir):
-    path = os.fspath(path)
+    path = os.path.abspath(os.fspath(path))
     start = os.path.abspath(os.fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
-    if os.name == "nt":
-        # Since python 3.8 os.realpath resolves network shares to their UNC
-        # path. So, to be certain that relative paths correctly captured,
-        # we need to resolve to UNC path first. We resolve only the drive
-        # name so that we don't follow any 'real' symlinks on the path
-        def resolve_network_drive_windows(path_to_resolve):
-            drive, tail = os.path.splitdrive(path_to_resolve)
-            return os.path.join(os.path.realpath(drive), tail)
+    if os.name == "nt" and not os.path.commonprefix([start, path]):
+        return path
 
-        path = resolve_network_drive_windows(os.path.abspath(path))
-        start = resolve_network_drive_windows(start)
-        if not os.path.commonprefix([start, path]):
-            return path
     return os.path.relpath(path, start)
 
 
@@ -252,10 +243,10 @@ def env2bool(var, undefined=False):
     var = os.getenv(var, None)
     if var is None:
         return undefined
-    return bool(re.search("1|y|yes|true", var, flags=re.I))
+    return bool(re.search("1|y|yes|true", var, flags=re.IGNORECASE))
 
 
-def resolve_output(inp, out, force=False):
+def resolve_output(inp: str, out: Optional[str], force=False) -> str:
     from urllib.parse import urlparse
 
     from dvc.exceptions import FileExistsLocallyError
@@ -294,7 +285,7 @@ def resolve_paths(repo, out, always_local=False):
         # urlparse interprets windows drive letters as URL scheme
         scheme = ""
 
-    if scheme or not localfs.path.isin_or_eq(abspath, repo.root_dir):
+    if scheme or not localfs.isin_or_eq(abspath, repo.root_dir):
         wdir = os.getcwd()
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
         os.path.isdir(abspath) and localfs.is_symlink(abspath)
@@ -330,7 +321,7 @@ def error_link(name):
 
 def parse_target(
     target: str, default: Optional[str] = None, isa_glob: bool = False
-) -> Tuple[Optional[str], Optional[str]]:
+) -> tuple[Optional[str], Optional[str]]:
     from dvc.dvcfile import LOCK_FILE, PROJECT_FILE, is_valid_filename
     from dvc.exceptions import DvcException
     from dvc.parsing import JOIN
@@ -365,10 +356,6 @@ def parse_target(
         if not name:
             ret = (target, None)
             return ret if is_valid_filename(target) else ret[::-1]
-
-    if not path:
-        logger.trace("Assuming file to be '%s'", default)  # type: ignore[attr-defined]
-
     return path or default, name
 
 
@@ -395,14 +382,14 @@ def glob_targets(targets, glob=True, recursive=True):
 
 def error_handler(func):
     def wrapper(*args, **kwargs):
-        onerror = kwargs.get("onerror", None)
+        onerror = kwargs.get("onerror")
         result = {}
 
         try:
             vals = func(*args, **kwargs)
             if vals:
                 result["data"] = vals
-        except Exception as e:  # noqa: BLE001, pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             if onerror is not None:
                 onerror(result, e, **kwargs)
         return result
@@ -410,12 +397,7 @@ def error_handler(func):
     return wrapper
 
 
-def onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
-    logger.debug("", exc_info=True)
-    result["error"] = exception
-
-
-def errored_revisions(rev_data: Dict) -> List:
+def errored_revisions(rev_data: dict) -> list:
     from dvc.utils.collections import nested_contains
 
     result = []
@@ -423,3 +405,9 @@ def errored_revisions(rev_data: Dict) -> List:
         if nested_contains(data, "error"):
             result.append(revision)
     return result
+
+
+def isatty(stream: "Optional[TextIO]") -> bool:
+    if stream is None:
+        return False
+    return stream.isatty()

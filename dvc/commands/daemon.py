@@ -1,6 +1,8 @@
 from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import fix_subparsers
+from dvc.log import logger
+
+logger = logger.getChild(__name__)
 
 
 class CmdDaemonBase(CmdBaseNoRepo):
@@ -21,6 +23,8 @@ class CmdDaemonUpdater(CmdDaemonBase):
         config = Config(dvc_dir, validate=False)
         hardlink_lock = config.get("core", {}).get("hardlink_lock", False)
         updater = Updater(tmp_dir, hardlink_lock=hardlink_lock)
+
+        logger.info("Starting updater to fetch the latest version")
         updater.fetch(detach=False)
 
         return 0
@@ -30,6 +34,7 @@ class CmdDaemonAnalytics(CmdDaemonBase):
     def run(self):
         from dvc import analytics
 
+        logger.info("Sending analytics")
         analytics.send(self.args.target)
 
         return 0
@@ -47,9 +52,8 @@ def add_parser(subparsers, parent_parser):
     daemon_subparsers = daemon_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc daemon CMD --help` for command-specific help.",
+        required=True,
     )
-
-    fix_subparsers(daemon_subparsers)
 
     DAEMON_UPDATER_HELP = "Fetch latest available version."
     daemon_updater_parser = daemon_subparsers.add_parser(

@@ -5,6 +5,7 @@ import pytest
 
 from dvc.cli import main
 from dvc.utils import relpath
+from dvc.utils.serialize import JSONFileCorruptedError
 
 
 def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
@@ -21,7 +22,7 @@ def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
 
     expected = {"m.yaml": {"": {"old": 1, "new": 3, "diff": 2}}}
 
-    assert dvc.metrics.diff(a_rev="HEAD~2") == expected
+    assert dvc.metrics.diff(a_rev="HEAD~2") == {"diff": expected}
 
 
 def test_metrics_diff_yaml(tmp_dir, scm, dvc, run_copy_metrics):
@@ -47,7 +48,7 @@ def test_metrics_diff_yaml(tmp_dir, scm, dvc, run_copy_metrics):
         }
     }
 
-    assert dvc.metrics.diff(a_rev="HEAD~2") == expected
+    assert dvc.metrics.diff(a_rev="HEAD~2") == {"diff": expected}
 
 
 def test_metrics_diff_json(tmp_dir, scm, dvc, run_copy_metrics):
@@ -72,7 +73,7 @@ def test_metrics_diff_json(tmp_dir, scm, dvc, run_copy_metrics):
             "a.b.c": {"old": 1, "new": 3, "diff": 2},
         }
     }
-    assert dvc.metrics.diff(a_rev="HEAD~2") == expected
+    assert dvc.metrics.diff(a_rev="HEAD~2") == {"diff": expected}
 
 
 def test_metrics_diff_json_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
@@ -94,7 +95,7 @@ def test_metrics_diff_json_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
     assert dvc.metrics.diff(a_rev="HEAD~2") == {}
 
 
-def test_metrics_diff_broken_json(tmp_dir, scm, dvc, run_copy_metrics):
+def test_metrics_diff_broken_json(M, tmp_dir, scm, dvc, run_copy_metrics):
     metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
     (tmp_dir / "m_temp.json").dump(metrics)
     run_copy_metrics(
@@ -108,11 +109,14 @@ def test_metrics_diff_broken_json(tmp_dir, scm, dvc, run_copy_metrics):
     (tmp_dir / "m.json").write_text(json.dumps(metrics) + "ma\nlformed\n")
 
     assert dvc.metrics.diff() == {
-        "m.json": {
-            "a.b.e": {"old": "3", "new": None},
-            "a.b.c": {"old": 1, "new": None},
-            "a.b.d": {"old": 1, "new": None},
-        }
+        "diff": {
+            "m.json": {
+                "a.b.e": {"old": "3", "new": None},
+                "a.b.c": {"old": 1, "new": None},
+                "a.b.d": {"old": 1, "new": None},
+            }
+        },
+        "errors": {"workspace": {"m.json": M.instance_of(JSONFileCorruptedError)}},
     }
 
 
@@ -129,15 +133,17 @@ def test_metrics_diff_new_metric(tmp_dir, scm, dvc, run_copy_metrics):
     )
 
     assert dvc.metrics.diff() == {
-        "m.json": {
-            "a.b.e": {"old": None, "new": "3"},
-            "a.b.c": {"old": None, "new": 1},
-            "a.b.d": {"old": None, "new": 1},
+        "diff": {
+            "m.json": {
+                "a.b.e": {"old": None, "new": "3"},
+                "a.b.c": {"old": None, "new": 1},
+                "a.b.d": {"old": None, "new": 1},
+            }
         }
     }
 
 
-def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc, run_copy_metrics):
+def test_metrics_diff_deleted_metric(M, tmp_dir, scm, dvc, run_copy_metrics):
     metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
     (tmp_dir / "m_temp.json").dump(metrics)
     run_copy_metrics(
@@ -151,11 +157,14 @@ def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc, run_copy_metrics):
     (tmp_dir / "m.json").unlink()
 
     assert dvc.metrics.diff() == {
-        "m.json": {
-            "a.b.e": {"old": "3", "new": None},
-            "a.b.c": {"old": 1, "new": None},
-            "a.b.d": {"old": 1, "new": None},
-        }
+        "diff": {
+            "m.json": {
+                "a.b.e": {"old": "3", "new": None},
+                "a.b.c": {"old": 1, "new": None},
+                "a.b.d": {"old": 1, "new": None},
+            }
+        },
+        "errors": {"workspace": {"m.json": M.instance_of(FileNotFoundError)}},
     }
 
 
@@ -173,9 +182,11 @@ def test_metrics_diff_with_unchanged(tmp_dir, scm, dvc, run_copy_metrics):
     tmp_dir.scm_gen("metrics.yaml", "foo: 3\nxyz: 10", commit="3")
 
     assert dvc.metrics.diff(a_rev="HEAD~2", all=True) == {
-        "metrics.yaml": {
-            "foo": {"old": 1, "new": 3, "diff": 2},
-            "xyz": {"old": 10, "new": 10, "diff": 0},
+        "diff": {
+            "metrics.yaml": {
+                "foo": {"old": 1, "new": 3, "diff": 2},
+                "xyz": {"old": 10, "new": 10, "diff": 0},
+            }
         }
     }
 
@@ -206,7 +217,7 @@ def test_metrics_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
 
     expected = {"m.yaml": {"": {"old": 3, "new": 4, "diff": 1}}}
 
-    assert dvc.metrics.diff() == expected
+    assert dvc.metrics.diff() == {"diff": expected}
 
 
 def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
@@ -242,7 +253,9 @@ def test_metrics_diff_non_metrics(tmp_dir, scm, dvc):
     _gen(3)
 
     result = dvc.metrics.diff(targets=["some_file.yaml"], a_rev="HEAD~2")
-    assert result == {"some_file.yaml": {"foo": {"old": 1, "new": 3, "diff": 2}}}
+    assert result == {
+        "diff": {"some_file.yaml": {"foo": {"old": 1, "new": 3, "diff": 2}}}
+    }
 
 
 @pytest.mark.parametrize(
@@ -264,7 +277,9 @@ def test_diff_top_level_metrics(tmp_dir, dvc, scm, dvcfile, metrics_file):
 
     metrics_file.dump({"foo": 5})
     assert dvc.metrics.diff() == {
-        relpath(directory / metrics_file): {"foo": {"diff": 2, "new": 5, "old": 3}}
+        "diff": {
+            relpath(directory / metrics_file): {"foo": {"diff": 2, "new": 5, "old": 3}}
+        }
     }
 
 

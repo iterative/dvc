@@ -84,7 +84,7 @@ def test_default_wdir_ignored_in_checksum(tmp_dir, dvc):
     stage = dvc.run(cmd="cp bar foo", deps=["bar"], outs=["foo"], name="copy-foo-bar")
 
     d = stage.dumpd()
-    assert Stage.PARAM_WDIR not in d.keys()
+    assert Stage.PARAM_WDIR not in d
 
     d = load_yaml("dvc.yaml")
     assert Stage.PARAM_WDIR not in d["stages"]["copy-foo-bar"]
@@ -230,17 +230,35 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
 
 @pytest.mark.parametrize("with_deps", (False, True))
 def test_collect_symlink(tmp_dir, dvc, with_deps):
+    from dvc.exceptions import StageNotFoundError
+
     tmp_dir.gen({"data": {"foo": "foo contents"}})
     foo_path = os.path.join("data", "foo")
     dvc.add(foo_path)
 
     data_link = tmp_dir / "data_link"
     data_link.symlink_to("data")
-    stage = list(
-        dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
-    )[0]
 
-    assert stage.addressing == f"{foo_path}.dvc"
+    if with_deps:
+        # NOTE: with_deps means that we'll need to collect and use dvcfiles in the repo
+        # and we currently don't follow symlinks when collecting those, so it will not
+        # be able to find the target stage.
+        with pytest.raises(StageNotFoundError):
+            dvc.stage.collect(target=str(data_link / "foo.dvc"), with_deps=with_deps)
+    else:
+        stage = next(
+            iter(
+                dvc.stage.collect(
+                    target=str(data_link / "foo.dvc"), with_deps=with_deps
+                )
+            )
+        )
+
+        assert stage.addressing == os.path.join("data_link", "foo.dvc")
+
+    stage = next(iter(dvc.stage.collect(target=f"{foo_path}.dvc", with_deps=with_deps)))
+
+    assert stage.addressing == os.path.join("data", "foo.dvc")
 
 
 def test_stage_strings_representation(tmp_dir, dvc, run_copy):

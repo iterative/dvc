@@ -43,9 +43,7 @@ def test_should_return_false_when_base_path_is_symlink(mocker):
     target_path = os.path.join(base_path, "bar")
 
     def base_path_is_symlink(path):
-        if path == base_path:
-            return True
-        return False
+        return path == base_path
 
     mocker.patch.object(
         system,

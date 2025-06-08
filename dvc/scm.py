@@ -1,20 +1,13 @@
 """Manages source control systems (e.g. Git)."""
+
 import os
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from functools import partial
-from typing import (
-    TYPE_CHECKING,
-    Iterator,
-    List,
-    Literal,
-    Mapping,
-    Optional,
-    Union,
-    overload,
-)
+from typing import TYPE_CHECKING, Literal, Optional, Union, overload
 
 from funcy import group_by
-from scmrepo.base import Base  # noqa: F401, pylint: disable=unused-import
+from scmrepo.base import Base  # noqa: F401
 from scmrepo.git import Git
 from scmrepo.noscm import NoSCM
 
@@ -23,6 +16,8 @@ from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
     from scmrepo.progress import GitProgressEvent
+
+    from dvc.fs import FileSystem
 
 
 class SCMError(DvcException):
@@ -67,7 +62,7 @@ def map_scm_exception(with_cause: bool = False) -> Iterator[None]:
         into = SCMError(str(exc))
         if with_cause:
             raise into from exc
-        raise into
+        raise into  # noqa: B904
 
 
 @overload
@@ -76,8 +71,7 @@ def SCM(
     *,
     search_parent_directories: bool = ...,
     no_scm: Literal[False] = ...,
-) -> "Git":
-    ...
+) -> "Git": ...
 
 
 @overload
@@ -86,8 +80,7 @@ def SCM(
     *,
     search_parent_directories: bool = ...,
     no_scm: Literal[True],
-) -> "NoSCM":
-    ...
+) -> "NoSCM": ...
 
 
 @overload
@@ -96,13 +89,10 @@ def SCM(
     *,
     search_parent_directories: bool = ...,
     no_scm: bool = ...,
-) -> Union["Git", "NoSCM"]:
-    ...
+) -> Union["Git", "NoSCM"]: ...
 
 
-def SCM(
-    root_dir, *, search_parent_directories=True, no_scm=False
-):  # pylint: disable=invalid-name
+def SCM(root_dir, *, search_parent_directories=True, no_scm=False):
     """Returns SCM instance that corresponds to a repo at the specified
     path.
 
@@ -189,7 +179,7 @@ def resolve_rev(scm: Union["Git", "NoSCM"], rev: str) -> str:
         raise RevError(str(exc))  # noqa: B904
 
 
-def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
+def _get_n_commits(scm: "Git", revs: list[str], num: int) -> list[str]:
     results = []
     for rev in revs:
         if num == 0:
@@ -210,14 +200,14 @@ def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
 
 def iter_revs(
     scm: "Git",
-    revs: Optional[List[str]] = None,
+    revs: Optional[list[str]] = None,
     num: int = 1,
     all_branches: bool = False,
     all_tags: bool = False,
     all_commits: bool = False,
     all_experiments: bool = False,
     commit_date: Optional[str] = None,
-) -> Mapping[str, List[str]]:
+) -> Mapping[str, list[str]]:
     from scmrepo.exceptions import SCMError as _SCMError
 
     from dvc.repo.experiments.utils import exp_commits
@@ -235,7 +225,7 @@ def iter_revs(
         return {}
 
     revs = revs or []
-    results: List[str] = _get_n_commits(scm, revs, num)
+    results: list[str] = _get_n_commits(scm, revs, num)
 
     if all_commits:
         results.extend(scm.list_all_commits())
@@ -249,7 +239,9 @@ def iter_revs(
         if commit_date:
             from datetime import datetime
 
-            commit_datestamp = datetime.strptime(commit_date, "%Y-%m-%d").timestamp()
+            commit_datestamp = (
+                datetime.strptime(commit_date, "%Y-%m-%d").timestamp()  # noqa: DTZ007
+            )
 
             def _time_filter(rev):
                 try:
@@ -264,3 +256,30 @@ def iter_revs(
 
     rev_resolver = partial(resolve_rev, scm)
     return group_by(rev_resolver, results)
+
+
+def lfs_prefetch(fs: "FileSystem", paths: list[str]):
+    from scmrepo.git.lfs import fetch as _lfs_fetch
+
+    from dvc.fs.dvc import DVCFileSystem
+    from dvc.fs.git import GitFileSystem
+
+    if isinstance(fs, DVCFileSystem) and isinstance(fs.repo.fs, GitFileSystem):
+        git_fs = fs.repo.fs
+        scm = fs.repo.scm
+        assert isinstance(scm, Git)
+    else:
+        return
+
+    try:
+        if "filter=lfs" not in git_fs.open(".gitattributes").read():
+            return
+    except OSError:
+        return
+    with TqdmGit(desc="Checking for Git-LFS objects") as pbar:
+        _lfs_fetch(
+            scm,
+            [git_fs.rev],
+            include=[(path if path.startswith("/") else f"/{path}") for path in paths],
+            progress=pbar.update_git,
+        )

@@ -106,10 +106,7 @@ def test_load_all_multistage(tmp_dir, dvc):
         metrics=["bar2"],
         always_changed=True,
     )
-    assert set(load_file(dvc, PROJECT_FILE).stages.values()) == {
-        stage2,
-        stage1,
-    }
+    assert set(load_file(dvc, PROJECT_FILE).stages.values()) == {stage2, stage1}
 
 
 def test_load_all_singlestage(tmp_dir, dvc):
@@ -169,7 +166,7 @@ def test_remove_stage(tmp_dir, dvc, run_copy):
 
     dvc_file.remove_stage(stage)
 
-    assert ["copy-bar-foobar"] == list(dvc_file._load()[0]["stages"].keys())
+    assert list(dvc_file._load()[0]["stages"].keys()) == ["copy-bar-foobar"]
 
     # sanity check
     stage2.reload()
@@ -193,7 +190,7 @@ def test_remove_stage_lockfile(tmp_dir, dvc, run_copy):
     assert {"copy-bar-foobar", "copy-foo-bar"} == set(lock_file.load()["stages"].keys())
     lock_file.remove_stage(stage)
 
-    assert ["copy-bar-foobar"] == list(lock_file.load()["stages"].keys())
+    assert list(lock_file.load()["stages"].keys()) == ["copy-bar-foobar"]
 
     # sanity check
     stage2.reload()

@@ -1,12 +1,10 @@
-import argparse
-import logging
-
-from dvc.cli import completion
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
+from dvc.cli.utils import DictAction, append_doc_link
 from dvc.exceptions import DvcException
+from dvc.log import logger
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 class CmdGet(CmdBaseNoRepo):
@@ -14,7 +12,13 @@ class CmdGet(CmdBaseNoRepo):
         from dvc.api import get_url
         from dvc.ui import ui
 
-        url = get_url(self.args.path, repo=self.args.url, rev=self.args.rev)
+        url = get_url(
+            self.args.path,
+            repo=self.args.url,
+            rev=self.args.rev,
+            remote=self.args.remote,
+            remote_config=self.args.remote_config,
+        )
         ui.write(url, force=True)
 
         return 0
@@ -37,6 +41,9 @@ class CmdGet(CmdBaseNoRepo):
                 rev=self.args.rev,
                 jobs=self.args.jobs,
                 force=self.args.force,
+                config=self.args.config,
+                remote=self.args.remote,
+                remote_config=self.args.remote_config,
             )
             return 0
         except CloneError:
@@ -56,7 +63,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(GET_HELP, "get"),
         help=GET_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     get_parser.add_argument(
         "url", help="Location of DVC or Git repository to download from"
@@ -101,5 +108,28 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Override local file or folder if exists.",
+    )
+    get_parser.add_argument(
+        "--config",
+        type=str,
+        help=(
+            "Path to a config file that will be merged with the config "
+            "in the target repository."
+        ),
+    )
+    get_parser.add_argument(
+        "--remote",
+        type=str,
+        help="Remote name to set as a default in the target repository.",
+    )
+    get_parser.add_argument(
+        "--remote-config",
+        type=str,
+        nargs="*",
+        action=DictAction,
+        help=(
+            "Remote config options to merge with a remote's config (default or one "
+            "specified by '--remote') in the target repository."
+        ),
     )
     get_parser.set_defaults(func=CmdGet)

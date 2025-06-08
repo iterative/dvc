@@ -7,7 +7,7 @@ import textwrap
 import pytest
 
 from dvc.cli import main
-from dvc.exceptions import CollectCacheError, InvalidArgumentError
+from dvc.exceptions import CollectCacheError, InvalidArgumentError, RevCollectionError
 from dvc.fs import LocalFileSystem
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db.local import LocalHashFileDB
@@ -35,15 +35,15 @@ def good_and_bad_cache(tmp_dir, dvc):
 def test_gc_api(dvc, good_and_bad_cache):
     dvc.gc(workspace=True)
     odb = dvc.cache.local
-    good_cache, bad_cache = good_and_bad_cache
-    assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
+    good_cache, _ = good_and_bad_cache
+    assert set(odb.all()) == good_cache
 
 
 def test_gc_cli(dvc, good_and_bad_cache):
     assert main(["gc", "-wf"]) == 0
     odb = dvc.cache.local
-    good_cache, bad_cache = good_and_bad_cache
-    assert set(odb.oids_exist([*good_cache, *bad_cache])) == good_cache
+    good_cache, _ = good_and_bad_cache
+    assert set(odb.all()) == good_cache
 
 
 def test_gc_branches_tags(tmp_dir, dvc, scm):
@@ -111,8 +111,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
 
     remove(dir_stage.outs[0].cache_path)
 
-    with pytest.raises(CollectCacheError):
+    with pytest.raises(RevCollectionError) as exc:
         dvc.gc(workspace=True)
+    assert type(exc.value.__cause__) is CollectCacheError
 
     assert _count_files(dvc.cache.local.path) == 4
     dvc.gc(force=True, workspace=True)
@@ -196,11 +197,7 @@ def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, local_remote):
         assert main(["gc", "-vf", flag]) == 0
 
 
-def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
+def test_gc_cloud_remove_order(tmp_dir, scm, dvc, mocker, local_remote):
     (standalone, dir1, dir2) = tmp_dir.dvc_gen(
         {
             "file1": "standalone",
@@ -300,7 +297,7 @@ def test_gc_rev_num(tmp_dir, scm, dvc):
 def test_date(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "content", commit="add testfile")
 
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
     datestamp = (now.date() + datetime.timedelta(days=1)).isoformat()
 
     tmp_dir.dvc_gen("testfile", "modified", commit="modified")
@@ -321,12 +318,8 @@ def test_date(tmp_dir, scm, dvc):
     )  # "modified, again"
 
 
-def test_gc_not_in_remote(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
-    (standalone, dir1, dir2) = tmp_dir.dvc_gen(
+def test_gc_not_in_remote(tmp_dir, scm, dvc, mocker, local_remote):
+    (standalone, dir1, _) = tmp_dir.dvc_gen(
         {
             "file1": "standalone",
             "dir1": {"file2": "file2"},
@@ -358,12 +351,9 @@ def test_gc_not_in_remote(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     )
 
 
-def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     tmp_dir.dvc_gen(
         {
@@ -385,15 +375,9 @@ def test_gc_not_in_remote_remote_arg(tmp_dir, scm, dvc, tmp_path_factory, mocker
     assert len(mocked_remove.mock_calls) == 3
 
 
-def test_gc_not_in_remote_with_remote_field(
-    tmp_dir, scm, dvc, tmp_path_factory, mocker
-):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_not_in_remote_with_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     text = textwrap.dedent(
         """\
@@ -420,12 +404,9 @@ def test_gc_not_in_remote_cloud(tmp_dir, scm, dvc):
         dvc.gc(workspace=True, not_in_remote=True, cloud=True)
 
 
-def test_gc_cloud_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-    other_storage = os.fspath(tmp_path_factory.mktemp("test_remote_other"))
-    dvc.config["remote"]["other_remote"] = {"url": other_storage}
+def test_gc_cloud_remote_field(tmp_dir, scm, dvc, mocker, make_remote):
+    make_remote("local_remote", typ="local")
+    make_remote("other_remote", typ="local", default=False)
 
     text = textwrap.dedent(
         """\
@@ -443,3 +424,29 @@ def test_gc_cloud_remote_field(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     mocked_remove = mocker.spy(LocalFileSystem, "remove")
     dvc.gc(workspace=True, cloud=True)
     assert len(mocked_remove.mock_calls) == 2  # local and other_remote
+
+
+def test_gc_dry(dvc, good_and_bad_cache):
+    dvc.gc(workspace=True, dry=True)
+    odb = dvc.cache.local
+    good_cache, _ = good_and_bad_cache
+    assert set(odb.all()) != good_cache
+
+
+def test_gc_logging(caplog, dvc, good_and_bad_cache):
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        dvc.gc(workspace=True)
+
+    assert "Removed 3 objects from repo cache." in caplog.text
+    assert "No unused 'local' cache to remove." in caplog.text
+    assert "No unused 'legacy' cache to remove." in caplog.text
+
+
+def test_gc_skip_failed(tmp_dir, dvc):
+    with open("dvc.yaml", mode="w") as f:
+        f.write("\ninvalid")
+
+    with pytest.raises(RevCollectionError):
+        dvc.gc(force=True, workspace=True)
+
+    dvc.gc(force=True, workspace=True, skip_failed=True)

@@ -1,21 +1,21 @@
-from dvc.utils.diff import diff as _diff
-from dvc.utils.diff import format_dict
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
+    from dvc.repo.metrics.diff import DiffResult
 
 
-def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
+def diff(
+    repo: "Repo",
+    a_rev: str = "HEAD",
+    b_rev: str = "workspace",
+    all: bool = False,  # noqa: A002
+    **kwargs,
+) -> "DiffResult":
     if repo.scm.no_commits:
         return {}
 
-    with_unchanged = kwargs.pop("all", False)
+    from dvc.repo.metrics.diff import _diff
 
-    a_rev = a_rev or "HEAD"
-    b_rev = b_rev or "workspace"
-
-    params = repo.params.show(
-        *args, **kwargs, revs=[a_rev, b_rev], hide_workspace=False
-    )
-
-    old = params.get(a_rev, {}).get("data", {})
-    new = params.get(b_rev, {}).get("data", {})
-
-    return _diff(format_dict(old), format_dict(new), with_unchanged=with_unchanged)
+    params = repo.params.show(revs=[a_rev, b_rev], hide_workspace=False, **kwargs)
+    return _diff(params, a_rev, b_rev, with_unchanged=all)

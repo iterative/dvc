@@ -1,29 +1,20 @@
 import csv
 import io
-import logging
 import os
 from collections import defaultdict
+from collections.abc import Iterator
 from copy import deepcopy
 from functools import partial
 from multiprocessing import cpu_count
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import dpath
 import dpath.options
 from funcy import first, ldistinct, project, reraise
 
 from dvc.exceptions import DvcException
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.log import logger
+from dvc.utils import error_handler, errored_revisions
 from dvc.utils.objects import cached_property
 from dvc.utils.serialize import PARSERS, EncodingError
 from dvc.utils.threadpool import ThreadPoolExecutor
@@ -37,7 +28,12 @@ if TYPE_CHECKING:
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
+
+
+def onerror_collect(result: dict, exception: Exception, *args, **kwargs):
+    logger.debug("", exc_info=True)
+    result["error"] = exception
 
 
 SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS
@@ -46,8 +42,8 @@ SUPPORTED_IMAGE_EXTENSIONS = ImageRenderer.EXTENSIONS
 class PlotMetricTypeError(DvcException):
     def __init__(self, file):
         super().__init__(
-            "'{}' - file type error\n"
-            "Only JSON, YAML, CSV and TSV formats are supported.".format(file)
+            f"'{file}' - file type error\n"
+            "Only JSON, YAML, CSV and TSV formats are supported."
         )
 
 
@@ -77,12 +73,12 @@ class Plots:
 
     def collect(
         self,
-        targets: Optional[List[str]] = None,
-        revs: Optional[List[str]] = None,
+        targets: Optional[list[str]] = None,
+        revs: Optional[list[str]] = None,
         recursive: bool = False,
         onerror: Optional[Callable] = None,
-        props: Optional[Dict] = None,
-    ) -> Iterator[Dict]:
+        props: Optional[dict] = None,
+    ) -> Iterator[dict]:
         """Collects plots definitions and data sources.
 
         Generator yielding a structure like:
@@ -137,7 +133,7 @@ class Plots:
                 revs = ["workspace", *revs]
         for rev in revs:
             with switch_repo(self.repo, rev) as (repo, _):
-                res: Dict = {}
+                res: dict = {}
                 definitions = _collect_definitions(
                     repo,
                     targets=targets,
@@ -163,9 +159,9 @@ class Plots:
     def _collect_data_sources(
         self,
         repo: "Repo",
-        targets: Optional[List[str]] = None,
+        targets: Optional[list[str]] = None,
         recursive: bool = False,
-        props: Optional[Dict] = None,
+        props: Optional[dict] = None,
         onerror: Optional[Callable] = None,
     ):
         fs = repo.dvcfs
@@ -173,9 +169,9 @@ class Plots:
         props = props or {}
 
         plots = _collect_plots(repo, targets, recursive)
-        res: Dict[str, Any] = {}
+        res: dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
-            joined_props = {**rev_props, **props}
+            joined_props = rev_props | props
             res[fs_path] = {"props": joined_props}
             res[fs_path].update(
                 {
@@ -192,7 +188,7 @@ class Plots:
 
     def show(
         self,
-        targets: Optional[List[str]] = None,
+        targets: Optional[list[str]] = None,
         revs=None,
         props=None,
         recursive=False,
@@ -201,7 +197,7 @@ class Plots:
         if onerror is None:
             onerror = onerror_collect
 
-        result: Dict[str, Dict] = {}
+        result: dict[str, dict] = {}
         for data in self.collect(
             targets,
             revs,
@@ -212,7 +208,7 @@ class Plots:
             short_rev = "workspace"
             if rev := getattr(self.repo.fs, "rev", None):
                 short_rev = rev[:7]
-            _resolve_data_sources(data, short_rev, cache_remote_stream=True)
+            _resolve_data_sources(data, short_rev, cache=True)
             result.update(data)
 
         errored = errored_revisions(result)
@@ -281,9 +277,7 @@ def _is_plot(out: "Output") -> bool:
     return bool(out.plot)
 
 
-def _resolve_data_sources(
-    plots_data: Dict, rev: str, cache_remote_stream: bool = False
-):
+def _resolve_data_sources(plots_data: dict, rev: str, cache: bool = False):
     from dvc.progress import Tqdm
 
     values = list(plots_data.values())
@@ -298,7 +292,7 @@ def _resolve_data_sources(
     def resolve(value):
         data_source = value.pop("data_source")
         assert callable(data_source)
-        value.update(data_source(cache_remote_stream=cache_remote_stream))
+        value.update(data_source(cache=cache))
 
     if not to_resolve:
         return
@@ -322,9 +316,9 @@ def _resolve_data_sources(
 
 def _collect_plots(
     repo: "Repo",
-    targets: Optional[List[str]] = None,
+    targets: Optional[list[str]] = None,
     recursive: bool = False,
-) -> Dict[str, Dict]:
+) -> dict[str, dict]:
     from dvc.repo.collect import collect
 
     plots, fs_paths = collect(
@@ -341,8 +335,8 @@ def _collect_plots(
     return result
 
 
-def _get_data_targets(definitions: Dict):
-    result: Set = set()
+def _get_data_targets(definitions: dict):
+    result: set = set()
     if "data" in definitions:
         for content in definitions["data"].values():
             if "data" in content:
@@ -375,15 +369,13 @@ def _matches(targets, config_file, plot_id):
         return True
 
     full_id = get_plot_id(plot_id, config_file)
-    if any(
+    return any(
         (re.match(target, plot_id) or re.match(target, full_id)) for target in targets
-    ):
-        return True
-    return False
+    )
 
 
 def _normpath(path):
-    # TODO dvcfs.path.normopath normalizes to windows path on Windows
+    # TODO dvcfs.normopath normalizes to windows path on Windows
     # even though other methods work as expected
     import posixpath
 
@@ -396,12 +388,12 @@ def _relpath(fs, path):
     # and invoking from some subdir `dvcfile.relpath` returns strange long
     # relative paths
     # ("../../../../../../dvc.yaml") - investigate
-    return fs.path.relpath(fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd())
+    return fs.relpath(fs.join("/", fs.from_os_path(path)), fs.getcwd())
 
 
 def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = None):
     fs = repo.dvcfs
-    result: Dict[str, Dict] = {}
+    result: dict[str, dict] = {}
     for plot in repo.index.plots:
         plot_props = _plot_props(plot)
         dvcfile = plot.stage.dvcfile
@@ -410,15 +402,12 @@ def _collect_output_plots(repo, targets, props, onerror: Optional[Callable] = No
         if _matches(targets, config_path, str(plot)):
             unpacked = unpack_if_dir(
                 fs,
-                _normpath(fs.path.join(wdir_relpath, plot.def_path)),
-                props={**plot_props, **props},
+                _normpath(fs.join(wdir_relpath, plot.def_path)),
+                props=plot_props | props,
                 onerror=onerror,
             )
 
-            dpath.merge(
-                result,
-                {"": unpacked},
-            )
+            dpath.merge(result, {"": unpacked})
     return result
 
 
@@ -432,72 +421,86 @@ def _id_is_path(plot_props=None):
 
 def _adjust_sources(fs, plot_props, config_dir):
     new_plot_props = deepcopy(plot_props)
-    old_y = new_plot_props.pop("y", {})
-    new_y = {}
-    for filepath, val in old_y.items():
-        new_y[_normpath(fs.path.join(config_dir, filepath))] = val
-    new_plot_props["y"] = new_y
+    for axis in ["x", "y"]:
+        x_is_inferred = axis == "x" and (
+            axis not in new_plot_props or isinstance(new_plot_props[axis], str)
+        )
+        if x_is_inferred:
+            continue
+        old = new_plot_props.pop(axis, {})
+        new = {}
+        for filepath, val in old.items():
+            new[_normpath(fs.join(config_dir, filepath))] = val
+        new_plot_props[axis] = new
     return new_plot_props
 
 
 def _resolve_definitions(
     fs: "FileSystem",
-    targets: List[str],
-    props: Dict[str, Any],
+    targets: list[str],
+    props: dict[str, Any],
     config_path: "StrPath",
     definitions: "DictStrAny",
     onerror: Optional[Callable[[Any], Any]] = None,
 ):
-    config_dir = fs.path.dirname(config_path)
-    result: Dict[str, Dict] = {}
+    config_path = os.fspath(config_path)
+    config_dir = fs.dirname(config_path)
+    result: dict[str, dict] = {}
+
+    plot_ids_parents = [
+        _normpath(fs.join(config_dir, plot_id)) for plot_id in definitions
+    ]
     for plot_id, plot_props in definitions.items():
         if plot_props is None:
             plot_props = {}
         if _id_is_path(plot_props):
-            data_path = _normpath(fs.path.join(config_dir, plot_id))
+            data_path = _normpath(fs.join(config_dir, plot_id))
             if _matches(targets, config_path, plot_id):
                 unpacked = unpack_if_dir(
-                    fs,
-                    data_path,
-                    props={**plot_props, **props},
-                    onerror=onerror,
+                    fs, data_path, props=plot_props | props, onerror=onerror
                 )
-                dpath.merge(
-                    result,
-                    unpacked,
-                )
+                # use config for parent directory with most specific definition
+                if unpacked.get("data"):
+                    unpacked["data"] = {
+                        k: v
+                        for k, v in unpacked["data"].items()
+                        if _closest_parent(fs, k, plot_ids_parents) == data_path
+                    }
+                dpath.merge(result, unpacked)
         elif _matches(targets, config_path, plot_id):
             adjusted_props = _adjust_sources(fs, plot_props, config_dir)
-            dpath.merge(result, {"data": {plot_id: {**adjusted_props, **props}}})
+            dpath.merge(result, {"data": {plot_id: adjusted_props | props}})
 
     return result
 
 
-def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
-    result: Dict[str, Dict] = {}
-    top_plots = repo.index._plots  # pylint: disable=protected-access
+def _closest_parent(fs, path, parents):
+    best_result = ""
+    for parent in parents:
+        common_path = fs.commonpath([path, parent])
+        if len(common_path) > len(best_result):
+            best_result = common_path
+    return best_result
+
+
+def _collect_pipeline_files(repo, targets: list[str], props, onerror=None):
+    result: dict[str, dict] = {}
+    top_plots = repo.index._plots
     for dvcfile, plots_def in top_plots.items():
         dvcfile_path = _relpath(repo.dvcfs, dvcfile)
-        dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
+        dvcfile_defs_dict: dict[str, Union[dict, None]] = {}
         for elem in plots_def:
             if isinstance(elem, str):
                 dvcfile_defs_dict[elem] = None
             else:
-                k, v = list(elem.items())[0]
+                assert elem
+                k, v = next(iter(elem.items()))
                 dvcfile_defs_dict[k] = v
 
         resolved = _resolve_definitions(
-            repo.dvcfs,
-            targets,
-            props,
-            dvcfile_path,
-            dvcfile_defs_dict,
-            onerror=onerror,
+            repo.dvcfs, targets, props, dvcfile_path, dvcfile_defs_dict, onerror=onerror
         )
-        dpath.merge(
-            result,
-            {dvcfile_path: resolved},
-        )
+        dpath.merge(result, {dvcfile_path: resolved})
     return result
 
 
@@ -505,23 +508,17 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
 def _collect_definitions(
     repo: "Repo",
     targets=None,
-    props: Optional[Dict] = None,
+    props: Optional[dict] = None,
     onerror: Optional[Callable] = None,
     **kwargs,
-) -> Dict:
-    result: Dict = defaultdict(dict)
+) -> dict:
+    result: dict = defaultdict(dict)
     props = props or {}
 
     fs = repo.dvcfs
-    dpath.merge(
-        result,
-        _collect_pipeline_files(repo, targets, props, onerror=onerror),
-    )
+    dpath.merge(result, _collect_pipeline_files(repo, targets, props, onerror=onerror))
 
-    dpath.merge(
-        result,
-        _collect_output_plots(repo, targets, props, onerror=onerror),
-    )
+    dpath.merge(result, _collect_output_plots(repo, targets, props, onerror=onerror))
 
     for target in targets:
         if not result or fs.exists(target):
@@ -531,8 +528,8 @@ def _collect_definitions(
     return dict(result)
 
 
-def unpack_if_dir(fs, path, props: Dict[str, str], onerror: Optional[Callable] = None):
-    result: Dict[str, Dict] = defaultdict(dict)
+def unpack_if_dir(fs, path, props: dict[str, str], onerror: Optional[Callable] = None):
+    result: dict[str, dict] = defaultdict(dict)
     if fs.isdir(path):
         unpacked = _unpack_dir_files(fs, path, onerror=onerror)
     else:
@@ -540,7 +537,7 @@ def unpack_if_dir(fs, path, props: Dict[str, str], onerror: Optional[Callable] =
 
     if "data" in unpacked:
         for subpath in unpacked["data"]:
-            result["data"].update({subpath: props})
+            result["data"].update({subpath: props.copy()})
     else:
         result.update(unpacked)
 
@@ -569,7 +566,7 @@ def parse(fs, path, props=None, **fs_kwargs):
     return PARSERS[extension](contents, path)
 
 
-def _plot_props(out: "Output") -> Dict:
+def _plot_props(out: "Output") -> dict:
     from dvc.schema import PLOT_PROPS
 
     if not (out.plot):

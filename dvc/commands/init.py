@@ -1,15 +1,14 @@
-import argparse
-import logging
-
 import colorama
 
 from dvc import analytics
+from dvc.cli import formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
+from dvc.log import logger
 from dvc.utils import boxify
 from dvc.utils import format_link as fmt_link
 
-logger = logging.getLogger(__name__)
+logger = logger.getChild(__name__)
 
 
 def _welcome_message():
@@ -69,7 +68,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(INIT_DESCRIPTION, "init"),
         help=INIT_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     init_parser.add_argument(
         "--no-scm",
