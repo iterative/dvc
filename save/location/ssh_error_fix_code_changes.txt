@@ -1,0 +1,66 @@
+diff --git a/dvc_ssh/fs.py b/dvc_ssh/fs.py
+index a3b5c8d5..7e39d172 100644
+--- a/dvc_ssh/fs.py
++++ b/dvc_ssh/fs.py
+@@ -195,7 +195,10 @@ class SSHFileSystem(FileSystem):
+             ret = super().exists(path)
+             return ret
+         except FileNotFoundError:
+-            return False
++            return False        
++        except PermissionError:
++            logger.debug("Permission denied while checking path '%s'", path)
++            return False  # We can't confirm existence without permissions
+ 
+     def isdir(self, path):
+         path = self.path.abspath(path)
+@@ -232,6 +235,8 @@ class SSHFileSystem(FileSystem):
+             raise FileNotFoundError(
+                 f"'{path}' does not exist on the SSH server"
+             ) from exc
++        except PermissionError as exc:
++            raise PermissionError(f"SSH user does not have permission to access '{path}'") from exc
+ 
+     def remove(self, path):
+         path = self.path.abspath(path)
+@@ -245,6 +250,8 @@ class SSHFileSystem(FileSystem):
+             raise FileNotFoundError(
+                 f"'{path}' does not exist on the SSH server"
+             ) from exc
++        except PermissionError as exc:
++            raise PermissionError(f"SSH user does not have permission to delete '{path}'") from exc
+ 
+     def makedirs(self, path):
+         path = self.path.abspath(path)
+@@ -267,6 +274,8 @@ class SSHFileSystem(FileSystem):
+                 raise FileNotFoundError(
+                     f"'{from_info}' does not exist on the SSH server"
+                 ) from exc
++            elif isinstance(exc, PermissionError):
++                raise PermissionError(f"SSH user does not have read permissions for '{from_info}'") from exc
+             raise
+ 
+     def put(self, from_file, to_info, callback=None):
+@@ -284,6 +293,8 @@ class SSHFileSystem(FileSystem):
+                 raise FileNotFoundError(
+                     f"'{from_file}' does not exist on the local filesystem"
+                 ) from exc
++            elif isinstance(exc, PermissionError):
++                raise PermissionError(f"SSH user does not have write permissions for '{to_info}'") from exc
+             raise
+ 
+     def _ssh_client(self, **kwargs):
+@@ -347,7 +358,13 @@ class SSHFileSystem(FileSystem):
+         except paramiko.SSHException as exc:
+             raise SSHError(str(exc)) from exc
+         except paramiko.sftp.SFTPError as exc:
+-            raise FileNotFoundError(str(exc)) from exc
++            # Better error mapping for SSH errors
++            if exc.args[0] == paramiko.sftp.SFTP_NO_SUCH_FILE:
++                raise FileNotFoundError(str(exc)) from exc
++            elif exc.args[0] == paramiko.sftp.SFTP_PERMISSION_DENIED:
++                raise PermissionError(str(exc)) from exc
++            else:
++                raise SSHError(str(exc)) from exc
+         except FileNotFoundError:
+             raise 
