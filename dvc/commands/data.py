@@ -183,7 +183,7 @@ def add_parser(subparsers, parent_parser):
     data_status_parser.add_argument(
         "--respect-no-push",
         action="store_true",
-        default=False,
+        default=True,
         help="Respect the `push: false` flag in the DVC stage's outs.",
     )
     data_status_parser.add_argument(
