@@ -52,6 +52,7 @@ def test_cli(dvc, mocker, mocked_status):
     status.assert_called_once_with(
         untracked_files="all",
         not_in_remote=False,
+        respect_no_push=False,
         remote_refresh=True,
         granular=True,
     )
