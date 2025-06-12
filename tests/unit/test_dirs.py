@@ -16,3 +16,8 @@ def test_global_config_dir_respects_env_var(monkeypatch):
 def test_site_cache_dir_on_unix(monkeypatch):
     monkeypatch.delenv(DVC_SITE_CACHE_DIR, raising=False)
     assert site_cache_dir() == "/var/tmp/dvc"
+
+
+def test_site_cache_dir_env_var(monkeypatch):
+    monkeypatch.setenv(DVC_SITE_CACHE_DIR, "foo_bar")
+    assert site_cache_dir() == "foo_bar"
