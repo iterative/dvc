@@ -21,3 +21,13 @@ def test_site_cache_dir_on_unix(monkeypatch):
 def test_site_cache_dir_env_var(monkeypatch):
     monkeypatch.setenv(DVC_SITE_CACHE_DIR, "foo_bar")
     assert site_cache_dir() == "foo_bar"
+
+
+def test_site_cache_dir_with_config_parameter(monkeypatch):
+    monkeypatch.delenv(DVC_SITE_CACHE_DIR)
+    assert site_cache_dir(config_site_cache_dir="foo_bar") == "foo_bar"
+
+
+def test_site_cache_dir_env_var_precedence(monkeypatch):
+    monkeypatch.setenv(DVC_SITE_CACHE_DIR, "foo")
+    assert site_cache_dir(config_site_cache_dir="bar") == "foo"
