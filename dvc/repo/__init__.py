@@ -609,7 +609,8 @@ class Repo:
         from dvc.fs import GitFileSystem
         from dvc.version import version_tuple
 
-        cache_dir = self.config["core"].get("site_cache_dir") or site_cache_dir()
+        # DVC_SITE_CACHE_DIR might override our config, let site_cache_dir() decide
+        cache_dir = site_cache_dir(self.config["core"].get("site_cache_dir"))
 
         subdir = None
         if isinstance(self.fs, GitFileSystem):

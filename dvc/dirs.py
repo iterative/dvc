@@ -20,12 +20,15 @@ def global_config_dir():
     )
 
 
-def site_cache_dir():
+def site_cache_dir(config_site_cache_dir: str | None = None):
     from platformdirs import PlatformDirs
     from platformdirs.unix import Unix
 
     if dvc_site_cache_dir := os.getenv(env.DVC_SITE_CACHE_DIR):
         return dvc_site_cache_dir
+
+    if config_site_cache_dir is not None:
+        return config_site_cache_dir
 
     if issubclass(Unix, PlatformDirs):
         # Return the cache directory shared by users, e.g. `/var/tmp/$appname`
