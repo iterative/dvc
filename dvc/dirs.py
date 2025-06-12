@@ -21,7 +21,7 @@ def global_config_dir():
     )
 
 
-def site_cache_dir(config_site_cache_dir: Optional[str]):
+def site_cache_dir(config_site_cache_dir: Optional[str] = None):
     from platformdirs import PlatformDirs
     from platformdirs.unix import Unix
 
