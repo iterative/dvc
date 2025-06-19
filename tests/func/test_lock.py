@@ -68,7 +68,7 @@ def try_lock_with_wait(lockfile_path, wait, result_queue):
         lock = make_lock(lockfile_path, wait=wait)
         with lock:
             result_queue.put("acquired")
-    except Exception as e:
+    except LockError as e:
         result_queue.put(f"error: {e}")
 
 
