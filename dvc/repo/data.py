@@ -232,9 +232,7 @@ def _get_not_in_remote(
 
         k = (*key, "") if entry.meta and entry.meta.isdir else key
         try:
-            if not data_index.storage_map.remote_exists(
-                entry, remote_refresh=remote_refresh
-            ):
+            if not data_index.storage_map.remote_exists(entry, refresh=remote_refresh):
                 yield os.path.sep.join(k)
         except StorageKeyError:
             pass
@@ -269,8 +267,8 @@ def status(
         entries_not_in_remote = list(
             _get_not_in_remote(
                 view,
-                remote_refresh=kwargs["not_in_remote"],
-                shallow=not kwargs["granular"],
+                remote_refresh=not_in_remote,
+                shallow=not kwargs.get("granular", False),
             )
         )
     else:
