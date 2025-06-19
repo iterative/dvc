@@ -1,7 +1,8 @@
-import pytest
-
 import multiprocessing
 import time
+
+import pytest
+
 from dvc.cli import main
 from dvc.exceptions import DvcException
 from dvc.lock import Lock, LockError, make_lock
