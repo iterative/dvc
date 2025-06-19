@@ -1,19 +1,17 @@
 import os
 import posixpath
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING, Any, TypedDict, Union
 
 from dvc.fs.callbacks import DEFAULT_CALLBACK
-from dvc.log import logger
+from dvc.repo.worktree import worktree_view
 from dvc.ui import ui
-
-logger = logger.getChild(__name__)
 
 if TYPE_CHECKING:
     from dvc.fs.callbacks import Callback
     from dvc.repo import Repo
     from dvc.scm import Git, NoSCM
-    from dvc_data.index import DataIndex
+    from dvc_data.index import DataIndex, DataIndexView
     from dvc_data.index.diff import Change
 
 
@@ -220,27 +218,32 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> list[str]
     return [repo.fs.relpath(file, start) for file in files]
 
 
-def _filter_out_push_false_outs(repo: "Repo", not_in_remote: list[str]) -> list[str]:
-    """Filter out paths that are not pushable."""
-    filtered_not_in_remote = []
+def _get_not_in_remote(
+    data_index: Union["DataIndex", "DataIndexView"],
+    remote_refresh: bool,
+    shallow: bool,
+) -> Iterator[str]:
+    """Get entries that are not in remote storage."""
+    from dvc_data.index import StorageKeyError
 
-    for path in not_in_remote:
-        (out,) = repo.find_outs_by_path(path)
+    for key, entry in data_index.iteritems(shallow=shallow):
+        if not (entry and entry.hash_info):
+            continue
 
-        if out.can_push:
-            filtered_not_in_remote.append(path)
-        else:
-            logger.trace(
-                f"Eliminating {path} from not_in_remote, because it is not pushable"
-            )
-
-    return filtered_not_in_remote
+        k = (*key, "") if entry.meta and entry.meta.isdir else key
+        try:
+            if not data_index.storage_map.remote_exists(
+                entry, remote_refresh=remote_refresh
+            ):
+                yield os.path.sep.join(k)
+        except StorageKeyError:
+            pass
 
 
 def status(
     repo: "Repo",
     untracked_files: str = "no",
-    respect_no_push: bool = False,
+    not_in_remote: bool = False,
     **kwargs: Any,
 ) -> Status:
     from dvc.scm import NoSCMError, SCMError
@@ -260,16 +263,23 @@ def status(
     untracked = git_info.get("untracked", [])
     untracked = _transform_git_paths_to_dvc(repo, untracked)
 
-    not_in_remote = uncommitted_diff.pop("not_in_remote", [])
-
-    if respect_no_push:
-        logger.debug("Filtering out paths that are not pushable")
-        not_in_remote = _filter_out_push_false_outs(repo, not_in_remote)
+    if not_in_remote:
+        # View into the index, with only pushable entries
+        view = worktree_view(repo.index, push=True).data["repo"]
+        entries_not_in_remote = list(
+            _get_not_in_remote(
+                view,
+                remote_refresh=kwargs["not_in_remote"],
+                shallow=not kwargs["granular"],
+            )
+        )
+    else:
+        entries_not_in_remote = []
 
     # order matters here
     return Status(
         not_in_cache=uncommitted_diff.pop("not_in_cache", []),
-        not_in_remote=not_in_remote,
+        not_in_remote=entries_not_in_remote,
         committed=committed_diff,
         uncommitted=uncommitted_diff,
         untracked=untracked,

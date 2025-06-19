@@ -423,39 +423,19 @@ def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
     }
 
 
-@pytest.fixture
-def dvc_pipeline_with_push_false(
+def test_not_in_remote_respects_not_pushable(
     tmp_dir: TmpDir, dvc: Repo, scm, mocker, local_remote
-) -> None:
-    """DVC pipeline with with two outs, one with push=False."""
-    tmp_dir.gen("fixed", "fixed")
-    dvc.stage.add(
-        name="create-foo", cmd="echo foo > foo", deps=["fixed"], outs_no_push=["foo"]
-    )
-    dvc.stage.add(name="create-bar", cmd="echo bar > bar", deps=["fixed"], outs=["bar"])
-    dvc.reproduce()
+):
+    stage = dvc.stage.create(outs=["foo"], single_stage=True)
+    stage.outs[0].can_push = False
+    stage.dump()
 
-    assert set(
-        dvc.data_status(remote_refresh=True, not_in_remote=True)["not_in_remote"]
-    ) == {"foo", "bar"}
+    tmp_dir.dvc_gen({"dir": {"foobar": "foobar"}})
     dvc.push()
 
-
-def test_missing_remote_push_false(dvc_pipeline_with_push_false: None, dvc: Repo):
     assert set(
         dvc.data_status(remote_refresh=True, not_in_remote=True)["not_in_remote"]
-    ) == {"foo"}
-
-
-def test_missing_remote_push_false_respects_no_push_flag(
-    dvc_pipeline_with_push_false: None, dvc: Repo
-):
-    assert (
-        dvc.data_status(remote_refresh=True, not_in_remote=True, respect_no_push=True)[
-            "not_in_remote"
-        ]
-        == []
-    )
+    ) == {"dir/", "dir/foobar"}
 
 
 def test_root_from_dir_to_file(M, tmp_dir, dvc, scm):
