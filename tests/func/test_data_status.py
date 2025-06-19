@@ -1,5 +1,6 @@
 from os import fspath
 from os.path import join
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -7,6 +8,9 @@ from dvc.repo import Repo
 from dvc.repo.data import _transform_git_paths_to_dvc, posixpath_to_os_path
 from dvc.testing.tmp_dir import TmpDir, make_subrepo
 from dvc.utils.fs import remove
+
+if TYPE_CHECKING:
+    from dvc.stage import Stage
 
 EMPTY_STATUS = {
     "committed": {},
@@ -426,16 +430,24 @@ def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
 def test_not_in_remote_respects_not_pushable(
     tmp_dir: TmpDir, dvc: Repo, scm, mocker, local_remote
 ):
-    stage = dvc.stage.create(outs=["foo"], single_stage=True)
-    stage.outs[0].can_push = False
-    stage.dump()
+    stages: list[Stage] = tmp_dir.dvc_gen({"foo": "foo", "dir": {"foobar": "foobar"}})
+    # Make foo not pushable
+    stages[0].outs[0].can_push = False
+    stages[0].dump()
 
-    tmp_dir.dvc_gen({"dir": {"foobar": "foobar"}})
+    def assert_not_in_remote_is(granular: bool, expected: set[str]):
+        not_in_remote = dvc.data_status(
+            granular=granular, remote_refresh=True, not_in_remote=True
+        )["not_in_remote"]
+        assert set(not_in_remote) == expected
+
+    assert_not_in_remote_is(granular=True, expected={"dir/", "dir/foobar"})
+    assert_not_in_remote_is(granular=False, expected={"dir/"})
+
     dvc.push()
 
-    assert set(
-        dvc.data_status(remote_refresh=True, not_in_remote=True)["not_in_remote"]
-    ) == {"dir/", "dir/foobar"}
+    assert_not_in_remote_is(granular=True, expected=set())
+    assert_not_in_remote_is(granular=False, expected=set())
 
 
 def test_root_from_dir_to_file(M, tmp_dir, dvc, scm):
