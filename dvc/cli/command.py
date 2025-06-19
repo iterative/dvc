@@ -18,7 +18,10 @@ class CmdBase(ABC):
 
         os.chdir(args.cd)
 
-        self.repo: Repo = Repo(uninitialized=self.UNINITIALIZED)
+        self.repo: Repo = Repo(
+            uninitialized=self.UNINITIALIZED,
+            wait_for_lock=getattr(args, "wait_for_lock", False),
+        )
         self.config: Config = self.repo.config
         self.args = args
 

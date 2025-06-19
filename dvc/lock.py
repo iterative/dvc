@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Optional, Union
@@ -88,9 +89,10 @@ class Lock(LockBase):
     Uses zc.lockfile as backend.
     """
 
-    def __init__(self, lockfile, friendly=False, **kwargs):
+    def __init__(self, lockfile, friendly=False, wait=False, **kwargs):
         super().__init__(lockfile)
         self._friendly = friendly
+        self._wait = wait
         self._lock = None
         self._lock_failed = False
 
@@ -115,9 +117,19 @@ class Lock(LockBase):
 
     def lock(self):
         retries = 6
-        delay = DEFAULT_TIMEOUT / retries
-        lock_retry = retry(retries, LockError, timeout=delay)(self._do_lock)
-        lock_retry()
+
+        if self._wait:
+            # wait forever (by retrying indefinitely)
+            while True:
+                try:
+                    self._do_lock()
+                    return
+                except LockError:
+                    time.sleep(DEFAULT_TIMEOUT / 6)
+        else:
+            delay = DEFAULT_TIMEOUT / retries
+            lock_retry = retry(retries, LockError, timeout=delay)(self._do_lock)
+            lock_retry()
 
     def unlock(self):
         if self._lock_failed:
@@ -150,7 +162,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         tmp_dir (str): a directory to store claim files.
     """
 
-    def __init__(self, lockfile, tmp_dir=None, **kwargs):
+    def __init__(self, lockfile, tmp_dir=None, wait=False, **kwargs):
         import socket
 
         self._tmp_dir = tmp_dir
@@ -173,11 +185,19 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         self._separator = flufl.lock.SEP
         self._set_claimfile()
         self._owned = True
+        self._wait = wait
         self._retry_errnos = []
 
     def lock(self, timeout: Optional[Union[timedelta, int]] = None):
         try:
-            super().lock(timeout or timedelta(seconds=DEFAULT_TIMEOUT))
+            if self._wait:
+                # `None` means wait indefinitely in flufl.lock
+                timeout = None
+            elif timeout is None:
+                # Default timeout if not explicitly passed
+                timeout = timedelta(seconds=DEFAULT_TIMEOUT)
+
+            super().lock(timeout)
         except flufl.lock.TimeOutError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
@@ -191,6 +211,6 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
             self._claimfile = os.path.join(self._tmp_dir, filename + ".lock")
 
 
-def make_lock(lockfile, tmp_dir=None, friendly=False, hardlink_lock=False):
+def make_lock(lockfile, tmp_dir=None, friendly=False, hardlink_lock=False, wait=False):
     cls = HardlinkLock if hardlink_lock else Lock
-    return cls(lockfile, tmp_dir=tmp_dir, friendly=friendly)
+    return cls(lockfile, tmp_dir=tmp_dir, friendly=friendly, wait=wait)
