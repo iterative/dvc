@@ -435,19 +435,19 @@ def test_not_in_remote_respects_not_pushable(
     stages[0].outs[0].can_push = False
     stages[0].dump()
 
-    def assert_not_in_remote_is(granular: bool, expected: set[str]):
+    def assert_not_in_remote_is(granular: bool, expected: list[str]):
         not_in_remote = dvc.data_status(
             granular=granular, remote_refresh=True, not_in_remote=True
         )["not_in_remote"]
-        assert set(not_in_remote) == expected
+        assert set(not_in_remote) == set(map(posixpath_to_os_path, expected))
 
-    assert_not_in_remote_is(granular=True, expected={"dir/", "dir/foobar"})
-    assert_not_in_remote_is(granular=False, expected={"dir/"})
+    assert_not_in_remote_is(granular=True, expected=["dir/", "dir/foobar"])
+    assert_not_in_remote_is(granular=False, expected=["dir/"])
 
     dvc.push()
 
-    assert_not_in_remote_is(granular=True, expected=set())
-    assert_not_in_remote_is(granular=False, expected=set())
+    assert_not_in_remote_is(granular=True, expected=[])
+    assert_not_in_remote_is(granular=False, expected=[])
 
 
 def test_root_from_dir_to_file(M, tmp_dir, dvc, scm):
