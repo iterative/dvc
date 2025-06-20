@@ -1,8 +1,11 @@
+from collections.abc import Iterable
+from functools import partial
 from os import fspath
 from os.path import join
 from typing import TYPE_CHECKING
 
 import pytest
+from pytest_test_utils import matchers as m
 
 from dvc.repo import Repo
 from dvc.repo.data import _transform_git_paths_to_dvc, posixpath_to_os_path
@@ -10,8 +13,6 @@ from dvc.testing.tmp_dir import TmpDir, make_subrepo
 from dvc.utils.fs import remove
 
 if TYPE_CHECKING:
-    from pytest_test_utils import matchers
-
     from dvc.stage import Stage
 
 EMPTY_STATUS = {
@@ -430,7 +431,7 @@ def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
 
 
 def test_not_in_remote_respects_not_pushable(
-    M: type["matchers.Matcher"], tmp_dir: TmpDir, dvc: Repo, scm, mocker, local_remote
+    M: type["m.Matcher"], tmp_dir: TmpDir, dvc: Repo, scm, mocker, local_remote
 ):
     stages: list[Stage] = tmp_dir.dvc_gen({"foo": "foo", "dir": {"foobar": "foobar"}})
     # Make foo not pushable
@@ -534,4 +535,339 @@ def test_empty_dir(tmp_dir, scm, dvc, M):
         "committed": {"added": [join("data", "")]},
         "uncommitted": {"modified": [join("data", "")]},
         "git": M.dict(),
+    }
+
+
+def test_untracked_files_filter_targets(M, tmp_dir, scm, dvc):
+    tmp_dir.gen(
+        {"spam": "spam", "ham": "ham", "dir": {"eggs": "eggs", "bacon": "bacon"}}
+    )
+    _default = EMPTY_STATUS | {"git": M.dict()}
+    status = partial(dvc.data_status, untracked_files="all")
+
+    assert status(["not-existing"]) == _default
+
+    assert status(["spam"]) == _default | {"untracked": ["spam"]}
+    assert status(["spam", "ham"]) == _default | {
+        "untracked": M.unordered("spam", "ham")
+    }
+    assert status(["dir"]) == _default | {
+        "untracked": M.unordered(join("dir", "eggs"), join("dir", "bacon")),
+    }
+    assert status([join("dir", "")]) == _default | {
+        "untracked": M.unordered(join("dir", "eggs"), join("dir", "bacon")),
+    }
+    assert status([join("dir", "bacon")]) == _default | {
+        "untracked": [join("dir", "bacon")]
+    }
+
+
+def param(*values):
+    """Uses test id from the first value."""
+    first = values[0]
+    _id = (
+        ",".join(first)
+        if isinstance(first, Iterable) and not isinstance(first, str)
+        else first
+    )
+    return pytest.param(*values, id=_id)
+
+
+@pytest.mark.parametrize(
+    "targets,expected",
+    [
+        param(
+            ["foo"],
+            {"committed": {"added": ["foo"]}, "uncommitted": {"deleted": ["foo"]}},
+        ),
+        param(
+            ["bar"],
+            {"committed": {"added": ["bar"]}, "uncommitted": {"modified": ["bar"]}},
+        ),
+        param(["foobar"], {"committed": {"added": ["foobar"]}, "uncommitted": {}}),
+        param(["not-existing"], {}),
+        param(["baz"], {"untracked": ["baz"]}),
+        param(
+            ["foo", "foobar"],
+            {
+                "committed": {"added": m.unordered("foo", "foobar")},
+                "uncommitted": {"deleted": ["foo"]},
+            },
+        ),
+    ],
+)
+def test_filter_targets_files_after_dvc_commit(M, tmp_dir, dvc, scm, targets, expected):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar", "foobar": "foobar"})
+    (tmp_dir / "foo").unlink()  # deleted
+    tmp_dir.gen({"bar": "bar modified", "baz": "baz new"})
+
+    assert dvc.data_status(
+        targets=targets, untracked_files="all"
+    ) == EMPTY_STATUS | expected | {"git": M.dict()}
+    assert dvc.data_status(
+        targets=targets, granular=True, untracked_files="all"
+    ) == EMPTY_STATUS | expected | {"git": M.dict()}
+
+
+@pytest.mark.parametrize(
+    "targets,expected",
+    [
+        param(["not-existing"], {}),
+        param(["foo"], {"uncommitted": {"deleted": ["foo"]}}),
+        param(["bar"], {"unchanged": ["bar"]}),
+        param(["baz"], {"unchanged": ["baz"]}),
+        param(["foobar"], {"unchanged": ["foobar"]}),
+        param(
+            ("foo", "foobar"),
+            {"unchanged": ["foobar"], "uncommitted": {"deleted": ["foo"]}},
+        ),
+    ],
+)
+def test_filter_targets_after_git_commit(M, tmp_dir, dvc, scm, targets, expected):
+    tmp_dir.dvc_gen(
+        {"foo": "foo", "bar": "bar", "foobar": "foobar", "baz": "baz"},
+        commit="add files",
+    )
+    (tmp_dir / "foo").unlink()  # deleted
+
+    assert dvc.data_status(
+        targets=targets, untracked_files="all"
+    ) == EMPTY_STATUS | expected | {"git": M.dict()}
+    assert dvc.data_status(
+        targets=targets, granular=True, untracked_files="all"
+    ) == EMPTY_STATUS | expected | {"git": M.dict()}
+
+
+def with_aliases(values, aliases):
+    """Generate test cases by reusing values for given aliases from existing ones."""
+    for value in values:
+        targets = value[0]
+        assert isinstance(targets, tuple)
+        yield param(*value)
+    yield from (
+        param(alias, *rest)
+        for alias, to in aliases.items()
+        for targets, *rest in values
+        if to == targets
+    )
+
+
+@pytest.mark.parametrize(
+    "targets,expected_ng,expected_g",
+    with_aliases(
+        [
+            (
+                ("dir",),
+                {
+                    "committed": {"added": [join("dir", "")]},
+                    "uncommitted": {"modified": [join("dir", "")]},
+                },
+                {
+                    "committed": {
+                        "added": m.unordered(
+                            join("dir", ""),
+                            join("dir", "foo"),
+                            join("dir", "sub", "bar"),
+                            join("dir", "foobar"),
+                        )
+                    },
+                    "uncommitted": {
+                        "added": [join("dir", "baz")],
+                        "modified": [join("dir", ""), join("dir", "sub", "bar")],
+                        "deleted": [join("dir", "foo")],
+                    },
+                },
+            ),
+            (
+                (join("dir", "foo"),),
+                {},
+                {
+                    "committed": {"added": [join("dir", "foo")]},
+                    "uncommitted": {"deleted": [join("dir", "foo")]},
+                },
+            ),
+            (
+                (join("dir", "baz"),),
+                {},
+                {
+                    "uncommitted": {"added": [join("dir", "baz")]},
+                },
+            ),
+            (
+                (join("dir", "sub"),),
+                {},
+                {
+                    "committed": {"added": [join("dir", "sub", "bar")]},
+                    "uncommitted": {"modified": [join("dir", "sub", "bar")]},
+                },
+            ),
+            (
+                (join("dir", "sub", "bar"),),
+                {},
+                {
+                    "committed": {"added": [join("dir", "sub", "bar")]},
+                    "uncommitted": {"modified": [join("dir", "sub", "bar")]},
+                },
+            ),
+            (
+                (join("dir", "foobar"),),
+                {},
+                {
+                    "committed": {"added": [join("dir", "foobar")]},
+                    "uncommitted": {},
+                },
+            ),
+            ((join("dir", "not-existing-file"),), {}, {}),
+            ((join("dir", "not-existing-dir", ""),), {}, {}),
+            ((join("dir", "sub", "not-existing-file"),), {}, {}),
+            (
+                (join("dir", "foo"), join("dir", "foobar")),
+                {},
+                {
+                    "committed": {
+                        "added": m.unordered(join("dir", "foo"), join("dir", "foobar"))
+                    },
+                    "uncommitted": {"deleted": [join("dir", "foo")]},
+                },
+            ),
+        ],
+        {
+            # the values for these are used from above test cases
+            (join("dir", ""),): ("dir",),
+            (join("dir", "sub", ""),): (join("dir", "sub"),),
+            (join("dir", ""), join("dir", "foo")): ("dir",),
+        },
+    ),
+)
+def test_filter_targets_inside_directory_after_dvc_commit(
+    M, tmp_dir, dvc, scm, targets, expected_ng, expected_g
+):
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "sub": {"bar": "bar"}, "foobar": "foobar"}})
+    (tmp_dir / "dir" / "foo").unlink()  # deleted
+    (tmp_dir / "dir" / "sub" / "bar").write_text("bar modified")
+    (tmp_dir / "dir" / "baz").write_text("baz new")
+
+    assert dvc.data_status(
+        targets=targets, untracked_files="all"
+    ) == EMPTY_STATUS | expected_ng | {"git": M.dict()}
+    assert dvc.data_status(
+        targets=targets, granular=True, untracked_files="all"
+    ) == EMPTY_STATUS | expected_g | {"git": M.dict()}
+
+
+@pytest.mark.parametrize(
+    "targets,expected_ng,expected_g",
+    with_aliases(
+        [
+            (
+                (join("dir", "foo"),),
+                {},
+                {"committed": {"deleted": [join("dir", "foo")]}},
+            ),
+            ((join("dir", "baz"),), {}, {"committed": {"added": [join("dir", "baz")]}}),
+            ((join("dir", "foobar"),), {}, {"unchanged": [join("dir", "foobar")]}),
+            (
+                ("dir",),
+                {"committed": {"modified": [join("dir", "")]}},
+                {
+                    "unchanged": [join("dir", "foobar")],
+                    "committed": {
+                        "added": [join("dir", "baz")],
+                        "modified": m.unordered(
+                            join("dir", ""), join("dir", "sub", "bar")
+                        ),
+                        "deleted": [join("dir", "foo")],
+                    },
+                },
+            ),
+            (
+                (join("dir", "sub"),),
+                {},
+                {"committed": {"modified": [join("dir", "sub", "bar")]}},
+            ),
+            (
+                (join("dir", "sub", "bar"),),
+                {},
+                {"committed": {"modified": [join("dir", "sub", "bar")]}},
+            ),
+            (
+                (join("dir", "foo"), join("dir", "foobar")),
+                {},
+                {
+                    "unchanged": [join("dir", "foobar")],
+                    "committed": {"deleted": [join("dir", "foo")]},
+                },
+            ),
+        ],
+        {
+            (join("dir", ""),): ("dir",),
+            (join("dir", "sub", ""),): (join("dir", "sub"),),
+            (join("dir", ""), join("dir", "foo")): ("dir",),
+        },
+    ),
+)
+def test_filter_targets_inside_directory_after_git_commit(
+    M, tmp_dir, dvc, scm, targets, expected_ng, expected_g
+):
+    tmp_dir.dvc_gen(
+        {"dir": {"foo": "foo", "sub": {"bar": "bar"}, "foobar": "foobar"}},
+        commit="add dir",
+    )
+    (tmp_dir / "dir" / "foo").unlink()  # deleted
+    (tmp_dir / "dir" / "sub" / "bar").write_text("bar modified")
+    (tmp_dir / "dir" / "baz").write_text("baz new")
+    dvc.add(["dir"])
+
+    assert dvc.data_status(
+        targets=targets, untracked_files="all"
+    ) == EMPTY_STATUS | expected_ng | {"git": M.dict()}
+    assert dvc.data_status(
+        targets=targets, granular=True, untracked_files="all"
+    ) == EMPTY_STATUS | expected_g | {"git": M.dict()}
+
+
+@pytest.mark.parametrize("to_check", ["remote", "cache"])
+@pytest.mark.parametrize(
+    "targets, non_granular, granular",
+    [
+        param(("foo",), ["foo"], ["foo"]),
+        param(("dir",), [join("dir", "")], [join("dir", ""), join("dir", "bar")]),
+        param(
+            (join("dir", ""),), [join("dir", "")], [join("dir", ""), join("dir", "bar")]
+        ),
+        param((join("dir", "bar"),), [], [join("dir", "bar")]),
+        param(
+            (join("dir", "bar"), "foo"),
+            ["foo"],
+            m.unordered(join("dir", "bar"), "foo"),
+        ),
+        param(
+            (join("dir", "bar"), "dir"),
+            [join("dir", "")],
+            m.unordered(join("dir", ""), join("dir", "bar")),
+        ),
+        param(
+            ("dir", "foo"),
+            m.unordered(join("dir", ""), "foo"),
+            m.unordered(join("dir", ""), join("dir", "bar"), "foo"),
+        ),
+    ],
+)
+def test_filter_targets_not_in_cache(
+    M, local_remote, tmp_dir, scm, dvc, to_check, targets, non_granular, granular
+):
+    tmp_dir.dvc_gen({"foo": "foo", "dir": {"bar": "bar"}})
+
+    if to_check == "cache":
+        dvc.push()
+        dvc.cache.local.clear()
+
+    not_in_remote = to_check == "remote"
+    key = "not_in_" + to_check
+    d = EMPTY_STATUS | {"git": M.dict(), "committed": M.dict()}
+    assert dvc.data_status(targets, not_in_remote=not_in_remote) == d | {
+        key: non_granular
+    }
+    assert dvc.data_status(targets, granular=True, not_in_remote=not_in_remote) == d | {
+        key: granular
     }
