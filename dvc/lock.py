@@ -127,8 +127,10 @@ class Lock(LockBase):
                 return
             except LockError:
                 attempts += 1
-                time.sleep(delay)
-        raise LockError(FAILED_TO_LOCK_MESSAGE)
+                if self._wait or attempts < retries:
+                    time.sleep(delay)
+                    continue
+                raise
 
     def unlock(self):
         if self._lock_failed:
