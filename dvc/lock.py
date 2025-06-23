@@ -117,17 +117,19 @@ class Lock(LockBase):
     def lock(self):
         """Acquire the lock, either waiting forever, or after default_retries."""
         default_retries = 6
-        retries = None if self._wait else default_retries
         delay = DEFAULT_TIMEOUT / default_retries
         attempts = 0
 
-        while retries is None or attempts < retries:
+        infinite_retries = self._wait
+        max_retries = float("inf") if infinite_retries else default_retries
+
+        while attempts < max_retries:
             try:
                 self._do_lock()
                 return
             except LockError:
                 attempts += 1
-                if self._wait or attempts < retries:
+                if attempts < max_retries:
                     time.sleep(delay)
                     continue
                 raise
