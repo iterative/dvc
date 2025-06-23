@@ -191,10 +191,8 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
 
     def lock(self, timeout: Optional[Union[timedelta, int]] = None):
         try:
-            if timeout is None:
-                # Default timeout if not explicitly passed
-                timeout = timedelta(seconds=DEFAULT_TIMEOUT)
-
+            if not self._wait:
+                timeout = timeout or timedelta(seconds=DEFAULT_TIMEOUT)
             super().lock(timeout)
         except flufl.lock.TimeOutError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
