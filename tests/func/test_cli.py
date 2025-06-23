@@ -124,6 +124,7 @@ def test_find_root(dvc):
     class A:
         quiet = False
         verbose = True
+        wait_for_lock = False
         cd = os.path.pardir
 
     args = A()
@@ -139,6 +140,7 @@ def test_cd(dvc):
     class A:
         quiet = False
         verbose = True
+        wait_for_lock = False
         cd = os.path.pardir
 
     parent_dir = os.path.realpath(os.path.pardir)
