@@ -9,7 +9,6 @@ from typing import Optional, Union
 
 import flufl.lock
 import zc.lockfile
-from funcy import retry
 
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
