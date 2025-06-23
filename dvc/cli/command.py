@@ -20,7 +20,7 @@ class CmdBase(ABC):
 
         self.repo: Repo = Repo(
             uninitialized=self.UNINITIALIZED,
-            wait_for_lock=getattr(args, "wait_for_lock", False),
+            _wait_for_lock=args.wait_for_lock,
         )
         self.config: Config = self.repo.config
         self.args = args

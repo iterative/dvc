@@ -116,20 +116,20 @@ class Lock(LockBase):
             raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
     def lock(self):
-        retries = 6
+        """Acquire the lock, either waiting forever, or after default_retries."""
+        default_retries = 6
+        retries = None if self._wait else default_retries
+        delay = DEFAULT_TIMEOUT / default_retries
+        attempts = 0
 
-        if self._wait:
-            # wait forever (by retrying indefinitely)
-            while True:
-                try:
-                    self._do_lock()
-                    return
-                except LockError:
-                    time.sleep(DEFAULT_TIMEOUT / 6)
-        else:
-            delay = DEFAULT_TIMEOUT / retries
-            lock_retry = retry(retries, LockError, timeout=delay)(self._do_lock)
-            lock_retry()
+        while retries is None or attempts < retries:
+            try:
+                self._do_lock()
+                return
+            except LockError:
+                attempts += 1
+                time.sleep(delay)
+        raise LockError(FAILED_TO_LOCK_MESSAGE)
 
     def unlock(self):
         if self._lock_failed:
@@ -190,10 +190,7 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
 
     def lock(self, timeout: Optional[Union[timedelta, int]] = None):
         try:
-            if self._wait:
-                # `None` means wait indefinitely in flufl.lock
-                timeout = None
-            elif timeout is None:
+            if timeout is None:
                 # Default timeout if not explicitly passed
                 timeout = timedelta(seconds=DEFAULT_TIMEOUT)
 
