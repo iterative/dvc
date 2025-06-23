@@ -38,7 +38,7 @@ logger = logger.getChild(__name__)
 
 
 @dataclass(frozen=True)
-class QueueEntry:
+class QueueEntry:  # noqa: PLW1641
     dvc_root: str
     scm_root: str
     stash_ref: str

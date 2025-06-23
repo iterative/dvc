@@ -149,7 +149,10 @@ def checkout(  # noqa: C901
 
     def checkout_onerror(src_path, dest_path, _exc):
         logger.debug(
-            "failed to create '%s' from '%s'", dest_path, src_path, exc_info=True
+            "failed to create '%s' from '%s'",
+            dest_path,
+            src_path,
+            exc_info=True,  # noqa: LOG014
         )
 
         for out_path in out_paths:

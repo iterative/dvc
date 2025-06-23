@@ -32,7 +32,7 @@ logger = logger.getChild(__name__)
 
 
 def onerror_collect(result: dict, exception: Exception, *args, **kwargs):
-    logger.debug("", exc_info=True)
+    logger.debug("", exc_info=True)  # noqa: LOG014
     result["error"] = exception
 
 
