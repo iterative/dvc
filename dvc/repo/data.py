@@ -4,10 +4,10 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, Optional, TypedDict, Union
 
 from dvc.fs.callbacks import DEFAULT_CALLBACK
+from dvc.log import logger
 from dvc.scm import RevError
 from dvc.ui import ui
 from dvc_data.index.view import DataIndexView
-from dvc.log import logger
 
 if TYPE_CHECKING:
     from dvc.fs.callbacks import Callback
