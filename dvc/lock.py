@@ -102,14 +102,7 @@ class Lock(LockBase):
     def _do_lock(self):
         try:
             self._lock_failed = False
-            with Tqdm(
-                bar_format="{desc}",
-                disable=not self._friendly,
-                desc="If DVC froze, see `hardlink_lock` in {}".format(
-                    format_link("https://man.dvc.org/config#core")
-                ),
-            ):
-                self._lock = zc.lockfile.LockFile(self._lockfile)
+            self._lock = zc.lockfile.LockFile(self._lockfile)
         except zc.lockfile.LockError:
             self._lock_failed = True
             raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
@@ -120,19 +113,27 @@ class Lock(LockBase):
         delay = DEFAULT_TIMEOUT / default_retries
         attempts = 0
 
-        infinite_retries = self._wait
-        max_retries = float("inf") if infinite_retries else default_retries
+        max_retries = float("inf") if self._wait else default_retries
 
-        while attempts < max_retries:
-            try:
-                self._do_lock()
-                return
-            except LockError:
-                attempts += 1
-                if attempts < max_retries:
+        with Tqdm(
+            bar_format="{desc}",
+            disable=not self._friendly,
+            desc="Waiting to acquire lock. "
+            "If DVC froze, see `hardlink_lock` in {}.".format(
+                format_link("https://man.dvc.org/config#core")
+            ),
+        ) as pbar:
+            while True:
+                try:
+                    self._do_lock()
+                    return
+                except LockError:
+                    attempts += 1
+                    if attempts > max_retries:
+                        raise
                     time.sleep(delay)
-                    continue
-                raise
+                finally:
+                    pbar.update()
 
     def unlock(self):
         if self._lock_failed:
@@ -190,12 +191,19 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         self._owned = True
         self._wait = wait
         self._retry_errnos = []
+        self._friendly = kwargs.get("friendly", False)
 
     def lock(self, timeout: Optional[Union[timedelta, int]] = None):
         try:
             if not self._wait:
                 timeout = timeout or timedelta(seconds=DEFAULT_TIMEOUT)
-            super().lock(timeout)
+
+            with Tqdm(
+                bar_format="{desc}",
+                disable=not (self._wait and self._friendly),
+                desc="Waiting to acquire lock",
+            ):
+                super().lock(timeout)
         except flufl.lock.TimeOutError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)  # noqa: B904
 
