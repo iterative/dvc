@@ -144,9 +144,19 @@ def test_new_empty_git_repo(M, tmp_dir, scm):
         "git": M.dict(is_empty=True, is_dirty=True),
     }
 
+    tmp_dir.gen("foo", "foo")
+    dvc.add(["foo"])
+    assert dvc.data_status() == {
+        **EMPTY_STATUS,
+        "git": M.dict(is_empty=True, is_dirty=True),
+        "committed": {"added": ["foo"]},
+    }
 
-def test_noscm_repo(dvc):
+
+def test_noscm_repo(tmp_dir, dvc):
     assert dvc.data_status() == EMPTY_STATUS
+    tmp_dir.dvc_gen("foo", "foo")
+    assert dvc.data_status() == {**EMPTY_STATUS, "unchanged": ["foo"]}
 
 
 def test_unchanged(M, tmp_dir, dvc, scm):

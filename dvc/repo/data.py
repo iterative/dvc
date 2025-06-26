@@ -4,6 +4,8 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, Optional, TypedDict, Union
 
 from dvc.fs.callbacks import DEFAULT_CALLBACK
+from dvc.log import logger
+from dvc.scm import RevError
 from dvc.ui import ui
 from dvc_data.index.view import DataIndexView
 
@@ -13,6 +15,8 @@ if TYPE_CHECKING:
     from dvc.scm import Git, NoSCM
     from dvc_data.index import BaseDataIndex, DataIndex, DataIndexKey
     from dvc_data.index.diff import Change
+
+logger = logger.getChild(__name__)
 
 
 def posixpath_to_os_path(path: str) -> str:
@@ -220,12 +224,18 @@ def _diff_head_to_index(
     filter_keys: Optional[list["DataIndexKey"]] = None,
     granular: bool = False,
 ) -> dict[str, list[str]]:
+    from dvc_data.index import DataIndex
+
     index = repo.index.data["repo"]
     index_view = filter_index(index, filter_keys=filter_keys)
 
-    with repo.switch(head):
-        head_index = repo.index.data["repo"]
-        head_view = filter_index(head_index, filter_keys=filter_keys)
+    try:
+        with repo.switch(head):
+            head_index = repo.index.data["repo"]
+            head_view = filter_index(head_index, filter_keys=filter_keys)
+    except RevError:
+        logger.debug("failed to switch to '%s'", head)
+        head_view = DataIndex()
 
     with ui.progress(desc="Calculating diff between head/index", unit="entry") as pb:
         return _diff(
