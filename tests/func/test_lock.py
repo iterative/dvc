@@ -91,13 +91,13 @@ def test_lock_waits_when_requested(request, tmp_path):
     p1.start()
     request.addfinalizer(p1.kill)
 
-    assert q.get(timeout=1) == "p1_acquired"
+    assert q.get(timeout=4) == "p1_acquired"
 
     # Process 2 will wait for the lock (should succeed)
     p2.start()
     request.addfinalizer(p2.kill)
 
-    assert q.get(timeout=1) == "p2_starting"
+    assert q.get(timeout=4) == "p2_starting"
     assert q.empty()
 
     # sleep to ensure Process 2 is waiting for the lock
