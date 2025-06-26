@@ -1,8 +1,11 @@
+import multiprocessing
+import time
+
 import pytest
 
 from dvc.cli import main
 from dvc.exceptions import DvcException
-from dvc.lock import Lock, LockError
+from dvc.lock import Lock, LockError, make_lock
 
 
 def test_with(tmp_dir, dvc, mocker):
@@ -52,3 +55,63 @@ def test_cli(tmp_dir, dvc, mocker, caplog):
     with Lock(tmp_dir / dvc.tmp_dir / "lock"):
         assert main(["add", "foo"]) == 1
     assert expected_error_msg in caplog.text
+
+
+def hold_lock_until_signaled(lockfile_path, result_queue, release_signal):
+    lock = make_lock(lockfile_path)
+    with lock:
+        result_queue.put("p1_acquired")
+        release_signal.wait()
+    result_queue.put("p1_released")
+
+
+def try_lock_with_wait(lockfile_path, wait, result_queue):
+    result_queue.put("p2_starting")
+    try:
+        lock = make_lock(lockfile_path, wait=wait)
+        with lock:
+            result_queue.put("p2_acquired")
+    except LockError as e:
+        result_queue.put(f"error: {e}")
+    else:
+        result_queue.put("p2_released")
+
+
+def test_lock_waits_when_requested(request, tmp_path):
+    lockfile = tmp_path / "lock"
+
+    q: multiprocessing.Queue[str] = multiprocessing.Queue()
+    release_signal = multiprocessing.Event()
+    # Process 1 holds the lock until signaled to release it
+    p1 = multiprocessing.Process(
+        target=hold_lock_until_signaled, args=(lockfile, q, release_signal)
+    )
+    p2 = multiprocessing.Process(target=try_lock_with_wait, args=(lockfile, True, q))
+
+    p1.start()
+    request.addfinalizer(p1.kill)
+
+    assert q.get(timeout=1) == "p1_acquired"
+
+    # Process 2 will wait for the lock (should succeed)
+    p2.start()
+    request.addfinalizer(p2.kill)
+
+    assert q.get(timeout=1) == "p2_starting"
+    assert q.empty()
+
+    # sleep to ensure Process 2 is waiting for the lock
+    time.sleep(1)
+    release_signal.set()  # release the lock
+
+    p1.join(timeout=4)
+
+    events = [q.get(timeout=2), q.get(timeout=2), q.get(timeout=2)]
+    # we still can't be sure of the order of events.
+    assert "p1_released" in events
+    assert "p2_acquired" in events
+    assert "p2_released" in events
+
+    p2.join(timeout=1)
+
+    assert q.empty()
