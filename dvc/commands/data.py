@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from funcy import chunks, compact, log_durations
 
-from dvc.cli import formatter
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -108,6 +108,7 @@ class CmdDataStatus(CmdBase):
     def run(self) -> int:
         with log_durations(logger.trace, "in data_status"):
             status = self.repo.data_status(
+                targets=self.args.targets,
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
                 not_in_remote=self.args.not_in_remote,
@@ -147,6 +148,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=formatter.RawDescriptionHelpFormatter,
         help=DATA_STATUS_HELP,
     )
+    data_status_parser.add_argument(
+        "targets",
+        nargs="*",
+        help=(
+            "Limit command scope to these tracked files/directories, "
+            ".dvc files and stage names."
+        ),
+    ).complete = completion.FILE  # type: ignore[attr-defined]
     data_status_parser.add_argument(
         "--json",
         action="store_true",
