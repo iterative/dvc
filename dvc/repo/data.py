@@ -241,6 +241,16 @@ def status(
     uncommitted_diff = _diff_index_to_wtree(repo, granular=granular)
     unchanged = set(uncommitted_diff.pop("unchanged", []))
 
+    entries_not_in_remote = (
+        _get_entries_not_in_remote(
+            repo,
+            granular=granular,
+            remote_refresh=remote_refresh,
+        )
+        if not_in_remote
+        else []
+    )
+
     try:
         committed_diff = _diff_head_to_index(repo, head=head, granular=granular)
     except (SCMError, NoSCMError):
@@ -251,16 +261,6 @@ def status(
     git_info = _git_info(repo.scm, untracked_files=untracked_files)
     untracked = git_info.get("untracked", [])
     untracked = _transform_git_paths_to_dvc(repo, untracked)
-
-    entries_not_in_remote = (
-        _get_entries_not_in_remote(
-            repo,
-            granular=granular,
-            remote_refresh=remote_refresh,
-        )
-        if not_in_remote
-        else []
-    )
 
     # order matters here
     return Status(
