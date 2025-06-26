@@ -167,7 +167,7 @@ class Repo:
         self._config = config
         self._remote = remote
         self._remote_config = remote_config
-        self._data_index = None
+        self._data_index: Optional[DataIndex] = None
         self._wait_for_lock = _wait_for_lock
 
         if rev and not fs:
