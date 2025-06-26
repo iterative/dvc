@@ -1,12 +1,18 @@
 from os import fspath
 from os.path import join
+from typing import TYPE_CHECKING
 
 import pytest
 
 from dvc.repo import Repo
 from dvc.repo.data import _transform_git_paths_to_dvc, posixpath_to_os_path
-from dvc.testing.tmp_dir import make_subrepo
+from dvc.testing.tmp_dir import TmpDir, make_subrepo
 from dvc.utils.fs import remove
+
+if TYPE_CHECKING:
+    from pytest_test_utils import matchers
+
+    from dvc.stage import Stage
 
 EMPTY_STATUS = {
     "committed": {},
@@ -421,6 +427,51 @@ def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
         ),
         "git": M.dict(),
     }
+
+
+def test_not_in_remote_respects_not_pushable(
+    M: type["matchers.Matcher"], tmp_dir: TmpDir, dvc: Repo, scm, mocker, local_remote
+):
+    stages: list[Stage] = tmp_dir.dvc_gen({"foo": "foo", "dir": {"foobar": "foobar"}})
+    # Make foo not pushable
+    stages[0].outs[0].can_push = False
+    stages[0].dump()
+
+    def assert_not_in_remote_is(
+        granular: bool, not_in_remote: list[str], committed: list[str]
+    ):
+        assert dvc.data_status(
+            granular=granular, remote_refresh=True, not_in_remote=True
+        ) == {
+            **EMPTY_STATUS,
+            "git": M.dict(),
+            "not_in_remote": M.unordered(*not_in_remote),
+            "committed": {"added": M.unordered(*committed)},
+        }
+
+    foo = "foo"
+    dir_ = join("dir", "")
+    foobar = join("dir", "foobar")
+
+    assert_not_in_remote_is(
+        granular=True,
+        not_in_remote=[dir_, foobar],
+        committed=[foo, dir_, foobar],
+    )
+    assert_not_in_remote_is(granular=False, not_in_remote=[dir_], committed=[foo, dir_])
+
+    dvc.push()
+
+    assert_not_in_remote_is(
+        granular=True,
+        not_in_remote=[],
+        committed=[foo, dir_, foobar],
+    )
+    assert_not_in_remote_is(
+        granular=False,
+        not_in_remote=[],
+        committed=[foo, dir_],
+    )
 
 
 def test_root_from_dir_to_file(M, tmp_dir, dvc, scm):

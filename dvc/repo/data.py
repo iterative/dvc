@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, TypedDict, Union
 
 from dvc.fs.callbacks import DEFAULT_CALLBACK
+from dvc.repo.worktree import worktree_view
 from dvc.ui import ui
 
 if TYPE_CHECKING:
@@ -51,11 +52,8 @@ def _diff(
     *,
     granular: bool = False,
     not_in_cache: bool = False,
-    not_in_remote: bool = False,
-    remote_refresh: bool = False,
     callback: "Callback" = DEFAULT_CALLBACK,
 ) -> dict[str, list[str]]:
-    from dvc_data.index import StorageError
     from dvc_data.index.diff import UNCHANGED, UNKNOWN, diff
 
     ret: dict[str, list[str]] = {}
@@ -96,19 +94,6 @@ def _diff(
         ):
             # NOTE: emulating previous behaviour
             _add_change("not_in_cache", change)
-
-        try:
-            if (
-                not_in_remote
-                and change.old
-                and change.old.hash_info
-                and not old.storage_map.remote_exists(
-                    change.old, refresh=remote_refresh
-                )
-            ):
-                _add_change("not_in_remote", change)
-        except StorageError:
-            pass
 
         _add_change(change.typ, change)
 
@@ -217,15 +202,57 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]) -> list[str]
     return [repo.fs.relpath(file, start) for file in files]
 
 
-def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
+def _get_entries_not_in_remote(
+    repo: "Repo",
+    granular: bool = False,
+    remote_refresh: bool = False,
+) -> list[str]:
+    """Get entries that are not in remote storage."""
+    from dvc_data.index import StorageKeyError
+
+    # View into the index, with only pushable entries
+    view = worktree_view(repo.index, push=True).data["repo"]
+
+    missing_entries = []
+    for key, entry in view.iteritems(shallow=not granular):
+        if not (entry and entry.hash_info):
+            continue
+
+        k = (*key, "") if entry.meta and entry.meta.isdir else key
+        try:
+            if not view.storage_map.remote_exists(entry, refresh=remote_refresh):
+                missing_entries.append(os.path.sep.join(k))
+        except StorageKeyError:
+            pass
+
+    return missing_entries
+
+
+def status(
+    repo: "Repo",
+    untracked_files: str = "no",
+    not_in_remote: bool = False,
+    remote_refresh: bool = False,
+    granular: bool = False,
+    head: str = "HEAD",
+) -> Status:
     from dvc.scm import NoSCMError, SCMError
 
-    head = kwargs.pop("head", "HEAD")
-    uncommitted_diff = _diff_index_to_wtree(repo, **kwargs)
+    uncommitted_diff = _diff_index_to_wtree(repo, granular=granular)
     unchanged = set(uncommitted_diff.pop("unchanged", []))
 
+    entries_not_in_remote = (
+        _get_entries_not_in_remote(
+            repo,
+            granular=granular,
+            remote_refresh=remote_refresh,
+        )
+        if not_in_remote
+        else []
+    )
+
     try:
-        committed_diff = _diff_head_to_index(repo, head=head, **kwargs)
+        committed_diff = _diff_head_to_index(repo, head=head, granular=granular)
     except (SCMError, NoSCMError):
         committed_diff = {}
     else:
@@ -234,10 +261,11 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
     git_info = _git_info(repo.scm, untracked_files=untracked_files)
     untracked = git_info.get("untracked", [])
     untracked = _transform_git_paths_to_dvc(repo, untracked)
+
     # order matters here
     return Status(
         not_in_cache=uncommitted_diff.pop("not_in_cache", []),
-        not_in_remote=uncommitted_diff.pop("not_in_remote", []),
+        not_in_remote=entries_not_in_remote,
         committed=committed_diff,
         uncommitted=uncommitted_diff,
         untracked=untracked,
