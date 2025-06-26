@@ -265,7 +265,7 @@ class CloudURLInfo(URLInfo):
 
 
 class HTTPURLInfo(URLInfo):
-    __hash__: Callable[["HTTPURLInfo"], int] = URLInfo.__hash__
+    __hash__: Callable[["HTTPURLInfo"], int] = URLInfo.__hash__  # type: ignore[assignment]
 
     def __init__(self, url):
         p = urlparse(url)

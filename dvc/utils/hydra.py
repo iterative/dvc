@@ -115,6 +115,7 @@ def apply_overrides(path: "StrPath", overrides: list[str]) -> None:
         except hydra_errors as e:
             raise InvalidArgumentError("Invalid `--set-param` value") from e
 
+        assert isinstance(new_data, dict)
         merge_dicts(original_data, new_data)
         remove_missing_keys(original_data, new_data)
 
