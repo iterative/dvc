@@ -59,7 +59,7 @@ def console_width(console, width):
         console._width = con_width
 
 
-class ANY:
+class ANY:  # noqa: PLW1641
     def __init__(self, expected_type):
         self.expected_type = expected_type
 
