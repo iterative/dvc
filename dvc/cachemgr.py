@@ -83,10 +83,11 @@ class CacheManager:
         """
         from dvc_data.index import FileStorage
 
+        cache_dir = self.config.get("dir") or self.default_local_cache_dir
         return FileStorage(
             key=(),
             fs=self.local.fs,
-            path=self.local.fs.join(self.default_local_cache_dir, self.FS_DIR),
+            path=self.local.fs.join(cache_dir, self.FS_DIR),
         )
 
     def _init_odb(self, schemes):
