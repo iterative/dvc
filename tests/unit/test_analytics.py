@@ -4,7 +4,7 @@ import platform
 import pytest
 from voluptuous import Any, Schema
 
-from dvc import analytics
+from dvc import analytics, env
 from dvc.cli import parse_args
 
 
@@ -50,6 +50,8 @@ def test_runtime_info(tmp_global_dir):
             "user_id": str,
             "system_info": dict,
             "group_id": Any(str, None),
+            "remotes": Any(list, None),
+            "git_remote_hash": Any(str, None),
         },
         required=True,
     )
@@ -57,7 +59,8 @@ def test_runtime_info(tmp_global_dir):
     assert schema(analytics._runtime_info())
 
 
-def test_send(mocker, tmp_path):
+def test_send(monkeypatch, mocker, tmp_path):
+    monkeypatch.delenv(env.DVC_ANALYTICS_ENDPOINT, raising=False)
     mock_post = mocker.patch("requests.post")
 
     import requests
