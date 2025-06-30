@@ -323,7 +323,6 @@ def _get_entries_not_in_remote(
     filter_keys: Optional[Iterable["DataIndexKey"]] = None,
     granular: bool = False,
     remote_refresh: bool = False,
-    batch_size: Optional[int] = None,
 ) -> list[str]:
     """Get entries that are not in remote storage."""
     from dvc.repo.worktree import worktree_view
@@ -336,10 +335,6 @@ def _get_entries_not_in_remote(
     view = filter_index(data_index, filter_keys=filter_keys)  # type: ignore[arg-type]
 
     missing_entries = []
-
-    to_check: dict[FileSystem, dict[str, list[DataIndexEntry]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
 
     storage_map = view.storage_map
     with TqdmCallback(size=0, desc="Checking remote", unit="entry") as cb:
@@ -358,28 +353,12 @@ def _get_entries_not_in_remote(
                 continue
 
             k = (*key, "") if entry.meta and entry.meta.isdir else key
-            if remote_refresh:
-                # on remote_refresh, collect all entries to check
-                # then check them in batches below
-                try:
-                    remote_fs, remote_path = storage_map.get_remote(entry)
-                    to_check[remote_fs][remote_path].append(entry)
-                    cb.size += 1
-                    cb.relative_update(0)  # try to update the progress bar
-                except StorageKeyError:
-                    pass
-            else:
-                try:
-                    if not storage_map.remote_exists(entry, refresh=remote_refresh):
-                        missing_entries.append(os.path.sep.join(k))
-                        cb.relative_update()  # no need to update the size
-                except StorageKeyError:
-                    pass
-        missing_entries.extend(
-            _get_missing_paths(
-                to_check, batch_size=batch_size, callback=StorageCallback(cb)
-            )
-        )
+            try:
+                if not storage_map.remote_exists(entry, refresh=remote_refresh):
+                    missing_entries.append(os.path.sep.join(k))
+                    cb.relative_update()  # no need to update the size
+            except StorageKeyError:
+                pass
     return missing_entries
 
 
@@ -428,7 +407,6 @@ def status(
             filter_keys=filter_keys,
             granular=granular,
             remote_refresh=remote_refresh,
-            batch_size=batch_size,
         )
 
     try:
