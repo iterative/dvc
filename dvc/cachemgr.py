@@ -86,7 +86,7 @@ class CacheManager:
         return FileStorage(
             key=(),
             fs=self.local.fs,
-            path=self.local.fs.join(self.default_local_cache_dir, self.FS_DIR),
+            path=self.local.fs.join(self.local_cache_dir, self.FS_DIR),
         )
 
     def _init_odb(self, schemes):
