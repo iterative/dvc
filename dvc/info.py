@@ -48,7 +48,10 @@ def get_dvc_info():
                 info.append("Cache types: " + error_link("no-dvc-cache"))
 
             info.append(f"Caches: {_get_caches(repo.cache)}")
-            info.append(f"Remotes: {_get_remotes(repo.config)}")
+
+            configured_remotes = _get_remotes(repo.config)
+            remotes = ", ".join(configured_remotes) if configured_remotes else None
+            info.append(f"Remotes: {remotes}")
 
             root_directory = repo.root_dir
             fs_root = _get_fs_type(os.path.abspath(root_directory))
@@ -75,12 +78,10 @@ def _get_caches(cache):
 
 
 def _get_remotes(config):
-    schemes = (
+    return [
         get_fs_cls(get_fs_config(config, name=remote)).protocol
         for remote in config["remote"]
-    )
-
-    return ", ".join(schemes) or "None"
+    ]
 
 
 def _get_linktype_support_info(repo):
