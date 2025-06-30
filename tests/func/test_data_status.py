@@ -881,3 +881,40 @@ def test_filter_targets_not_in_cache(
     assert dvc.data_status(targets, granular=True, not_in_remote=not_in_remote) == d | {
         key: granular
     }
+
+
+def test_compat_legacy_new_cache_types(M, tmp_dir, dvc, scm):
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+    (tmp_dir / "foo.dvc").dump(
+        {
+            "outs": [
+                {"path": "foo", "md5": "acbd18db4cc2f85cedef654fccc4a4d8", "size": 3},
+            ]
+        }
+    )
+    dvc.add(tmp_dir / "bar", no_commit=True)
+
+    assert dvc.data_status() == {
+        **EMPTY_STATUS,
+        "not_in_cache": M.unordered("foo", "bar"),
+        "committed": {"added": M.unordered("foo", "bar")},
+        "git": M.dict(),
+    }
+
+    dvc.commit("foo")
+
+    assert dvc.data_status() == {
+        **EMPTY_STATUS,
+        "not_in_cache": ["bar"],
+        "committed": {"added": M.unordered("foo", "bar")},
+        "git": M.dict(),
+    }
+
+    dvc.commit("bar")
+
+    assert dvc.data_status() == {
+        **EMPTY_STATUS,
+        "not_in_cache": [],
+        "committed": {"added": M.unordered("foo", "bar")},
+        "git": M.dict(),
+    }
