@@ -150,7 +150,7 @@ class CmdExperimentsShow(CmdBase):
                 all_commits=self.args.all_commits,
                 hide_queued=self.args.hide_queued,
                 hide_failed=self.args.hide_failed,
-                hide_workspace=self.args.hide_workspace,  # flag
+                hide_workspace=self.args.hide_workspace,
                 revs=self.args.rev,
                 num=self.args.num,
                 sha_only=self.args.sha,

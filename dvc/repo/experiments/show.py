@@ -43,7 +43,7 @@ def show(
         num=num,
         hide_queued=hide_queued,
         hide_failed=hide_failed,
-        hide_workspace=hide_workspace,  # flag
+        hide_workspace=hide_workspace,
         sha_only=sha_only,
         **kwargs,
     )
