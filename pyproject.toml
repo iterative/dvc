@@ -175,7 +175,6 @@ filterwarnings = [
     "ignore:unclosed database.*sqlite3.Connection:ResourceWarning",
     "ignore:unclosed.*<socket.socket:ResourceWarning",
 ]
-log_level = "debug"
 markers = [
     "needs_internet: Might need network access for the tests",
     "studio: Tests verifying contract between DVC and Studio",

@@ -29,7 +29,7 @@ def test_post_to_studio(
     monkeypatch.setenv(DVC_STUDIO_REPO_URL, "STUDIO_REPO_URL")
     monkeypatch.setenv(DVC_STUDIO_TOKEN, "STUDIO_TOKEN")
     monkeypatch.setenv(DVC_STUDIO_URL, "https://0.0.0.0")
-    monkeypatch.setenv(DVC_STUDIO_OFFLINE, offline)
+    monkeypatch.setenv(DVC_STUDIO_OFFLINE, str(offline))
     if dvc_exp_git_remote:
         monkeypatch.setenv(DVC_EXP_GIT_REMOTE, dvc_exp_git_remote)
 

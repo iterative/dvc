@@ -5,6 +5,8 @@ import logging.config
 import logging.handlers
 import os
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import ClassVar
 
 import colorama
@@ -174,9 +176,19 @@ def _iter_causes(exc):
         exc = exc.__cause__
 
 
-def set_loggers_level(level: int = logging.INFO) -> None:
+@contextmanager
+def set_loggers_level(level: int = logging.INFO) -> Iterator[None]:
+    ret: dict[logging.Logger, int] = {}
     for name in ["dvc", "dvc_objects", "dvc_data"]:
-        logging.getLogger(name).setLevel(level)
+        _logger = logging.getLogger(name)
+        ret[_logger] = _logger.getEffectiveLevel()
+        _logger.setLevel(level)
+
+    try:
+        yield
+    finally:
+        for _logger, old_lvl in ret.items():
+            _logger.setLevel(old_lvl)
 
 
 def setup(level: int = logging.INFO, log_colors: bool = True) -> None:
