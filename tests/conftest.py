@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 
 import pytest
 
@@ -46,10 +46,10 @@ def reset_loglevel(request, caplog):
         ini_opt = request.config.getini("log_level")
 
     level = request.config.getoption("--log-level") or ini_opt
-    if level:
-        with caplog.at_level(level.upper(), logger="dvc"):
-            yield
-    else:
+    with ExitStack() as stack:
+        if level:
+            for name in ["dvc", "dvc_data", "dvc_objects"]:
+                stack.enter_context(caplog.at_level(level.upper(), logger=name))
         yield
 
 

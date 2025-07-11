@@ -1,20 +1,21 @@
-import logging
 import os
 import pickle
 import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import asdict, dataclass
 from enum import IntEnum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Union
 
+from funcy import nullcontext
 from scmrepo.exceptions import SCMError
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.log import logger
+from dvc.logger import set_loggers_level
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH, ExpRefInfo
 from dvc.repo.experiments.utils import to_studio_params
@@ -466,8 +467,8 @@ class BaseExecutor(ABC):
 
         if queue is not None:
             queue.put((rev, os.getpid()))
-        if log_errors and log_level is not None:
-            cls._set_log_level(log_level)
+
+        log_ctx = cls._set_log_level(log_level) if log_errors else nullcontext()
 
         exp_hash: Optional[str] = None
         exp_ref: Optional[ExpRefInfo] = None
@@ -476,14 +477,17 @@ class BaseExecutor(ABC):
         if info.name:
             ui.write(f"Reproducing experiment '{info.name}'")
 
-        with cls._repro_dvc(
-            info,
-            infofile,
-            log_errors=log_errors,
-            copy_paths=copy_paths,
-            message=message,
-            **kwargs,
-        ) as dvc:
+        with (
+            log_ctx,
+            cls._repro_dvc(
+                info,
+                infofile,
+                log_errors=log_errors,
+                copy_paths=copy_paths,
+                message=message,
+                **kwargs,
+            ) as dvc,
+        ):
             args, kwargs = cls._repro_args(dvc)
             if args:
                 targets: Optional[Union[list, str]] = args[0]
@@ -786,13 +790,10 @@ class BaseExecutor(ABC):
         return orig_rev
 
     @staticmethod
-    def _set_log_level(level):
-        # When executor.reproduce is run in a multiprocessing child process,
-        # dvc.cli.main will not be called for that child process so we need to
-        # setup logging ourselves
-        dvc_logger = logging.getLogger("dvc")
+    def _set_log_level(level: Optional[int]) -> AbstractContextManager[None]:
         if level is not None:
-            dvc_logger.setLevel(level)
+            return set_loggers_level(level)
+        return nullcontext()
 
     @staticmethod
     def _copy_path(src, dst):

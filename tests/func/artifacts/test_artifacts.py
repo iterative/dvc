@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import pytest
 
+from dvc import env
 from dvc.annotations import Artifact
 from dvc.exceptions import ArtifactNotFoundError, InvalidArgumentError
 from dvc.repo.artifacts import Artifacts, check_name_format
@@ -283,7 +284,13 @@ def test_artifacts_download_subrepo(tmp_dir, scm, sub):
         assert Artifacts.get(".", name, force=True) == result
 
 
-def test_artifacts_download_studio(tmp_dir, dvc, mocker):
+def test_artifacts_download_studio(monkeypatch, tmp_dir, dvc, mocker, tmp_path_factory):
+    global_config_dir = tmp_path_factory.mktemp("global_config")
+    monkeypatch.setenv(env.DVC_GLOBAL_CONFIG_DIR, str(global_config_dir))
+    # reset config to ensure it picks up the new global config
+    dvc.__dict__.pop("config")
+    assert dvc.config.files["global"] == os.fspath(global_config_dir / "config")
+
     with dvc.config.edit("global") as conf:
         conf["studio"]["token"] = "mytoken"
 

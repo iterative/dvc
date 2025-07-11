@@ -157,6 +157,8 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
     Returns:
         int: command's return code.
     """
+    from contextlib import ExitStack
+
     from dvc._debug import debugtools
     from dvc.config import ConfigError
     from dvc.exceptions import DvcException, NotDvcRepoError
@@ -173,12 +175,11 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
         logging.disable(logging.INFO)
 
     args = None
-
-    outer_log_level = logger.level
-    level = None
+    stack = ExitStack()
     try:
         args = parse_args(argv)
 
+        level = None
         if args.quiet:
             level = logging.CRITICAL
         elif args.verbose == 1:
@@ -187,7 +188,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
             level = logging.TRACE  # type: ignore[attr-defined]
 
         if level is not None:
-            set_loggers_level(level)
+            stack.enter_context(set_loggers_level(level))
 
         if level and level <= logging.DEBUG:
             from platform import platform, python_implementation, python_version
@@ -247,7 +248,7 @@ def main(argv=None):  # noqa: C901, PLR0912, PLR0915
 
         return ret
     finally:
-        logger.setLevel(outer_log_level)
+        stack.close()
 
         from dvc.repo.open_repo import clean_repos
 
