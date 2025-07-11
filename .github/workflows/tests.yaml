@@ -134,6 +134,10 @@ jobs:
       env:
         UV_LINK_MODE: ${{ runner.os == 'Windows' && 'symlink' || 'hardlink' }}
 
+    - name: Set COVERAGE_CORE
+      if: contains(fromJson('["3.12", "3.13"]'), matrix.pyv)
+      run: echo "COVERAGE_CORE=sysmon" >> "$GITHUB_ENV"
+
     - name: run tests
       timeout-minutes: 40
       env:
