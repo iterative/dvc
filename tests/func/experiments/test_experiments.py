@@ -227,7 +227,7 @@ def test_detached_parent(tmp_dir, scm, dvc, exp_stage, mocker):
     scm.commit("v2")
 
     scm.checkout(detached_rev)
-    assert scm.gitpython.repo.head.is_detached
+    assert scm.pygit2.repo.head_is_detached
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
 
     exp_rev = first(results)
@@ -792,4 +792,4 @@ def test_custom_commit_message(tmp_dir, scm, dvc, tmp):
             stage.addressing, tmp_dir=tmp, message="custom commit message"
         )
     )
-    assert scm.gitpython.repo.commit(exp).message == "custom commit message"
+    assert scm.resolve_commit(exp).message == "custom commit message"

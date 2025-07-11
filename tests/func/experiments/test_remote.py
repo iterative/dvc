@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+from dulwich.porcelain import pull as git_pull
 from funcy import first
 
 from dvc.repo.experiments.utils import exp_refs_by_rev
@@ -180,10 +181,8 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     from dvc.exceptions import InvalidArgumentError
 
-    # fetch and checkout to downstream so both repos start from same commit
-    downstream_repo = git_downstream.tmp_dir.scm.gitpython.repo
-    fetched = downstream_repo.remote(git_downstream.remote).fetch()
-    downstream_repo.git.checkout(fetched)
+    # pull to downstream so both repos start from same commit
+    git_pull(git_downstream.tmp_dir, "upstream")
 
     remote = git_downstream.url if use_url else git_downstream.remote
     downstream_exp = git_downstream.tmp_dir.dvc.experiments

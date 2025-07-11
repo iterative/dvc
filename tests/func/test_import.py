@@ -2,6 +2,8 @@ import filecmp
 import os
 
 import pytest
+from dulwich.porcelain import push as git_push
+from dulwich.porcelain import remote_add as git_remote_add
 from funcy import first
 
 from dvc.cachemgr import CacheManager
@@ -352,8 +354,8 @@ def test_push_wildcard_from_bare_git_repo(
         )
     erepo_dir.dvc.push([os.path.join(os.fspath(erepo_dir), "dire*")], glob=True)
 
-    erepo_dir.scm.gitpython.repo.create_remote("origin", os.fspath(tmp_dir))
-    erepo_dir.scm.gitpython.repo.remote("origin").push("master")
+    git_remote_add(erepo_dir, "origin", os.fspath(tmp_dir))
+    git_push(erepo_dir, "origin")
 
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
@@ -435,8 +437,8 @@ def test_import_from_bare_git_repo(tmp_dir, make_tmp_dir, erepo_dir, local_cloud
         erepo_dir.dvc_gen({"foo": "foo"}, commit="initial")
     erepo_dir.dvc.push()
 
-    erepo_dir.scm.gitpython.repo.create_remote("origin", os.fspath(tmp_dir))
-    erepo_dir.scm.gitpython.repo.remote("origin").push("master")
+    git_remote_add(erepo_dir, "origin", os.fspath(tmp_dir))
+    git_push(erepo_dir, "origin", "master")
 
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():

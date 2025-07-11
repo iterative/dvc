@@ -1,6 +1,7 @@
 from urllib.parse import urljoin
 
 import pytest
+from dulwich.porcelain import remote_add as git_remote_add
 from requests import Response
 
 from dvc.env import (
@@ -85,7 +86,8 @@ def test_env_to_config():
     ],
 )
 def test_get_repo_url(dvc, scm, monkeypatch, exp_git_remote, repo_url):
-    scm.gitpython.repo.create_remote("origin", "git@url")
+    git_remote_add(scm.root_dir, "origin", "git@url")
+
     if exp_git_remote:
         monkeypatch.setenv(DVC_EXP_GIT_REMOTE, exp_git_remote)
     assert get_repo_url(dvc) == repo_url

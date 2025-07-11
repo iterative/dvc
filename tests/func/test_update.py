@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from dulwich.porcelain import remove as git_rm
 
 from dvc.dependency import base
 from dvc.dvcfile import load_file
@@ -89,7 +90,7 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
 
     new_rev = None
     with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
-        erepo_dir.scm.gitpython.repo.index.remove(["version"])
+        git_rm(erepo_dir, ["version"], cached=True)
         erepo_dir.dvc_gen("version", "updated", commit="upgrade to DVC tracking")
         new_rev = erepo_dir.scm.get_rev()
 
@@ -124,8 +125,7 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
 
     with git_dir.chdir():
         git_dir.init(dvc=True)
-        git_dir.scm.gitpython.repo.index.remove(["file"])
-        os.remove("file")
+        git_rm(git_dir, ["file"])
         git_dir.dvc_gen("file", "second version", commit="with dvc")
         new_rev = git_dir.scm.get_rev()
 

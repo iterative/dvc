@@ -5,6 +5,7 @@ import stat
 import textwrap
 
 import pytest
+from dulwich.porcelain import remove as git_rm
 
 from dvc.cli import main
 from dvc.dvcfile import PROJECT_FILE, load_file
@@ -379,7 +380,7 @@ def test_stats_on_checkout(tmp_dir, dvc, scm):
 
     tmp_dir.gen({"lorem": "lorem", "bar": "new bar", "dir2": {"file": "file"}})
     (tmp_dir / "foo").unlink()
-    scm.gitpython.repo.git.rm("foo.dvc")
+    git_rm(tmp_dir, ["foo.dvc"])
     tmp_dir.dvc_add(["bar", "lorem", "dir2"], commit="second")
 
     scm.checkout("HEAD~")

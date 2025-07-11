@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from dulwich.porcelain import remove as git_rm
 
 from dvc.cli import main
 from dvc.fs import localfs
@@ -63,8 +64,7 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
 
     with git_dir.chdir():
         git_dir.init(dvc=True)
-        git_dir.scm.gitpython.repo.index.remove(["file"])
-        os.remove("file")
+        git_rm(git_dir, ["file"])
         git_dir.dvc_gen("file", "second version", commit="with dvc")
         new_rev = git_dir.scm.get_rev()
 

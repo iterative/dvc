@@ -165,7 +165,7 @@ def test_exp_save_custom_message(tmp_dir, dvc, scm):
     setup_stage(tmp_dir, dvc, scm)
 
     exp = dvc.experiments.save(message="custom commit message")
-    assert scm.gitpython.repo.commit(exp).message == "custom commit message"
+    assert scm.resolve_commit(exp).message == "custom commit message"
 
 
 def test_exp_save_target(tmp_dir, dvc, scm):

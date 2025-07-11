@@ -102,7 +102,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
 def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(  # noqa: DTZ006
-        scm.gitpython.repo.rev_parse(baseline_rev).committed_date
+        scm.resolve_commit(baseline_rev).commit_time
     )
 
     exp_rev = first(
@@ -424,7 +424,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
 
     def _get_rev_isotimestamp(rev):
         return datetime.fromtimestamp(  # noqa: DTZ006
-            scm.gitpython.repo.rev_parse(rev).committed_date
+            scm.resolve_commit(rev).commit_time
         ).isoformat()
 
     result1 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
@@ -653,7 +653,7 @@ def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
 
     def _get_rev_isotimestamp(rev):
         return datetime.fromtimestamp(  # noqa: DTZ006
-            scm.gitpython.repo.rev_parse(rev).committed_date
+            scm.resolve_commit(rev).commit_time
         ).isoformat()
 
     assert f",master,baseline,{_get_rev_isotimestamp(scores_rev)},,1,,1" in cap.out
