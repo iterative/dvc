@@ -150,6 +150,7 @@ class CmdExperimentsShow(CmdBase):
                 all_commits=self.args.all_commits,
                 hide_queued=self.args.hide_queued,
                 hide_failed=self.args.hide_failed,
+                hide_workspace=self.args.hide_workspace,
                 revs=self.args.rev,
                 num=self.args.num,
                 sha_only=self.args.sha,
@@ -280,6 +281,12 @@ def add_parser(experiments_subparsers, parent_parser):
         help="Hide queued experiments in the table.",
     )
     experiments_show_parser.add_argument(
+        "--hide-workspace",
+        action="store_true",
+        default=False,
+        help="Hide workspace row in the table.",
+    )
+    experiments_show_parser.add_argument(
         "--json",
         action="store_true",
         default=False,
@@ -319,4 +326,5 @@ def add_parser(experiments_subparsers, parent_parser):
         action="store_true",
         help="Force re-collection of experiments instead of loading from exp cache.",
     )
+
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
