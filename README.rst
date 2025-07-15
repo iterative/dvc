@@ -240,11 +240,11 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |VS Code Extension Overview| image:: https://raw.githubusercontent.com/iterative/vscode-dvc/main/extension/docs/overview.gif
    :alt: DVC Extension for VS Code
 
-.. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=main
-   :target: https://github.com/iterative/dvc/actions
+.. |CI| image:: https://github.com/iterative/dvc/actions/workflows/tests.yaml/badge.svg
+   :target: https://github.com/iterative/dvc/actions/workflows/tests.yaml
    :alt: GHA Tests
 
-.. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
+.. |Maintainability| image:: https://img.shields.io/codeclimate/maintainability/iterative/dvc
    :target: https://codeclimate.com/github/iterative/dvc
    :alt: Code Climate
 
@@ -268,7 +268,7 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://formulae.brew.sh/formula/dvc
    :alt: Homebrew
 
-.. |Conda| image:: https://img.shields.io/conda/v/conda-forge/dvc.svg?label=conda&logo=conda-forge
+.. |Conda| image:: https://anaconda.org/conda-forge/dvc/badges/version.svg
    :target: https://anaconda.org/conda-forge/dvc
    :alt: Conda-forge
 
