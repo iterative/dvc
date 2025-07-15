@@ -213,7 +213,7 @@ Community and Support
 * `Forum <https://discuss.dvc.org/>`_
 * `Discord Chat <https://dvc.org/chat>`_
 * `Email <mailto:support@dvc.org>`_
-* `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
+* `Mailing List <https://dvc.org/community#subscribe>`_
 
 Copyright
 =========
