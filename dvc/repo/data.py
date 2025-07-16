@@ -337,7 +337,10 @@ def _get_entries_not_in_remote(
     missing_entries = []
 
     storage_map = view.storage_map
-    with TqdmCallback(size=0, desc="Checking remote", unit="entry") as cb:
+
+    n = 0
+    with TqdmCallback(size=n, desc="Checking remote", unit="entry") as cb:
+        entries: dict[DataIndexKey, DataIndexEntry] = {}
         for key, entry in view.iteritems(shallow=not granular):
             if not (entry and entry.hash_info):
                 continue
@@ -352,13 +355,19 @@ def _get_entries_not_in_remote(
             ):
                 continue
 
+            entries[key] = entry
+            n += 1
+            cb.set_size(n)
+
+        for key, entry in entries.items():
             k = (*key, "") if entry.meta and entry.meta.isdir else key
             try:
                 if not storage_map.remote_exists(entry, refresh=remote_refresh):
                     missing_entries.append(os.path.sep.join(k))
-                    cb.relative_update()  # no need to update the size
             except StorageKeyError:
                 pass
+            finally:
+                cb.relative_update()
     return missing_entries
 
 
