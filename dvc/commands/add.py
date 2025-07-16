@@ -2,6 +2,7 @@ from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
+from tabulate import tabulate
 
 logger = logger.getChild(__name__)
 
