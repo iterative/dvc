@@ -51,13 +51,13 @@ def make_request_handler():
                 data = self.rfile.read(int(length)).decode("utf8")
                 sys.stderr.write(f"{data}\n")
 
-        def do_POST(self):  # noqa: N802
+        def do_POST(self):
             # analytics endpoint
             self.hits["POST"] += 1
             self.send_response(200)
             super().end_headers()
 
-        def do_GET(self):  # noqa: N802
+        def do_GET(self):
             # updater endpoint
             self.hits["GET"] += 1
             self.send_response(200)
