@@ -3,6 +3,7 @@ import pathlib
 import sys
 
 import pytest
+from dulwich.porcelain import remote_add as git_remote_add
 from git import GitCommandError
 
 from dvc.exceptions import DvcException
@@ -81,8 +82,8 @@ class TestInstall:
             storage_path / "files" / "md5" / file_checksum[:2] / file_checksum[2:]
         )
 
-        scm.gitpython.repo.clone(os.fspath(git_remote))
-        scm.gitpython.repo.create_remote("origin", os.fspath(git_remote))
+        scm.clone(os.fspath(tmp_dir), os.fspath(git_remote))
+        git_remote_add(tmp_dir, "origin", os.fspath(git_remote))
 
         dvc.install()
 

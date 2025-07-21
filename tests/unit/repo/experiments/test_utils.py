@@ -16,7 +16,7 @@ def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
     tmp_dir.scm_gen(file, contents, commit="init")
     rev = scm.get_rev()
     ref = f"{EXPS_NAMESPACE}/ab/c123/{name}"
-    scm.gitpython.set_ref(ref, rev)
+    scm.dulwich.repo.refs[ref.encode("utf-8")] = rev.encode("utf-8")
     return ref, rev
 
 

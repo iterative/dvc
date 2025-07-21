@@ -1,5 +1,8 @@
 import os
 
+from dulwich.porcelain import push as git_push
+from dulwich.porcelain import remote_add as git_remote_add
+
 from dvc.cachemgr import CacheManager
 from dvc.dvcfile import LOCK_FILE, PROJECT_FILE
 from dvc.fs import system
@@ -19,8 +22,8 @@ def test_open_bare(tmp_dir, scm, dvc, tmp_path_factory):
     url = os.fspath(tmp_path_factory.mktemp("bare"))
     Git.init(url, bare=True).close()
 
-    scm.gitpython.repo.create_remote("origin", url)
-    scm.gitpython.repo.remote("origin").push("master")
+    git_remote_add(tmp_dir, "origin", url)
+    git_push(tmp_dir, "origin")
 
     with Repo.open(url) as repo:
         assert repo.scm.root_dir != url

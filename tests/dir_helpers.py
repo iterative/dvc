@@ -46,6 +46,7 @@ from global repo template to creating everything inplace, which:
 import os
 
 import pytest
+from dulwich.porcelain import remote_add as git_remote_add
 
 __all__ = [
     "erepo_dir",
@@ -96,7 +97,7 @@ class GitRemote:
 def git_upstream(tmp_dir, erepo_dir, git_dir, request):
     remote = erepo_dir if "dvc" in request.fixturenames else git_dir
     url = f"file://{remote.resolve().as_posix()}"
-    tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
+    git_remote_add(tmp_dir, "upstream", url)
     return GitRemote(remote, "upstream", url)
 
 
@@ -104,5 +105,5 @@ def git_upstream(tmp_dir, erepo_dir, git_dir, request):
 def git_downstream(tmp_dir, erepo_dir, git_dir, request):
     remote = erepo_dir if "dvc" in request.fixturenames else git_dir
     url = f"file://{tmp_dir.resolve().as_posix()}"
-    remote.scm.gitpython.repo.create_remote("upstream", url)
+    git_remote_add(remote, "upstream", url)
     return GitRemote(remote, "upstream", url)

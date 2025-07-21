@@ -61,4 +61,4 @@ def test_custom_commit_message_queue(tmp_dir, scm, dvc):
     dvc.experiments.run(stage.addressing, queue=True, message="custom commit message")
 
     exp = first(dvc.experiments.run(run_all=True))
-    assert scm.gitpython.repo.commit(exp).message == "custom commit message"
+    assert scm.resolve_commit(exp).message == "custom commit message"
