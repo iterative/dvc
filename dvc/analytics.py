@@ -1,9 +1,13 @@
 import json
 import os
+from typing import TYPE_CHECKING, Optional
 
 from dvc.log import logger
 
 from .env import DVC_ANALYTICS_ENDPOINT, DVC_NO_ANALYTICS
+
+if TYPE_CHECKING:
+    from dvc.scm import Base
 
 logger = logger.getChild(__name__)
 
@@ -89,20 +93,62 @@ def send(path):
     os.remove(path)
 
 
-def _scm_in_use():
-    from dvc.exceptions import NotDvcRepoError
-    from dvc.repo import Repo
-    from dvc.scm import NoSCM
+def _git_remote_url(scm: Optional["Base"]) -> Optional[str]:
+    from dvc.scm import Git
 
-    from .scm import SCM, SCMError
+    if not isinstance(scm, Git):
+        return None
+
+    from dulwich.porcelain import get_remote_repo
+
+    dulwich_repo = scm.dulwich.repo
+    try:
+        _remote, url = get_remote_repo(dulwich_repo)
+    except IndexError:
+        # IndexError happens when the head is detached
+        _remote, url = get_remote_repo(dulwich_repo, b"origin")
+    # Dulwich returns (None, "origin") if no remote set
+    if (_remote, url) == (None, "origin"):
+        return None
+    return url
+
+
+def _scm_in_use(scm: Optional["Base"]) -> Optional[str]:
+    return type(scm).__name__ if scm else None
+
+
+def _parse_git_remote_path(remote_url: str) -> str:
+    from urllib.parse import urlparse
+
+    from scmrepo.urls import is_scp_style_url
+
+    parsed = urlparse(remote_url)
+    # Windows Path also gets parsed with a drive letter as scheme
+    # https://github.com/python/cpython/issues/86381
+    if parsed.scheme and parsed.scheme in ("http", "https", "git", "ssh"):
+        return parsed.path.strip("/")
+
+    if is_scp_style_url(remote_url):
+        # handle scp-style URL
+        parts = remote_url.split(":", 1)
+        if len(parts) == 2:
+            _, path = parts
+            return path.rstrip("/")
+    return remote_url
+
+
+def _git_remote_path_hash(scm: Optional["Base"]) -> Optional[str]:
+    """Return a hash of the git remote path."""
+    import hashlib
 
     try:
-        scm = SCM(root_dir=Repo.find_root())
-        return type(scm).__name__
-    except SCMError:
-        return NoSCM.__name__
-    except NotDvcRepoError:
-        pass
+        if remote_url := _git_remote_url(scm):
+            path = _parse_git_remote_path(remote_url)
+            h = hashlib.md5(path.encode("utf-8"), usedforsecurity=False)  # for FIPS
+            return h.hexdigest()
+    except Exception:  # noqa: BLE001
+        logger.debug("Failed to get git remote path", exc_info=True)
+    return None
 
 
 def _runtime_info():
@@ -112,6 +158,8 @@ def _runtime_info():
     from iterative_telemetry import _generate_ci_id, find_or_create_user_id
 
     from dvc import __version__
+    from dvc.info import _get_remotes
+    from dvc.repo import Repo
     from dvc.utils import is_binary
 
     ci_id = _generate_ci_id()
@@ -120,13 +168,24 @@ def _runtime_info():
     else:
         group_id, user_id = None, find_or_create_user_id()
 
+    scm = None
+    remotes = None
+    try:
+        repo = Repo()
+        scm = repo.scm
+        remotes = _get_remotes(repo.config)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("failed to open repo: %s", exc)
+
     return {
         "dvc_version": __version__,
         "is_binary": is_binary(),
-        "scm_class": _scm_in_use(),
+        "scm_class": _scm_in_use(scm),
         "system_info": _system_info(),
         "user_id": user_id,
         "group_id": group_id,
+        "remotes": remotes,
+        "git_remote_hash": _git_remote_path_hash(scm),
     }
 
 
