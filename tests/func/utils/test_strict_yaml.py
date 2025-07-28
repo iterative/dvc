@@ -325,10 +325,12 @@ def force_posixpath(mocker):
 @pytest.fixture
 def fixed_width_term(mocker):
     """Fixed width console."""
-    from rich.console import Console
+    from rich.console import Console, ConsoleDimensions
 
     mocker.patch.object(
-        Console, "width", new_callable=mocker.PropertyMock(return_value=80)
+        Console,
+        "size",
+        new_callable=mocker.PropertyMock(return_value=ConsoleDimensions(80, 25)),
     )
 
 
