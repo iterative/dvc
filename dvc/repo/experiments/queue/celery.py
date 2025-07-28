@@ -1,3 +1,4 @@
+import glob
 import hashlib
 import locale
 import logging
@@ -434,9 +435,13 @@ class LocalCeleryQueue(BaseStashQueue):
         try:
             proc_info = self.proc[queue_entry.stash_rev]
         except KeyError:
-            raise DvcException(  # noqa: B904
-                f"No output logs found for experiment '{rev}'"
-            )
+            message = f"No output logs found for experiment '{rev}'"
+            if self.match_queue_entry_by_name({rev}, self.iter_failed()).get(rev):
+                message += "\nExperiment likely failed during setup."
+                if celery_logs := glob.glob(os.path.join(self.wdir, "*.out")):
+                    message += " Check the celery logs for more details:"
+                    message += f"\n\tcat {' '.join(celery_logs)}".expandtabs(4)
+            raise DvcException(message)  # noqa: B904
         with open(
             proc_info.stdout, encoding=encoding or locale.getpreferredencoding()
         ) as fobj:
