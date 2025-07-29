@@ -71,7 +71,7 @@ class CmdDataStatus(CmdDataBase):
                 return 0
 
             if self.args.quiet:
-                return bool(st)
+                return int(bool(st))
 
             if st:
                 self._show(st, indent)
