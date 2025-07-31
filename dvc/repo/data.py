@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional, TypedDict, Union
 from dvc.fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
 from dvc.log import logger
 from dvc.ui import ui
+from dvc_data.index import DataIndexDirError
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -328,9 +329,20 @@ def _get_entries_not_in_remote(
     from dvc.repo.worktree import worktree_view
     from dvc_data.index import StorageKeyError
 
+    entries: dict[DataIndexKey, DataIndexEntry] = {}
+
+    def _onerror(entry, exc):
+        if not isinstance(exc, DataIndexDirError):
+            raise exc
+        # We don't have the contents of this dir file, so we will only check this key.
+        entries[entry.key] = entry
+
     # View into the index, with only pushable entries
     index = worktree_view(repo.index, push=True)
     data_index = index.data["repo"]
+
+    orig_data_index_onerror = data_index.onerror
+    data_index.onerror = _onerror
 
     view = filter_index(data_index, filter_keys=filter_keys)  # type: ignore[arg-type]
 
@@ -340,7 +352,6 @@ def _get_entries_not_in_remote(
 
     n = 0
     with TqdmCallback(size=n, desc="Checking remote", unit="entry") as cb:
-        entries: dict[DataIndexKey, DataIndexEntry] = {}
         for key, entry in view.iteritems(shallow=not granular):
             if not (entry and entry.hash_info):
                 continue
@@ -368,6 +379,7 @@ def _get_entries_not_in_remote(
                 pass
             finally:
                 cb.relative_update()
+    data_index.onerror = orig_data_index_onerror
     return missing_entries
 
 

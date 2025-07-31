@@ -10,6 +10,7 @@ from . import locked
 
 if TYPE_CHECKING:
     from dvc.output import Output
+    from dvc.repo import Repo
     from dvc.stage import Stage
 
 logger = logger.getChild(__name__)
@@ -24,7 +25,7 @@ def _make_index_onerror(onerror, rev):
 
 
 def _collect_indexes(  # noqa: PLR0913
-    repo,
+    repo: "Repo",
     targets=None,
     remote=None,
     all_branches=False,
@@ -94,7 +95,7 @@ def _collect_indexes(  # noqa: PLR0913
 
 @locked
 def fetch(  # noqa: PLR0913
-    self,
+    self: "Repo",
     targets=None,
     jobs=None,
     remote=None,
