@@ -303,12 +303,11 @@ def collect(
         baseline_names = describe(
             repo.scm, baseline_revs, refs=cached_refs, logger=logger
         )
-    workspace_data = collect_rev(repo, "workspace", **kwargs)
-    result: list[ExpState]
-    if hide_workspace:
-        result = []
-    else:
-        result = [workspace_data]
+
+    result: list[ExpState] = []
+    if not hide_workspace:
+        workspace_data = collect_rev(repo, "workspace", **kwargs)
+        result.append(workspace_data)
 
     queued = collect_queued(repo, baseline_revs, **kwargs) if not hide_queued else {}
     active = collect_active(repo, baseline_revs, **kwargs)
