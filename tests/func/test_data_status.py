@@ -918,3 +918,49 @@ def test_compat_legacy_new_cache_types(M, tmp_dir, dvc, scm):
         "committed": {"added": M.unordered("foo", "bar")},
         "git": M.dict(),
     }
+
+
+def test_missing_cache_remote_check(M, tmp_dir, dvc, scm, local_remote):
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    tmp_dir.dvc_gen("foobar", "foobar")
+    remove(dvc.cache.repo.path)
+
+    assert dvc.data_status(untracked_files="all", not_in_remote=True) == {
+        **EMPTY_STATUS,
+        "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
+        "committed": {"added": M.unordered("foobar", join("dir", ""))},
+        "not_in_cache": M.unordered("foobar", join("dir", "")),
+        "git": M.dict(),
+        "not_in_remote": M.unordered("foobar", join("dir", "")),
+    }
+
+    assert dvc.data_status(
+        granular=True, untracked_files="all", not_in_remote=True
+    ) == {
+        **EMPTY_STATUS,
+        "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
+        "committed": {"added": M.unordered("foobar", join("dir", ""))},
+        "uncommitted": {"unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))},
+        "not_in_cache": M.unordered("foobar", join("dir", "")),
+        "git": M.dict(),
+        "not_in_remote": M.unordered("foobar", join("dir", "")),
+    }
+
+    assert dvc.data_status(["dir"], untracked_files="all", not_in_remote=True) == {
+        **EMPTY_STATUS,
+        "committed": {"added": [join("dir", "")]},
+        "not_in_cache": [join("dir", "")],
+        "git": M.dict(),
+        "not_in_remote": [join("dir", "")],
+    }
+
+    assert dvc.data_status(
+        ["dir"], untracked_files="all", not_in_remote=True, granular=True
+    ) == {
+        **EMPTY_STATUS,
+        "committed": {"added": [join("dir", "")]},
+        "uncommitted": {"unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))},
+        "not_in_cache": [join("dir", "")],
+        "git": M.dict(),
+        "not_in_remote": [join("dir", "")],
+    }
