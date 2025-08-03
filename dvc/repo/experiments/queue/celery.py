@@ -127,7 +127,9 @@ class LocalCeleryQueue(BaseStashQueue):
         from dvc_task.proc.process import ManagedProcess
 
         logger.debug("Spawning exp queue worker")
-        wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
+        wdir_hash = hashlib.sha256(
+            self.wdir.encode("utf-8"), usedforsecurity=False
+        ).hexdigest()[:6]
         node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
         cmd = ["exp", "queue-worker", node_name]
         if num == 1:
@@ -158,7 +160,9 @@ class LocalCeleryQueue(BaseStashQueue):
 
         started = 0
         for num in range(1, 1 + count):
-            wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
+            wdir_hash = hashlib.sha256(
+                self.wdir.encode("utf-8"), usedforsecurity=False
+            ).hexdigest()[:6]
             node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
             if node_name in active_worker:
                 logger.debug("Exp queue worker %s already exist", node_name)

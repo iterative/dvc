@@ -67,7 +67,9 @@ class DVCFixtures:
         └── 📄 {hashed([0-9])}.txt
         """
         dir_contents = {
-            md5(str(i).encode("utf-8")).hexdigest() + ".txt": str(i) for i in range(10)
+            md5(str(i).encode("utf-8"), usedforsecurity=False).hexdigest()
+            + ".txt": str(i)
+            for i in range(10)
         }
         tmp_dir.dvc_gen({"source": dir_contents}, commit="add source")
         tmp_dir.scm_gen(".gitignore", "/source", commit="add .gitignore")
@@ -751,7 +753,7 @@ class TestDVCFileSystemGet(DVCFixtures):
         source_files = []
         destination_files = []
         for i in range(10):
-            hashed_i = md5(str(i).encode("utf-8")).hexdigest()
+            hashed_i = md5(str(i).encode("utf-8"), usedforsecurity=False).hexdigest()
             source_files.append(fs_join(source, f"{hashed_i}.txt"))
             destination_files.append(
                 make_path_posix(local_join(target, f"{hashed_i}.txt"))
