@@ -18,7 +18,7 @@ TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
 
 
 def bytes_hash(byts, typ):
-    hasher = getattr(hashlib, typ)()
+    hasher = getattr(hashlib, typ)(usedforsecurity=False)
     hasher.update(byts)
     return hasher.hexdigest()
 

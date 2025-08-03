@@ -9,7 +9,7 @@ from dvc.utils.fs import remove
 
 
 def digest(text):
-    return hashlib.md5(bytes(text, "utf-8")).hexdigest()
+    return hashlib.md5(bytes(text, "utf-8"), usedforsecurity=False).hexdigest()
 
 
 def test_no_scm(tmp_dir, dvc):

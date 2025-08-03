@@ -641,10 +641,11 @@ class Repo:
         # that just happened to be at the same path as old deleted ones.
         btime = self._btime or getattr(os.stat(root_dir), "st_birthtime", None)
 
-        md5 = hashlib.md5(  # noqa: S324
+        md5 = hashlib.md5(
             str(
                 (root_dir, subdir, btime, getpass.getuser(), version_tuple[0], salt)
-            ).encode()
+            ).encode(),
+            usedforsecurity=False,
         )
         repo_token = md5.hexdigest()
         return os.path.join(repos_dir, repo_token)
