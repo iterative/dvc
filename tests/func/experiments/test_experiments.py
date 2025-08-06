@@ -793,3 +793,18 @@ def test_custom_commit_message(tmp_dir, scm, dvc, tmp):
         )
     )
     assert scm.resolve_commit(exp).message == "custom commit message"
+
+
+@pytest.mark.parametrize("dep", ["submodule", "submodule/file"])
+def test_experiments_run_with_submodule_dependencies(dvc, scm, make_tmp_dir, dep):
+    external_repo = make_tmp_dir("external_repo", scm=True)
+    external_repo.scm_gen("file", "content", commit="add file")
+
+    submodules = scm.pygit2.repo.submodules
+    submodules.add(os.fspath(external_repo), "submodule")
+    submodules.update(init=True)
+    scm.add_commit([".gitmodules"], message="add submodule")
+
+    dvc.stage.add(cmd="echo foo", deps=[dep], name="foo")
+
+    assert dvc.experiments.run()
