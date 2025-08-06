@@ -39,7 +39,7 @@ def test_scm_track_changed_files(scm_context):
 
     scm_context.track_file("foo")
     scm_context.track_changed_files()
-    scm_context.scm.add.assert_called_once_with({"foo"})
+    scm_context.scm.add.assert_called_once_with(["foo"])
 
 
 def test_ignore(scm_context):
@@ -73,7 +73,7 @@ def test_scm_context_autostage_changed_files(scm_context):
 
     assert not scm_context.files_to_track
     assert not scm_context.ignored_paths
-    scm_context.scm.add.assert_called_once_with({"foo"})
+    scm_context.scm.add.assert_called_once_with(["foo"])
 
 
 def test_scm_context_clears_ignores_on_error(scm_context):
@@ -141,4 +141,4 @@ def test_scm_context_decorator(scm_context, mocker):
     method = mocker.MagicMock(wraps=test_method)
     decorator(method, autostage=True)(repo, "arg", kw=1)
     method.assert_called_once_with(repo, "arg", kw=1)
-    scm_context.scm.add.assert_called_once_with({"foo"})
+    scm_context.scm.add.assert_called_once_with(["foo"])

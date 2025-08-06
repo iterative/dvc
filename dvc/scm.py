@@ -1,23 +1,26 @@
 """Manages source control systems (e.g. Git)."""
 
 import os
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, Literal, Optional, Union, overload
 
 from funcy import group_by
-from scmrepo.base import Base  # noqa: F401
+from scmrepo.base import Base  # noqa: TC002
 from scmrepo.git import Git
 from scmrepo.noscm import NoSCM
 
 from dvc.exceptions import DvcException
+from dvc.log import logger
 from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
     from scmrepo.progress import GitProgressEvent
 
     from dvc.fs import FileSystem
+
+logger = logger.getChild(__name__)
 
 
 class SCMError(DvcException):
@@ -283,3 +286,32 @@ def lfs_prefetch(fs: "FileSystem", paths: list[str]):
             include=[(path if path.startswith("/") else f"/{path}") for path in paths],
             progress=pbar.update_git,
         )
+
+
+def add_no_submodules(
+    scm: "Base",
+    paths: Union[str, Iterable[str]],
+    **kwargs,
+) -> None:
+    """Stage paths to Git, excluding those inside submodules."""
+
+    if isinstance(paths, str):
+        paths = [paths]
+
+    submodule_roots = {os.path.join(scm.root_dir, sub) for sub in scm.list_submodules()}
+
+    repo_paths: list[str] = []
+    skipped_paths: list[str] = []
+
+    for p in paths:
+        abs_path = os.path.abspath(p)
+        if abs_path in submodule_roots or abs_path.startswith(tuple(submodule_roots)):
+            skipped_paths.append(p)
+        else:
+            repo_paths.append(p)
+
+    if skipped_paths:
+        msg = "Skipping staging for path(s) inside submodules: %s"
+        logger.debug(msg, ", ".join(skipped_paths))
+
+    scm.add(repo_paths, **kwargs)

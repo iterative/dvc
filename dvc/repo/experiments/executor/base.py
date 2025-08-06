@@ -298,7 +298,9 @@ class BaseExecutor(ABC):
                 stages = dvc.commit([], recursive=recursive, force=True, relink=False)
             exp_hash = cls.hash_exp(stages)
             if include_untracked:
-                dvc.scm.add(include_untracked, force=True)  # type: ignore[call-arg]
+                from dvc.scm import add_no_submodules
+
+                add_no_submodules(dvc.scm, include_untracked, force=True)  # type: ignore[call-arg]
 
             with cls.auto_push(dvc):
                 cls.commit(
@@ -513,7 +515,9 @@ class BaseExecutor(ABC):
             stages = dvc.reproduce(*args, **kwargs)
             if paths := cls._get_top_level_paths(dvc):
                 logger.debug("Staging top-level files: %s", paths)
-                dvc.scm_context.add(paths)
+                from dvc.scm import add_no_submodules
+
+                add_no_submodules(dvc.scm, paths)
 
             exp_hash = cls.hash_exp(stages)
             if not repro_dry:

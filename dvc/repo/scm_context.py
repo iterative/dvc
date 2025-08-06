@@ -41,8 +41,10 @@ class SCMContext:
     def add(self, paths: Union[str, Iterable[str]]) -> None:
         from scmrepo.exceptions import UnsupportedIndexFormat
 
+        from dvc.scm import add_no_submodules
+
         try:
-            return self.scm.add(paths)
+            add_no_submodules(self.scm, paths)
         except UnsupportedIndexFormat:
             link = "https://github.com/iterative/dvc/issues/610"
             add_cmd = self._make_git_add_cmd([relpath(path) for path in paths])
