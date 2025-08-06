@@ -305,7 +305,10 @@ def add_no_submodules(
 
     for p in paths:
         abs_path = os.path.abspath(p)
-        if abs_path in submodule_roots or abs_path.startswith(tuple(submodule_roots)):
+        if any(
+            abs_path == root or abs_path.startswith(root + os.sep)
+            for root in submodule_roots
+        ):
             skipped_paths.append(p)
         else:
             repo_paths.append(p)
