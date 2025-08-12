@@ -23,11 +23,11 @@ jobs:
         plugin: ["dvc-s3"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         path: dvc
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         repository: iterative/${{ matrix.plugin }}
         ref: main

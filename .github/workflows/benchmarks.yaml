@@ -18,7 +18,7 @@ jobs:
         with:
             python-version: "3.13"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
@@ -32,7 +32,7 @@ jobs:
       - name: run benchmarks on base branch
         run: pytest --benchmark-autosave dvc/testing/benchmarks/ -k 'test_init or test_help'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           clean: false
