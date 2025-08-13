@@ -127,8 +127,10 @@ def checkout(  # noqa: C901
             raise CheckoutErrorSuggestGit(target) from exc
         raise  # noqa: PLE0704
 
-    view = self.index.targets_view(
-        targets, recursive=recursive, with_deps=with_deps, onerror=onerror
+    from .index import index_from_targets
+
+    view = index_from_targets(
+        self, targets=targets, recursive=recursive, with_deps=with_deps, onerror=onerror
     )
 
     with ui.progress(unit="entry", desc="Building workspace index", leave=True) as pb:

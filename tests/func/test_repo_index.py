@@ -4,7 +4,8 @@ from itertools import chain
 import pytest
 from pygtrie import Trie
 
-from dvc.repo.index import Index
+from dvc.exceptions import NoOutputOrStageError
+from dvc.repo.index import Index, index_from_targets
 from dvc.stage import Stage
 
 
@@ -402,3 +403,31 @@ def test_data_index(tmp_dir, dvc, local_cloud, erepo_dir):
 
     assert data.storage_map[("ifoo_partial",)].remote.read_only
     assert data.storage_map[("idir_partial",)].remote.read_only
+
+
+def test_index_from_targets(tmp_dir, dvc):
+    stage1 = dvc.stage.add(name="stage1", cmd="echo hello")
+    stage2 = dvc.stage.add(name="stage2", cmd="echo hello world")
+
+    (foo_stage,) = tmp_dir.dvc_gen("foo", "foo")
+
+    index = index_from_targets(dvc, ["stage1"])
+    assert index.stages == [stage1]
+
+    index = index_from_targets(dvc, ["stage2"])
+    assert index.stages == [stage2]
+
+    index = index_from_targets(dvc, ["dvc.yaml"])
+    assert set(index.stages) == {stage1, stage2}
+
+    index = index_from_targets(dvc, ["dvc.yaml:stage2"])
+    assert index.stages == [stage2]
+
+    index = index_from_targets(dvc, ["foo.dvc"])
+    assert index.stages == [foo_stage]
+
+    index = index_from_targets(dvc, ["stage1", "foo.dvc"])
+    assert set(index.stages) == {foo_stage, stage1}
+
+    with pytest.raises(NoOutputOrStageError):
+        index = index_from_targets(dvc, ["not-existing-stage"])

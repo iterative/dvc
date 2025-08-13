@@ -8,7 +8,7 @@ import pytest
 from dulwich.porcelain import remove as git_rm
 
 from dvc.cli import main
-from dvc.dvcfile import PROJECT_FILE, load_file
+from dvc.dvcfile import PROJECT_FILE, FileMixin, SingleStageFile, load_file
 from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit, NoOutputOrStageError
 from dvc.fs import system
 from dvc.stage.exceptions import StageFileDoesNotExistError
@@ -754,3 +754,20 @@ def test_checkout_cleanup_properly_on_untracked_nested_directories(tmp_dir, scm,
     dvc.checkout(force=True)
 
     assert (tmp_dir / "datasets").read_text() == {"dir1": {"file1": "file1"}}
+
+
+def test_checkout_loads_specific_file(tmp_dir, dvc, mocker):
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("bar", "bar")
+
+    (tmp_dir / "bar").unlink()
+    (tmp_dir / "foo").unlink()
+
+    f = SingleStageFile(dvc, "foo.dvc")
+
+    spy = mocker.spy(FileMixin, "_load")
+    assert dvc.checkout("foo.dvc") == {"added": ["foo"], "deleted": [], "modified": []}
+
+    spy.assert_called_with(f)
+    assert (tmp_dir / "foo").exists()
+    assert not (tmp_dir / "bar").exists()

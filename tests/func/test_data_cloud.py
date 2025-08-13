@@ -7,6 +7,7 @@ import pytest
 
 import dvc_data
 from dvc.cli import main
+from dvc.dvcfile import FileMixin, SingleStageFile
 from dvc.exceptions import CheckoutError
 from dvc.repo.open_repo import clean_repos
 from dvc.scm import CloneError
@@ -678,3 +679,38 @@ def test_pull_granular_excluding_import_that_cannot_be_pulled(
         dvc.pull()
     with pytest.raises(CloneError, match="SCM error"):
         dvc.pull(imp_stage.addressing)
+
+
+def test_loads_single_file(tmp_dir, dvc, local_remote, mocker):
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("bar", "bar")
+
+    foo_dvcfile = SingleStageFile(dvc, "foo.dvc")
+    bar_dvcfile = SingleStageFile(dvc, "bar.dvc")
+
+    spy = mocker.spy(FileMixin, "_load")
+    assert dvc.push("foo.dvc") == 1
+    spy.assert_called_with(foo_dvcfile)
+    spy.reset_mock()
+
+    assert dvc.push("bar.dvc") == 1
+    spy.assert_called_with(bar_dvcfile)
+    spy.reset_mock()
+
+    dvc.cache.local.clear()
+    (tmp_dir / "bar").unlink()
+    (tmp_dir / "foo").unlink()
+
+    assert dvc.pull("foo.dvc") == {
+        "added": ["foo"],
+        "deleted": [],
+        "fetched": 1,
+        "modified": [],
+    }
+    spy.assert_called_with(foo_dvcfile)
+    assert (tmp_dir / "foo").exists()
+    assert not (tmp_dir / "bar").exists()
+    spy.reset_mock()
+
+    assert dvc.fetch("bar.dvc") == 1
+    spy.assert_called_with(bar_dvcfile)

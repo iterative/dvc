@@ -41,6 +41,8 @@ def _collect_indexes(  # noqa: PLR0913
     onerror=None,
     push=False,
 ):
+    from .index import index_from_targets
+
     indexes = {}
     collection_exc = None
 
@@ -68,7 +70,8 @@ def _collect_indexes(  # noqa: PLR0913
         try:
             repo.config.merge(config)
 
-            idx = repo.index.targets_view(
+            idx = index_from_targets(
+                repo,
                 targets,
                 with_deps=with_deps,
                 recursive=recursive,

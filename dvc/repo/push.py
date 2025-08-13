@@ -152,10 +152,12 @@ def push(  # noqa: PLR0913
     finally:
         ws_idx = indexes.get("workspace")
         if ws_idx is not None:
+            from dvc.repo.index import IndexView
+
+            _index = ws_idx.index if isinstance(ws_idx, IndexView) else ws_idx
             _update_meta(
-                self.index,
+                _index,
                 targets=glob_targets(targets, glob=glob),
-                remote=remote,
                 with_deps=with_deps,
                 recursive=recursive,
             )
