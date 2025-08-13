@@ -17,6 +17,7 @@ from dvc.utils.objects import cached_property
 if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
+    from typing_extensions import Self
 
     from dvc.dependency import Dependency
     from dvc.fs.callbacks import Callback
@@ -318,32 +319,9 @@ class Index:
         repo: "Repo",
         onerror: Optional[Callable[[str, Exception], None]] = None,
     ) -> "Index":
-        stages = []
-        metrics = {}
-        plots = {}
-        params = {}
-        artifacts = {}
-        datasets = {}
-        datasets_lock = {}
-
         onerror = onerror or repo.stage_collection_error_handler
-        for _, idx in collect_files(repo, onerror=onerror):
-            stages.extend(idx.stages)
-            metrics.update(idx._metrics)
-            plots.update(idx._plots)
-            params.update(idx._params)
-            artifacts.update(idx._artifacts)
-            datasets.update(idx._datasets)
-            datasets_lock.update(idx._datasets_lock)
-        return cls(
-            repo,
-            stages=stages,
-            metrics=metrics,
-            plots=plots,
-            params=params,
-            artifacts=artifacts,
-            datasets=datasets,
-            datasets_lock=datasets_lock,
+        return cls.from_indexes(
+            repo, (idx for _, idx in collect_files(repo, onerror=onerror))
         )
 
     @classmethod
@@ -364,7 +342,7 @@ class Index:
             else {},
         )
 
-    def update(self, stages: Iterable["Stage"]) -> "Index":
+    def update(self, stages: Iterable["Stage"]) -> "Self":
         stages = set(stages)
         # we remove existing stages with same hashes at first
         # and then re-add the new ones later.
@@ -377,6 +355,36 @@ class Index:
             params=self._params,
             artifacts=self._artifacts,
             datasets=self._datasets,
+        )
+
+    @classmethod
+    def from_indexes(cls, repo, idxs: Iterable["Self"]) -> "Self":
+        stages = []
+        metrics = {}
+        plots = {}
+        params = {}
+        artifacts = {}
+        datasets = {}
+        datasets_lock = {}
+
+        for idx in idxs:
+            stages.extend(idx.stages)
+            metrics.update(idx._metrics)
+            plots.update(idx._plots)
+            params.update(idx._params)
+            artifacts.update(idx._artifacts)
+            datasets.update(idx._datasets)
+            datasets_lock.update(idx._datasets_lock)
+
+        return cls(
+            repo,
+            stages=stages,
+            metrics=metrics,
+            plots=plots,
+            params=params,
+            artifacts=artifacts,
+            datasets=datasets,
+            datasets_lock=datasets_lock,
         )
 
     @cached_property
@@ -736,6 +744,10 @@ class IndexView:
             yield from stage.deps
 
     @property
+    def index(self) -> "Index":
+        return self._index
+
+    @property
     def _filtered_outs(self) -> Iterator[tuple["Output", Optional[str]]]:
         for stage, filter_info in self._stage_infos:
             for out in stage.filter_outs(filter_info):
@@ -927,3 +939,51 @@ def _get_entry_hash_name(
             return src_entry.hash_info.name
 
     return DEFAULT_ALGORITHM
+
+
+def index_from_targets(
+    repo: "Repo",
+    targets: Optional["TargetType"] = None,
+    stage_filter: Optional[Callable[["Stage"], bool]] = None,
+    outs_filter: Optional[Callable[["Output"], bool]] = None,
+    max_size: Optional[int] = None,
+    types: Optional[list[str]] = None,
+    with_deps: bool = False,
+    recursive: bool = False,
+    **kwargs: Any,
+) -> "IndexView":
+    from dvc.stage.exceptions import StageFileDoesNotExistError, StageNotFound
+    from dvc.utils import parse_target
+
+    index: Optional[Index] = None
+    if targets and all(targets) and not with_deps and not recursive:
+        indexes: list[Index] = []
+        try:
+            for target in targets:
+                if not target:
+                    continue
+                file, name = parse_target(target)
+                if file and not name:
+                    index = Index.from_file(repo, file)
+                else:
+                    stages = repo.stage.collect(target)
+                    index = Index(repo, stages=list(stages))
+                indexes.append(index)
+        except (StageFileDoesNotExistError, StageNotFound):
+            pass
+        else:
+            index = Index.from_indexes(repo, indexes)
+            targets = None
+
+    if index is None:
+        index = repo.index
+    return index.targets_view(
+        targets,
+        stage_filter=stage_filter,
+        outs_filter=outs_filter,
+        max_size=max_size,
+        types=types,
+        recursive=recursive,
+        with_deps=with_deps,
+        **kwargs,
+    )
