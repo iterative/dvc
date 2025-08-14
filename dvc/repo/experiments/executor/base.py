@@ -9,6 +9,7 @@ from enum import IntEnum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Union
 
+import funcy
 from funcy import nullcontext
 from scmrepo.exceptions import SCMError
 
@@ -815,11 +816,22 @@ class BaseExecutor(ABC):
 
     @contextmanager
     def set_temp_refs(self, scm: "Git", temp_dict: dict[str, str]):
+        # Retry ref set, get, and remove operations to handle transient issues during
+        # concurrent Git access.
+        # Dulwich deletes parent directories of refs if they happen to be empty after
+        # removing a ref, which can interfere with `set_ref` in other processes.
+        # `remove_ref` may also fail with a `FileLocked` error when refs are packed,
+        # since multiple processes might attempt to write to the same file.
+        retry = funcy.retry(10, errors=Exception, timeout=0.1)
+        set_ref = retry(scm.set_ref)
+        get_ref = retry(scm.get_ref)
+        remove_ref = retry(scm.remove_ref)
+
         try:
             for ref, rev in temp_dict.items():
-                scm.set_ref(ref, rev)
+                set_ref(ref, rev)
             yield
         finally:
             for ref in temp_dict:
-                if scm.get_ref(ref):
-                    scm.remove_ref(ref)
+                if get_ref(ref):
+                    remove_ref(ref)
