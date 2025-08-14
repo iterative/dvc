@@ -90,6 +90,10 @@ def test_dump_stage(tmp_dir, dvc):
     assert list(dvcfile.stages.values()) == [stage]
 
 
+def test_dump_multiple_stages(tmp_dir, dvc):
+    pass
+
+
 @pytest.mark.parametrize("file", ["stage.dvc", "dvc.yaml"])
 def test_stage_load_file_exists_but_dvcignored(tmp_dir, dvc, scm, file):
     (tmp_dir / file).write_text("")

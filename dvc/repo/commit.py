@@ -1,3 +1,4 @@
+from itertools import groupby
 from typing import TYPE_CHECKING
 
 from dvc import prompt
@@ -52,29 +53,38 @@ def commit(
     data_only=False,
     relink=True,
 ):
-    stages_info = [
-        info
-        for info in self.stage.collect_granular(
-            target, with_deps=with_deps, recursive=recursive
-        )
-        if not data_only or info.stage.is_data_source
-    ]
-    for stage_info in stages_info:
-        stage = stage_info.stage
-        if force:
-            stage.save(allow_missing=allow_missing)
-        else:
-            changes = stage.changed_entries()
-            if any(changes):
-                prompt_to_commit(stage, changes, force=force)
+    committed_stages = []
+    groups = groupby(
+        [
+            info
+            for info in self.stage.collect_granular(
+                target, with_deps=with_deps, recursive=recursive
+            )
+            if not data_only or info.stage.is_data_source
+        ],
+        key=lambda info: info.stage.dvcfile,
+    )
+
+    for dvcfile, stages_info_group in groups:
+        to_dump = []
+        for stage_info in stages_info_group:
+            stage = stage_info.stage
+            if force:
                 stage.save(allow_missing=allow_missing)
-        stage.commit(
-            filter_info=stage_info.filter_info,
-            allow_missing=allow_missing,
-            relink=relink,
-        )
-        stage.dump(update_pipeline=False)
-    return [s.stage for s in stages_info]
+            else:
+                changes = stage.changed_entries()
+                if any(changes):
+                    prompt_to_commit(stage, changes, force=force)
+                    stage.save(allow_missing=allow_missing)
+            stage.commit(
+                filter_info=stage_info.filter_info,
+                allow_missing=allow_missing,
+                relink=relink,
+            )
+            to_dump.append(stage)
+        dvcfile.dump_stages(to_dump, update_pipeline=False)
+        committed_stages.extend(to_dump)
+    return committed_stages
 
 
 @locked

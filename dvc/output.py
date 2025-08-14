@@ -1452,25 +1452,43 @@ class Output:
         self.remote = other.remote
         self.can_push = other.can_push
 
-    def merge_version_meta(self, other: "Output"):
+    def _get_versioned_meta(
+        self,
+    ) -> Optional[
+        tuple["HashInfo", Optional["Meta"], Optional[Union["HashFile", "Tree"]]]
+    ]:
+        if self.files is not None or (
+            self.meta is not None and self.meta.version_id is not None
+        ):
+            old_obj = self.obj if self.obj is not None else self.get_obj()
+            return self.hash_info, self.meta, old_obj
+        return None
+
+    def merge_version_meta(
+        self,
+        old_hi: "HashInfo",
+        old_meta: Optional["Meta"],
+        old_obj: Optional[Union["HashFile", "Tree"]],
+    ):
         """Merge version meta for files which are unchanged from other."""
         if not self.hash_info:
             return
         if self.hash_info.isdir:
-            return self._merge_dir_version_meta(other)
-        if self.hash_info != other.hash_info:
+            return self._merge_dir_version_meta(old_hi, old_obj)
+        if self.hash_info != old_hi:
             return
-        self.meta = other.meta
+        self.meta = old_meta
 
-    def _merge_dir_version_meta(self, other: "Output"):
+    def _merge_dir_version_meta(
+        self, old_hi: "HashInfo", old_obj: Optional[Union["HashFile", "Tree"]]
+    ):
         from dvc_data.hashfile.tree import update_meta
 
-        if not self.obj or not other.hash_info.isdir:
+        if not self.obj or not old_hi.isdir:
             return
-        other_obj = other.obj if other.obj is not None else other.get_obj()
         assert isinstance(self.obj, Tree)
-        assert isinstance(other_obj, Tree)
-        updated = update_meta(self.obj, other_obj)
+        assert isinstance(old_obj, Tree)
+        updated = update_meta(self.obj, old_obj)
         assert updated.hash_info == self.obj.hash_info
         self.obj = updated
         self.files = updated.as_list(with_meta=True)
