@@ -162,6 +162,9 @@ class FileMixin:
     def dump(self, stage, **kwargs):
         raise NotImplementedError
 
+    def dump_stages(self, stages, **kwargs):
+        raise NotImplementedError
+
     def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
@@ -198,6 +201,13 @@ class SingleStageFile(FileMixin):
         dump_yaml(self.path, serialize.to_single_stage_file(stage, **kwargs))
         self.repo.scm_context.track_file(self.relpath)
 
+    def dump_stages(self, stages, **kwargs) -> None:
+        if not stages:
+            return
+
+        assert len(stages) == 1, "SingleStageFile can only dump one stage."
+        return self.dump(stages[0], **kwargs)
+
     def remove_stage(self, stage):  # noqa: ARG002
         self.remove()
 
@@ -228,17 +238,27 @@ class ProjectFile(FileMixin):
 
     def dump(self, stage, update_pipeline=True, update_lock=True, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
+        return self.dump_stages(
+            [stage], update_pipeline=update_pipeline, update_lock=update_lock, **kwargs
+        )
+
+    def dump_stages(self, stages, update_pipeline=True, update_lock=True, **kwargs):
         from dvc.stage import PipelineStage
 
-        assert isinstance(stage, PipelineStage)
+        if not stages:
+            return
+
+        for stage in stages:
+            assert isinstance(stage, PipelineStage)
+
         if self.verify:
             check_dvcfile_path(self.repo, self.path)
 
-        if update_pipeline and not stage.is_data_source:
-            self._dump_pipeline_file(stage)
+        if update_pipeline:
+            self._dump_pipeline_file(stages)
 
         if update_lock:
-            self._dump_lockfile(stage, **kwargs)
+            self._dump_lockfile(stages, **kwargs)
 
     def dump_dataset(self, dataset):
         with modify_yaml(self.path, fs=self.repo.fs) as data:
@@ -260,32 +280,37 @@ class ProjectFile(FileMixin):
                 raw.append(dataset)
         self.repo.scm_context.track_file(self.relpath)
 
-    def _dump_lockfile(self, stage, **kwargs):
-        self._lockfile.dump(stage, **kwargs)
+    def _dump_lockfile(self, stages, **kwargs):
+        self._lockfile.dump_stages(stages, **kwargs)
 
     @staticmethod
     def _check_if_parametrized(stage, action: str = "dump") -> None:
         if stage.raw_data.parametrized:
             raise ParametrizedDumpError(f"cannot {action} a parametrized {stage}")
 
-    def _dump_pipeline_file(self, stage):
-        self._check_if_parametrized(stage)
-        stage_data = serialize.to_pipeline_file(stage)
+    def _dump_pipeline_file(self, stages):
+        stages = stages if isinstance(stages, list) else [stages]
+        if not stages:
+            return
+
+        for stage in stages:
+            self._check_if_parametrized(stage)
 
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             if not data:
                 logger.info("Creating '%s'", self.relpath)
 
             data["stages"] = data.get("stages", {})
-            existing_entry = stage.name in data["stages"]
-            action = "Modifying" if existing_entry else "Adding"
-            logger.info("%s stage '%s' in '%s'", action, stage.name, self.relpath)
-
-            if existing_entry:
-                orig_stage_data = data["stages"][stage.name]
-                apply_diff(stage_data[stage.name], orig_stage_data)
-            else:
-                data["stages"].update(stage_data)
+            for stage in stages:
+                stage_data = serialize.to_pipeline_file(stage)
+                existing_entry = stage.name in data["stages"]
+                action = "Modifying" if existing_entry else "Adding"
+                logger.info("%s stage '%s' in '%s'", action, stage.name, self.relpath)
+                if existing_entry:
+                    orig_stage_data = data["stages"][stage.name]
+                    apply_diff(stage_data[stage.name], orig_stage_data)
+                else:
+                    data["stages"].update(stage_data)
 
         self.repo.scm_context.track_file(self.relpath)
 
@@ -399,9 +424,12 @@ class Lockfile(FileMixin):
             data.setdefault("stages", {})
         self.repo.scm_context.track_file(self.relpath)
 
-    def dump(self, stage, **kwargs):
-        stage_data = serialize.to_lockfile(stage, **kwargs)
+    def dump_stages(self, stages, **kwargs):
+        if not stages:
+            return
 
+        is_modified = False
+        log_updated = False
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             if not data:
                 data.update({"schema": "2.0"})
@@ -409,16 +437,23 @@ class Lockfile(FileMixin):
                 logger.info("Generating lock file '%s'", self.relpath)
 
             data["stages"] = data.get("stages", {})
-            modified = data["stages"].get(stage.name, {}) != stage_data.get(
-                stage.name, {}
-            )
-            if modified:
-                logger.info("Updating lock file '%s'", self.relpath)
+            for stage in stages:
+                stage_data = serialize.to_lockfile(stage, **kwargs)
+                modified = data["stages"].get(stage.name, {}) != stage_data.get(
+                    stage.name, {}
+                )
+                if modified:
+                    is_modified = True
+                    if not log_updated:
+                        logger.info("Updating lock file '%s'", self.relpath)
+                        log_updated = True
+                data["stages"].update(stage_data)
 
-            data["stages"].update(stage_data)
-
-        if modified:
+        if is_modified:
             self.repo.scm_context.track_file(self.relpath)
+
+    def dump(self, stage, **kwargs):
+        self.dump_stages([stage], **kwargs)
 
     def remove_stage(self, stage):
         if not self.exists():

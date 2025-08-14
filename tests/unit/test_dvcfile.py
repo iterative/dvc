@@ -90,6 +90,39 @@ def test_dump_stage(tmp_dir, dvc):
     assert list(dvcfile.stages.values()) == [stage]
 
 
+def test_dump_multiple_pipeline_stages(tmp_dir, dvc):
+    stage1 = PipelineStage(dvc, cmd="cmd1", name="stage1", path="dvc.yaml")
+    stage2 = PipelineStage(dvc, cmd="cmd2", name="stage2", path="dvc.yaml")
+    dvcfile = load_file(dvc, "dvc.yaml")
+
+    dvcfile.dump_stages([stage1, stage2], update_lock=False, update_pipeline=False)
+    assert not (tmp_dir / LOCK_FILE).exists()
+    assert not (tmp_dir / PROJECT_FILE).exists()
+
+    dvcfile.dump_stages([stage1, stage2], update_pipeline=False)
+    assert not (tmp_dir / PROJECT_FILE).exists()
+    assert (tmp_dir / LOCK_FILE).parse() == {
+        "schema": "2.0",
+        "stages": {"stage1": {"cmd": "cmd1"}, "stage2": {"cmd": "cmd2"}},
+    }
+
+    dvcfile.dump_stages([stage1, stage2], update_lock=False)
+    assert (tmp_dir / PROJECT_FILE).parse() == {
+        "stages": {"stage1": {"cmd": "cmd1"}, "stage2": {"cmd": "cmd2"}}
+    }
+
+
+def test_dump_stages_single_stage(tmp_dir, dvc):
+    stage = dvc.stage.create(
+        fname="foo.dvc", outs=["out"], deps=["dep"], single_stage=True
+    )
+    stage.dvcfile.dump_stages([stage])
+    assert (tmp_dir / "foo.dvc").parse() == {
+        "deps": [{"hash": "md5", "path": "dep"}],
+        "outs": [{"hash": "md5", "path": "out"}],
+    }
+
+
 @pytest.mark.parametrize("file", ["stage.dvc", "dvc.yaml"])
 def test_stage_load_file_exists_but_dvcignored(tmp_dir, dvc, scm, file):
     (tmp_dir / file).write_text("")

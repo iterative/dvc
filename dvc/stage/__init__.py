@@ -509,34 +509,20 @@ class Stage(params.StageParams):
                 if not allow_missing:
                     raise
 
-    def get_versioned_outs(self) -> dict[str, "Output"]:
-        from .exceptions import StageFileDoesNotExistError, StageNotFound
-
-        try:
-            old = self.reload()
-        except (StageFileDoesNotExistError, StageNotFound):
-            return {}
-
-        return {
-            out.def_path: out
-            for out in old.outs
-            if out.files is not None
-            or (out.meta is not None and out.meta.version_id is not None)
-        }
-
     def save_outs(self, allow_missing: bool = False):
         from dvc.output import OutputDoesNotExistError
 
-        old_versioned_outs = self.get_versioned_outs()
         for out in self.outs:
+            # old state just before saving so to merge them later
+            old_state = out._get_versioned_meta()
             try:
                 out.save()
             except OutputDoesNotExistError:
                 if not allow_missing:
                     raise
 
-            if old_out := old_versioned_outs.get(out.def_path):
-                out.merge_version_meta(old_out)
+            if old_state:
+                out.merge_version_meta(*old_state)
 
     def ignore_outs(self) -> None:
         for out in self.outs:
@@ -579,8 +565,9 @@ class Stage(params.StageParams):
         from dvc.output import OutputDoesNotExistError
 
         link_failures = []
-        old_versioned_outs = self.get_versioned_outs()
         for out in self.filter_outs(filter_info):
+            # old state just before saving so to merge them later
+            old_state = out._get_versioned_meta()
             try:
                 out.add(filter_info, **kwargs)
             except (FileNotFoundError, OutputDoesNotExistError):
@@ -589,8 +576,8 @@ class Stage(params.StageParams):
             except CacheLinkError:
                 link_failures.append(filter_info or out.fs_path)
 
-            if old_out := old_versioned_outs.get(out.def_path):
-                out.merge_version_meta(old_out)
+            if old_state:
+                out.merge_version_meta(*old_state)
 
         if link_failures:
             raise CacheLinkError(link_failures)

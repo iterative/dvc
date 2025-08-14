@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 from dvc.dependency.base import DependencyDoesNotExistError
-from dvc.dvcfile import PROJECT_FILE
+from dvc.dvcfile import PROJECT_FILE, Lockfile, ProjectFile, SingleStageFile
 from dvc.fs import localfs
 from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
@@ -325,3 +325,51 @@ def test_commit_dos2unix(tmp_dir, dvc):
     dvc.commit("foo.dvc", force=True)
     content = (tmp_dir / "foo.dvc").read_text()
     assert "hash: md5" in content
+
+
+def test_commit_multiple_files(tmp_dir, dvc, mocker):
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+    stages = dvc.add(["foo", "bar"], no_commit=True)
+    test1_stage = dvc.stage.add(name="test", cmd="echo test", deps=["foo"])
+    test2_stage = dvc.stage.add(name="test2", cmd="echo test2", deps=["foo"])
+
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+    with subdir.chdir():
+        bar_relpath = os.path.relpath(tmp_dir / "bar", subdir)
+        test3_stage = dvc.stage.add(name="test3", cmd="echo test3", deps=[bar_relpath])
+
+    pointerfile_spy = mocker.spy(SingleStageFile, "dump_stages")
+    projectfile_spy = mocker.spy(ProjectFile, "dump_stages")
+    lockfile_spy = mocker.spy(Lockfile, "dump_stages")
+
+    assert set(dvc.commit(force=True)) == {
+        *stages,
+        test1_stage,
+        test2_stage,
+        test3_stage,
+    }
+    pointerfile_spy.assert_has_calls(
+        [
+            mocker.call(stages[0].dvcfile, [stages[0]], update_pipeline=False),
+            mocker.call(stages[1].dvcfile, [stages[1]], update_pipeline=False),
+        ],
+        any_order=True,
+    )
+    projectfile_spy.assert_has_calls(
+        [
+            mocker.call(
+                test1_stage.dvcfile, [test1_stage, test2_stage], update_pipeline=False
+            ),
+            mocker.call(test3_stage.dvcfile, [test3_stage], update_pipeline=False),
+        ],
+        any_order=True,
+    )
+    lockfile_spy.assert_has_calls(
+        [
+            mocker.call(test1_stage.dvcfile._lockfile, [test1_stage, test2_stage]),
+            mocker.call(test3_stage.dvcfile._lockfile, [test3_stage]),
+        ],
+        any_order=True,
+    )
+    assert dvc.status() == {}
