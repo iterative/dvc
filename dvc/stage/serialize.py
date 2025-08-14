@@ -168,6 +168,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
                     for f in _serialize_tree_obj_to_files(obj)
                 ]
         else:
+            assert item.meta is not None
             meta_d = item.meta.to_dict()
             meta_d.pop("isdir", None)
             ret.update(_serialize_hi_to_dict(item.hash_info))

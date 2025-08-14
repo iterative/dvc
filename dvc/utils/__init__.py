@@ -8,6 +8,7 @@ import sys
 from typing import TYPE_CHECKING, Optional
 
 import colorama
+from colorama import AnsiToWin32
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -205,7 +206,7 @@ def boxify(message, border_color=None):
 def _visual_width(line):
     """Get the number of columns required to display a string"""
 
-    return len(re.sub(colorama.ansitowin32.AnsiToWin32.ANSI_CSI_RE, "", line))
+    return len(re.sub(AnsiToWin32.ANSI_CSI_RE, "", line))
 
 
 def _visual_center(line, width):

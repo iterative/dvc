@@ -195,7 +195,7 @@ def _build_sugiyama_layout(vertices, edges):
 
     sug.yspace = VertexViewer.HEIGHT
     sug.xspace = minw
-    sug.route_edge = route_with_lines
+    sug.route_edge = route_with_lines  # ty: ignore[unresolved-attribute]
 
     sug.draw()
 

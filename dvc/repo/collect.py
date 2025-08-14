@@ -43,13 +43,13 @@ def _collect_paths(
 
 
 def _filter_outs(
-    outs: Outputs, fs_paths: StrPaths, duplicates=False
+    repo: "Repo", outs: Outputs, fs_paths: StrPaths, duplicates=False
 ) -> tuple[Outputs, StrPaths]:
     res_outs: Outputs = []
     fs_res_paths = fs_paths
 
     for out in outs:
-        fs_path = out.repo.dvcfs.from_os_path(out.fs_path)
+        fs_path = repo.dvcfs.from_os_path(out.fs_path)
         if fs_path in fs_paths:
             res_outs.append(out)
             if not duplicates:
@@ -77,4 +77,4 @@ def collect(
 
     target_paths = _collect_paths(repo, targets, recursive=recursive)
 
-    return _filter_outs(outs, target_paths, duplicates=duplicates)
+    return _filter_outs(repo, outs, target_paths, duplicates=duplicates)

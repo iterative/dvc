@@ -71,6 +71,7 @@ def send(path):
     thus, the need of removing such file afterwards.
     """
     import requests
+    from requests.exceptions import RequestException
 
     url = os.environ.get(DVC_ANALYTICS_ENDPOINT, "https://analytics.dvc.org")
     headers = {"content-type": "application/json"}
@@ -85,7 +86,7 @@ def send(path):
 
     try:
         requests.post(url, json=report, headers=headers, timeout=5)
-    except requests.exceptions.RequestException as e:
+    except RequestException as e:
         logger.trace("", exc_info=True)
         logger.debug("failed to send analytics report %s", str(e))
 

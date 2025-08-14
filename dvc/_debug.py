@@ -14,7 +14,7 @@ def viztracer_profile(
     log_async: bool = False,
 ):
     try:
-        import viztracer
+        import viztracer  # ty: ignore[unresolved-import]
     except ImportError:
         print("Failed to run profiler, viztracer is not installed")  # noqa: T201
         yield
@@ -37,7 +37,7 @@ def yappi_profile(
     separate_threads: Optional[bool] = False,
 ):
     try:
-        import yappi
+        import yappi  # ty: ignore[unresolved-import]
     except ImportError:
         print("Failed to run profiler, yappi is not installed")  # noqa: T201
         yield
@@ -79,7 +79,7 @@ def yappi_profile(
 def instrument(html_output=False):
     """Run a statistical profiler"""
     try:
-        from pyinstrument import Profiler
+        from pyinstrument import Profiler  # ty: ignore[unresolved-import]
     except ImportError:
         print("Failed to run profiler, pyinstrument is not installed")  # noqa: T201
         yield
@@ -123,7 +123,7 @@ def debug():
         yield
     except Exception:
         try:
-            import ipdb as pdb  # noqa: T100
+            import ipdb as pdb  # noqa: T100  # ty: ignore[unresolved-import]
         except ImportError:
             import pdb  # type: ignore[no-redef]  # noqa: T100
         pdb.post_mortem()

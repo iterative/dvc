@@ -152,7 +152,7 @@ def _merge_push_meta(  # noqa: C901
     else:
         if entry.hash_info:
             out.hash_info = entry.hash_info
-        if out.meta.version_id is None:
+        if out.meta is None or out.meta.version_id is None:
             out.meta = entry.meta
     if out.meta:
         out.meta.remote = remote
@@ -181,7 +181,7 @@ def _update_worktree_out(
 ):
     from dvc_data.index import build
 
-    remote_name = out.remote or out.meta.remote
+    remote_name = out.remote or (out.meta.remote if out.meta is not None else None)
     if not remote_name:
         logger.warning("Could not update '%s', it was never pushed to a remote", out)
         return
@@ -212,11 +212,12 @@ def _update_worktree_out(
         logger.warning("Could not update '%s', directory is empty in the remote", out)
         return
 
-    _fetch_out_changes(out, local_index, remote_index, remote)
+    _fetch_out_changes(repo, out, local_index, remote_index, remote)
     _update_out_meta(repo, out, local_index, remote_index, remote)
 
 
 def _fetch_out_changes(
+    repo: "Repo",
     out: "Output",
     local_index: Union["DataIndex", "DataIndexView"],
     remote_index: Union["DataIndex", "DataIndexView"],
@@ -242,7 +243,7 @@ def _fetch_out_changes(
         cb.set_size(total)
         apply(
             diff,
-            out.repo.root_dir,
+            repo.root_dir,
             out.fs,
             update_meta=False,
             storage="data",

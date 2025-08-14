@@ -2,7 +2,7 @@ import os
 import random
 import sys
 from collections import defaultdict
-from collections.abc import Generator, Iterable, Mapping
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Optional, Union
 
@@ -126,7 +126,7 @@ def iter_remote_refs(scm: "Git", url: str, base: Optional[str] = None, **kwargs)
 def push_refspec(
     scm: "Git",
     url: str,
-    push_list=list[tuple[Optional[str], str]],
+    push_list: Sequence[tuple[Optional[str], str]],
     force: bool = False,
     on_diverged: Optional[Callable[[str, str], bool]] = None,
     **kwargs,

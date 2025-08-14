@@ -158,7 +158,7 @@ def make_bench(request):
             # pytest >= 8.4.0
             wrapped_func = fixture_function._get_wrapped_function()
         except AttributeError:
-            wrapped_func = fixture_function.__pytest_wrapped__.obj
+            wrapped_func = fixture_function.__pytest_wrapped__.obj  # ty: ignore[unresolved-attribute]
         assert inspect.isgeneratorfunction(wrapped_func)
 
         generator = wrapped_func(request)

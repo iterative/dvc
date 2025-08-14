@@ -1,8 +1,8 @@
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, BinaryIO, Optional, Union
 
-import fsspec
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback  # noqa: F401
+from fsspec.callbacks import TqdmCallback as _TqdmCallback
 
 from dvc.progress import Tqdm
 from dvc.utils.objects import cached_property
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from dvc.ui._rich_progress import RichTransferProgress
 
 
-class TqdmCallback(fsspec.callbacks.TqdmCallback):
+class TqdmCallback(_TqdmCallback):
     def __init__(
         self,
         size: Optional[int] = None,

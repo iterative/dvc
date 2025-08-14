@@ -44,6 +44,7 @@ def prepare_default_pager(
 
 def make_pager(cmd=None):
     def _pager(text):
+        assert cmd
         return pydoc.tempfilepager(pydoc.plain(text), cmd)
 
     return _pager if cmd else pydoc.plainpager
