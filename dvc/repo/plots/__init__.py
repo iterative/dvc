@@ -346,14 +346,14 @@ def _get_data_targets(definitions: dict):
 
 
 def infer_data_sources(plot_id, config=None):
-    y = config.get("y", None)
+    y = config.get("y", None) if config else None
 
     if isinstance(y, dict):
         sources = list(y.keys())
     else:
         sources = [plot_id]
 
-    x = config.get("x", None)
+    x = config.get("x", None) if config else None
     if isinstance(x, dict):
         sources.append(first(x.keys()))
 
@@ -507,7 +507,7 @@ def _collect_pipeline_files(repo, targets: list[str], props, onerror=None):
 @error_handler
 def _collect_definitions(
     repo: "Repo",
-    targets=None,
+    targets: list[str],
     props: Optional[dict] = None,
     onerror: Optional[Callable] = None,
     **kwargs,

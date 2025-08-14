@@ -32,10 +32,10 @@ def _win_detached_subprocess(args: Sequence[str], **kwargs) -> int:
     assert os.name == "nt"
 
     from subprocess import (  # type: ignore[attr-defined]
-        CREATE_NEW_PROCESS_GROUP,
-        CREATE_NO_WINDOW,
-        STARTF_USESHOWWINDOW,
-        STARTUPINFO,
+        CREATE_NEW_PROCESS_GROUP,  # ty: ignore[unresolved-import]
+        CREATE_NO_WINDOW,  # ty: ignore[unresolved-import]
+        STARTF_USESHOWWINDOW,  # ty: ignore[unresolved-import]
+        STARTUPINFO,  # ty: ignore[unresolved-import]
     )
 
     # https://stackoverflow.com/a/7006424

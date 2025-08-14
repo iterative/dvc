@@ -99,13 +99,14 @@ class Updater:
         import json
 
         import requests
+        from requests.exceptions import RequestException
 
         url = os.environ.get(DVC_UPDATER_ENDPOINT, self.URL)
         logger.debug("Checking updates in %s", url)
         try:
             resp = requests.get(url, timeout=self.TIMEOUT_GET)
             info = resp.json()
-        except requests.exceptions.RequestException as exc:
+        except RequestException as exc:
             logger.trace("", exc_info=True)
             logger.debug("Failed to retrieve latest version: %s", exc)
             return

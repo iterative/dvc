@@ -15,7 +15,7 @@ Examples
 
 from urllib.parse import urlsplit
 
-from upath import UPath
+from upath import UPath  # ty: ignore[unresolved-import]
 
 
 class DVCPath(UPath):
