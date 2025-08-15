@@ -45,6 +45,10 @@ def _diff(old, new, data_keys, with_missing=False):
         with_renames=True,
         meta_cmp_key=meta_cmp_key,
         roots=data_keys,
+        # we need to get unknown and unchanged entries to tell whether
+        # the object is missing from the cache or not.
+        with_unknown=with_missing,
+        with_unchanged=with_missing,
     ):
         if (change.old and change.old.isdir and not change.old.hash_info) or (
             change.new and change.new.isdir and not change.new.hash_info
