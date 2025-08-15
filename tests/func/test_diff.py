@@ -265,12 +265,22 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
 
     remove(dvc.cache.local.path)
 
-    # invalidate_dir_info to force cache loading
-    dvc.cache.local._dir_info = {}
+    diff = dvc.diff("v1")
+    assert diff["added"] == []
+    assert diff["deleted"] == []
+    assert first(diff["modified"])["path"] == os.path.join("dir", "")
+    assert diff["renamed"] == []
+    assert diff["not in cache"] == [
+        {
+            "hash": "61d9c7f006e1ae7138fec5e574676ee2.dir",
+            "path": os.path.join("dir", ""),
+        }
+    ]
 
     diff = dvc.diff("v1", "v2")
     assert diff["added"] == []
     assert diff["deleted"] == []
+    assert diff["renamed"] == []
     assert first(diff["modified"])["path"] == os.path.join("dir", "")
     assert diff["not in cache"] == []
 
