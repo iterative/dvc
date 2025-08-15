@@ -20,7 +20,12 @@ def test_push_pull(tmp_dir, dvc, erepo_dir, run_copy, local_remote):
     erepo_dir.add_remote(config=local_remote.config)
     with erepo_dir.chdir():
         assert not os.path.exists(erepo_dir.dvc.stage_cache.cache_dir)
-        assert erepo_dir.dvc.pull(run_cache=True)["fetched"] == 0
+        assert erepo_dir.dvc.pull(run_cache=True) == {
+            "added": [],
+            "deleted": [],
+            "modified": [],
+            "stats": {"fetched": 0, "added": 0, "deleted": 0, "modified": 0},
+        }
         assert os.listdir(erepo_dir.dvc.stage_cache.cache_dir)
 
 

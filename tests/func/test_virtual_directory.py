@@ -1,3 +1,4 @@
+import os
 import shutil
 from os.path import join
 
@@ -180,7 +181,12 @@ def test_partial_checkout_and_update(M, tmp_dir, dvc, remote):
     dvc.cache.local.clear()
     shutil.rmtree("dir")
 
-    assert dvc.pull("dir/subdir") == M.dict(added=[join("dir", "")], fetched=11)
+    assert dvc.pull("dir/subdir") == {
+        "added": ["dir" + os.sep],
+        "deleted": [],
+        "modified": [],
+        "stats": {"added": 10, "deleted": 0, "fetched": 11, "modified": 0},
+    }
     assert (tmp_dir / "dir").read_text() == {"subdir": dir1}
 
     tmp_dir.gen({"dir": {"subdir": {"file": "file"}}})

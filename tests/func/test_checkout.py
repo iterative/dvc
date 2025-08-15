@@ -36,7 +36,10 @@ def test_checkout(tmp_dir, dvc, copy_script):
     remove(tmp_dir / "foo")
     remove("data")
 
-    dvc.checkout(force=True)
+    assert dvc.checkout(force=True) == empty_checkout | {
+        "added": ["data" + os.sep, "foo"],
+        "stats": empty_stats | {"added": 2},
+    }
     assert (tmp_dir / "foo").read_text() == "foo"
     assert (tmp_dir / "data").read_text() == {"file": "file"}
 
@@ -63,6 +66,53 @@ def test_checkout_cli(tmp_dir, dvc, copy_script):
     assert main(["checkout", "--force", "data.dvc"]) == 0
     assert (tmp_dir / "foo").read_text() == "foo"
     assert (tmp_dir / "data").read_text() == {"file": "file"}
+
+
+@pytest.mark.parametrize(
+    "summary,expected_lines",
+    [
+        (
+            True,
+            [
+                "1 file modified, 3 files added and 1 file deleted",
+            ],
+        ),
+        (
+            False,
+            [
+                "M\tbar".expandtabs(),
+                "A\tdir".expandtabs() + os.sep,
+                "A\tfoo".expandtabs(),
+                "A\tlorem".expandtabs(),
+                "D\tipsum".expandtabs(),
+            ],
+        ),
+    ],
+)
+def test_checkout_stats(tmp_dir, dvc, capsys, summary, expected_lines):
+    tmp_dir.dvc_gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "lorem": "lorem",
+            "dir": {"file": "file"},
+            "ipsum": "ipsum",
+            "dolor": "dolor",
+        }
+    )
+    for out in ["foo", "bar", "lorem", "dir"]:
+        remove(tmp_dir / out)
+    (tmp_dir / "ipsum.dvc").unlink()
+    (tmp_dir / "bar").write_text("foobar")
+
+    opts = ["--summary"] if summary else []
+    assert main(["checkout", "--force", *opts]) == 0
+    out, _ = capsys.readouterr()
+    assert out.splitlines() == expected_lines
+
+    main(["checkout"])
+    out, _ = capsys.readouterr()
+    assert not out
 
 
 def test_remove_files_when_checkout(tmp_dir, dvc, scm):
@@ -167,8 +217,9 @@ def test_checkout_missing_md5_in_lock_file_for_outs_deps(tmp_dir, dvc, copy_scri
         name="copy-file",
     )
 
-    with pytest.raises(CheckoutError):
+    with pytest.raises(CheckoutError) as exc:
         dvc.checkout(force=True)
+    assert exc.value.result == empty_checkout | {"failed": ["file1"]}
 
 
 def test_checkout_empty_dir(tmp_dir, dvc):
@@ -179,8 +230,10 @@ def test_checkout_empty_dir(tmp_dir, dvc):
     stage.outs[0].remove()
     assert not empty_dir.exists()
 
-    stats = dvc.checkout(force=True)
-    assert stats["added"] == [os.path.join("empty_dir", "")]
+    assert dvc.checkout(force=True) == empty_checkout | {
+        "added": [os.path.join("empty_dir", "")],
+        "stats": empty_stats | {"added": 0},
+    }
     assert empty_dir.is_dir()
     assert not list(empty_dir.iterdir())
 
@@ -188,8 +241,7 @@ def test_checkout_empty_dir(tmp_dir, dvc):
 def test_checkout_not_cached_file(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
     dvc.run(cmd="cp foo bar", deps=["foo"], outs_no_cache=["bar"], name="copy-file")
-    stats = dvc.checkout(force=True)
-    assert not any(stats.values())
+    assert dvc.checkout(force=True) == empty_checkout
 
 
 def test_checkout_with_deps_cli(tmp_dir, dvc, copy_script):
@@ -254,8 +306,7 @@ def test_checkout_recursive_not_directory(tmp_dir, dvc):
     ret = main(["add", "foo"])
     assert ret == 0
 
-    stats = dvc.checkout(targets=["foo.dvc"], recursive=True)
-    assert stats == {"added": [], "modified": [], "deleted": []}
+    assert dvc.checkout(targets=["foo.dvc"], recursive=True) == empty_checkout
 
 
 def test_checkout_moved_cache_dir_with_symlinks(tmp_dir, dvc):
@@ -327,8 +378,7 @@ def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
     assert os.access(data_file, os.W_OK)
     assert not link_test_func(data_file)
 
-    stats = dvc.checkout(["dir.dvc"], relink=True)
-    assert stats == empty_checkout
+    assert dvc.checkout(["dir.dvc"], relink=True) == empty_checkout
     assert link_test_func(data_file)
 
     # NOTE: Windows symlink perms don't propagate to the target and
@@ -344,12 +394,15 @@ def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
 def test_partial_checkout(tmp_dir, dvc, target):
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
     shutil.rmtree("dir")
-    stats = dvc.checkout([target])
-    assert stats["added"] == ["dir" + os.sep]
+    assert dvc.checkout([target]) == empty_checkout | {
+        "added": ["dir" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert list(walk_files("dir")) == [os.path.join("dir", "subdir", "file")]
 
 
-empty_checkout = {"added": [], "deleted": [], "modified": []}
+empty_stats = {"added": 0, "deleted": 0, "modified": 0}
+empty_checkout = {"added": [], "deleted": [], "modified": [], "stats": empty_stats}
 
 
 def test_stats_on_empty_checkout(tmp_dir, dvc, scm):
@@ -372,11 +425,17 @@ def test_stats_on_checkout(tmp_dir, dvc, scm):
     )
     scm.checkout("HEAD~")
     stats = dvc.checkout()
-    assert set(stats["deleted"]) == {"dir" + os.sep, "foo", "bar"}
+    assert stats == empty_checkout | {
+        "deleted": ["dir" + os.sep, "bar", "foo"],
+        "stats": empty_stats | {"deleted": 3},
+    }
 
     scm.checkout("-")
     stats = dvc.checkout()
-    assert set(stats["added"]) == {"bar", "dir" + os.sep, "foo"}
+    assert stats == empty_checkout | {
+        "added": ["dir" + os.sep, "bar", "foo"],
+        "stats": empty_stats | {"added": 4},
+    }
 
     tmp_dir.gen({"lorem": "lorem", "bar": "new bar", "dir2": {"file": "file"}})
     (tmp_dir / "foo").unlink()
@@ -385,18 +444,23 @@ def test_stats_on_checkout(tmp_dir, dvc, scm):
 
     scm.checkout("HEAD~")
     stats = dvc.checkout()
-    assert set(stats["modified"]) == {"bar"}
-    assert set(stats["added"]) == {"foo"}
-    assert set(stats["deleted"]) == {"lorem", "dir2" + os.sep}
+    assert stats == empty_checkout | {
+        "modified": ["bar"],
+        "added": ["foo"],
+        "deleted": ["dir2" + os.sep, "lorem"],
+        "stats": {"modified": 1, "added": 1, "deleted": 2},
+    }
 
     scm.checkout("-")
     stats = dvc.checkout()
-    assert set(stats["modified"]) == {"bar"}
-    assert set(stats["added"]) == {"dir2" + os.sep, "lorem"}
-    assert set(stats["deleted"]) == {"foo"}
+    assert stats == empty_checkout | {
+        "modified": ["bar"],
+        "added": ["dir2" + os.sep, "lorem"],
+        "deleted": ["foo"],
+        "stats": {"modified": 1, "added": 2, "deleted": 1},
+    }
 
 
-@pytest.mark.xfail(reason="values relpath")
 def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen(
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
@@ -405,20 +469,20 @@ def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
     stage = load_file(dvc, "foo.dvc").stage
     tmp_dir.dvc_gen({"foo": "foobar", "other": "other other"}, commit="second")
 
-    # corrupt cache
+    # remove object from cache
     cache = stage.outs[0].cache_path
-    os.chmod(cache, 0o644)
-    with open(cache, "a", encoding="utf-8") as fd:
-        fd.write("destroy cache")
+    remove(cache)
+
+    (tmp_dir / "foo").unlink()
 
     scm.checkout("HEAD~")
     with pytest.raises(CheckoutError) as exc:
         dvc.checkout(force=True)
 
-    assert exc.value.stats == {
-        **empty_checkout,
+    assert exc.value.result == empty_checkout | {
         "failed": ["foo"],
         "modified": ["other"],
+        "stats": empty_stats | {"modified": 1},
     }
 
 
@@ -431,11 +495,19 @@ def test_stats_on_added_file_from_tracked_dir(tmp_dir, dvc, scm):
     tmp_dir.gen("dir/subdir/newfile", "newfile")
     tmp_dir.dvc_add("dir", commit="add newfile")
     scm.checkout("HEAD~")
-    assert dvc.checkout() == {**empty_checkout, "modified": ["dir" + os.sep]}
+    assert dvc.checkout() == {
+        **empty_checkout,
+        "modified": ["dir" + os.sep],
+        "stats": empty_stats | {"deleted": 1},
+    }
     assert dvc.checkout() == empty_checkout
 
     scm.checkout("-")
-    assert dvc.checkout() == {**empty_checkout, "modified": ["dir" + os.sep]}
+    assert dvc.checkout() == {
+        **empty_checkout,
+        "modified": ["dir" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert dvc.checkout() == empty_checkout
 
 
@@ -448,11 +520,19 @@ def test_stats_on_updated_file_from_tracked_dir(tmp_dir, dvc, scm):
     tmp_dir.gen("dir/subdir/file", "what file?")
     tmp_dir.dvc_add("dir", commit="update file")
     scm.checkout("HEAD~")
-    assert dvc.checkout() == {**empty_checkout, "modified": ["dir" + os.sep]}
+    assert dvc.checkout() == {
+        **empty_checkout,
+        "modified": ["dir" + os.sep],
+        "stats": empty_stats | {"modified": 1},
+    }
     assert dvc.checkout() == empty_checkout
 
     scm.checkout("-")
-    assert dvc.checkout() == {**empty_checkout, "modified": ["dir" + os.sep]}
+    assert dvc.checkout() == {
+        **empty_checkout,
+        "modified": ["dir" + os.sep],
+        "stats": empty_stats | {"modified": 1},
+    }
     assert dvc.checkout() == empty_checkout
 
 
@@ -465,11 +545,19 @@ def test_stats_on_removed_file_from_tracked_dir(tmp_dir, dvc, scm):
     (tmp_dir / "dir" / "subdir" / "file").unlink()
     tmp_dir.dvc_add("dir", commit="removed file from subdir")
     scm.checkout("HEAD~")
-    assert dvc.checkout() == {**empty_checkout, "modified": ["dir" + os.sep]}
+    assert dvc.checkout() == {
+        **empty_checkout,
+        "modified": ["dir" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert dvc.checkout() == empty_checkout
 
     scm.checkout("-")
-    assert dvc.checkout() == {**empty_checkout, "modified": ["dir" + os.sep]}
+    assert dvc.checkout() == {
+        **empty_checkout,
+        "modified": ["dir" + os.sep],
+        "stats": empty_stats | {"deleted": 2},
+    }
     assert dvc.checkout() == empty_checkout
 
 
@@ -511,7 +599,11 @@ def test_checkout_with_relink_existing(tmp_dir, dvc, link):
     dvc.cache.local.cache_types = [link]
 
     stats = dvc.checkout(relink=True)
-    assert stats == {**empty_checkout, "added": ["foo"]}
+    assert stats == {
+        **empty_checkout,
+        "added": ["foo"],
+        "stats": empty_stats | {"added": 1},
+    }
 
 
 def test_checkout_with_deps(tmp_dir, dvc):
@@ -522,11 +614,19 @@ def test_checkout_with_deps(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     stats = dvc.checkout(["copy-file"], with_deps=False)
-    assert stats == {**empty_checkout, "added": ["bar"]}
+    assert stats == {
+        **empty_checkout,
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     (tmp_dir / "bar").unlink()
     stats = dvc.checkout(["copy-file"], with_deps=True)
-    assert set(stats["added"]) == {"foo", "bar"}
+    assert stats == {
+        **empty_checkout,
+        "added": ["bar", "foo"],
+        "stats": empty_stats | {"added": 2},
+    }
 
 
 def test_checkout_recursive(tmp_dir, dvc):
@@ -537,9 +637,9 @@ def test_checkout_recursive(tmp_dir, dvc):
     (tmp_dir / "dir" / "bar").unlink()
 
     stats = dvc.checkout(["dir"], recursive=True)
-    assert set(stats["added"]) == {
-        os.path.join("dir", "foo"),
-        os.path.join("dir", "bar"),
+    assert stats == empty_checkout | {
+        "added": [os.path.join("dir", "bar"), os.path.join("dir", "foo")],
+        "stats": empty_stats | {"added": 2},
     }
 
 
@@ -550,30 +650,51 @@ def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
-    assert set(dvc.checkout(PROJECT_FILE)["added"]) == {"bar", "ipsum"}
+    assert dvc.checkout(PROJECT_FILE) == empty_checkout | {
+        "added": ["bar", "ipsum"],
+        "stats": empty_stats | {"added": 2},
+    }
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "ipsum").unlink()
-    assert set(dvc.checkout(":")["added"]) == {"bar", "ipsum"}
+    assert dvc.checkout(":") == empty_checkout | {
+        "added": ["bar", "ipsum"],
+        "stats": empty_stats | {"added": 2},
+    }
 
     (tmp_dir / "bar").unlink()
-    assert dvc.checkout("copy-foo-bar")["added"] == ["bar"]
+    assert dvc.checkout("copy-foo-bar") == empty_checkout | {
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     (tmp_dir / "bar").unlink()
-    assert dvc.checkout("dvc.yaml:copy-foo-bar")["added"] == ["bar"]
+    assert dvc.checkout("dvc.yaml:copy-foo-bar") == empty_checkout | {
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     (tmp_dir / "bar").unlink()
-    assert dvc.checkout(":copy-foo-bar")["added"] == ["bar"]
+    assert dvc.checkout(":copy-foo-bar") == empty_checkout | {
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "data").mkdir()
     with (tmp_dir / "data").chdir():
-        assert dvc.checkout(relpath(tmp_dir / "dvc.yaml") + ":copy-foo-bar")[
-            "added"
-        ] == [relpath(tmp_dir / "bar")]
+        assert dvc.checkout(
+            relpath(tmp_dir / "dvc.yaml") + ":copy-foo-bar"
+        ) == empty_checkout | {
+            "added": [relpath(tmp_dir / "bar")],
+            "stats": empty_stats | {"added": 1},
+        }
 
     (tmp_dir / "bar").unlink()
-    assert dvc.checkout("bar")["added"] == ["bar"]
+    assert dvc.checkout("bar") == empty_checkout | {
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
 
 def test_checkouts_on_same_stage_name_and_output_name(tmp_dir, dvc, run_copy):
@@ -583,8 +704,14 @@ def test_checkouts_on_same_stage_name_and_output_name(tmp_dir, dvc, run_copy):
 
     (tmp_dir / "bar").unlink()
     (tmp_dir / "copy-foo-bar").unlink()
-    assert dvc.checkout("copy-foo-bar")["added"] == ["bar"]
-    assert dvc.checkout("./copy-foo-bar")["added"] == ["copy-foo-bar"]
+    assert dvc.checkout("copy-foo-bar") == empty_checkout | {
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
+    assert dvc.checkout("./copy-foo-bar") == empty_checkout | {
+        "added": ["copy-foo-bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
 
 def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
@@ -595,20 +722,35 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
 
     for out in ["bar", "ipsum"]:
         (tmp_dir / out).unlink()
-    assert dvc.checkout(["bar"])["added"] == ["bar"]
+    assert dvc.checkout(["bar"]) == empty_checkout | {
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     (tmp_dir / "bar").unlink()
-    assert set(dvc.checkout([PROJECT_FILE])["added"]) == {"bar", "ipsum"}
+    assert dvc.checkout([PROJECT_FILE]) == empty_checkout | {
+        "added": ["bar", "ipsum"],
+        "stats": empty_stats | {"added": 2},
+    }
 
     for out in ["bar", "ipsum"]:
         (tmp_dir / out).unlink()
-    assert set(dvc.checkout([stage1.addressing])["added"]) == {"bar"}
+    assert dvc.checkout([stage1.addressing]) == empty_checkout | {
+        "added": ["bar"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     (tmp_dir / "bar").unlink()
-    assert set(dvc.checkout([stage2.addressing])["added"]) == {"ipsum"}
+    assert dvc.checkout([stage2.addressing]) == empty_checkout | {
+        "added": ["ipsum"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     (tmp_dir / "ipsum").unlink()
-    assert set(dvc.checkout()["added"]) == {"bar", "ipsum"}
+    assert dvc.checkout() == empty_checkout | {
+        "added": ["bar", "ipsum"],
+        "stats": empty_stats | {"added": 2},
+    }
 
 
 def test_checkout_executable(tmp_dir, dvc):
@@ -618,7 +760,10 @@ def test_checkout_executable(tmp_dir, dvc):
     contents["outs"][0]["isexec"] = True
     (tmp_dir / "foo.dvc").dump(contents)
 
-    dvc.checkout("foo")
+    assert dvc.checkout("foo") == empty_checkout | {
+        "modified": ["foo"],
+        "stats": empty_stats | {"modified": 1},
+    }
 
     isexec = os.stat("foo").st_mode & stat.S_IEXEC
     if os.name == "nt":
@@ -634,13 +779,22 @@ def test_checkout_partial(tmp_dir, dvc):
     data_dir = tmp_dir / "data"
     shutil.rmtree(data_dir)
 
-    dvc.checkout(str(data_dir / "foo"))
+    assert dvc.checkout(str(data_dir / "foo")) == empty_checkout | {
+        "added": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert data_dir.read_text() == {"foo": "foo"}
 
-    dvc.checkout(str(data_dir / "sub_dir" / "baz"))
+    assert dvc.checkout(str(data_dir / "sub_dir" / "baz")) == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert data_dir.read_text() == {"foo": "foo", "sub_dir": {"baz": "baz"}}
 
-    dvc.checkout(str(data_dir / "bar"))
+    assert dvc.checkout(str(data_dir / "bar")) == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert data_dir.read_text() == {
         "foo": "foo",
         "bar": "bar",
@@ -664,36 +818,45 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
     sub_dir_file = sub_dir / "baz"
 
     # Nothing changed, nothing added/deleted/modified
-    stats = dvc.checkout(str(bar))
-    assert not any(stats.values())
+    assert dvc.checkout(str(bar)) == empty_checkout
 
     # Irrelevant file changed, still nothing added/deleted/modified
     foo.unlink()
-    stats = dvc.checkout(str(bar))
-    assert not any(stats.values())
+    assert dvc.checkout(str(bar)) == empty_checkout
 
     # Relevant change, one modified
     bar.unlink()
     stats = dvc.checkout(str(bar))
-    assert len(stats["modified"]) == 1
+    assert stats == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
 
     # No changes inside data/sub
-    stats = dvc.checkout(str(sub_dir))
-    assert not any(stats.values())
+    assert dvc.checkout(str(sub_dir)) == empty_checkout
 
     # Relevant change, one modified
     sub_dir_file.unlink()
     stats = dvc.checkout(str(sub_dir))
+    assert stats == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert len(stats["modified"]) == 1
 
     stats = dvc.checkout(str(data_dir / "empty_sub_dir"))
-    assert stats == {**empty_checkout, "modified": ["data" + os.sep]}
+    assert stats == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"deleted": 1},
+    }
 
-    dvc.checkout(str(data_dir))
+    assert dvc.checkout(str(data_dir)) == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
 
     # Everything is in place, no action taken
-    stats = dvc.checkout(str(data_dir))
-    assert not any(stats.values())
+    assert dvc.checkout(str(data_dir)) == empty_checkout
 
 
 def test_checkout_partial_subdir(tmp_dir, dvc):
@@ -704,14 +867,20 @@ def test_checkout_partial_subdir(tmp_dir, dvc):
     sub_dir_bar = sub_dir / "baz"
 
     shutil.rmtree(sub_dir)
-    dvc.checkout(str(sub_dir))
+    assert dvc.checkout(str(sub_dir)) == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"added": 2},
+    }
     assert data_dir.read_text() == {
         "foo": "foo",
         "sub_dir": {"bar": "bar", "baz": "baz"},
     }
 
     sub_dir_bar.unlink()
-    dvc.checkout(str(sub_dir_bar))
+    assert dvc.checkout(str(sub_dir_bar)) == empty_checkout | {
+        "modified": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert data_dir.read_text() == {
         "foo": "foo",
         "sub_dir": {"bar": "bar", "baz": "baz"},
@@ -721,12 +890,14 @@ def test_checkout_partial_subdir(tmp_dir, dvc):
 def test_checkout_file(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
 
-    stats = dvc.checkout("foo")
-    assert not any(stats.values())
+    assert dvc.checkout("foo") == empty_checkout
 
     os.unlink("foo")
     stats = dvc.checkout("foo")
-    assert stats["added"] == ["foo"]
+    assert stats == empty_checkout | {
+        "added": ["foo"],
+        "stats": empty_stats | {"added": 1},
+    }
 
 
 def test_checkout_dir_compat(tmp_dir, dvc):
@@ -743,7 +914,10 @@ def test_checkout_dir_compat(tmp_dir, dvc):
         ),
     )
     remove("data")
-    dvc.checkout()
+    assert dvc.checkout() == empty_checkout | {
+        "added": ["data" + os.sep],
+        "stats": empty_stats | {"added": 1},
+    }
     assert (tmp_dir / "data").read_text() == {"foo": "foo"}
 
 
@@ -751,7 +925,10 @@ def test_checkout_cleanup_properly_on_untracked_nested_directories(tmp_dir, scm,
     tmp_dir.dvc_gen({"datasets": {"dir1": {"file1": "file1"}}})
     tmp_dir.gen({"datasets": {"dir2": {"dir3": {"file2": "file2"}}}})
 
-    dvc.checkout(force=True)
+    assert dvc.checkout(force=True) == empty_checkout | {
+        "modified": ["datasets" + os.sep],
+        "stats": empty_stats | {"deleted": 3},
+    }
 
     assert (tmp_dir / "datasets").read_text() == {"dir1": {"file1": "file1"}}
 
@@ -766,7 +943,10 @@ def test_checkout_loads_specific_file(tmp_dir, dvc, mocker):
     f = SingleStageFile(dvc, "foo.dvc")
 
     spy = mocker.spy(FileMixin, "_load")
-    assert dvc.checkout("foo.dvc") == {"added": ["foo"], "deleted": [], "modified": []}
+    assert dvc.checkout("foo.dvc") == empty_checkout | {
+        "added": ["foo"],
+        "stats": empty_stats | {"added": 1},
+    }
 
     spy.assert_called_with(f)
     assert (tmp_dir / "foo").exists()

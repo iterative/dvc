@@ -163,7 +163,12 @@ class TestImportURLVersionAware:
 
         (remote_version_aware / "data_dir" / "foo").write_text("foo")
         dvc.update(no_download=True)
-        assert dvc.pull()["fetched"] == 2
+        assert dvc.pull() == {
+            "modified": [],
+            "added": ["data_dir" + os.sep],
+            "deleted": [],
+            "stats": {"fetched": 2, "modified": 0, "added": 2, "deleted": 0},
+        }
         assert (tmp_dir / "data_dir").read_text() == {
             "foo": "foo",
             "subdir": {"file": "file"},
@@ -174,7 +179,12 @@ class TestImportURLVersionAware:
         scm.checkout("v1")
         dvc.cache.local.clear()
         remove(tmp_dir / "data_dir")
-        assert dvc.pull()["fetched"] == 1
+        assert dvc.pull() == {
+            "modified": [],
+            "added": ["data_dir" + os.sep],
+            "deleted": [],
+            "stats": {"fetched": 1, "modified": 0, "added": 1, "deleted": 0},
+        }
         assert (tmp_dir / "data_dir").read_text() == {"subdir": {"file": "file"}}
 
         dvc.commit(force=True)

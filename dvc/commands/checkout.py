@@ -1,5 +1,3 @@
-import operator
-
 from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
@@ -30,7 +28,7 @@ class CmdCheckout(CmdBase):
 
         stats, exc = None, None
         try:
-            stats = self.repo.checkout(
+            result = self.repo.checkout(
                 targets=self.args.targets,
                 with_deps=self.args.with_deps,
                 force=self.args.force,
@@ -40,14 +38,17 @@ class CmdCheckout(CmdBase):
             )
         except CheckoutError as _exc:
             exc = _exc
-            stats = exc.stats
+            result = exc.result
 
         if self.args.summary:
             default_message = "No changes."
-            msg = get_summary(sorted(stats.items(), key=operator.itemgetter(0)))
+            stats = result["stats"]
+            assert isinstance(stats, dict)
+            msg = get_summary(stats.items())
             ui.write(msg or default_message)
         else:
-            log_changes(stats)
+            result.pop("stats", {})
+            log_changes(result)
 
         if exc:
             raise exc

@@ -242,11 +242,11 @@ class UploadError(FileTransferError):
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos: list[str], stats: dict[str, list[str]]):
+    def __init__(self, target_infos: list[str], result: dict):
         from dvc.utils import error_link
 
         self.target_infos = target_infos
-        self.stats = stats
+        self.result = result
         targets = [str(t) for t in target_infos]
         m = (
             "Checkout failed for following targets:\n{}\nIs your "

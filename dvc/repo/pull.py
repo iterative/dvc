@@ -39,7 +39,7 @@ def pull(  # noqa: PLR0913
         run_cache=run_cache,
     )
     try:
-        stats = self.checkout(
+        result = self.checkout(
             targets=expanded_targets,
             with_deps=with_deps,
             force=force,
@@ -47,8 +47,10 @@ def pull(  # noqa: PLR0913
             allow_missing=allow_missing,
         )
     except CheckoutError as exc:
-        exc.stats["fetched"] = processed_files_count
+        # put fetched counts first
+        exc.result["stats"] = {"fetched": processed_files_count} | exc.result["stats"]
         raise
-
-    stats["fetched"] = processed_files_count
-    return stats
+    else:
+        # put fetched counts first
+        result["stats"] = {"fetched": processed_files_count} | result["stats"]
+    return result

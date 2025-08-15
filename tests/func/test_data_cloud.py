@@ -17,9 +17,13 @@ from dvc.utils.fs import remove
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
 from dvc_data.hashfile.hash_info import HashInfo
+from tests.func.test_checkout import empty_checkout, empty_stats
+
+empty_stats = empty_stats | {"fetched": 0}
+empty_pull = empty_checkout | {"stats": empty_stats}
 
 
-def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
+def test_cloud_cli(tmp_dir, dvc, capsys, remote, mocker):  # noqa: PLR0915
     jobs = 2
     args = ["-v", "-j", str(jobs)]
 
@@ -42,6 +46,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
     oids_exist = mocker.spy(LocalHashFileDB, "oids_exist")
 
     assert main(["push", *args]) == 0
+    assert capsys.readouterr().out == "5 files pushed\n"
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
@@ -54,6 +59,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
     oids_exist.reset_mock()
 
     assert main(["fetch", *args]) == 0
+    assert capsys.readouterr().out == "5 files fetched\n"
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
@@ -65,6 +71,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
     oids_exist.reset_mock()
 
     assert main(["pull", *args]) == 0
+    assert capsys.readouterr().out == "Everything is up to date.\n"
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
@@ -93,6 +100,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
     shutil.move(dvc.cache.local.path, dvc.cache.local.path + ".back")
 
     assert main(["fetch", *args]) == 0
+    assert capsys.readouterr().out == "5 files fetched\n"
 
     assert oids_exist.called
     assert all(
@@ -101,6 +109,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):  # noqa: PLR0915
 
     oids_exist.reset_mock()
     assert main(["pull", "-f", *args]) == 0
+    assert capsys.readouterr().out == "Everything is up to date.\n"
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
@@ -195,7 +204,11 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
 
     hash_spy = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
-    dvc.pull()
+    assert dvc.pull() == empty_pull | {
+        "added": ["dir" + os.sep, "file"],
+        "stats": empty_stats | {"fetched": 3, "added": 2},
+    }
+
     # NOTE: 2 are for index.data_tree building
     assert hash_spy.call_count == 3
 
@@ -205,11 +218,11 @@ def test_verify_hashes(tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
     with dvc.config.edit() as conf:
         conf["remote"]["upstream"]["verify"] = True
 
-    dvc.pull()
+    assert dvc.pull() == empty_pull | {"stats": empty_stats | {"fetched": 3}}
     assert hash_spy.call_count == 10
 
 
-@pytest.mark.flaky(reruns=3)
+# @pytest.mark.flaky(reruns=3)
 @pytest.mark.parametrize("erepo_type", ["git_dir", "erepo_dir"])
 def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo_type):
     erepo = request.getfixturevalue(erepo_type)
@@ -220,7 +233,7 @@ def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo_type):
     dvc.imp(os.fspath(erepo), "foo")
     dvc.imp(os.fspath(erepo), "dir", out="new_dir", rev="HEAD~")
 
-    assert dvc.pull()["fetched"] == 0
+    assert dvc.pull() == empty_pull
 
     for item in ["foo", "new_dir"]:
         remove(item)
@@ -228,7 +241,10 @@ def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo_type):
     os.makedirs(dvc.cache.local.path, exist_ok=True)
     clean_repos()
 
-    assert dvc.pull(force=True)["fetched"] == 2
+    assert dvc.pull(force=True) == empty_pull | {
+        "added": ["new_dir" + os.sep, "foo"],
+        "stats": empty_stats | {"fetched": 2, "added": 2},
+    }
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"
@@ -248,11 +264,14 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "foo")
     dvc.imp(os.fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
 
-    assert dvc.pull()["fetched"] == 0
+    assert dvc.pull() == empty_pull
 
     clean(["foo", "new_dir"], dvc)
 
-    assert dvc.pull(force=True)["fetched"] == 2
+    assert dvc.pull(force=True) == empty_pull | {
+        "added": ["new_dir" + os.sep, "foo"],
+        "stats": empty_stats | {"fetched": 2, "added": 2},
+    }
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"
@@ -267,7 +286,10 @@ def test_pull_partial_import(tmp_dir, dvc, local_workspace):
     stage = dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     result = dvc.pull("file")
-    assert result["fetched"] == 1
+    assert result == empty_checkout | {
+        "added": ["file"],
+        "stats": empty_stats | {"fetched": 1, "added": 1},
+    }
     assert dst.exists()
 
     assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
@@ -279,8 +301,9 @@ def test_pull_partial_import_missing(tmp_dir, dvc, local_workspace):
     dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     (local_workspace / "file").unlink()
-    with pytest.raises(CheckoutError):
+    with pytest.raises(CheckoutError) as exc:
         dvc.pull("file")
+    assert exc.value.result == empty_pull | {"failed": ["file"]}
     assert not dst.exists()
 
 
@@ -290,8 +313,9 @@ def test_pull_partial_import_modified(tmp_dir, dvc, local_workspace):
     dvc.imp_url("remote://workspace/file", os.fspath(dst), no_download=True)
 
     local_workspace.gen("file", "updated file content")
-    with pytest.raises(CheckoutError):
+    with pytest.raises(CheckoutError) as exc:
         dvc.pull("file")
+    assert exc.value.result == empty_pull | {"failed": ["file"]}
     assert not dst.exists()
 
 
@@ -309,7 +333,10 @@ def test_pull_external_dvc_imports_mixed(tmp_dir, dvc, scm, erepo_dir, local_rem
 
     clean(["foo", "bar"], dvc)
 
-    assert dvc.pull()["fetched"] == 2
+    assert dvc.pull() == empty_pull | {
+        "added": ["bar", "foo"],
+        "stats": empty_stats | {"fetched": 2, "added": 2},
+    }
     assert (tmp_dir / "foo").read_text() == "foo"
     assert (tmp_dir / "bar").read_text() == "bar"
 
@@ -330,34 +357,44 @@ def recurse_list_dir(d):
 
 
 def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
-    (stage0,) = tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "bar", name="copy-foo-bar")
-    stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
+    (stage0,) = tmp_dir.dvc_gen("bar", "bar")
+    stage1 = run_copy("bar", "foo", name="copy-bar-foo")
+    stage2 = run_copy("foo", "foobar", name="copy-foo-foobar")
     dvc.push()
 
-    outs = ["foo", "bar", "foobar"]
+    outs = ["bar", "foo", "foobar"]
 
     clean(outs, dvc)
-    dvc.pull()
+    assert dvc.pull() == empty_pull | {
+        "added": outs,
+        "stats": empty_stats | {"fetched": 1, "added": 3},
+    }
     assert all((tmp_dir / file).exists() for file in outs)
 
     for out, stage in zip(outs, [stage0, stage1, stage2]):
         for target in [stage.addressing, out]:
             clean(outs, dvc)
             stats = dvc.pull([target])
-            assert stats["fetched"] == 1
-            assert stats["added"] == [out]
+            assert stats == empty_pull | {
+                "added": [out],
+                "stats": empty_stats | {"fetched": 1, "added": 1},
+            }
             assert os.path.exists(out)
             assert not any(os.path.exists(out) for out in set(outs) - {out})
 
     clean(outs, dvc)
     stats = dvc.pull([stage2.addressing], with_deps=True)
-    assert len(stats["added"]) == 3
-    assert set(stats["added"]) == set(outs)
+    assert stats == empty_pull | {
+        "added": outs,
+        "stats": empty_stats | {"fetched": 1, "added": 3},
+    }
 
     clean(outs, dvc)
     stats = dvc.pull([os.curdir], recursive=True)
-    assert set(stats["added"]) == set(outs)
+    assert stats == empty_pull | {
+        "added": outs,
+        "stats": empty_stats | {"fetched": 1, "added": 3},
+    }
 
 
 def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
@@ -374,7 +411,7 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
 
     remove(dvc.stage_cache.cache_dir)
 
-    dvc.push()
+    assert dvc.push() == 3
 
     outs = ["foo", "lorem", "ipsum", "baz", "lorem2"]
 
@@ -382,20 +419,26 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
     assert len(recurse_list_dir(path)) == 3
 
     clean(outs, dvc)
-    assert set(dvc.pull(["dvc.yaml"])["added"]) == {"lorem2", "baz"}
+    assert dvc.pull(["dvc.yaml"]) == empty_pull | {
+        "added": ["baz", "lorem2"],
+        "stats": empty_stats | {"fetched": 2, "added": 2},
+    }
 
     clean(outs, dvc)
-    assert set(dvc.pull()["added"]) == set(outs)
+    assert dvc.pull() == empty_pull | {
+        "added": ["baz", "foo", "ipsum", "lorem", "lorem2"],
+        "stats": empty_stats | {"fetched": 3, "added": 5},
+    }
 
     # clean everything in remote and push
     from dvc.testing.tmp_dir import TmpDir
 
     clean(TmpDir(path).iterdir())
-    dvc.push(["dvc.yaml:copy-ipsum-baz"])
+    assert dvc.push(["dvc.yaml:copy-ipsum-baz"]) == 1
     assert len(recurse_list_dir(path)) == 1
 
     clean(TmpDir(path).iterdir())
-    dvc.push(["dvc.yaml"])
+    assert dvc.push(["dvc.yaml"]) == 2
     assert len(recurse_list_dir(path)) == 2
 
     with pytest.raises(StageNotFound):
@@ -440,23 +483,36 @@ def test_fetch_stats(tmp_dir, dvc, fs, msg, capsys, local_remote):
 
 
 def test_pull_stats(tmp_dir, dvc, capsys, local_remote):
-    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
+    tmp_dir.dvc_gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "lorem": "lorem",
+            "dir": {"file": "file"},
+            "ipsum": "ipsum",
+            "dolor": "dolor",
+        }
+    )
     dvc.push()
-    clean(["foo", "bar"], dvc)
+    clean(["foo", "bar", "dir", "lorem"], dvc)
+
+    (tmp_dir / "ipsum.dvc").unlink()
     (tmp_dir / "bar").write_text("foobar")
 
     assert main(["pull", "--force"]) == 0
-
     out, _ = capsys.readouterr()
-    assert "M\tbar".expandtabs() in out
-    assert "A\tfoo".expandtabs() in out
-    assert "2 files fetched" in out
-    assert "1 file added" in out
-    assert "1 file modified" in out
+    assert out.splitlines() == [
+        "M\tbar".expandtabs(),
+        "A\tdir".expandtabs() + os.sep,
+        "A\tfoo".expandtabs(),
+        "A\tlorem".expandtabs(),
+        "D\tipsum".expandtabs(),
+        "6 files fetched, 1 file modified, 3 files added and 1 file deleted",
+    ]
 
     main(["pull"])
     out, _ = capsys.readouterr()
-    assert "Everything is up to date." in out
+    assert out == "Everything is up to date.\n"
 
 
 @pytest.mark.parametrize(
@@ -475,26 +531,32 @@ def test_push_pull_all(tmp_dir, scm, dvc, local_remote, key, expected):
     assert dvc.push(**{key: True}) == expected
 
     clean(["foo", "bar", "baz"], dvc)
-    assert dvc.pull(**{key: True})["fetched"] == expected
+    assert dvc.pull(**{key: True}) == empty_pull | {
+        "added": ["bar", "foo"],
+        "stats": empty_stats | {"fetched": expected, "added": 2},
+    }
 
 
 def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
 
-    dvc.push("copy-foo-bar")
+    assert dvc.push("copy-foo-bar") == 1
     assert len(recurse_list_dir(local_remote.url)) == 1
     # pushing everything so as we can check pull/fetch only downloads
     # from specified targets
-    dvc.push()
+    assert dvc.push() == 0
     clean(["foo", "bar"], dvc)
 
-    dvc.pull("copy-foo-bar")
+    assert dvc.pull("copy-foo-bar") == empty_pull | {
+        "added": ["bar"],
+        "stats": empty_stats | {"fetched": 1, "added": 1},
+    }
     assert (tmp_dir / "bar").exists()
     assert len(recurse_list_dir(dvc.cache.local.path)) == 1
     clean(["bar"], dvc)
 
-    dvc.fetch("copy-foo-bar")
+    assert dvc.fetch("copy-foo-bar") == 1
     assert len(recurse_list_dir(dvc.cache.local.path)) == 1
 
 
@@ -505,7 +567,10 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     clean(["foo"], dvc)
 
     stats = dvc.pull(os.path.join("foo", "bar"))
-    assert stats["fetched"] == 2
+    assert stats == empty_pull | {
+        "added": [os.path.join("foo", "")],
+        "stats": empty_stats | {"fetched": 2, "added": 1},
+    }
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
 
 
@@ -540,7 +605,10 @@ def test_output_remote(tmp_dir, dvc, make_remote):
 
     clean(["foo", "bar", "data"], dvc)
 
-    dvc.pull()
+    assert dvc.pull() == empty_pull | {
+        "added": ["data" + os.sep, "bar", "foo"],
+        "stats": empty_stats | {"fetched": 5, "added": 4},
+    }
 
     assert set(dvc.cache.local.all()) == {
         "37b51d194a7513e45b56f6524f2d51f2",
@@ -573,7 +641,10 @@ def test_target_remote(tmp_dir, dvc, make_remote):
 
     clean(["foo", "data"], dvc)
 
-    dvc.pull(remote="myremote")
+    assert dvc.pull(remote="myremote") == empty_pull | {
+        "added": ["data" + os.sep, "foo"],
+        "stats": empty_stats | {"fetched": 4, "added": 3},
+    }
 
     assert set(dvc.cache.local.all()) == {
         "acbd18db4cc2f85cedef654fccc4a4d8",
@@ -630,7 +701,10 @@ def test_output_target_remote(tmp_dir, dvc, make_remote):
     clean(["foo", "bar", "data"], dvc)
 
     # pull foo and data from for_foo remote
-    dvc.pull(remote="for_foo", allow_missing=True)
+    assert dvc.pull(remote="for_foo", allow_missing=True) == empty_pull | {
+        "added": ["data" + os.sep, "foo"],
+        "stats": empty_stats | {"fetched": 4, "added": 3},
+    }
 
     assert set(dvc.cache.local.all()) == expected
 
@@ -638,15 +712,19 @@ def test_output_target_remote(tmp_dir, dvc, make_remote):
 def test_pull_allow_missing(tmp_dir, dvc, local_remote):
     dvc.stage.add(name="bar", outs=["bar"], cmd="echo bar > bar")
 
-    with pytest.raises(CheckoutError):
+    with pytest.raises(CheckoutError) as exc:
         dvc.pull()
+    assert exc.value.result == empty_pull | {"failed": ["bar"]}
 
     tmp_dir.dvc_gen("foo", "foo")
     dvc.push()
     clean(["foo"], dvc)
 
     stats = dvc.pull(allow_missing=True)
-    assert stats["fetched"] == 1
+    assert stats == empty_pull | {
+        "added": ["foo"],
+        "stats": empty_stats | {"fetched": 1, "added": 1},
+    }
 
 
 def test_pull_granular_excluding_import_that_cannot_be_pulled(
@@ -668,11 +746,9 @@ def test_pull_granular_excluding_import_that_cannot_be_pulled(
     shutil.rmtree("dir")
     dvc.cache.local.clear()
 
-    assert dvc.pull(stage.addressing) == {
+    assert dvc.pull(stage.addressing) == empty_pull | {
         "added": [join("dir", "")],
-        "deleted": [],
-        "modified": [],
-        "fetched": 3,
+        "stats": empty_stats | {"added": 2, "fetched": 3},
     }
 
     with pytest.raises(CloneError, match="SCM error"):
@@ -704,8 +780,8 @@ def test_loads_single_file(tmp_dir, dvc, local_remote, mocker):
     assert dvc.pull("foo.dvc") == {
         "added": ["foo"],
         "deleted": [],
-        "fetched": 1,
         "modified": [],
+        "stats": {"added": 1, "deleted": 0, "modified": 0, "fetched": 1},
     }
     spy.assert_called_with(foo_dvcfile)
     assert (tmp_dir / "foo").exists()
