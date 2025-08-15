@@ -22,17 +22,18 @@ class CmdDataBase(CmdBase):
 
 
 class CmdDataPull(CmdDataBase):
-    def log_summary(self, stats):
+    def log_summary(self, result):
         from dvc.commands.checkout import log_changes
 
-        log_changes(stats)
+        stats = result.pop("stats", {})
+        log_changes(result)
         super().log_summary(stats)
 
     def run(self):
         from dvc.exceptions import CheckoutError, DvcException
 
         try:
-            stats = self.repo.pull(
+            result = self.repo.pull(
                 targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -46,10 +47,10 @@ class CmdDataPull(CmdDataBase):
                 glob=self.args.glob,
                 allow_missing=self.args.allow_missing,
             )
-            self.log_summary(stats)
+            self.log_summary(result)
         except (CheckoutError, DvcException) as exc:
-            if stats := getattr(exc, "stats", {}):
-                self.log_summary(stats)
+            if result := getattr(exc, "result", {}):
+                self.log_summary(result)
             logger.exception("failed to pull data from the cloud")
             return 1
 

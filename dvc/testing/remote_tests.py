@@ -137,8 +137,12 @@ class TestRemote:
         remove(tmp_dir / "bar")
 
         stats = dvc.pull()
-        assert stats["fetched"] == 2
-        assert set(stats["added"]) == {"foo", "bar"}
+        assert stats == {
+            "added": ["bar", "foo"],
+            "deleted": [],
+            "modified": [],
+            "stats": {"fetched": 2, "added": 2, "deleted": 0, "modified": 0},
+        }
 
     @pytest.mark.xfail(raises=NotImplementedError, strict=False)
     def test_pull_no_00_prefix(self, tmp_dir, dvc, remote, monkeypatch):
@@ -163,8 +167,12 @@ class TestRemote:
         remove(tmp_dir / "bar")
 
         stats = dvc.pull()
-        assert stats["fetched"] == 2
-        assert set(stats["added"]) == {"foo", "bar"}
+        assert stats == {
+            "added": ["bar", "foo"],
+            "deleted": [],
+            "modified": [],
+            "stats": {"fetched": 2, "added": 2, "deleted": 0, "modified": 0},
+        }
 
 
 class TestRemoteVersionAware:

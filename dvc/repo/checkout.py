@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from dvc.exceptions import (
@@ -14,7 +15,9 @@ from dvc.utils import relpath
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc_data.index import BaseDataIndex, DataIndexEntry
+    from dvc.repo.index import IndexView
+    from dvc_data.index import BaseDataIndex, DataIndexEntry, DataIndexKey
+    from dvc_data.index.diff import Change
     from dvc_objects.fs.base import FileSystem
 
 logger = logger.getChild(__name__)
@@ -36,10 +39,12 @@ def _remove_unused_links(repo):
     return ret
 
 
-def _build_out_changes(index, changes):
+def _build_out_changes(
+    index: "IndexView", changes: dict["DataIndexKey", "Change"]
+) -> dict["DataIndexKey", tuple[str, dict[str, int]]]:
     from dvc_data.index.checkout import MODIFY
 
-    out_keys = []
+    out_keys: list[DataIndexKey] = []
     for out in index.outs:
         if not out.use_cache:
             continue
@@ -47,19 +52,28 @@ def _build_out_changes(index, changes):
         ws, key = out.index_key
         if ws != "repo":
             continue
-
         out_keys.append(key)
 
-    out_changes = {}
+    out_stats: dict[DataIndexKey, dict[str, int]]
+    out_stats = defaultdict(lambda: defaultdict(int))
+
+    out_changes: dict[DataIndexKey, tuple[str, dict[str, int]]] = {}
     for key, change in changes.items():
+        typ = change.typ
+        isdir = change.new and change.new.isdir
         for out_key in out_keys:
             if len(out_key) > len(key) or key[: len(out_key)] != out_key:
                 continue
 
+            stats = out_stats[out_key]
+            if not isdir:
+                stats[typ] += 1
+
             if key == out_key:
-                out_changes[out_key] = change.typ
-            elif not out_changes.get(out_key):
-                out_changes[out_key] = MODIFY
+                out_changes[out_key] = typ, stats
+            elif out_key not in out_changes:
+                typ = MODIFY
+                out_changes[out_key] = typ, stats
             break
 
     return out_changes
@@ -107,14 +121,13 @@ def checkout(  # noqa: C901
     from dvc.stage.exceptions import StageFileBadNameError, StageFileDoesNotExistError
     from dvc_data.index.checkout import ADD, DELETE, MODIFY, apply, compare
 
-    stats: dict[str, list[str]] = {
-        "added": [],
-        "deleted": [],
-        "modified": [],
-    }
+    stats = {"modified": 0, "added": 0, "deleted": 0}
+    changes: dict[str, list[str]] = {"modified": [], "added": [], "deleted": []}
+
     if not targets:
         targets = [None]
-        stats["deleted"] = _remove_unused_links(self)
+        changes["deleted"] = _remove_unused_links(self)
+        stats["deleted"] = len(changes["deleted"])
 
     if isinstance(targets, str):
         targets = [targets]
@@ -176,16 +189,26 @@ def checkout(  # noqa: C901
     out_changes = _build_out_changes(view, diff.changes)
 
     typ_map = {ADD: "added", DELETE: "deleted", MODIFY: "modified"}
-    for key, typ in out_changes.items():
+    for key, (typ, _stats) in out_changes.items():
         out_path = self.fs.join(self.root_dir, *key)
 
         if out_path in failed:
             self.fs.remove(out_path, recursive=True)
-        else:
-            self.state.save_link(out_path, self.fs)
-            stats[typ_map[typ]].append(_fspath_dir(out_path))
+            continue
 
+        self.state.save_link(out_path, self.fs)
+        for t, count in _stats.items():
+            stats_typ = typ_map[t]
+            stats[stats_typ] += count
+
+        changes[typ_map[typ]].append(_fspath_dir(out_path))
+
+    for changelist in changes.values():
+        # group directories first, then files. But keep them alphabetically sorted
+        changelist.sort(key=lambda p: (not p.endswith(os.sep), p))
+
+    result = changes | {"stats": stats}
     if failed and not allow_missing:
-        raise CheckoutError([relpath(out_path) for out_path in failed], stats)
-
-    return stats
+        result["failed"] = [relpath(out_path) for out_path in failed]
+        raise CheckoutError([relpath(out_path) for out_path in failed], result)
+    return result
