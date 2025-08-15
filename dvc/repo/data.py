@@ -404,12 +404,21 @@ def status(
     *,
     granular: bool = False,
     untracked_files: str = "no",
+    remote: Optional[str] = None,
     not_in_remote: bool = False,
     remote_refresh: bool = False,
+    config: Optional[dict] = None,
     batch_size: Optional[int] = None,
     head: str = "HEAD",
 ) -> Status:
     from dvc.scm import NoSCMError, SCMError
+
+    config = config or {}
+    if remote and not_in_remote:
+        logger.debug("Using remote %r", remote)
+        core = config.setdefault("core", {})
+        core["remote"] = remote
+    repo.config.merge(config)
 
     targets = targets or []
     filter_keys: list[DataIndexKey] = [repo.fs.relparts(os.fspath(t)) for t in targets]

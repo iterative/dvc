@@ -398,6 +398,42 @@ def test_missing_dir_object_from_index(M, tmp_dir, dvc, scm):
     }
 
 
+def test_remote_check(M, tmp_dir, dvc, scm, make_remote):
+    make_remote("default", default=True)
+    make_remote("myremote", default=False)
+
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    tmp_dir.dvc_gen("foobar", "foobar")
+    assert dvc.push() == 4
+    scm.add_commit(["dir.dvc", "foobar.dvc", ".gitignore"], message="add files")
+
+    entries = M.unordered("foobar", join("dir", ""))
+    granular_entries = M.unordered(
+        "foobar", join("dir", ""), join("dir", "foo"), join("dir", "bar")
+    )
+    expected_ng = EMPTY_STATUS | {"git": M.dict(), "unchanged": entries}
+    expected_g = EMPTY_STATUS | {
+        "not_in_remote": [],
+        "git": M.dict(),
+        "unchanged": granular_entries,
+    }
+
+    opts = {"not_in_remote": True, "remote_refresh": True}
+    assert dvc.data_status(**opts) == expected_ng
+    assert dvc.data_status(granular=True, **opts) == expected_g
+
+    opts |= {"remote": "myremote"}
+    assert dvc.data_status(**opts) == expected_ng | {"not_in_remote": entries}
+    assert dvc.data_status(granular=True, **opts) == expected_g | {
+        "not_in_remote": granular_entries
+    }
+
+    dvc.push(remote="myremote")
+
+    assert dvc.data_status(**opts) == expected_ng
+    assert dvc.data_status(granular=True, **opts) == expected_g
+
+
 def test_missing_remote_cache(M, tmp_dir, dvc, scm, local_remote):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     tmp_dir.dvc_gen("foobar", "foobar")

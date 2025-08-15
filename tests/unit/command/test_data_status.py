@@ -43,6 +43,8 @@ def test_cli(dvc, mocker, mocked_status):
             "--unchanged",
             "--untracked-files",
             "--granular",
+            "--remote",
+            "myremote",
         ]
     )
 
@@ -53,6 +55,7 @@ def test_cli(dvc, mocker, mocked_status):
         targets=[],
         untracked_files="all",
         not_in_remote=False,
+        remote="myremote",
         remote_refresh=True,
         granular=True,
     )
