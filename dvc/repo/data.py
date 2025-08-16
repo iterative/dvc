@@ -41,6 +41,14 @@ def _adapt_path(change: "Change") -> str:
     return os.path.sep.join(key)
 
 
+def _adapt_path_from_entry(entry: "DataIndexEntry") -> str:
+    key = entry.key
+    assert key
+    if entry.meta and entry.meta.isdir:
+        key = (*key, "")
+    return os.sep.join(key)
+
+
 def _get_missing_paths(
     to_check: Mapping["FileSystem", Mapping[str, Iterable["DataIndexEntry"]]],
     batch_size: Optional[int] = None,
@@ -59,11 +67,7 @@ def _get_missing_paths(
                 continue
 
             for entry in paths_map[cache_path]:
-                key = entry.key
-                assert key
-                if entry.meta and entry.meta.isdir:
-                    key = (*key, "")
-                yield os.path.sep.join(key)
+                yield _adapt_path_from_entry(entry)
 
 
 class StorageCallback(Callback):
@@ -82,6 +86,16 @@ class StorageCallback(Callback):
         self.parent_cb.relative_update(value - self.value)
 
 
+class DiffResult(TypedDict, total=False):
+    modified: list[str]
+    added: list[str]
+    deleted: list[str]
+    renamed: list[tuple[str, str]]
+    unchanged: list[str]
+    unknown: list[str]
+    not_in_cache: list[str]
+
+
 def _diff(
     old: "BaseDataIndex",
     new: "BaseDataIndex",
@@ -91,11 +105,25 @@ def _diff(
     not_in_cache: bool = False,
     batch_size: Optional[int] = None,
     callback: "Callback" = DEFAULT_CALLBACK,
-) -> dict[str, list[str]]:
-    from dvc_data.index.diff import ADD, DELETE, MODIFY, UNCHANGED, UNKNOWN, diff
+    with_renames: bool = False,
+) -> DiffResult:
+    from dvc_data.index.diff import (
+        ADD,
+        DELETE,
+        MODIFY,
+        RENAME,
+        UNCHANGED,
+        UNKNOWN,
+        diff,
+    )
 
-    ret: dict[str, list[str]] = defaultdict(list)
-    change_types = {MODIFY: "modified", ADD: "added", DELETE: "deleted"}
+    ret: DiffResult = defaultdict(list)  # type: ignore[assignment]
+    change_types = {
+        MODIFY: "modified",
+        ADD: "added",
+        DELETE: "deleted",
+        RENAME: "renamed",
+    }
 
     to_check: dict[FileSystem, dict[str, list[DataIndexEntry]]] = defaultdict(
         lambda: defaultdict(list)
@@ -108,25 +136,38 @@ def _diff(
         shallow=not granular,
         hash_only=True,
         with_unknown=True,
+        with_renames=with_renames,
         callback=callback,
     ):
+        typ = change.typ
+
         # The index is a trie, so even when we filter by a specific path
         # like `dir/file`, all parent nodes leading to that path (e.g., `dir/`)
         # still appear in the view. As a result, keys like `dir/` will be present
         # even if only `dir/file` matches the filter.
         # We need to skip such entries to avoid showing root of tracked directories.
-        if filter_keys and not any(change.key[: len(fk)] == fk for fk in filter_keys):
-            continue
+        if filter_keys:
+            # RENAME does not have a `change.key`
+            if typ == RENAME:
+                assert change.new
+                key = change.new.key
+                # match with "new" key only
+                assert key
+            else:
+                key = change.key
+
+            if not any(key[: len(fk)] == fk for fk in filter_keys):
+                continue
 
         if (
-            change.typ == UNCHANGED
+            typ == UNCHANGED
             and (not change.old or not change.old.hash_info)
             and (not change.new or not change.new.hash_info)
         ):
             # NOTE: emulating previous behaviour
             continue
 
-        if change.typ == UNKNOWN and not change.new:
+        if typ == UNKNOWN and not change.new:
             # NOTE: emulating previous behaviour
             continue
 
@@ -136,8 +177,15 @@ def _diff(
             # check later in batches
             to_check[cache_fs][cache_path].append(old_entry)
 
-        change_typ = change_types.get(change.typ, change.typ)
-        ret[change_typ].append(_adapt_path(change))
+        change_typ = change_types.get(typ, typ)
+        if typ == RENAME:
+            assert change.old is not None
+            assert change.new is not None
+            ret["renamed"].append(
+                (_adapt_path_from_entry(change.old), _adapt_path_from_entry(change.new))
+            )
+        else:
+            ret[change_typ].append(_adapt_path(change))  # type: ignore[literal-required]
 
     total_items = sum(
         len(entries) for paths in to_check.values() for entries in paths.values()
@@ -150,7 +198,7 @@ def _diff(
         )
         if missing_items:
             ret["not_in_cache"] = missing_items
-    return dict(ret)
+    return dict(ret)  # type: ignore[return-value]
 
 
 class GitInfo(TypedDict, total=False):
@@ -230,7 +278,8 @@ def _diff_index_to_wtree(
     filter_keys: Optional[Iterable["DataIndexKey"]] = None,
     granular: bool = False,
     batch_size: Optional[int] = None,
-) -> dict[str, list[str]]:
+    with_renames: bool = False,
+) -> DiffResult:
     from .index import build_data_index
 
     with ui.progress(desc="Building workspace index", unit="entry") as pb:
@@ -255,6 +304,7 @@ def _diff_index_to_wtree(
             filter_keys=filter_keys,
             granular=granular,
             not_in_cache=True,
+            with_renames=with_renames,
             batch_size=batch_size,
             callback=pb.as_callback(),
         )
@@ -265,7 +315,8 @@ def _diff_head_to_index(
     head: str = "HEAD",
     filter_keys: Optional[Iterable["DataIndexKey"]] = None,
     granular: bool = False,
-) -> dict[str, list[str]]:
+    with_renames: bool = False,
+) -> DiffResult:
     from dvc.scm import RevError
     from dvc_data.index import DataIndex
 
@@ -286,6 +337,7 @@ def _diff_head_to_index(
             index_view,
             filter_keys=filter_keys,
             granular=granular,
+            with_renames=with_renames,
             callback=pb.as_callback(),
         )
 
@@ -293,8 +345,8 @@ def _diff_head_to_index(
 class Status(TypedDict):
     not_in_cache: list[str]
     not_in_remote: list[str]
-    committed: dict[str, list[str]]
-    uncommitted: dict[str, list[str]]
+    committed: DiffResult
+    uncommitted: DiffResult
     untracked: list[str]
     unchanged: list[str]
     git: GitInfo
@@ -398,7 +450,7 @@ def _prune_keys(filter_keys: Iterable["DataIndexKey"]) -> list["DataIndexKey"]:
     return result
 
 
-def status(
+def status(  # noqa: PLR0913
     repo: "Repo",
     targets: Optional[Iterable[Union[os.PathLike[str], str]]] = None,
     *,
@@ -410,6 +462,7 @@ def status(
     config: Optional[dict] = None,
     batch_size: Optional[int] = None,
     head: str = "HEAD",
+    with_renames: bool = False,
 ) -> Status:
     from dvc.scm import NoSCMError, SCMError
 
@@ -426,7 +479,11 @@ def status(
     filter_keys = _prune_keys(filter_keys)
 
     uncommitted_diff = _diff_index_to_wtree(
-        repo, filter_keys=filter_keys, granular=granular, batch_size=batch_size
+        repo,
+        filter_keys=filter_keys,
+        granular=granular,
+        batch_size=batch_size,
+        with_renames=with_renames,
     )
     unchanged = set(uncommitted_diff.pop("unchanged", []))
 
@@ -441,7 +498,11 @@ def status(
 
     try:
         committed_diff = _diff_head_to_index(
-            repo, filter_keys=filter_keys, head=head, granular=granular
+            repo,
+            filter_keys=filter_keys,
+            head=head,
+            granular=granular,
+            with_renames=with_renames,
         )
     except (SCMError, NoSCMError):
         committed_diff = {}

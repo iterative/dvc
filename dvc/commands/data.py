@@ -10,6 +10,7 @@ from dvc.ui import ui
 from dvc.utils import colorize
 
 if TYPE_CHECKING:
+    from dvc.repo.data import GitInfo
     from dvc.repo.data import Status as DataStatus
 
 
@@ -68,7 +69,7 @@ class CmdDataStatus(CmdBase):
 
     @classmethod
     def _show_status(cls, status: "DataStatus") -> int:  # noqa: C901
-        git_info = status.pop("git")  # type: ignore[misc]
+        git_info: GitInfo = status.pop("git")  # type: ignore[misc]
         result = dict(cls._process_status(status))
         if not result:
             no_changes = "No changes"
@@ -90,7 +91,11 @@ class CmdDataStatus(CmdBase):
                     ui.write(f"  ({hint})")
 
             if isinstance(stage_status, dict):
-                items = [f"{state}: {file}" for file, state in stage_status.items()]
+                items = [
+                    f"{state}: "
+                    + (" -> ".join(file) if isinstance(file, tuple) else file)
+                    for file, state in stage_status.items()
+                ]
             else:
                 items = stage_status
 
@@ -114,6 +119,7 @@ class CmdDataStatus(CmdBase):
                 remote=self.args.remote,
                 not_in_remote=self.args.not_in_remote,
                 remote_refresh=self.args.remote_refresh,
+                with_renames=self.args.detect_renames,
             )
 
         if not self.args.unchanged:
@@ -174,6 +180,9 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show unmodified DVC-tracked files.",
+    )
+    data_status_parser.add_argument(
+        "--detect-renames", action="store_true", default=False, help="Show renames."
     )
     data_status_parser.add_argument(
         "--untracked-files",

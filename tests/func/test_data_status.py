@@ -1,3 +1,4 @@
+import shutil
 from collections.abc import Iterable
 from functools import partial
 from os import fspath
@@ -1000,3 +1001,193 @@ def test_missing_cache_remote_check(M, tmp_dir, dvc, scm, local_remote):
         "git": M.dict(),
         "not_in_remote": [join("dir", "")],
     }
+
+
+@pytest.mark.parametrize(
+    "targets,expected_non_granular,expected_granular",
+    [
+        param(
+            None,
+            {
+                "committed": {
+                    "renamed": m.unordered(
+                        (join("dir", ""), join("dir2", "")), ("file", "file2")
+                    )
+                },
+                "uncommitted": {"modified": [join("dir2", "")]},
+            },
+            {
+                "committed": {
+                    "renamed": m.unordered(
+                        (join("dir", ""), join("dir2", "")),
+                        (join("dir", "bar"), join("dir2", "bar")),
+                        (join("dir", "foo"), join("dir2", "foo")),
+                        ("file", "file2"),
+                    )
+                },
+                "uncommitted": {
+                    "modified": [join("dir2", "")],
+                    "renamed": [(join("dir2", "foo"), join("dir2", "foobar"))],
+                },
+            },
+        ),
+        param(
+            ["dir"],
+            {"committed": {"deleted": [join("dir", "")]}},
+            {
+                "committed": {
+                    "deleted": m.unordered(
+                        join("dir", ""), join("dir", "bar"), join("dir", "foo")
+                    )
+                }
+            },
+        ),
+        param(
+            ["dir2"],
+            {
+                "committed": {"added": [join("dir2", "")]},
+                "uncommitted": {"modified": [join("dir2", "")]},
+            },
+            {
+                "committed": {
+                    "added": m.unordered(
+                        join("dir2", ""),
+                        join("dir2", "bar"),
+                        join("dir2", "foo"),
+                    ),
+                },
+                "uncommitted": {
+                    "modified": [join("dir2", "")],
+                    "renamed": [((join("dir2", "foo"), join("dir2", "foobar")))],
+                },
+            },
+        ),
+        param(
+            [join("dir", "bar")], {}, {"committed": {"deleted": [join("dir", "bar")]}}
+        ),
+        param(
+            [join("dir", "foo")], {}, {"committed": {"deleted": [join("dir", "foo")]}}
+        ),
+        param(
+            [join("dir2", "bar")], {}, {"committed": {"added": [join("dir2", "bar")]}}
+        ),
+        param(
+            [join("dir2", "foobar")],
+            {},
+            {"uncommitted": {"added": [join("dir2", "foobar")]}},
+        ),
+        param(
+            ["file"],
+            {"committed": {"deleted": ["file"]}},
+            {"committed": {"deleted": ["file"]}},
+        ),
+        param(
+            ["file2"],
+            {"committed": {"added": ["file2"]}},
+            {"committed": {"added": ["file2"]}},
+        ),
+        param(
+            ["dir", "dir2"],
+            {
+                "committed": {
+                    "renamed": [(join("dir", ""), join("dir2", ""))],
+                },
+                "uncommitted": {"modified": [join("dir2", "")]},
+            },
+            {
+                "committed": {
+                    "renamed": m.unordered(
+                        (join("dir", ""), join("dir2", "")),
+                        (join("dir", "bar"), join("dir2", "bar")),
+                        (join("dir", "foo"), join("dir2", "foo")),
+                    )
+                },
+                "uncommitted": {
+                    "modified": [join("dir2", "")],
+                    "renamed": [(join("dir2", "foo"), join("dir2", "foobar"))],
+                },
+            },
+        ),
+        param(
+            ["file", "file2"],
+            {"committed": {"renamed": [("file", "file2")]}},
+            {"committed": {"renamed": [("file", "file2")]}},
+        ),
+        param(
+            [join("dir", "foo"), join("dir2", "foobar")],
+            {},
+            {
+                "committed": {"deleted": [join("dir", "foo")]},
+                "uncommitted": {"added": [join("dir2", "foobar")]},
+            },
+        ),
+        param(
+            [join("dir2", "foo"), join("dir2", "foobar")],
+            {},
+            {
+                "committed": {"added": [join("dir2", "foo")]},
+                "uncommitted": {
+                    "renamed": [(join("dir2", "foo"), join("dir2", "foobar"))],
+                },
+            },
+        ),
+        param(
+            ["dir2", "file2"],
+            {
+                "committed": {"added": m.unordered(join("dir2", ""), "file2")},
+                "uncommitted": {"modified": [join("dir2", "")]},
+            },
+            {
+                "committed": {
+                    "added": m.unordered(
+                        join("dir2", ""),
+                        join("dir2", "bar"),
+                        join("dir2", "foo"),
+                        "file2",
+                    )
+                },
+                "uncommitted": {
+                    "modified": [join("dir2", "")],
+                    "renamed": [(join("dir2", "foo"), join("dir2", "foobar"))],
+                },
+            },
+        ),
+        param(
+            ["dir2", join("dir2", "foobar"), "file"],
+            {
+                "uncommitted": {"modified": [join("dir2", "")]},
+                "committed": {"added": [join("dir2", "")], "deleted": ["file"]},
+            },
+            {
+                "committed": {
+                    "added": m.unordered(
+                        join("dir2", ""), join("dir2", "bar"), join("dir2", "foo")
+                    ),
+                    "deleted": ["file"],
+                },
+                "uncommitted": {
+                    "modified": [join("dir2", "")],
+                    "renamed": [(join("dir2", "foo"), join("dir2", "foobar"))],
+                },
+            },
+        ),
+    ],
+)
+def test_renames(
+    M, tmp_dir, scm, dvc, targets, expected_non_granular, expected_granular
+):
+    tmp_dir.dvc_gen(
+        {"dir": {"foo": "foo", "bar": "bar"}, "file": "file"}, commit="add dir and file"
+    )
+    dvc.move("dir", "dir2")
+    dvc.move("file", "file2")
+    shutil.move(tmp_dir / "dir2" / "foo", tmp_dir / "dir2" / "foobar")
+
+    assert (
+        dvc.data_status(with_renames=True, targets=targets)
+        == EMPTY_STATUS | {"git": M.dict()} | expected_non_granular
+    )
+    assert (
+        dvc.data_status(granular=True, with_renames=True, targets=targets)
+        == EMPTY_STATUS | {"git": M.dict()} | expected_granular
+    )
