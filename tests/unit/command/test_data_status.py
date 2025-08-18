@@ -19,12 +19,14 @@ def mocked_status():
             "deleted": ["dir/baz"],
             "modified": ["dir/foobar"],
             "unknown": ["dir/unknown1"],
+            "renamed": [{"old": "dir/", "new": "dir2/"}],
         },
         uncommitted={
             "added": ["dir/baz"],
             "modified": ["dir/bar"],
             "deleted": ["dir/foobar"],
             "unknown": ["dir2/unknown2"],
+            "renamed": [{"old": "dir2/file-old", "new": "dir2/file-new"}],
         },
         untracked=["untracked"],
         unchanged=["dir/foo"],
@@ -124,6 +126,7 @@ DVC committed changes:
         deleted: dir/baz
         modified: dir/foobar
         unknown: dir/unknown1
+        renamed: dir/ -> dir2/
 
 DVC uncommitted changes:
   (use "dvc commit <file>..." to track changes)
@@ -132,6 +135,7 @@ DVC uncommitted changes:
         modified: dir/bar
         deleted: dir/foobar
         unknown: dir2/unknown2
+        renamed: dir2/file-old -> dir2/file-new
 """
     if "--untracked-files" in args:
         expected_out += """
