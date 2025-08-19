@@ -19,6 +19,7 @@ from dvc.env import (
     DVC_STUDIO_URL,
 )
 from dvc.exceptions import DvcException, ReproductionError
+from dvc.repo import Repo
 from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.refs import CELERY_STASH
@@ -808,3 +809,25 @@ def test_experiments_run_with_submodule_dependencies(dvc, scm, make_tmp_dir, dep
     dvc.stage.add(cmd="echo foo", deps=[dep], name="foo")
 
     assert dvc.experiments.run()
+
+
+def test_experiments_run_in_linked_git_worktree(
+    dvc, scm, tmp_path_factory: pytest.TempPathFactory, monkeypatch
+):
+    from dulwich.worktree import add_worktree
+
+    wt = tmp_path_factory.mktemp("worktrees") / "worktree"
+    add_worktree(scm.dulwich.repo, wt, branch="wt-main")
+
+    monkeypatch.chdir(wt)
+
+    wt_dvc = Repo(os.fspath(wt))
+    (wt / "foo").write_bytes(b"foo")
+    wt_dvc.stage.add(cmd="cp foo bar", deps=["foo"], outs=["bar"], name="cp")
+
+    results = wt_dvc.experiments.run(name="my-exp")
+    assert results
+    rev = first(results)
+    assert rev
+    # If `bar` exists, we know that the stage was run.
+    assert (wt / "bar").read_bytes() == b"foo"
