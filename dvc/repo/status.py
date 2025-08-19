@@ -130,7 +130,7 @@ def status(  # noqa: PLR0913
             remote=remote,
             all_tags=all_tags,
             all_commits=all_commits,
-            recursive=True,
+            recursive=recursive,
         )
 
     ignored = list(
