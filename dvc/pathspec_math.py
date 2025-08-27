@@ -2,13 +2,16 @@
 # Including changing base dir of path specification patterns and merging
 # of two path specification patterns with different base
 # All the operations follow the documents of `gitignore`
-from collections import namedtuple
+from typing import NamedTuple
 
 from pathspec.util import normalize_file
 
 from dvc.utils import relpath
 
-PatternInfo = namedtuple("PatternInfo", ["patterns", "file_info"])  # noqa: PYI024
+
+class PatternInfo(NamedTuple):
+    patterns: str
+    file_info: str
 
 
 def _not_ignore(rule):

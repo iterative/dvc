@@ -6,7 +6,7 @@ from funcy import first
 from voluptuous import MultipleInvalid, Schema
 
 from dvc.fs import RemoteMissingDepsError
-from dvc.ignore import _no_match
+from dvc.ignore import CheckIgnoreResult
 from dvc.output import CHECKSUM_SCHEMA, Output
 from dvc.stage import Stage
 from dvc.utils.fs import remove
@@ -88,7 +88,9 @@ def test_get_used_objs(exists, expected_message, mocker, caplog):
     mocker.patch.object(stage.repo, "root_dir", os.getcwd())
     mocker.patch.object(stage.repo.dvcignore, "is_ignored", return_value=False)
     mocker.patch.object(
-        stage.repo.dvcignore, "check_ignore", return_value=_no_match("path")
+        stage.repo.dvcignore,
+        "check_ignore",
+        return_value=CheckIgnoreResult("path", False, []),
     )
     stage.repo.fs.version_aware = False
     stage.repo.fs.PARAM_CHECKSUM = "md5"

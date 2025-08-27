@@ -10,11 +10,14 @@ class CmdCheckIgnore(CmdBase):
         self.ignore_filter = self.repo.dvcignore
 
     def _show_results(self, result):
-        if not result.match and not self.args.non_matching:
+        if not result.match and not self.args.details:
+            return
+
+        if not result.patterns and not self.args.non_matching:
             return
 
         if self.args.details:
-            patterns = result.patterns
+            patterns = result.patterns or ["::"]
             if not self.args.all:
                 patterns = patterns[-1:]
 
@@ -22,13 +25,11 @@ class CmdCheckIgnore(CmdBase):
                 ui.write(pattern, result.file, sep="\t")
         else:
             ui.write(result.file)
+        return bool(result.patterns)
 
     def _check_one_file(self, target):
         result = self.ignore_filter.check_ignore(target)
-        self._show_results(result)
-        if result.match:
-            return 0
-        return 1
+        return bool(self._show_results(result))
 
     def _interactive_mode(self):
         ret = 1
@@ -39,14 +40,14 @@ class CmdCheckIgnore(CmdBase):
                 break
             if not target:
                 break
-            if not self._check_one_file(target):
+            if self._check_one_file(target):
                 ret = 0
         return ret
 
     def _normal_mode(self):
         ret = 1
         for target in self.args.targets:
-            if not self._check_one_file(target):
+            if self._check_one_file(target):
                 ret = 0
         return ret
 
