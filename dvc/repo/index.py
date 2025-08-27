@@ -67,14 +67,14 @@ def collect_files(
 
     is_local_fs = isinstance(fs, LocalFileSystem)
 
-    def is_ignored(path):
+    def is_ignored(path: str) -> bool:
         # apply only for the local fs
         return is_local_fs and scm.is_ignored(path)
 
-    def is_dvcfile_and_not_ignored(root, file):
+    def is_dvcfile_and_not_ignored(root: str, file: str) -> bool:
         return is_valid_filename(file) and not is_ignored(f"{root}{sep}{file}")
 
-    def is_out_or_ignored(root, directory):
+    def is_out_or_ignored(root: str, directory: str) -> bool:
         dir_path = f"{root}{sep}{directory}"
         # trailing slash needed to check if a directory is gitignored
         return dir_path in outs or is_ignored(f"{dir_path}{sep}")
@@ -84,6 +84,8 @@ def collect_files(
         walk_iter = log_walk(walk_iter)
 
     for root, dirs, files in walk_iter:
+        assert isinstance(dirs, list)
+        assert isinstance(files, list)
         dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
         for file in filter(dvcfile_filter, files):
             file_path = fs.join(root, file)
