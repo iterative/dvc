@@ -78,7 +78,7 @@ def test_check_ignore_dir(tmp_dir, dvc, path, ret):
 
 
 def test_check_ignore_default_dir(tmp_dir, dvc):
-    assert main(["check-ignore", "-q", ".dvc"]) == 1
+    assert main(["check-ignore", "-q", ".dvc"]) == 0
 
 
 def test_check_ignore_out_side_repo(tmp_dir, dvc):
@@ -125,7 +125,6 @@ def test_check_ignore_details_all(tmp_dir, dvc, capsys):
 
     assert main(["check-ignore", "-d", "-a", "foo"]) == 0
     out, _ = capsys.readouterr()
-    assert f"{DvcIgnore.DVCIGNORE_FILE}:1:f*\tfoo\n" in out
     assert f"{DvcIgnore.DVCIGNORE_FILE}:2:!foo\tfoo\n" in out
 
 

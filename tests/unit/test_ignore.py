@@ -1,4 +1,5 @@
 import os
+from os.path import join
 
 import pytest
 
@@ -202,3 +203,154 @@ def test_should_ignore_dir(omit_dir, sub_dir):
 
     assert set(new_dirs) == {"dir1", "dir2"}
     assert set(new_files) == {"file1", "file2", omit_dir}
+
+
+def test_ignore_complex(tmp_dir, dvc):
+    from dvc.fs import localfs
+
+    spec = """\
+# Ignore everything
+1/**
+# Except directories (leaves all files ignored)
+!1/**/
+# Don't ignore files in 3
+!seq/**/3/**
+
+data/
+!data/keep.csv
+
+data2/**
+!data2/**/
+!data2/**/*.csv
+
+ignore.txt
+!no-ignore.txt
+"""
+    (tmp_dir / ".dvcignore").write_text(spec)
+    (tmp_dir / "1" / "2" / "3").mkdir(parents=True, exist_ok=True)
+    (tmp_dir / "1" / "2" / "shouldIgnore.txt").touch()
+    (tmp_dir / "1" / "2" / "3" / "shouldKeep.txt").touch()
+    (tmp_dir / "data" / "subdir").mkdir(parents=True, exist_ok=True)
+    (tmp_dir / "data2" / "subdir").mkdir(parents=True, exist_ok=True)
+    (tmp_dir / "data" / "keep.csv").touch()
+    (tmp_dir / "data" / "other.csv").touch()
+    (tmp_dir / "data" / "subdir" / "file.txt").touch()
+    (tmp_dir / "data2" / "keep.csv").touch()
+    (tmp_dir / "data2" / "other.txt").touch()
+    (tmp_dir / "data2" / "subdir" / "keep.csv").touch()
+    (tmp_dir / "data2" / "subdir" / "other.txt").touch()
+    (tmp_dir / "ignore.txt").touch()
+    (tmp_dir / "no-ignore.txt").touch()
+
+    ignore_file = DvcIgnorePatterns.from_file(
+        os.fspath(tmp_dir / ".dvcignore"), localfs, ".dvcignore"
+    )
+    dvc.__dict__.pop("dvcignore", None)
+
+    def matches(path):
+        result, _matches = ignore_file.matches(
+            os.fspath(tmp_dir), path, (tmp_dir / path).is_dir(), details=True
+        )
+        return result, [str(m) for m in _matches]
+
+    for path, *expected in [
+        ("1", False, [".dvcignore:4:!1/**/"]),
+        (join("1", ""), False, [".dvcignore:4:!1/**/"]),
+        (join("1", "2"), False, [".dvcignore:4:!1/**/"]),
+        (join("1", "2", ""), False, [".dvcignore:4:!1/**/"]),
+        (join("1", "2", "shouldIgnore.txt"), True, [".dvcignore:2:1/**"]),
+        (join("1", "2", "3"), False, [".dvcignore:4:!1/**/"]),
+        (join("1", "2", "3", ""), False, [".dvcignore:4:!1/**/"]),
+        (join("1", "2", "3", "shouldKeep.txt"), True, [".dvcignore:2:1/**"]),
+        ("data", True, [".dvcignore:8:data/"]),
+        (join("data", ""), True, [".dvcignore:8:data/"]),
+        (join("data", "keep.csv"), True, [".dvcignore:8:data/"]),
+        (join("data", "other.csv"), True, [".dvcignore:8:data/"]),
+        (join("data", "subdir", "file.txt"), True, [".dvcignore:8:data/"]),
+        ("data2", False, [".dvcignore:12:!data2/**/"]),
+        (join("data2", ""), False, [".dvcignore:12:!data2/**/"]),
+        (join("data2", "keep.csv"), False, [".dvcignore:13:!data2/**/*.csv"]),
+        (join("data2", "other.txt"), True, [".dvcignore:11:data2/**"]),
+        (join("data2", "subdir"), False, [".dvcignore:12:!data2/**/"]),
+        (join("data2", "subdir", ""), False, [".dvcignore:12:!data2/**/"]),
+        (join("data2", "subdir", "keep.csv"), False, [".dvcignore:13:!data2/**/*.csv"]),
+        (join("data2", "subdir", "other.txt"), True, [".dvcignore:11:data2/**"]),
+        ("ignore.txt", True, [".dvcignore:15:ignore.txt"]),
+        ("no-ignore.txt", False, [".dvcignore:16:!no-ignore.txt"]),
+    ]:
+        assert matches(path) == tuple(expected), f"for {path}"
+
+    def sorted_walk(path):
+        for root, dirs, files in dvc.dvcignore.walk(localfs, path):
+            dirs.sort()
+            files.sort()
+            yield root, dirs, files
+
+    assert list(sorted_walk(os.curdir)) == [
+        (
+            os.curdir,
+            ["1", "data2"],
+            [".dvcignore", "no-ignore.txt"],
+        ),
+        ("1", ["2"], []),
+        (join("1", "2"), ["3"], []),
+        (join("1", "2", "3"), [], []),
+        ("data2", ["subdir"], ["keep.csv"]),
+        (join("data2", "subdir"), [], ["keep.csv"]),
+    ]
+
+
+def test_ignore_unignore_from_git_example(tmp_dir, dvc, scm):
+    from dvc.fs import localfs
+
+    spec = """\
+# exclude everything except directory foo/bar
+/*
+!/foo
+/foo/*
+!/foo/bar
+"""
+    (tmp_dir / ".dvcignore").write_text(spec)
+    for d in [
+        tmp_dir,
+        tmp_dir / "foo",
+        tmp_dir / "foo" / "bar",
+        tmp_dir / "foo" / "baz",
+        tmp_dir / "foobar",
+    ]:
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "myfile").touch()
+
+    ignore_file = DvcIgnorePatterns.from_file(
+        os.fspath(tmp_dir / ".dvcignore"), localfs, ".dvcignore"
+    )
+    dvc.__dict__.pop("dvcignore", None)
+
+    def matches(path):
+        result, _matches = ignore_file.matches(
+            os.fspath(tmp_dir), path, (tmp_dir / path).is_dir(), details=True
+        )
+        return result, [str(m) for m in _matches]
+
+    for path, *expected in [
+        ("foo", False, [".dvcignore:3:!/foo"]),
+        (join("foo", ""), False, [".dvcignore:3:!/foo"]),
+        (join("foo", "myfile"), True, [".dvcignore:4:/foo/*"]),
+        (join("foo", "bar"), False, [".dvcignore:5:!/foo/bar"]),
+        (join("foo", "bar", ""), False, [".dvcignore:5:!/foo/bar"]),
+        # matching pattern differs from git for foo/bar/myfile
+        (join("foo", "bar", "myfile"), False, [".dvcignore:5:!/foo/bar"]),
+        (join("foo", "baz"), True, [".dvcignore:4:/foo/*"]),
+        (join("foo", "baz", ""), True, [".dvcignore:4:/foo/*"]),
+        (join("foo", "baz", "myfile"), True, [".dvcignore:4:/foo/*"]),
+        (join("foo", "foobar"), True, [".dvcignore:4:/foo/*"]),
+        (join("foo", "foobar", ""), True, [".dvcignore:4:/foo/*"]),
+        (join("foo", "foobar", "myfile"), True, [".dvcignore:4:/foo/*"]),
+    ]:
+        assert matches(path) == tuple(expected), f"for {path}"
+
+    assert sorted(dvc.dvcignore.walk(localfs, os.curdir), key=lambda r: r[0]) == [
+        (os.curdir, ["foo"], []),
+        ("foo", ["bar"], []),
+        (join("foo", "bar"), [], ["myfile"]),
+    ]

@@ -13,6 +13,9 @@ class PatternInfo(NamedTuple):
     patterns: str
     file_info: str
 
+    def __str__(self) -> str:
+        return self.file_info or f":{self.patterns}"
+
 
 def _not_ignore(rule):
     return (True, rule[1:]) if rule.startswith("!") else (False, rule)

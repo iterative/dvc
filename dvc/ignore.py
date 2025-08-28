@@ -1,3 +1,4 @@
+import functools
 import os
 import re
 from collections.abc import Iterable, Iterator
@@ -41,21 +42,58 @@ class DvcIgnorePatterns(DvcIgnore):
         ]
 
         self.sep = sep
-        self.pattern_list: list[PatternInfo] = pattern_infos
+        self.pattern_list: list[PatternInfo] = []
         self.dirname = dirname
+        self.find_matching_pattern = functools.cache(self._find_matching_pattern)
 
-        self.regex_pattern_list: list[tuple[str, bool]] = []
-        for count, pattern in enumerate(pattern_infos):
-            regex, ignore = GitWildMatchPattern.pattern_to_regex(pattern.patterns)
+        regex_pattern_list: list[tuple[str, bool, bool, PatternInfo]] = []
+        for count, pattern_info in enumerate(pattern_infos):
+            regex, ignore = GitWildMatchPattern.pattern_to_regex(pattern_info.patterns)
             if regex is not None and ignore is not None:
+                self.pattern_list.append(pattern_info)
                 regex = regex.replace(f"<{_DIR_MARK}>", f"<{_DIR_MARK}{count}>")
-                self.regex_pattern_list.append((regex, ignore))
+                regex_pattern_list.append(
+                    (regex, ignore, pattern_info.patterns.endswith("/"), pattern_info)
+                )
 
-        self.ignore_spec = [
-            (ignore, re.compile("|".join(regex for regex, _ in group)))
-            for ignore, group in groupby(self.regex_pattern_list, lambda x: x[1])
-            if ignore is not None
+        def keyfunc(item: tuple[str, bool, bool, PatternInfo]) -> tuple[bool, bool]:
+            _, ignore, dir_only_pattern, _ = item
+            return ignore, dir_only_pattern
+
+        self.ignore_spec: list[
+            tuple[
+                re.Pattern[str],
+                bool,
+                bool,
+                dict[Optional[str], tuple[str, PatternInfo]],
+            ]
         ]
+        self.ignore_spec = []
+        for (ignore, dir_only_pattern), group in groupby(
+            regex_pattern_list, key=keyfunc
+        ):
+            if ignore:
+                # For performance, we combine all exclude patterns.
+                # But we still need to figure out which pattern matched which rule,
+                # (eg: to show in `dvc check-ignore`).
+                # So, we use named groups and keep a map of group name to pattern.
+                pattern_map: dict[Optional[str], tuple[str, PatternInfo]] = {
+                    f"rule_{i}": (regex, pi)
+                    for i, (regex, _, _, pi) in enumerate(group)
+                }
+                combined_regex = "|".join(
+                    f"(?P<{name}>{regex})" for name, (regex, _) in pattern_map.items()
+                )
+                self.ignore_spec.append(
+                    (re.compile(combined_regex), ignore, dir_only_pattern, pattern_map)
+                )
+            else:
+                # unignored patterns are not combined with `|`.
+                for regex, _, _, pi in group:
+                    pattern_map = {None: (regex, pi)}
+                    self.ignore_spec.append(
+                        (re.compile(regex), ignore, dir_only_pattern, pattern_map)
+                    )
 
     @classmethod
     def from_file(cls, path: str, fs: "FileSystem", name: str) -> "Self":
@@ -113,60 +151,78 @@ class DvcIgnorePatterns(DvcIgnore):
         basename: str,
         is_dir: bool = False,
         details: Literal[True] = ...,
-    ) -> tuple[bool, list[str]]: ...
+    ) -> tuple[bool, list[PatternInfo]]: ...
 
     @overload
     def matches(
-        self, dirname: str, basename: str, is_dir: bool = False, details: bool = False
-    ) -> Union[bool, tuple[bool, list[str]]]: ...
+        self,
+        dirname: str,
+        basename: str,
+        is_dir: bool = False,
+        details: bool = False,
+    ) -> Union[bool, tuple[bool, list[PatternInfo]]]: ...
 
     def matches(
-        self, dirname: str, basename: str, is_dir: bool = False, details: bool = False
-    ) -> Union[bool, tuple[bool, list[str]]]:
+        self,
+        dirname: str,
+        basename: str,
+        is_dir: bool = False,
+        details: bool = False,
+    ) -> Union[bool, tuple[bool, list[PatternInfo]]]:
         path = self._get_normalize_path(dirname, basename)
-        if not path:
-            return (False, []) if details else False
-        if details:
-            return self._ignore_details(path, is_dir)
-        return self.ignore(path, is_dir)
-
-    def ignore(self, path: str, is_dir: bool) -> bool:
-        def matches(pattern, path, is_dir) -> bool:
-            matches_ = bool(pattern.match(path))
-
-            if is_dir:
-                matches_ |= bool(pattern.match(f"{path}/"))
-
-            return matches_
-
         result = False
+        _match: list[PatternInfo] = []
+        if path:
+            result, _match = self._ignore(path, is_dir)
+        return (result, _match) if details else result
 
-        for ignore, pattern in self.ignore_spec[::-1]:
-            if matches(pattern, path, is_dir):
-                result = ignore
-                break
-        return result
+    def _find_matching_pattern(
+        self, path: str, is_dir: bool
+    ) -> tuple[bool, list[PatternInfo]]:
+        paths = [path]
+        if is_dir and not path.endswith("/"):
+            paths.append(f"{path}/")
 
-    def _ignore_details(self, path: str, is_dir: bool) -> tuple[bool, list[str]]:
-        result = False
-        matched_patterns = []
-        for (regex, ignore), pattern_info in list(
-            zip(self.regex_pattern_list, self.pattern_list)
+        for pattern, ignore, dir_only_pattern, pattern_map in reversed(
+            self.ignore_spec
         ):
-            # skip system pattern
-            if not pattern_info.file_info:
+            if dir_only_pattern and not is_dir:
                 continue
+            for p in paths:
+                match = pattern.match(p)
+                if not match:
+                    continue
+                if ignore:
+                    group_name, _match = next(
+                        (
+                            (name, _match)
+                            for name, _match in match.groupdict().items()
+                            if name.startswith("rule_") and _match is not None
+                        )
+                    )
+                else:
+                    # unignored patterns are not combined with `|`,
+                    # so there are no groups.
+                    group_name = None
+                _regex, pattern_info = pattern_map[group_name]
+                return ignore, [pattern_info]
+        return False, []
 
-            pattern = re.compile(regex)
-
-            matches = bool(pattern.match(path))
-            if is_dir:
-                matches |= bool(pattern.match(f"{path}/"))
-
-            if matches:
-                matched_patterns.append(pattern_info.file_info)
-                result = ignore
-        return result, matched_patterns
+    def _ignore(self, path: str, is_dir: bool) -> tuple[bool, list[PatternInfo]]:
+        parts = path.split("/")
+        result = False
+        matches: list[PatternInfo] = []
+        for i in range(1, len(parts) + 1):
+            rel_path = "/".join(parts[:i])
+            result, _matches = self.find_matching_pattern(
+                rel_path, is_dir or i < len(parts)
+            )
+            if i < len(parts) and not result:
+                continue
+            matches.extend(_matches)
+            if result:
+                break
+        return result, matches
 
     def __hash__(self) -> int:
         return hash(self.dirname + ":" + str(self.pattern_list))
@@ -186,7 +242,7 @@ class DvcIgnorePatterns(DvcIgnore):
 class CheckIgnoreResult(NamedTuple):
     file: str
     match: bool
-    patterns: list[str]
+    pattern_infos: list[PatternInfo]
 
 
 class DvcIgnoreFilter:
@@ -454,14 +510,14 @@ class DvcIgnoreFilter:
         # NOTE: can only be used in `dvc check-ignore`, see
         # https://github.com/iterative/dvc/issues/5046
         full_target = self.fs.abspath(target)
-        matched_patterns: list[str] = []
+        matched_patterns: list[PatternInfo] = []
         ignore = False
         if not self._outside_repo(full_target):
             dirname, basename = self.fs.split(self.fs.normpath(full_target))
             pattern = self._get_trie_pattern(dirname)
             if pattern:
                 ignore, matched_patterns = pattern.matches(
-                    dirname, basename, self.fs.isdir(full_target), True
+                    dirname, basename, self.fs.isdir(full_target), details=True
                 )
         return CheckIgnoreResult(target, ignore, matched_patterns)
 

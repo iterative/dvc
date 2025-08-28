@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.obj import HashFile
     from dvc_data.index import DataIndexKey
 
-    from .ignore import DvcIgnoreFilter
+    from .ignore import CheckIgnoreResult, DvcIgnoreFilter
 
 logger = logger.getChild(__name__)
 
@@ -267,9 +267,9 @@ class OutputIsStageFileError(DvcException):
 
 
 class OutputIsIgnoredError(DvcException):
-    def __init__(self, match):
-        lines = "\n".join(match.patterns)
-        super().__init__(f"Path '{match.file}' is ignored by\n{lines}")
+    def __init__(self, result: "CheckIgnoreResult"):
+        pi = result.pattern_infos[-1]
+        super().__init__(f"Path {result.file!r} is ignored by {pi!s}")
 
 
 class CheckoutCallback(TqdmCallback):
@@ -1203,8 +1203,9 @@ class Output:
         if stage:
             abs_path = os.path.join(stage.wdir, path)
             if self._is_path_dvcignore(abs_path):
-                check = stage.repo.dvcignore.check_ignore(abs_path)
-                raise self.IsIgnoredError(check)
+                check: CheckIgnoreResult = stage.repo.dvcignore.check_ignore(abs_path)
+                if check.match:
+                    raise self.IsIgnoredError(check)
 
     def _check_can_merge(self, out):
         if self.protocol != out.protocol:
