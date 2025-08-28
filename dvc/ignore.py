@@ -2,7 +2,7 @@ import functools
 import os
 import re
 from collections.abc import Iterable, Iterator
-from itertools import chain, takewhile
+from itertools import chain, groupby, takewhile
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional, Union, overload
 
 from pathspec.patterns import GitWildMatchPattern
@@ -46,22 +46,54 @@ class DvcIgnorePatterns(DvcIgnore):
         self.dirname = dirname
         self.find_matching_pattern = functools.cache(self._find_matching_pattern)
 
-        self.regex_pattern_list: list[tuple[re.Pattern, bool, bool]] = []
+        regex_pattern_list: list[tuple[str, bool, bool, PatternInfo]] = []
         for count, pattern_info in enumerate(pattern_infos):
             regex, ignore = GitWildMatchPattern.pattern_to_regex(pattern_info.patterns)
             if regex is not None and ignore is not None:
                 self.pattern_list.append(pattern_info)
                 regex = regex.replace(f"<{_DIR_MARK}>", f"<{_DIR_MARK}{count}>")
-                self.regex_pattern_list.append(
-                    (re.compile(regex), pattern_info.patterns.endswith("/"), ignore)
+                regex_pattern_list.append(
+                    (regex, ignore, pattern_info.patterns.endswith("/"), pattern_info)
                 )
 
-        self.ignore_spec = [
-            (pattern, dir_only_pattern, ignore, pattern_info)
-            for (pattern, dir_only_pattern, ignore), pattern_info in zip(
-                reversed(self.regex_pattern_list), reversed(self.pattern_list)
-            )
+        def keyfunc(item: tuple[str, bool, bool, PatternInfo]) -> tuple[bool, bool]:
+            _, ignore, dir_only_pattern, _ = item
+            return ignore, dir_only_pattern
+
+        self.ignore_spec: list[
+            tuple[
+                re.Pattern[str],
+                bool,
+                bool,
+                dict[Optional[str], tuple[str, PatternInfo]],
+            ]
         ]
+        self.ignore_spec = []
+        for (ignore, dir_only_pattern), group in groupby(
+            regex_pattern_list, key=keyfunc
+        ):
+            if ignore:
+                # For performance, we combine all exclude patterns.
+                # But we still need to figure out which pattern matched which rule,
+                # (eg: to show in `dvc check-ignore`).
+                # So, we use named groups and keep a map of group name to pattern.
+                pattern_map: dict[Optional[str], tuple[str, PatternInfo]] = {
+                    f"rule_{i}": (regex, pi)
+                    for i, (regex, _, _, pi) in enumerate(group)
+                }
+                combined_regex = "|".join(
+                    f"(?P<{name}>{regex})" for name, (regex, _) in pattern_map.items()
+                )
+                self.ignore_spec.append(
+                    (re.compile(combined_regex), ignore, dir_only_pattern, pattern_map)
+                )
+            else:
+                # unignored patterns are not combined with `|`.
+                for regex, _, _, pi in group:
+                    pattern_map = {None: (regex, pi)}
+                    self.ignore_spec.append(
+                        (re.compile(regex), ignore, dir_only_pattern, pattern_map)
+                    )
 
     @classmethod
     def from_file(cls, path: str, fs: "FileSystem", name: str) -> "Self":
@@ -151,12 +183,29 @@ class DvcIgnorePatterns(DvcIgnore):
         if is_dir and not path.endswith("/"):
             paths.append(f"{path}/")
 
-        for pattern, dir_only_pattern, ignore, pattern_info in self.ignore_spec:
+        for pattern, ignore, dir_only_pattern, pattern_map in reversed(
+            self.ignore_spec
+        ):
             if dir_only_pattern and not is_dir:
                 continue
             for p in paths:
-                if pattern.match(p):
-                    return ignore, [pattern_info]
+                match = pattern.match(p)
+                if not match:
+                    continue
+                if ignore:
+                    group_name, _match = next(
+                        (
+                            (name, _match)
+                            for name, _match in match.groupdict().items()
+                            if name.startswith("rule_") and _match is not None
+                        )
+                    )
+                else:
+                    # unignored patterns are not combined with `|`,
+                    # so there are no groups.
+                    group_name = None
+                _regex, pattern_info = pattern_map[group_name]
+                return ignore, [pattern_info]
         return False, []
 
     def _ignore(self, path: str, is_dir: bool) -> tuple[bool, list[PatternInfo]]:
