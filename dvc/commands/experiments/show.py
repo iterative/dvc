@@ -1,6 +1,6 @@
 import argparse
 import re
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
@@ -59,17 +59,16 @@ def baseline_styler(typ):
 def show_experiments(
     td: "TabularData",
     headers: dict[str, Iterable[str]],
-    keep=None,
-    drop=None,
+    keep: Collection[str] = (),
+    drop: Collection[str] = (),
     pager=True,
     csv=False,
     markdown=False,
     **kwargs,
 ):
     if keep:
-        for col in td.keys():  # noqa: SIM118
-            if re.match(keep, col):
-                td.protect(col)
+        keep_re = re.compile("|".join(keep))
+        td.protect(*(col for col in td.keys() if keep_re.match(col)))  # noqa: SIM118
 
     for col in ("State", "Executor"):
         if td.is_empty(col):
@@ -110,8 +109,9 @@ def show_experiments(
         td.drop_duplicates("cols", ignore_empty=False)
 
     cols_to_drop = set()
-    if drop is not None:
-        cols_to_drop = {col for col in td.keys() if re.match(drop, col)}  # noqa: SIM118
+    if drop:
+        drop_re = re.compile("|".join(drop))
+        cols_to_drop = {col for col in td.keys() if drop_re.match(col)}  # noqa: SIM118
     td.drop(*cols_to_drop)
 
     td.render(
@@ -237,11 +237,15 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_show_parser.add_argument(
         "--drop",
+        action="append",
+        default=[],
         help="Remove the columns matching the specified regex pattern.",
         metavar="<regex_pattern>",
     )
     experiments_show_parser.add_argument(
         "--keep",
+        action="append",
+        default=[],
         help="Preserve the columns matching the specified regex pattern.",
         metavar="<regex_pattern>",
     )
