@@ -1,4 +1,4 @@
-from dvc.cli import formatter
+from dvc.cli import completion, formatter
 from dvc.cli.utils import append_doc_link
 from dvc.commands.config import CmdConfig
 from dvc.ui import ui
@@ -210,7 +210,9 @@ def add_parser(subparsers, parent_parser):
         help=REMOTE_DEFAULT_HELP,
         formatter_class=formatter.RawDescriptionHelpFormatter,
     )
-    remote_default_parser.add_argument("name", nargs="?", help="Name of the remote")
+    remote_default_parser.add_argument(
+        "name", nargs="?", help="Name of the remote"
+    ).complete = completion.REMOTE
     remote_default_parser.add_argument(
         "-u",
         "--unset",
@@ -228,7 +230,9 @@ def add_parser(subparsers, parent_parser):
         help=REMOTE_MODIFY_HELP,
         formatter_class=formatter.RawDescriptionHelpFormatter,
     )
-    remote_modify_parser.add_argument("name", help="Name of the remote")
+    remote_modify_parser.add_argument(
+        "name", help="Name of the remote"
+    ).complete = completion.REMOTE
     remote_modify_parser.add_argument("option", help="Name of the option to modify.")
     remote_modify_parser.add_argument(
         "value", nargs="?", help="(optional) Value of the option."
@@ -260,7 +264,9 @@ def add_parser(subparsers, parent_parser):
         help=REMOTE_REMOVE_HELP,
         formatter_class=formatter.RawDescriptionHelpFormatter,
     )
-    remote_remove_parser.add_argument("name", help="Name of the remote to remove.")
+    remote_remove_parser.add_argument(
+        "name", help="Name of the remote to remove."
+    ).complete = completion.REMOTE
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
     REMOTE_RENAME_HELP = "Rename a DVC remote"
     remote_rename_parser = remote_subparsers.add_parser(

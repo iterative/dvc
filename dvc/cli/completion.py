@@ -22,6 +22,11 @@ _dvc_compgen_exps() {
     local _dvc_exps=($(dvc exp list -q --all-commits --names-only))
     compgen -W "${_dvc_exps[*]}" -- $1
 }
+
+_dvc_compgen_remotes() {
+    local _dvc_remotes=($(dvc remote list | cut -d' ' -f1))
+    compgen -W "${_dvc_remotes[*]}" -- $1
+}
 """
 
 ZSH_PREAMBLE = """
@@ -55,6 +60,10 @@ _dvc_compadd_stages_and_files() {
 _dvc_compadd_exps() {
     _describe 'experiments' "($(dvc exp list -q --all-commits --names-only))"
 }
+
+_dvc_compadd_remotes() {
+    _describe 'remotes' "($(dvc remote list | cut -d' ' -f1))"
+}
 """
 
 PREAMBLE = {
@@ -71,3 +80,4 @@ DVCFILES_AND_STAGE = {
     "zsh": "_dvc_compadd_stages_and_files",
 }
 EXPERIMENT = {"bash": "_dvc_compgen_exps", "zsh": "_dvc_compadd_exps"}
+REMOTE = {"bash": "_dvc_compgen_remotes", "zsh": "_dvc_compadd_remotes"}

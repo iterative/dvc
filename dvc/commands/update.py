@@ -74,7 +74,7 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to perform updates to",
         metavar="<name>",
-    )
+    ).complete = completion.REMOTE
     update_parser.add_argument(
         "-j",
         "--jobs",

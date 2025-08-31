@@ -111,7 +111,7 @@ def add_parser(experiments_subparsers, parent_parser):
         dest="dvc_remote",
         metavar="<name>",
         help="Name of the DVC remote to use when pushing cached outputs.",
-    )
+    ).complete = completion.REMOTE
     experiments_push_parser.add_argument(
         "-j",
         "--jobs",
