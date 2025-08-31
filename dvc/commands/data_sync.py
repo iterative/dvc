@@ -150,7 +150,7 @@ def add_parser(subparsers, _parent_parser):
     )
     pull_parser.add_argument(
         "-r", "--remote", help="Remote storage to pull from", metavar="<name>"
-    )
+    ).complete = completion.REMOTE
     pull_parser.add_argument(
         "-a",
         "--all-branches",
@@ -225,7 +225,7 @@ def add_parser(subparsers, _parent_parser):
     )
     push_parser.add_argument(
         "-r", "--remote", help="Remote storage to push to", metavar="<name>"
-    )
+    ).complete = completion.REMOTE
     push_parser.add_argument(
         "-a",
         "--all-branches",
@@ -287,7 +287,7 @@ def add_parser(subparsers, _parent_parser):
     )
     fetch_parser.add_argument(
         "-r", "--remote", help="Remote storage to fetch from", metavar="<name>"
-    )
+    ).complete = completion.REMOTE
     fetch_parser.add_argument(
         "-a",
         "--all-branches",
@@ -380,7 +380,7 @@ def add_parser(subparsers, _parent_parser):
         "--remote",
         help="Remote storage to compare local cache to",
         metavar="<name>",
-    )
+    ).complete = completion.REMOTE
     status_parser.add_argument(
         "-a",
         "--all-branches",

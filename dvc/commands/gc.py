@@ -1,6 +1,6 @@
 import os
 
-from dvc.cli import formatter
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -188,7 +188,7 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to collect garbage in",
         metavar="<name>",
-    )
+    ).complete = completion.REMOTE
     gc_parser.add_argument(
         "--skip-failed",
         action="store_true",

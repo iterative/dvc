@@ -101,7 +101,7 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to download to",
         metavar="<name>",
-    )
+    ).complete = completion.REMOTE
     parser.add_argument(
         "--remote-jobs",
         type=int,

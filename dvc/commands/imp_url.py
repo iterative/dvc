@@ -73,7 +73,7 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to download to",
         metavar="<name>",
-    )
+    ).complete = completion.REMOTE
     no_download_exec_group = import_parser.add_mutually_exclusive_group()
     no_download_exec_group.add_argument(
         "--no-exec",

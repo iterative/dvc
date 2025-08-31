@@ -133,9 +133,12 @@ class CmdDataStatus(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
+    data_help = "Commands related to data management."
     data_parser = subparsers.add_parser(
         "data",
         parents=[parent_parser],
+        description=append_doc_link(data_help, "data/status"),
+        help=data_help,
         formatter_class=formatter.RawDescriptionHelpFormatter,
     )
     data_subparsers = data_parser.add_subparsers(
@@ -193,7 +196,7 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to check (only applicable with --not-in-remote).",
         metavar="<name>",
-    )
+    ).complete = completion.REMOTE
     data_status_parser.add_argument(
         "--not-in-remote",
         action="store_true",

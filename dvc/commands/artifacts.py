@@ -149,7 +149,7 @@ def add_parser(subparsers, parent_parser):
             "Remote name to set as a default in the target repository "
             "(only applicable when downloading from DVC remote)."
         ),
-    )
+    ).complete = completion.REMOTE
     get_parser.add_argument(
         "--remote-config",
         type=str,

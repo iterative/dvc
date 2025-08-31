@@ -250,7 +250,7 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         type=str,
         help="Remote name to set as a default in the target repository.",
-    )
+    ).complete = completion.REMOTE
     list_parser.add_argument(
         "--remote-config",
         type=str,
