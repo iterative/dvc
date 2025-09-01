@@ -111,7 +111,7 @@ tests = [
     "dvc-ssh",
     "filelock",
     "pytest>=7,<9",
-    "pytest-rerunfailures<16.0",
+    "pytest-rerunfailures<17.0",
     "pytest-cov>=4.1.0",
     "pytest-docker>=1,<4",
     "pytest-mock",
