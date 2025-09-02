@@ -138,18 +138,25 @@ def test_tracked_directory_deep(M, tmp_dir, dvc, scm):
     }
 
 
-def test_new_empty_git_repo(M, tmp_dir, scm):
-    dvc = Repo.init()
+@pytest.mark.parametrize("git_repo_state", ["unborn", "committed"])
+@pytest.mark.parametrize("subdir", [True, False])
+def test_new_dvc_repo(M, tmp_dir, scm, subdir, git_repo_state):
+    if git_repo_state == "committed":
+        tmp_dir.scm_gen("test", "test", commit="init")
+
+    is_empty = git_repo_state == "unborn"
+    dir_ = tmp_dir / "sub" if subdir else tmp_dir
+    dvc = Repo.init(dir_, subdir=subdir)
     assert dvc.data_status() == {
         **EMPTY_STATUS,
-        "git": M.dict(is_empty=True, is_dirty=True),
+        "git": M.dict(is_dirty=True, is_empty=is_empty),
     }
 
-    tmp_dir.gen("foo", "foo")
-    dvc.add(["foo"])
+    dir_.gen("foo", "foo")
+    dvc.add([dir_ / "foo"])
     assert dvc.data_status() == {
         **EMPTY_STATUS,
-        "git": M.dict(is_empty=True, is_dirty=True),
+        "git": M.dict(is_empty=is_empty, is_dirty=True),
         "committed": {"added": ["foo"]},
     }
 
