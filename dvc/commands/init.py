@@ -42,7 +42,7 @@ class CmdInit(CmdBaseNoRepo):
 
         try:
             with Repo.init(
-                ".",
+                self.args.directory,
                 no_scm=self.args.no_scm,
                 force=self.args.force,
                 subdir=self.args.subdir,
@@ -57,10 +57,11 @@ class CmdInit(CmdBaseNoRepo):
 
 def add_parser(subparsers, parent_parser):
     """Setup parser for `dvc init`."""
-    INIT_HELP = "Initialize DVC in the current directory."
+    INIT_HELP = "Initialize DVC repository."
     INIT_DESCRIPTION = (
-        "Initialize DVC in the current directory. Expects directory\n"
-        "to be a Git repository unless --no-scm option is specified."
+        "Initialize DVC repository in the given directory (defaults to the current "
+        "working directory).\n"
+        "Expects directory to be a Git repository unless --no-scm option is specified."
     )
 
     init_parser = subparsers.add_parser(
@@ -69,6 +70,14 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(INIT_DESCRIPTION, "init"),
         help=INIT_HELP,
         formatter_class=formatter.RawDescriptionHelpFormatter,
+    )
+    init_parser.add_argument(
+        "directory",
+        nargs="?",
+        default=".",
+        help=(
+            "Directory to initialize DVC in. Defaults to the current working directory."
+        ),
     )
     init_parser.add_argument(
         "--no-scm",

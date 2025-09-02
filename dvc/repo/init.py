@@ -63,7 +63,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):  # noqa: 
 
         remove(dvc_dir)
 
-    os.mkdir(dvc_dir)
+    os.makedirs(dvc_dir, exist_ok=True)
 
     config = Config.init(dvc_dir)
 
