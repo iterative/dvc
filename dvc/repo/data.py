@@ -325,6 +325,7 @@ def _diff_head_to_index(
     granular: bool = False,
     with_renames: bool = False,
 ) -> DiffResult:
+    from dvc.exceptions import NotDvcRepoError
     from dvc.scm import RevError
     from dvc_data.index import DataIndex
 
@@ -337,6 +338,11 @@ def _diff_head_to_index(
             head_view = filter_index(head_index, filter_keys=filter_keys)
     except RevError:
         logger.debug("failed to switch to '%s'", head)
+        head_view = DataIndex()
+    except NotDvcRepoError as exc:
+        # NOTE: this only gets raised on subdir repos at the moment,
+        # which looks like a bug in `repo.switch`.
+        logger.warning(exc)
         head_view = DataIndex()
 
     with ui.progress(desc="Calculating diff between head/index", unit="entry") as pb:
