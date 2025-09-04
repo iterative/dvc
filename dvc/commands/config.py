@@ -3,7 +3,7 @@ import os
 
 from funcy import set_in
 
-from dvc.cli import formatter
+from dvc.cli import completion, formatter
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
@@ -224,7 +224,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         type=_name_type,
         help="Option name (section.option or remote.name.option).",
-    )
+    ).complete = completion.CONFIG_VARS
     config_parser.add_argument("value", nargs="?", help="Option value.")
     config_parser.add_argument(
         "-l",
