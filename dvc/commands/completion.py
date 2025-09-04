@@ -1,6 +1,6 @@
 from dvc.cli import formatter
 from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.completion import PREAMBLE
+from dvc.cli.completion import get_preamble
 from dvc.cli.utils import append_doc_link
 from dvc.log import logger
 from dvc.ui import ui
@@ -17,7 +17,7 @@ class CmdCompletion(CmdBaseNoRepo):
 
         shell = self.args.shell
         parser = self.args.parser
-        script = shtab.complete(parser, shell=shell, preamble=PREAMBLE)
+        script = shtab.complete(parser, shell=shell, preamble=get_preamble())
         ui.write(script, force=True)
         return 0
 

@@ -1,4 +1,5 @@
 import os
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from funcy import once, walk_values
@@ -10,12 +11,16 @@ from voluptuous import (
     Exclusive,
     Invalid,
     Lower,
+    Marker,
     Optional,
     Range,
     Schema,
 )
 
 from dvc.log import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 logger = logger.getChild(__name__)
 
@@ -112,17 +117,19 @@ class FeatureSchema(Schema):
         return ret
 
 
+DEPRECATED = "==DEPRECATED=="
+
 REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
     "jobs": All(Coerce(int), Range(1)),
     Optional("worktree"): Bool,
-    Optional("no_traverse"): Bool,  # obsoleted
+    Optional("no_traverse", description=DEPRECATED): Bool,  # obsoleted
     Optional("version_aware"): Bool,
 }
 LOCAL_COMMON = {
     "type": supported_cache_type,
-    Optional("protected", default=False): Bool,  # obsoleted
+    Optional("protected", default=False, description=DEPRECATED): Bool,  # obsoleted
     "shared": All(Lower, Choices("group")),
     Optional("slow_link_warning", default=True): Bool,
     Optional("verify", default=False): Bool,
@@ -152,6 +159,127 @@ WEBDAV_COMMON = {
     Optional("verify", default=False): Bool,
 }
 
+REMOTE_SCHEMAS = {
+    "": LOCAL_COMMON | REMOTE_COMMON,
+    "s3": {
+        "region": str,
+        "profile": str,
+        "credentialpath": str,
+        "configpath": str,
+        "endpointurl": str,
+        "access_key_id": str,
+        "secret_access_key": str,
+        "session_token": str,
+        Optional(
+            "listobjects", default=False, description=DEPRECATED
+        ): Bool,  # obsoleted
+        Optional("use_ssl", default=True): Bool,
+        Optional("allow_anonymous_login", default=False): Bool,
+        "ssl_verify": Any(Bool, str),
+        "sse": str,
+        "sse_kms_key_id": str,
+        "sse_customer_algorithm": str,
+        "sse_customer_key": str,
+        "acl": str,
+        "grant_read": str,
+        "grant_read_acp": str,
+        "grant_write_acp": str,
+        "grant_full_control": str,
+        "cache_regions": bool,
+        "read_timeout": Coerce(int),
+        "connect_timeout": Coerce(int),
+        Optional("verify", default=False): Bool,
+        **REMOTE_COMMON,
+    },
+    "gs": {
+        "projectname": str,
+        "credentialpath": str,
+        "endpointurl": str,
+        Optional("verify", default=False): Bool,
+        Optional("allow_anonymous_login", default=False): Bool,
+        **REMOTE_COMMON,
+    },
+    "ssh": {
+        "type": supported_cache_type,
+        "port": Coerce(int),
+        "user": str,
+        "password": str,
+        "ask_password": Bool,
+        "passphrase": str,
+        "ask_passphrase": Bool,
+        "keyfile": str,
+        "timeout": Coerce(int),
+        "gss_auth": Bool,
+        "allow_agent": Bool,
+        "max_sessions": Coerce(int),
+        Optional("verify", default=False): Bool,
+        **REMOTE_COMMON,
+    },
+    "hdfs": {
+        "user": str,
+        "kerb_ticket": str,
+        "replication": int,
+        **REMOTE_COMMON,
+    },
+    "webhdfs": {
+        "kerberos": Bool,
+        "kerberos_principal": str,
+        "proxy_to": str,
+        "ssl_verify": Any(Bool, str),
+        "token": str,
+        "use_https": Bool,
+        "user": str,
+        "password": str,
+        "data_proxy_target": str,
+        Optional("verify", default=False): Bool,
+        **REMOTE_COMMON,
+    },
+    "azure": {
+        "connection_string": str,
+        "sas_token": str,
+        "account_name": str,
+        "account_key": str,
+        "tenant_id": str,
+        "client_id": str,
+        "client_secret": str,
+        "allow_anonymous_login": Bool,
+        "exclude_environment_credential": Bool,
+        "exclude_visual_studio_code_credential": Bool,
+        "exclude_shared_token_cache_credential": Bool,
+        "exclude_managed_identity_credential": Bool,
+        Optional("verify", default=False): Bool,
+        "timeout": Coerce(int),
+        "read_timeout": Coerce(int),
+        "connection_timeout": Coerce(int),
+        **REMOTE_COMMON,
+    },
+    "oss": {
+        "oss_key_id": str,
+        "oss_key_secret": str,
+        "oss_endpoint": str,
+        Optional("verify", default=True): Bool,
+        **REMOTE_COMMON,
+    },
+    "gdrive": {
+        "profile": str,
+        "gdrive_use_service_account": Bool,
+        "gdrive_client_id": str,
+        "gdrive_client_secret": str,
+        "gdrive_user_credentials_file": str,
+        "gdrive_service_account_user_email": str,
+        "gdrive_service_account_json_file_path": str,
+        Optional("gdrive_trash_only", default=False): Bool,
+        Optional("gdrive_acknowledge_abuse", default=False): Bool,
+        Optional("verify", default=True): Bool,
+        **REMOTE_COMMON,
+    },
+    "http": HTTP_COMMON | REMOTE_COMMON,
+    "https": HTTP_COMMON | REMOTE_COMMON,
+    "webdav": WEBDAV_COMMON | REMOTE_COMMON,
+    "webdavs": WEBDAV_COMMON | REMOTE_COMMON,
+    "remote": {str: object},  # Any of the above options are valid
+}
+
 SCHEMA = {
     "core": {
         "remote": Lower,
@@ -161,152 +289,37 @@ SCHEMA = {
         Optional("hardlink_lock", default=False): Bool,
         Optional("no_scm", default=False): Bool,
         Optional("autostage", default=False): Bool,
-        Optional("experiments"): Bool,  # obsoleted
+        Optional("experiments", description=DEPRECATED): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
         "site_cache_dir": str,
         "machine": Lower,
     },
     "cache": {
-        "local": str,  # obsoleted
-        "s3": str,  # obsoleted
-        "gs": str,  # obsoleted
-        "hdfs": str,  # obsoleted
-        "webhdfs": str,  # obsoleted
-        "ssh": str,  # obsoleted
-        "azure": str,  # obsoleted
+        Marker("local", description=DEPRECATED): str,  # obsoleted
+        Marker("s3", description=DEPRECATED): str,  # obsoleted
+        Marker("gs", description=DEPRECATED): str,  # obsoleted
+        Marker("hdfs", description=DEPRECATED): str,  # obsoleted
+        Marker("webhdfs", description=DEPRECATED): str,  # obsoleted
+        Marker("ssh", description=DEPRECATED): str,  # obsoleted
+        Marker("azure", description=DEPRECATED): str,  # obsoleted
         # This is for default local cache
         "dir": str,
         **LOCAL_COMMON,
     },
     "remote": {
-        str: ByUrl(
-            {
-                "": LOCAL_COMMON | REMOTE_COMMON,
-                "s3": {
-                    "region": str,
-                    "profile": str,
-                    "credentialpath": str,
-                    "configpath": str,
-                    "endpointurl": str,
-                    "access_key_id": str,
-                    "secret_access_key": str,
-                    "session_token": str,
-                    Optional("listobjects", default=False): Bool,  # obsoleted
-                    Optional("use_ssl", default=True): Bool,
-                    Optional("allow_anonymous_login", default=False): Bool,
-                    "ssl_verify": Any(Bool, str),
-                    "sse": str,
-                    "sse_kms_key_id": str,
-                    "sse_customer_algorithm": str,
-                    "sse_customer_key": str,
-                    "acl": str,
-                    "grant_read": str,
-                    "grant_read_acp": str,
-                    "grant_write_acp": str,
-                    "grant_full_control": str,
-                    "cache_regions": bool,
-                    "read_timeout": Coerce(int),
-                    "connect_timeout": Coerce(int),
-                    Optional("verify", default=False): Bool,
-                    **REMOTE_COMMON,
-                },
-                "gs": {
-                    "projectname": str,
-                    "credentialpath": str,
-                    "endpointurl": str,
-                    Optional("verify", default=False): Bool,
-                    Optional("allow_anonymous_login", default=False): Bool,
-                    **REMOTE_COMMON,
-                },
-                "ssh": {
-                    "type": supported_cache_type,
-                    "port": Coerce(int),
-                    "user": str,
-                    "password": str,
-                    "ask_password": Bool,
-                    "passphrase": str,
-                    "ask_passphrase": Bool,
-                    "keyfile": str,
-                    "timeout": Coerce(int),
-                    "gss_auth": Bool,
-                    "allow_agent": Bool,
-                    "max_sessions": Coerce(int),
-                    Optional("verify", default=False): Bool,
-                    **REMOTE_COMMON,
-                },
-                "hdfs": {
-                    "user": str,
-                    "kerb_ticket": str,
-                    "replication": int,
-                    **REMOTE_COMMON,
-                },
-                "webhdfs": {
-                    "kerberos": Bool,
-                    "kerberos_principal": str,
-                    "proxy_to": str,
-                    "ssl_verify": Any(Bool, str),
-                    "token": str,
-                    "use_https": Bool,
-                    "user": str,
-                    "password": str,
-                    "data_proxy_target": str,
-                    Optional("verify", default=False): Bool,
-                    **REMOTE_COMMON,
-                },
-                "azure": {
-                    "connection_string": str,
-                    "sas_token": str,
-                    "account_name": str,
-                    "account_key": str,
-                    "tenant_id": str,
-                    "client_id": str,
-                    "client_secret": str,
-                    "allow_anonymous_login": Bool,
-                    "exclude_environment_credential": Bool,
-                    "exclude_visual_studio_code_credential": Bool,
-                    "exclude_shared_token_cache_credential": Bool,
-                    "exclude_managed_identity_credential": Bool,
-                    Optional("verify", default=False): Bool,
-                    "timeout": Coerce(int),
-                    "read_timeout": Coerce(int),
-                    "connection_timeout": Coerce(int),
-                    **REMOTE_COMMON,
-                },
-                "oss": {
-                    "oss_key_id": str,
-                    "oss_key_secret": str,
-                    "oss_endpoint": str,
-                    Optional("verify", default=True): Bool,
-                    **REMOTE_COMMON,
-                },
-                "gdrive": {
-                    "profile": str,
-                    "gdrive_use_service_account": Bool,
-                    "gdrive_client_id": str,
-                    "gdrive_client_secret": str,
-                    "gdrive_user_credentials_file": str,
-                    "gdrive_service_account_user_email": str,
-                    "gdrive_service_account_json_file_path": str,
-                    Optional("gdrive_trash_only", default=False): Bool,
-                    Optional("gdrive_acknowledge_abuse", default=False): Bool,
-                    Optional("verify", default=True): Bool,
-                    **REMOTE_COMMON,
-                },
-                "http": HTTP_COMMON | REMOTE_COMMON,
-                "https": HTTP_COMMON | REMOTE_COMMON,
-                "webdav": WEBDAV_COMMON | REMOTE_COMMON,
-                "webdavs": WEBDAV_COMMON | REMOTE_COMMON,
-                "remote": {str: object},  # Any of the above options are valid
-            }
-        )
+        str: ByUrl(REMOTE_SCHEMAS),
     },
     "state": {
-        "dir": str,  # obsoleted
-        "row_limit": All(Coerce(int), Range(1)),  # obsoleted
-        "row_cleanup_quota": All(Coerce(int), Range(0, 100)),  # obsoleted
+        Marker("dir", description=DEPRECATED): str,  # obsoleted
+        Marker("row_limit", description=DEPRECATED): All(
+            Coerce(int), Range(1)
+        ),  # obsoleted
+        Marker("row_cleanup_quota", description=DEPRECATED): All(
+            Coerce(int), Range(0, 100)
+        ),  # obsoleted
     },
     "index": {
-        "dir": str,  # obsoleted
+        Marker("dir", description=DEPRECATED): str,  # obsoleted
     },
     "machine": {
         str: {
@@ -336,13 +349,13 @@ SCHEMA = {
         "out_dir": str,
     },
     "exp": {
-        "code": str,
-        "data": str,
-        "models": str,
-        "metrics": str,
-        "params": str,
-        "plots": str,
-        "live": str,
+        Marker("code", description=DEPRECATED): str,
+        Marker("data", description=DEPRECATED): str,
+        Marker("models", description=DEPRECATED): str,
+        Marker("metrics", description=DEPRECATED): str,
+        Marker("params", description=DEPRECATED): str,
+        Marker("plots", description=DEPRECATED): str,
+        Marker("live", description=DEPRECATED): str,
         "auto_push": Bool,
         "git_remote": str,
     },
@@ -371,3 +384,21 @@ SCHEMA = {
         },
     },
 }
+
+
+def config_vars_for_completion(d: dict = SCHEMA, path: str = "") -> "Iterator[str]":
+    for k, v in d.items():
+        if k in ("machine", "feature"):
+            continue
+        if isinstance(k, Marker):
+            if k.description == DEPRECATED:
+                continue
+            k = k.schema
+        if not isinstance(k, str):
+            continue
+
+        keypath = path + k
+        if isinstance(v, dict):
+            yield from config_vars_for_completion(v, keypath + ".")
+        else:
+            yield keypath

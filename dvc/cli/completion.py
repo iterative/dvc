@@ -27,6 +27,10 @@ _dvc_compgen_remotes() {
     local _dvc_remotes=($(dvc remote list | cut -d' ' -f1))
     compgen -W "${_dvc_remotes[*]}" -- $1
 }
+
+_dvc_compgen_config_vars() {
+    compgen -W "${_dvc_config_vars[*]}" -- $1
+}
 """
 
 ZSH_PREAMBLE = """
@@ -64,6 +68,10 @@ _dvc_compadd_exps() {
 _dvc_compadd_remotes() {
     _describe 'remotes' "($(dvc remote list | cut -d' ' -f1))"
 }
+
+_dvc_compadd_config_vars() {
+    _describe 'config_vars' _dvc_config_vars
+}
 """
 
 PREAMBLE = {
@@ -81,3 +89,21 @@ DVCFILES_AND_STAGE = {
 }
 EXPERIMENT = {"bash": "_dvc_compgen_exps", "zsh": "_dvc_compadd_exps"}
 REMOTE = {"bash": "_dvc_compgen_remotes", "zsh": "_dvc_compadd_remotes"}
+CONFIG_VARS = {"bash": "_dvc_compgen_config_vars", "zsh": "_dvc_compadd_config_vars"}
+
+
+def get_preamble() -> dict[str, str]:
+    from dvc.config_schema import config_vars_for_completion
+
+    ret: dict[str, str] = {}
+    config_vars = list(config_vars_for_completion())
+
+    nl = "\n\t".expandtabs(4)
+    config_vars_arr = f"""
+_dvc_config_vars=(
+    {nl.join(config_vars)}
+)
+"""
+    for shell, preamble in PREAMBLE.items():
+        ret[shell] = config_vars_arr + preamble
+    return ret
