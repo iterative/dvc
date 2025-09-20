@@ -83,7 +83,7 @@ class CmdDatasetUpdate(CmdBase):
             return CmdDatasetAdd.display(name, new, action)
         if dataset == new:
             ui.write("[yellow]Nothing to update[/]", styled=True)
-            return
+            return None
 
         assert new.lock
 
@@ -112,6 +112,7 @@ class CmdDatasetUpdate(CmdBase):
             assert new.type == "url"
             stats = diff_files(dataset.lock.files, new.lock.files)
             log_changes(stats)
+        return None
 
     def run(self):
         from difflib import get_close_matches

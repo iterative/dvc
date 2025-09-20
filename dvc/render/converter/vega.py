@@ -167,7 +167,7 @@ class VegaConverter(Converter):
         if isinstance(y, list):
             return "y"
         if not isinstance(y, dict):
-            return
+            return None
 
         fields = {field for _, field in _file_field(y)}
         if len(fields) == 1:

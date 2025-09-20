@@ -58,7 +58,7 @@ class SCMContext:
     def track_changed_files(self) -> None:
         """Stage files that have changed."""
         if not self.files_to_track:
-            return
+            return None
         logger.debug("Staging files: %s", self.files_to_track)
         return self.add(self.files_to_track)
 
@@ -76,6 +76,7 @@ class SCMContext:
             logger.debug("Added '%s' to gitignore file.", path)
             self.track_file(relpath(gitignore_file))
             return self.ignored_paths.append(path)
+        return None
 
     def ignore_remove(self, path: str) -> None:
         from scmrepo.exceptions import FileNotInRepoError
@@ -90,6 +91,7 @@ class SCMContext:
 
         if gitignore_file:
             return self.track_file(relpath(gitignore_file))
+        return None
 
     @contextmanager
     def __call__(

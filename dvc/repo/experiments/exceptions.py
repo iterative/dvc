@@ -50,7 +50,7 @@ class MultipleBranchError(DvcException):
         self.ref_infos = ref_infos
 
 
-class AmbiguousExpRefInfo(InvalidArgumentError):
+class AmbiguousExpRefInfo(InvalidArgumentError):  # noqa: N818
     def __init__(self, exp_name: str, exp_ref_list: Iterable["ExpRefInfo"]):
         msg = [
             (

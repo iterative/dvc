@@ -66,7 +66,7 @@ class ParamsLoadError(ContextError):
     pass
 
 
-class KeyNotInContext(ContextError, KeyError):
+class KeyNotInContext(ContextError, KeyError):  # noqa: N818
     def __init__(self, key: str) -> None:
         self.key: str = key
         super().__init__(f"Could not find '{key}'")
@@ -75,7 +75,7 @@ class KeyNotInContext(ContextError, KeyError):
         return self.msg
 
 
-class VarsAlreadyLoaded(ContextError):
+class VarsAlreadyLoaded(ContextError):  # noqa: N818
     pass
 
 
@@ -272,7 +272,7 @@ class CtxDict(Container, MutableMapping):
         if not isinstance(key, str):
             # limitation for the interpolation
             # ignore other kinds of keys
-            return
+            return None
         return super().__setitem__(key, value)
 
     def merge_update(self, other, overwrite=False):

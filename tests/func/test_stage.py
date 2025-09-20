@@ -1,4 +1,5 @@
 import os
+import re
 
 import pytest
 
@@ -228,7 +229,7 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
     assert deep_subrepo_stages != []
 
 
-@pytest.mark.parametrize("with_deps", (False, True))
+@pytest.mark.parametrize("with_deps", [False, True])
 def test_collect_symlink(tmp_dir, dvc, with_deps):
     from dvc.exceptions import StageNotFoundError
 
@@ -339,6 +340,8 @@ def test_stage_add_duplicated_output(tmp_dir, dvc):
 
     with pytest.raises(
         OutputDuplicationError,
-        match="Use `dvc remove foo.dvc` to stop tracking the overlapping output.",
+        match=re.escape(
+            "Use `dvc remove foo.dvc` to stop tracking the overlapping output."
+        ),
     ):
         dvc.stage.add(name="duplicated", cmd="echo bar > foo", outs=["foo"])

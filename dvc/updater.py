@@ -120,7 +120,7 @@ class Updater:
         from dvc.ui import ui
 
         if not ui.isatty():
-            return
+            return None
 
         message = self._get_message(latest, pkg=pkg)
         return ui.error_write(message, styled=True)

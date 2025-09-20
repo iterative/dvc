@@ -86,32 +86,32 @@ def test_to_omegaconf():
 @pytest.mark.parametrize(
     "changes, expected",
     [
-        [{"foo": "baz"}, {"foo": "baz", "goo": {"bag": 3}, "lorem": False}],
-        [
+        ({"foo": "baz"}, {"foo": "baz", "goo": {"bag": 3}, "lorem": False}),
+        (
             {"foo": "baz", "goo": "bar"},
             {"foo": "baz", "goo": "bar", "lorem": False},
-        ],
-        [
+        ),
+        (
             {"goo": {"bag": 4}},
             {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 4}, "lorem": False},
-        ],
-        [
+        ),
+        (
             {"foo": {"bar": 1, "baz": 2, 0: "bar"}},
             {
                 "foo": {"bar": 1, "baz": 2, 0: "bar"},
                 "goo": {"bag": 3},
                 "lorem": False,
             },
-        ],
-        [
+        ),
+        (
             {"lorem": {"ipsum": 3}},
             {
                 "foo": {"bar": 1, "baz": 2},
                 "goo": {"bag": 3},
                 "lorem": {"ipsum": 3},
             },
-        ],
-        [{}, {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 3}, "lorem": False}],
+        ),
+        ({}, {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 3}, "lorem": False}),
     ],
 )
 def test_merge_dicts(changes, expected):
@@ -125,12 +125,12 @@ def test_merge_dicts(changes, expected):
 @pytest.mark.parametrize(
     "changes, expected",
     [
-        [{"foo": "baz"}, {"foo": {"baz": 2}}],
-        [
+        ({"foo": "baz"}, {"foo": {"baz": 2}}),
+        (
             {"foo": "baz", "goo": "bag"},
             {"foo": {"baz": 2}, "goo": {"bag": 3}},
-        ],
-        [{}, {}],
+        ),
+        ({}, {}),
     ],
 )
 def test_remove_missing_keys(changes, expected):

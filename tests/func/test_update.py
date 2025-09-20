@@ -156,7 +156,7 @@ def test_update_unchanged(tmp_dir, dvc, erepo_dir, mocker):
     assert not spy.called
 
 
-@pytest.mark.parametrize("outs_exist", (False, True))
+@pytest.mark.parametrize("outs_exist", [False, True])
 def test_update_no_download(tmp_dir, dvc, erepo_dir, outs_exist, mocker):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "file content", commit="add file")
@@ -204,7 +204,7 @@ def test_update_import_url(tmp_dir, dvc, workspace):
     assert dst.read_text() == "updated file content"
 
 
-@pytest.mark.parametrize("outs_exist", (False, True))
+@pytest.mark.parametrize("outs_exist", [False, True])
 def test_update_import_url_no_download(tmp_dir, dvc, workspace, outs_exist, mocker):
     workspace.gen("file", "file content")
 

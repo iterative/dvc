@@ -16,7 +16,7 @@ class CmdCheckIgnore(CmdBase):
 
     def _show_results(self, result: "CheckIgnoreResult"):
         if not result.match and not self.args.details:
-            return
+            return None
 
         if self.args.details:
             pattern_infos = result.pattern_infos

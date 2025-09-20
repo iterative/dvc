@@ -203,7 +203,7 @@ class SingleStageFile(FileMixin):
 
     def dump_stages(self, stages, **kwargs) -> None:
         if not stages:
-            return
+            return None
 
         assert len(stages) == 1, "SingleStageFile can only dump one stage."
         return self.dump(stages[0], **kwargs)

@@ -84,7 +84,7 @@ class Client:
         except Exception as exc:
             if callable(onerror):
                 onerror()
-            logger.exception(
+            logger.exception(  # noqa: LOG007
                 "Could not connect to the database. "
                 "Check your database credentials and try again.",
                 exc_info=False,

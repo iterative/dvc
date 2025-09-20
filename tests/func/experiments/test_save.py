@@ -18,7 +18,7 @@ def test_exp_save_unchanged(tmp_dir, dvc, scm):
     dvc.experiments.save()
 
 
-@pytest.mark.parametrize("name", (None, "test"))
+@pytest.mark.parametrize("name", [None, "test"])
 def test_exp_save(tmp_dir, dvc, scm, name):
     setup_stage(tmp_dir, dvc, scm)
     baseline = scm.get_rev()
@@ -47,13 +47,13 @@ def test_exp_save_overwrite_experiment(tmp_dir, dvc, scm):
 
 @pytest.mark.parametrize(
     "name",
-    (
+    [
         "invalid/name",
         "invalid..name",
         "invalid~name",
         "invalid?name",
         "invalidname.",
-    ),
+    ],
 )
 def test_exp_save_invalid_name(tmp_dir, dvc, scm, name):
     setup_stage(tmp_dir, dvc, scm)

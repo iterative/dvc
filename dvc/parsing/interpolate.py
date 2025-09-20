@@ -202,6 +202,7 @@ def validate_value(value, key):
         if isinstance(value, dict) and key == "cmd":
             return True
         raise ParseError(f"Cannot interpolate data of type '{type(value).__name__}'")
+    return None
 
 
 def str_interpolate(

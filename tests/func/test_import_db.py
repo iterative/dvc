@@ -38,7 +38,7 @@ def load_data(file, output_format):
     return pd.read_csv(file)
 
 
-@pytest.mark.parametrize("output_format", ("csv", "json"))
+@pytest.mark.parametrize("output_format", ["csv", "json"])
 @pytest.mark.parametrize(
     "args,file_name",
     [
