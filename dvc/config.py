@@ -139,6 +139,7 @@ class Config(dict):
             return global_config_dir()
         if level == "system":
             return system_config_dir()
+        return None
 
     @cached_property
     def files(self) -> dict[str, str]:

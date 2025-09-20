@@ -121,7 +121,7 @@ def restore_fields(stage: "Stage") -> None:
 
     old_outs = {out.def_path: out for out in old.outs}
     for out in stage.outs:
-        old_out = old_outs.get(out.def_path, None)
+        old_out = old_outs.get(out.def_path)
         if old_out is not None:
             out.restore_fields(old_out)
 

@@ -82,7 +82,7 @@ class DataSourceChanged(DvcException):
         super().__init__(f"data source changed: {path}")
 
 
-class StageNotFound(DvcException, KeyError):
+class StageNotFound(DvcException, KeyError):  # noqa: N818
     def __init__(self, file, name):
         self.file = file.relpath
         self.name = name

@@ -20,6 +20,7 @@ def _make_index_onerror(onerror, rev):
     def _onerror(entry, exc):
         if onerror:
             return onerror(rev, entry, exc)
+        return None
 
     return _onerror
 

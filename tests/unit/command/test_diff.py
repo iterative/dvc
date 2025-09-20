@@ -206,20 +206,20 @@ def test_diff_show_markdown_and_hash(mocker, show_hash, dvc):
 
 @pytest.mark.parametrize(
     "opts",
-    (
+    [
         [],
         ["a_rev", "b_rev"],
         ["--targets", "."],
         ["--hide-missing"],
-    ),
+    ],
 )
 @pytest.mark.parametrize(
     "show, expected",
-    (
+    [
         ([], ""),
         (["--json"], "{}"),
         (["--md"], "| Status   | Path   |\n|----------|--------|"),
-    ),
+    ],
 )
 def test_no_changes(mocker, capsys, opts, show, expected, dvc):
     args = parse_args(["diff", *opts, *show])

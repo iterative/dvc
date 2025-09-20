@@ -300,13 +300,13 @@ def test_ignore_parsing_error(tmp_dir, dvc, run_copy_metrics):
 
 @pytest.mark.parametrize(
     "file,path_kwargs",
-    (
+    [
         (PROJECT_FILE, {"revision": "workspace", "endkey": "error"}),
         (
             "plot.yaml",
             {"revision": "workspace", "file": "plot.yaml", "endkey": "error"},
         ),
-    ),
+    ],
 )
 def test_log_errors(tmp_dir, scm, dvc, run_copy_metrics, file, path_kwargs, capsys):
     metric = [{"val": 2}, {"val": 3}]

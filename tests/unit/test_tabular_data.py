@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from dvc.compare import TabularData
@@ -365,12 +367,12 @@ def test_drop_duplicates_subset(axis, subset, expected):
 def test_dropna_invalid_axis():
     td = TabularData(["col-1", "col-2", "col-3"])
 
-    with pytest.raises(ValueError, match="Invalid 'axis' value foo."):
+    with pytest.raises(ValueError, match=re.escape("Invalid 'axis' value foo.")):
         td.dropna("foo")
 
 
 def test_drop_duplicates_invalid_axis():
     td = TabularData(["col-1", "col-2", "col-3"])
 
-    with pytest.raises(ValueError, match="Invalid 'axis' value foo."):
+    with pytest.raises(ValueError, match=re.escape("Invalid 'axis' value foo.")):
         td.drop_duplicates("foo")

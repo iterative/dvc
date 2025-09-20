@@ -77,7 +77,7 @@ def test_scm_context_autostage_changed_files(scm_context):
 
 
 def test_scm_context_clears_ignores_on_error(scm_context):
-    class CustomException(Exception):
+    class CustomException(Exception):  # noqa: N818
         pass
 
     with pytest.raises(CustomException), scm_context():  # noqa: PT012

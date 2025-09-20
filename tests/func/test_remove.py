@@ -1,4 +1,5 @@
 import os
+import re
 
 import pytest
 
@@ -37,7 +38,7 @@ def test_remove_file_target(tmp_dir, dvc):
 
     with pytest.raises(
         StageFileIsNotDvcFileError,
-        match="'foo' is not a .dvc file. Do you mean 'foo.dvc'?",
+        match=re.escape("'foo' is not a .dvc file. Do you mean 'foo.dvc'?"),
     ):
         dvc.remove("foo")
 

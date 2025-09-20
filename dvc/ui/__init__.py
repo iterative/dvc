@@ -193,7 +193,7 @@ class Console:
         sep = " " if sep is None else sep
         end = "\n" if end is None else end
         if not self._enabled and not force:
-            return
+            return None
 
         file = file or (sys.stderr if stderr else sys.stdout)
         with Tqdm.external_write_mode(file=file):
@@ -305,7 +305,7 @@ class Console:
         from dvc.ui import table as t
 
         if not data and not markdown:
-            return
+            return None
 
         if not markdown and rich_table:
             if force or self._enabled:
@@ -319,7 +319,7 @@ class Console:
                     borders=borders,
                 )
 
-            return
+            return None
 
         return t.plain_table(
             self,

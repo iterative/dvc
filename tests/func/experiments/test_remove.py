@@ -204,10 +204,10 @@ def test_remove_multi_rev(tmp_dir, scm, dvc, exp_stage):
 @pytest.mark.parametrize(
     "keep, expected_removed",
     [
-        [["exp1"], ["exp2", "exp3"]],
-        [["exp1", "exp2"], ["exp3"]],
-        [["exp1", "exp2", "exp3"], []],
-        [[], []],  # remove does nothing if no experiments are specified
+        (["exp1"], ["exp2", "exp3"]),
+        (["exp1", "exp2"], ["exp3"]),
+        (["exp1", "exp2", "exp3"], []),
+        ([], []),  # remove does nothing if no experiments are specified
     ],
 )
 def test_keep_selected_by_name(tmp_dir, scm, dvc, exp_stage, keep, expected_removed):
@@ -239,14 +239,14 @@ def test_keep_selected_by_nonexistent_name(tmp_dir, scm, dvc, exp_stage):
 @pytest.mark.parametrize(
     "num_exps, rev, num, expected_removed",
     [
-        [2, "exp1", 1, ["exp2"]],
-        [3, "exp3", 1, ["exp1", "exp2"]],
-        [3, "exp3", 2, ["exp1"]],
-        [3, "exp3", 3, []],
-        [3, "exp2", 2, ["exp3"]],
-        [4, "exp2", 2, ["exp3", "exp4"]],
-        [4, "exp4", 2, ["exp1", "exp2"]],
-        [1, None, 1, []],  # remove does nothing if no experiments are specified
+        (2, "exp1", 1, ["exp2"]),
+        (3, "exp3", 1, ["exp1", "exp2"]),
+        (3, "exp3", 2, ["exp1"]),
+        (3, "exp3", 3, []),
+        (3, "exp2", 2, ["exp3"]),
+        (4, "exp2", 2, ["exp3", "exp4"]),
+        (4, "exp4", 2, ["exp1", "exp2"]),
+        (1, None, 1, []),  # remove does nothing if no experiments are specified
     ],
 )
 def test_keep_selected_by_rev(

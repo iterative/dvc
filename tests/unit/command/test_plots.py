@@ -260,7 +260,7 @@ def test_should_pass_template_dir(tmp_dir, dvc, mocker, capsys):
     )
 
 
-@pytest.mark.parametrize("output", ("some_out", os.path.join("to", "subdir"), None))
+@pytest.mark.parametrize("output", ["some_out", os.path.join("to", "subdir"), None])
 def test_should_call_render(tmp_dir, mocker, capsys, plots_data, output):
     cli_args = parse_args(["plots", "diff", "--targets", "plots.csv", "--out", output])
     cmd = cli_args.func(cli_args)
@@ -322,7 +322,7 @@ def test_plots_diff_json(dvc, mocker, capsys):
 
 @pytest.mark.parametrize(
     "target,expected_out,expected_rtn",
-    (("t1", "\"{'t1'}\"", 0), (None, "t1\nt2", 0), ("t3", "", 1)),
+    [("t1", "\"{'t1'}\"", 0), (None, "t1\nt2", 0), ("t3", "", 1)],
 )
 def test_plots_templates(dvc, mocker, capsys, target, expected_out, expected_rtn):
     t1 = mocker.Mock()
@@ -352,7 +352,7 @@ def test_plots_templates(dvc, mocker, capsys, target, expected_out, expected_rtn
     assert rtn == expected_rtn
 
 
-@pytest.mark.parametrize("split", (True, False))
+@pytest.mark.parametrize("split", [True, False])
 def test_show_json(split, mocker, capsys):
     import dvc.commands.plots
 

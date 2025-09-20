@@ -7,8 +7,8 @@ from tests.func.utils.test_hydra import hydra_setup
 @pytest.mark.parametrize(
     "changes, expected",
     [
-        [["foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"],
-        [["params.yaml:foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"],
+        (["foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"),
+        (["params.yaml:foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"),
     ],
 )
 def test_modify_params(params_repo, dvc, changes, expected):

@@ -1,3 +1,4 @@
+import re
 from contextlib import nullcontext as does_not_raise
 
 import pytest
@@ -214,7 +215,9 @@ def hydra_setup_dir_basic(tmp_dir, config_subdir, config_name, config_content):
             None,
             pytest.raises(
                 ValueError,
-                match="Either `config_dir` or `config_module` should be provided.",
+                match=re.escape(
+                    "Either `config_dir` or `config_module` should be provided."
+                ),
             ),
         ),
     ],

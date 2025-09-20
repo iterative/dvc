@@ -1473,12 +1473,13 @@ class Output:
     ):
         """Merge version meta for files which are unchanged from other."""
         if not self.hash_info:
-            return
+            return None
         if self.hash_info.isdir:
             return self._merge_dir_version_meta(old_hi, old_obj)
         if self.hash_info != old_hi:
-            return
+            return None
         self.meta = old_meta
+        return None
 
     def _merge_dir_version_meta(
         self, old_hi: "HashInfo", old_obj: Optional[Union["HashFile", "Tree"]]

@@ -265,8 +265,16 @@ show-fixes = true
 
 [tool.ruff.lint]
 ignore = [
-    "N818", "S101", "A005", "PT007", "RET502", "RET503", "SIM105", "SIM108", "SIM117",
-    "TRY003", "TRY300", "PERF203", "PLC0415", "PLR2004",  "PLW2901", "LOG007",
+    "PERF203", # try-except-in-loop
+    "PLC0415",  # import-outside-top-level
+    "PLR2004", # magic-value-comparison
+    "PLW2901", # redefined-loop-name
+    "S101", # assert
+    "SIM105", # suppressible-exception
+    "SIM108",  # if-else-block-instead-of-if-exp
+    "SIM117", # multiple-with-statements
+    "TRY003", # raise-vanilla-args
+    "TRY300", # try-consider-else
 ]
 select = [
     "F", "E", "W", "C90", "I", "N", "UP", "YTT", "ASYNC", "S", "BLE", "B", "A", "C4", "DTZ", "T10",
@@ -304,4 +312,4 @@ max-args = 10
 "dvc/commands/**" = ["N806"]
 "dvc/testing/**" = ["ARG002"]
 "dvc/testing/benchmarks/**" = ["ARG001"]
-"tests/**" = ["S", "ARG001", "ARG002", "TRY002", "TRY301", "PERF"]
+"tests/**" = ["S", "ARG001", "ARG002", "TRY002", "TRY301", "PERF", "PLR2004"]

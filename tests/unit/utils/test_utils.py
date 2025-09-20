@@ -1,4 +1,5 @@
 import os
+import re
 
 import pytest
 
@@ -52,19 +53,19 @@ def test_relpath_windows():
 @pytest.mark.parametrize(
     "inp,out,is_dir,expected",
     [
-        ["target", None, False, "target"],
-        ["target", "dir", True, os.path.join("dir", "target")],
-        ["target", "file_target", False, "file_target"],
-        [
+        ("target", None, False, "target"),
+        ("target", "dir", True, os.path.join("dir", "target")),
+        ("target", "file_target", False, "file_target"),
+        (
             "target",
             os.path.join("dir", "subdir"),
             True,
             os.path.join("dir", "subdir", "target"),
-        ],
-        ["dir/", None, False, "dir"],
-        ["dir", None, False, "dir"],
-        ["dir", "other_dir", False, "other_dir"],
-        ["dir", "other_dir", True, os.path.join("other_dir", "dir")],
+        ),
+        ("dir/", None, False, "dir"),
+        ("dir", None, False, "dir"),
+        ("dir", "other_dir", False, "other_dir"),
+        ("dir", "other_dir", True, os.path.join("other_dir", "dir")),
     ],
 )
 def test_resolve_output(inp, out, is_dir, expected, mocker):
@@ -76,40 +77,40 @@ def test_resolve_output(inp, out, is_dir, expected, mocker):
 @pytest.mark.parametrize(
     "inp,out, default",
     [
-        ["dvc.yaml", ("dvc.yaml", None), None],
-        ["dvc.yaml:name", ("dvc.yaml", "name"), None],
-        [":name", ("dvc.yaml", "name"), None],
-        ["stage.dvc", ("stage.dvc", None), None],
-        ["../models/stage.dvc", ("../models/stage.dvc", None), "def"],
-        [":name", ("default", "name"), "default"],
-        ["something.dvc:name", ("something.dvc", "name"), None],
-        ["../something.dvc:name", ("../something.dvc", "name"), None],
-        ["file", (None, "file"), None],
-        ["build@15", (None, "build@15"), None],
-        ["build@{'level': 35}", (None, "build@{'level': 35}"), None],
-        [":build@15", ("dvc.yaml", "build@15"), None],
-        [":build@{'level': 35}", ("dvc.yaml", "build@{'level': 35}"), None],
-        ["dvc.yaml:build@15", ("dvc.yaml", "build@15"), None],
-        [
+        ("dvc.yaml", ("dvc.yaml", None), None),
+        ("dvc.yaml:name", ("dvc.yaml", "name"), None),
+        (":name", ("dvc.yaml", "name"), None),
+        ("stage.dvc", ("stage.dvc", None), None),
+        ("../models/stage.dvc", ("../models/stage.dvc", None), "def"),
+        (":name", ("default", "name"), "default"),
+        ("something.dvc:name", ("something.dvc", "name"), None),
+        ("../something.dvc:name", ("../something.dvc", "name"), None),
+        ("file", (None, "file"), None),
+        ("build@15", (None, "build@15"), None),
+        ("build@{'level': 35}", (None, "build@{'level': 35}"), None),
+        (":build@15", ("dvc.yaml", "build@15"), None),
+        (":build@{'level': 35}", ("dvc.yaml", "build@{'level': 35}"), None),
+        ("dvc.yaml:build@15", ("dvc.yaml", "build@15"), None),
+        (
             "dvc.yaml:build@{'level': 35}",
             ("dvc.yaml", "build@{'level': 35}"),
             None,
-        ],
-        [
+        ),
+        (
             "build2@{'level': [1, 2, 3]}",
             (None, "build2@{'level': [1, 2, 3]}"),
             None,
-        ],
-        [
+        ),
+        (
             ":build2@{'level': [1, 2, 3]}",
             ("dvc.yaml", "build2@{'level': [1, 2, 3]}"),
             None,
-        ],
-        [
+        ),
+        (
             "dvc.yaml:build2@{'level': [1, 2, 3]}",
             ("dvc.yaml", "build2@{'level': [1, 2, 3]}"),
             None,
-        ],
+        ),
     ],
 )
 def test_parse_target(inp, out, default):
@@ -117,7 +118,9 @@ def test_parse_target(inp, out, default):
 
 
 def test_hint_on_lockfile():
-    with pytest.raises(Exception, match="Did you mean: `dvc.yaml:name`?") as e:
+    with pytest.raises(
+        Exception, match=re.escape("Did you mean: `dvc.yaml:name`?")
+    ) as e:
         assert parse_target("dvc.lock:name")
     assert "dvc.yaml:name" in str(e.value)
 

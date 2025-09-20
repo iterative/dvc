@@ -45,7 +45,7 @@ class NoSCMError(SCMError):
         super().__init__(msg)
 
 
-class InvalidRemoteSCMRepo(SCMError):
+class InvalidRemoteSCMRepo(SCMError):  # noqa: N818
     pass
 
 

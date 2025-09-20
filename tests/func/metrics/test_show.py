@@ -289,14 +289,14 @@ def test_metrics_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
 
 @pytest.mark.parametrize(
     "file,error_path,err_type",
-    (
+    [
         (PROJECT_FILE, ["workspace", "error", "type"], "YAMLSyntaxError"),
         (
             "metrics.yaml",
             ["workspace", "data", "metrics.yaml", "error", "type"],
             "YAMLFileCorruptedError",
         ),
-    ),
+    ],
 )
 def test_log_errors(
     tmp_dir, scm, dvc, capsys, run_copy_metrics, file, error_path, err_type

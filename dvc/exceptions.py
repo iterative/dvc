@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from dvc.stage import Stage
 
 
-class DvcException(Exception):
+class DvcException(Exception):  # noqa: N818
     """Base class for all dvc exceptions."""
 
     def __init__(self, msg, *args):

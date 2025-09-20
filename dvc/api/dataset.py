@@ -64,3 +64,4 @@ def get(name: str) -> Union[DatachainDataset, DVCDataset, URLDataset]:
             for file in dataset.lock.files
         ]
         return URLDataset(type="url", files=files, path=versioned_path)
+    raise AssertionError("unreachable")
