@@ -72,6 +72,7 @@ def purge(
         raise PurgeError(
             "Some tracked outputs have uncommitted changes. "
             "Use `--force` to purge anyway."
+            "\n  - " + "\n  - ".join(str(o) for o in dirty)
         )
 
     # --- SAFETY CHECK 2: remote + remote presence

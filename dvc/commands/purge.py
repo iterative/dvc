@@ -11,10 +11,6 @@ logger = logger.getChild(__name__)
 
 class CmdPurge(CmdBase):
     def run(self):
-        # Dry run should not prompt
-        if self.args.dry_run:
-            self.args.force = True
-
         msg = "This will permanently remove local DVC-tracked outputs "
         if self.args.targets:
             msg += "for the following targets:\n  - " + "\n  - ".join(
@@ -31,7 +27,11 @@ class CmdPurge(CmdBase):
 
         logger.warning(msg)
 
-        if not self.args.force and not ui.confirm("Are you sure you want to proceed?"):
+        if (
+            not self.args.force
+            and not self.args.dry_run
+            and not ui.confirm("Are you sure you want to proceed?")
+        ):
             return 1
 
         # Call repo API
