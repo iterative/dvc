@@ -11,7 +11,10 @@ logger = logger.getChild(__name__)
 
 class CmdPurge(CmdBase):
     def run(self):
-        msg = "This will permanently remove local DVC-tracked outputs "
+        if not self.args.dry_run:
+            msg = "This will permanently remove local DVC-tracked outputs "
+        else:
+            msg = "This will show what local DVC-tracked outputs would be removed "
         if self.args.targets:
             msg += "for the following targets:\n  - " + "\n  - ".join(
                 [os.path.abspath(t) for t in self.args.targets]
@@ -30,6 +33,7 @@ class CmdPurge(CmdBase):
         if (
             not self.args.force
             and not self.args.dry_run
+            and not self.args.yes
             and not ui.confirm("Are you sure you want to proceed?")
         ):
             return 1
@@ -83,6 +87,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Force purge, bypassing safety checks and prompts.",
+    )
+    purge_parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        default=False,
+        help="Do not prompt for confirmation (respects saftey checks).",
     )
 
     purge_parser.set_defaults(func=CmdPurge)

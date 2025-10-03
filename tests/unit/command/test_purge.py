@@ -60,3 +60,17 @@ def test_purge_safety_error(mocker):
         cmd.run()
 
     m.assert_called_once()
+
+
+def test_purge_yes_skips_confirm(mocker):
+    cli_args = parse_args(["purge", "-y"])
+    cmd = cli_args.func(cli_args)
+
+    confirm = mocker.patch("dvc.ui.ui.confirm", return_value=True)
+    m = mocker.patch("dvc.repo.Repo.purge", return_value=0)
+
+    assert cmd.run() == 0
+
+    # -y should skip confirmation
+    confirm.assert_not_called()
+    m.assert_called_once()
