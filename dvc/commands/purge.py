@@ -93,7 +93,7 @@ def add_parser(subparsers, parent_parser):
         "--yes",
         action="store_true",
         default=False,
-        help="Do not prompt for confirmation (respects saftey checks).",
+        help="Do not prompt for confirmation (respects safety checks).",
     )
 
     purge_parser.set_defaults(func=CmdPurge)

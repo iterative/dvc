@@ -54,7 +54,7 @@ def test_purge_cli_removes_file_and_cache(tmp_dir, dvc, make_remote):
 
 def test_purge_targets_only(tmp_dir, dvc, make_remote):
     make_remote("backup", default=True)
-    (stage_dir,) = tmp_dir.dvc_gen({"dir": {"a.txt": "A", "b.txt": "B"}})
+    tmp_dir.dvc_gen({"dir": {"a.txt": "A", "b.txt": "B"}})
     assert (tmp_dir / "dir" / "a.txt").exists()
     assert (tmp_dir / "dir" / "b.txt").exists()
 
@@ -115,7 +115,7 @@ def test_purge_dry_run_does_not_delete(tmp_dir, dvc, make_remote):
 
 def test_purge_dirty_file_requires_force(tmp_dir, dvc, make_remote):
     make_remote("backup", default=True)
-    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("foo", "foo")
     (tmp_dir / "foo").write_text("modified")
 
     with pytest.raises(PurgeError):
@@ -127,7 +127,7 @@ def test_purge_dirty_file_requires_force(tmp_dir, dvc, make_remote):
 
 def test_purge_missing_remote_object_requires_force(tmp_dir, dvc, make_remote):
     make_remote("backup", default=True)
-    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("foo", "foo")
     dvc.push("foo")
 
     remote = dvc.cloud.get_remote_odb("backup")
@@ -141,7 +141,7 @@ def test_purge_missing_remote_object_with_force_warns(
     tmp_dir, dvc, make_remote, caplog
 ):
     make_remote("backup", default=True)
-    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("foo", "foo")
     dvc.push("foo")
 
     remote = dvc.cloud.get_remote_odb("backup")

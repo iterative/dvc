@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
+from dvc.config import NoRemoteError, RemoteNotFoundError
 from dvc.exceptions import DvcException
 from dvc.log import logger
 
@@ -27,60 +28,29 @@ def _flatten_stages_or_outs(items) -> list["Output"]:
         elif hasattr(item, "use_cache"):  # Already an Output
             outs.append(item)
         else:
-            # skip strings or unknown types
             logger.debug("Skipping non-stage item in collect(): %r", item)
     return outs
 
 
-@locked
-def purge(
-    self: "Repo",
-    targets: Optional[list[str]] = None,
-    recursive: bool = False,
-    force: bool = False,
-    dry_run: bool = False,
-):
-    """
-    Purge removes local copies of DVC-tracked outputs and their cache.
-
-    - Collects outs from .dvc files and dvc.yaml.
-    - Ensures safety (no dirty outs unless --force).
-    - Ensures outputs are backed up to remote (unless --force).
-    - Removes both workspace copies and cache objects.
-    - Metadata remains intact.
-    """
-    from dvc.repo.collect import collect
-    from dvc.stage.exceptions import StageFileDoesNotExistError
-
-    try:
-        if targets:
-            items = collect(self, targets=targets, recursive=recursive)
-        else:
-            items = list(self.index.stages)
-    except StageFileDoesNotExistError as e:
-        raise PurgeError(str(e)) from e
-
-    outs = _flatten_stages_or_outs(items)
-
-    if not outs:
-        logger.info("No DVC-tracked outputs found to purge.")
-        return 0
-
-    # --- SAFETY CHECK 1: dirty outs
+def _check_dirty(outs, force: bool) -> None:
     dirty = [o for o in outs if o.use_cache and o.changed()]
     if dirty and not force:
         raise PurgeError(
             "Some tracked outputs have uncommitted changes. "
-            "Use `--force` to purge anyway."
-            "\n  - " + "\n  - ".join(str(o) for o in dirty)
+            "Use `--force` to purge anyway.\n  - "
+            + "\n  - ".join(str(o) for o in dirty)
         )
 
-    # --- SAFETY CHECK 2: remote + remote presence
-    not_in_remote = []
+
+def _get_remote_odb(repo: "Repo"):
     try:
-        remote_odb = self.cloud.get_remote_odb(None)  # default remote
-    except Exception:
-        remote_odb = None
+        return repo.cloud.get_remote_odb(None)
+    except (RemoteNotFoundError, NoRemoteError):
+        return None
+
+
+def _check_remote_backup(repo: "Repo", outs, force: bool) -> None:
+    remote_odb = _get_remote_odb(repo)
 
     if not remote_odb:
         if not force:
@@ -93,26 +63,33 @@ def purge(
             "No default remote configured. Proceeding with purge due to --force. "
             "Outputs may be permanently lost."
         )
-    else:
-        # remote exists, check objects
-        for out in outs:
-            if out.use_cache and out.hash_info and out.hash_info.value:
-                if not remote_odb.exists(out.hash_info.value):
-                    not_in_remote.append(str(out))
+        return
 
-        if not_in_remote:
-            if not force:
-                raise PurgeError(
-                    "Some outputs are not present in the remote cache and would be "
-                    "permanently lost if purged:\n  - "
-                    + "\n  - ".join(not_in_remote)
-                    + "\nUse `--force` to purge anyway."
-                )
-            logger.warning(
-                "Some outputs are not present in the remote cache and may be "
-                "permanently lost:\n  - " + "\n  - ".join(not_in_remote)
-            )
+    # remote exists, check objects
+    not_in_remote = [
+        str(o)
+        for o in outs
+        if o.use_cache
+        and o.hash_info
+        and o.hash_info.value
+        and not remote_odb.exists(o.hash_info.value)
+    ]
+    if not_in_remote and not force:
+        raise PurgeError(
+            "Some outputs are not present in the remote cache and would be "
+            "permanently lost if purged:\n  - "
+            + "\n  - ".join(not_in_remote)
+            + "\nUse `--force` to purge anyway."
+        )
+    if not_in_remote and force:
+        logger.warning(
+            "Some outputs are not present in the remote cache and may be "
+            "permanently lost:\n  - %s",
+            "\n  - ".join(not_in_remote),
+        )
 
+
+def _remove_outs(outs, dry_run: bool) -> int:
     removed = 0
     for out in outs:
         if dry_run:
@@ -131,12 +108,54 @@ def purge(
                     out.cache.fs.remove(cache_path, recursive=True)
 
             removed += 1
-        except Exception as e:  # noqa: BLE001
-            logger.error("Failed to remove %s: %s", out, e)
+        except Exception:
+            logger.exception("Failed to remove %s", out)
+    return removed
+
+
+@locked
+def purge(
+    self: "Repo",
+    targets: Optional[list[str]] = None,
+    recursive: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """
+    Purge removes local copies of DVC-tracked outputs and their cache.
+
+    - Collects outs from .dvc files and dvc.yaml.
+    - Ensures safety (no dirty outs unless --force).
+    - Ensures outputs are backed up to remote (unless --force).
+    - Removes both workspace copies and cache objects.
+    - Metadata remains intact.
+    """
+    from dvc.repo.collect import collect
+    from dvc.stage.exceptions import StageFileDoesNotExistError
+
+    try:
+        items = (
+            collect(self, targets=targets, recursive=recursive)
+            if targets
+            else list(self.index.stages)
+        )
+    except StageFileDoesNotExistError as e:
+        raise PurgeError(str(e)) from e
+
+    outs = _flatten_stages_or_outs(items)
+    if not outs:
+        logger.info("No DVC-tracked outputs found to purge.")
+        return 0
+
+    # Run safety checks
+    _check_dirty(outs, force)
+    _check_remote_backup(self, outs, force)
+
+    # Remove outs
+    removed = _remove_outs(outs, dry_run)
 
     if removed:
         logger.info("Removed %d outputs (workspace + cache).", removed)
     else:
         logger.info("Nothing to purge.")
-
     return 0
