@@ -1,8 +1,6 @@
 """Manages logging configuration for DVC repo."""
 
 import logging
-import logging.config
-import logging.handlers
 import os
 import sys
 from collections.abc import Iterator
