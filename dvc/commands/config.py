@@ -40,6 +40,15 @@ class CmdConfig(CmdBaseNoRepo):
         self.config = Config.from_cwd(validate=False)
 
     def run(self):
+        if self.args.available_options:
+            from dvc.config_schema import contextual_config_vars_for_completion
+
+            ui.write(
+                "\n".join(list(contextual_config_vars_for_completion(self.config))),
+                force=True,
+            )
+            return 0
+
         if self.args.show_origin and (self.args.value or self.args.unset):
             logger.error(
                 "--show-origin can't be used together with any of these "
@@ -211,6 +220,9 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(CONFIG_HELP, "config"),
         help=CONFIG_HELP,
         formatter_class=formatter.RawDescriptionHelpFormatter,
+    )
+    config_parser.add_argument(
+        "--available-options", default=False, action="store_true"
     )
     config_parser.add_argument(
         "-u",
