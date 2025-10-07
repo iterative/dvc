@@ -419,5 +419,6 @@ def contextual_config_vars_for_completion(config) -> "Iterator[str]":
         if schema:
             yield from config_vars_for_completion(schema, f"remote.{name}")  # type: ignore[arg-type]
 
+    db_schema = SCHEMA["db"][str]  # type: ignore[index]
     for name in config["db"]:
-        yield from config_vars_for_completion(SCHEMA["db"], f"db.{name}")  # type: ignore[arg-type]
+        yield from config_vars_for_completion(db_schema, f"db.{name}")  # type: ignore[arg-type]
