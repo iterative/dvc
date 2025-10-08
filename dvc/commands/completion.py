@@ -8,7 +8,7 @@ from dvc.ui import ui
 logger = logger.getChild(__name__)
 
 
-SUPPORTED_SHELLS = ["bash", "zsh"]
+SUPPORTED_SHELLS = ["bash", "zsh", "fish"]
 
 
 class CmdCompletion(CmdBaseNoRepo):
