@@ -362,9 +362,18 @@ class EntryDefinition:
         if not vars_:
             context = Context.clone(context)
 
+        # Resolve interpolations in params field (e.g., ${item.model_type})
+        # This allows dynamic param file loading based on foreach/matrix values
+        resolved_params = context.resolve(
+            stage_params,
+            skip_interpolation_checks=True,
+            key=PARAMS_KWD,
+            config=self.resolver.parsing_config,
+        )
+
         try:
             fs = self.resolver.fs
-            context.load_params(fs, stage_params, wdir)
+            context.load_params(fs, resolved_params, wdir)
         except ContextError as exc:
             format_and_raise(exc, f"'{self.where}.{name}.params'", self.relpath)
 
