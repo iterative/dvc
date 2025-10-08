@@ -1,4 +1,6 @@
-"""Tests for params templating feature using ${DEFAULT_PARAMS_FILE.<key>} syntax."""
+"""
+Tests for params templating feature using ${DEFAULT_PARAMS_FILE.<key>} syntax.
+"""
 
 import pytest
 
@@ -79,7 +81,9 @@ class TestBasicParamsTemplating:
         assert_stage_equal(result, expected)
 
     def test_params_nested_dict_access(self, tmp_dir, dvc):
-        """Test ${PARAMS_NAMESPACE.nested.key} interpolation for nested dicts."""
+        """
+        Test ${PARAMS_NAMESPACE.nested.key} interpolation for nested dicts.
+        """
         params_data = {
             "model": {"name": "resnet", "layers": 50},
             "training": {"lr": 0.001, "optimizer": "adam"},
@@ -456,6 +460,126 @@ class TestParamsWithForeach:
                 "train@1": {"cmd": "python train.py --seed 1 --lr 0.001"},
                 "train@2": {"cmd": "python train.py --seed 2 --lr 0.001"},
                 "train@3": {"cmd": "python train.py --seed 3 --lr 0.001"},
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    def test_dynamic_params_file_loading_with_item(self, tmp_dir, dvc):
+        """Test dynamically loading param files based on ${item.*} values."""
+        # Create model-specific param files
+        (tmp_dir / "cnn_params.toml").dump(
+            {
+                "DATA_DIR": "/data/images",
+                "BATCH_SIZE": 32,
+                "EPOCHS": 10,
+            }
+        )
+        (tmp_dir / "transformer_params.toml").dump(
+            {
+                "DATA_DIR": "/data/text",
+                "BATCH_SIZE": 16,
+                "EPOCHS": 20,
+            }
+        )
+        (tmp_dir / "rnn_params.toml").dump(
+            {
+                "DATA_DIR": "/data/sequences",
+                "BATCH_SIZE": 64,
+                "EPOCHS": 15,
+            }
+        )
+
+        # Use foreach with dict items to dynamically load param files
+        dvc_yaml = {
+            "stages": {
+                "train": {
+                    "foreach": [
+                        {"model_type": "cnn", "data_type": "images"},
+                        {"model_type": "transformer", "data_type": "text"},
+                        {"model_type": "rnn", "data_type": "sequences"},
+                    ],
+                    "do": {
+                        "cmd": f"python train.py --model ${{item.model_type}} "
+                        f"--data-dir ${{{PARAMS_NAMESPACE}.DATA_DIR}} "
+                        f"--batch-size ${{{PARAMS_NAMESPACE}.BATCH_SIZE}} "
+                        f"--epochs ${{{PARAMS_NAMESPACE}.EPOCHS}}",
+                        "params": [{"${item.model_type}_params.toml": []}],
+                    },
+                }
+            }
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                "train@0": {
+                    "cmd": "python train.py --model cnn "
+                    "--data-dir /data/images --batch-size 32 --epochs 10",
+                    "params": [{"cnn_params.toml": []}],
+                },
+                "train@1": {
+                    "cmd": "python train.py --model transformer "
+                    "--data-dir /data/text --batch-size 16 --epochs 20",
+                    "params": [{"transformer_params.toml": []}],
+                },
+                "train@2": {
+                    "cmd": "python train.py --model rnn "
+                    "--data-dir /data/sequences --batch-size 64 --epochs 15",
+                    "params": [{"rnn_params.toml": []}],
+                },
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    def test_dynamic_params_with_specific_keys(self, tmp_dir, dvc):
+        """Test dynamic param file loading with specific key selection."""
+        # Create config files with many params, but we only need specific ones
+        (tmp_dir / "dev_config.yaml").dump(
+            {
+                "DATA_DIR": "/data/dev",
+                "MODEL_PATH": "/models/dev",
+                "LOG_LEVEL": "DEBUG",
+                "MAX_WORKERS": 2,
+            }
+        )
+        (tmp_dir / "prod_config.yaml").dump(
+            {
+                "DATA_DIR": "/data/prod",
+                "MODEL_PATH": "/models/prod",
+                "LOG_LEVEL": "INFO",
+                "MAX_WORKERS": 16,
+            }
+        )
+
+        # Load only DATA_DIR from dynamically selected config
+        dvc_yaml = {
+            "stages": {
+                "process": {
+                    "foreach": ["dev", "prod"],
+                    "do": {
+                        "cmd": f"python process.py --env ${{item}} "
+                        f"--data ${{{PARAMS_NAMESPACE}.DATA_DIR}}",
+                        "params": [{"${item}_config.yaml": ["DATA_DIR"]}],
+                    },
+                }
+            }
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                "process@dev": {
+                    "cmd": "python process.py --env dev --data /data/dev",
+                    "params": [{"dev_config.yaml": ["DATA_DIR"]}],
+                },
+                "process@prod": {
+                    "cmd": "python process.py --env prod --data /data/prod",
+                    "params": [{"prod_config.yaml": ["DATA_DIR"]}],
+                },
             }
         }
         assert_stage_equal(result, expected)
