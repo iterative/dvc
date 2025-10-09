@@ -1086,3 +1086,25 @@ class TestParamsErrorHandling:
 
         with pytest.raises(ResolveError, match="does not exist"):
             resolver.resolve()
+
+    def test_has_params_interpolation_with_dict_values(self, tmp_dir, dvc):
+        """Test has_params_interpolation with dict containing param interpolation."""
+        # Test with dict containing param interpolation
+        dvc_yaml = {
+            "stages": {
+                "train": {
+                    "cmd": f"echo ${{{PARAMS_NAMESPACE}.lr}}",
+                    "outs": {"model.pkl": {"cache": f"${{{PARAMS_NAMESPACE}.cache}}"}},
+                    "params": [{DEFAULT_PARAMS_FILE: []}],
+                }
+            }
+        }
+
+        (tmp_dir / DEFAULT_PARAMS_FILE).dump({"lr": 0.001, "cache": True})
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+
+        # Should raise error because params interpolation in outs (dict value)
+        with pytest.raises(
+            ResolveError, match="interpolation is not allowed in 'outs'"
+        ):
+            resolver.resolve()
