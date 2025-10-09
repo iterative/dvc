@@ -498,34 +498,6 @@ class Context(CtxDict):
             data = read_param_file(fs, default_path, key_paths=None, flatten=False)
             self._merge_params_data(data, default_path)
 
-    def _load_params_from_string(self, fs, item: str, wdir: str):
-        """Load params from a string item (file path or file:keys format)."""
-        from dvc.dependency.param import read_param_file
-        from dvc.parsing.interpolate import is_interpolated_string
-
-        # Skip vars interpolations (but allow plain paths and ${param.*})
-        if is_interpolated_string(item) and not is_params_interpolation(item):
-            return
-
-        # Skip param keys (they're handled by loading default file)
-        if "/" not in item and "\\" not in item and ":" not in item:
-            return
-
-        # Parse file path and keys
-        if ":" in item:
-            file_path, _, keys_str = item.partition(":")
-            keys = lfilter(bool, keys_str.split(",")) if keys_str else None
-        else:
-            file_path = item
-            keys = None
-
-        path = fs.normpath(fs.join(wdir, file_path))
-        if not fs.exists(path):
-            raise ParamsLoadError(f"'{path}' does not exist")
-
-        data = read_param_file(fs, path, key_paths=keys, flatten=False)
-        self._merge_params_data(data, path)
-
     def _load_params_from_dict(self, fs, item: dict, wdir: str):
         """Load params from a dict item (file: keys mapping)."""
         from dvc.dependency.param import read_param_file
@@ -562,14 +534,14 @@ class Context(CtxDict):
         if self._params_context is None:
             self._params_context = CtxDict(meta=Meta(source="params", local=False))
 
-        # Always load default params file if it exists
+        # Load default params file if it exists (for ${param.*} interpolation)
         self._load_default_params_file(fs, wdir)
 
         # Process each item in params list
+        # Note: String items are param KEYS for dependency tracking, not files
+        # Only dict items specify files to load for ${param.*} interpolation
         for item in params_list:
-            if isinstance(item, str):
-                self._load_params_from_string(fs, item, wdir)
-            elif isinstance(item, dict):
+            if isinstance(item, dict):
                 self._load_params_from_dict(fs, item, wdir)
 
     def _merge_params_data(self, data: dict, source_path: str):

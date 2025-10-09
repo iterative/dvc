@@ -65,15 +65,16 @@ class TestBasicParamsTemplating:
                 "train": {
                     "cmd": "python train.py",
                     "outs": [f"${{{PARAMS_NAMESPACE}.model_path}}"],
-                    "params": [DEFAULT_PARAMS_FILE],
+                    "params": [{DEFAULT_PARAMS_FILE: []}],
                 }
             }
         }
 
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
         with pytest.raises(
             ResolveError, match="interpolation is not allowed in 'outs'"
         ):
-            DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+            resolver.resolve()
 
     def test_params_nested_dict_access(self, tmp_dir, dvc):
         """
@@ -935,10 +936,11 @@ class TestParamsNamespaceInteractions:
             },
         }
 
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
         with pytest.raises(
             ResolveError, match="interpolation is not allowed in 'outs'"
         ):
-            DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+            resolver.resolve()
 
     def test_param_reserved_namespace_in_vars(self, tmp_dir, dvc):
         """Test that PARAMS_NAMESPACE is reserved and cannot be used in vars."""
