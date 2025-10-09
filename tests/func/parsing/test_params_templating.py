@@ -3,6 +3,7 @@ Tests for params templating feature using ${DEFAULT_PARAMS_FILE.<key>} syntax.
 """
 
 import random
+from typing import Optional
 
 import pytest
 
@@ -744,7 +745,7 @@ class TestParamsWithForeach:
         "process_type", ["foreach", "foreach_list", "matrix", None]
     )
     def test_dynamic_params_ambiguity_detection(
-        self, tmp_dir, dvc, process_type: str | None
+        self, tmp_dir, dvc, process_type: Optional[str]
     ):
         """Test ambiguity detection with dynamically loaded params."""
         # Create two param files with same key
