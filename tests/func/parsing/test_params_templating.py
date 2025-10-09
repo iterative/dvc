@@ -997,6 +997,80 @@ class TestParamsErrorHandling:
         ):
             resolver.resolve()
 
+    def test_foreach_with_dynamic_params_and_output(self, tmp_dir, dvc):
+        """Test foreach with dynamic param file loading and file output.
+
+        This tests the exact production use case where:
+        - dvc.yaml is inside data/ directory
+        - foreach generates stages with different model/data types
+        - params files are loaded dynamically based on ${item.*}
+        - param values are used in cmd and output path
+        - no params.yaml file exists
+        """
+        # Remove params.yaml if it exists
+        if (tmp_dir / DEFAULT_PARAMS_FILE).exists():
+            (tmp_dir / DEFAULT_PARAMS_FILE).unlink()
+
+        # Define test data
+        items = [
+            {"model_type": "region", "data_type": "full"},
+            {"model_type": "country", "data_type": "full"},
+        ]
+
+        # Create directory structure and param files dynamically
+        (tmp_dir / "data").mkdir()
+        for item in items:
+            # wdir is ../, so files are relative to repo root
+            level_dir = tmp_dir / f"{item['model_type']}_level"
+            level_dir.mkdir()
+
+            # Create data-version.toml with DATA_DIR
+            (level_dir / "data-version.toml").dump(
+                {"DATA_DIR": f"/datasets/{item['model_type']}_data"}
+            )
+
+        dvc_yaml = {
+            "stages": {
+                "test": {
+                    "foreach": items,
+                    "do": {
+                        "params": [
+                            {"${item.model_type}_level/data-version.toml": ["DATA_DIR"]}
+                        ],
+                        "wdir": "../",
+                        "cmd": (
+                            f"echo ${{{PARAMS_NAMESPACE}.DATA_DIR}} > "
+                            f"data/${{item.model_type}}_level/${{item.data_type}}/output.txt"
+                        ),
+                    },
+                }
+            }
+        }
+
+        # DataResolver is run from data/ directory
+        resolver = DataResolver(dvc, (tmp_dir / "data").fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        # Build expected result with comprehension
+        # Note: foreach with list of dicts generates numeric indices (@0, @1, ...)
+        expected = {
+            "stages": {
+                f"test@{idx}": {
+                    "params": [
+                        {f"{item['model_type']}_level/data-version.toml": ["DATA_DIR"]}
+                    ],
+                    "wdir": "../",
+                    "cmd": (
+                        f"echo /datasets/{item['model_type']}_data > "
+                        f"data/{item['model_type']}_level/{item['data_type']}/output.txt"
+                    ),
+                }
+                for idx, item in enumerate(items)
+            }
+        }
+
+        assert_stage_equal(result, expected)
+
     def test_missing_params_file(self, tmp_dir, dvc):
         """Test error when param file doesn't exist."""
         dvc_yaml = {
