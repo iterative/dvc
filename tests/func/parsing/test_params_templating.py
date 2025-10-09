@@ -70,19 +70,10 @@ class TestBasicParamsTemplating:
             }
         }
 
-        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
-        result = resolver.resolve()
-
-        expected = {
-            "stages": {
-                "train": {
-                    "cmd": "python train.py",
-                    "outs": ["models/model.pkl"],
-                    "params": [DEFAULT_PARAMS_FILE],
-                }
-            }
-        }
-        assert_stage_equal(result, expected)
+        with pytest.raises(
+            ResolveError, match="interpolation is not allowed in 'outs'"
+        ):
+            DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
 
     def test_params_nested_dict_access(self, tmp_dir, dvc):
         """
@@ -522,7 +513,7 @@ class TestParamsWithForeach:
                     f"--data-dir {params['DATA_DIR']} "
                     f"--batch-size {params['BATCH_SIZE']} "
                     f"--epochs {params['EPOCHS']}",
-                    "params": [{f"{model}_params.toml": []}],
+                    "params": [{f"{model}_params.toml": param_keys}],
                 }
                 for i, (model, params) in enumerate(model_params.items())
             }
@@ -789,6 +780,178 @@ class TestParamsWithForeach:
             match=r"Ambiguous.*API_KEY.*config_a.yaml.*config_b.yaml",
         ):
             resolver.resolve()
+
+
+class TestParamsNamespaceInteractions:
+    """Test how param namespace interacts with other namespaces."""
+
+    def test_params_and_vars_same_key(self, tmp_dir, dvc):
+        """Test params and vars can have same key in different namespaces."""
+        # Use different keys to avoid conflict - vars and params are separate
+        keys = {"VAR_KEY": "from_vars", "TIMEOUT": 100}
+        param_keys = {"PARAM_KEY": "from_params", "RETRIES": 3}
+
+        (tmp_dir / "vars.yaml").dump(keys)
+        (tmp_dir / "custom_params.yaml").dump(param_keys)
+
+        dvc_yaml = {
+            "vars": ["vars.yaml"],
+            "stages": {
+                "deploy": {
+                    "cmd": f"deploy.sh ${{VAR_KEY}} ${{{PARAMS_NAMESPACE}.PARAM_KEY}} "
+                    f"${{TIMEOUT}} ${{{PARAMS_NAMESPACE}.RETRIES}}",
+                    "params": [{"custom_params.yaml": []}],
+                }
+            },
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                "deploy": {
+                    "cmd": f"deploy.sh {keys['VAR_KEY']} {param_keys['PARAM_KEY']} "
+                    f"{keys['TIMEOUT']} {param_keys['RETRIES']}",
+                    "params": [{"custom_params.yaml": []}],
+                }
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    def test_params_vars_and_item_together(self, tmp_dir, dvc):
+        """Test params, vars, and item namespaces coexist."""
+        var_data = {"BASE_PATH": "/data", "VERSION": "v1"}
+        envs = {"dev": "dev.api.com", "prod": "prod.api.com"}
+
+        (tmp_dir / "vars.yaml").dump(var_data)
+        for env, endpoint in envs.items():
+            (tmp_dir / f"{env}_params.yaml").dump({"ENDPOINT": endpoint})
+
+        dvc_yaml = {
+            "vars": ["vars.yaml"],
+            "stages": {
+                "deploy": {
+                    "foreach": list(envs.keys()),
+                    "do": {
+                        "cmd": f"deploy.sh --env ${{item}} "
+                        f"--path ${{BASE_PATH}} "
+                        f"--version ${{VERSION}} "
+                        f"--endpoint ${{{PARAMS_NAMESPACE}.ENDPOINT}}",
+                        "params": [{"${item}_params.yaml": []}],
+                    },
+                }
+            },
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                f"deploy@{env}": {
+                    "cmd": f"deploy.sh --env {env} "
+                    f"--path {var_data['BASE_PATH']} "
+                    f"--version {var_data['VERSION']} "
+                    f"--endpoint {endpoint}",
+                    "params": [{f"{env}_params.yaml": []}],
+                }
+                for env, endpoint in envs.items()
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    def test_params_with_key_and_item_namespaces(self, tmp_dir, dvc):
+        """Test params with foreach dict using ${key} and ${item}."""
+        models = {f"model_{i}": {"lr": random.random()} for i in range(5)}
+        params_data = {
+            model: {"DATA_DIR": f"/data/{model}", "EPOCHS": random.randint(1, 10)}
+            for model in models
+        }
+
+        for model, data in params_data.items():
+            (tmp_dir / f"{model}_params.yaml").dump(data)
+
+        dvc_yaml = {
+            "stages": {
+                "train": {
+                    "foreach": models,
+                    "do": {
+                        "cmd": f"train.sh --model ${{key}} "
+                        f"--lr ${{item.lr}} "
+                        f"--data ${{{PARAMS_NAMESPACE}.DATA_DIR}} "
+                        f"--epochs ${{{PARAMS_NAMESPACE}.EPOCHS}}",
+                        "params": [{"${key}_params.yaml": []}],
+                    },
+                }
+            }
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                f"train@{model}": {
+                    "cmd": f"train.sh --model {model} "
+                    f"--lr {models[model]['lr']} "
+                    f"--data {params_data[model]['DATA_DIR']} "
+                    f"--epochs {params_data[model]['EPOCHS']}",
+                    "params": [{f"{model}_params.yaml": []}],
+                }
+                for model in models
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    def test_all_namespaces_in_outs(self, tmp_dir, dvc):
+        """Test all namespaces (vars, item, param) used together in outs."""
+        var_data = {"BASE_DIR": "outputs"}
+        models = ["resnet", "transformer"]
+        params_data = {
+            f"exp{i}": {"MODEL": model, "VERSION": f"v{i}"}
+            for i, model in enumerate(models)
+        }
+
+        (tmp_dir / "vars.yaml").dump(var_data)
+        for exp, data in params_data.items():
+            (tmp_dir / f"{exp}_params.yaml").dump(data)
+
+        dvc_yaml = {
+            "vars": ["vars.yaml"],
+            "stages": {
+                "train": {
+                    "foreach": list(params_data.keys()),
+                    "do": {
+                        "cmd": "train.sh ${item}",
+                        "params": [{"${item}_params.yaml": []}],
+                        "outs": [
+                            f"${{BASE_DIR}}/${{item}}/"
+                            f"${{{PARAMS_NAMESPACE}.MODEL}}_"
+                            f"${{{PARAMS_NAMESPACE}.VERSION}}.pkl"
+                        ],
+                    },
+                }
+            },
+        }
+
+        with pytest.raises(
+            ResolveError, match="interpolation is not allowed in 'outs'"
+        ):
+            DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+
+    def test_param_reserved_namespace_in_vars(self, tmp_dir, dvc):
+        """Test that PARAMS_NAMESPACE is reserved and cannot be used in vars."""
+        (tmp_dir / "vars.yaml").dump({PARAMS_NAMESPACE: {"nested": "value"}})
+
+        dvc_yaml = {
+            "vars": ["vars.yaml"],
+            "stages": {"test": {"cmd": "echo test"}},
+        }
+
+        # Should raise error about PARAMS_NAMESPACE being reserved
+        with pytest.raises(ResolveError, match="reserved"):
+            DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
 
 
 class TestParamsErrorHandling:
