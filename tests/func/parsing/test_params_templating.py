@@ -2,6 +2,8 @@
 Tests for params templating feature using ${DEFAULT_PARAMS_FILE.<key>} syntax.
 """
 
+import random
+
 import pytest
 
 from dvc.parsing import (
@@ -11,6 +13,8 @@ from dvc.parsing import (
     ResolveError,
 )
 from dvc.parsing.context import recurse_not_a_node
+
+random.seed(17)
 
 
 def assert_stage_equal(d1, d2):
@@ -437,12 +441,13 @@ class TestParamsWithForeach:
 
     def test_params_in_foreach(self, tmp_dir, dvc):
         """Test ${PARAMS_NAMESPACE.*} works with foreach stages."""
+        foreach = list(range(1, 4))
         (tmp_dir / DEFAULT_PARAMS_FILE).dump({"base_lr": 0.001})
 
         dvc_yaml = {
             "stages": {
                 "train": {
-                    "foreach": [1, 2, 3],
+                    "foreach": foreach,
                     "do": {
                         "cmd": "python train.py --seed ${item} "
                         f"--lr ${{{PARAMS_NAMESPACE}.base_lr}}",
@@ -457,53 +462,51 @@ class TestParamsWithForeach:
 
         expected = {
             "stages": {
-                "train@1": {"cmd": "python train.py --seed 1 --lr 0.001"},
-                "train@2": {"cmd": "python train.py --seed 2 --lr 0.001"},
-                "train@3": {"cmd": "python train.py --seed 3 --lr 0.001"},
+                f"train@{i}": {"cmd": f"python train.py --seed {i} --lr 0.001"}
+                for i in foreach
             }
         }
         assert_stage_equal(result, expected)
 
-    def test_dynamic_params_file_loading_with_item(self, tmp_dir, dvc):
+    @pytest.mark.parametrize("explicit_keys", [True, False])
+    def test_dynamic_params_file_loading_with_item(
+        self, tmp_dir, dvc, explicit_keys: bool
+    ):
         """Test dynamically loading param files based on ${item.*} values."""
-        # Create model-specific param files
-        (tmp_dir / "cnn_params.toml").dump(
-            {
-                "DATA_DIR": "/data/images",
-                "BATCH_SIZE": 32,
-                "EPOCHS": 10,
+        model_types = {"cnn": "images", "transformer": "text", "rnn": "sequences"}
+        model_params = {
+            model: {
+                "DATA_DIR": f"/data/{model_type}",
+                "BATCH_SIZE": random.randint(1, 40),
+                "EPOCHS": random.randint(1, 40),
+                "UNUSED_KEY": "unused",
             }
-        )
-        (tmp_dir / "transformer_params.toml").dump(
-            {
-                "DATA_DIR": "/data/text",
-                "BATCH_SIZE": 16,
-                "EPOCHS": 20,
-            }
-        )
-        (tmp_dir / "rnn_params.toml").dump(
-            {
-                "DATA_DIR": "/data/sequences",
-                "BATCH_SIZE": 64,
-                "EPOCHS": 15,
-            }
-        )
+            for model, model_type in model_types.items()
+        }
+        for model, params in model_params.items():
+            (tmp_dir / f"{model}_params.toml").dump(params)
 
         # Use foreach with dict items to dynamically load param files
+        if explicit_keys:
+            param_keys = ["DATA_DIR", "BATCH_SIZE", "EPOCHS"]
+        else:
+            param_keys = []
+
+        params = [{"${item.model_type}_params.toml": param_keys}]
+
         dvc_yaml = {
             "stages": {
                 "train": {
                     "foreach": [
-                        {"model_type": "cnn", "data_type": "images"},
-                        {"model_type": "transformer", "data_type": "text"},
-                        {"model_type": "rnn", "data_type": "sequences"},
+                        {"model_type": model_type, "data_type": data_type}
+                        for model_type, data_type in model_types.items()
                     ],
                     "do": {
-                        "cmd": f"python train.py --model ${{item.model_type}} "
+                        "cmd": "python train.py --model ${item.model_type} "
                         f"--data-dir ${{{PARAMS_NAMESPACE}.DATA_DIR}} "
                         f"--batch-size ${{{PARAMS_NAMESPACE}.BATCH_SIZE}} "
                         f"--epochs ${{{PARAMS_NAMESPACE}.EPOCHS}}",
-                        "params": [{"${item.model_type}_params.toml": []}],
+                        "params": params,
                     },
                 }
             }
@@ -514,54 +517,123 @@ class TestParamsWithForeach:
 
         expected = {
             "stages": {
-                "train@0": {
-                    "cmd": "python train.py --model cnn "
-                    "--data-dir /data/images --batch-size 32 --epochs 10",
-                    "params": [{"cnn_params.toml": []}],
-                },
-                "train@1": {
-                    "cmd": "python train.py --model transformer "
-                    "--data-dir /data/text --batch-size 16 --epochs 20",
-                    "params": [{"transformer_params.toml": []}],
-                },
-                "train@2": {
-                    "cmd": "python train.py --model rnn "
-                    "--data-dir /data/sequences --batch-size 64 --epochs 15",
-                    "params": [{"rnn_params.toml": []}],
-                },
+                f"train@{i}": {
+                    "cmd": f"python train.py --model {model} "
+                    f"--data-dir {params['DATA_DIR']} "
+                    f"--batch-size {params['BATCH_SIZE']} "
+                    f"--epochs {params['EPOCHS']}",
+                    "params": [{f"{model}_params.toml": []}],
+                }
+                for i, (model, params) in enumerate(model_params.items())
+            }
+        }
+
+        assert_stage_equal(result, expected)
+
+    def test_dynamic_params_with_matrix(self, tmp_dir, dvc):
+        """Test dynamic params loading with matrix stages."""
+        # Define matrix dimensions
+        envs = ["dev", "prod"]
+        regions = ["us", "eu"]
+
+        # Create param files for all combinations
+        for env in envs:
+            for region in regions:
+                (tmp_dir / f"{env}_{region}_params.yaml").dump(
+                    {"API_URL": f"{env}.{region}.api.com"}
+                )
+
+        dvc_yaml = {
+            "stages": {
+                "deploy": {
+                    "matrix": {
+                        "env": envs,
+                        "region": regions,
+                    },
+                    "cmd": f"deploy.sh ${{{PARAMS_NAMESPACE}.API_URL}}",
+                    "params": [{"${item.env}_${item.region}_params.yaml": []}],
+                }
+            }
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                f"deploy@{env}-{region}": {
+                    "cmd": f"deploy.sh {env}.{region}.api.com",
+                    "params": [{f"{env}_{region}_params.yaml": []}],
+                }
+                for env in envs
+                for region in regions
             }
         }
         assert_stage_equal(result, expected)
 
-    def test_dynamic_params_with_specific_keys(self, tmp_dir, dvc):
-        """Test dynamic param file loading with specific key selection."""
-        # Create config files with many params, but we only need specific ones
-        (tmp_dir / "dev_config.yaml").dump(
-            {
-                "DATA_DIR": "/data/dev",
-                "MODEL_PATH": "/models/dev",
-                "LOG_LEVEL": "DEBUG",
-                "MAX_WORKERS": 2,
-            }
-        )
-        (tmp_dir / "prod_config.yaml").dump(
-            {
-                "DATA_DIR": "/data/prod",
-                "MODEL_PATH": "/models/prod",
-                "LOG_LEVEL": "INFO",
-                "MAX_WORKERS": 16,
-            }
-        )
+    def test_dynamic_params_multiple_files(self, tmp_dir, dvc):
+        """Test loading multiple dynamic param files in one stage."""
+        foreach = ["cnn", "rnn"]
+        # Create base and model-specific config files
+        base_yaml = {"BATCH_SIZE": random.randint(0, 32)}
+        (tmp_dir / "base.yaml").dump(base_yaml)
+        model_yamls = {}
+        for item in foreach:
+            model_yamls[item] = {"LAYERS": random.randint(0, 32)}
+            (tmp_dir / f"{item}_model.yaml").dump(model_yamls[item])
 
-        # Load only DATA_DIR from dynamically selected config
+        dvc_yaml = {
+            "stages": {
+                "train": {
+                    "foreach": foreach,
+                    "do": {
+                        "cmd": "train.py "
+                        f"--batch ${{{PARAMS_NAMESPACE}.BATCH_SIZE}} "
+                        f"--layers ${{{PARAMS_NAMESPACE}.LAYERS}}",
+                        "params": [
+                            {"base.yaml": []},
+                            {"${item}_model.yaml": []},  # noqa: RUF027
+                        ],
+                    },
+                }
+            }
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                f"train@{item}": {
+                    "cmd": "train.py "
+                    f"--batch {base_yaml['BATCH_SIZE']} "
+                    f"--layers {model_yamls[item]['LAYERS']}",
+                    "params": [{"base.yaml": []}, {f"{item}_model.yaml": []}],
+                }
+                for item in foreach
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    @pytest.mark.parametrize("file_ext", ["yaml", "json", "toml", "py"])
+    def test_dynamic_params_different_formats(self, tmp_dir, dvc, file_ext):
+        """Test dynamic param loading with different file formats."""
+        # Python files need raw code, other formats use dump()
+        if file_ext == "py":
+            tmp_dir.gen(
+                f"config.{file_ext}",
+                f'ENDPOINT = "api.{file_ext}.com"\n',
+            )
+        else:
+            (tmp_dir / f"config.{file_ext}").dump({"ENDPOINT": f"api.{file_ext}.com"})
+
         dvc_yaml = {
             "stages": {
                 "process": {
-                    "foreach": ["dev", "prod"],
+                    "foreach": [file_ext],
                     "do": {
-                        "cmd": f"python process.py --env ${{item}} "
-                        f"--data ${{{PARAMS_NAMESPACE}.DATA_DIR}}",
-                        "params": [{"${item}_config.yaml": ["DATA_DIR"]}],
+                        "cmd": f"process.sh ${{{PARAMS_NAMESPACE}.ENDPOINT}}",
+                        "params": [{"config.${item}": []}],
                     },
                 }
             }
@@ -572,17 +644,151 @@ class TestParamsWithForeach:
 
         expected = {
             "stages": {
-                "process@dev": {
-                    "cmd": "python process.py --env dev --data /data/dev",
-                    "params": [{"dev_config.yaml": ["DATA_DIR"]}],
-                },
-                "process@prod": {
-                    "cmd": "python process.py --env prod --data /data/prod",
-                    "params": [{"prod_config.yaml": ["DATA_DIR"]}],
-                },
+                f"process@{file_ext}": {
+                    "cmd": f"process.sh api.{file_ext}.com",
+                    "params": [{f"config.{file_ext}": []}],
+                }
             }
         }
         assert_stage_equal(result, expected)
+
+    def test_dynamic_params_nested_item_keys(self, tmp_dir, dvc):
+        """Test dynamic params with nested item keys."""
+        items = {"ml": "neural_net", "analytics": "regression"}
+        # Create param files
+        for k, v in items.items():
+            (tmp_dir / f"{k}_params.yaml").dump({"MODEL": v})
+
+        dvc_yaml = {
+            "stages": {
+                "process": {
+                    "foreach": [
+                        {"config": {"type": k, "version": i}}
+                        for i, k in enumerate(items.keys())
+                    ],
+                    "do": {
+                        "cmd": f"run.py ${{{PARAMS_NAMESPACE}.MODEL}} "
+                        f"v${{item.config.version}}",
+                        "params": [{"${item.config.type}_params.yaml": []}],
+                    },
+                }
+            }
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                f"process@{i}": {
+                    "cmd": f"run.py {v} v{i}",
+                    "params": [{f"{k}_params.yaml": []}],
+                }
+                for i, (k, v) in enumerate(items.items())
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    def test_dynamic_params_nonexistent_file_error(self, tmp_dir, dvc):
+        """Test error when dynamically referenced param file doesn't exist."""
+        dvc_yaml = {
+            "stages": {
+                "train": {
+                    "foreach": ["model_a"],
+                    "do": {
+                        "cmd": f"train.py ${{{PARAMS_NAMESPACE}.lr}}",
+                        "params": [{"${item}_params.yaml": []}],
+                    },
+                }
+            }
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+
+        with pytest.raises(ResolveError, match="does not exist"):
+            resolver.resolve()
+
+    def test_dynamic_params_with_global_params(self, tmp_dir, dvc):
+        """Test dynamic stage params combined with global params."""
+        # Global params
+        global_seed = random.randint(1, 40)
+        (tmp_dir / DEFAULT_PARAMS_FILE).dump({"SEED": global_seed})
+
+        # Stage-specific params
+        foreach = {"fast": random.randint(1, 40), "slow": random.randint(1, 40)}
+        for k, v in foreach.items():
+            (tmp_dir / f"{k}_params.yaml").dump({"TIMEOUT": v})
+
+        dvc_yaml = {
+            "params": [DEFAULT_PARAMS_FILE],
+            "stages": {
+                "test": {
+                    "foreach": list(foreach.keys()),
+                    "do": {
+                        "cmd": "test.py "
+                        f"--seed ${{{PARAMS_NAMESPACE}.SEED}} "
+                        f"--timeout ${{{PARAMS_NAMESPACE}.TIMEOUT}}",
+                        "params": [{"${item}_params.yaml": []}],
+                    },
+                }
+            },
+        }
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+        result = resolver.resolve()
+
+        expected = {
+            "stages": {
+                f"test@{k}": {
+                    "cmd": f"test.py --seed {global_seed} --timeout {v}",
+                    "params": [{f"{k}_params.yaml": []}],
+                }
+                for k, v in foreach.items()
+            }
+        }
+        assert_stage_equal(result, expected)
+
+    @pytest.mark.parametrize(
+        "process_type", ["foreach", "foreach_list", "matrix", None]
+    )
+    def test_dynamic_params_ambiguity_detection(
+        self, tmp_dir, dvc, process_type: str | None
+    ):
+        """Test ambiguity detection with dynamically loaded params."""
+        # Create two param files with same key
+        configs = ["a", "b"]
+        for config in configs:
+            (tmp_dir / f"config_{config}.yaml").dump({"API_KEY": f"key_from_{config}"})
+
+        # Both files define API_KEY - should detect ambiguity
+        cmd = f"process.py ${{{PARAMS_NAMESPACE}.API_KEY}}"
+        params = [
+            {"config_a.yaml": []},
+            {"config_b.yaml": []},
+        ]
+        if process_type == "foreach_list":
+            process = {
+                "foreach": [{"files": [f"config_{c}.yaml" for c in configs]}],
+                "do": {"cmd": cmd, "params": params},
+            }
+        elif process_type == "foreach":
+            process = {"foreach": configs, "do": {"cmd": cmd, "params": params}}
+        elif process_type == "matrix":
+            process = {"matrix": {"file": configs}, "cmd": cmd, "params": params}
+        elif process_type is None:
+            process = {"cmd": cmd, "params": params}
+        else:
+            raise ValueError(f"Invalid process_type {process_type}")
+
+        dvc_yaml = {"stages": {"process": process}}
+
+        resolver = DataResolver(dvc, tmp_dir.fs_path, dvc_yaml)
+
+        with pytest.raises(
+            ResolveError,
+            match=r"Ambiguous.*API_KEY.*config_a.yaml.*config_b.yaml",
+        ):
+            resolver.resolve()
 
 
 class TestParamsErrorHandling:
@@ -595,7 +801,7 @@ class TestParamsErrorHandling:
         dvc_yaml = {
             "stages": {
                 "train": {
-                    "cmd": f"python train.py --epochs ${{{PARAMS_NAMESPACE}.epochs}}",
+                    "cmd": f"python train.py--epochs ${{{PARAMS_NAMESPACE}.epochs}}",
                     "params": [DEFAULT_PARAMS_FILE],
                 }
             }
