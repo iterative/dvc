@@ -510,11 +510,17 @@ class Context(CtxDict):
             ):
                 continue
 
+            # Skip if keys is None - this means the params are only for dependency
+            # tracking, not for ${param.*} interpolation. The keys will be resolved
+            # from other loaded param files (global params or params.yaml).
+            if keys is None:
+                continue
+
             path = fs.normpath(fs.join(wdir, file_path))
             if not fs.exists(path):
                 raise ParamsLoadError(f"'{path}' does not exist")
 
-            # If keys is empty list, load all params
+            # If keys is empty list, load all params from the file
             key_list = keys if keys else None
             data = read_param_file(fs, path, key_paths=key_list, flatten=False)
             self._merge_params_data(data, path)
