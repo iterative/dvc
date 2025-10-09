@@ -174,15 +174,15 @@ class DataResolver:
         check_interpolations(vars_, VARS_KWD, self.relpath)
         self.context: Context = Context()
 
+        # Reserve namespace to prevent conflicts with
+        # ${PARAMS_NAMESPACE.*} interpolation - must be done before loading vars
+        self.context._reserved_keys[PARAMS_NAMESPACE] = True
+
         try:
             args = fs, vars_, wdir  # load from `vars` section
             self.context.load_from_vars(*args, default=DEFAULT_PARAMS_FILE)
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
-
-        # Reserve namespace to prevent conflicts with
-        # ${{PARAMS_NAMESPACE}.*} interpolation
-        self.context._reserved_keys[PARAMS_NAMESPACE] = True
 
         # Load global-level params for ${PARAMS_NAMESPACE.*} interpolation
         global_params = d.get(PARAMS_KWD, [])
@@ -450,7 +450,7 @@ class EntryDefinition:
     ) -> "DictStrAny":
         # Check if params interpolation is used in restricted fields
         if has_params_interpolation(value):
-            allowed_fields = {"cmd", "outs"}
+            allowed_fields = {"cmd"}
             if key not in allowed_fields:
                 raise ResolveError(
                     f"failed to parse '{self.where}.{self.name}.{key}' "
