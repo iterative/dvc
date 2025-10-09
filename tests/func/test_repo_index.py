@@ -50,14 +50,14 @@ def outputs_equal(actual, expected):
 
 def test_deps_outs_getters(tmp_dir, dvc, run_copy_metrics):
     (foo_stage,) = tmp_dir.dvc_gen({"foo": "foo"})
-    tmp_dir.gen({"params.yaml": "param: 100\n"})
+    tmp_dir.gen({"params.yaml": "threshold: 100\n"})
     tmp_dir.gen({"m_temp.yaml": str(5)})
 
     run_stage1 = run_copy_metrics(
         "m_temp.yaml",
         "m.yaml",
         metrics=["m.yaml"],
-        params=["param"],
+        params=["threshold"],
         name="copy-metrics",
     )
     (tmp_dir / "metric_t.json").dump_json(
