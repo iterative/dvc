@@ -997,8 +997,9 @@ class Output:
         self.save()
         self.commit()
 
-        if self.protocol == "local" and self.use_scm_ignore:
-            self.repo.scm_context.ignore(self.fspath)
+        # should already be ignored in self.save()
+        # if self.protocol == "local" and self.use_scm_ignore:
+        #     self.repo.scm_context.ignore(self.fspath)
 
     def transfer(
         self, source, odb=None, jobs=None, update=False, no_progress_bar=False
