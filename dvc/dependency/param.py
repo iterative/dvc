@@ -110,6 +110,7 @@ class ParamsDependency(Dependency):
         except MissingParamsFile:
             return {}
 
+        assert self.repo
         try:
             return read_param_file(
                 self.repo.fs,

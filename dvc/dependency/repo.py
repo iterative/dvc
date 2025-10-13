@@ -150,6 +150,7 @@ class RepoDependency(Dependency):
         # local cache instead of the remote's cache. This avoids re-streaming of data,
         # but messes up the call to `_get_remote_config()` downstream, which will need
         # to ignore cache parameters.
+        assert self.repo
         config["cache"] = self.repo.config["cache"]
         config["cache"]["dir"] = self.repo.cache.local_cache_dir
 

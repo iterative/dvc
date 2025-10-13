@@ -42,6 +42,7 @@ from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
+    from dvc.repo import Repo
     from dvc_data.hashfile.obj import HashFile
     from dvc_data.index import DataIndexKey
 
@@ -83,7 +84,7 @@ def _get(stage, path, **kwargs):
     return Output(stage, path, **kwargs)
 
 
-def loadd_from(stage, d_list):
+def loadd_from(stage, d_list) -> list["Output"]:
     ret = []
     for d in d_list:
         p = d.pop(Output.PARAM_PATH)
@@ -329,7 +330,7 @@ class Output:
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
         )
-        self.repo = stage.repo if not repo and stage else repo
+        self.repo: Optional[Repo] = stage.repo if not repo and stage else repo
         meta_d = merge_file_meta_from_cloud(info or {})
         meta = Meta.from_dict(meta_d)
         # NOTE: when version_aware is not passed into get_cloud_fs, it will be
@@ -511,6 +512,7 @@ class Output:
         from dvc.cachemgr import LEGACY_HASH_NAMES
 
         assert self.is_in_repo
+        assert self.repo
         odb_name = "legacy" if self.hash_name in LEGACY_HASH_NAMES else "repo"
         return getattr(self.repo.cache, odb_name)
 
@@ -518,6 +520,7 @@ class Output:
     def local_cache(self):
         from dvc.cachemgr import LEGACY_HASH_NAMES
 
+        assert self.repo
         if self.hash_name in LEGACY_HASH_NAMES:
             return self.repo.cache.legacy
         return self.repo.cache.local
@@ -585,6 +588,7 @@ class Output:
     def index_key(self) -> tuple[str, "DataIndexKey"]:
         if self.is_in_repo:
             workspace = "repo"
+            assert self.repo
             key = self.repo.fs.relparts(self.fs_path, self.repo.root_dir)
         else:
             workspace = self.fs.protocol
@@ -640,6 +644,7 @@ class Output:
     @property
     def dvcignore(self) -> Optional["DvcIgnoreFilter"]:
         if self.fs.protocol == "local":
+            assert self.repo
             return self.repo.dvcignore
         return None
 
@@ -661,6 +666,7 @@ class Output:
         if not self.use_scm_ignore:
             return
 
+        assert self.repo
         if self.repo.scm.is_tracked(self.fspath):
             raise OutputAlreadyTrackedError(self)
 
@@ -670,6 +676,7 @@ class Output:
         if not self.use_scm_ignore:
             return
 
+        assert self.repo
         self.repo.scm_context.ignore_remove(self.fspath)
 
     def save(self) -> None:
@@ -776,6 +783,7 @@ class Output:
                         callback=cb,
                     )
             if relink:
+                assert self.repo
                 rel = self.fs.relpath(filter_info or self.fs_path)
                 with CheckoutCallback(desc=f"Checking out {rel}", unit="files") as cb:
                     self._checkout(
@@ -957,6 +965,7 @@ class Output:
         added = not self.exists
 
         try:
+            assert self.repo
             modified = self._checkout(
                 filter_info or self.fs_path,
                 self.fs,
@@ -987,19 +996,24 @@ class Output:
         if ignore_remove:
             self.ignore_remove()
 
-    def move(self, out):
+    def move(self, out: "Output") -> None:
+        src_exists = self.exists
+        if src_exists:
+            self.fs.move(self.fs_path, out.fs_path)
+        else:
+            logger.warning("%r missing", self.fspath)
+
         if self.protocol == "local" and self.use_scm_ignore:
+            assert self.repo
             self.repo.scm_context.ignore_remove(self.fspath)
 
-        self.fs.move(self.fs_path, out.fs_path)
         self.def_path = out.def_path
         self.fs_path = out.fs_path
-        self.save()
-        self.commit()
-
-        # should already be ignored in self.save()
-        # if self.protocol == "local" and self.use_scm_ignore:
-        #     self.repo.scm_context.ignore(self.fspath)
+        try:
+            self.save()
+            self.commit()
+        except self.DoesNotExistError:
+            self.ignore()
 
     def transfer(
         self, source, odb=None, jobs=None, update=False, no_progress_bar=False
@@ -1080,6 +1094,7 @@ class Output:
             if self.remote:
                 kwargs["remote"] = self.remote
             with suppress(Exception):
+                assert self.repo
                 self.repo.cloud.pull([obj.hash_info], **kwargs)
 
         if self.obj:
@@ -1173,6 +1188,7 @@ class Output:
             return {}
 
         if self.remote:
+            assert self.repo
             remote_odb = self.repo.cloud.get_remote_odb(
                 name=self.remote, hash_name=self.hash_name
             )
