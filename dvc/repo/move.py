@@ -1,9 +1,13 @@
 import os
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import MoveNotDataSourceError
 from dvc.repo.scm_context import scm_context
 
 from . import locked
+
+if TYPE_CHECKING:
+    from . import Repo
 
 
 def _expand_target_path(from_path, to_path):
@@ -14,7 +18,7 @@ def _expand_target_path(from_path, to_path):
 
 @locked
 @scm_context
-def move(self, from_path, to_path):
+def move(self: "Repo", from_path, to_path):
     """
     Renames an output file and modifies the stage associated
     to reflect the change on the pipeline.
@@ -70,24 +74,24 @@ def move(self, from_path, to_path):
             always_changed=stage.always_changed,
             desc=stage.desc,
         )
-
-        os.unlink(stage.path)
-        stage = new_stage
     else:
+        new_stage = stage
         to_path = os.path.relpath(to_path, stage.wdir)
 
     def with_dep_path_adjusted(dep: dependency.Dependency):
         d = dep.dumpd()
         if isinstance(dep.fs, LocalFileSystem) and not os.path.isabs(dep.def_path):
-            path = os.path.relpath(os.path.abspath(dep.def_path), stage.wdir)
-            return d | {"path": path}
+            return d | {"path": os.path.relpath(dep.fspath, new_stage.wdir)}
         return d
 
-    stage.outs = output.loadd_from(stage, [out.dumpd() | {"path": to_path}])
-    stage.deps = dependency.loadd_from(
-        stage, [with_dep_path_adjusted(dep) for dep in deps]
+    new_stage.outs = output.loadd_from(new_stage, [out.dumpd() | {"path": to_path}])
+    new_stage.deps = dependency.loadd_from(
+        new_stage, [with_dep_path_adjusted(dep) for dep in deps]
     )
-
-    out.move(stage.outs[0])
-    stage.md5 = stage.compute_md5()
-    stage.dump()
+    out.move(new_stage.outs[0])
+    new_stage.md5 = new_stage.compute_md5()
+    new_stage.dump()
+    if stage != new_stage:
+        stage.dvcfile.remove()
+        self.scm_context.track_file(stage.dvcfile.relpath)
+    return stage, new_stage

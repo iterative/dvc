@@ -41,7 +41,7 @@ def _get(stage, p, info, **kwargs):
     return Dependency(stage, p, info, **kwargs)
 
 
-def loadd_from(stage, d_list):
+def loadd_from(stage, d_list) -> list[Dependency]:
     ret = []
     for d in d_list:
         p = d.pop(Output.PARAM_PATH, None)

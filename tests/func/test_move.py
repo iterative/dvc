@@ -10,8 +10,11 @@ from dvc.exceptions import MoveNotDataSourceError, OutputNotFoundError
 
 def test_move(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen("foo", "bar")
+    assert (tmp_dir / "foo.dvc").exists()
     dvc.move("foo", "bar")
 
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "bar.dvc").exists()
     assert not (tmp_dir / "foo").is_file()
     assert (tmp_dir / "bar").is_file()
     # should only have the new path in the .gitignore, and only once
@@ -21,6 +24,24 @@ def test_move(tmp_dir, dvc, scm):
 def test_move_non_existent_file(dvc):
     with pytest.raises(OutputNotFoundError):
         dvc.move("non_existent_file", "dst")
+
+
+def test_move_missing_file(tmp_dir, dvc, scm, caplog):
+    tmp_dir.dvc_gen("foo", "foo")
+    (tmp_dir / "foo").unlink()
+    contents = (tmp_dir / "foo.dvc").parse()
+    dvc.move("foo", "bar")
+
+    assert not (tmp_dir / "foo.dvc").exists()
+    # only the path should be changed in the dvc file
+    contents["outs"][0]["path"] = "bar"
+    assert contents == (tmp_dir / "bar.dvc").parse()
+
+    # file should not be checked out
+    assert not (tmp_dir / "foo").is_file()
+    assert not (tmp_dir / "bar").is_file()
+    # should only have the new path in the .gitignore, and only once
+    assert (tmp_dir / ".gitignore").read_text().splitlines() == ["/bar"]
 
 
 def test_move_directory(tmp_dir, dvc):

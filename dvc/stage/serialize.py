@@ -178,7 +178,7 @@ def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     res = OrderedDict([("cmd", stage.cmd)])
     params, deps = split_params_deps(stage)
     deps, outs = (
-        [_dumpd(item) for item in sorted(items, key=attrgetter("def_path"))]
+        [_dumpd(item) for item in sorted(items, key=attrgetter("def_path"))]  # type: ignore[call-overload]
         for items in [deps, stage.outs]
     )
     params = _serialize_params_values(params)

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from dvc.fs.data import DataFileSystem
     from dvc.fs.dvc import DVCFileSystem
     from dvc.lock import LockBase
+    from dvc.output import Output
     from dvc.scm import Git, NoSCM
     from dvc.stage import Stage
     from dvc.types import DictStrAny
@@ -544,7 +545,9 @@ class Repo:
 
         return used
 
-    def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
+    def find_outs_by_path(
+        self, path, outs=None, recursive=False, strict=True
+    ) -> list["Output"]:
         # using `outs_graph` to ensure graph checks are run
         outs = outs or self.index.outs_graph
 
