@@ -1,7 +1,6 @@
 import os
 from typing import TYPE_CHECKING
 
-from dvc.exceptions import MoveNotDataSourceError
 from dvc.repo.scm_context import scm_context
 
 from . import locked
@@ -38,7 +37,9 @@ def move(self: "Repo", from_path, to_path):
     """
     from dvc import dependency, output
     from dvc.dvcfile import DVC_FILE_SUFFIX
+    from dvc.exceptions import MoveNotDataSourceError
     from dvc.stage import Stage
+    from dvc.stage.exceptions import StageFileAlreadyExistsError
     from dvc_objects.fs.local import LocalFileSystem
 
     from_out = output.loads_from(Stage(self), [from_path])[0]
@@ -64,16 +65,20 @@ def move(self: "Repo", from_path, to_path):
         )
         new_wdir = os.path.abspath(os.path.join(os.curdir, os.path.dirname(to_path)))
         to_path = os.path.relpath(to_path, new_wdir)
-        new_stage = self.stage.create(
-            single_stage=True,
-            fname=new_fname,
-            wdir=new_wdir,
-            outs=[to_path],
-            meta=stage.meta,
-            frozen=stage.frozen,
-            always_changed=stage.always_changed,
-            desc=stage.desc,
-        )
+        try:
+            new_stage = self.stage.create(
+                single_stage=True,
+                fname=new_fname,
+                wdir=new_wdir,
+                outs=[to_path],
+                meta=stage.meta,
+                frozen=stage.frozen,
+                always_changed=stage.always_changed,
+                desc=stage.desc,
+            )
+        except StageFileAlreadyExistsError:
+            # reraise to remove `--force` hint
+            raise StageFileAlreadyExistsError(f"{new_fname!r} already exists") from None
     else:
         new_stage = stage
         to_path = os.path.relpath(to_path, stage.wdir)

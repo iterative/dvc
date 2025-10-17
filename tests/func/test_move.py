@@ -6,6 +6,7 @@ import pytest
 
 from dvc.cli import main
 from dvc.exceptions import MoveNotDataSourceError, OutputNotFoundError
+from dvc.stage.exceptions import StageFileAlreadyExistsError
 
 
 def test_move(tmp_dir, dvc, scm):
@@ -382,3 +383,12 @@ def test_all_metadata_are_preserved(tmp_dir, dvc, make_tmp_dir, path_func):
     contents["deps"][0] |= {"path": expected_path}
     contents |= {"md5": stage.md5}
     assert new_dvcfile.parse() == contents
+
+
+def test_move_dst_stage_file_already_exists(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
+
+    with pytest.raises(StageFileAlreadyExistsError) as exc_info:
+        dvc.move("foo", "bar")
+    assert str(exc_info.value) == "'bar.dvc' already exists"
+    assert exc_info.value.__cause__ is None
