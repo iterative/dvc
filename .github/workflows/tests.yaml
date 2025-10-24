@@ -32,7 +32,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: '3.13'
+        python-version: '3.14'
     - uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
@@ -55,7 +55,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        pyv: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        pyv: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         include:
         - os: windows-latest
           pyv: "3.9"
@@ -116,6 +116,18 @@ jobs:
           pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 3"
         - os: windows-latest
           pyv: "3.13"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 4"
+        - os: windows-latest
+          pyv: "3.14"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 1"
+        - os: windows-latest
+          pyv: "3.14"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 2"
+        - os: windows-latest
+          pyv: "3.14"
+          pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 3"
+        - os: windows-latest
+          pyv: "3.14"
           pytestargs: "--splitting-algorithm=least_duration --splits 4 --group 4"
     steps:
     - uses: actions/checkout@v5

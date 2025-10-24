@@ -194,6 +194,7 @@ def isolate(tmp_path_factory):
             monkeypatch.setenv(env_var, os.fspath(path))
     else:
         monkeypatch.setenv("HOME", str(home_dir))
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(home_dir / ".config"))
 
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     contents = b"""

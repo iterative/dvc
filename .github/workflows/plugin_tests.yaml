@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        pyv: ["3.13"]
+        pyv: ["3.14"]
         plugin: ["dvc-s3"]
 
     steps:
