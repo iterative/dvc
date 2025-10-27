@@ -41,7 +41,7 @@ jobs:
     - name: Check dist
       run: uv tool run twine check --strict dist/*
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: Packages
         path: dist/
