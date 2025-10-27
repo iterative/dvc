@@ -1211,3 +1211,40 @@ def test_renames(
         dvc.data_status(granular=True, with_renames=True, targets=targets)
         == EMPTY_STATUS | {"git": M.dict()} | expected_granular
     )
+
+
+def test_shallow_should_iterate_upto_tracked_directory(
+    M, tmp_dir, dvc, scm, local_remote
+):
+    """Testing regression for https://github.com/iterative/dvc/issues/10899."""
+
+    tmp_dir.scm_gen({"dir": {".gitkeep": ""}}, commit="mk dir")
+    dataset_root = join("dir", "data", "")
+    tmp_dir.dvc_gen({dataset_root: {"foo": "foo", "bar": "bar"}})
+    files = [dataset_root, join(dataset_root, "foo"), join(dataset_root, "bar")]
+
+    assert dvc.data_status(not_in_remote=True) == {
+        **EMPTY_STATUS,
+        "committed": {"added": [dataset_root]},
+        "not_in_remote": [dataset_root],
+        "git": M.dict(),
+    }
+    assert dvc.data_status(granular=True, not_in_remote=True) == {
+        **EMPTY_STATUS,
+        "committed": {"added": M.unordered(*files)},
+        "not_in_remote": M.unordered(*files),
+        "git": M.dict(),
+    }
+
+    assert dvc.push() == 3
+
+    assert dvc.data_status(not_in_remote=True, remote_refresh=True) == {
+        **EMPTY_STATUS,
+        "committed": {"added": [dataset_root]},
+        "git": M.dict(),
+    }
+    assert dvc.data_status(granular=True, not_in_remote=True, remote_refresh=True) == {
+        **EMPTY_STATUS,
+        "committed": {"added": M.unordered(*files)},
+        "git": M.dict(),
+    }
