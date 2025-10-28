@@ -14,6 +14,7 @@ from dvc.parsing.interpolate import (
     get_expression,
     get_matches,
     is_exact_string,
+    is_interpolated_string,
     normalize_key,
     recurse,
     str_interpolate,
@@ -95,6 +96,26 @@ def recurse_not_a_node(data: dict):
         assert not isinstance(item, Node)
 
     return recurse(func)(data)
+
+
+def is_params_interpolation(value: Any) -> bool:
+    """Check if value is an interpolated string using ${PARAMS_NAMESPACE.*} syntax."""
+    if not isinstance(value, str):
+        return False
+
+    if not is_interpolated_string(value):
+        return False
+
+    # Import here to avoid circular import
+    from dvc.parsing import PARAMS_NAMESPACE
+
+    matches = get_matches(value)
+    prefix = f"{PARAMS_NAMESPACE}."
+    for match in matches:
+        inner = match["inner"]
+        if inner.startswith(prefix):
+            return True
+    return False
 
 
 @dataclass
@@ -301,6 +322,8 @@ class Context(CtxDict):
         self._tracked_data: dict[str, dict] = defaultdict(dict)
         self.imports = {}
         self._reserved_keys = {}
+        self._params_context: Optional[CtxDict] = None
+        self._params_sources: dict[str, set[str]] = defaultdict(set)
 
     @contextmanager
     def track(self):
@@ -337,7 +360,25 @@ class Context(CtxDict):
                     Defaults to False. Note that the default is different from
                     `resolve`.
         """
+        from dvc.parsing import PARAMS_NAMESPACE
+
         normalized = normalize_key(key)
+
+        # Handle params namespace specially
+        prefix = f"{PARAMS_NAMESPACE}."
+        if normalized.startswith(prefix):
+            if self._params_context is None:
+                raise KeyNotInContext(key)
+            params_key = normalized.split(".", 1)[1]
+            try:
+                node = self._params_context.select(params_key)
+            except ValueError as exc:
+                raise KeyNotInContext(key) from exc
+
+            assert isinstance(node, Node)
+            self._track_data(node)
+            return node.value if unwrap else node
+
         try:
             node = super().select(normalized)
         except ValueError as exc:
@@ -447,11 +488,122 @@ class Context(CtxDict):
                 meta = Meta(source=f"{stage_name}{joiner}vars[{index}]")
                 self.merge_update(Context(item, meta=meta))
 
+    def _load_default_params_file(self, fs, wdir: str):
+        """Load default params file if it exists."""
+        from dvc.dependency.param import read_param_file
+        from dvc.parsing import DEFAULT_PARAMS_FILE
+
+        default_path = fs.normpath(fs.join(wdir, DEFAULT_PARAMS_FILE))
+        if fs.exists(default_path):
+            data = read_param_file(fs, default_path, key_paths=None, flatten=False)
+            self._merge_params_data(data, default_path)
+
+    def _load_params_from_dict(self, fs, item: dict, wdir: str):
+        """Load params from a dict item (file: keys mapping)."""
+        from dvc.dependency.param import read_param_file
+        from dvc.parsing.interpolate import is_interpolated_string
+
+        for file_path, keys in item.items():
+            # Skip vars interpolations
+            if is_interpolated_string(file_path) and not is_params_interpolation(
+                file_path
+            ):
+                continue
+
+            # Skip if keys is None - this means the params are only for dependency
+            # tracking, not for ${param.*} interpolation. The keys will be resolved
+            # from other loaded param files (global params or params.yaml).
+            if keys is None:
+                continue
+
+            path = fs.normpath(fs.join(wdir, file_path))
+            if not fs.exists(path):
+                raise ParamsLoadError(f"'{path}' does not exist")
+
+            # If keys is empty list, load all params from the file
+            key_list = keys if keys else None
+            data = read_param_file(fs, path, key_paths=key_list, flatten=False)
+            self._merge_params_data(data, path)
+
+    def load_params(self, fs, params_list: list, wdir: str):
+        """Load params from files for ${PARAMS_NAMESPACE.*} interpolation.
+
+        Args:
+            fs: File system to use
+            params_list: List of param files/dicts (same format as stage params)
+            wdir: Working directory
+        """
+        if not params_list:
+            return
+
+        # Initialize params context if not already done
+        if self._params_context is None:
+            self._params_context = CtxDict(meta=Meta(source="params", local=False))
+
+        # Load default params file if it exists (for ${param.*} interpolation)
+        self._load_default_params_file(fs, wdir)
+
+        # Process each item in params list
+        # Note: String items are param KEYS for dependency tracking, not files
+        # Only dict items specify files to load for ${param.*} interpolation
+        for item in params_list:
+            if isinstance(item, dict):
+                self._load_params_from_dict(fs, item, wdir)
+
+    def _merge_params_data(self, data: dict, source_path: str):
+        """Merge params data into _params_context."""
+        # Track which file each key came from for ambiguity detection
+        assert self._params_context is not None
+        assert self._params_sources is not None
+        for key in data:
+            top_level_key = key.split(".")[0] if "." in key else key
+            if top_level_key in self._params_context:
+                # Key already exists, track multiple sources
+                self._params_sources[top_level_key].add(source_path)
+            else:
+                self._params_sources[top_level_key].add(source_path)
+
+        # Merge data into params context using CtxDict structure
+        meta = Meta(source=source_path, local=False)
+        for k, v in data.items():
+            # Convert value to Node structure
+            item_meta = Meta.update_path(meta, k)
+            self._params_context[k] = Container._convert_with_meta(
+                v,
+                item_meta,
+            )
+
+    def check_params_ambiguity(self, used_keys: set[str]):
+        """Check if any used params keys are ambiguous (from multiple sources).
+
+        Args:
+            used_keys: Set of params keys that were actually used
+                in interpolation
+
+        Raises:
+            ContextError: If any used key is ambiguous
+        """
+        for key in used_keys:
+            # Extract top-level key from potentially nested key like "model.lr"
+            top_level_key = key.split(".")[0]
+            sources = self._params_sources.get(top_level_key, set())
+            if len(sources) > 1:
+                from dvc.utils.humanize import join as humanize_join
+
+                raise ContextError(
+                    f"Ambiguous param key '{key}' found in multiple files: "
+                    f"{humanize_join(sorted(sources))}"
+                )
+
     def __deepcopy__(self, _):
         new = Context(super().__deepcopy__(_))
         new.meta = deepcopy(self.meta)
         new.imports = deepcopy(self.imports)
         new._reserved_keys = deepcopy(self._reserved_keys)
+        new._params_context = (
+            deepcopy(self._params_context) if self._params_context else None
+        )
+        new._params_sources = deepcopy(self._params_sources)
         return new
 
     @classmethod
