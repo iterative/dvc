@@ -20,6 +20,7 @@ class CmdExperimentsRun(CmdRepro):
             tmp_dir=self.args.tmp_dir,
             copy_paths=self.args.copy_paths,
             message=self.args.message,
+            no_hydra=self.args.no_hydra,
             **self._common_kwargs,
         )
 
@@ -106,5 +107,15 @@ def _add_run_common(parser):
         type=str,
         default=None,
         help="Custom commit message to use when committing the experiment.",
+    )
+    parser.add_argument(
+        "--no-hydra",
+        action="store_true",
+        default=False,
+        help=(
+            "Disables automatically updating `params.yaml` with Hydra configuration. "
+            " You can still use `--set-param` to update individual params if needed."
+            " Default is False."
+        ),
     )
     parser.add_argument("-M", dest="message", help=argparse.SUPPRESS)  # obsolete

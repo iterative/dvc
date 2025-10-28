@@ -287,6 +287,7 @@ class BaseStashQueue(ABC):
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
         name: Optional[str] = None,
+        no_hydra: bool = False,
         **kwargs,
     ) -> QueueEntry:
         """Stash changes from the workspace as an experiment.
@@ -302,6 +303,7 @@ class BaseStashQueue(ABC):
             name: Optional experiment name. If specified this will be used as
                 the human-readable name in the experiment branch ref. Has no
                 effect of branch is specified.
+            no_hydra: Disable Hydra from automatically overwriting all params.
 
         .. _Hydra Override:
             https://hydra.cc/docs/next/advanced/override_grammar/basic/
@@ -318,7 +320,7 @@ class BaseStashQueue(ABC):
 
                     # update experiment params from command line
                     if params:
-                        self._update_params(params)
+                        self._update_params(params, no_hydra=no_hydra)
 
                     # DVC commit data deps to preserve state across workspace
                     # & tempdir runs
@@ -441,12 +443,13 @@ class BaseStashQueue(ABC):
             f"from '{config_path}': {param_list}"
         )
 
-    def _update_params(self, params: dict[str, list[str]]):
+    def _update_params(self, params: dict[str, list[str]], no_hydra: bool = False):
         """Update param files with the provided `Hydra Override`_ patterns.
 
         Args:
             params: Dict mapping paths to `Hydra Override`_ patterns,
                 provided via `exp run --set-param`.
+            no_hydra: Disable Hydra from automatically overwriting all params.
 
         .. _Hydra Override:
             https://hydra.cc/docs/advanced/override_grammar/basic/
@@ -456,7 +459,7 @@ class BaseStashQueue(ABC):
         logger.debug("Using experiment params '%s'", params)
 
         hydra_config = self.repo.config.get("hydra", {})
-        hydra_enabled = hydra_config.get("enabled", False)
+        hydra_enabled = hydra_config.get("enabled", False) and not no_hydra
         hydra_output_file = ParamsDependency.DEFAULT_PARAMS_FILE
         for path, overrides in params.items():
             if hydra_enabled and path == hydra_output_file:
