@@ -93,6 +93,7 @@ STAGE_DEFINITION = {
     vol.Optional(StageParams.PARAM_OUTS): [vol.Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     vol.Optional(StageParams.PARAM_METRICS): [vol.Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     vol.Optional(StageParams.PARAM_PLOTS): [vol.Any(str, PLOT_PSTAGE_SCHEMA)],
+    vol.Optional(StageParams.PARAM_NAME): str,
 }
 
 
