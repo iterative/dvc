@@ -109,9 +109,7 @@ def test_matrix_custom_name(tmp_dir, dvc):
     assert definition.get_generated_names() == ["inference@model_alpha_dataset_a"]
     assert definition.has_member("model_alpha_dataset_a")
     assert definition.resolve_one("model_alpha_dataset_a") == {
-        "inference@model_alpha_dataset_a": {
-            "cmd": "echo model_alpha dataset_a"
-        }
+        "inference@model_alpha_dataset_a": {"cmd": "echo model_alpha dataset_a"}
     }
 
 
