@@ -10,6 +10,7 @@ from funcy import collecting, first, isa, join, reraise
 from dvc.exceptions import DvcException
 from dvc.log import logger
 from dvc.parsing.interpolate import ParseError
+from dvc.stage.params import StageParams
 from dvc.utils.objects import cached_property
 
 from .context import (
@@ -518,6 +519,7 @@ class MatrixDefinition:
 
         self._template = definition.copy()
         self.matrix_data = self._template.pop(MATRIX_KWD)
+        self._custom_name = self._template.pop(StageParams.PARAM_NAME, None)
 
         self.pair = IterationPair()
         self.where = where
@@ -577,19 +579,94 @@ class MatrixDefinition:
         return ret
 
     def has_member(self, key: str) -> bool:
-        return key in self.normalized_iterable
+        resolved = self._resolve_iteration_key(key)
+        return resolved in self.normalized_iterable
 
     def get_generated_names(self) -> list[str]:
         return list(map(self._generate_name, self.normalized_iterable))
 
     def _generate_name(self, key: str) -> str:
-        return f"{self.name}{JOIN}{key}"
+        if not self._custom_name:
+            return f"{self.name}{JOIN}{key}"
+
+        suffix = self._custom_suffixes[key]
+        return f"{self.name}{JOIN}{suffix}"
 
     def resolve_all(self) -> "DictStrAny":
         return join(map(self.resolve_one, self.normalized_iterable))
 
     def resolve_one(self, key: str) -> "DictStrAny":
-        return self._each_iter(key)
+        resolved = self._resolve_iteration_key(key)
+        return self._each_iter(resolved)
+
+    def _resolve_iteration_key(self, key: str) -> str:
+        if not self._custom_name or key in self.normalized_iterable:
+            return key
+
+        for original, suffix in self._custom_suffixes.items():
+            if suffix == key:
+                return original
+
+        return key
+
+    def _render_custom_suffix(self, key: str) -> str:
+        value = self.normalized_iterable[key]
+        temp_dict = {self.pair.key: key, self.pair.value: value}
+        with self.context.set_temporarily(temp_dict, reserve=True):
+            try:
+                resolved = self.context.resolve_str(self._custom_name)
+            except (ContextError, ParseError) as exc:
+                format_and_raise(
+                    exc,
+                    f"'{self.where}.{self.name}.{StageParams.PARAM_NAME}'",
+                    self.relpath,
+                )
+
+        if not isinstance(resolved, (str, int, float, bool)):
+            format_and_raise(
+                ResolveError(
+                    "matrix stage name must resolve to a string or primitive value"
+                ),
+                f"'{self.where}.{self.name}.{StageParams.PARAM_NAME}'",
+                self.relpath,
+            )
+
+        suffix = to_str(resolved)
+        if not suffix:
+            format_and_raise(
+                ResolveError("matrix stage name cannot be empty"),
+                f"'{self.where}.{self.name}.{StageParams.PARAM_NAME}'",
+                self.relpath,
+            )
+
+        if JOIN in suffix:
+            format_and_raise(
+                ResolveError(f"matrix stage name cannot contain '{JOIN}'"),
+                f"'{self.where}.{self.name}.{StageParams.PARAM_NAME}'",
+                self.relpath,
+            )
+
+        return suffix
+
+    @cached_property
+    def _custom_suffixes(self) -> dict[str, str]:
+        if not self._custom_name:
+            return {}
+
+        seen: set[str] = set()
+        suffixes: dict[str, str] = {}
+        for key in self.normalized_iterable:
+            suffix = self._render_custom_suffix(key)
+            if suffix in seen:
+                format_and_raise(
+                    ResolveError(f"matrix stage name '{suffix}' is already defined"),
+                    f"'{self.where}.{self.name}.{StageParams.PARAM_NAME}'",
+                    self.relpath,
+                )
+            suffixes[key] = suffix
+            seen.add(suffix)
+
+        return suffixes
 
     def _each_iter(self, key: str) -> "DictStrAny":
         err_message = f"Could not find '{key}' in matrix group '{self.name}'"
