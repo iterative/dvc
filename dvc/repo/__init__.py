@@ -83,6 +83,7 @@ class Repo:
     from dvc.repo.ls_url import ls_url as _ls_url  # type: ignore[misc]
     from dvc.repo.move import move  # type: ignore[misc]
     from dvc.repo.pull import pull  # type: ignore[misc]
+    from dvc.repo.purge import purge  # type: ignore[misc]
     from dvc.repo.push import push  # type: ignore[misc]
     from dvc.repo.remove import remove  # type: ignore[misc]
     from dvc.repo.reproduce import reproduce  # type: ignore[misc]
