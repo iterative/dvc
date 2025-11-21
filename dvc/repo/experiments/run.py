@@ -22,6 +22,7 @@ def run(  # noqa: C901, PLR0912
     queue: bool = False,
     copy_paths: Optional[Iterable[str]] = None,
     message: Optional[str] = None,
+    no_hydra: bool = False,
     **kwargs,
 ) -> dict[str, str]:
     """Reproduce the specified targets as an experiment.
@@ -67,7 +68,7 @@ def run(  # noqa: C901, PLR0912
     else:
         path_overrides = {}
 
-    hydra_enabled = repo.config.get("hydra", {}).get("enabled", False)
+    hydra_enabled = repo.config.get("hydra", {}).get("enabled", False) and not no_hydra
     hydra_output_file = ParamsDependency.DEFAULT_PARAMS_FILE
     if hydra_enabled and hydra_output_file not in path_overrides:
         # Force `_update_params` even if `--set-param` was not used
@@ -80,6 +81,7 @@ def run(  # noqa: C901, PLR0912
             tmp_dir=tmp_dir,
             copy_paths=copy_paths,
             message=message,
+            no_hydra=no_hydra,
             **kwargs,
         )
 
@@ -100,6 +102,7 @@ def run(  # noqa: C901, PLR0912
             params=sweep_overrides,
             copy_paths=copy_paths,
             message=message,
+            no_hydra=no_hydra,
             **kwargs,
         )
         if sweep_overrides:

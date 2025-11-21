@@ -130,6 +130,7 @@ def test_experiments_run(dvc, scm, mocker):
         "tmp_dir": False,
         "copy_paths": [],
         "message": None,
+        "no_hydra": False,
     }
     default_arguments.update(repro_arguments)
 
@@ -151,6 +152,7 @@ def test_experiments_run_message(dvc, scm, mocker, flag):
         "tmp_dir": False,
         "copy_paths": [],
         "message": "mymessage",
+        "no_hydra": False,
     }
     default_arguments.update(repro_arguments)
 
