@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.parsing import DataResolver, MatrixDefinition
+from dvc.parsing import DataResolver, MatrixDefinition, ResolveError
 
 MATRIX_DATA = {
     "os": ["win", "linux"],
@@ -91,3 +91,51 @@ def test_matrix_key_present(tmp_dir, dvc, matrix):
         "build@linux-3.8-dict1-list0": {"cmd": "echo linux-3.8-dict1-list0"},
         "build@linux-3.8-dict1-list1": {"cmd": "echo linux-3.8-dict1-list1"},
     }
+
+
+def test_matrix_custom_name(tmp_dir, dvc):
+    matrix = {
+        "dataset": [{"key": "dataset_a"}],
+        "model": [{"key": "model_alpha"}],
+    }
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
+    data = {
+        "matrix": matrix,
+        "name": "${item.model.key}_${item.dataset.key}",
+        "cmd": "echo ${item.model.key} ${item.dataset.key}",
+    }
+    definition = MatrixDefinition(resolver, resolver.context, "inference", data)
+
+    assert definition.get_generated_names() == ["inference@model_alpha_dataset_a"]
+    assert definition.has_member("model_alpha_dataset_a")
+    assert definition.resolve_one("model_alpha_dataset_a") == {
+        "inference@model_alpha_dataset_a": {"cmd": "echo model_alpha dataset_a"}
+    }
+
+
+def test_matrix_custom_name_duplicate_error(tmp_dir, dvc):
+    matrix = {"model": [{"key": "same"}, {"key": "same"}]}
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
+    data = {
+        "matrix": matrix,
+        "name": "${item.model.key}",
+        "cmd": "echo ${item.model.key}",
+    }
+    definition = MatrixDefinition(resolver, resolver.context, "train", data)
+
+    with pytest.raises(ResolveError, match="already defined"):
+        definition.get_generated_names()
+
+
+def test_matrix_custom_name_invalid_suffix(tmp_dir, dvc):
+    matrix = {"model": [{"key": "same"}]}
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
+    data = {
+        "matrix": matrix,
+        "name": "bad@name",
+        "cmd": "echo ${item.model.key}",
+    }
+    definition = MatrixDefinition(resolver, resolver.context, "train", data)
+
+    with pytest.raises(ResolveError, match="cannot contain"):
+        definition.get_generated_names()
