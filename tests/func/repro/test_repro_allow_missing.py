@@ -37,16 +37,16 @@ def test_repro_allow_missing_upstream_stage_modified(
     tmp_dir, dvc, mocker, local_remote
 ):
     """https://github.com/iterative/dvc/issues/9530"""
-    tmp_dir.gen("params.yaml", "param: 1")
+    tmp_dir.gen("params.yaml", "value: 1")
     dvc.stage.add(
-        name="create-foo", cmd="echo ${param} > foo", params=["param"], outs=["foo"]
+        name="create-foo", cmd="echo ${value} > foo", params=["value"], outs=["foo"]
     )
     dvc.stage.add(name="copy-foo", cmd="cp foo bar", deps=["foo"], outs=["bar"])
     dvc.reproduce()
 
     dvc.push()
 
-    tmp_dir.gen("params.yaml", "param: 2")
+    tmp_dir.gen("params.yaml", "value: 2")
     (create_foo,) = dvc.reproduce("create-foo")
     dvc.push()
     remove("foo")
