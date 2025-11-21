@@ -60,23 +60,27 @@ def Choices(*choices):  # noqa: N802
     return Any(*choices, msg="expected one of {}".format(", ".join(choices)))
 
 
+def _get_schema_from_url(url: str) -> str:
+    parsed = urlparse(url)
+    # Windows absolute paths should really have scheme == "" (local)
+    if os.name == "nt" and len(parsed.scheme) == 1 and not parsed.netloc:
+        return ""
+    if not parsed.netloc:
+        return ""
+    return parsed.scheme
+
+
 def ByUrl(mapping):  # noqa: N802
-    schemas = walk_values(Schema, mapping)
+    schemas: dict[str, Schema] = walk_values(Schema, mapping)
 
     def validate(data):
         if "url" not in data:
             raise Invalid("expected 'url'")
 
-        parsed = urlparse(data["url"])
-        # Windows absolute paths should really have scheme == "" (local)
-        if os.name == "nt" and len(parsed.scheme) == 1 and not parsed.netloc:
-            return schemas[""](data)
-        if not parsed.netloc:
-            return schemas[""](data)
-        if parsed.scheme not in schemas:
-            raise Invalid(f"Unsupported URL type {parsed.scheme}://")
-
-        return schemas[parsed.scheme](data)
+        scheme = _get_schema_from_url(data["url"])
+        if scheme not in schemas:
+            raise Invalid(f"Unsupported URL type {scheme}://")
+        return schemas[scheme](data)
 
     return validate
 
@@ -396,9 +400,25 @@ def config_vars_for_completion(d: dict = SCHEMA, path: str = "") -> "Iterator[st
             k = k.schema
         if not isinstance(k, str):
             continue
-
-        keypath = path + k
+        keypath = f"{path}.{k}" if path else k
         if isinstance(v, dict):
-            yield from config_vars_for_completion(v, keypath + ".")
+            yield from config_vars_for_completion(v, keypath)
         else:
             yield keypath
+
+
+def contextual_config_vars_for_completion(config) -> "Iterator[str]":
+    yield from config_vars_for_completion()
+    for name, data in config["remote"].items():
+        if "url" not in data:
+            continue
+        scheme = _get_schema_from_url(data["url"])
+        if scheme not in REMOTE_SCHEMAS:
+            continue
+        schema = REMOTE_SCHEMAS[scheme]
+        if schema:
+            yield from config_vars_for_completion(schema, f"remote.{name}")  # type: ignore[arg-type]
+
+    db_schema = SCHEMA["db"][str]  # type: ignore[index]
+    for name in config["db"]:
+        yield from config_vars_for_completion(db_schema, f"db.{name}")  # type: ignore[arg-type]

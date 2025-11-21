@@ -31,6 +31,27 @@ _dvc_compgen_remotes() {
 _dvc_compgen_config_vars() {
     compgen -W "${_dvc_config_vars[*]}" -- $1
 }
+
+_dvc_compgen_remote_config_vars() {
+    local cur prev words cword remote_name filtered
+    _init_completion || return
+
+    # last non-option word before cursor
+    local nonopts=()
+    for w in "${words[@]:1:$((cword-1))}"; do
+        [[ $w == -* ]] || nonopts+=("$w")
+    done
+
+    remote_name="${nonopts[-1]}"
+    if [[ -n $remote_name ]]; then
+        local _dvc_remote_config_vars=($(
+            dvc config --available-options -q 2> /dev/null \
+            | grep "^remote\\.${remote_name}\\." \
+            | sed "s/^remote\\.${remote_name}\\.//"
+        ))
+        compgen -W "${_dvc_remote_config_vars[*]}" -- $1
+    fi
+}
 """
 
 ZSH_PREAMBLE = """
@@ -69,27 +90,111 @@ _dvc_compadd_remotes() {
     _describe 'remotes' "($(dvc remote list | cut -d' ' -f1))"
 }
 
+_dvc_config_config_vars_for_completion() {
+    dvc config --available-options -q 2> /dev/null
+}
+
 _dvc_compadd_config_vars() {
     _describe 'config_vars' _dvc_config_vars
 }
+
+_dvc_compadd_remote_config_vars() {
+  local remote_name filtered
+
+  # last non-option word before cursor
+  remote_name=${${words[1,CURRENT-1]##-*}[-1]}
+  if [[ -n $remote_name ]]; then
+    filtered=$(_dvc_config_config_vars_for_completion \\
+        | grep "^remote.${remote_name}\\\\." \\
+        | sed "s/^remote\\\\.${remote_name}\\\\.//"
+    )
+    compadd -- $=filtered
+  fi
+}
+"""
+
+FISH_PREAMBLE = """
+function __fish_complete_dvc_files
+    __fish_complete_path | string match -re '\\*?.dvc|Dvcfile|dvc\\.yaml'
+end
+
+function __fish_complete_dvc_stages
+    for line in (dvc stage list -q)
+        set -l parts (string split -m1 ' ' -- $line)
+        set -l name $parts[1]
+        set -l desc (string trim $parts[2])
+        echo -e "$name	$desc"
+    end
+end
+
+function __fish_complete_dvc_stages_and_files
+    __fish_complete_dvc_stages
+    __fish_complete_dvc_files
+end
+
+function __fish_complete_dvc_experiments
+    dvc exp list -q --all-commits --names-only
+end
+
+function __fish_complete_dvc_remotes
+    dvc remote list | cut -d' ' -f1
+end
+
+function __fish_complete_dvc_remote_config_vars
+    # last non-option word before cursor
+    set -l remote_name (commandline -opc | string match -rv '^-' | tail -n 1)
+
+    if test -n "$remote_name"
+        dvc config --available-options -q 2>/dev/null |
+            string match -re "^remote\\.$remote_name\\." |
+            string replace -r "^remote\\.$remote_name\\." ''
+    end
+end
 """
 
 PREAMBLE = {
     "bash": BASH_PREAMBLE,
     "zsh": ZSH_PREAMBLE,
+    "fish": FISH_PREAMBLE,
 }
 
 FILE = shtab.FILE
 DIR = shtab.DIRECTORY
-DVC_FILE = {"bash": "_dvc_compgen_DVCFiles", "zsh": "_dvc_compadd_DVCFiles"}
-STAGE = {"bash": "_dvc_compgen_stages", "zsh": "_dvc_compadd_stages"}
+DVC_FILE = {
+    "bash": "_dvc_compgen_DVCFiles",
+    "zsh": "_dvc_compadd_DVCFiles",
+    "fish": '-f -a "(__fish_complete_dvc_files)"',
+}
+STAGE = {
+    "bash": "_dvc_compgen_stages",
+    "zsh": "_dvc_compadd_stages",
+    "fish": '-f -a "(__fish_complete_dvc_stages)"',
+}
 DVCFILES_AND_STAGE = {
     "bash": "_dvc_compgen_stages_and_files",
     "zsh": "_dvc_compadd_stages_and_files",
+    "fish": '-f -a "(__fish_complete_dvc_stages_and_files)"',
 }
-EXPERIMENT = {"bash": "_dvc_compgen_exps", "zsh": "_dvc_compadd_exps"}
-REMOTE = {"bash": "_dvc_compgen_remotes", "zsh": "_dvc_compadd_remotes"}
-CONFIG_VARS = {"bash": "_dvc_compgen_config_vars", "zsh": "_dvc_compadd_config_vars"}
+EXPERIMENT = {
+    "bash": "_dvc_compgen_exps",
+    "zsh": "_dvc_compadd_exps",
+    "fish": '-f -a "(__fish_complete_dvc_experiments)"',
+}
+REMOTE = {
+    "bash": "_dvc_compgen_remotes",
+    "zsh": "_dvc_compadd_remotes",
+    "fish": '-f -a "(__fish_complete_dvc_remotes)"',
+}
+CONFIG_VARS = {
+    "bash": "_dvc_compgen_config_vars",
+    "zsh": "_dvc_compadd_config_vars",
+    "fish": '-f -a "(__fish_complete_dvc_config_vars)"',
+}
+REMOTE_CONFIG_VARS = {
+    "bash": "_dvc_compgen_remote_config_vars",
+    "zsh": "_dvc_compadd_remote_config_vars",
+    "fish": '-f -a "(__fish_complete_dvc_remote_config_vars)"',
+}
 
 
 def get_preamble() -> dict[str, str]:
@@ -104,6 +209,25 @@ _dvc_config_vars=(
     {nl.join(config_vars)}
 )
 """
+    indent = "\t\t".expandtabs(4)  # 8 spaces
+    lines = (
+        "\n".join(
+            f"{indent}{c} \\"
+            for c in config_vars[:-1]  # all but last
+        )
+        + "\n"
+        + f"{indent}{config_vars[-1]}"
+    )  # last line without backslash
+    config_vars_arr_fish = f"""
+function __fish_complete_dvc_config_vars
+    set -l _dvc_config_vars \\
+{lines}
+    printf %s\\n $_dvc_config_vars
+end
+"""
     for shell, preamble in PREAMBLE.items():
-        ret[shell] = config_vars_arr + preamble
+        if shell != "fish":
+            ret[shell] = config_vars_arr + preamble
+        else:
+            ret[shell] = config_vars_arr_fish + preamble
     return ret
