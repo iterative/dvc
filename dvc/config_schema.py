@@ -151,6 +151,7 @@ WEBDAV_COMMON = {
     "password": str,
     "ask_password": Bool,
     "token": str,
+    "bearer_token_command": str,
     "custom_auth_header": str,
     "cert_path": str,
     "key_path": str,
